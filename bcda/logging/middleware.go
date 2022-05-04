@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -81,6 +84,48 @@ func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
 		"stack": string(stack),
 		"panic": fmt.Sprintf("%+v", v),
 	})
+}
+
+type ResourceTypeLogger struct {
+	Repository models.JobKeyRepository
+}
+
+func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+
+		jobKey, err := rl.extractJobKey(r)
+		if err != nil {
+			log.API.Error(err)
+			return
+		}
+		// Note: could split this out into a function for adding to the context log
+		entry, ok := middleware.GetLogEntry(r).(*StructuredLoggerEntry)
+		if !ok {
+			log.API.Error("Incorrect type of logger used in request context")
+			return
+		}
+
+		entry.Logger = entry.Logger.WithFields(logrus.Fields{
+			"resource_type": jobKey.ResourceType,
+		})
+	})
+}
+
+func (rl *ResourceTypeLogger) extractJobKey(r *http.Request) (*models.JobKey, error) {
+	fileName := chi.URLParam(r, "fileName")
+	jobID := chi.URLParam(r, "jobID")
+	// Logging request for auditing
+
+	jobIdInt, err := strconv.ParseUint(jobID, 10, 32)
+
+	if err != nil {
+		return nil, err
+	}
+
+	jobKey, err := rl.Repository.GetJobKey(r.Context(), uint(jobIdInt), strings.TrimSpace(fileName))
+
+	return jobKey, err
 }
 
 func Redact(uri string) string {

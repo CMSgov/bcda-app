@@ -8,7 +8,9 @@ import (
 	v1 "github.com/CMSgov/bcda-app/bcda/api/v1"
 	v2 "github.com/CMSgov/bcda-app/bcda/api/v2"
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/logging"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -86,9 +88,15 @@ func NewAuthRouter() http.Handler {
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
+	resourceTypeLogger := &logging.ResourceTypeLogger{
+		Repository: postgres.NewRepository(database.Connection),
+	}
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
-	r.With(append(commonAuth, auth.RequireTokenJobMatch)...).
-		Get(m.WrapHandler("/data/{jobID}/{fileName}", v1.ServeData))
+	r.With(append(
+		commonAuth,
+		auth.RequireTokenJobMatch,
+		resourceTypeLogger.LogJobResourceType,
+	)...).Get(m.WrapHandler("/data/{jobID}/{fileName}", v1.ServeData))
 	return r
 }
 

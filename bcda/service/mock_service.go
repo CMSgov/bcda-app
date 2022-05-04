@@ -85,6 +85,29 @@ func (_m *MockService) GetJobAndKeys(ctx context.Context, jobID uint) (*models.J
 	return r0, r1, r2
 }
 
+// GetJobKey provides a mock function with given fields: ctx, jobID, filename
+func (_m *MockService) GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error) {
+	ret := _m.Called(ctx, jobID, filename)
+
+	var r0 *models.JobKey
+	if rf, ok := ret.Get(0).(func(context.Context, uint, string) *models.JobKey); ok {
+		r0 = rf(ctx, jobID, filename)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.JobKey)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uint, string) error); ok {
+		r1 = rf(ctx, jobID, filename)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetJobPriority provides a mock function with given fields: acoID, resourceType, sinceParam
 func (_m *MockService) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	ret := _m.Called(acoID, resourceType, sinceParam)

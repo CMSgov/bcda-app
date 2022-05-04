@@ -2,11 +2,14 @@ package logging_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -17,6 +20,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -172,4 +176,61 @@ func (s *LoggingMiddlewareTestSuite) TestRedact() {
 
 func TestLoggingMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMiddlewareTestSuite))
+}
+
+type mockLogger struct {
+	Logger logrus.FieldLogger
+	entry  *logging.StructuredLoggerEntry
+}
+
+func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
+	return l.entry
+}
+func TestResourceTypeLogging(t *testing.T) {
+	testCases := []struct {
+		jobID        string
+		ResourceType interface{}
+	}{
+		{
+			jobID:        "1234",
+			ResourceType: "Coverage",
+		},
+		{
+			jobID:        "bad",
+			ResourceType: nil,
+		},
+		{
+			jobID:        "4321",
+			ResourceType: nil,
+		},
+	}
+
+	for _, test := range testCases {
+		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/blob.ndjson", test.jobID), nil)
+		repository := &models.MockRepository{}
+		if test.ResourceType != nil {
+			j := &models.JobKey{ID: 1, JobID: 1234, FileName: "blob.ndjson", ResourceType: test.ResourceType.(string)}
+			repository.On("GetJobKey", testUtils.CtxMatcher, uint(1234), "blob.ndjson").Return(j, nil)
+		} else {
+			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), "blob.ndjson").Return(nil, errors.New("expected error"))
+		}
+
+		entry := &logging.StructuredLoggerEntry{Logger: log.Request}
+
+		logger := logging.ResourceTypeLogger{
+			Repository: repository,
+		}
+
+		r := chi.NewRouter()
+		r.With(
+			middleware.RequestLogger(&mockLogger{Logger: log.Request, entry: entry}),
+			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}))
+
+		rw := httptest.NewRecorder()
+		r.ServeHTTP(rw, req)
+		testEntry := entry.Logger.WithField("test", nil)
+		if respT := testEntry.Data["resource_type"]; respT != test.ResourceType {
+			t.Error("Failed to find resource_type in logs", respT, testEntry)
+		}
+	}
 }
