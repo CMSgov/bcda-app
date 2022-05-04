@@ -351,20 +351,16 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	m := make(map[string]string)
 
-	if health.IsDatabaseOK() {
-		m["database"] = "ok"
-		w.WriteHeader(http.StatusOK)
-	} else {
-		m["database"] = "error"
-		w.WriteHeader(http.StatusBadGateway)
-	}
+	dbStatus, dbOK := health.IsDatabaseOK()
+	ssasStatus, ssasOK := health.IsSsasOK()
 
-	if health.IsSsasOK() {
-		m["ssas"] = "ok"
-		w.WriteHeader(http.StatusAccepted)
+	m["database"] = dbStatus
+	m["ssas"] = ssasStatus
+
+	if !dbOK || !ssasOK {
+		w.WriteHeader(http.StatusBadGateway)
 	} else {
-		m["ssas"] = "error"
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusOK)
 	}
 
 	respJSON, err := json.Marshal(m)

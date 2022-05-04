@@ -8,14 +8,14 @@ import (
 	_ "github.com/jackc/pgx"
 )
 
-func IsDatabaseOK() bool {
+func IsDatabaseOK() (result string, ok bool) {
 	db := database.Connection
 	if err := db.Ping(); err != nil {
 		log.API.Error("Health check: database ping error: ", err.Error())
-		return false
+		return "database ping error", false
 	}
 
-	return true
+	return "ok", true
 }
 
 func IsBlueButtonOK() bool {
@@ -34,15 +34,15 @@ func IsBlueButtonOK() bool {
 	return true
 }
 
-func IsSsasOK() bool {
+func IsSsasOK() (result string, ok bool) {
 	c, err := ssasClient.NewSSASClient()
 	if err != nil {
 		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
-		return false
+		return "No client for SSAS. no provider set", false
 	}
 	if err := c.Ping(); err != nil {
 		log.API.Error("Health check: ssas ping error: ", err.Error())
-		return false
+		return "Cannot authenticate with SSAS", false
 	}
-	return true
+	return "ok", true
 }
