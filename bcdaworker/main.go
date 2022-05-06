@@ -95,7 +95,7 @@ func logHealth() {
 	logFields["type"] = "health"
 	logFields["id"] = uuid.NewRandom()
 
-	if health.IsDatabaseOK() {
+	if _, ok := health.IsDatabaseOK(); ok {
 		logFields["db"] = "ok"
 	} else {
 		logFields["db"] = "error"
