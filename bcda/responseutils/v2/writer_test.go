@@ -162,7 +162,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 
 	assert.Equal(s.T(), jobs[0].CreatedAt.UTC().UnixNano()/int64(time.Microsecond), task.ExecutionPeriod.Start.ValueUs)
 	assert.Equal(s.T(), jobs[0].UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), task.ExecutionPeriod.End.ValueUs)
-	assert.Equal(s.T(), "https://www.api.com/api/v1/jobs", task.Identifier[0].System.Value)
+	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", task.Identifier[0].System.Value)
 	assert.Equal(s.T(), fhircodes.IdentifierUseCode_OFFICIAL, task.Identifier[0].Use.Value)
 	assert.Equal(s.T(), fmt.Sprint(jobs[0].ID), task.Identifier[0].Value.Value)
 	assert.Equal(s.T(), "BULK FHIR Export", task.Input[0].Type.Text.Value)
@@ -191,7 +191,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
 
 	assert.Equal(s.T(), job.CreatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.Start.ValueUs)
 	assert.Equal(s.T(), job.UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.End.ValueUs)
-	assert.Equal(s.T(), "https://www.api.com/api/v1/jobs", jbe.Identifier[0].System.Value)
+	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", jbe.Identifier[0].System.Value)
 	assert.Equal(s.T(), fhircodes.IdentifierUseCode_OFFICIAL, jbe.Identifier[0].Use.Value)
 	assert.Equal(s.T(), fmt.Sprint(job.ID), jbe.Identifier[0].Value.Value)
 	assert.Equal(s.T(), "BULK FHIR Export", jbe.Input[0].Type.Text.Value)
