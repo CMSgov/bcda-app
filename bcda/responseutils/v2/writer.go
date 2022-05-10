@@ -81,7 +81,7 @@ func CreateJobsBundleEntry(job *models.Job, host string) *fhirmodelCR.Bundle_Ent
 					Identifier: []*fhirdatatypes.Identifier{
 						{
 							Use:    &fhirdatatypes.Identifier_UseCode{Value: fhircodes.IdentifierUseCode_OFFICIAL},
-							System: &fhirdatatypes.Uri{Value: host + "/api/v1/jobs"},
+							System: &fhirdatatypes.Uri{Value: host + "/api/v2/jobs"},
 							Value:  &fhirdatatypes.String{Value: fmt.Sprint(job.ID)},
 						},
 					},
