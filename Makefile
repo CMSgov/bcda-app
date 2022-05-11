@@ -45,11 +45,12 @@ postman:
 	--global-var v2Disabled=false \
 	--global-var alrEnabled=true
 
-unit-test:
-	$(MAKE) unit-test-db
-	
+unit-test: unit-test-ssas unit-test-db load-fixtures-ssas
 	docker-compose -f docker-compose.test.yml build tests
 	@docker-compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
+
+unit-test-ssas:
+	docker-compose up -d ssas
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
