@@ -18,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/go-chi/chi"
+	gcmw "github.com/go-chi/chi/middleware"
 )
 
 // Auth middleware checks that verifies that caller is authorized
@@ -28,7 +29,7 @@ var commonAuth = []func(http.Handler) http.Handler{
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
+	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
@@ -82,7 +83,7 @@ func NewAPIRouter() http.Handler {
 }
 
 func NewAuthRouter() http.Handler {
-	return auth.NewAuthRouter(logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
+	return auth.NewAuthRouter(gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
 }
 
 func NewDataRouter() http.Handler {
@@ -91,7 +92,7 @@ func NewDataRouter() http.Handler {
 	resourceTypeLogger := &logging.ResourceTypeLogger{
 		Repository: postgres.NewRepository(database.Connection),
 	}
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
+	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
 	r.With(append(
 		commonAuth,
 		auth.RequireTokenJobMatch,
@@ -103,7 +104,7 @@ func NewDataRouter() http.Handler {
 func NewHTTPRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(middleware.ConnectionClose)
+	r.Use(gcmw.RequestID, middleware.ConnectionClose)
 	r.With(logging.NewStructuredLogger()).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		url := "https://" + req.Host + req.URL.String()
 		http.Redirect(w, req, url, http.StatusMovedPermanently)
