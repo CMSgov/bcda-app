@@ -148,7 +148,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	Get jobs statuses
 
 	Returns the current statuses of export jobs. Supported status types are Completed, Archived, Expired, Failed, FailedExpired,
-	In Progress, Pending, Cancelled, and CancelledExpired. If no status(s) is provided, all jobs will be returned.
+	Pending, In Progress, Cancelled, and CancelledExpired. If no status(s) is provided, all jobs will be returned.
 
 	Note on job status to fhir task resource status mapping:
 	Due to the fhir task status field having a smaller set of values, the following statuses will be set to different fhir values in the response
