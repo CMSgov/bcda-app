@@ -186,6 +186,7 @@ type mockLogger struct {
 func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	return l.entry
 }
+
 func TestResourceTypeLogging(t *testing.T) {
 	testCases := []struct {
 		jobID        string
