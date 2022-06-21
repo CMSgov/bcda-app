@@ -513,6 +513,13 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
+	if service.JobID !=nil {
+		ReqJobIDLog := log.API.Info (map[string]service.DataType{
+		"request_id": requestID,
+			"job_id": newJob.ID,
+		},
+	)
+
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		log.API.Error(err)
