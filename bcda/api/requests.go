@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	gcmw "github.com/go-chi/chi/middleware"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -513,12 +514,10 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
-	if service.JobID !=nil {
-		ReqJobIDLog := log.API.Info (map[string]service.DataType{
-		"request_id": requestID,
-			"job_id": newJob.ID,
-		},
-	)
+	if newJob.ID != 0 {
+		requestID := gcmw.GetReqID(r.Context())
+		log.API.Info("requestID %s jobId %s", requestID, newJob.ID)
+	}
 
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
