@@ -209,7 +209,7 @@ func (s *ResponseUtilsWriterTestSuite) TestGetFhirStatusCode() {
 	}{
 		{"Job Failed returns fhir task status Failed", models.JobStatusFailed, fhircodes.TaskStatusCode_FAILED},
 		{"Job FailedExpired returns fhir task status Failed", models.JobStatusFailedExpired, fhircodes.TaskStatusCode_FAILED},
-		{"Job Pending returns fhir task status In Progress", models.JobStatusPending, fhircodes.TaskStatusCode_IN_PROGRESS},
+		{"Job Pending returns fhir task status Accepted", models.JobStatusPending, fhircodes.TaskStatusCode_ACCEPTED},
 		{"Job In Progress returns fhir task status In Progress", models.JobStatusInProgress, fhircodes.TaskStatusCode_IN_PROGRESS},
 		{"Job Completed returns fhir task status Completed", models.JobStatusCompleted, fhircodes.TaskStatusCode_COMPLETED},
 		{"Job Archived returns fhir task status Completed", models.JobStatusArchived, fhircodes.TaskStatusCode_COMPLETED},
