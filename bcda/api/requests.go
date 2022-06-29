@@ -514,16 +514,16 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
-	if newJob.ID != 0 {
-		requestID := gcmw.GetReqID(r.Context())
-		log.API.Info("requestID %s jobId %s", requestID, newJob.ID)
-	}
-
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		log.API.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
+	}
+
+	if newJob.ID != 0 {
+		requestID := gcmw.GetReqID(r.Context())
+		log.API.Infof("requestID %s jobId %d", requestID, newJob.ID)
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
