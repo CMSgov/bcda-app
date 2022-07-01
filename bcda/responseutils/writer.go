@@ -114,7 +114,9 @@ func GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		fhirStatus = fhircodes.TaskStatusCode_FAILED
-	case models.JobStatusPending, models.JobStatusInProgress:
+	case models.JobStatusPending:
+		fhirStatus = fhircodes.TaskStatusCode_ACCEPTED
+	case models.JobStatusInProgress:
 		fhirStatus = fhircodes.TaskStatusCode_IN_PROGRESS
 	case models.JobStatusCompleted:
 		fhirStatus = fhircodes.TaskStatusCode_COMPLETED
