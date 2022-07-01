@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	gcmw "github.com/go-chi/chi/middleware"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -518,6 +519,11 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		log.API.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
+	}
+
+	if newJob.ID != 0 {
+		requestID := gcmw.GetReqID(r.Context())
+		log.API.Infof("requestID %s jobID %d", requestID, newJob.ID)
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
