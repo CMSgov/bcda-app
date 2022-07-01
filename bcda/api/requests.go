@@ -523,7 +523,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	if newJob.ID != 0 {
 		requestID := gcmw.GetReqID(r.Context())
-		log.API.Infof("requestID %s jobId %d", requestID, newJob.ID)
+		log.API.Infof("requestID %s jobID %d", requestID, newJob.ID)
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
