@@ -55,7 +55,8 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 	s.server.Close()
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
+//integration test: makes HTTP request & asserts HTTP response
+func (s *MiddlewareTestSuite) Test_InvalidTokenAuthWithInvalidSignature_Return404() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
@@ -73,7 +74,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
+//unit test
+func (s *MiddlewareTestSuite) Test_RequireTokenAuth_InvalidToken_Return401() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
@@ -103,8 +105,17 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	mock.AssertExpectations(s.T())
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
+//integration test: makes HTTP request & asserts HTTP response
+func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Response200() {
 	bearerString := uuid.New()
+
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+
+	authData := auth.AuthData{
+		ACOID:   acoID,
+		TokenID: tokenID,
+	}
+
 	token := &jwt.Token{
 		Claims: &auth.CommonClaims{
 			StandardClaims: jwt.StandardClaims{
@@ -120,6 +131,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	mock.On("GetAuthDataFromClaims", token.Claims).Return(authData, nil)
 	auth.SetMockProvider(s.T(), mock)
 
 	client := s.server.Client()
@@ -141,10 +153,10 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
 	mock.AssertExpectations(s.T())
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
+//integration test: makes HTTP request & asserts HTTP response
+func (s *MiddlewareTestSuite) Test_AuthMiddleware_NoBearerTokenSupplied_Response401() {
 	client := s.server.Client()
 
-	// Valid token should return a 200 response
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
@@ -159,7 +171,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 	assert.Equal(s.T(), 401, resp.StatusCode)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
+//integration test: involves db connection to postgres
+func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_MismatchingDataProvided_Return404() {
 	db := database.Connection
 
 	j := models.Job{
@@ -206,7 +219,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
 	}
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
+//integration test: involves db connection to postgres
+func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_WithCorrectACOandJob_Return200() {
 	db := database.Connection
 
 	j := models.Job{
@@ -238,9 +252,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	assert.Equal(s.T(), 200, s.rr.Code)
 }
 
-// TestRequireTokenACOMatchInvalidToken validates that we return a 404
-// If the caller does not supply the auth data
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
+//integration test: involves db connection to postgres
+func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_noAuthDataProvidedInContext_Return404() {
 	db := database.Connection
 
 	j := models.Job{
@@ -266,7 +279,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestCheckBlacklist() {
+//unit test
+func (s *MiddlewareTestSuite) Test_CheckBlacklist() {
 	blacklisted := testUtils.RandomHexID()[0:4]
 	notBlacklisted := testUtils.RandomHexID()[0:4]
 
