@@ -527,7 +527,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
+	b, err := bb.GetPatient("0", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
 	if err != nil {
 		log.API.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
