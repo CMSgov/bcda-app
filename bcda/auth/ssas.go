@@ -117,7 +117,7 @@ func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 // Extract available values from SSAS token claims.
-func (s SSASPlugin) GetAuthDataFromClaims(claims *CommonClaims) (AuthData, error) {
+func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error) {
 	var (
 		ad  AuthData
 		err error
@@ -174,7 +174,7 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	if !ok {
 		return errors.New("invalid ssas claims")
 	}
-	if _, err = GetProvider().GetAuthDataFromClaims(claims); err != nil {
+	if _, err = s.getAuthDataFromClaims(claims); err != nil {
 		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
 		return err

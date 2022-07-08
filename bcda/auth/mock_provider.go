@@ -26,27 +26,6 @@ func (_m *MockProvider) AuthorizeAccess(tokenString string) error {
 	return r0
 }
 
-// GetAuthDataFromClaims provides a mock function with given fields: _a0
-func (_m *MockProvider) GetAuthDataFromClaims(_a0 *CommonClaims) (AuthData, error) {
-	ret := _m.Called(_a0)
-
-	var r0 AuthData
-	if rf, ok := ret.Get(0).(func(*CommonClaims) AuthData); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(AuthData)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(*CommonClaims) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // GetVersion provides a mock function with given fields:
 func (_m *MockProvider) GetVersion() (string, error) {
 	ret := _m.Called()
@@ -182,6 +161,27 @@ func (_m *MockProvider) VerifyToken(tokenString string) (*jwt.Token, error) {
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(tokenString)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// getAuthDataFromClaims provides a mock function with given fields: _a0
+func (_m *MockProvider) getAuthDataFromClaims(_a0 *CommonClaims) (AuthData, error) {
+	ret := _m.Called(_a0)
+
+	var r0 AuthData
+	if rf, ok := ret.Get(0).(func(*CommonClaims) AuthData); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(AuthData)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*CommonClaims) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}

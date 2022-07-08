@@ -131,7 +131,7 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Respo
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("AuthorizeAccess", token.Raw).Return(nil)
-	mock.On("GetAuthDataFromClaims", token.Claims).Return(authData, nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, nil)
 	auth.SetMockProvider(s.T(), mock)
 
 	client := s.server.Client()

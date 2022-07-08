@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -27,6 +30,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	m "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -260,6 +264,118 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 	s.p = SSASPlugin{client: c, repository: s.r}
 	err = s.p.AuthorizeAccess(ts)
 	require.Nil(s.T(), err)
+}
+
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_HappyPath_ErrIsNil() {
+	//setup data
+	cmsID := testUtils.RandomHexID()[0:4]
+	clientID := uuid.New()
+
+	commonClaims := &CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "ssas",
+		},
+		ClientID: clientID,
+		SystemID: uuid.New(),
+		Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+	}
+
+	aco := &models.ACO{Name: "ACO Test Name", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: clientID, TerminationDetails: nil}
+
+	//setup a mock repository (don't make actual repository call)
+	mock := &models.MockRepository{}
+	mock.On("GetACOByCMSID", m.MatchedBy(func(req context.Context) bool { return true }), cmsID).Return(aco, nil)
+	models.SetMockRepository(s.T(), mock)
+
+	//set the SSASPlugin to use the mock repository
+	c, err := client.NewSSASClient()
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	s.p = SSASPlugin{client: c, repository: mock}
+
+	//assert no error
+	_, err = s.p.getAuthDataFromClaims(commonClaims)
+	require.Nil(s.T(), err)
+}
+
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromGetACOByCMSID_ReturnEntityNotFoundError() {
+	//setup data
+	cmsID := testUtils.RandomHexID()[0:4]
+	clientID := uuid.New()
+
+	commonClaims := &CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "ssas",
+		},
+		ClientID: clientID,
+		SystemID: uuid.New(),
+		Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+	}
+
+	//blank aco struct (returned for test)
+	aco := &models.ACO{}
+
+	//custom error expected
+	dbErr := errors.New("DB Error: ACO Does Not Exist!")
+	expectedErr := &customErrors.EntityNotFoundError{Err: dbErr, CMSID: cmsID}
+
+	//setup a mock repository (don't make actual repository call)
+	mock := &models.MockRepository{}
+	mock.On("GetACOByCMSID", m.MatchedBy(func(req context.Context) bool { return true }), cmsID).Return(aco, expectedErr)
+	models.SetMockRepository(s.T(), mock)
+
+	//set the SSASPlugin to use the mock repository
+	c, err := client.NewSSASClient()
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	s.p = SSASPlugin{client: c, repository: mock}
+
+	//assert no error and is of correct custom type
+	_, err = s.p.getAuthDataFromClaims(commonClaims)
+	require.NotNil(s.T(), err)
+	assert.IsType(s.T(), &customErrors.EntityNotFoundError{}, err, "expected error of custom type EntityNotFoundError")
+}
+
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataAsEmptyString_ReturnError() {
+	//setup data
+	commonClaims := &CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "ssas",
+		},
+		ClientID: uuid.New(),
+		SystemID: uuid.New(),
+		Data:     "", //Data setup as empty string to trigger error
+	}
+
+	//set the SSASPlugin
+	c, err := client.NewSSASClient()
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	s.p = SSASPlugin{client: c, repository: s.r}
+
+	//assert no error and contains correct messaging
+	_, err = s.p.getAuthDataFromClaims(commonClaims)
+	require.NotNil(s.T(), err)
+	assert.EqualError(s.T(), err, "incomplete ssas token", "expected error messaging of incomplete ssas token")
+}
+
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataHasNoQuotes_ReturnError() {
+	//setup data
+	commonClaims := &CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "ssas",
+		},
+		ClientID: uuid.New(),
+		SystemID: uuid.New(),
+		Data:     "abcdefg", //Data setup as having no quotes to remove to trigger error
+	}
+
+	//set the SSASPlugin
+	c, err := client.NewSSASClient()
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	s.p = SSASPlugin{client: c, repository: s.r}
+
+	//assert no error and contains correct messaging
+	_, err = s.p.getAuthDataFromClaims(commonClaims)
+	require.NotNil(s.T(), err)
+	assert.EqualError(s.T(), err, "can't decode data claim abcdefg; invalid character 'a' looking for beginning of value", "expected error messaging of unable to decode data from CommonClaims")
 }
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {

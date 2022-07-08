@@ -329,7 +329,7 @@ func (s *RouterTestSuite) TestBlacklistedACO_ACOBlacklisted_Return403() {
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("AuthorizeAccess", token.Raw).Return(nil)
-	mock.On("GetAuthDataFromClaims", token.Claims).Return(auth.AuthData{
+	mock.On("getAuthDataFromClaims", token.Claims).Return(auth.AuthData{
 		ACOID:       cmsID,
 		CMSID:       cmsID,
 		TokenID:     uuid.NewRandom().String(),
@@ -402,7 +402,7 @@ func (s *RouterTestSuite) TestBlacklistedACO_ACONotBlacklisted_ReturnNot403() {
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("AuthorizeAccess", token.Raw).Return(nil)
-	mock.On("GetAuthDataFromClaims", token.Claims).Return(auth.AuthData{
+	mock.On("getAuthDataFromClaims", token.Claims).Return(auth.AuthData{
 		ACOID:       cmsID,
 		CMSID:       cmsID,
 		TokenID:     uuid.NewRandom().String(),
