@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	gcmw "github.com/go-chi/chi/middleware"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -520,8 +521,13 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		return
 	}
 
+	if newJob.ID != 0 {
+		requestID := gcmw.GetReqID(r.Context())
+		log.API.Infof("requestID %s jobID %d", requestID, newJob.ID)
+	}
+
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
+	b, err := bb.GetPatient("0", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
 	if err != nil {
 		log.API.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
