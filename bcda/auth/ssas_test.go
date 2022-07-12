@@ -253,7 +253,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
+func (s *SSASPluginTestSuite) TestAuthorizeAccess_HappyPath_ErrIsNil() {
 	_, ts, err := MockSSASToken()
 	require.NotNil(s.T(), ts, "no token for SSAS", err)
 	require.Nil(s.T(), err, "unexpected error; ", err)
@@ -264,6 +264,45 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 	s.p = SSASPlugin{client: c, repository: s.r}
 	err = s.p.AuthorizeAccess(ts)
 	require.Nil(s.T(), err)
+}
+
+func (s *SSASPluginTestSuite) TestAuthorizeAccess_VerifyTokenCheckFails_ReturnErr() {
+	_, ts, err := MockSSASToken()
+	require.NotNil(s.T(), ts, "no token for SSAS", err)
+	require.Nil(s.T(), err, "unexpected error; ", err)
+	MockSSASServer(ts)
+
+	c, err := client.NewSSASClient()
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	s.p = SSASPlugin{client: c, repository: s.r}
+
+	invalidTokenString := ""
+	err = s.p.AuthorizeAccess(invalidTokenString)
+	assert.EqualError(s.T(), err, "token contains an invalid number of segments")
+}
+
+func (s *SSASPluginTestSuite) TestAuthorizeAccess_GettingAuthDataFromClaimsFails_ReturnErr() {
+	claims := CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "ssas",
+		},
+		ClientID: uuid.New(),
+		SystemID: uuid.New(),
+		Data:     "ac", //Data setup as bad string to trigger error
+	}
+
+	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
+	pk, _ := rsa.GenerateKey(rand.Reader, 2048)
+	ts, _ := t.SignedString(pk)
+
+	MockSSASServer(ts)
+
+	c, err := client.NewSSASClient()
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	s.p = SSASPlugin{client: c, repository: s.r}
+
+	err = s.p.AuthorizeAccess(ts)
+	assert.EqualError(s.T(), err, "can't decode data claim ac; invalid character 'a' looking for beginning of value")
 }
 
 func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_HappyPath_ErrIsNil() {

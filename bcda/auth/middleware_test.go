@@ -11,7 +11,9 @@ import (
 	"strconv"
 	"testing"
 
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 
@@ -130,8 +132,8 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Respo
 
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("AuthorizeAccess", token.Raw).Return(nil)
 	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, nil)
+	mock.On("AuthorizeAccess", token.Raw).Return(nil)
 	auth.SetMockProvider(s.T(), mock)
 
 	client := s.server.Client()
@@ -149,6 +151,114 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Respo
 		log.Fatal(err)
 	}
 	assert.Equal(s.T(), 200, resp.StatusCode)
+
+	mock.AssertExpectations(s.T())
+}
+
+func (s *MiddlewareTestSuite) Test_AuthMiddleware_SsasAuthDataError_EntityNotFoundType_Response403() {
+	cmsID := testUtils.RandomHexID()[0:4]
+
+	bearerString := uuid.New()
+
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+
+	authData := auth.AuthData{
+		ACOID:   acoID,
+		TokenID: tokenID,
+	}
+
+	token := &jwt.Token{
+		Claims: &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+		},
+		Raw:   uuid.New(),
+		Valid: true}
+
+	//custom error expected
+	dbErr := errors.New("DB Error: ACO Does Not Exist!")
+	entityNotFoundError := &customErrors.EntityNotFoundError{Err: dbErr, CMSID: cmsID}
+
+	mock := &auth.MockProvider{}
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, entityNotFoundError)
+	auth.SetMockProvider(s.T(), mock)
+
+	client := s.server.Client()
+
+	// Valid token should return a 403 response
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+
+	s.rr = httptest.NewRecorder()
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	assert.Equal(s.T(), 403, resp.StatusCode)
+	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnknownEntityErr)
+
+	mock.AssertExpectations(s.T())
+}
+
+func (s *MiddlewareTestSuite) Test_AuthMiddleware_SsasAuthDataError_OtherType_Response401() {
+	cmsID := testUtils.RandomHexID()[0:4]
+
+	bearerString := uuid.New()
+
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+
+	authData := auth.AuthData{
+		ACOID:   acoID,
+		TokenID: tokenID,
+	}
+
+	token := &jwt.Token{
+		Claims: &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+		},
+		Raw:   uuid.New(),
+		Valid: true}
+
+	//custom error expected
+	thrownErr := errors.New("error123")
+
+	mock := &auth.MockProvider{}
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, thrownErr)
+	auth.SetMockProvider(s.T(), mock)
+
+	client := s.server.Client()
+
+	// Valid token should return a 401 response
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	assert.Equal(s.T(), 401, resp.StatusCode)
+	//assert.Equal(s.T(), responseutils.UnknownEntityErr, s.rr.Body.String())
 
 	mock.AssertExpectations(s.T())
 }
@@ -174,7 +284,6 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_NoBearerTokenSupplied_Response
 //integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_MismatchingDataProvided_Return404() {
 	db := database.Connection
-
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",

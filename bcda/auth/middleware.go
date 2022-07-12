@@ -70,13 +70,8 @@ func ParseToken(next http.Handler) http.Handler {
 			switch claims.Issuer {
 			case "ssas":
 				ad, err = GetProvider().getAuthDataFromClaims(claims)
-				log.Auth.Error(err)
 				if err != nil {
-					if _, ok := err.(*customErrors.EntityNotFoundError); ok {
-						rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
-						return
-					}
-					rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+					handleSsasAuthDataError(w, rw, err)
 					return
 				}
 			default:
@@ -89,6 +84,15 @@ func ParseToken(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, AuthDataContextKey, ad)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func handleSsasAuthDataError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
+	log.Auth.Error(err)
+	if _, ok := err.(*customErrors.EntityNotFoundError); ok {
+		rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
+	} else {
+		rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+	}
 }
 
 func RequireTokenAuth(next http.Handler) http.Handler {

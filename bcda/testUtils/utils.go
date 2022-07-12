@@ -1,12 +1,14 @@
 package testUtils
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -143,4 +145,17 @@ func GetLogger(logger logrus.FieldLogger) *logrus.Logger {
 	}
 	// Must be a *logrus.Logger
 	return logger.(*logrus.Logger)
+}
+
+//ReadResponseBody will read http.Response and return the body contents as a string.
+func ReadResponseBody(r *http.Response) string {
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		bodyString, _ := "Error reading the body: %v\n", err
+		return bodyString
+	}
+
+	bodyString := bytes.NewBuffer(body).String()
+	return bodyString
 }
