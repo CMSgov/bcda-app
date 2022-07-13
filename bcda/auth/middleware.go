@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
@@ -64,20 +65,13 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
-		// logic into a service method.
-		db := database.Connection
-
-		repository := postgres.NewRepository(db)
-
 		var ad AuthData
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
 			switch claims.Issuer {
 			case "ssas":
-				ad, err = adFromClaims(repository, claims)
+				ad, err = GetProvider().getAuthDataFromClaims(claims)
 				if err != nil {
-					log.Auth.Error(err)
-					rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+					handleSsasAuthDataError(w, rw, err)
 					return
 				}
 			default:
@@ -90,6 +84,15 @@ func ParseToken(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, AuthDataContextKey, ad)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func handleSsasAuthDataError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
+	log.Auth.Error(err)
+	if _, ok := err.(*customErrors.EntityNotFoundError); ok {
+		rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
+	} else {
+		rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+	}
 }
 
 func RequireTokenAuth(next http.Handler) http.Handler {

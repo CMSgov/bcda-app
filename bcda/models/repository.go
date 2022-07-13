@@ -7,6 +7,8 @@ import (
 	"github.com/pborman/uuid"
 )
 
+var repository Repository
+
 // Repository contains all of the CRUD methods represented in the models package from the storage layer
 type Repository interface {
 	acoRepository

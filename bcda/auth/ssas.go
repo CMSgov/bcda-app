@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -116,7 +117,7 @@ func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 // Extract available values from SSAS token claims.
-func adFromClaims(r models.Repository, claims *CommonClaims) (AuthData, error) {
+func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error) {
 	var (
 		ad  AuthData
 		err error
@@ -148,8 +149,10 @@ func adFromClaims(r models.Repository, claims *CommonClaims) (AuthData, error) {
 	ad.CMSID = xData.IDList[0]
 
 	var aco *models.ACO
-	if aco, err = repository.GetACOByCMSID(context.Background(), ad.CMSID); err != nil {
-		return ad, fmt.Errorf("no aco for cmsID %s; %v", ad.CMSID, err)
+	if aco, err = s.repository.GetACOByCMSID(context.Background(), ad.CMSID); err != nil {
+		entityNotFoundError := &customErrors.EntityNotFoundError{Err: err, CMSID: ad.CMSID}
+		log.SSAS.Errorf(entityNotFoundError.Error())
+		return ad, entityNotFoundError
 	}
 	ad.ACOID = aco.UUID.String()
 	ad.Blacklisted = aco.Blacklisted()
@@ -171,7 +174,7 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	if !ok {
 		return errors.New("invalid ssas claims")
 	}
-	if _, err = adFromClaims(s.repository, claims); err != nil {
+	if _, err = s.getAuthDataFromClaims(claims); err != nil {
 		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
 		return err

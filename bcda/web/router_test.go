@@ -290,8 +290,9 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 	assert.Equal(s.T(), http.StatusMethodNotAllowed, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
+//integration test, requires connection to postgres db
 // TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
-func (s *RouterTestSuite) TestBlacklistedACO() {
+func (s *RouterTestSuite) TestBlacklistedACO_ACOBlacklisted_Return403() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -300,7 +301,15 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 
 	// Set up
 	cmsID := testUtils.RandomHexID()[0:4]
-	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New()}
+
+	blackListValue := &models.Termination{
+
+		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+		BlacklistType:   models.Involuntary,
+	}
+
+	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: blackListValue}
 	db := database.Connection
 
 	// Set up a constant token to reference the aco under test
@@ -320,6 +329,12 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(auth.AuthData{
+		ACOID:       cmsID,
+		CMSID:       cmsID,
+		TokenID:     uuid.NewRandom().String(),
+		Blacklisted: aco.Blacklisted(),
+	}, nil)
 	auth.SetMockProvider(s.T(), mock)
 
 	postgrestest.CreateACO(s.T(), db, aco)
@@ -336,36 +351,95 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 		{NewAuthRouter(), []string{"/auth/welcome"}},
 	}
 
-	blackListValues := []*models.Termination{
-		{
-			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			BlacklistType:   models.Involuntary,
-		},
-		nil,
+	for _, config := range configs {
+		for _, path := range config.paths {
+
+			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blackListValue, path), func(t *testing.T) {
+				fmt.Println(aco.Blacklisted())
+				fmt.Println(aco.UUID.String())
+				postgrestest.UpdateACO(t, db, aco)
+				rr := httptest.NewRecorder()
+				req, err := http.NewRequest("GET", path, nil)
+				assert.NoError(t, err)
+				req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+				config.handler.ServeHTTP(rr, req)
+
+				assert.Equal(t, http.StatusForbidden, rr.Code)
+				assert.Contains(t, rr.Body.String(), fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", cmsID))
+			})
+		}
 	}
 
-	for _, blacklistValue := range blackListValues {
-		for _, config := range configs {
-			for _, path := range config.paths {
-				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
-					aco.TerminationDetails = blacklistValue
-					fmt.Println(aco.UUID.String())
-					postgrestest.UpdateACO(t, db, aco)
-					rr := httptest.NewRecorder()
-					req, err := http.NewRequest("GET", path, nil)
-					assert.NoError(t, err)
-					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
-					config.handler.ServeHTTP(rr, req)
+	mock.AssertExpectations(s.T())
+}
 
-					if aco.Blacklisted() {
-						assert.Equal(t, http.StatusForbidden, rr.Code)
-						assert.Contains(t, rr.Body.String(), fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", cmsID))
-					} else {
-						assert.NotEqual(t, http.StatusForbidden, rr.Code)
-					}
-				})
-			}
+func (s *RouterTestSuite) TestBlacklistedACO_ACONotBlacklisted_ReturnNot403() {
+	// Use a new router to ensure that v2 endpoints are active
+	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
+	apiRouter := NewAPIRouter()
+
+	// Set up
+	cmsID := testUtils.RandomHexID()[0:4]
+	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: nil}
+	db := database.Connection
+
+	// Set up a constant token to reference the aco under test
+	bearerString := uuid.New()
+	token := &jwt.Token{
+		Claims: &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+		},
+		Raw:   uuid.New(),
+		Valid: true}
+
+	mock := &auth.MockProvider{}
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(auth.AuthData{
+		ACOID:       cmsID,
+		CMSID:       cmsID,
+		TokenID:     uuid.NewRandom().String(),
+		Blacklisted: aco.Blacklisted(),
+	}, nil)
+	auth.SetMockProvider(s.T(), mock)
+
+	postgrestest.CreateACO(s.T(), db, aco)
+	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
+
+	configs := []struct {
+		handler http.Handler
+		paths   []string
+	}{
+		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", "/api/v1/alr/$export",
+			"/api/v2/Patient/$export", "/api/v2/Group/all/$export", "/api/v2/alr/$export",
+			"/api/v1/jobs/1"}},
+		{s.dataRouter, []string{"/data/test/test.ndjson"}},
+		{NewAuthRouter(), []string{"/auth/welcome"}},
+	}
+
+	for _, config := range configs {
+		for _, path := range config.paths {
+
+			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", nil, path), func(t *testing.T) {
+				fmt.Println(aco.Blacklisted())
+				fmt.Println(aco.UUID.String())
+				postgrestest.UpdateACO(t, db, aco)
+				rr := httptest.NewRecorder()
+				req, err := http.NewRequest("GET", path, nil)
+				assert.NoError(t, err)
+				req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+				config.handler.ServeHTTP(rr, req)
+
+				assert.NotEqual(t, http.StatusForbidden, rr.Code)
+
+			})
 		}
 	}
 

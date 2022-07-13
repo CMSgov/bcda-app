@@ -93,4 +93,7 @@ type Provider interface {
 
 	// GetVersion gets the version of the provider
 	GetVersion() (string, error)
+
+	//getAuthDataFromClaims gets AuthData from Token Claims
+	getAuthDataFromClaims(*CommonClaims) (AuthData, error)
 }
