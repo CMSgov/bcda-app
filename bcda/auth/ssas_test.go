@@ -285,15 +285,19 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 	assert.EqualError(s.T(), err, "token contains an invalid number of segments")
 }
 
-func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFromClaimsFails() {
-	claims := CommonClaims{
+func createCommonClaimsForTesting(data string) CommonClaims {
+	return CommonClaims{
 		StandardClaims: jwt.StandardClaims{
 			Issuer: "ssas",
 		},
 		ClientID: uuid.New(),
 		SystemID: uuid.New(),
-		Data:     "ac", //Data setup as bad string to trigger error
+		Data:     data, //"ac", //Data setup as bad string to trigger error
 	}
+}
+
+func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFromClaimsFails() {
+	claims := createCommonClaimsForTesting("ac") //Data setup as bad string to trigger error
 
 	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
 	pk, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -377,48 +381,32 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsReturnEntityNotFoundError
 	assert.IsType(s.T(), &customErrors.EntityNotFoundError{}, err, "expected error of custom type EntityNotFoundError")
 }
 
-func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenErrFromDataAsEmptyString() {
-	//setup data
-	commonClaims := &CommonClaims{
-		StandardClaims: jwt.StandardClaims{
-			Issuer: "ssas",
-		},
-		ClientID: uuid.New(),
-		SystemID: uuid.New(),
-		Data:     "", //Data setup as empty string to trigger error
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenCommonClaimsDataBad() {
+	//setup tests
+	tests := []struct {
+		name            string
+		commonClaims    CommonClaims
+		expectedMessage string
+	}{
+		{"CommonClaims Data has no quotes to remove (incomplete ssas token)", createCommonClaimsForTesting(""), "incomplete ssas token"},
+		{"CommonClaims Data is unable to be decoded", createCommonClaimsForTesting("abcdefg"), "can't decode data claim abcdefg; invalid character 'a' looking for beginning of value"},
 	}
 
-	//set the SSASPlugin
-	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
-	s.p = SSASPlugin{client: c, repository: s.r}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			//set the SSASPlugin
+			c, err := client.NewSSASClient()
+			require.NotNil(s.T(), c, sSasClientErrorMsg, err)
+			s.p = SSASPlugin{client: c, repository: s.r}
 
-	//assert no error and contains correct messaging
-	_, err = s.p.getAuthDataFromClaims(commonClaims)
-	require.NotNil(s.T(), err)
-	assert.EqualError(s.T(), err, "incomplete ssas token", "expected error messaging of incomplete ssas token")
-}
+			//Act
+			_, err = s.p.getAuthDataFromClaims(&tt.commonClaims)
 
-func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenErrFromDataHasNoQuotes() {
-	//setup data
-	commonClaims := &CommonClaims{
-		StandardClaims: jwt.StandardClaims{
-			Issuer: "ssas",
-		},
-		ClientID: uuid.New(),
-		SystemID: uuid.New(),
-		Data:     "abcdefg", //Data setup as having no quotes to remove to trigger error
+			//Assert
+			require.NotNil(s.T(), err)
+			assert.EqualError(s.T(), err, tt.expectedMessage, "expected error messaging")
+		})
 	}
-
-	//set the SSASPlugin
-	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
-	s.p = SSASPlugin{client: c, repository: s.r}
-
-	//assert no error and contains correct messaging
-	_, err = s.p.getAuthDataFromClaims(commonClaims)
-	require.NotNil(s.T(), err)
-	assert.EqualError(s.T(), err, "can't decode data claim abcdefg; invalid character 'a' looking for beginning of value", "expected error messaging of unable to decode data from CommonClaims")
 }
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {

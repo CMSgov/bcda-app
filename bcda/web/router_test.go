@@ -293,31 +293,11 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 	assert.Equal(s.T(), http.StatusMethodNotAllowed, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
-//integration test, requires connection to postgres db
-// TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
-func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
-	// Use a new router to ensure that v2 endpoints are active
-	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
-	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
-	apiRouter := NewAPIRouter()
-
-	// Set up
-	cmsID := testUtils.RandomHexID()[0:4]
-
-	blackListValue := &models.Termination{
-
-		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-		BlacklistType:   models.Involuntary,
-	}
-
-	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: blackListValue}
-	db := database.Connection
-
-	// Set up a constant token to reference the aco under test
-	bearerString := uuid.New()
-	token := &jwt.Token{
+func createACO(cmsID string, blackListValue *models.Termination) models.ACO {
+	return models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: blackListValue}
+}
+func createTestToken(cmsID string) (token *jwt.Token) {
+	token = &jwt.Token{
 		Claims: &auth.CommonClaims{
 			StandardClaims: jwt.StandardClaims{
 				Issuer: "ssas",
@@ -329,21 +309,25 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 		Raw:   uuid.New(),
 		Valid: true}
 
-	mock := &auth.MockProvider{}
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("AuthorizeAccess", token.Raw).Return(nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(auth.AuthData{
+	return token
+}
+
+func createExpectedAuthData(cmsID string, aco models.ACO) auth.AuthData {
+	return auth.AuthData{
 		ACOID:       cmsID,
 		CMSID:       cmsID,
 		TokenID:     uuid.NewRandom().String(),
 		Blacklisted: aco.Blacklisted(),
-	}, nil)
-	auth.SetMockProvider(s.T(), mock)
+	}
+}
 
-	postgrestest.CreateACO(s.T(), db, aco)
-	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
+func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []struct {
+	handler http.Handler
+	paths   []string
+}) {
+	apiRouter := NewAPIRouter()
 
-	configs := []struct {
+	configs = []struct {
 		handler http.Handler
 		paths   []string
 	}{
@@ -353,6 +337,48 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 		{s.dataRouter, []string{nDJsonDataRoute}},
 		{NewAuthRouter(), []string{"/auth/welcome"}},
 	}
+
+	return configs
+}
+
+func setExpectedMockCalls(s *RouterTestSuite, mock *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
+	auth.SetMockProvider(s.T(), mock)
+}
+
+//integration test, requires connection to postgres db
+// TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
+func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
+	// Use a new router to ensure that v2 endpoints are active
+	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
+
+	// Set up
+	cmsID := testUtils.RandomHexID()[0:4]
+
+	blackListValue := &models.Termination{
+
+		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+		BlacklistType:   models.Involuntary,
+	}
+
+	aco := createACO(cmsID, blackListValue)
+
+	bearerString := uuid.New()
+	token := createTestToken(cmsID)
+
+	mock := &auth.MockProvider{}
+	setExpectedMockCalls(s, mock, token, aco, bearerString, cmsID)
+
+	db := database.Connection
+	postgrestest.CreateACO(s.T(), db, aco)
+	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
+
+	configs := createConfigsForACOBlacklistingScenarios(s)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
@@ -381,51 +407,23 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
-	apiRouter := NewAPIRouter()
 
 	// Set up
 	cmsID := testUtils.RandomHexID()[0:4]
-	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: nil}
-	db := database.Connection
 
-	// Set up a constant token to reference the aco under test
+	aco := createACO(cmsID, nil)
+
 	bearerString := uuid.New()
-	token := &jwt.Token{
-		Claims: &auth.CommonClaims{
-			StandardClaims: jwt.StandardClaims{
-				Issuer: "ssas",
-			},
-			ClientID: uuid.New(),
-			SystemID: uuid.New(),
-			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
-		},
-		Raw:   uuid.New(),
-		Valid: true}
+	token := createTestToken(cmsID)
 
 	mock := &auth.MockProvider{}
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("AuthorizeAccess", token.Raw).Return(nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(auth.AuthData{
-		ACOID:       cmsID,
-		CMSID:       cmsID,
-		TokenID:     uuid.NewRandom().String(),
-		Blacklisted: aco.Blacklisted(),
-	}, nil)
-	auth.SetMockProvider(s.T(), mock)
+	setExpectedMockCalls(s, mock, token, aco, bearerString, cmsID)
 
+	db := database.Connection
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := []struct {
-		handler http.Handler
-		paths   []string
-	}{
-		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", version1ALRExportURL,
-			"/api/v2/Patient/$export", "/api/v2/Group/all/$export", "/api/v2/alr/$export",
-			"/api/v1/jobs/1"}},
-		{s.dataRouter, []string{nDJsonDataRoute}},
-		{NewAuthRouter(), []string{"/auth/welcome"}},
-	}
+	configs := createConfigsForACOBlacklistingScenarios(s)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
