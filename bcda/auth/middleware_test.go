@@ -28,6 +28,7 @@ import (
 )
 
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+var bearerStringMsg string = "Bearer %s"
 
 type MiddlewareTestSuite struct {
 	suite.Suite
@@ -58,7 +59,7 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 }
 
 //integration test: makes HTTP request & asserts HTTP response
-func (s *MiddlewareTestSuite) Test_InvalidTokenAuthWithInvalidSignature_Return404() {
+func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignature() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
@@ -67,7 +68,7 @@ func (s *MiddlewareTestSuite) Test_InvalidTokenAuthWithInvalidSignature_Return40
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, badToken))
 	resp, err := client.Do(req)
 
 	assert.NotNil(s.T(), resp)
@@ -77,7 +78,7 @@ func (s *MiddlewareTestSuite) Test_InvalidTokenAuthWithInvalidSignature_Return40
 }
 
 //unit test
-func (s *MiddlewareTestSuite) Test_RequireTokenAuth_InvalidToken_Return401() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthReturn401WhenInvalidToken() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
@@ -108,7 +109,7 @@ func (s *MiddlewareTestSuite) Test_RequireTokenAuth_InvalidToken_Return401() {
 }
 
 //integration test: makes HTTP request & asserts HTTP response
-func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Response200() {
+func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearerTokenSupplied() {
 	bearerString := uuid.New()
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
@@ -144,7 +145,7 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Respo
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -155,19 +156,17 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_ValidBearerTokenSupplied_Respo
 	mock.AssertExpectations(s.T())
 }
 
-func (s *MiddlewareTestSuite) Test_AuthMiddleware_SsasAuthDataError_EntityNotFoundType_Response403() {
-	cmsID := testUtils.RandomHexID()[0:4]
+func setupDataForAuthMiddlewareTest() (bearerString string, authData auth.AuthData, token *jwt.Token, cmsID string) {
+	cmsID = testUtils.RandomHexID()[0:4]
 
-	bearerString := uuid.New()
+	bearerString, tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
 
-	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-
-	authData := auth.AuthData{
+	authData = auth.AuthData{
 		ACOID:   acoID,
 		TokenID: tokenID,
 	}
 
-	token := &jwt.Token{
+	token = &jwt.Token{
 		Claims: &auth.CommonClaims{
 			StandardClaims: jwt.StandardClaims{
 				Issuer: "ssas",
@@ -179,92 +178,83 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_SsasAuthDataError_EntityNotFou
 		Raw:   uuid.New(),
 		Valid: true}
 
+	return bearerString, authData, token, cmsID
+}
+
+func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFoundError() {
+	bearerString, authData, token, cmsID := setupDataForAuthMiddlewareTest()
+
 	//custom error expected
 	dbErr := errors.New("DB Error: ACO Does Not Exist!")
 	entityNotFoundError := &customErrors.EntityNotFoundError{Err: dbErr, CMSID: cmsID}
 
+	//setup mocks
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, entityNotFoundError)
 	auth.SetMockProvider(s.T(), mock)
 
-	client := s.server.Client()
-
-	// Valid token should return a 403 response
+	//fill http request
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
+	client := s.server.Client()
 	s.rr = httptest.NewRecorder()
 
+	//Act
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	//Assert
 	assert.Equal(s.T(), 403, resp.StatusCode)
 	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnknownEntityErr)
 
 	mock.AssertExpectations(s.T())
 }
 
-func (s *MiddlewareTestSuite) Test_AuthMiddleware_SsasAuthDataError_OtherType_Response401() {
-	cmsID := testUtils.RandomHexID()[0:4]
+func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundError() {
 
-	bearerString := uuid.New()
-
-	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-
-	authData := auth.AuthData{
-		ACOID:   acoID,
-		TokenID: tokenID,
-	}
-
-	token := &jwt.Token{
-		Claims: &auth.CommonClaims{
-			StandardClaims: jwt.StandardClaims{
-				Issuer: "ssas",
-			},
-			ClientID: uuid.New(),
-			SystemID: uuid.New(),
-			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
-		},
-		Raw:   uuid.New(),
-		Valid: true}
+	bearerString, authData, token, _ := setupDataForAuthMiddlewareTest()
 
 	//custom error expected
 	thrownErr := errors.New("error123")
 
+	//setup mocks
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, thrownErr)
 	auth.SetMockProvider(s.T(), mock)
 
-	client := s.server.Client()
-
-	// Valid token should return a 401 response
+	//fill http request
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
+	client := s.server.Client()
+
+	//Act
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Assert
 	assert.Equal(s.T(), 401, resp.StatusCode)
-	//assert.Equal(s.T(), responseutils.UnknownEntityErr, s.rr.Body.String())
 
 	mock.AssertExpectations(s.T())
 }
 
 //integration test: makes HTTP request & asserts HTTP response
-func (s *MiddlewareTestSuite) Test_AuthMiddleware_NoBearerTokenSupplied_Response401() {
+func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTokenSupplied() {
 	client := s.server.Client()
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
@@ -282,7 +272,7 @@ func (s *MiddlewareTestSuite) Test_AuthMiddleware_NoBearerTokenSupplied_Response
 }
 
 //integration test: involves db connection to postgres
-func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_MismatchingDataProvided_Return404() {
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDataProvided() {
 	db := database.Connection
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -329,7 +319,7 @@ func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_MismatchingDataProvided_
 }
 
 //integration test: involves db connection to postgres
-func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_WithCorrectACOandJob_Return200() {
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccountableCareOrganizationAndJob() {
 	db := database.Connection
 
 	j := models.Job{
@@ -362,7 +352,7 @@ func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_WithCorrectACOandJob_Ret
 }
 
 //integration test: involves db connection to postgres
-func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_noAuthDataProvidedInContext_Return404() {
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataProvidedInContext() {
 	db := database.Connection
 
 	j := models.Job{
@@ -389,7 +379,7 @@ func (s *MiddlewareTestSuite) Test_RequireTokenJobMatch_noAuthDataProvidedInCont
 }
 
 //unit test
-func (s *MiddlewareTestSuite) Test_CheckBlacklist() {
+func (s *MiddlewareTestSuite) TestCheckBlacklist() {
 	blacklisted := testUtils.RandomHexID()[0:4]
 	notBlacklisted := testUtils.RandomHexID()[0:4]
 

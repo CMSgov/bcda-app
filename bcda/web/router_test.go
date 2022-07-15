@@ -26,6 +26,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var nDJsonDataRoute string = "/data/test/test.ndjson"
+var version1ALRExportURL string = "/api/v1/alr/$export"
+
 type RouterTestSuite struct {
 	suite.Suite
 	apiRouter  http.Handler
@@ -86,7 +89,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 }
 
 func (s *RouterTestSuite) TestDataRoute() {
-	res := s.getDataRoute("/data/test/test.ndjson")
+	res := s.getDataRoute(nDJsonDataRoute)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
@@ -123,7 +126,7 @@ func (s *RouterTestSuite) TestGroupEndpointDisabled() {
 
 func (s *RouterTestSuite) TestALRExportRoute() {
 	// ALR
-	res := s.getAPIRoute("/api/v1/alr/$export")
+	res := s.getAPIRoute(version1ALRExportURL)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/alrs/$export")
@@ -292,7 +295,7 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 
 //integration test, requires connection to postgres db
 // TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
-func (s *RouterTestSuite) TestBlacklistedACO_ACOBlacklisted_Return403() {
+func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -344,10 +347,10 @@ func (s *RouterTestSuite) TestBlacklistedACO_ACOBlacklisted_Return403() {
 		handler http.Handler
 		paths   []string
 	}{
-		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", "/api/v1/alr/$export",
+		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", version1ALRExportURL,
 			"/api/v2/Patient/$export", "/api/v2/Group/all/$export", "/api/v2/alr/$export",
 			"/api/v1/jobs/1"}},
-		{s.dataRouter, []string{"/data/test/test.ndjson"}},
+		{s.dataRouter, []string{nDJsonDataRoute}},
 		{NewAuthRouter(), []string{"/auth/welcome"}},
 	}
 
@@ -373,7 +376,7 @@ func (s *RouterTestSuite) TestBlacklistedACO_ACOBlacklisted_Return403() {
 	mock.AssertExpectations(s.T())
 }
 
-func (s *RouterTestSuite) TestBlacklistedACO_ACONotBlacklisted_ReturnNot403() {
+func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -417,10 +420,10 @@ func (s *RouterTestSuite) TestBlacklistedACO_ACONotBlacklisted_ReturnNot403() {
 		handler http.Handler
 		paths   []string
 	}{
-		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", "/api/v1/alr/$export",
+		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", version1ALRExportURL,
 			"/api/v2/Patient/$export", "/api/v2/Group/all/$export", "/api/v2/alr/$export",
 			"/api/v1/jobs/1"}},
-		{s.dataRouter, []string{"/data/test/test.ndjson"}},
+		{s.dataRouter, []string{nDJsonDataRoute}},
 		{NewAuthRouter(), []string{"/auth/welcome"}},
 	}
 

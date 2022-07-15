@@ -47,6 +47,10 @@ var (
 
 var testACOUUID = "dd0a19eb-c614-46c7-9ec0-95bbae959f37"
 
+var sSasTokenErrorMsg string = "no token for SSAS; "
+var sSasClientErrorMsg string = "no client for SSAS; "
+var unexpectedErrorMsg string = "unexpected error; "
+
 type SSASPluginTestSuite struct {
 	suite.Suite
 	p SSASPlugin
@@ -253,27 +257,27 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *SSASPluginTestSuite) TestAuthorizeAccess_HappyPath_ErrIsNil() {
+func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 	_, ts, err := MockSSASToken()
-	require.NotNil(s.T(), ts, "no token for SSAS", err)
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
+	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 	err = s.p.AuthorizeAccess(ts)
 	require.Nil(s.T(), err)
 }
 
-func (s *SSASPluginTestSuite) TestAuthorizeAccess_VerifyTokenCheckFails_ReturnErr() {
+func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenCheckFails() {
 	_, ts, err := MockSSASToken()
-	require.NotNil(s.T(), ts, "no token for SSAS", err)
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
+	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	invalidTokenString := ""
@@ -281,7 +285,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess_VerifyTokenCheckFails_ReturnEr
 	assert.EqualError(s.T(), err, "token contains an invalid number of segments")
 }
 
-func (s *SSASPluginTestSuite) TestAuthorizeAccess_GettingAuthDataFromClaimsFails_ReturnErr() {
+func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFromClaimsFails() {
 	claims := CommonClaims{
 		StandardClaims: jwt.StandardClaims{
 			Issuer: "ssas",
@@ -298,14 +302,14 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess_GettingAuthDataFromClaimsFails
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	err = s.p.AuthorizeAccess(ts)
 	assert.EqualError(s.T(), err, "can't decode data claim ac; invalid character 'a' looking for beginning of value")
 }
 
-func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_HappyPath_ErrIsNil() {
+func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsErrIsNilWhenHappyPath() {
 	//setup data
 	cmsID := testUtils.RandomHexID()[0:4]
 	clientID := uuid.New()
@@ -328,7 +332,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_HappyPath_ErrIsNil() {
 
 	//set the SSASPlugin to use the mock repository
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: mock}
 
 	//assert no error
@@ -336,7 +340,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_HappyPath_ErrIsNil() {
 	require.Nil(s.T(), err)
 }
 
-func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromGetACOByCMSID_ReturnEntityNotFoundError() {
+func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsReturnEntityNotFoundErrorWhenErrFromGetACOByCMSID() {
 	//setup data
 	cmsID := testUtils.RandomHexID()[0:4]
 	clientID := uuid.New()
@@ -364,7 +368,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromGetACOByCMSID_Ret
 
 	//set the SSASPlugin to use the mock repository
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: mock}
 
 	//assert no error and is of correct custom type
@@ -373,7 +377,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromGetACOByCMSID_Ret
 	assert.IsType(s.T(), &customErrors.EntityNotFoundError{}, err, "expected error of custom type EntityNotFoundError")
 }
 
-func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataAsEmptyString_ReturnError() {
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenErrFromDataAsEmptyString() {
 	//setup data
 	commonClaims := &CommonClaims{
 		StandardClaims: jwt.StandardClaims{
@@ -386,7 +390,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataAsEmptyString
 
 	//set the SSASPlugin
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	//assert no error and contains correct messaging
@@ -395,7 +399,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataAsEmptyString
 	assert.EqualError(s.T(), err, "incomplete ssas token", "expected error messaging of incomplete ssas token")
 }
 
-func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataHasNoQuotes_ReturnError() {
+func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenErrFromDataHasNoQuotes() {
 	//setup data
 	commonClaims := &CommonClaims{
 		StandardClaims: jwt.StandardClaims{
@@ -408,7 +412,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataHasNoQuotes_R
 
 	//set the SSASPlugin
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	//assert no error and contains correct messaging
@@ -419,13 +423,13 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaims_ErrFromDataHasNoQuotes_R
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
 	_, ts, err := MockSSASToken()
-	require.NotNil(s.T(), ts, "no token for SSAS; ", err)
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
+	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c, "no client for SSAS; ")
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.NotNil(s.T(), c, sSasClientErrorMsg)
+	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	t, err := s.p.VerifyToken(ts)
