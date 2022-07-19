@@ -89,7 +89,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 		return nil, errors.Wrap(err, "could not load Blue Button keypair")
 	}
 
-	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12, NameToCertificate: nil}
 
 	if strings.ToLower(conf.GetEnv("BB_CHECK_CERT")) != "false" {
 		caFile := conf.GetEnv("BB_CLIENT_CA_FILE")
