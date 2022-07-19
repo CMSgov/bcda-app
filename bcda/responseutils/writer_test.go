@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
@@ -26,7 +27,7 @@ type ResponseUtilsWriterTestSuite struct {
 func (s *ResponseUtilsWriterTestSuite) SetupTest() {
 	var err error
 	s.rr = httptest.NewRecorder()
-	s.unmarshaller, err = jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+	s.unmarshaller, err = jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
 	assert.NoError(s.T(), err)
 }
 

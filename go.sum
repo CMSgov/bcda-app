@@ -615,8 +615,11 @@ github.com/golang/snappy v0.0.3/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEW
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.0.0 h1:0udJVsspx3VBr5FwtLhQQtuAsVc79tTq0ocGIPAU6qo=
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
+github.com/google/fhir v0.7.3/go.mod h1:k3rNBot0JdJkg31wGrSDfIgigmSA+3dh1mqMWrUJAO0=
 github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f h1:qhmHGPyw9A7UdCfAA4pavPrvgxXiZA8ScWdr+hU3CnE=
 github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f/go.mod h1:WF6g9QjYPqcQed319oPaRT5IcYWIRz610X3mxIt5TgU=
+github.com/google/fhir/go v0.0.0-20220518004845-30f5cde7c5cd h1:nsMhj/uhckEwvEQtZOYCv3zUzOzkYi0zk3YbVYl1opM=
+github.com/google/fhir/go v0.0.0-20220518004845-30f5cde7c5cd/go.mod h1:WF6g9QjYPqcQed319oPaRT5IcYWIRz610X3mxIt5TgU=
 github.com/google/flatbuffers v1.11.0/go.mod h1:1AeVuKshWv4vARoZatz6mlQ0JxURH0Kv5+zNeJKJCa8=
 github.com/google/flatbuffers v1.12.0 h1:/PtAHvnBY4Kqnx/xCQ3OIV9uYcSFGScBsWI3Oogeh6w=
 github.com/google/flatbuffers v1.12.0/go.mod h1:1AeVuKshWv4vARoZatz6mlQ0JxURH0Kv5+zNeJKJCa8=

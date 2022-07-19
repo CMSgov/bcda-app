@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
 	fhirmodelv2CR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
@@ -210,7 +211,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 			req := s.genGetJobsRequest("v1", tt.statuses)
 			h.JobsStatus(rr, req)
 
-			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
 			assert.NoError(s.T(), err)
 
 			switch tt.respCode {
@@ -302,7 +303,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 			req := s.genGetJobsRequest("v2", tt.statuses)
 			h.JobsStatus(rr, req)
 
-			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
+			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
 			assert.NoError(s.T(), err)
 
 			switch tt.respCode {

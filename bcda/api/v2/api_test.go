@@ -29,6 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/go-chi/chi"
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
 	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
@@ -449,7 +450,7 @@ func (s *APITestSuite) TestMetadataResponse() {
 	ts := httptest.NewServer(http.HandlerFunc(Metadata))
 	defer ts.Close()
 
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
+	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
 	assert.NoError(s.T(), err)
 
 	res, err := http.Get(ts.URL)
@@ -625,7 +626,7 @@ func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 }
 
 func getOperationOutcome(t *testing.T, data []byte) *fhiroo.OperationOutcome {
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
+	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
 	assert.NoError(t, err)
 	container, err := unmarshaller.Unmarshal(data)
 	assert.NoError(t, err)
