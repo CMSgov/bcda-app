@@ -107,7 +107,6 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 		logger.Warn("Blue Button certificate check disabled")
 	}
 
-	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{
 		TLSClientConfig: tlsConfig,
 		// Ensure that we have compression enabled. This allows the transport to request for gzip content
