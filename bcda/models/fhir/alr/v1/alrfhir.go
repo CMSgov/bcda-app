@@ -7,6 +7,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
 
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
@@ -15,7 +16,7 @@ var marshaller *jsonformat.Marshaller
 
 func init() {
 	var err error
-	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
+	marshaller, err = jsonformat.NewMarshaller(false, "", "", fhirversion.STU3)
 	if err != nil {
 		log.API.Panic("Could not get JSON FHIR marshaller for STU3.")
 	}

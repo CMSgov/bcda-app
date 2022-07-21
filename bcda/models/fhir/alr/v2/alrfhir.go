@@ -7,6 +7,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
 
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	r4Coverage "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/coverage_go_proto"
 	r4Eoc "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/episode_of_care_go_proto"
@@ -20,7 +21,7 @@ var marshaller *jsonformat.Marshaller
 
 func init() {
 	var err error
-	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
+	marshaller, err = jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
 	if err != nil {
 		log.API.Panic("Could not get JSON FHIR marshaller for R4.")
 	}

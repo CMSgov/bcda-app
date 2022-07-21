@@ -10,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
 
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -28,7 +29,7 @@ func init() {
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
-	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
+	marshaller, err = jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
 	if err != nil {
 		log.Fatalf("Failed to create marshaller %s", err)
 	}

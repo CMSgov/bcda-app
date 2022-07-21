@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
@@ -582,7 +583,7 @@ func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 }
 
 func getOperationOutcome(t *testing.T, data []byte) *fhirmodels.OperationOutcome {
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
 	assert.NoError(t, err)
 	container, err := unmarshaller.Unmarshal(data)
 	assert.NoError(t, err)
