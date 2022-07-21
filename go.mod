@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8
 	github.com/howeyc/fsnotify v0.9.0
-	github.com/huandu/go-sqlbuilder v1.10.0
+	github.com/huandu/go-sqlbuilder v1.14.1
 	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.6.2+incompatible
