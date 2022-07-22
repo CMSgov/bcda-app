@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -101,33 +102,37 @@ func setUpApp() *cli.App {
 
 				// Accepts and redirects HTTP requests to HTTPS
 				srv := &http.Server{
-					Handler:      web.NewHTTPRouter(),
-					Addr:         httpAddr,
-					ReadTimeout:  5 * time.Second,
-					WriteTimeout: 5 * time.Second,
+					Handler:           web.NewHTTPRouter(),
+					Addr:              httpAddr,
+					ReadTimeout:       5 * time.Second,
+					WriteTimeout:      5 * time.Second,
+					ReadHeaderTimeout: 2 * time.Second,
 				}
 
 				go func() { log.API.Fatal(srv.ListenAndServe()) }()
 
 				auth := &http.Server{
-					Handler:      web.NewAuthRouter(),
-					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
-					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					Handler:           web.NewAuthRouter(),
+					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadHeaderTimeout: 2 * time.Second,
 				}
 
 				api := &http.Server{
-					Handler:      web.NewAPIRouter(),
-					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
-					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					Handler:           web.NewAPIRouter(),
+					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadHeaderTimeout: 2 * time.Second,
 				}
 
 				fileserver := &http.Server{
-					Handler:      web.NewDataRouter(),
-					ReadTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
-					IdleTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+					Handler:           web.NewDataRouter(),
+					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadHeaderTimeout: 2 * time.Second,
 				}
 
 				smux := servicemux.New(httpsAddr)
@@ -805,7 +810,7 @@ func cloneCCLFZip(src, dst string) error {
 	defer zr.Close()
 
 	// Create destination runout zip file with proper nomenclature
-	newf, err := os.Create(dst)
+	newf, err := os.Create(path.Clean(dst))
 	if err != nil {
 		return err
 	}
