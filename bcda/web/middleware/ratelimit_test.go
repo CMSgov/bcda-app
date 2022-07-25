@@ -39,7 +39,7 @@ func TestNoConcurrentJobs(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			// Conncurrent job route
+			// Conncurrent job test route check, blank return for overrides
 		})).ServeHTTP(rr, getRequest(tt.rp))
 		assert.Equal(t, http.StatusOK, rr.Code)
 	}

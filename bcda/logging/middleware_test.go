@@ -34,7 +34,7 @@ func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		// Base route for tests to be checked
+		// Base server route for logging tests to be checked, blank return for overrides
 	})
 	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("Test")

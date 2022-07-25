@@ -147,7 +147,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 		rr := httptest.NewRecorder()
 		ACOMiddleware := ACOEnabled(cfg)
 		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			// ACO middle route
+			// ACO middleware test route, blank return for overrides
 		})).ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
 		assert.Equal(s.T(), tt.expected_code, rr.Code)
 	}
