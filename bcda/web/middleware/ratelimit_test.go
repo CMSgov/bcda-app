@@ -38,8 +38,9 @@ func TestNoConcurrentJobs(t *testing.T) {
 		repository = mockRepo
 
 		rr := httptest.NewRecorder()
-		CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {})).
-			ServeHTTP(rr, getRequest(tt.rp))
+		CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			// Conncurrent job route
+		})).ServeHTTP(rr, getRequest(tt.rp))
 		assert.Equal(t, http.StatusOK, rr.Code)
 	}
 }
