@@ -13,8 +13,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     cat tools.go | awk '/[\/\/] test/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %
 
-RUN go install github.com/securego/gosec/v2/cmd/gosec@latest
-RUN go install gotest.tools/gotestsum@latest
+RUN go install github.com/securego/gosec/v2/cmd/gosec@v2.12.0
+RUN go install gotest.tools/gotestsum@v1.8.1
 
 COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app
