@@ -165,6 +165,8 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
 	t, err := s.VerifyToken(tokenString)
+
+	//throw err upstream to handle.
 	if err != nil {
 		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
 		operationFailed(tknEvent)
@@ -188,31 +190,46 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	b, err := s.client.VerifyPublicToken(tokenString)
 	if err != nil {
+		//throw error upstream to handle.
 		log.SSAS.Errorf("Failed to verify token; %s", err.Error())
 		return nil, err
 	}
 	var ir map[string]interface{}
+
+	//return InternalParsingError // 500
 	if err = json.Unmarshal(b, &ir); err != nil {
-		return nil, err
+		return nil, err //msg: unable to unmarshal SSAS introspect response body to json format
 	}
+
+	//return ExpiredTokenError //401
 	if ir["active"] == false {
 		return nil, errors.New("inactive or invalid token")
 	}
+
+	//why is all of this being executed AFTER the call to SASS introspect, as this is validating info off of prior provided tokenString?
+	//Doesn't make any sense? No tokenString manipulation being done before this point.
+	//have it upstream so we don't waste processing resources with an extra unnecessary API call to SSAS?
 	parser := jwt.Parser{}
 	token, _, err := parser.ParseUnverified(tokenString, &CommonClaims{})
+
+	//return RequestorDataError (400 Bad Request)
 	if err != nil {
 		return token, err
 	}
-	claims, ok := token.Claims.(*CommonClaims)
+
+	//separate below into method to validateTokenClaims? All to return RequestorDataError (400 Bad Request)
+	claims, ok := token.Claims.(*CommonClaims) //ACO ID
 	if !ok {
-		return nil, errors.New("invalid claims")
+		return nil, errors.New("invalid claims") //msg: unable to cast token.Claims to CommonClaims struct //they gave us a string that doesn't make sense
 	}
 	if claims.Issuer != "ssas" {
-		return nil, fmt.Errorf("invalid issuer '%s'", claims.Issuer)
+		return nil, fmt.Errorf("invalid issuer '%s'", claims.Issuer) //msg: invalid issuer supplied in token CommonClaims
 	}
 	if claims.Data == "" {
-		return nil, errors.New("missing data claim")
+		return nil, errors.New("missing data claim") //msg: token CommonClaims Data is missing/empty
 	}
+	//
+
 	token.Valid = true
 	return token, err
 }

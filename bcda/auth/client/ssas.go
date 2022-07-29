@@ -360,24 +360,35 @@ func (c *SSASClient) Ping() error {
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/introspect", public)
+
 	body, err := json.Marshal(struct {
 		Token string `json:"token"`
 	}{Token: tokenString})
+
+	//return InternalParsingError //500
 	if err != nil {
 		return nil, errors.Wrap(err, constants.RequestStructErr)
 	}
+
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+
+	//return InternalParsingError //500
 	if err != nil {
 		return nil, errors.Wrap(err, constants.RequestStructErr)
 	}
 
 	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	secret := conf.GetEnv("BCDA_SSAS_SECRET")
+
+	//return ConfigError //500
 	if clientID == "" || secret == "" {
 		return nil, errors.New(constants.MissingIDSecretErr)
 	}
 	req.SetBasicAuth(clientID, secret)
 
+	//in instances where the SSAS request timed out (url.Error value's Timeout method is true), should return 503 error
+	//(RequestTimeoutError)
+	//if NOT due to timeout, UnexpectedSSASError (500)
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "introspect request failed")
@@ -385,11 +396,14 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 
 	defer resp.Body.Close()
 
+	//return UnexpectedSSASError (StatusCode from SASS response placed inside as int) //500
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("introspect request failed; %v", resp.StatusCode)
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
+
+	//return InternalParsingError //500
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read introspect response")
 	}

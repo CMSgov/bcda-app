@@ -60,6 +60,14 @@ func ParseToken(next http.Handler) http.Handler {
 
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
+			//handle error(s) as correct Status Codes to end user.
+			//new error types:
+			//RequestorDataError (400 bad request),
+			//InternalParsingError (500),
+			//ConfigError (500),
+			//RequestTimeoutError (503)
+			//UnexpectedSSASError (500)
+			//ExpiredTokenError (401)
 			log.Auth.Errorf("Unable to verify token; %s", err)
 			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
@@ -108,6 +116,14 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 		if token, ok := token.(*jwt.Token); ok {
 			err := GetProvider().AuthorizeAccess(token.Raw)
+			//handle error(s) as correct Status Codes to end user.
+			//new error types:
+			//RequestorDataError (400 bad request),
+			//InternalParsingError (500),
+			//ConfigError (500),
+			//RequestTimeoutError (503)
+			//UnexpectedSSASError (500)
+			//ExpiredTokenError (401)
 			if err != nil {
 				log.Auth.Error(err)
 				rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
