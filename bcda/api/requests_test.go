@@ -632,6 +632,170 @@ func (s *RequestsTestSuite) TestJobStatus() {
 	s.Equal(http.StatusOK, w.Code)
 }
 
+func (s *RequestsTestSuite) TestJobFailedStatus() {
+	resourceMap := s.resourceType
+	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
+	mockSrv := service.MockService{}
+	timestp := time.Now()
+	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+		&models.Job{
+			ID:                1,
+			ACOID:             uuid.NewRandom(),
+			RequestURL:        "http://bcda.cms.gov/api/v1/Jobs/1",
+			Status:            models.JobStatusFailed,
+			TransactionTime:   timestp,
+			JobCount:          100,
+			CompletedJobCount: 100,
+			CreatedAt:         timestp,
+			UpdatedAt:         timestp,
+		},
+		[]*models.JobKey{{
+			ID:           1,
+			JobID:        1,
+			FileName:     "testingtesting",
+			ResourceType: "Patient",
+		}},
+		nil,
+	)
+	h.Svc = &mockSrv
+
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/jobs/1", nil)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.JobStatus(w, req)
+	s.Equal(http.StatusInternalServerError, w.Code)
+	assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
+}
+
+func (s *RequestsTestSuite) TestJobFailedExpiredStatus() {
+	resourceMap := s.resourceType
+	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
+	mockSrv := service.MockService{}
+	timestp := time.Now()
+	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+		&models.Job{
+			ID:                1,
+			ACOID:             uuid.NewRandom(),
+			RequestURL:        "http://bcda.cms.gov/api/v1/Jobs/1",
+			Status:            models.JobStatusFailedExpired,
+			TransactionTime:   timestp,
+			JobCount:          100,
+			CompletedJobCount: 100,
+			CreatedAt:         timestp,
+			UpdatedAt:         timestp,
+		},
+		[]*models.JobKey{{
+			ID:           1,
+			JobID:        1,
+			FileName:     "testingtesting",
+			ResourceType: "Patient",
+		}},
+		nil,
+	)
+	h.Svc = &mockSrv
+
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/jobs/1", nil)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.JobStatus(w, req)
+	s.Equal(http.StatusInternalServerError, w.Code)
+	assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
+}
+
+func (s *RequestsTestSuite) TestJobFailedStatusV2() {
+	resourceMap := s.resourceType
+	h := newHandler(resourceMap, "/v2/fhir", "v2", s.db)
+	mockSrv := service.MockService{}
+	timestp := time.Now()
+	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+		&models.Job{
+			ID:                1,
+			ACOID:             uuid.NewRandom(),
+			RequestURL:        "http://bcda.cms.gov/api/v2/Jobs/1",
+			Status:            models.JobStatusFailed,
+			TransactionTime:   timestp,
+			JobCount:          100,
+			CompletedJobCount: 100,
+			CreatedAt:         timestp,
+			UpdatedAt:         timestp,
+		},
+		[]*models.JobKey{{
+			ID:           1,
+			JobID:        1,
+			FileName:     "testingtesting",
+			ResourceType: "Patient",
+		}},
+		nil,
+	)
+	h.Svc = &mockSrv
+
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v2/jobs/1", nil)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.JobStatus(w, req)
+	s.Equal(http.StatusInternalServerError, w.Code)
+	assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
+}
+
+func (s *RequestsTestSuite) TestJobFailedExpiredStatusV2() {
+	resourceMap := s.resourceType
+	h := newHandler(resourceMap, "/v2/fhir", "v2", s.db)
+	mockSrv := service.MockService{}
+	timestp := time.Now()
+	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+		&models.Job{
+			ID:                1,
+			ACOID:             uuid.NewRandom(),
+			RequestURL:        "http://bcda.cms.gov/api/v2/Jobs/1",
+			Status:            models.JobStatusFailedExpired,
+			TransactionTime:   timestp,
+			JobCount:          100,
+			CompletedJobCount: 100,
+			CreatedAt:         timestp,
+			UpdatedAt:         timestp,
+		},
+		[]*models.JobKey{{
+			ID:           1,
+			JobID:        1,
+			FileName:     "testingtesting",
+			ResourceType: "Patient",
+		}},
+		nil,
+	)
+	h.Svc = &mockSrv
+
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v2/jobs/1", nil)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.JobStatus(w, req)
+	s.Equal(http.StatusInternalServerError, w.Code)
+	assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
+}
+
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 

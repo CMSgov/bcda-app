@@ -17,3 +17,7 @@ const (
 const (
 	UnknownEntityErr = "unknown entity (ACO, DCE, KCE, etc)"
 )
+
+const (
+	DetailJobFailed = "Service encountered numerous errors. Job failed to complete."
+)
