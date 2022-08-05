@@ -19,5 +19,6 @@ const (
 )
 
 const (
+	JobFailed       = "Job Failed"
 	DetailJobFailed = "Service encountered numerous errors. Job failed to complete."
 )
