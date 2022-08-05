@@ -165,9 +165,13 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	}
 }
 
-func (s *SSASPluginTestSuite) TestUpdateSystem() {}
+func (s *SSASPluginTestSuite) TestUpdateSystem() {
+	// TestUpdateSystem is a test script that needs to showcase updating system group credentials/client name/api scope in the bcda ssas app then relay status to bcda app
+}
 
-func (s *SSASPluginTestSuite) TestDeleteSystem() {}
+func (s *SSASPluginTestSuite) TestDeleteSystem() {
+	// TestDeleteSystem is a test script that need to showcase deleting system ips in the bcda ssas app then relay status to bcda app
+}
 
 func (s *SSASPluginTestSuite) TestResetSecret() {
 	router := chi.NewRouter()
@@ -193,7 +197,9 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
 }
 
-func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {}
+func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {
+	// TestRevokeSystemCredentials is a test script to showcase the ability to revoke client ids/credentials
+}
 
 func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	_, tokenString, _ := MockSSASToken()
