@@ -11,32 +11,57 @@ func (e *EntityNotFoundError) Error() string {
 	return fmt.Sprintf("no aco found for cmsID %s: %s", e.CMSID, e.Err)
 }
 
-// const (
-// 	Data = "Data"
-//  	Parsing = "Parsing"
-//  	Configuration = "Configuration"
-// )
-
-type ValidationError struct {
+type RequestorDataError struct {
 	Err error
 	Msg string
-	//Label string //Data, Parse, Configuration, etc
 }
 
-func (e *ValidationError) Error() string {
-	return fmt.Sprintf("Validation Error. Msg: %s, Err: %s", e.Msg, e.Err)
+func (e *RequestorDataError) Error() string {
+	return fmt.Sprintf("Requestor Data Error encountered: %s, Err: %s", e.Msg, e.Err)
 }
 
-type UnexpectedStatusCodeError struct {
-	Err        error
-	StatusCode int //500, 401, etc
-}
-
-func (e *UnexpectedStatusCodeError) Error() string {
-	return fmt.Sprintf("Unexpected Status Code %d: %s", e.StatusCode, e.Err)
-}
-
-//able to re-authenticate / re-request a new token ?
-type AuthenticateError struct {
+type InternalParsingError struct {
 	Err error
+	Msg string
+}
+
+func (e *InternalParsingError) Error() string {
+	return fmt.Sprintf("Internal Parsing Error encountered: %s, Err: %s", e.Msg, e.Err)
+}
+
+type ConfigError struct {
+	Err error
+	Msg string
+}
+
+func (e *ConfigError) Error() string {
+	return fmt.Sprintf("Configuration Error encountered: %s, Err: %s", e.Msg, e.Err)
+}
+
+type RequestTimeoutError struct {
+	Err error
+	Msg string
+}
+
+func (e *RequestTimeoutError) Error() string {
+	return fmt.Sprintf("Request Timeout Error encountered: %s, Err: %s", e.Msg, e.Err)
+}
+
+type UnexpectedSSASError struct {
+	Err            error
+	Msg            string
+	SsasStatusCode int
+}
+
+func (e *UnexpectedSSASError) Error() string {
+	return fmt.Sprintf("Unexpected SSAS Error encountered: %s, Err: %s", e.Msg, e.Err)
+}
+
+type ExpiredTokenError struct {
+	Err error
+	Msg string
+}
+
+func (e *ExpiredTokenError) Error() string {
+	return fmt.Sprintf("Expired Token Error encountered: %s, Err: %s", e.Msg, e.Err)
 }

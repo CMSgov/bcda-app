@@ -166,7 +166,6 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	operationStarted(tknEvent)
 	t, err := s.VerifyToken(tokenString)
 
-	//throw err upstream to handle.
 	if err != nil {
 		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
 		operationFailed(tknEvent)
@@ -196,14 +195,15 @@ func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	}
 	var ir map[string]interface{}
 
-	//return InternalParsingError // 500
 	if err = json.Unmarshal(b, &ir); err != nil {
-		return nil, err //msg: unable to unmarshal SSAS introspect response body to json format
+		internalParsingError := &customErrors.InternalParsingError{Err: err, Msg: "unable to unmarshal SSAS introspect response body to json format"}
+		return nil, internalParsingError
 	}
 
 	//return ExpiredTokenError //401
 	if ir["active"] == false {
-		return nil, errors.New("inactive or invalid token")
+		expiredTokenError := &customErrors.ExpiredTokenError{Err: err, Msg: "inactive or invalid token"}
+		return nil, expiredTokenError
 	}
 
 	//why is all of this being executed AFTER the call to SASS introspect, as this is validating info off of prior provided tokenString?
@@ -212,21 +212,24 @@ func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	parser := jwt.Parser{}
 	token, _, err := parser.ParseUnverified(tokenString, &CommonClaims{})
 
-	//return RequestorDataError (400 Bad Request)
 	if err != nil {
-		return token, err
+		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: "unable to parse provided tokenString to jwt.token"}
+		return token, requestorDataError
 	}
 
 	//separate below into method to validateTokenClaims? All to return RequestorDataError (400 Bad Request)
 	claims, ok := token.Claims.(*CommonClaims) //ACO ID
 	if !ok {
-		return nil, errors.New("invalid claims") //msg: unable to cast token.Claims to CommonClaims struct //they gave us a string that doesn't make sense
+		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: "unable to cast token.Claims to CommonClaims struct"}
+		return nil, requestorDataError
 	}
 	if claims.Issuer != "ssas" {
-		return nil, fmt.Errorf("invalid issuer '%s'", claims.Issuer) //msg: invalid issuer supplied in token CommonClaims
+		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: fmt.Sprintf("invalid issuer supplied in token CommonClaims '%s'", claims.Issuer)}
+		return nil, requestorDataError
 	}
 	if claims.Data == "" {
-		return nil, errors.New("missing data claim") //msg: token CommonClaims Data is missing/empty
+		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: "token CommonClaims Data is missing/empty"}
+		return nil, requestorDataError
 	}
 	//
 
