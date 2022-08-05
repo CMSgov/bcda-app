@@ -654,6 +654,7 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 		{"Job Failed v2", v2BasePath, apiVersionTwo, v2JobRequestUrl, models.JobStatusFailed},
 		{"Job Failed Expired v2", v2BasePath, apiVersionTwo, v2JobRequestUrl, models.JobStatusFailedExpired},
 	}
+
 	resourceMap := s.resourceType
 
 	for _, tt := range tests {
@@ -694,7 +695,11 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			w := httptest.NewRecorder()
 			h.JobStatus(w, req)
 			s.Equal(http.StatusInternalServerError, w.Code)
-			assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
+
+			const body = w.Body.String()
+
+			assert.Contains(s.T(), body, responseutils.JobFailed)
+			assert.Contains(s.T(), body, responseutils.DetailJobFailed)
 		})
 	}
 }
