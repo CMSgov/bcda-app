@@ -245,7 +245,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	switch job.Status {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
 		w.Header().Set("X-Progress", job.StatusMessage())
 		w.WriteHeader(http.StatusAccepted)
