@@ -15,5 +15,5 @@ const (
 
 //External messaging: Messages that will be in response body
 const (
-	UnknownEntityErr = "unknown entity (ACO, DCE, KCE, etc)"
+	UnknownEntityErr = "unknown entity"
 )
