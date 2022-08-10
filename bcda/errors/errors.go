@@ -17,7 +17,7 @@ type RequestorDataError struct {
 }
 
 func (e *RequestorDataError) Error() string {
-	return fmt.Sprintf("Requestor Data Error encountered: %s, Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Requestor Data Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
 type InternalParsingError struct {
@@ -26,7 +26,7 @@ type InternalParsingError struct {
 }
 
 func (e *InternalParsingError) Error() string {
-	return fmt.Sprintf("Internal Parsing Error encountered: %s, Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Internal Parsing Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
 type ConfigError struct {
@@ -35,7 +35,7 @@ type ConfigError struct {
 }
 
 func (e *ConfigError) Error() string {
-	return fmt.Sprintf("Configuration Error encountered: %s, Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Configuration Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
 type RequestTimeoutError struct {
@@ -44,7 +44,7 @@ type RequestTimeoutError struct {
 }
 
 func (e *RequestTimeoutError) Error() string {
-	return fmt.Sprintf("Request Timeout Error encountered: %s, Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Request Timeout Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
 type UnexpectedSSASError struct {
@@ -54,7 +54,7 @@ type UnexpectedSSASError struct {
 }
 
 func (e *UnexpectedSSASError) Error() string {
-	return fmt.Sprintf("Unexpected SSAS Error encountered: %s, Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
 type ExpiredTokenError struct {
@@ -63,5 +63,5 @@ type ExpiredTokenError struct {
 }
 
 func (e *ExpiredTokenError) Error() string {
-	return fmt.Sprintf("Expired Token Error encountered: %s, Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Expired Token Error encountered - %s. Err: %s", e.Msg, e.Err)
 }

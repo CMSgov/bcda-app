@@ -62,7 +62,7 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 }
 
 //integration test: makes HTTP request & asserts HTTP response
-func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignature() {
+func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignature() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
@@ -76,7 +76,7 @@ func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignat
 
 	assert.NotNil(s.T(), resp)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), 401, resp.StatusCode)
+	assert.Equal(s.T(), 400, resp.StatusCode)
 	assert.Nil(s.T(), err)
 }
 

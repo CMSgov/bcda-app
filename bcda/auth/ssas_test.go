@@ -289,7 +289,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 
 	invalidTokenString := ""
 	err = s.p.AuthorizeAccess(invalidTokenString)
-	assert.EqualError(s.T(), err, "token contains an invalid number of segments")
+	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token contains an invalid number of segments")
 }
 
 func createCommonClaimsForTesting(data string) CommonClaims {
