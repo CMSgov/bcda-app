@@ -161,21 +161,21 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
+func (sSASPlugin SSASPlugin) AuthorizeAccess(tokenString string) error {
 	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
-	t, err := s.VerifyToken(tokenString)
+	token, err := sSASPlugin.VerifyToken(tokenString)
 
 	if err != nil {
 		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
 		operationFailed(tknEvent)
 		return err
 	}
-	claims, ok := t.Claims.(*CommonClaims)
+	claims, ok := token.Claims.(*CommonClaims)
 	if !ok {
 		return errors.New("invalid ssas claims")
 	}
-	if _, err = s.getAuthDataFromClaims(claims); err != nil {
+	if _, err = sSASPlugin.getAuthDataFromClaims(claims); err != nil {
 		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
 		return err
@@ -185,54 +185,81 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	return nil
 }
 
-// VerifyToken decodes a base64-encoded token string into a structured token.
-func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
-	b, err := s.client.VerifyPublicToken(tokenString)
+// VerifyToken decodes a base64-encoded token string into a structured token,
+// verifies token with SSAS and calls check for token expiration.
+func (sSASPlugin SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
+	token, err := confirmTokenStringLegitimacy(tokenString)
 	if err != nil {
-		//throw error upstream to handle.
+		log.SSAS.Errorf("Failed to confirm token string structure/contents; %s", err.Error())
+		return token, err
+	}
+
+	bytes, err := sSASPlugin.client.CallSSASIntrospect(tokenString)
+	if err != nil {
 		log.SSAS.Errorf("Failed to verify token; %s", err.Error())
 		return nil, err
 	}
-	var ir map[string]interface{}
 
-	if err = json.Unmarshal(b, &ir); err != nil {
-		internalParsingError := &customErrors.InternalParsingError{Err: err, Msg: "unable to unmarshal SSAS introspect response body to json format"}
-		return nil, internalParsingError
+	if err := checkTokenExpiration(bytes); err != nil {
+		return nil, err
 	}
 
-	//return ExpiredTokenError //401
-	if ir["active"] == false {
-		expiredTokenError := &customErrors.ExpiredTokenError{Err: err, Msg: "inactive or invalid token"}
-		return nil, expiredTokenError
-	}
+	token.Valid = true
+	return token, nil
+}
 
-	//why is all of this being executed AFTER the call to SASS introspect, as this is validating info off of prior provided tokenString?
-	//Doesn't make any sense? No tokenString manipulation being done before this point.
-	//have it upstream so we don't waste processing resources with an extra unnecessary API call to SSAS?
+// confirmTokenStringLegitimacy will take the provided tokenString that was supplied by the requestor
+// & ensure it has sound contents/structure before BCDA application performs an API call to SSAS introspect.
+func confirmTokenStringLegitimacy(tokenString string) (*jwt.Token, error) {
+	token, parseErr := parseTokenStringToJwtToken(tokenString)
+
+	if parseErr != nil {
+		return token, parseErr //original logic still returned token (instead of nil), keeping as-is for now
+	}
+	if err := confirmRequestorTokenPayload(token); err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+// parseTokenStringToJwtToken will take the provided tokenString that was supplied by the requestor
+// and attempt to parse it into a jwt.Token.
+func parseTokenStringToJwtToken(tokenString string) (*jwt.Token, error) {
 	parser := jwt.Parser{}
 	token, _, err := parser.ParseUnverified(tokenString, &CommonClaims{})
 
 	if err != nil {
-		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: "unable to parse provided tokenString to jwt.token"}
-		return token, requestorDataError
+		return token, &customErrors.RequestorDataError{Err: err, Msg: "unable to parse provided tokenString to jwt.token"}
 	}
+	return token, nil
+}
 
-	//separate below into method to validateTokenClaims? All to return RequestorDataError (400 Bad Request)
-	claims, ok := token.Claims.(*CommonClaims) //ACO ID
+// confirmRequestorTokenPayload will confirm the jwt.Token contains Claims that adhere to the Common Claims structure
+// and that the issuer was from SSAS & Data is not empty.
+func confirmRequestorTokenPayload(token *jwt.Token) error {
+	tokenPayloadError := errors.New("Incorrect Token Payload From Requestor")
+	claims, ok := token.Claims.(*CommonClaims)
+
 	if !ok {
-		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: "unable to cast token.Claims to CommonClaims struct"}
-		return nil, requestorDataError
+		return &customErrors.RequestorDataError{Err: tokenPayloadError, Msg: "unable to cast token.Claims to CommonClaims struct"}
+	} else if claims.Issuer != "ssas" {
+		return &customErrors.RequestorDataError{Err: tokenPayloadError, Msg: fmt.Sprintf("invalid issuer supplied in token CommonClaims '%s'", claims.Issuer)}
+	} else if claims.Data == "" {
+		return &customErrors.RequestorDataError{Err: tokenPayloadError, Msg: "token CommonClaims Data is missing/empty"}
 	}
-	if claims.Issuer != "ssas" {
-		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: fmt.Sprintf("invalid issuer supplied in token CommonClaims '%s'", claims.Issuer)}
-		return nil, requestorDataError
-	}
-	if claims.Data == "" {
-		requestorDataError := &customErrors.RequestorDataError{Err: err, Msg: "token CommonClaims Data is missing/empty"}
-		return nil, requestorDataError
-	}
-	//
+	return nil
+}
 
-	token.Valid = true
-	return token, err
+//checkTokenExpiration parses slice of type byte into map [string] interface & sees if "active" is set to false.
+func checkTokenExpiration(bytes []byte) error {
+	var introspectResponse map[string]interface{}
+
+	if err := json.Unmarshal(bytes, &introspectResponse); err != nil {
+		return &customErrors.InternalParsingError{Err: err, Msg: "unable to unmarshal SSAS introspect response body to json format"}
+	}
+
+	if introspectResponse["active"] == false {
+		return &customErrors.ExpiredTokenError{Err: errors.New("Expired Token"), Msg: "the provided token has expired (is not active)"}
+	}
+	return nil
 }

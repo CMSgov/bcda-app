@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/pkg/errors"
 )
 
@@ -355,60 +357,90 @@ func (c *SSASClient) Ping() error {
 	return nil
 }
 
-// VerifyPublicToken verifies that the tokenString presented was issued by the public server. It does so using
-// the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
-func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
-	public := conf.GetEnv("SSAS_PUBLIC_URL")
-	url := fmt.Sprintf("%s/introspect", public)
+// CallSSASIntrospect verifies that the tokenString presented was issued by the public server.
+// It does so using the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
+func (c *SSASClient) CallSSASIntrospect(tokenString string) ([]byte, error) {
 
-	body, err := json.Marshal(struct {
-		Token string `json:"token"`
-	}{Token: tokenString})
-
-	//return InternalParsingError //500
+	request, err := constructIntrospectRequest(tokenString)
 	if err != nil {
-		return nil, errors.Wrap(err, constants.RequestStructErr)
+		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-
-	//return InternalParsingError //500
+	resp, err := c.Do(request)
 	if err != nil {
-		return nil, errors.Wrap(err, constants.RequestStructErr)
-	}
-
-	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
-	secret := conf.GetEnv("BCDA_SSAS_SECRET")
-
-	//return ConfigError //500
-	if clientID == "" || secret == "" {
-		return nil, errors.New(constants.MissingIDSecretErr)
-	}
-	req.SetBasicAuth(clientID, secret)
-
-	//in instances where the SSAS request timed out (url.Error value's Timeout method is true), should return 503 error
-	//(RequestTimeoutError)
-	//if NOT due to timeout, UnexpectedSSASError (500)
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "introspect request failed")
+		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
+			return nil, &customErrors.RequestTimeoutError{Err: err, Msg: "introspect request failed - the SSAS introspect request timed out"}
+		} else {
+			return nil, &customErrors.UnexpectedSSASError{Err: err, Msg: "introspect request failed - unexpected error occured while performing SSAS introspect request"}
+		}
 	}
 
 	defer resp.Body.Close()
 
-	//return UnexpectedSSASError (StatusCode from SASS response placed inside as int) //500
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("introspect request failed; %v", resp.StatusCode)
+		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("introspect request failed; %v", resp.StatusCode)}
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
-
-	//return InternalParsingError //500
+	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read introspect response")
+		return nil, &customErrors.InternalParsingError{Err: err, Msg: "could not read the introspect response body"}
 	}
 
-	return b, nil
+	return bytes, nil
+}
+
+//constructIntrospectRequest constructs the necessary request for SSAS introspect call.
+//it grabs the necessary environmental variables, creates reqeust body, determines
+//the url to hit, and sets the basic authorization header.
+func constructIntrospectRequest(tokenString string) (request *http.Request, err error) {
+	sSASPublicURL, clientID, clientSecret, err := getEnvVariablesForIntrospectCall()
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := createIntrospectRequestBody(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/introspect", sSASPublicURL)
+	request, err = http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, &customErrors.InternalParsingError{Err: err, Msg: "unable to construct http.Request for SSAS introspect"}
+	}
+
+	request.SetBasicAuth(clientID, clientSecret)
+	return request, nil
+}
+
+//createIntrospectRequestBody creates the body that will be used in the SSAS introspect call.
+func createIntrospectRequestBody(tokenString string) (body []byte, err error) {
+	body, err = json.Marshal(struct {
+		Token string `json:"token"`
+	}{Token: tokenString})
+
+	if err != nil {
+		return nil, &customErrors.InternalParsingError{Err: err, Msg: "unable to marshal SSAS introspect request body to json format"}
+	}
+	return body, nil
+}
+
+//getEnvVariablesForIntrospectCall retrieves necessary environmental variables
+//for SSAS introspect call and verifies they are not empty.
+func getEnvVariablesForIntrospectCall() (sSASPublicURL string, clientID string, clientSecret string, err error) {
+	sSASPublicURL = conf.GetEnv("SSAS_PUBLIC_URL")
+	clientID = conf.GetEnv("BCDA_SSAS_CLIENT_ID")
+	clientSecret = conf.GetEnv("BCDA_SSAS_SECRET")
+
+	missingSSASPublicURL := sSASPublicURL == ""
+	missingClientID := clientID == ""
+	missingClientSecret := clientSecret == ""
+
+	if missingSSASPublicURL || missingClientID || missingClientSecret {
+		error := &customErrors.ConfigError{Err: errors.New("Configuration Error"), Msg: fmt.Sprintf("environmental configuration missing for: sSASPublicURL = %t, clientID = %t, clientSecret = %t", missingSSASPublicURL, missingClientID, missingClientSecret)}
+		return "", "", "", error
+	}
+	return sSASPublicURL, clientID, clientSecret, nil
 }
 
 func (c *SSASClient) setAuthHeader(req *http.Request) error {

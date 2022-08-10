@@ -104,21 +104,19 @@ func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, 
 	//UnexpectedSSASError (500)
 	//ExpiredTokenError (401)
 
-	if _, ok := err.(*customErrors.RequestorDataError); ok {
-		rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
-	} else if _, ok := err.(*customErrors.InternalParsingError); ok {
-		rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
-	} else if _, ok := err.(*customErrors.ConfigError); ok {
-		rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
-	} else if _, ok := err.(*customErrors.RequestTimeoutError); ok {
-		rw.Exception(w, http.StatusServiceUnavailable, responseutils.InternalErr, "")
-	} else if _, ok := err.(*customErrors.UnexpectedSSASError); ok {
-		rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
-	} else if _, ok := err.(*customErrors.ExpiredTokenError); ok {
-		rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
-	} else {
-		//default if somehow not one of the above
-		rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+	if err != nil {
+		switch err.(type) {
+		case *customErrors.ExpiredTokenError:
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		case *customErrors.RequestorDataError:
+			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
+		case *customErrors.RequestTimeoutError:
+			rw.Exception(w, http.StatusServiceUnavailable, responseutils.InternalErr, "")
+		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
+			rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		default:
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		}
 	}
 }
 

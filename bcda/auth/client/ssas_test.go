@@ -327,7 +327,7 @@ func (s *SSASClientTestSuite) TestGetVersionFailing() {
 	assert.NotNil(s.T(), err)
 }
 
-func (s *SSASClientTestSuite) TestVerifyPublicToken() {
+func (s *SSASClientTestSuite) TestVerifySSASIssuance() {
 	const tokenString = "totallyfake.tokenstringfor.testing"
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
@@ -370,7 +370,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
-	b, err := client.VerifyPublicToken(tokenString)
+	b, err := client.CallSSASIntrospect(tokenString)
 	if err != nil {
 		s.FailNow("unexpected failure", err.Error())
 	}
