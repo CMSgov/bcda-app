@@ -4,10 +4,13 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"golang.org/x/text/language"
 	"math/rand"
 	"os"
-	"strings"
+	"path/filepath"
 	"time"
+
+	"golang.org/x/text/cases"
 )
 
 type field struct {
@@ -33,7 +36,7 @@ func main() {
 
 	// 1-800-MEDICARE filename format: (T|P)#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
 	fileName := fmt.Sprintf("T#EFT.ON.ACO.NGD1800.DPRF.%s", now.Format("D060102.T1504050"))
-	outf, err := os.Create(fileName)
+	outf, err := os.Create(filepath.Clean(fileName))
 	if err != nil {
 		panic(err)
 	}
@@ -182,7 +185,7 @@ func randWord(minLen, maxLen int) string {
 	for i := 0; i < l; i++ {
 		w = w + string(letters[rand.Intn(len(letters))])
 	}
-	return strings.Title(w)
+	return cases.Title(language.Und).String(w)
 }
 
 func addr1() string {
