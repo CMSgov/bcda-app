@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -60,7 +61,7 @@ func (s *SSASMiddlewareTestSuite) TearDownSuite() {
 }
 
 func (s *SSASMiddlewareTestSuite) TestSSASToken() {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	require.NotNil(s.T(), req, "req not created; ", err)
 
 	s.ad = auth.AuthData{}

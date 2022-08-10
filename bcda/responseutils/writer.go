@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
 	logAPI "github.com/CMSgov/bcda-app/log"
@@ -156,7 +157,7 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 }
 
 func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, code int) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)
 	if err != nil {
@@ -207,7 +208,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 		FhirVersion:   &fhirdatatypes.Id{Value: "3.0.1"},
 		AcceptUnknown: &fhircodes.UnknownContentCodeCode{Value: fhircodes.UnknownContentCodeCode_EXTENSIONS},
 		Format: []*fhirdatatypes.MimeTypeCode{
-			{Value: "application/json"},
+			{Value: constants.JsonContentType},
 			{Value: "application/fhir+json"},
 		},
 		Rest: []*fhirmodels.CapabilityStatement_Rest{
@@ -284,7 +285,7 @@ func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(statementJSON)
 	if err != nil {
@@ -304,7 +305,7 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.ContentType)
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(resourceJSON)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/log"
@@ -161,7 +162,7 @@ func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFil
 			cclfFile.ImportStatus, cclfFile.Type)
 	query, args := ib.Build()
 	// Append the RETURNING id to retrieve the auto-generated ID value associated with the CCLF File
-	query = fmt.Sprintf("%s RETURNING id", query)
+	query = fmt.Sprintf(constants.CCLFFileRetID, query)
 
 	var id uint
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
@@ -329,7 +330,7 @@ func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile 
 		Values(suppressionFile.Name, suppressionFile.Timestamp, suppressionFile.ImportStatus)
 	query, args := ib.Build()
 	// Append the RETURNING id to retrieve the auto-generated ID value associated with the suppression file
-	query = fmt.Sprintf("%s RETURNING id", query)
+	query = fmt.Sprintf(constants.CCLFFileRetID, query)
 	var id uint
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
 		return 0, err
@@ -441,7 +442,7 @@ func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) 
 
 	query, args := ib.Build()
 	// Append the RETURNING id to retrieve the auto-generated ID value associated with the Job
-	query = fmt.Sprintf("%s RETURNING id", query)
+	query = fmt.Sprintf(constants.CCLFFileRetID, query)
 
 	var id uint
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {

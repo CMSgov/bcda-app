@@ -119,8 +119,8 @@ func (s *CCLFTestSuite) TestValidate() {
 	ctx := context.Background()
 	assert := assert.New(s.T())
 
-	cclf8filePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000")
-	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
+	cclf8filePath := filepath.Join(s.basePath, constants.CCLF8CompPath)
+	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
 
 	// positive
 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
@@ -140,15 +140,15 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
 
 	acoID := "A0001"
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 	metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC8Y18.D181120.T1000009",
+		name:      constants.CCLF8Name,
 		env:       "test",
 		acoID:     acoID,
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"),
+		filePath:  filepath.Join(s.basePath, constants.CCLF8CompPath),
 	}
 
 	err := importCCLF8(context.Background(), metadata)
@@ -157,7 +157,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	}
 
 	file := postgrestest.GetCCLFFilesByName(s.T(), s.db, metadata.name)[0]
-	assert.Equal("T.BCD.A0001.ZC8Y18.D181120.T1000009", file.Name)
+	assert.Equal(constants.CCLF8Name, file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
 	// Normalize timezone to allow us to check for equality
 	assert.Equal(fileTime.UTC().Format("010203040506"), file.Timestamp.UTC().Format("010203040506"))
@@ -186,7 +186,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
 
 	acoID := "A0001"
-	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
+	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: constants.CCLF8Name}
 	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
 
 	metadata := &cclfFileMetadata{
@@ -196,7 +196,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 		cclfNum:   cclfFile.CCLFNum,
 		perfYear:  cclfFile.PerformanceYear,
 		timestamp: cclfFile.Timestamp,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"),
+		filePath:  filepath.Join(s.basePath, constants.CCLF8CompPath),
 	}
 
 	err := importCCLF8(context.Background(), metadata)
@@ -241,7 +241,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 
 	// failed import: file that's within the threshold - stay put
 	acoID := "A0001"
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 	cclf0metadata := &cclfFileMetadata{
 		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
 		env:          "test",
@@ -255,21 +255,21 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	}
 
 	// failed import: file that's over the threshold - should move
-	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
 	cclf8metadata := &cclfFileMetadata{
-		name:         "T.BCD.A0001.ZC8Y18.D181120.T1000009",
+		name:         constants.CCLF8Name,
 		env:          "test",
 		acoID:        acoID,
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"),
+		filePath:     filepath.Join(s.basePath, constants.CCLF8CompPath),
 		imported:     false,
 		deliveryDate: fileTime,
 	}
 
 	// successfully imported file - should move
-	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
 	cclf9metadata := &cclfFileMetadata{
 		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
 		env:       "test",

@@ -16,6 +16,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -118,7 +119,7 @@ func (s *SSASClientTestSuite) TestCreateGroup() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	resp, err := client.CreateGroup("1", "name", "")
@@ -133,7 +134,7 @@ func (s *SSASClientTestSuite) TestCreateSystem() {
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{"system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name"}`))
+		_, err := w.Write([]byte(`{"system_id": "1", "client_id": constants.FakeClientID, "client_secret": "fake-secret", "client_name": "fake-name"}`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -145,7 +146,7 @@ func (s *SSASClientTestSuite) TestCreateSystem() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	resp, err := client.CreateSystem("fake-name", "fake-group", "fake-scope", "fake-key", "fake-tracking", nil)
@@ -153,8 +154,8 @@ func (s *SSASClientTestSuite) TestCreateSystem() {
 	creds := auth.Credentials{}
 	err = json.Unmarshal(resp, &creds)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
-	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+	assert.Equal(s.T(), constants.FakeClientID, creds.ClientID)
+	assert.Equal(s.T(), constants.FakeSecret, creds.ClientSecret)
 }
 
 func (s *SSASClientTestSuite) TestGetPublicKey() {
@@ -173,7 +174,7 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	respKey, err := client.GetPublicKey(1)
@@ -188,7 +189,7 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 	router := chi.NewRouter()
 	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, constants.FakeClientID, constants.FakeSecret)
 	})
 	server := httptest.NewServer(router)
 
@@ -198,7 +199,7 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	resp, err := client.ResetCredentials("1")
@@ -206,7 +207,7 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 	creds := auth.Credentials{}
 	err = json.Unmarshal(resp, &creds)
 	assert.Nil(s.T(), err, nil)
-	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), constants.FakeClientID, creds.ClientID)
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
 }
 
@@ -223,7 +224,7 @@ func (s *SSASClientTestSuite) TestDeleteCredentials() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	err = client.DeleteCredentials("1")
@@ -243,7 +244,7 @@ func (s *SSASClientTestSuite) TestRevokeAccessToken() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	err = client.RevokeAccessToken("abc-123")
@@ -267,7 +268,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	respKey, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
@@ -295,7 +296,7 @@ func (s *SSASClientTestSuite) TestGetVersionPassing() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 	version, err := client.GetVersion()
 	assert.Equal(s.T(), "foo", version)
@@ -319,7 +320,7 @@ func (s *SSASClientTestSuite) TestGetVersionFailing() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 	version, err := client.GetVersion()
 	assert.Equal(s.T(), "", version)
@@ -366,7 +367,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
+		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
 	b, err := client.VerifyPublicToken(tokenString)

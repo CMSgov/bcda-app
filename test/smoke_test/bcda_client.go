@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/sirupsen/logrus"
 )
@@ -144,9 +145,9 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 	} else {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Errorf("Failed to read response body %s", err.Error())
+			log.Errorf(constants.RespBodyErr, err.Error())
 		}
-		return "", fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+		return "", fmt.Errorf(constants.RespCodeErr,
 			req.URL.String(), resp.StatusCode, body)
 	}
 }
@@ -189,9 +190,9 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 		default:
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				log.Errorf("Failed to read response body %s", err.Error())
+				log.Errorf(constants.RespBodyErr, err.Error())
 			}
-			return nil, fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+			return nil, fmt.Errorf(constants.RespCodeErr,
 				req.URL.String(), resp.StatusCode, body)
 		}
 	}
@@ -232,7 +233,7 @@ func getData(c *client, dataURL string) ([]byte, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+		return nil, fmt.Errorf(constants.RespCodeErr,
 			req.URL.String(), resp.StatusCode, body)
 	}
 
@@ -323,9 +324,9 @@ func (c *client) updateAccessToken() error {
 	if resp.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Errorf("Failed to read response body %s", err.Error())
+			log.Errorf(constants.RespBodyErr, err.Error())
 		}
-		return fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+		return fmt.Errorf(constants.RespCodeErr,
 			req.URL.String(), resp.StatusCode, body)
 	}
 

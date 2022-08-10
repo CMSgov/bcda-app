@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -104,7 +105,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	origTime := time.Now().Truncate(time.Second)
 	err := os.Chtimes(filePath, origTime, origTime)
 	if err != nil {
-		s.FailNow("Failed to change modified time for file", err.Error())
+		s.FailNow(constants.TestChangeTimeErr, err.Error())
 	}
 
 	cclfMap, skipped, err := processCCLFArchives(folderPath)
@@ -119,7 +120,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
 	if err != nil {
-		s.FailNow("Failed to change modified time for file", err)
+		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
 	cclfMap, skipped, err = processCCLFArchives(folderPath)

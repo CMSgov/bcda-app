@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -63,7 +64,7 @@ func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignat
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignat
 
 //unit test
 func (s *MiddlewareTestSuite) TestRequireTokenAuthReturn401WhenInvalidToken() {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,7 +141,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 	client := s.server.Client()
 
 	// Valid token should return a 200 response
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -195,7 +196,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 	auth.SetMockProvider(s.T(), mock)
 
 	//fill http request
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -232,7 +233,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 	auth.SetMockProvider(s.T(), mock)
 
 	//fill http request
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -257,7 +258,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTokenSupplied() {
 	client := s.server.Client()
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -275,8 +276,8 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTok
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDataProvided() {
 	db := database.Connection
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 
@@ -302,7 +303,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("jobID", tt.jobID)
 
-			req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+			req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 			assert.NoError(t, err)
 
 			ad := auth.AuthData{
@@ -323,14 +324,14 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 	db := database.Connection
 
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -356,8 +357,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	db := database.Connection
 
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 
@@ -367,7 +368,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}

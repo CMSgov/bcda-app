@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
@@ -24,7 +25,7 @@ type MiddlewareTestSuite struct {
 func (s *MiddlewareTestSuite) SetupTest() {
 	router := chi.NewRouter()
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Test router"))
+		_, err := w.Write([]byte(constants.TestRouter))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -37,7 +38,7 @@ func (s *MiddlewareTestSuite) TestConnectionCloseHeader() {
 	router := chi.NewRouter()
 	router.Use(ConnectionClose)
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Test router"))
+		_, err := w.Write([]byte(constants.TestRouter))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -59,7 +60,7 @@ func (s *MiddlewareTestSuite) TestSecurityHeader() {
 	router := chi.NewRouter()
 	router.Use(SecurityHeader)
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Test router"))
+		_, err := w.Write([]byte(constants.TestRouter))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -79,14 +80,14 @@ func (s *MiddlewareTestSuite) TestSecurityHeader() {
 	result := w.Result()
 
 	assert.NotEmpty(s.T(), result.Header.Get("Strict-Transport-Security"), "sets STS header")
-	assert.NotEmpty(s.T(), result.Header.Get("Cache-Control"), "sets cache control settings")
+	assert.NotEmpty(s.T(), result.Header.Get(constants.CacheControl), "sets cache control settings")
 	assert.NotEmpty(s.T(), result.Header.Get("X-Content-Type-Options"), "sets x-content-type-options")
 	assert.Equal(s.T(), result.Header.Get("Pragma"), "no-cache", "pragma header should be no-cache")
 	assert.Equal(s.T(), result.Header.Get("X-Content-Type-Options"), "nosniff", "x-content-type header should be no-sniff")
-	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "must-revalidate", "ensures must-revalidate control added")
-	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "no-cache", "ensures no-cache control added")
-	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "no-store", "ensures no-store control added")
-	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "max-age=0", "ensures max-age=0 control added")
+	assert.Contains(s.T(), result.Header.Get(constants.CacheControl), "must-revalidate", "ensures must-revalidate control added")
+	assert.Contains(s.T(), result.Header.Get(constants.CacheControl), "no-cache", "ensures no-cache control added")
+	assert.Contains(s.T(), result.Header.Get(constants.CacheControl), "no-store", "ensures no-store control added")
+	assert.Contains(s.T(), result.Header.Get(constants.CacheControl), "max-age=0", "ensures max-age=0 control added")
 
 }
 

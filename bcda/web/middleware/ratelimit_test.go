@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -23,9 +24,9 @@ func TestNoConcurrentJobs(t *testing.T) {
 	}{
 		{"NoJobs", RequestParameters{}, nil},
 		{"DifferentVersion", RequestParameters{Version: "v2"},
-			[]*models.Job{{RequestURL: "/api/v1/Patient/$export"}}},
+			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath}}},
 		{"DifferentType", RequestParameters{Version: "v1", ResourceTypes: []string{"Coverage"}},
-			[]*models.Job{{RequestURL: "/api/v1/Patient/$export"}}},
+			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath}}},
 	}
 
 	for _, tt := range tests {
@@ -60,7 +61,7 @@ func TestHasConcurrentJobs(t *testing.T) {
 		{"RequestForAllResources", RequestParameters{ResourceTypes: nil, Version: "v1"}, nil},
 		{"DuplicateType", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"}, nil},
 		{"JobAllResources", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"},
-			[]*models.Job{{RequestURL: "/api/v1/Patient/$export", CreatedAt: time.Now()}}},
+			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath, CreatedAt: time.Now()}}},
 	}
 
 	for _, tt := range tests {

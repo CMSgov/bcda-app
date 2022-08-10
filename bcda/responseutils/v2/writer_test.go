@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/google/fhir/go/fhirversion"
@@ -147,7 +148,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 			UpdatedAt:  time.Now().Truncate(time.Second),
 		},
 	}
-	jb := CreateJobsBundle(jobs, "https://www.api.com")
+	jb := CreateJobsBundle(jobs, constants.TestAPIUrl)
 	WriteBundleResponse(jb, s.rr)
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
@@ -173,7 +174,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundle() {
-	var jb *fhirmodelCR.Bundle = CreateJobsBundle(nil, "https://www.api.com")
+	var jb *fhirmodelCR.Bundle = CreateJobsBundle(nil, constants.TestAPIUrl)
 
 	assert.Equal(s.T(), uint32(0), jb.Total.Value)
 	assert.Equal(s.T(), fhircodes.BundleTypeCode_SEARCHSET, jb.Type.Value)
@@ -188,7 +189,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
 		CreatedAt:  time.Now().Add(-24 * time.Hour).Truncate(time.Second),
 		UpdatedAt:  time.Now().Truncate(time.Second),
 	}
-	jbe := CreateJobsBundleEntry(&job, "https://www.api.com").Resource.GetTask()
+	jbe := CreateJobsBundleEntry(&job, constants.TestAPIUrl).Resource.GetTask()
 
 	assert.Equal(s.T(), job.CreatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.Start.ValueUs)
 	assert.Equal(s.T(), job.UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.End.ValueUs)

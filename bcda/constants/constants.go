@@ -14,3 +14,22 @@ var Version = "latest"
 
 const Adjudicated = "adjudicated"
 const PartiallyAdjudicated = "partially-adjudicated"
+
+const AuthTools = "Authentication tools"
+
+const FlagCMSID = "cms-id"
+const FlagCMSIDACO = "CMS ID of ACO"
+const FlagArch = "How long files should wait in archive before deletion"
+const FlagRemoveArch = "Remove job directory and files from archive and update job status to Expired"
+const FlagDataImport = "Data import"
+
+const ContentType = "Content-Type"
+const JsonContentType = "application/json"
+
+const BBHeaderTS = "BlueButton-OriginalQueryTimestamp"
+const BBHeaderOriginQID = "BlueButton-OriginalQueryId"
+
+const CCLFFileRetID = "%s RETURNING id"
+const JobKeyCreateErr = "failed to create job key: %w"
+
+const JOBIDPath = "/jobs/{jobID}"

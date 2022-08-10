@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +26,7 @@ func TestGetEnv(t *testing.T) {
 		{ // Test Case #2
 			"Multi-value separated by commas",
 			args{"TEST_LIST"},
-			"One,Two,Three,Four",
+			constants.TestListData,
 		},
 		{ // Test Case #3
 			"Path",
@@ -141,19 +142,19 @@ func Test_findEnv(t *testing.T) {
 	}{
 		{
 			"Test for local",
-			args{[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
+			args{[]string{os.Getenv("GOPATH") + constants.TestConfPath, os.Getenv("GOPATH") + constants.TestFakePath}},
 			true,
-			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test",
+			os.Getenv("GOPATH") + constants.TestConfPath,
 		},
 		{
 			"Test for prod (Doesn't exist yet)",
-			args{[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test"}},
+			args{[]string{os.Getenv("GOPATH") + constants.TestFakePath, os.Getenv("GOPATH") + constants.TestConfPath}},
 			true,
-			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test",
+			os.Getenv("GOPATH") + constants.TestConfPath,
 		},
 		{
 			"Test for both not existing",
-			args{[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
+			args{[]string{os.Getenv("GOPATH") + constants.TestFakePath, os.Getenv("GOPATH") + constants.TestFakePath}},
 			false,
 			"",
 		},
@@ -253,11 +254,11 @@ func TestCheckout(t *testing.T) {
 
 		assert.NoError(t, Checkout(&testStruct))
 		assert.Equal(t, testStruct.TEST_NUM, "1234")
-		assert.Equal(t, testStruct.TEST_LIST, "One,Two,Three,Four")
+		assert.Equal(t, testStruct.TEST_LIST, constants.TestListData)
 		assert.Equal(t, testStruct.TestValue1, 0)
 		assert.Equal(t, testStruct.TestValue2, "ABC")
 		// Check if tags work
-		assert.Equal(t, testStruct.Test_tag, "One,Two,Three,Four")
+		assert.Equal(t, testStruct.Test_tag, constants.TestListData)
 		// Check if explicit skip of tag works
 		assert.Equal(t, testStruct.TEST_SOMEPATH, "")
 		assert.Equal(t, testStruct.TestDefaultValue, 123, "Default value should be honored")
@@ -275,6 +276,6 @@ func TestCheckout(t *testing.T) {
 		assert.NoError(t, Checkout(testSlice))
 		assert.Equal(t, testSlice[0], "")
 		assert.Equal(t, testSlice[1], "")
-		assert.Equal(t, testSlice[2], "One,Two,Three,Four")
+		assert.Equal(t, testSlice[2], constants.TestListData)
 	})
 }

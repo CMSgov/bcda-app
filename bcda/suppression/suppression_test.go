@@ -61,14 +61,14 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	metadata := &suppressionFileMetadata{
 		timestamp:    fileTime,
 		filePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
+		name:         constants.TestSuppressMetaFileName,
 		deliveryDate: time.Now(),
 	}
 	err := importSuppressionData(metadata)
 	assert.Nil(err)
 
 	suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
-	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", suppressionFile.Name)
+	assert.Equal(constants.TestSuppressMetaFileName, suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
@@ -224,7 +224,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	var suppresslist []*suppressionFileMetadata
 	var skipped int
 
-	filePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/")
+	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
 	err := filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	assert.Equal(2, len(suppresslist))
@@ -240,7 +240,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 
 	suppresslist = []*suppressionFileMetadata{}
 	skipped = 0
-	filePath = filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/")
+	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
@@ -251,12 +251,12 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 
 		err = os.Chtimes(f.filePath, modtimeAfter, modtimeAfter)
 		if err != nil {
-			s.FailNow("Failed to change modified time for file", err)
+			s.FailNow(constants.TestChangeTimeErr, err)
 		}
 	}
 
 	suppresslist = []*suppressionFileMetadata{}
-	filePath = filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/")
+	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	for _, f := range suppresslist {
@@ -269,12 +269,12 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	var suppresslist []*suppressionFileMetadata
 	var skipped int
 	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
-	filePath := filepath.Join(folderPath, "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009")
+	filePath := filepath.Join(folderPath, constants.TestSuppressBadPath)
 
 	origTime := time.Now().Truncate(time.Second)
 	err := os.Chtimes(filePath, origTime, origTime)
 	if err != nil {
-		s.FailNow("Failed to change modified time for file", err)
+		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
 	skipped = 0
@@ -290,7 +290,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
 	if err != nil {
-		s.FailNow("Failed to change modified time for file", err)
+		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
 	suppresslist = []*suppressionFileMetadata{}
@@ -312,7 +312,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	// failed import: file that's within the threshold - stay put
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
 	metadata := &suppressionFileMetadata{
-		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
+		name:         constants.TestSuppressMetaFileName,
 		timestamp:    fileTime,
 		filePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
 		imported:     false,
@@ -322,7 +322,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	// failed import: file that's over the threshold - should move
 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata2 := &suppressionFileMetadata{
-		name:         "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009",
+		name:         constants.TestSuppressBadPath,
 		timestamp:    fileTime,
 		filePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
 		imported:     false,
@@ -348,9 +348,9 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	}
 
 	for _, file := range files {
-		assert.NotEqual("T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", file.Name())
+		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
 
-		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009" {
+		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
 			err = fmt.Errorf("unknown file moved %s", file.Name())
 			s.FailNow("test files did not correctly cleanup", err)
 		}

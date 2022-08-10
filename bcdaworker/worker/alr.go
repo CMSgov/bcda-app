@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -108,7 +109,7 @@ func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 		filename := filepath.Base(path.Name())
 		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
 		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			result <- fmt.Errorf("failed to create job key: %w", err)
+			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
 			return
 		}
 	}
@@ -167,7 +168,7 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 		filename := filepath.Base(path.Name())
 		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
 		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			result <- fmt.Errorf("failed to create job key: %w", err)
+			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
 			return
 		}
 	}
@@ -190,7 +191,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	id := jobArgs.ID
 	MBIs := jobArgs.MBIs
 	BBBasePath := jobArgs.BBBasePath
-	MetaKey:= jobArgs.MetaKey
+	MetaKey := jobArgs.MetaKey
 
 	// Pull the data from ALR tables (alr & alr_meta)
 	alrModels, err := a.GetAlr(ctx, MetaKey, MBIs)
@@ -204,7 +205,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	if len(alrModels) == 0 {
 		jk := models.JobKey{JobID: id, FileName: models.BlankFileName, ResourceType: "ALR"}
 		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			return fmt.Errorf("failed to create job key: %w", err)
+			return fmt.Errorf(constants.JobKeyCreateErr, err)
 		}
 	}
 

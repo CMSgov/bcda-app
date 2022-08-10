@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 
@@ -116,21 +117,21 @@ func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
 func (c *SSASClient) DeleteGroup(id int) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/group/%d", c.baseURL, id), nil)
 	if err != nil {
-		return errors.Wrap(err, "could not delete group")
+		return errors.Wrap(err, constants.DeleteGroupErr)
 	}
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "could not delete group")
+		return errors.Wrap(err, constants.DeleteGroupErr)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		rb, err := ioutil.ReadAll(resp.Body)
 		defer resp.Body.Close()
 		if err != nil {
-			return errors.Wrap(err, "could not delete group")
+			return errors.Wrap(err, constants.DeleteGroupErr)
 		}
 		return errors.Errorf("could not delete group: %s", rb)
 	}
@@ -160,20 +161,20 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 
 	bb, err := json.Marshal(sys)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, constants.SystemCreateErr)
 	}
 	br := bytes.NewReader(bb)
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/system", c.baseURL), br)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, constants.SystemCreateErr)
 	}
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, constants.SystemCreateErr)
 	}
 	defer resp.Body.Close()
 
@@ -193,7 +194,7 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/system/%v/key", c.baseURL, systemID), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get public key")
+		return nil, errors.Wrap(err, constants.PublicKeyErr)
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
@@ -201,13 +202,13 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get public key")
+		return nil, errors.Wrap(err, constants.PublicKeyErr)
 	}
 	defer resp.Body.Close()
 
 	var respMap map[string]string
 	if err = json.NewDecoder(resp.Body).Decode(&respMap); err != nil {
-		return nil, errors.Wrap(err, "could not get public key")
+		return nil, errors.Wrap(err, constants.PublicKeyErr)
 	}
 
 	return []byte(respMap["public_key"]), nil
@@ -217,7 +218,7 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to reset credentials")
+		return nil, errors.Wrap(err, constants.ResetCredentialsErr)
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
@@ -225,7 +226,7 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to reset credentials")
+		return nil, errors.Wrap(err, constants.ResetCredentialsErr)
 	}
 	defer resp.Body.Close()
 
@@ -235,7 +236,7 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to reset credentials")
+		return nil, errors.Wrap(err, constants.ResetCredentialsErr)
 	}
 
 	return body, nil
@@ -246,19 +247,19 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 func (c *SSASClient) DeleteCredentials(systemID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete credentials")
+		return errors.Wrap(err, constants.DeleteCredentialsErr)
 	}
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete credentials")
+		return errors.Wrap(err, constants.DeleteCredentialsErr)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.Wrap(err, "failed to delete credentials")
+		return errors.Wrap(err, constants.DeleteCredentialsErr)
 	}
 
 	return nil
@@ -268,7 +269,7 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
 	if err != nil {
-		return errors.Wrap(err, "bad request structure")
+		return errors.Wrap(err, constants.RequestStructErr)
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
@@ -294,7 +295,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	url := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "bad request structure")
+		return nil, errors.Wrap(err, constants.RequestStructErr)
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
@@ -326,17 +327,17 @@ func (c *SSASClient) Ping() error {
 		Token string `json:"token"`
 	}{Token: tokenString})
 	if err != nil {
-		return errors.Wrap(err, "bad request structure")
+		return errors.Wrap(err, constants.RequestStructErr)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		return errors.Wrap(err, "bad request structure")
+		return errors.Wrap(err, constants.RequestStructErr)
 	}
 
 	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	secret := conf.GetEnv("BCDA_SSAS_SECRET")
 	if clientID == "" || secret == "" {
-		return errors.New("missing clientID or secret")
+		return errors.New(constants.MissingIDSecretErr)
 	}
 	req.SetBasicAuth(clientID, secret)
 
@@ -363,17 +364,17 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 		Token string `json:"token"`
 	}{Token: tokenString})
 	if err != nil {
-		return nil, errors.Wrap(err, "bad request structure")
+		return nil, errors.Wrap(err, constants.RequestStructErr)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "bad request structure")
+		return nil, errors.Wrap(err, constants.RequestStructErr)
 	}
 
 	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	secret := conf.GetEnv("BCDA_SSAS_SECRET")
 	if clientID == "" || secret == "" {
-		return nil, errors.New("missing clientID or secret")
+		return nil, errors.New(constants.MissingIDSecretErr)
 	}
 	req.SetBasicAuth(clientID, secret)
 
@@ -400,7 +401,7 @@ func (c *SSASClient) setAuthHeader(req *http.Request) error {
 	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	secret := conf.GetEnv("BCDA_SSAS_SECRET")
 	if clientID == "" || secret == "" {
-		return errors.New("missing clientID or secret")
+		return errors.New(constants.MissingIDSecretErr)
 	}
 	req.SetBasicAuth(clientID, secret)
 	req.Header.Add("Accept", "application/json")

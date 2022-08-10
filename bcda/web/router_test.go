@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -206,11 +207,11 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "false")
 	s.apiRouter = NewAPIRouter()
 
-	res := s.getAPIRoute("/api/v2/Patient/$export")
+	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	res = s.getAPIRoute(constants.V2Path + constants.GroupExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute("/api/v2/alr/$export")
+	res = s.getAPIRoute(constants.V2Path + constants.ALRExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
@@ -225,11 +226,11 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
 	s.apiRouter = NewAPIRouter()
 
-	res := s.getAPIRoute("/api/v2/Patient/$export")
+	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	res = s.getAPIRoute(constants.V2Path + constants.GroupExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute("/api/v2/alr/$export")
+	res = s.getAPIRoute(constants.V2Path + constants.ALRExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -242,7 +243,7 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {
-	res := s.getAPIRoute("/api/v1/jobs/1")
+	res := s.getAPIRoute(constants.V1Path + constants.JobsFilePath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
@@ -252,7 +253,7 @@ func (s *RouterTestSuite) TestJobsStatusRoute() {
 }
 
 func (s *RouterTestSuite) TestDeleteJobRoute() {
-	res := s.deleteAPIRoute("/api/v1/jobs/1")
+	res := s.deleteAPIRoute(constants.V1Path + constants.JobsFilePath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
@@ -332,8 +333,8 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 		paths   []string
 	}{
 		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", version1ALRExportURL,
-			"/api/v2/Patient/$export", "/api/v2/Group/all/$export", "/api/v2/alr/$export",
-			"/api/v1/jobs/1"}},
+			constants.V2Path + constants.PatientExportPath, constants.V2Path + constants.GroupExportPath, constants.V2Path + constants.ALRExportPath,
+			constants.V1Path + constants.JobsFilePath}},
 		{s.dataRouter, []string{nDJsonDataRoute}},
 		{NewAuthRouter(), []string{"/auth/welcome"}},
 	}

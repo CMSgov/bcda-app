@@ -141,7 +141,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "create-group",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Create a group (SSAS)",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -171,7 +171,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "create-aco",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -180,8 +180,8 @@ func setUpApp() *cli.App {
 					Destination: &acoName,
 				},
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        constants.FlagCMSID,
+					Usage:       constants.FlagCMSIDACO,
 					Destination: &acoCMSID,
 				},
 			},
@@ -197,7 +197,7 @@ func setUpApp() *cli.App {
 		// FYI, save-public-cred deprecated
 		{
 			Name:     "revoke-token",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Revoke an access token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -217,12 +217,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "generate-client-credentials",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Register a system and generate credentials for client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        constants.FlagCMSID,
+					Usage:       constants.FlagCMSIDACO,
 					Destination: &acoCMSID,
 				},
 				cli.StringFlag{
@@ -249,12 +249,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "reset-client-credentials",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Generate a new secret for a client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        constants.FlagCMSID,
+					Usage:       constants.FlagCMSIDACO,
 					Destination: &acoCMSID,
 				},
 			},
@@ -282,7 +282,7 @@ func setUpApp() *cli.App {
 				cli.IntFlag{
 					Name:        "threshold",
 					Value:       24,
-					Usage:       "How long files should wait in archive before deletion",
+					Usage:       constants.FlagArch,
 					EnvVar:      "ARCHIVE_THRESHOLD_HR",
 					Destination: &thresholdHr,
 				},
@@ -293,13 +293,13 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "cleanup-archive",
+			Name:     constants.CleanupArchArg,
 			Category: "Cleanup",
-			Usage:    "Remove job directory and files from archive and update job status to Expired",
+			Usage:    constants.FlagRemoveArch,
 			Flags: []cli.Flag{
 				cli.IntFlag{
 					Name:        "threshold",
-					Usage:       "How long files should wait in archive before deletion",
+					Usage:       constants.FlagArch,
 					Destination: &thresholdHr,
 				},
 			},
@@ -312,11 +312,11 @@ func setUpApp() *cli.App {
 		{
 			Name:     "cleanup-failed",
 			Category: "Cleanup",
-			Usage:    "Remove job directory and files from archive and update job status to Expired",
+			Usage:    constants.FlagRemoveArch,
 			Flags: []cli.Flag{
 				cli.IntFlag{
 					Name:        "threshold",
-					Usage:       "How long files should wait in archive before deletion",
+					Usage:       constants.FlagArch,
 					Destination: &thresholdHr,
 				},
 			},
@@ -329,11 +329,11 @@ func setUpApp() *cli.App {
 		{
 			Name:     "cleanup-cancelled",
 			Category: "Cleanup",
-			Usage:    "Remove job directory and files from archive and update job status to Expired",
+			Usage:    constants.FlagRemoveArch,
 			Flags: []cli.Flag{
 				cli.IntFlag{
 					Name:        "threshold",
-					Usage:       "How long files should wait in archive before deletion",
+					Usage:       constants.FlagArch,
 					Destination: &thresholdHr,
 				},
 			},
@@ -345,7 +345,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "import-cclf-directory",
-			Category: "Data import",
+			Category: constants.FlagDataImport,
 			Usage:    "Import all CCLF files from the specified directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -363,7 +363,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "generate-cclf-runout-files",
-			Category: "Data import",
+			Category: constants.FlagDataImport,
 			Usage:    "Clone CCLF files and rename them as runout files",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -384,12 +384,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "generate-synthetic-alr-data",
-			Category: "Data import",
+			Category: constants.FlagDataImport,
 			Usage:    "Generate and ingest synthetic ALR data associated with a particular ACO",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        constants.FlagCMSID,
+					Usage:       constants.FlagCMSIDACO,
 					Destination: &acoCMSID,
 				},
 				cli.StringFlag{
@@ -448,7 +448,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "import-suppression-directory",
-			Category: "Data import",
+			Category: constants.FlagDataImport,
 			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -492,7 +492,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "import-synthetic-cclf-package",
-			Category: "Data import",
+			Category: constants.FlagDataImport,
 			Usage:    "Import a package of synthetic CCLF files",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -527,12 +527,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "blacklist-aco",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Blacklists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        constants.FlagCMSID,
+					Usage:       constants.FlagCMSIDACO,
 					Destination: &acoCMSID,
 				},
 			},
@@ -547,12 +547,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "unblacklist-aco",
-			Category: "Authentication tools",
+			Category: constants.AuthTools,
 			Usage:    "Unblacklists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        constants.FlagCMSID,
+					Usage:       constants.FlagCMSIDACO,
 					Destination: &acoCMSID,
 				},
 			},

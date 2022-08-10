@@ -160,7 +160,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 		{
 			"ErrorOnQuery",
 			`SELECT mbi FROM cclf_beneficiaries WHERE file_id = $1`,
-			fmt.Errorf("Some SQL error"),
+			fmt.Errorf(constants.SQLErr),
 		},
 	}
 
@@ -235,7 +235,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi)`,
 			nil,
 			nil,
-			fmt.Errorf("Some SQL error"),
+			fmt.Errorf(constants.SQLErr),
 		},
 	}
 
@@ -309,7 +309,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date >= $1 AND effective_date <= $2 AND preference_indicator <> $3 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $4`,
 			time.Time{}.Add(-1 * 10 * 24 * time.Hour),
 			time.Time{},
-			fmt.Errorf("Some SQL error"),
+			fmt.Errorf(constants.SQLErr),
 		},
 	}
 
@@ -463,15 +463,15 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 
 	// Negative cases
 	res, err = r.repository.GetACOByCMSID(ctx, aco.UUID.String())
-	assert.EqualError(err, "no ACO record found for "+aco.UUID.String())
+	assert.EqualError(err, constants.NoACORecord+aco.UUID.String())
 	assert.Nil(res)
 
 	res, err = r.repository.GetACOByClientID(ctx, aco.UUID.String())
-	assert.EqualError(err, "no ACO record found for "+aco.UUID.String())
+	assert.EqualError(err, constants.NoACORecord+aco.UUID.String())
 	assert.Nil(res)
 
 	res, err = r.repository.GetACOByUUID(ctx, uuid.Parse(aco.ClientID))
-	assert.EqualError(err, "no ACO record found for "+aco.ClientID)
+	assert.EqualError(err, constants.NoACORecord+aco.ClientID)
 	assert.Nil(res)
 
 	assert.Contains(
@@ -902,9 +902,9 @@ func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 	exMap["VA_TIN"] = "123456789"
 	exMap["CBA_FLAG"] = "1"
 	exMap["EXCLUDED"] = "0"
-	exMap["BENE_RSK_R_SCRE_01"] = "1.2345"
-	exMap["ESRD_SCORE"] = "1.2345"
-	exMap["DEM_AGDU_SCORE"] = "1.2345"
+	exMap["BENE_RSK_R_SCRE_01"] = constants.TestScore
+	exMap["ESRD_SCORE"] = constants.TestScore
+	exMap["DEM_AGDU_SCORE"] = constants.TestScore
 	exMap["HCC_COL_1"] = "1"
 	exMap["HCC_COL_2"] = "0"
 	aco := "A1234"
