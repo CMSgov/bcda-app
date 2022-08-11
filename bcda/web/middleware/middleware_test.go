@@ -115,7 +115,9 @@ func mockTLSServerContext() context.Context {
 	}
 
 	srv := &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Default middleware test route handler
+		}),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		},
@@ -145,8 +147,9 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 
 		rr := httptest.NewRecorder()
 		ACOMiddleware := ACOEnabled(cfg)
-		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {})).
-			ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
+		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			// ACO middleware test route, blank return for overrides
+		})).ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
 		assert.Equal(s.T(), tt.expected_code, rr.Code)
 	}
 }

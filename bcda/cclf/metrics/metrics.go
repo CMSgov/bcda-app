@@ -154,7 +154,9 @@ func (t *noopTimer) newChild(parentCtx context.Context, name string) (close func
 }
 
 func (t *noopTimer) Close() {
+	// Method to clean up overriden timer methods
 }
 
 func noop() {
+	// Return method to validate overriden timer methods
 }

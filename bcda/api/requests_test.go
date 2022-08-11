@@ -44,6 +44,13 @@ import (
 	fhirmodelsv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
+const apiVersionOne = "v1"
+const apiVersionTwo = "v2"
+const v1BasePath = "/v1/fhir"
+const v2BasePath = "/v2/fhir"
+const v1JobRequestUrl = "http://bcda.cms.gov/api/v1/Jobs/1"
+const v2JobRequestUrl = "http://bcda.cms.gov/api/v2/Jobs/1"
+
 type RequestsTestSuite struct {
 	suite.Suite
 
@@ -107,10 +114,10 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, "v1"},
 		{"Successful v2", nil, http.StatusAccepted, "v2"},
-		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, "v1"},
-		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, "v2"},
-		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, "v1"},
-		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, "v2"},
+		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionOne},
+		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionTwo},
+		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
+		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
 	}
 
 	for _, tt := range tests {
@@ -210,7 +217,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
-			req := s.genGetJobsRequest("v1", tt.statuses)
+			req := s.genGetJobsRequest(apiVersionOne, tt.statuses)
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
@@ -241,7 +248,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 }
 
 func (s *RequestsTestSuite) TestJobsStatusV2() {
-	apiVersion := "v2"
+	apiVersion := apiVersionTwo
 
 	tests := []struct {
 		name string
@@ -298,11 +305,11 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
-			}, "/v2/fhir", "v2", s.db)
+			}, v2BasePath, apiVersionTwo, s.db)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
-			req := s.genGetJobsRequest("v2", tt.statuses)
+			req := s.genGetJobsRequest(apiVersionTwo, tt.statuses)
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
@@ -477,7 +484,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
 	}
 
-	h := NewHandler(dataTypeMap, "/v2/fhir", "v2")
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
 	mockEnq := &queueing.MockEnqueuer{}
@@ -526,7 +533,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
-				Version:       "v2",
+				Version:       apiVersionTwo,
 			}))
 
 			h.bulkRequest(w, r, service.DefaultRequest)
@@ -571,7 +578,7 @@ func (s *RequestsTestSuite) TestRequests() {
 		for _, since := range sinces {
 			for _, groupID := range groupIDs {
 				rp := middleware.RequestParameters{
-					Version:       "v1",
+					Version:       apiVersionOne,
 					ResourceTypes: []string{resource},
 					Since:         since,
 				}
@@ -587,7 +594,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	for _, resource := range resources {
 		for _, since := range sinces {
 			rp := middleware.RequestParameters{
-				Version:       "v1",
+				Version:       apiVersionOne,
 				ResourceTypes: []string{resource},
 				Since:         since,
 			}
@@ -609,7 +616,7 @@ func (s *RequestsTestSuite) TestJobStatus() {
 		&models.Job{
 			ID:                1,
 			ACOID:             uuid.NewRandom(),
-			RequestURL:        "http://bcda.cms.gov/api/v1/Jobs/1",
+			RequestURL:        v1JobRequestUrl,
 			Status:            models.JobStatusCompleted,
 			TransactionTime:   timestp,
 			JobCount:          100,
@@ -627,7 +634,7 @@ func (s *RequestsTestSuite) TestJobStatus() {
 	)
 	h.Svc = &mockSrv
 
-	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/jobs/1", nil)
+	req := httptest.NewRequest("GET", v1JobRequestUrl, nil)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", "1")
@@ -638,6 +645,68 @@ func (s *RequestsTestSuite) TestJobStatus() {
 	w := httptest.NewRecorder()
 	h.JobStatus(w, req)
 	s.Equal(http.StatusOK, w.Code)
+}
+
+func (s *RequestsTestSuite) TestJobFailedStatus() {
+
+	tests := []struct {
+		name string
+
+		basePath   string
+		version    string
+		requestUrl string
+		status     models.JobStatus
+	}{
+		{"Job Failed v1", v1BasePath, apiVersionOne, v1JobRequestUrl, models.JobStatusFailed},
+		{"Job Failed Expired v1", v1BasePath, apiVersionOne, v1JobRequestUrl, models.JobStatusFailedExpired},
+		{"Job Failed v2", v2BasePath, apiVersionTwo, v2JobRequestUrl, models.JobStatusFailed},
+		{"Job Failed Expired v2", v2BasePath, apiVersionTwo, v2JobRequestUrl, models.JobStatusFailedExpired},
+	}
+
+	resourceMap := s.resourceType
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			h := newHandler(resourceMap, tt.basePath, tt.version, s.db)
+			mockSrv := service.MockService{}
+			timestp := time.Now()
+			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+				&models.Job{
+					ID:                1,
+					ACOID:             uuid.NewRandom(),
+					RequestURL:        tt.requestUrl,
+					Status:            tt.status,
+					TransactionTime:   timestp,
+					JobCount:          100,
+					CompletedJobCount: 100,
+					CreatedAt:         timestp,
+					UpdatedAt:         timestp,
+				},
+				[]*models.JobKey{{
+					ID:           1,
+					JobID:        1,
+					FileName:     "testingtesting",
+					ResourceType: "Patient",
+				}},
+				nil,
+			)
+			h.Svc = &mockSrv
+
+			req := httptest.NewRequest("GET", tt.requestUrl, nil)
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", "1")
+
+			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+			req = req.WithContext(ctx)
+
+			w := httptest.NewRecorder()
+			h.JobStatus(w, req)
+			s.Equal(http.StatusInternalServerError, w.Code)
+			assert.Contains(s.T(), w.Body.String(), responseutils.JobFailed)
+			assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
+		})
+	}
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {

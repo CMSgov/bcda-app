@@ -81,13 +81,13 @@ func SetAndRestoreEnvKey(key, value string) func() {
 
 func MakeDirToDelete(s suite.Suite, filePath string) {
 	assert := assert.New(s.T())
-	_, err := os.Create(filepath.Join(filePath, "deleteMe1.txt"))
+	_, err := os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe1.txt")))
 	assert.Nil(err)
-	_, err = os.Create(filepath.Join(filePath, "deleteMe2.txt"))
+	_, err = os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe2.txt")))
 	assert.Nil(err)
-	_, err = os.Create(filepath.Join(filePath, "deleteMe3.txt"))
+	_, err = os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe3.txt")))
 	assert.Nil(err)
-	_, err = os.Create(filepath.Join(filePath, "deleteMe4.txt"))
+	_, err = os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe4.txt")))
 	assert.Nil(err)
 }
 

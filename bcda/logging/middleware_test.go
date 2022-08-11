@@ -34,7 +34,9 @@ type LoggingMiddlewareTestSuite struct {
 func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {})
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		// Base server route for logging tests to be checked, blank return for overrides
+	})
 	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("Test")
 	})
@@ -226,7 +228,9 @@ func TestResourceTypeLogging(t *testing.T) {
 		r := chi.NewRouter()
 		r.With(
 			middleware.RequestLogger(&mockLogger{Logger: log.Request, entry: entry}),
-			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}))
+			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			// Test route handler method for retrieving resources
+		}))
 
 		rw := httptest.NewRecorder()
 		r.ServeHTTP(rw, req)

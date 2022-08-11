@@ -1,4 +1,4 @@
-FROM golang:1.15
+FROM golang:1.18
 
 ARG GPG_PUB_KEY_FILE
 ARG GPG_SEC_KEY_FILE
@@ -8,7 +8,7 @@ ARG BCDA_GPG_RPM_PASSPHRASE
 
 RUN apt-get update
 RUN apt-get install -y build-essential ruby ruby-dev rpm git
-RUN gem install --no-ri --no-rdoc fpm etc
+RUN gem install --no-document fpm etc
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .

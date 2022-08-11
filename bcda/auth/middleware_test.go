@@ -28,7 +28,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
+	// mockHandler function for testing http requests related to middleware test scripts
+}
 var bearerStringMsg string = "Bearer %s"
 
 type MiddlewareTestSuite struct {
