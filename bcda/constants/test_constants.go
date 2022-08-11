@@ -36,13 +36,12 @@ const TestFakePath = "/src/github.com/CMSgov/bcda-app/conf/FAKE"
 const TestConfPath = "/src/github.com/CMSgov/bcda-app/conf/test"
 const TestSuppressBadPath = "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"
 const JobsFilePath = "jobs/1"
-const TokenPath = "/auth/token"
+const TokenPath = "/auth/token" // #nosec - G101 credentials for unit testing
 const TestFilePathVariable = "%s/%d/%s"
 
 //ID Constants
 const TestACOID = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-const TestTokenID = "665341c9-7d0c-4844-b66f-5910d9d0822f"
-
+const TestTokenID = "665341c9-7d0c-4844-b66f-5910d9d0822f" // #nosec - G101 credentials for unit testing
 //Url Constants
 const TestAPIUrl = "https://www.api.com"
 const ExpectedTestUrl = "http://example.com/data"
@@ -57,7 +56,7 @@ const NameArg = "--name"
 const ACOIDArg = "--aco-id"
 const CreateACOID = "create-aco"
 const GenClientCred = "generate-client-credentials"
-const ResetClientCred = "reset-client-credentials"
+const ResetClientCred = "reset-client-credentials" // #nosec - G101 credentials for unit testing
 const ArchJobFiles = "archive-job-files"
 const DelDirContents = "delete-dir-contents"
 const ImportSupDir = "import-suppression-directory"
