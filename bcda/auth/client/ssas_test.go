@@ -134,7 +134,7 @@ func (s *SSASClientTestSuite) TestCreateSystem() {
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{"system_id": "1", "client_id": constants.FakeClientID, "client_secret": "fake-secret", "client_name": "fake-name"}`))
+		_, err := w.Write([]byte(`{"system_id": "1", "client_id":` + constants.FakeClientIDBt + `, "client_secret": ` + constants.FakeSecretBt + `, "client_name": "fake-name"}`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -208,7 +208,7 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 	err = json.Unmarshal(resp, &creds)
 	assert.Nil(s.T(), err, nil)
 	assert.Equal(s.T(), constants.FakeClientID, creds.ClientID)
-	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+	assert.Equal(s.T(), constants.FakeSecret, creds.ClientSecret)
 }
 
 func (s *SSASClientTestSuite) TestDeleteCredentials() {

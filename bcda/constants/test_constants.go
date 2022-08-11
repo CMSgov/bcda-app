@@ -65,7 +65,9 @@ const DirectoryArg = "--directory"
 const TestExcludeSAMHSA = "excludeSAMHSA=true"
 const TestSvcDate = "service-date"
 const FakeClientID = "fake-client-id"
+const FakeClientIDBt = `"fake-client-id"`
 const FakeSecret = "fake-secret"
+const FakeSecretBt = `"fake-secret"`
 const CacheControl = "Cache-Control"
 const TestRespondAsync = "respond-async"
 const TestSelectNow = "SELECT NOW()"

@@ -136,7 +136,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	validResp := `{ "system_id": "1", "client_id": constants.FakeClientID, "client_secret": "fake-secret", "client_name": "fake-name" }`
+	validResp := `{ "system_id": "1", "client_id": ` + constants.FakeClientIDBt + `, "client_secret": ` + constants.FakeSecretBt + `, "client_name": "fake-name" }`
 	tests := []struct {
 		name      string
 		ips       []string
@@ -174,7 +174,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	router := chi.NewRouter()
 	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, constants.FakeClientID, "fake-secret")
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, constants.FakeClientID, constants.FakeSecret)
 	})
 	server := httptest.NewServer(router)
 
