@@ -39,6 +39,7 @@ require (
 	github.com/urfave/cli v1.22.9
 	github.com/xo/usql v0.8.2
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/text v0.3.7
 	gotest.tools/gotestsum v1.6.2
 )
 
@@ -46,11 +47,13 @@ require (
 	bitbucket.org/creachadair/stringset v0.0.10 // indirect
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
 	github.com/frankban/quicktest v1.14.3 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -60,16 +63,14 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/sagikazarmark/crypt v0.6.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -81,11 +82,9 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/net v0.0.0-20220630215102-69896b714898 // indirect
 	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b // indirect
-	golang.org/x/text v0.3.7 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20220630174209-ad1d48641aa7 // indirect
 	google.golang.org/grpc v1.47.0 // indirect
-	google.golang.org/grpc/examples v0.0.0-20210111180913-4cf4a98505bc // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -93,23 +92,5 @@ require (
 )
 
 replace (
-	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.21.3
-	github.com/bgentry/que-go => github.com/bgentry/que-go v1.0.1
-	github.com/cenkalti/backoff/v4 => github.com/cenkalti/backoff/v4 v4.0.2
-	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/go-chi/chi => github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
-	github.com/go-chi/render => github.com/go-chi/render v1.0.1
-	github.com/jackc/pgx => github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
-	github.com/lib/pq => github.com/lib/pq v1.9.0
-	github.com/newrelic/go-agent/v3 => github.com/newrelic/go-agent/v3 v3.9.0
-	github.com/opencensus-integrations/gomongowrapper => github.com/eug48/gomongowrapper v0.0.3
-	github.com/pborman/uuid => github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
-	github.com/pkg/errors => github.com/pkg/errors v0.8.0
-	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.6.0
-	github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.4
-	github.com/tsenart/vegeta => github.com/tsenart/vegeta v12.1.0+incompatible
-	github.com/urfave/cli => github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
-	github.com/xo/usql => github.com/xo/usql v0.8.2
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
-
 )
