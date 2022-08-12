@@ -19,6 +19,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -115,8 +116,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
 		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionOne},
 		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionTwo},
-		{"Some other error", errors.New("Some other error"), http.StatusInternalServerError, apiVersionOne},
-		{"Some other error v2", errors.New("Some other error"), http.StatusInternalServerError, apiVersionTwo},
+		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
+		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
 	}
 
 	for _, tt := range tests {
@@ -154,7 +155,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 }
 
 func (s *RequestsTestSuite) TestJobsStatusV1() {
-	apiVersion := apiVersionOne
+	apiVersion := "v1"
+	fhirPath := "/" + apiVersion + "/fhir"
 
 	tests := []struct {
 		name string
@@ -211,7 +213,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
-			}, v1BasePath, apiVersionOne, s.db)
+			}, fhirPath, apiVersion, s.db)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
@@ -393,9 +395,11 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 					)
 				}
 			}
+			apiVersion := "v1"
+			fhirPath := "/" + apiVersion + "/fhir"
 
 			resourceMap := s.resourceType
-			h := newHandler(resourceMap, v1BasePath, apiVersionOne, s.db)
+			h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
@@ -542,9 +546,11 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
+	apiVersion := "v1"
+	fhirPath := "/" + apiVersion + "/fhir"
 	resourceMap := s.resourceType
 
-	h := newHandler(resourceMap, v1BasePath, apiVersionOne, s.db)
+	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
 	enqueuer := &queueing.MockEnqueuer{}
@@ -600,8 +606,10 @@ func (s *RequestsTestSuite) TestRequests() {
 }
 
 func (s *RequestsTestSuite) TestJobStatus() {
+	apiVersion := "v1"
+	fhirPath := "/" + apiVersion + "/fhir"
 	resourceMap := s.resourceType
-	h := newHandler(resourceMap, v1BasePath, apiVersionOne, s.db)
+	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 	mockSrv := service.MockService{}
 	timestp := time.Now()
 	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(

@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -45,9 +46,9 @@ func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 func contextToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ad := auth.AuthData{
-			ACOID:   "dbbd1ce1-ae24-435c-807d-ed45953077d3",
+			ACOID:   constants.TestACOID,
 			CMSID:   "A9995",
-			TokenID: "665341c9-7d0c-4844-b66f-5910d9d0822f",
+			TokenID: constants.TestTokenID,
 		}
 
 		ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
@@ -62,13 +63,13 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 
 	req, err := http.NewRequest("GET", server.URL, nil)
 	if err != nil {
-		s.Fail("Request error", err)
+		s.Fail(constants.TestReqErr, err)
 	}
 	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		s.Fail("Request error", err)
+		s.Fail(constants.TestReqErr, err)
 	}
 
 	assert := assert.New(s.T())
@@ -90,9 +91,9 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		assert.NotEmpty(logFields["user_agent"], "Log entry should contain the user agent.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), server.URL+"/", logFields["uri"])
-		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
+		assert.Equal(constants.TestACOID, logFields["aco_id"], "ACO in log entry should match the token.")
 		assert.Equal("A9995", logFields["cms_id"], "CMS ID in log entry should match the token.")
-		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
+		assert.Equal(constants.TestTokenID, logFields["token_id"], "Token ID in log entry should match the token.")
 		assert.Equal("gzip", logFields["accept_encoding"])
 	}
 }
@@ -105,12 +106,12 @@ func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 
 	req, err := http.NewRequest("GET", server.URL, nil)
 	if err != nil {
-		s.Fail("Request error", err)
+		s.Fail(constants.TestReqErr, err)
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		s.Fail("Request error", err)
+		s.Fail(constants.TestReqErr, err)
 	}
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
@@ -126,12 +127,12 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 
 	req, err := http.NewRequest("GET", server.URL+"/panic", nil)
 	if err != nil {
-		s.Fail("Request error", err.Error())
+		s.Fail(constants.TestReqErr, err.Error())
 	}
 
 	_, err = client.Do(req)
 	if err != nil {
-		s.Fail("Request error", err.Error())
+		s.Fail(constants.TestReqErr, err.Error())
 	}
 
 	server.Close()
@@ -152,9 +153,9 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 		assert.NotEmpty(logFields["user_agent"], "Log entry should contain the user agent.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), server.URL+"/panic", logFields["uri"])
-		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
+		assert.Equal(constants.TestACOID, logFields["aco_id"], "ACO in log entry should match the token.")
 		assert.Equal("A9995", logFields["cms_id"], "CMS ID in log entry should match the token.")
-		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
+		assert.Equal(constants.TestTokenID, logFields["token_id"], "Token ID in log entry should match the token.")
 	}
 
 	panicFields := hook.LastEntry().Data
@@ -212,10 +213,10 @@ func TestResourceTypeLogging(t *testing.T) {
 		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/blob.ndjson", test.jobID), nil)
 		repository := &models.MockRepository{}
 		if test.ResourceType != nil {
-			j := &models.JobKey{ID: 1, JobID: 1234, FileName: "blob.ndjson", ResourceType: test.ResourceType.(string)}
-			repository.On("GetJobKey", testUtils.CtxMatcher, uint(1234), "blob.ndjson").Return(j, nil)
+			j := &models.JobKey{ID: 1, JobID: 1234, FileName: constants.TestBlobFileName, ResourceType: test.ResourceType.(string)}
+			repository.On("GetJobKey", testUtils.CtxMatcher, uint(1234), constants.TestBlobFileName).Return(j, nil)
 		} else {
-			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), "blob.ndjson").Return(nil, errors.New("expected error"))
+			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), constants.TestBlobFileName).Return(nil, errors.New("expected error"))
 		}
 
 		entry := &logging.StructuredLoggerEntry{Logger: log.Request}

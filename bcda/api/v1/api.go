@@ -265,7 +265,7 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	dataDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
-	w.Header().Set("Content-Type", "application/fhir+ndjson")
+	w.Header().Set(constants.ContentType, "application/fhir+ndjson")
 
 	var useGZIP bool
 	for _, header := range r.Header.Values("Accept-Encoding") {
@@ -339,7 +339,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	_, err = w.Write(respBytes)
 	if err != nil {
 		log.API.Error(err)
@@ -368,7 +368,7 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	_, err = w.Write(respJSON)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -404,7 +404,7 @@ func GetAuthInfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	_, err = w.Write(respBytes)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

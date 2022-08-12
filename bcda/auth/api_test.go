@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 
 	"github.com/stretchr/testify/assert"
@@ -55,34 +56,34 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	auth.SetMockProvider(s.T(), mock)
 
 	// Missing authorization header
-	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req := httptest.NewRequest("POST", constants.TokenPath, nil)
 	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
 	// Malformed authorization header
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req = httptest.NewRequest("POST", constants.TokenPath, nil)
 	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", constants.JsonContentType)
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
 	// Invalid credentials
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req = httptest.NewRequest("POST", constants.TokenPath, nil)
 	req.SetBasicAuth("not_a_client", "not_a_secret")
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", constants.JsonContentType)
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 
 	// Success!?
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req = httptest.NewRequest("POST", constants.TokenPath, nil)
 	req.SetBasicAuth(clientID, clientSecret)
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", constants.JsonContentType)
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -111,7 +112,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", server.URL), nil)
 	assert.NoError(s.T(), err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", constants.JsonContentType)
 	resp, err := client.Do(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -122,7 +123,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 		assert.FailNow(s.T(), err.Error())
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", goodToken))
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", constants.JsonContentType)
 	resp, err = client.Do(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)

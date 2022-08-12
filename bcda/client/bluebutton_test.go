@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/sirupsen/logrus"
@@ -100,7 +101,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "foo.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", constants.TestKeyName)
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
@@ -112,12 +113,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 
 	assert := assert.New(s.T())
 
-	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", constants.EmptyKeyName)
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
-	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", constants.BadKeyName)
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
@@ -134,7 +135,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "foo.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", constants.TestKeyName)
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
@@ -146,12 +147,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 
 	assert := assert.New(s.T())
 
-	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", constants.EmptyKeyName)
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
-	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", constants.BadKeyName)
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
@@ -173,7 +174,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
-	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "foo.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", constants.TestKeyName)
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
@@ -189,13 +190,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 	assert := assert.New(s.T())
 
-	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", constants.EmptyKeyName)
 	conf.UnsetEnv(s.T(), "BB_CHECK_CERT")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
-	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../static/badPublic.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", constants.BadKeyName)
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
@@ -277,7 +278,7 @@ func (s *BBRequestTestSuite) TestGetMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), m, `"resourceType": "CapabilityStatement"`)
-	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
+	assert.NotContains(s.T(), m, constants.TestExcludeSAMHSA)
 }
 
 func (s *BBRequestTestSuite) TestGetMetadata_500() {
@@ -830,32 +831,32 @@ func sinceChecker(t *testing.T, req *http.Request) {
 	assert.Contains(t, req.URL.String(), fmt.Sprintf("_lastUpdated=%s", since))
 }
 func noExcludeSAMHSAChecker(t *testing.T, req *http.Request) {
-	assert.NotContains(t, req.URL.String(), "excludeSAMHSA=true")
+	assert.NotContains(t, req.URL.String(), constants.TestExcludeSAMHSA)
 }
 func excludeSAMHSAChecker(t *testing.T, req *http.Request) {
-	assert.Contains(t, req.URL.String(), "excludeSAMHSA=true")
+	assert.Contains(t, req.URL.String(), constants.TestExcludeSAMHSA)
 }
 func nowChecker(t *testing.T, req *http.Request) {
 	assert.Contains(t, req.URL.String(), fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 func noServiceDateChecker(t *testing.T, req *http.Request) {
-	assert.Empty(t, req.URL.Query()["service-date"])
+	assert.Empty(t, req.URL.Query()[constants.TestSvcDate])
 }
 func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.Query()["service-date"], fmt.Sprintf("le%s", claimsDate.UpperBound.Format("2006-01-02")))
+	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.UpperBound.Format(constants.TestSvcDateResult)))
 }
 func noServiceDateUpperBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.NotContains(t, req.URL.Query()["service-date"], fmt.Sprintf("le%s", claimsDate.UpperBound.Format("2006-01-02")))
+	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.UpperBound.Format(constants.TestSvcDateResult)))
 }
 func serviceDateLowerBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.Query()["service-date"], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format("2006-01-02")))
+	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(constants.TestSvcDateResult)))
 }
 func noServiceDateLowerBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.NotContains(t, req.URL.Query()["service-date"], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format("2006-01-02")))
+	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(constants.TestSvcDateResult)))
 }
 func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.Header.Get("IncludeAddressFields"))

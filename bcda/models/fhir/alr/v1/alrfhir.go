@@ -3,6 +3,7 @@ package v1
 import (
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
@@ -82,7 +83,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 		patientb, err := marshaller.MarshalResource(bulk.Patient)
 		if err != nil {
 			// Make sure to send err back to the other thread
-			log.API.Errorf("Could not convert patient fhir to json.")
+			log.API.Errorf(constants.ConvFHIRJsonErr)
 			return nil, err
 		}
 		patients = string(patientb) + "\n"
@@ -93,7 +94,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 		coverageb, err := marshaller.MarshalResource(bulk.Coverage)
 		if err != nil {
 			// Make sure to send err back to the other thread
-			log.API.Errorf("Could not convert patient fhir to json.")
+			log.API.Errorf(constants.ConvFHIRJsonErr)
 			return nil, err
 		}
 		coverage = string(coverageb) + "\n"
@@ -104,7 +105,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 		groupb, err := marshaller.MarshalResource(bulk.Group)
 		if err != nil {
 			// Make sure to send err back to the other thread
-			log.API.Errorf("Could not convert patient fhir to json.")
+			log.API.Errorf(constants.ConvFHIRJsonErr)
 			return nil, err
 		}
 		group = string(groupb) + "\n"
@@ -119,7 +120,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 			riskb, err := marshaller.MarshalResource(r)
 			if err != nil {
 				// Make sure to send err back to the other thread
-				log.API.Errorf("Could not convert patient fhir to json.")
+				log.API.Errorf(constants.ConvFHIRJsonErr)
 				return nil, err
 			}
 			risk := string(riskb)
@@ -132,7 +133,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 	if bulk.Observation != nil {
 		observationb, err := marshaller.MarshalResource(bulk.Observation)
 		if err != nil {
-			log.API.Errorf("Could not convert patient fhir to json.")
+			log.API.Errorf(constants.ConvFHIRJsonErr)
 			return nil, err
 		}
 		observation = string(observationb) + "\n"
@@ -142,7 +143,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 	if bulk.CovidEpisode != nil {
 		covidb, err := marshaller.MarshalResource(bulk.CovidEpisode)
 		if err != nil {
-			log.API.Errorf("Could not convert covid fhir to json.")
+			log.API.Errorf(constants.ConvFHIRJsonErr)
 			return nil, err
 		}
 		covidEpisode = string(covidb) + "\n"

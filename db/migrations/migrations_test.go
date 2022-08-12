@@ -18,6 +18,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -565,7 +566,7 @@ func (m migrator) runMigration(t *testing.T, idx uint) {
 }
 
 func assertColumnExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, columnName string) {
-	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("information_schema.columns ")
+	sb := sqlFlavor.NewSelectBuilder().Select(constants.TestCountSQL).From("information_schema.columns ")
 	sb.Where(sb.Equal("table_name", tableName), sb.Equal("column_name", columnName))
 	query, args := sb.Build()
 	var count int
@@ -579,7 +580,7 @@ func assertColumnExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, c
 }
 
 func assertTableExists(t *testing.T, shouldExist bool, db *sql.DB, tableName string) {
-	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("information_schema.tables ")
+	sb := sqlFlavor.NewSelectBuilder().Select(constants.TestCountSQL).From("information_schema.tables ")
 	sb.Where(sb.Equal("table_name", tableName))
 	query, args := sb.Build()
 	var count int
@@ -666,7 +667,7 @@ func updateTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string
 }
 
 func assertIndexExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, indexName string) {
-	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("pg_indexes")
+	sb := sqlFlavor.NewSelectBuilder().Select(constants.TestCountSQL).From("pg_indexes")
 	sb.Where(sb.Equal("tablename", tableName), sb.Equal("indexname", indexName))
 	query, args := sb.Build()
 	var count int

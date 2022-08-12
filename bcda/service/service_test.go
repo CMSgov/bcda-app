@@ -862,14 +862,14 @@ func (s *ServiceTestSuite) TestGetJobPriority() {
 		expSince     string
 		reqType      RequestType
 	}{
-		{"Patient with Since", defaultACOID, "Patient", "some time", DefaultRequest},
+		{"Patient with Since", defaultACOID, "Patient", constants.TestSomeTime, DefaultRequest},
 		{"Patient without Since", defaultACOID, "Patient", "", DefaultRequest},
-		{"Patient Runout", defaultACOID, "Patient", "some time", Runout},
+		{"Patient Runout", defaultACOID, "Patient", constants.TestSomeTime, Runout},
 		{"Patient with Historic Benes", defaultACOID, "Patient", "", RetrieveNewBeneHistData},
-		{"Priority ACO", priorityACOID, "Patient", "some time", DefaultRequest},
-		{"Group with Since", defaultACOID, "Coverage", "some time", DefaultRequest},
+		{"Priority ACO", priorityACOID, "Patient", constants.TestSomeTime, DefaultRequest},
+		{"Group with Since", defaultACOID, "Coverage", constants.TestSomeTime, DefaultRequest},
 		{"Group without Since", defaultACOID, "Coverage", "", DefaultRequest},
-		{"EOB with Since", defaultACOID, "ExplanationOfBenefit", "some time", DefaultRequest},
+		{"EOB with Since", defaultACOID, "ExplanationOfBenefit", constants.TestSomeTime, DefaultRequest},
 		{"EOB without Since", defaultACOID, "ExplanationOfBenefit", "", DefaultRequest},
 		{"EOB with Historic Benes", defaultACOID, "ExplanationOfBenefit", "", RetrieveNewBeneHistData},
 	}

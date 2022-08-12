@@ -18,6 +18,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -365,8 +366,8 @@ func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, e
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
-	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
-	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
+	req.Header.Add(constants.BBHeaderTS, time.Now().String())
+	req.Header.Add(constants.BBHeaderOriginQID, reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
@@ -446,8 +447,8 @@ func (h *httpLogger) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func (h *httpLogger) logRequest(req *http.Request) {
 	h.l.WithFields(logrus.Fields{
-		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"bb_query_id": req.Header.Get(constants.BBHeaderOriginQID),
+		"bb_query_ts": req.Header.Get(constants.BBHeaderTS),
 		"bb_uri":      req.URL.String(),
 		"job_id":      req.Header.Get(jobIDHeader),
 		"cms_id":      req.Header.Get(clientIDHeader),
@@ -457,8 +458,8 @@ func (h *httpLogger) logRequest(req *http.Request) {
 func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
 	h.l.WithFields(logrus.Fields{
 		"resp_code":   resp.StatusCode,
-		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"bb_query_id": req.Header.Get(constants.BBHeaderOriginQID),
+		"bb_query_ts": req.Header.Get(constants.BBHeaderTS),
 		"bb_uri":      req.URL.String(),
 		"job_id":      req.Header.Get(jobIDHeader),
 		"cms_id":      req.Header.Get(clientIDHeader),

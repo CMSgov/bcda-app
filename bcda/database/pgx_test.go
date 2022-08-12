@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/stdlib"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func TestPgxTxOperations(t *testing.T) {
 
 	var q Queryable = &PgxTx{tx}
 	var e Executable = &PgxTx{tx}
-	rows, err := q.QueryContext(context.Background(), "SELECT NOW()")
+	rows, err := q.QueryContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 
 	var result pgtype.Timestamptz
@@ -33,10 +34,10 @@ func TestPgxTxOperations(t *testing.T) {
 	assert.False(t, result.Time.IsZero(), "Time should be set")
 	assert.NoError(t, rows.Close())
 
-	assert.NoError(t, q.QueryRowContext(context.Background(), "SELECT NOW()").Scan(&result))
+	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNowSQL).Scan(&result))
 	assert.False(t, result.Time.IsZero(), "Time should be set")
 
-	res, err := e.ExecContext(context.Background(), "SELECT NOW()")
+	res, err := e.ExecContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 	affected, err := res.RowsAffected()
 	assert.NoError(t, err)

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -131,11 +132,11 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(constants.SsasClientErr, err.Error())
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	validResp := `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`
+	validResp := `{ "system_id": "1", "client_id": ` + constants.FakeClientIDBt + `, "client_secret": ` + constants.FakeSecretBt + `, "client_name": "fake-name" }`
 	tests := []struct {
 		name      string
 		ips       []string
@@ -160,7 +161,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 
 			assert.NoError(t, err)
 			assert.Equal(t, "1", creds.SystemID)
-			assert.Equal(t, "fake-client-id", creds.ClientID)
+			assert.Equal(t, constants.FakeClientID, creds.ClientID)
 		})
 	}
 }
@@ -177,7 +178,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	router := chi.NewRouter()
 	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, constants.FakeClientID, constants.FakeSecret)
 	})
 	server := httptest.NewServer(router)
 
@@ -187,14 +188,14 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(constants.SsasClientErr, err.Error())
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	creds, err := s.p.ResetSecret(testACOUUID)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
-	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+	assert.Equal(s.T(), constants.FakeClientID, creds.ClientID)
+	assert.Equal(s.T(), constants.FakeSecret, creds.ClientSecret)
 }
 
 func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {
@@ -207,7 +208,7 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(constants.SsasClientErr, err.Error())
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
@@ -255,7 +256,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(constants.SsasClientErr, err.Error())
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
@@ -466,7 +467,7 @@ func MockSSASServer(tokenString string) {
 			return
 		}
 
-		if clientId == "mock-client" {
+		if clientId == constants.MockClient {
 			render.JSON(w, r, client.TokenResponse{AccessToken: tokenString, TokenType: "access_token"})
 		}
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -484,7 +485,7 @@ func MockSSASToken() (*jwt.Token, string, error) {
 	claims := CommonClaims{
 		SystemID: "mock-system",
 		Data:     `{"cms_ids":["A9995"]}`,
-		ClientID: "mock-client",
+		ClientID: constants.MockClient,
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    "ssas",
 			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),

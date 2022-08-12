@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,7 +75,7 @@ func TestValidRequestHeaders(t *testing.T) {
 	req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
 	assert.NoError(t, err)
 	req.Header.Set("Accept", "application/fhir+json")
-	req.Header.Set("Prefer", "respond-async")
+	req.Header.Set("Prefer", constants.TestRespondAsync)
 
 	rr := httptest.NewRecorder()
 	ValidateRequestHeaders(noop).ServeHTTP(rr, req)
@@ -87,8 +88,8 @@ func TestInvalidRequestHeaders(t *testing.T) {
 		preferHeader string
 		errMsg       string
 	}{
-		{"NoAcceptHeader", "", "respond-async", "Accept header is required"},
-		{"InvalidAcceptHeader", "invalid", "respond-async", "application/fhir+json is the only supported response format"},
+		{"NoAcceptHeader", "", constants.TestRespondAsync, "Accept header is required"},
+		{"InvalidAcceptHeader", "invalid", constants.TestRespondAsync, "application/fhir+json is the only supported response format"},
 		{"NoPreferHeader", "application/fhir+json", "", "Prefer header is required"},
 		{"InvalidPreferHeader", "application/fhir+json", "invalid", "Only asynchronous responses are supported"},
 	}

@@ -125,7 +125,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 		s.T().Run(string(tt.status), func(t *testing.T) {
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-				RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+				RequestURL: constants.V1Path + constants.PatientEOBPath,
 				Status:     tt.status,
 			}
 			postgrestest.CreateJobs(t, s.db, &j)
@@ -152,7 +152,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -160,7 +160,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	var expectedUrls []string
 	for i := 1; i <= 10; i++ {
 		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
-		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
+		expectedurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
 		expectedUrls = append(expectedUrls, expectedurl)
 		postgrestest.CreateJobKeys(s.T(), s.db,
 			models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"})
@@ -170,7 +170,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
+	assert.Equal(s.T(), "application/json", s.rr.Header().Get(constants.ContentType))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
 	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
@@ -203,7 +203,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -235,7 +235,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
+	assert.Equal(s.T(), "application/json", s.rr.Header().Get(constants.ContentType))
 
 	var rb api.BulkResponseBody
 	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -243,8 +243,8 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
-	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
-	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", "http://example.com/data", fmt.Sprint(j.ID), errFileName)
+	dataurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
+	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", constants.ExpectedTestUrl, fmt.Sprint(j.ID), errFileName)
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
@@ -260,7 +260,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 func (s *APITestSuite) TestJobStatusNotExpired() {
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -327,7 +327,7 @@ func (s *APITestSuite) TestDeleteJob() {
 		s.T().Run(string(tt.status), func(t *testing.T) {
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-				RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+				RequestURL: constants.V1Path + constants.PatientEOBPath,
 				Status:     tt.status,
 			}
 			postgrestest.CreateJobs(t, s.db, &j)
@@ -378,7 +378,7 @@ func (s *APITestSuite) TestServeData() {
 			handler.ServeHTTP(s.rr, req)
 
 			assert.Equal(t, http.StatusOK, s.rr.Code)
-			assert.Equal(t, "application/fhir+ndjson", s.rr.Result().Header.Get("Content-Type"))
+			assert.Equal(t, "application/fhir+ndjson", s.rr.Result().Header.Get(constants.ContentType))
 
 			var b []byte
 
@@ -430,7 +430,7 @@ func (s *APITestSuite) TestGetVersion() {
 func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusPending,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -450,7 +450,7 @@ func (s *APITestSuite) TestJobsStatus() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -478,7 +478,7 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -496,7 +496,7 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -514,7 +514,7 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: constants.V1Path + constants.PatientEOBPath,
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)

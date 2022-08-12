@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -19,11 +20,11 @@ func TestModelsTestSuite(t *testing.T) {
 }
 
 func (s *ModelsTestSuite) TestJobStatusMessage() {
-	j := Job{Status: "In Progress", JobCount: 25, CompletedJobCount: 6}
+	j := Job{Status: constants.InProgress, JobCount: 25, CompletedJobCount: 6}
 	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage())
 
-	j = Job{Status: "In Progress", JobCount: 0, CompletedJobCount: 0}
-	assert.Equal(s.T(), "In Progress", j.StatusMessage())
+	j = Job{Status: constants.InProgress, JobCount: 0, CompletedJobCount: 0}
+	assert.Equal(s.T(), constants.InProgress, j.StatusMessage())
 
 	j = Job{Status: JobStatusCompleted, JobCount: 25, CompletedJobCount: 25}
 	assert.Equal(s.T(), string(JobStatusCompleted), j.StatusMessage())

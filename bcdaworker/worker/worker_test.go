@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -188,7 +189,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 			assert.Len(t, files, 1)
 
 			for _, f := range files {
-				filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, f.Name())
+				filePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, f.Name())
 				file, err := os.Open(filePath)
 				if err != nil {
 					s.FailNow(err.Error())
@@ -321,7 +322,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -368,7 +369,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	dataFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
+	dataFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
 	d, err := ioutil.ReadFile(dataFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -376,7 +377,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	// Should be empty
 	s.Empty(d)
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
 	d, err = ioutil.ReadFile(errorFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -447,7 +448,7 @@ func (s *WorkerTestSuite) TestAppendErrorToFile() {
 func (s *WorkerTestSuite) TestProcessJobEOB() {
 	ctx := context.Background()
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusPending,
 		JobCount:   1,
@@ -463,7 +464,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
-		BBBasePath:     "/v1/fhir",
+		BBBasePath:     constants.TestFHIRPath,
 	}
 
 	err = s.w.ProcessJob(ctx, j, jobArgs)
@@ -480,7 +481,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 
 func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 		JobCount:   1,
@@ -493,7 +494,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
-		BBBasePath:     "/v1/fhir",
+		BBBasePath:     constants.TestFHIRPath,
 	}
 
 	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
@@ -506,7 +507,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	ctx := context.Background()
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     models.JobStatusCancelled,
 		JobCount:   1,
@@ -518,7 +519,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
-		BBBasePath:     "/v1/fhir",
+		BBBasePath:     constants.TestFHIRPath,
 	}
 
 	processJobErr := s.w.ProcessJob(ctx, j, jobArgs)

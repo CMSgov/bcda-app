@@ -374,7 +374,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	if _, err = w.Write(b); err != nil {
 		log.API.Errorf("Failed to write data %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

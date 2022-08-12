@@ -80,14 +80,14 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 		// iterate in this zipped folder until we find our cclf0 file
 		if f.Name == fileMetadata.name {
 			rawFile = f
-			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
+			fmt.Printf(constants.ReadingFileN, fileMetadata.name, fileMetadata.filePath)
 			log.API.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
 	}
 
 	if rawFile == nil {
-		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		fmt.Printf(constants.FileNotFoundN, fileMetadata.name, fileMetadata.filePath)
+		err = errors.Wrapf(err, constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
 		log.API.Error(err)
 		return nil, err
 	}
@@ -236,14 +236,14 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	for _, f := range r.File {
 		if f.Name == fileMetadata.name {
 			rawFile = f
-			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
+			fmt.Printf(constants.ReadingFileN, fileMetadata.name, fileMetadata.filePath)
 			log.API.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
 	}
 
 	if rawFile == nil {
-		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-		err = fmt.Errorf("file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		fmt.Printf(constants.FileNotFoundN, fileMetadata.name, fileMetadata.filePath)
+		err = fmt.Errorf(constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
 		log.API.Error(err)
 		return err
 	}
@@ -404,14 +404,14 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	for _, f := range r.File {
 		if f.Name == fileMetadata.name {
 			rawFile = f
-			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
+			fmt.Printf(constants.ReadingFileN, fileMetadata.name, fileMetadata.filePath)
 			log.API.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
 	}
 
 	if rawFile == nil {
-		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		fmt.Printf(constants.FileNotFoundN, fileMetadata.name, fileMetadata.filePath)
+		err = errors.Wrapf(err, constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
 		log.API.Error(err)
 		return err
 	}
