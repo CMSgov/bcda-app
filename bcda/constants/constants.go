@@ -20,7 +20,7 @@ const CliCMSIDArg = "cms-id"
 const CliCMSIDDesc = "CMS ID of ACO"
 const CliArchDesc = "How long files should wait in archive before deletion"
 const CliRemoveArchDesc = "Remove job directory and files from archive and update job status to Expired"
-const CliAuthTools = "Authentication tools"
+const CliAuthToolsCategory = "Authentication tools"
 const CliDataImpCategory = "Data import"
 
 const ContentType = "Content-Type"

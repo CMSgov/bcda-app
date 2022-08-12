@@ -146,7 +146,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "create-group",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Create a group (SSAS)",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -176,7 +176,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "create-aco",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -202,7 +202,7 @@ func setUpApp() *cli.App {
 		// FYI, save-public-cred deprecated
 		{
 			Name:     "revoke-token",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Revoke an access token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -222,7 +222,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "generate-client-credentials",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Register a system and generate credentials for client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -254,7 +254,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "reset-client-credentials",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Generate a new secret for a client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -532,7 +532,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "blacklist-aco",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Blacklists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -552,7 +552,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "unblacklist-aco",
-			Category: constants.CliAuthTools,
+			Category: constants.CliAuthToolsCategory,
 			Usage:    "Unblacklists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
