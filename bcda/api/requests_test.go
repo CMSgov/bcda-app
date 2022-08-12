@@ -112,8 +112,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		respCode    int
 		apiVersion  string
 	}{
-		{"Successful", nil, http.StatusAccepted, "v1"},
-		{"Successful v2", nil, http.StatusAccepted, "v2"},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
 		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionOne},
 		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionTwo},
 		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
