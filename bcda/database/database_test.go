@@ -11,7 +11,7 @@ import (
 func TestDBOperations(t *testing.T) {
 	var q Queryable = &DB{Connection}
 	var e Executable = &DB{Connection}
-	rows, err := q.QueryContext(context.Background(), constants.TestSelectNow)
+	rows, err := q.QueryContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 
 	var result string
@@ -20,10 +20,10 @@ func TestDBOperations(t *testing.T) {
 	assert.NotEmpty(t, result)
 	assert.NoError(t, rows.Close())
 
-	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNow).Scan(&result))
+	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNowSQL).Scan(&result))
 	assert.NotEmpty(t, result)
 
-	res, err := e.ExecContext(context.Background(), constants.TestSelectNow)
+	res, err := e.ExecContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 	affected, err := res.RowsAffected()
 	assert.NoError(t, err)
@@ -39,7 +39,7 @@ func TestTxOperations(t *testing.T) {
 
 	var q Queryable = &Tx{tx}
 	var e Executable = &Tx{tx}
-	rows, err := q.QueryContext(context.Background(), constants.TestSelectNow)
+	rows, err := q.QueryContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 
 	var result string
@@ -48,10 +48,10 @@ func TestTxOperations(t *testing.T) {
 	assert.NotEmpty(t, result)
 	assert.NoError(t, rows.Close())
 
-	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNow).Scan(&result))
+	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNowSQL).Scan(&result))
 	assert.NotEmpty(t, result)
 
-	res, err := e.ExecContext(context.Background(), constants.TestSelectNow)
+	res, err := e.ExecContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 	affected, err := res.RowsAffected()
 	assert.NoError(t, err)

@@ -25,7 +25,7 @@ func TestPgxTxOperations(t *testing.T) {
 
 	var q Queryable = &PgxTx{tx}
 	var e Executable = &PgxTx{tx}
-	rows, err := q.QueryContext(context.Background(), constants.TestSelectNow)
+	rows, err := q.QueryContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 
 	var result pgtype.Timestamptz
@@ -34,10 +34,10 @@ func TestPgxTxOperations(t *testing.T) {
 	assert.False(t, result.Time.IsZero(), "Time should be set")
 	assert.NoError(t, rows.Close())
 
-	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNow).Scan(&result))
+	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNowSQL).Scan(&result))
 	assert.False(t, result.Time.IsZero(), "Time should be set")
 
-	res, err := e.ExecContext(context.Background(), constants.TestSelectNow)
+	res, err := e.ExecContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 	affected, err := res.RowsAffected()
 	assert.NoError(t, err)

@@ -69,8 +69,10 @@ const FakeSecret = "fake-secret"
 const FakeSecretBt = `"fake-secret"`
 const CacheControl = "Cache-Control"
 const TestRespondAsync = "respond-async"
-const TestSelectNow = "SELECT NOW()"
-const TestCount = "COUNT(1)"
+
+//SQL Constants
+const TestSelectNowSQL = "SELECT NOW()"
+const TestCountSQL = "COUNT(1)"
 
 //Named Constants
 const CCLF8CompPath = "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
@@ -84,4 +86,4 @@ const TestSuppressMetaFileName = "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
 const TestListData = "One,Two,Three,Four"
 const TestSvcDateResult = "2006-01-02"
 const TestScore = "1.2345"
-const TestConfig = "TEST\\d{4}"
+const RegexACOID = "TEST\\d{4}"

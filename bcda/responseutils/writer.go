@@ -305,7 +305,7 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 		return
 	}
 
-	w.Header().Set(constants.ContentType, constants.ContentType)
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(resourceJSON)
 	if err != nil {

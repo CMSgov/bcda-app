@@ -15,13 +15,13 @@ var Version = "latest"
 const Adjudicated = "adjudicated"
 const PartiallyAdjudicated = "partially-adjudicated"
 
-const AuthTools = "Authentication tools"
-
-const FlagCMSID = "cms-id"
-const FlagCMSIDACO = "CMS ID of ACO"
-const FlagArch = "How long files should wait in archive before deletion"
-const FlagRemoveArch = "Remove job directory and files from archive and update job status to Expired"
-const FlagDataImport = "Data import"
+//Cli.go constants
+const CliCMSIDArg = "cms-id"
+const CliCMSIDDesc = "CMS ID of ACO"
+const CliArchDesc = "How long files should wait in archive before deletion"
+const CliRemoveArchDesc = "Remove job directory and files from archive and update job status to Expired"
+const CliAuthTools = "Authentication tools"
+const CliDataImpCategory = "Data import"
 
 const ContentType = "Content-Type"
 const JsonContentType = "application/json"
