@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/log"
@@ -242,9 +243,9 @@ func confirmRequestorTokenPayload(token *jwt.Token) error {
 
 	if !ok {
 		return &customErrors.RequestorDataError{Err: tokenPayloadError, Msg: "unable to cast token.Claims to CommonClaims struct"}
-	} else if claims.Issuer != "ssas" {
+	} else if claims.Issuer != constants.IssuerSSAS {
 		return &customErrors.RequestorDataError{Err: tokenPayloadError, Msg: fmt.Sprintf("invalid issuer supplied in token CommonClaims '%s'", claims.Issuer)}
-	} else if claims.Data == "" {
+	} else if claims.Data == constants.EmptyString {
 		return &customErrors.RequestorDataError{Err: tokenPayloadError, Msg: "token CommonClaims Data is missing/empty"}
 	}
 	return nil

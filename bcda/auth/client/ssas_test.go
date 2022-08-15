@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
@@ -330,57 +329,8 @@ func (s *SSASClientTestSuite) TestGetVersionFailing() {
 	assert.NotNil(s.T(), err)
 }
 
-func makeTestServerWithIntrospectEndpoint(s *SSASClientTestSuite, activeToken bool) *httptest.Server {
-	router := chi.NewRouter()
-	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
-		var (
-			buf   []byte
-			input struct {
-				Token string `json:"token"`
-			}
-		)
-		buf, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			s.FailNow("unexpected failure %s", err.Error())
-		}
-
-		if err := json.Unmarshal(buf, &input); err != nil {
-			s.FailNow("unexpected failure %s", err.Error())
-		}
-
-		body, err := json.Marshal(struct {
-			Active bool `json:"active"`
-		}{Active: activeToken})
-		if err != nil {
-			s.FailNow("Invalid response in mock ssas server")
-		}
-
-		if _, err := w.Write(body); err != nil {
-			s.FailNow("Write failure in mock ssas server; %s", err)
-		}
-	})
-	return httptest.NewServer(router)
-}
-
-func makeTestServerWithIntrospectReturn502(s *SSASClientTestSuite) *httptest.Server {
-	router := chi.NewRouter()
-	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadGateway)
-	})
-	return httptest.NewServer(router)
-}
-
-func makeTestServerWithIntrospectTimeout(s *SSASClientTestSuite) *httptest.Server {
-	router := chi.NewRouter()
-	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(time.Second * 10)
-	})
-
-	return httptest.NewServer(router)
-}
-
 func (s *SSASClientTestSuite) TestCallSSASIntrospect() {
-	server := makeTestServerWithIntrospectEndpoint(s, true)
+	server := testUtils.MakeTestServerWithIntrospectEndpoint(true)
 
 	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
 	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
@@ -416,7 +366,7 @@ func createByteIntrospectResponse(s *SSASClientTestSuite, shouldBeActive bool) (
 }
 
 func (s *SSASClientTestSuite) TestCallSSASIntrospectEnvironmentVariables() {
-	server := makeTestServerWithIntrospectEndpoint(s, true)
+	server := testUtils.MakeTestServerWithIntrospectEndpoint(true)
 	emptyString := ""
 	nonEmptyString := "happyCustomer"
 	const token = "totallyfake.tokenstringfor.testing"
@@ -476,10 +426,10 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
 		errTypeToReturn error
 		tokenString     string
 	}{
-		{"Active Valid Token", makeTestServerWithIntrospectEndpoint(s, true), fiveHundredSeconds, createByteIntrospectResponse(s, true), nil, token},
-		{"Inactive (Expired) Valid Token", makeTestServerWithIntrospectEndpoint(s, false), fiveHundredSeconds, createByteIntrospectResponse(s, false), nil, token}, //no Expired Token error assertion here, that is handled in upstream method
-		{"Introspect call timed out", makeTestServerWithIntrospectTimeout(s), fiveSeconds, nil, &customErrors.RequestTimeoutError{Msg: emptyString, Err: nil}, token},
-		{"Introspect call return other status code (502)", makeTestServerWithIntrospectReturn502(s), fiveHundredSeconds, nil, &customErrors.UnexpectedSSASError{Msg: emptyString, Err: nil}, token},
+		{"Active Valid Token", testUtils.MakeTestServerWithIntrospectEndpoint(true), fiveHundredSeconds, createByteIntrospectResponse(s, true), nil, token},
+		{"Inactive (Expired) Valid Token", testUtils.MakeTestServerWithIntrospectEndpoint(false), fiveHundredSeconds, createByteIntrospectResponse(s, false), nil, token}, //no Expired Token error assertion here, that is handled in upstream method
+		{"Introspect call timed out", testUtils.MakeTestServerWithIntrospectTimeout(), fiveSeconds, nil, &customErrors.RequestTimeoutError{Msg: emptyString, Err: nil}, token},
+		{"Introspect call return other status code (502)", testUtils.MakeTestServerWithIntrospectReturn502(), fiveHundredSeconds, nil, &customErrors.UnexpectedSSASError{Msg: emptyString, Err: nil}, token},
 	}
 
 	for _, tt := range tests {

@@ -292,23 +292,67 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token contains an invalid number of segments")
 }
 
-func createCommonClaimsForTesting(data string) CommonClaims {
-	return CommonClaims{
-		StandardClaims: jwt.StandardClaims{
-			Issuer: "ssas",
-		},
-		ClientID: uuid.New(),
-		SystemID: uuid.New(),
-		Data:     data, //"ac", //Data setup as bad string to trigger error
+func (s *SSASPluginTestSuite) TestVerifyTokenErrorHandling() {
+
+	_, goodTokenString, _ := MockSSASToken()
+
+	nonSsasIssuerClaims := createCommonClaimsForTesting(constants.EmptyString, "random12") //Data setup as non-ssas to trigger error
+	badNonSsasIssuerTokenString := createTokenStringFromCommonClaims(nonSsasIssuerClaims)
+
+	emptyDataClaims := createCommonClaimsForTesting(constants.EmptyString, constants.IssuerSSAS) //Data setup as empty to trigger error
+	badEmptyClaimsDataTokenString := createTokenStringFromCommonClaims(emptyDataClaims)
+
+	tests := []struct {
+		scenarioName         string
+		tokenString          string
+		server               *httptest.Server
+		errTypeToReturn      error
+		errMsgStringExpected string
+	}{
+		{"confirmTokenStringLegitimacy Fails due to parsing to jwt Token - return err", "abcd", testUtils.MakeTestServerWithIntrospectEndpoint(true), &customErrors.RequestorDataError{Msg: constants.EmptyString, Err: nil}, "unable to parse provided tokenString to jwt.token"},
+		{"confirmTokenStringLegitimacy Fails due to issuer not SSAS - return err", badNonSsasIssuerTokenString, testUtils.MakeTestServerWithIntrospectEndpoint(true), &customErrors.RequestorDataError{Msg: constants.EmptyString, Err: nil}, "invalid issuer supplied in token CommonClaims"},
+		{"confirmTokenStringLegitimacy Fails due to Claims Data Empty - return err", badEmptyClaimsDataTokenString, testUtils.MakeTestServerWithIntrospectEndpoint(true), &customErrors.RequestorDataError{Msg: constants.EmptyString, Err: nil}, "token CommonClaims Data is missing/empty"},
+		{"CallSSASIntrospect Fails - return err", goodTokenString, testUtils.MakeTestServerWithIntrospectReturn502(), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, "Unexpected SSAS Error encountered - Status code received in introspect response is 502"},
+		{"CheckTokenExpiration Fails - return err", goodTokenString, testUtils.MakeTestServerWithIntrospectEndpoint(false), &customErrors.ExpiredTokenError{Msg: constants.EmptyString, Err: nil}, "the provided token has expired (is not active)"},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.scenarioName, func(t *testing.T) {
+			conf.SetEnv(t, "SSAS_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.server.URL)
+
+			c, err := client.NewSSASClient()
+			require.NotNil(t, c, sSasClientErrorMsg, err)
+			s.p = SSASPlugin{client: c, repository: s.r}
+
+			_, err = s.p.VerifyToken(tt.tokenString)
+			assert.IsType(t, tt.errTypeToReturn, err)
+			assert.Contains(t, err.Error(), tt.errMsgStringExpected)
+		})
 	}
 }
 
-func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFromClaimsFails() {
-	claims := createCommonClaimsForTesting("ac") //Data setup as bad string to trigger error
+func createCommonClaimsForTesting(data string, issuer string) CommonClaims {
+	return CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: issuer,
+		},
+		ClientID: uuid.New(),
+		SystemID: uuid.New(),
+		Data:     data,
+	}
+}
 
+func createTokenStringFromCommonClaims(claims CommonClaims) (tokenString string) {
 	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
 	pk, _ := rsa.GenerateKey(rand.Reader, 2048)
-	ts, _ := t.SignedString(pk)
+	tokenString, _ = t.SignedString(pk)
+	return tokenString
+}
+
+func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFromClaimsFails() {
+	claims := createCommonClaimsForTesting("ac", constants.IssuerSSAS) //Data setup as bad string to trigger error
+	ts := createTokenStringFromCommonClaims(claims)
 
 	MockSSASServer(ts)
 
@@ -327,7 +371,7 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsErrIsNilWhenHappyPath() {
 
 	commonClaims := &CommonClaims{
 		StandardClaims: jwt.StandardClaims{
-			Issuer: "ssas",
+			Issuer: constants.IssuerSSAS,
 		},
 		ClientID: clientID,
 		SystemID: uuid.New(),
@@ -358,7 +402,7 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsReturnEntityNotFoundError
 
 	commonClaims := &CommonClaims{
 		StandardClaims: jwt.StandardClaims{
-			Issuer: "ssas",
+			Issuer: constants.IssuerSSAS,
 		},
 		ClientID: clientID,
 		SystemID: uuid.New(),
@@ -395,8 +439,8 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenCommonClai
 		commonClaims    CommonClaims
 		expectedMessage string
 	}{
-		{"CommonClaims Data has no quotes to remove (incomplete ssas token)", createCommonClaimsForTesting(""), "incomplete ssas token"},
-		{"CommonClaims Data is unable to be decoded", createCommonClaimsForTesting("abcdefg"), "can't decode data claim abcdefg; invalid character 'a' looking for beginning of value"},
+		{"CommonClaims Data has no quotes to remove (incomplete ssas token)", createCommonClaimsForTesting("", constants.IssuerSSAS), "incomplete ssas token"},
+		{"CommonClaims Data is unable to be decoded", createCommonClaimsForTesting("abcdefg", constants.IssuerSSAS), "can't decode data claim abcdefg; invalid character 'a' looking for beginning of value"},
 	}
 
 	for _, tt := range tests {
@@ -487,7 +531,7 @@ func MockSSASToken() (*jwt.Token, string, error) {
 		Data:     `{"cms_ids":["A9995"]}`,
 		ClientID: constants.MockClient,
 		StandardClaims: jwt.StandardClaims{
-			Issuer:    "ssas",
+			Issuer:    constants.IssuerSSAS,
 			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
 			IssuedAt:  time.Now().Unix(),
 			Id:        "mock-id",

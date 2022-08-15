@@ -378,7 +378,7 @@ func (c *SSASClient) CallSSASIntrospect(tokenString string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("introspect request failed; %v", resp.StatusCode)}
+		return nil, &customErrors.UnexpectedSSASError{Err: errors.New("Status code NOT equal to 200 (Status OK)"), SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("Status code received in introspect response is %v", resp.StatusCode)}
 	}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
