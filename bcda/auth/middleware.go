@@ -96,14 +96,6 @@ func handleSsasAuthDataError(w http.ResponseWriter, rw fhirResponseWriter, err e
 }
 
 func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
-	//new error types:
-	//RequestorDataError (400 bad request),
-	//InternalParsingError (500),
-	//ConfigError (500),
-	//RequestTimeoutError (503) //WITH 1 second retry indicated in headers
-	//UnexpectedSSASError (500)
-	//ExpiredTokenError (401)
-
 	if err != nil {
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:

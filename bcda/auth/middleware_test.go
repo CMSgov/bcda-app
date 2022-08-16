@@ -184,6 +184,57 @@ func setupDataForAuthMiddlewareTest() (bearerString string, authData auth.AuthDa
 	return bearerString, authData, token, cmsID
 }
 
+func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
+	bearerString := uuid.NewRandom().String()
+	const errorHappened = "Error Happened!"
+	const errMsg = "Error Message"
+
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
+
+	client := s.server.Client()
+
+	tests := []struct {
+		ScenarioName       string
+		ErrorToReturn      error
+		StatusCode         int
+		ResponseBodyString string
+	}{
+		{"Requestor Data Error Return 400", &customErrors.RequestorDataError{Err: errors.New(errorHappened), Msg: errMsg}, 400, responseutils.InternalErr},
+		{"Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr},
+		{"Config Error Return 500", &customErrors.ConfigError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr},
+		{"Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, responseutils.InternalErr},
+		{"Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr},
+		{"Expired Token Error Return 401", &customErrors.ExpiredTokenError{Err: errors.New(errorHappened), Msg: errMsg}, 401, responseutils.TokenErr},
+		{"Default Error Return 401", errors.New(errorHappened), 401, responseutils.TokenErr},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.ScenarioName, func(t *testing.T) {
+
+			//setup mocks
+			mock := &auth.MockProvider{}
+			mock.On("VerifyToken", bearerString).Return(nil, tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mock)
+
+			//Act
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			//Assert
+			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
+			assert.Contains(s.T(), testUtils.ReadResponseBody(resp), tt.ResponseBodyString)
+			mock.AssertExpectations(s.T())
+		})
+	}
+
+}
+
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFoundError() {
 	bearerString, authData, token, cmsID := setupDataForAuthMiddlewareTest()
 
