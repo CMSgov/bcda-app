@@ -198,18 +198,19 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 	client := s.server.Client()
 
 	tests := []struct {
-		ScenarioName       string
-		ErrorToReturn      error
-		StatusCode         int
-		ResponseBodyString string
+		ScenarioName          string
+		ErrorToReturn         error
+		StatusCode            int
+		ResponseBodyString    string
+		HeaderRetryAfterValue string
 	}{
-		{"Requestor Data Error Return 400", &customErrors.RequestorDataError{Err: errors.New(errorHappened), Msg: errMsg}, 400, responseutils.InternalErr},
-		{"Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr},
-		{"Config Error Return 500", &customErrors.ConfigError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr},
-		{"Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, responseutils.InternalErr},
-		{"Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr},
-		{"Expired Token Error Return 401", &customErrors.ExpiredTokenError{Err: errors.New(errorHappened), Msg: errMsg}, 401, responseutils.TokenErr},
-		{"Default Error Return 401", errors.New(errorHappened), 401, responseutils.TokenErr},
+		{"Requestor Data Error Return 400", &customErrors.RequestorDataError{Err: errors.New(errorHappened), Msg: errMsg}, 400, responseutils.InternalErr, constants.EmptyString},
+		{"Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
+		{"Config Error Return 500", &customErrors.ConfigError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
+		{"Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, responseutils.InternalErr, "1"},
+		{"Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
+		{"Expired Token Error Return 401", &customErrors.ExpiredTokenError{Err: errors.New(errorHappened), Msg: errMsg}, 401, responseutils.TokenErr, constants.EmptyString},
+		{"Default Error Return 401", errors.New(errorHappened), 401, responseutils.TokenErr, constants.EmptyString},
 	}
 
 	for _, tt := range tests {
@@ -228,6 +229,7 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 
 			//Assert
 			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
+			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
 			assert.Contains(s.T(), testUtils.ReadResponseBody(resp), tt.ResponseBodyString)
 			mock.AssertExpectations(s.T())
 		})
