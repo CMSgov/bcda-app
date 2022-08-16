@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -158,11 +159,20 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 
 func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, code int) {
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
+	if code == http.StatusServiceUnavailable {
+		includeRetryAfterHeader(w)
+	}
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func includeRetryAfterHeader(w http.ResponseWriter) {
+	//default retrySeconds: 1 second (may convert to environmental variable later)
+	retrySeconds := strconv.FormatInt(int64(1), 10)
+	w.Header().Set("Retry-After", retrySeconds)
 }
 
 func WriteOperationOutcome(w io.Writer, outcome *fhirmodels.OperationOutcome) (int, error) {

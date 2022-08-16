@@ -5,15 +5,19 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
 
 	"github.com/otiai10/copy"
@@ -158,4 +162,61 @@ func ReadResponseBody(r *http.Response) string {
 
 	bodyString := bytes.NewBuffer(body).String()
 	return bodyString
+}
+
+//MakeTestServerWithIntrospectEndpoint creates an httptest.Server with an introspect endpoint that will
+//return back a response with a json body indicating if "active" is set to true or false (set by active
+//token parameter)
+func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
+	router := chi.NewRouter()
+	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
+		var (
+			buf   []byte
+			input struct {
+				Token string `json:"token"`
+			}
+		)
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Printf("Unexpected error creating test server: Error in reading request body: %s", err.Error())
+			return
+		}
+
+		if unmarshalErr := json.Unmarshal(buf, &input); unmarshalErr != nil {
+			fmt.Printf("Unexpected error creating test server: Error in unmarshalling the buffered input to JSON: %s", unmarshalErr.Error())
+			return
+		}
+
+		body, _ := json.Marshal(struct {
+			Active bool `json:"active"`
+		}{Active: activeToken})
+
+		_, responseWriterErr := w.Write(body)
+		if responseWriterErr != nil {
+			fmt.Printf("Unexpected error creating test server: Error reading request body: %s", responseWriterErr.Error())
+		}
+
+	})
+	return httptest.NewServer(router)
+}
+
+//MakeTestServerWithIntrospectTimeout creates an httptest.Server with an introspect endpoint that will sleep for 10 seconds.
+//Useful in testing where the env timeout is set to something less (ex. 5 seconds) and you want to ensure *url.Error.Timeout() returns true.
+func MakeTestServerWithIntrospectTimeout() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Second * 10)
+	})
+
+	return httptest.NewServer(router)
+}
+
+//MakeTestServerWithIntrospectReturn502 creates an httptest.Server
+//with an introspect endpoint that will return 502 Status Code.
+func MakeTestServerWithIntrospectReturn502() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	})
+	return httptest.NewServer(router)
 }

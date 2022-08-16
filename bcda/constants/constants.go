@@ -33,3 +33,7 @@ const CCLFFileRetID = "%s RETURNING id"
 const JobKeyCreateErr = "failed to create job key: %w"
 
 const JOBIDPath = "/jobs/{jobID}"
+
+const IssuerSSAS = "ssas"
+
+const EmptyString = ""

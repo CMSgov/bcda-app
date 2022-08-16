@@ -62,7 +62,7 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 }
 
 //integration test: makes HTTP request & asserts HTTP response
-func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignature() {
+func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignature() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
@@ -76,7 +76,7 @@ func (s *MiddlewareTestSuite) TestReturn404WhenInvalidTokenAuthWithInvalidSignat
 
 	assert.NotNil(s.T(), resp)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), 401, resp.StatusCode)
+	assert.Equal(s.T(), 400, resp.StatusCode)
 	assert.Nil(s.T(), err)
 }
 
@@ -182,6 +182,59 @@ func setupDataForAuthMiddlewareTest() (bearerString string, authData auth.AuthDa
 		Valid: true}
 
 	return bearerString, authData, token, cmsID
+}
+
+func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
+	bearerString := uuid.NewRandom().String()
+	const errorHappened = "Error Happened!"
+	const errMsg = "Error Message"
+
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
+
+	client := s.server.Client()
+
+	tests := []struct {
+		ScenarioName          string
+		ErrorToReturn         error
+		StatusCode            int
+		ResponseBodyString    string
+		HeaderRetryAfterValue string
+	}{
+		{"Requestor Data Error Return 400", &customErrors.RequestorDataError{Err: errors.New(errorHappened), Msg: errMsg}, 400, responseutils.InternalErr, constants.EmptyString},
+		{"Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
+		{"Config Error Return 500", &customErrors.ConfigError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
+		{"Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, responseutils.InternalErr, "1"},
+		{"Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
+		{"Expired Token Error Return 401", &customErrors.ExpiredTokenError{Err: errors.New(errorHappened), Msg: errMsg}, 401, responseutils.TokenErr, constants.EmptyString},
+		{"Default Error Return 401", errors.New(errorHappened), 401, responseutils.TokenErr, constants.EmptyString},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.ScenarioName, func(t *testing.T) {
+
+			//setup mocks
+			mock := &auth.MockProvider{}
+			mock.On("VerifyToken", bearerString).Return(nil, tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mock)
+
+			//Act
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			//Assert
+			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
+			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
+			assert.Contains(s.T(), testUtils.ReadResponseBody(resp), tt.ResponseBodyString)
+			mock.AssertExpectations(s.T())
+		})
+	}
+
 }
 
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFoundError() {

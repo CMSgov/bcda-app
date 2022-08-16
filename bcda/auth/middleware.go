@@ -61,7 +61,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Auth.Errorf("Unable to verify token; %s", err)
-			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			handleTokenVerificationError(w, rw, err)
 			return
 		}
 
@@ -95,6 +95,23 @@ func handleSsasAuthDataError(w http.ResponseWriter, rw fhirResponseWriter, err e
 	}
 }
 
+func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
+	if err != nil {
+		switch err.(type) {
+		case *customErrors.ExpiredTokenError:
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		case *customErrors.RequestorDataError:
+			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
+		case *customErrors.RequestTimeoutError:
+			rw.Exception(w, http.StatusServiceUnavailable, responseutils.InternalErr, "")
+		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
+			rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		default:
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		}
+	}
+}
+
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := getRespWriter(r.URL.Path)
@@ -110,7 +127,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			err := GetProvider().AuthorizeAccess(token.Raw)
 			if err != nil {
 				log.Auth.Error(err)
-				rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+				handleTokenVerificationError(w, rw, err)
 				return
 			}
 

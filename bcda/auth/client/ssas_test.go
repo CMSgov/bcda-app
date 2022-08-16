@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +16,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
+
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
 var (
@@ -327,37 +329,8 @@ func (s *SSASClientTestSuite) TestGetVersionFailing() {
 	assert.NotNil(s.T(), err)
 }
 
-func (s *SSASClientTestSuite) TestVerifyPublicToken() {
-	const tokenString = "totallyfake.tokenstringfor.testing"
-	router := chi.NewRouter()
-	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
-		var (
-			buf   []byte
-			input struct {
-				Token string `json:"token"`
-			}
-		)
-		buf, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			s.FailNow("unexpected failure %s", err.Error())
-		}
-
-		if err := json.Unmarshal(buf, &input); err != nil {
-			s.FailNow("unexpected failure %s", err.Error())
-		}
-
-		body, err := json.Marshal(struct {
-			Active bool `json:"active"`
-		}{Active: true})
-		if err != nil {
-			s.FailNow("Invalid response in mock ssas server")
-		}
-
-		if _, err := w.Write(body); err != nil {
-			s.FailNow("Write failure in mock ssas server; %s", err)
-		}
-	})
-	server := httptest.NewServer(router)
+func (s *SSASClientTestSuite) TestCallSSASIntrospect() {
+	server := testUtils.MakeTestServerWithIntrospectEndpoint(true)
 
 	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
 	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
@@ -370,17 +343,115 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
-	b, err := client.VerifyPublicToken(tokenString)
+	const tokenString = "totallyfake.tokenstringfor.testing"
+
+	bytes, err := client.CallSSASIntrospect(tokenString)
 	if err != nil {
 		s.FailNow("unexpected failure", err.Error())
 	}
 
-	var ir map[string]interface{}
-	if err = json.Unmarshal(b, &ir); err != nil {
-		s.FailNow("could not understand response", err.Error())
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), bytes)
+	//assert.IsType(s.T(), &authclient.SSASClient{}, client)
+}
+
+func createByteIntrospectResponse(s *SSASClientTestSuite, shouldBeActive bool) (body []byte) {
+	body, err := json.Marshal(struct {
+		Active bool `json:"active"`
+	}{Active: shouldBeActive})
+	if err != nil {
+		s.FailNow("Invalid response in mock ssas server")
+	}
+	return body
+}
+
+func (s *SSASClientTestSuite) TestCallSSASIntrospectEnvironmentVariables() {
+	server := testUtils.MakeTestServerWithIntrospectEndpoint(true)
+	emptyString := ""
+	nonEmptyString := "happyCustomer"
+	const token = "totallyfake.tokenstringfor.testing"
+
+	tests := []struct {
+		scenarioName                string
+		bytesToReturn               []byte
+		errTypeToReturn             error
+		tokenString                 string
+		envVariableSSASPublicURL    string
+		envVariableSSASClientId     string
+		envVariableSSASClientSecret string
+	}{
+		{"Active Valid Token", createByteIntrospectResponse(s, true), nil, token, server.URL, nonEmptyString, nonEmptyString},
+		{"Empty Env variable - Public URL", nil, &customErrors.ConfigError{Msg: emptyString, Err: nil}, token, emptyString, nonEmptyString, nonEmptyString},
+		{"Empty Env variable - Client Id", nil, &customErrors.ConfigError{Msg: emptyString, Err: nil}, token, server.URL, emptyString, nonEmptyString},
+		{"Empty Env variable - Client Secret", nil, &customErrors.ConfigError{Msg: emptyString, Err: nil}, token, server.URL, nonEmptyString, emptyString},
 	}
 
-	assert.True(s.T(), ir["active"].(bool))
+	for _, tt := range tests {
+		s.T().Run(tt.scenarioName, func(t *testing.T) {
+
+			conf.SetEnv(t, "SSAS_URL", server.URL)        //to start up appropriately
+			conf.SetEnv(t, "SSAS_PUBLIC_URL", server.URL) //to start up appropriately
+			conf.SetEnv(t, "SSAS_USE_TLS", "false")
+			conf.SetEnv(t, "BCDA_SSAS_CLIENT_ID", tt.envVariableSSASClientId)
+			conf.SetEnv(t, "BCDA_SSAS_SECRET", tt.envVariableSSASClientSecret)
+
+			client, err := authclient.NewSSASClient()
+			if err != nil {
+				s.FailNow("Failed to create SSAS client", err.Error())
+			}
+
+			conf.SetEnv(t, "SSAS_URL", tt.envVariableSSASPublicURL)        //using test variable for gathering env variables
+			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.envVariableSSASPublicURL) //using test variable for gathering env variables
+
+			bytes, err := client.CallSSASIntrospect(tt.tokenString)
+			assert.Equal(t, tt.bytesToReturn, bytes)
+			assert.IsType(t, tt.errTypeToReturn, err)
+		})
+	}
+}
+
+func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
+
+	const token = "totallyfake.tokenstringfor.testing"
+	emptyString := ""
+	nonEmptyString := "123"
+	fiveSeconds := "5"
+	fiveHundredSeconds := "500"
+
+	tests := []struct {
+		scenarioName    string
+		server          *httptest.Server
+		sSasTimeout     string
+		bytesToReturn   []byte
+		errTypeToReturn error
+		tokenString     string
+	}{
+		{"Active Valid Token", testUtils.MakeTestServerWithIntrospectEndpoint(true), fiveHundredSeconds, createByteIntrospectResponse(s, true), nil, token},
+		{"Inactive (Expired) Valid Token", testUtils.MakeTestServerWithIntrospectEndpoint(false), fiveHundredSeconds, createByteIntrospectResponse(s, false), nil, token}, //no Expired Token error assertion here, that is handled in upstream method
+		{"Introspect call timed out", testUtils.MakeTestServerWithIntrospectTimeout(), fiveSeconds, nil, &customErrors.RequestTimeoutError{Msg: emptyString, Err: nil}, token},
+		{"Introspect call return other status code (502)", testUtils.MakeTestServerWithIntrospectReturn502(), fiveHundredSeconds, nil, &customErrors.UnexpectedSSASError{Msg: emptyString, Err: nil}, token},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.scenarioName, func(t *testing.T) {
+
+			conf.SetEnv(t, "SSAS_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_USE_TLS", "false")
+			conf.SetEnv(t, "BCDA_SSAS_CLIENT_ID", nonEmptyString)
+			conf.SetEnv(t, "BCDA_SSAS_SECRET", nonEmptyString)
+			conf.SetEnv(t, "SSAS_TIMEOUT_MS", tt.sSasTimeout)
+
+			client, err := authclient.NewSSASClient()
+			if err != nil {
+				s.FailNow("Failed to create SSAS client", err.Error())
+			}
+
+			bytes, err := client.CallSSASIntrospect(tt.tokenString)
+			assert.Equal(t, tt.bytesToReturn, bytes)
+			assert.IsType(t, tt.errTypeToReturn, err)
+		})
+	}
 }
 
 func TestSSASClientTestSuite(t *testing.T) {
