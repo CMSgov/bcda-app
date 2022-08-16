@@ -176,15 +176,26 @@ func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
 				Token string `json:"token"`
 			}
 		)
-		buf, _ = ioutil.ReadAll(r.Body)
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Printf("Unexpected error creating test server: Error in reading request body: %s", err.Error())
+			return
+		}
 
-		json.Unmarshal(buf, &input)
+		if unmarshalErr := json.Unmarshal(buf, &input); unmarshalErr != nil {
+			fmt.Printf("Unexpected error creating test server: Error in unmarshalling the buffered input to JSON: %s", unmarshalErr.Error())
+			return
+		}
 
 		body, _ := json.Marshal(struct {
 			Active bool `json:"active"`
 		}{Active: activeToken})
 
-		w.Write(body)
+		_, responseWriterErr := w.Write(body)
+		if responseWriterErr != nil {
+			fmt.Printf("Unexpected error creating test server: Error reading request body: %s", responseWriterErr.Error())
+		}
+
 	})
 	return httptest.NewServer(router)
 }
