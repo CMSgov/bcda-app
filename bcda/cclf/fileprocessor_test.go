@@ -173,14 +173,15 @@ func TestGetCMSID(t *testing.T) {
 
 func TestGetCCLFMetadata(t *testing.T) {
 	const (
-		sspID, cecID, ngacoID, ckccID, kcfID, dcID, testID = "A9999", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999"
-		sspProd, sspTest                                   = "P.BCD." + sspID, "T.BCD." + sspID
-		cecProd, cecTest                                   = "P.CEC", "T.CEC"
-		ngacoProd, ngacoTest                               = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
-		ckccProd, ckccTest                                 = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
-		kcfProd, kcfTest                                   = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
-		dcProd, dcTest                                     = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
-		testProd, testTest                                 = "P." + testID + ".ACO", "T." + testID + ".ACO"
+		sspID, cecID, ngacoID, ckccID, kcfID, dcID, testID, sbxID = "A9999", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999", "SBXBD001"
+		sspProd, sspTest                                          = "P.BCD." + sspID, "T.BCD." + sspID
+		cecProd, cecTest                                          = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest                                      = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		ckccProd, ckccTest                                        = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
+		kcfProd, kcfTest                                          = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
+		dcProd, dcTest                                            = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
+		testProd, testTest                                        = "P." + testID + ".ACO", "T." + testID + ".ACO"
+		sbxProd, sbxTest                                          = "P." + testID + ".ACO", "T." + testID + ".ACO"
 	)
 
 	start := time.Now()
@@ -209,6 +210,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	kcfProdFile, kcfTestFile := gen(kcfProd, validTime), gen(kcfTest, validTime)
 	dcProdFile, dcTestFile := gen(dcProd, validTime), gen(dcTest, validTime)
 	testProdFile, testTestFile := gen(testProd, validTime), gen(testTest, validTime)
+	sbxProdFile, sbxTestFile := gen(sbxProd, validTime), gen(sbxTest, validTime)
 
 	tests := []struct {
 		name     string
@@ -388,6 +390,28 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
+		{"Production SBX file", sbxID, sbxProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      sbxProdFile,
+				cclfNum:   8,
+				acoID:     sbxID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Test SBX file", sbxID, sbxTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      sbxTestFile,
+				cclfNum:   8,
+				acoID:     sbxID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -406,7 +430,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 func TestMultipleFileTypes(t *testing.T) {
 	dir, err := ioutil.TempDir("", "*")
 	assert.NoError(t, err)
-	// Hard code the reference date to ensure to ensure we do not reject any CCLF files because they are too old.
+	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
 	cclfRefDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(t, "CCLF_REF_DATE", "201201")
 	defer conf.SetEnv(t, "CCLF_REF_DATE", cclfRefDate)

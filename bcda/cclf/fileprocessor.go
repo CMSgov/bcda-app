@@ -155,10 +155,12 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		dc = `D\d{4}`
 		// CCLF file name convention for TEST: P.TEST***.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
 		test = `TEST\d{3}`
+		// CCLF file name convention for SBX: P.SBX*****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
+		sandbox = `^SBX[A-Z]{2}\d{3}$`
 
 		pattern = prefix + `(` + bcd + ssp + `|` + ngaco + aco + `|` + cec +
 			`|` + ckcc + aco + `|` + kcf + aco + `|` + dc + aco +
-			`|` + test + aco + `)` + suffix
+			`|` + test + aco + `|` + sandbox + aco + `)` + suffix
 	)
 
 	filenameRegexp := regexp.MustCompile(pattern)
