@@ -11,7 +11,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/dimchansky/utfbom v1.1.1
-	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-chi/chi v5.0.7+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/go-gota/gota v0.12.0
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
@@ -91,6 +91,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace (
-	github.com/go-chi/chi => github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
-)
+replace github.com/go-chi/chi => github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
