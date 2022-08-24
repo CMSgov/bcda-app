@@ -3240,6 +3240,1067 @@
 							]
 						},
 						{
+							"name": "Job End To End (Resource Type Combos)",
+							"item": [
+								{
+									"name": "Kick Off Patient export with Patient, Coverage, EOB explicitly",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"patientv2withPatientCoverageEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient,Coverage,ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Patient,Coverage,ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Kick Off Patient export with Patient, Coverage",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"patientv2withPatientCoverageJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient,Coverage",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Patient,Coverage"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Kick Off Patient export with Patient, EOB",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"patientv2withPatientEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient,ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Patient,ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Kick Off Patient export with Coverage, EOB",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"patientv2withCoverageEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Coverage,ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Coverage,ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Job status for Patient export with Patient, Coverage, EOB explicitly",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Patient, Coverage, EOB Resource Types explicitly job status, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"patientv2withPatientCoverageEOBDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"patientv2withPatientCoverageEOBJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Patient export with Patient, Coverage, EOB Resource Types explicitly v2 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Patient export with Patient, Coverage, EOB Resource Types explicitly v2 job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Patient export v2 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Patient export with Patient, Coverage, EOB Resource Types explicitly v2 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async",
+												"disabled": true
+											}
+										],
+										"url": {
+											"raw": "{{patientv2withPatientCoverageEOBJobUrl}}",
+											"host": [
+												"{{patientv2withPatientCoverageEOBJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Job status for Patient export with Patient, Coverage",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Patient, Coverage Resource Types job status, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"patientv2withPatientCoverageDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"patientv2withPatientCoverageJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Patient export with Patient, Coverage Resource Types v2 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Patient export with Patient, Coverage Resource Types v2 job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Patient export v2 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Patient export with Patient, Coverage Resource Types v2 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async",
+												"disabled": true
+											}
+										],
+										"url": {
+											"raw": "{{patientv2withPatientCoverageJobUrl}}",
+											"host": [
+												"{{patientv2withPatientCoverageJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Job status for Patient export with Patient, EOB",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Patient, EOB Resource Types job status, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"patientv2withPatientEOBDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"patientv2withPatientEOBJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Patient export with Patient, EOB Resource Types v2 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Patient export with Patient, EOB Resource Types v2 job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Patient export v2 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Patient export with Patient, EOB Resource Types v2 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async",
+												"disabled": true
+											}
+										],
+										"url": {
+											"raw": "{{patientv2withPatientEOBJobUrl}}",
+											"host": [
+												"{{patientv2withPatientEOBJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Job status for Patient export with Coverage, EOB",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Coverage, EOB Resource Types job status, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"patientv2withCoverageEOBDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"patientv2withCoverageEOBJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Patient export with Coverage, EOB Resource Types v2 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Patient export with Coverage, EOB Resource Types v2 job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Patient export v2 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Patient export with Coverage, EOB Resource Types v2 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async",
+												"disabled": true
+											}
+										],
+										"url": {
+											"raw": "{{patientv2withCoverageEOBJobUrl}}",
+											"host": [
+												"{{patientv2withCoverageEOBJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Data for Patient export with Patient, Coverage, EOB explicitly",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Patient, Coverage, EOB Resource Types Explicitly v2 data, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{patientv2withPatientCoverageEOBDataUrl}}",
+											"host": [
+												"{{patientv2withPatientCoverageEOBDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Data for Patient export with Patient, Coverage",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Patient, Coverage Resource Types v2 data, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{patientv2withPatientCoverageDataUrl}}",
+											"host": [
+												"{{patientv2withPatientCoverageDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Data for Patient export with Patient, EOB",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Patient, EOB Resource Types v2 data, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{patientv2withPatientEOBDataUrl}}",
+											"host": [
+												"{{patientv2withPatientEOBDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Data for Patient export with Patient, EOB Copy",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+													"",
+													"if (v2Disabled) {",
+													"    console.log(\"Not running Patient export with Coverage, EOB Resource Types v2 data, v2 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{patientv2withCoverageEOBDataUrl}}",
+											"host": [
+												"{{patientv2withCoverageEOBDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
 							"name": "Job Completion Status",
 							"item": [
 								{
