@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"

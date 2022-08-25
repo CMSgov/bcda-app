@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 
 	"github.com/otiai10/copy"
