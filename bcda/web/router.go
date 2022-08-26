@@ -18,8 +18,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
 
-	"github.com/go-chi/chi"
-	gcmw "github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	gcmw "github.com/go-chi/chi/v5/middleware"
 )
 
 // Auth middleware checks that verifies that caller is authorized

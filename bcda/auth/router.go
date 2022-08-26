@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 func NewAuthRouter(middlewares ...func(http.Handler) http.Handler) http.Handler {

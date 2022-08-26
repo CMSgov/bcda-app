@@ -27,7 +27,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"

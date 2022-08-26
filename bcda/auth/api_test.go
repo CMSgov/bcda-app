@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
