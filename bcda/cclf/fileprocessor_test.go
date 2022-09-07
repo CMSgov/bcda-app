@@ -181,7 +181,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 		kcfProd, kcfTest                                          = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
 		dcProd, dcTest                                            = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
 		testProd, testTest                                        = "P." + testID + ".ACO", "T." + testID + ".ACO"
-		sbxProd, sbxTest                                          = "P." + testID + ".ACO", "T." + testID + ".ACO"
+		sbxProd, sbxTest                                          = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
 	)
 
 	start := time.Now()

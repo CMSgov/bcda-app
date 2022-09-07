@@ -83,6 +83,7 @@ func (s *CCLFUtilTestSuite) TestHasAnyPrefix() {
 		{"Z0001", []string{"X", "Y", "Z"}, true},
 		{"Z0001", []string{"A", "B", "C"}, false},
 		{"TEST001", []string{"A", "B", "TESS"}, false},
+		{"TEST001", []string{"TEST"}, true},
 		{"SBXBD001", []string{"A", "X", "TEST"}, false},
 		{"SBXBD001", []string{"SBX"}, true},
 	}
