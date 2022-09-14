@@ -58,7 +58,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		"improved-small":                 {"small", "A9998"},
 		"improved-large":                 {"large", "A9999"},
 		"partially-adjudicated-dev":      {"dev", "TEST001"},
-		"partially-adjudicated-sbxbd001": {"dev", "SBXBD001"},
+		"synthea-dev-1": {"dev", "SBXBD001"},
 	}[acoSize]
 
 	if !ok {
