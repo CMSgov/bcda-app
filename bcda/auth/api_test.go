@@ -90,7 +90,6 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 
 	var t TokenResponse
-	fmt.Println(s.rr.Body)
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
 	assert.Equal(s.T(), accessToken, t.AccessToken)
 	assert.Empty(s.T(), t.ExpiresIn)
