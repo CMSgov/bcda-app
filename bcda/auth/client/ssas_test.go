@@ -273,12 +273,13 @@ func (s *SSASClientTestSuite) TestGetToken() {
 		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
-	respKey, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
+	respKey, respExp, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
 	if err != nil {
 		s.FailNow("Failed to get token", err.Error())
 	}
 
 	assert.Equal(s.T(), tokenString, string(respKey))
+	assert.Empty(s.T(), respExp)
 }
 
 func (s *SSASClientTestSuite) TestGetVersionPassing() {
