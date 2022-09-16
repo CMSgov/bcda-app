@@ -255,10 +255,9 @@ func (s *SSASClientTestSuite) TestRevokeAccessToken() {
 
 func (s *SSASClientTestSuite) TestGetToken() {
 	const tokenString = "totallyfake.tokenstringfor.testing"
-	const expiresInString = "1200"
 	router := chi.NewRouter()
 	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `", "expires_in": "` + expiresInString + `" }`))
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `", "expires_in": "` + constants.ExpiresInString + `" }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -280,7 +279,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	}
 
 	assert.Equal(s.T(), tokenString, string(respKey))
-	assert.Equal(s.T(), expiresInString, string(respExp))
+	assert.Equal(s.T(), constants.ExpiresInString, string(respExp))
 }
 
 func (s *SSASClientTestSuite) TestGetVersionPassing() {

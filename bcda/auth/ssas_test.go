@@ -203,7 +203,7 @@ func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {
 }
 
 func (s *SSASPluginTestSuite) TestMakeAccessToken() {
-	_, tokenString, _ := MockSSASToken()
+	_, tokenString, expiresInString, _ := MockSSASToken()
 	MockSSASServer(tokenString)
 
 	c, err := client.NewSSASClient()
@@ -215,13 +215,13 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	ts, ei, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), ts)
-	assert.Equal(s.T(), ei, "")
+	assert.Equal(s.T(), ei, expiresInString)
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
 
 	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Equal(s.T(), ei, "")
+	assert.Empty(s.T(), ei, "")
 	assert.Contains(s.T(), err.Error(), "401")
 
 	ts, ei, err = s.p.MakeAccessToken(Credentials{})
@@ -271,7 +271,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 }
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
-	_, ts, err := MockSSASToken()
+	_, ts, _, err := MockSSASToken()
 	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(ts)
@@ -284,7 +284,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 }
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenCheckFails() {
-	_, ts, err := MockSSASToken()
+	_, ts, _, err := MockSSASToken()
 	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(ts)
@@ -299,8 +299,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 }
 
 func (s *SSASPluginTestSuite) TestVerifyTokenErrorHandling() {
-
-	_, goodTokenString, _ := MockSSASToken()
+	_, goodTokenString, _, _ := MockSSASToken()
 
 	nonSsasIssuerClaims := createCommonClaimsForTesting(constants.EmptyString, "random12") //Data setup as non-ssas to trigger error
 	badNonSsasIssuerTokenString := createTokenStringFromCommonClaims(nonSsasIssuerClaims)
@@ -467,7 +466,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenCommonClai
 }
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
-	_, ts, err := MockSSASToken()
+	_, ts, _, err := MockSSASToken()
 	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(ts)
@@ -518,7 +517,7 @@ func MockSSASServer(tokenString string) {
 		}
 
 		if clientId == constants.MockClient {
-			render.JSON(w, r, client.TokenResponse{AccessToken: tokenString, TokenType: "access_token"})
+			render.JSON(w, r, client.TokenResponse{AccessToken: tokenString, ExpiresIn: constants.ExpiresInString, TokenType: "access_token"})
 		}
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
@@ -530,7 +529,7 @@ func MockSSASServer(tokenString string) {
 	conf.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 }
 
-func MockSSASToken() (*jwt.Token, string, error) {
+func MockSSASToken() (*jwt.Token, string, string, error) {
 	// NB: currently, BCDA expects only 1 item in the array of cms_ids. At some point, ACO-MS will want to send more than one
 	claims := CommonClaims{
 		SystemID: "mock-system",
@@ -547,9 +546,9 @@ func MockSSASToken() (*jwt.Token, string, error) {
 	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
 	pk, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	ts, err := t.SignedString(pk)
-	return t, ts, err
+	return t, ts, constants.ExpiresInString, err
 }
