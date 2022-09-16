@@ -48,10 +48,11 @@ func (s *AuthAPITestSuite) SetupTest() {
 }
 
 func (s *AuthAPITestSuite) TestAuthToken() {
+	const expiresInString = "1200"
 	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
 	mock := &auth.MockProvider{}
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
-		Return(accessToken, "", nil)
+		Return(accessToken, expiresInString, nil)
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
 		Return("", "", errors.New("some auth error"))
 	auth.SetMockProvider(s.T(), mock)
@@ -92,7 +93,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	var t TokenResponse
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
 	assert.Equal(s.T(), accessToken, t.AccessToken)
-	assert.Empty(s.T(), t.ExpiresIn)
+	assert.Equal(s.T(), expiresInString, t.ExpiresIn)
 
 	mock.AssertExpectations(s.T())
 }
