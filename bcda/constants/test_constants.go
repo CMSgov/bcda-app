@@ -88,4 +88,4 @@ const TestSvcDateResult = "2006-01-02"
 const TestScore = "1.2345"
 const RegexACOID = "TEST\\d{4}"
 
-const ExpiresInString = "1200"
+const ExpiresInDefault = "1200"

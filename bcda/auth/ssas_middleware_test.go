@@ -28,11 +28,11 @@ var (
 
 type SSASMiddlewareTestSuite struct {
 	suite.Suite
-	server          *httptest.Server
-	token           *jwt.Token
-	tokenString     string
-	expiresInString string
-	ad              auth.AuthData
+	server      *httptest.Server
+	token       *jwt.Token
+	tokenString string
+	expiresIn   string
+	ad          auth.AuthData
 }
 
 func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
@@ -67,7 +67,7 @@ func (s *SSASMiddlewareTestSuite) TestSSASToken() {
 
 	s.ad = auth.AuthData{}
 
-	s.token, s.tokenString, s.expiresInString, err = auth.MockSSASToken()
+	s.token, s.tokenString, s.expiresIn, err = auth.MockSSASToken()
 	assert.NotNil(s.T(), s.tokenString, "token creation error; ", err)
 	auth.MockSSASServer(s.tokenString)
 

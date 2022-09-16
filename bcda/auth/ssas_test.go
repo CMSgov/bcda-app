@@ -203,7 +203,7 @@ func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {
 }
 
 func (s *SSASPluginTestSuite) TestMakeAccessToken() {
-	_, tokenString, expiresInString, _ := MockSSASToken()
+	_, tokenString, _, _ := MockSSASToken()
 	MockSSASServer(tokenString)
 
 	c, err := client.NewSSASClient()
@@ -212,40 +212,40 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	ts, ei, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
+	tokenString, expiresIn, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
 	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), ts)
-	assert.Equal(s.T(), ei, expiresInString)
-	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
+	assert.NotEmpty(s.T(), tokenString)
+	assert.Equal(s.T(), expiresIn, constants.ExpiresInDefault)
+	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), tokenString)
 
-	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
+	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), ts)
-	assert.Empty(s.T(), ei)
+	assert.Empty(s.T(), tokenString)
+	assert.Empty(s.T(), expiresIn)
 	assert.Contains(s.T(), err.Error(), "401")
 
-	ts, ei, err = s.p.MakeAccessToken(Credentials{})
+	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), ts)
-	assert.Empty(s.T(), ei)
+	assert.Empty(s.T(), tokenString)
+	assert.Empty(s.T(), expiresIn)
 	assert.Contains(s.T(), err.Error(), "401")
 
-	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
+	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), ts)
-	assert.Empty(s.T(), ei)
+	assert.Empty(s.T(), tokenString)
+	assert.Empty(s.T(), expiresIn)
 	assert.Contains(s.T(), err.Error(), "401")
 
-	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
+	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), ts)
-	assert.Empty(s.T(), ei)
+	assert.Empty(s.T(), tokenString)
+	assert.Empty(s.T(), expiresIn)
 	assert.Contains(s.T(), err.Error(), "401")
 
-	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
+	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), ts)
-	assert.Empty(s.T(), ei)
+	assert.Empty(s.T(), tokenString)
+	assert.Empty(s.T(), expiresIn)
 	assert.Contains(s.T(), err.Error(), "401")
 }
 
@@ -271,23 +271,23 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 }
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
-	_, ts, _, err := MockSSASToken()
-	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
+	_, tokenString, _, err := MockSSASToken()
+	require.NotNil(s.T(), tokenString, sSasTokenErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
-	MockSSASServer(ts)
+	MockSSASServer(tokenString)
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
-	err = s.p.AuthorizeAccess(ts)
+	err = s.p.AuthorizeAccess(tokenString)
 	require.Nil(s.T(), err)
 }
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenCheckFails() {
-	_, ts, _, err := MockSSASToken()
-	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
+	_, tokenString, _, err := MockSSASToken()
+	require.NotNil(s.T(), tokenString, sSasTokenErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
-	MockSSASServer(ts)
+	MockSSASServer(tokenString)
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
@@ -466,17 +466,17 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenCommonClai
 }
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
-	_, ts, _, err := MockSSASToken()
-	require.NotNil(s.T(), ts, sSasTokenErrorMsg, err)
+	_, tokenString, _, err := MockSSASToken()
+	require.NotNil(s.T(), tokenString, sSasTokenErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
-	MockSSASServer(ts)
+	MockSSASServer(tokenString)
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	t, err := s.p.VerifyToken(ts)
+	t, err := s.p.VerifyToken(tokenString)
 	assert.NotEmpty(s.T(), t)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), &jwt.Token{}, t, "expected jwt token")
@@ -517,7 +517,7 @@ func MockSSASServer(tokenString string) {
 		}
 
 		if clientId == constants.MockClient {
-			render.JSON(w, r, client.TokenResponse{AccessToken: tokenString, ExpiresIn: constants.ExpiresInString, TokenType: "access_token"})
+			render.JSON(w, r, client.TokenResponse{AccessToken: tokenString, ExpiresIn: constants.ExpiresInDefault, TokenType: "access_token"})
 		}
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
@@ -549,6 +549,6 @@ func MockSSASToken() (*jwt.Token, string, string, error) {
 		return nil, "", "", err
 	}
 
-	ts, err := t.SignedString(pk)
-	return t, ts, constants.ExpiresInString, err
+	tokenString, err := t.SignedString(pk)
+	return t, tokenString, constants.ExpiresInDefault, err
 }
