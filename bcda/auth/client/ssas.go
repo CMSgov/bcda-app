@@ -30,8 +30,8 @@ type SSASClient struct {
 
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
+	ExpiresIn   string `json:"expires_in,omitempty"`
 	TokenType   string `json:"token_type"`
-	ExpiresIn   string `json:"expires_in"`
 }
 
 type Credentials struct {
