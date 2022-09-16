@@ -48,7 +48,7 @@ func (_m *MockProvider) GetVersion() (string, error) {
 }
 
 // MakeAccessToken provides a mock function with given fields: credentials
-func (_m *MockProvider) MakeAccessToken(credentials Credentials) (string, error) {
+func (_m *MockProvider) MakeAccessToken(credentials Credentials) (string, string, error) {
 	ret := _m.Called(credentials)
 
 	var r0 string
@@ -58,14 +58,21 @@ func (_m *MockProvider) MakeAccessToken(credentials Credentials) (string, error)
 		r0 = ret.Get(0).(string)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(Credentials) error); ok {
+	var r1 string
+	if rf, ok := ret.Get(1).(func(Credentials) string); ok {
 		r1 = rf(credentials)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(string)
 	}
 
-	return r0, r1
+	var r2 error
+	if rf, ok := ret.Get(2).(func(Credentials) error); ok {
+		r2 = rf(credentials)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // RegisterSystem provides a mock function with given fields: localID, publicKey, groupID, ips
