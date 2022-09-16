@@ -221,31 +221,31 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Empty(s.T(), ei, "")
+	assert.Empty(s.T(), ei)
 	assert.Contains(s.T(), err.Error(), "401")
 
 	ts, ei, err = s.p.MakeAccessToken(Credentials{})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Equal(s.T(), ei, "")
+	assert.Empty(s.T(), ei)
 	assert.Contains(s.T(), err.Error(), "401")
 
 	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Equal(s.T(), ei, "")
+	assert.Empty(s.T(), ei)
 	assert.Contains(s.T(), err.Error(), "401")
 
 	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Equal(s.T(), ei, "")
+	assert.Empty(s.T(), ei)
 	assert.Contains(s.T(), err.Error(), "401")
 
 	ts, ei, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Equal(s.T(), ei, "")
+	assert.Empty(s.T(), ei)
 	assert.Contains(s.T(), err.Error(), "401")
 }
 
