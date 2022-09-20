@@ -257,7 +257,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	const tokenString = "totallyfake.tokenstringfor.testing"
 	router := chi.NewRouter()
 	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `" }`))
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `", "expires_in": "` + constants.ExpiresInDefault + `" }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -273,12 +273,13 @@ func (s *SSASClientTestSuite) TestGetToken() {
 		s.FailNow(constants.CreateSsasErr, err.Error())
 	}
 
-	respKey, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
+	respKey, respExp, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
 	if err != nil {
 		s.FailNow("Failed to get token", err.Error())
 	}
 
 	assert.Equal(s.T(), tokenString, string(respKey))
+	assert.Equal(s.T(), constants.ExpiresInDefault, string(respExp))
 }
 
 func (s *SSASClientTestSuite) TestGetVersionPassing() {

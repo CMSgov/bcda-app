@@ -31,6 +31,7 @@ type SSASMiddlewareTestSuite struct {
 	server      *httptest.Server
 	token       *jwt.Token
 	tokenString string
+	expiresIn   string
 	ad          auth.AuthData
 }
 
@@ -66,7 +67,7 @@ func (s *SSASMiddlewareTestSuite) TestSSASToken() {
 
 	s.ad = auth.AuthData{}
 
-	s.token, s.tokenString, err = auth.MockSSASToken()
+	s.token, s.tokenString, s.expiresIn, err = auth.MockSSASToken()
 	assert.NotNil(s.T(), s.tokenString, "token creation error; ", err)
 	auth.MockSSASServer(s.tokenString)
 

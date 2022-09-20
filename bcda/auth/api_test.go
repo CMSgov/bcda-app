@@ -27,6 +27,7 @@ import (
 
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
+	ExpiresIn   string `json:"expires_in,omitempty"`
 	TokenType   string `json:"token_type"`
 }
 
@@ -50,9 +51,9 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
 	mock := &auth.MockProvider{}
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
-		Return(accessToken, nil)
+		Return(accessToken, constants.ExpiresInDefault, nil)
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
-		Return("", errors.New("some auth error"))
+		Return("", "", errors.New("some auth error"))
 	auth.SetMockProvider(s.T(), mock)
 
 	// Missing authorization header
@@ -91,6 +92,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	var t TokenResponse
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
 	assert.Equal(s.T(), accessToken, t.AccessToken)
+	assert.Equal(s.T(), constants.ExpiresInDefault, t.ExpiresIn)
 
 	mock.AssertExpectations(s.T())
 }

@@ -33,15 +33,15 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
+	token, expiresIn, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
-	// not included: recommended field expires_in
-	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
+
+	body := []byte(fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, token, expiresIn))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
