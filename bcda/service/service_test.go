@@ -64,6 +64,13 @@ func TestSupportedACOs(t *testing.T) {
 		{"DC invalid characters", "D999V", false},
 		{"valid DC", "D9999", true},
 
+		{"SBX too short", "SBXB1", false},
+		{"SBX too long", "SBXPA0123", false},
+		{"SBX invalid characters 1", "SBX0A123", false},
+		{"SBX invalid characters 2", "SBXA0123", false},
+		{"SBX invalid characters 3", "SBXADXYZ", false},
+		{"valid SBX", "SBXAD123", true},
+
 		{"Unregistered ACO", "Z1234", false},
 	}
 
