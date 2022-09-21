@@ -128,7 +128,7 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Errorf("Failed to consruct resquest with URL %s", url, err.Error())
+		log.Errorf("Failed to construct resquest with URL %s", url, err.Error())
 		panic(err)
 	}
 
@@ -137,7 +137,7 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		log.Errorf("Exception occured during request call %s", req, err.Error())
+		log.Errorf("Exception occurred during request call %s", req, err.Error())
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -158,12 +158,12 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 	check := func() ([]string, error) {
 		req, err := http.NewRequest("GET", jobEndpoint, nil)
 		if err != nil {
-			log.Errorf("Failure to construt request %s", jobEndpoint, err.Error())
+			log.Errorf("Failure to construct request %s", jobEndpoint, err.Error())
 			return nil, err
 		}
 		resp, err := c.Do(req)
 		if err != nil {
-			log.Errorf("Exception occured during call %s", req, err.Error())
+			log.Errorf("Exception occurred during call %s", req, err.Error())
 			return nil, err
 		}
 		defer resp.Body.Close()
@@ -231,7 +231,7 @@ func getData(c *client, dataURL string) ([]byte, error) {
 	req.Header.Add("Accept-Encoding", "gzip")
 	resp, err := c.Do(req)
 	if err != nil {
-		log.Errorf("Exception occured when making the call %s", req, err.Error())
+		log.Errorf("Exception occurred when making the call %s", req, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -329,7 +329,7 @@ func (c *client) updateAccessToken() error {
 	// retry loop we dont want to use the retry logic on updating the access token
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Errorf("Exception occured when making request call %s", req, err.Error())
+		log.Errorf("Exception occurred when making request call %s", req, err.Error())
 		return err
 	}
 
