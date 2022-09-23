@@ -22,9 +22,9 @@ do
         CREDS=($(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda generate-client-credentials --cms-id ${CMS_ID}' | tail -n2 | tr -d '\r'))
         CLIENT_ID=${CREDS[0]}
         CLIENT_SECRET=${CREDS[1]}
-        ENV=$1
+        BCDA_SMOKE_TEST_ENV=$1
 
         docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
-	-e test/postman_test/${ENV}.postman_environment.json --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET}
+	-e test/postman_test/${BCDA_SMOKE_TEST_ENV}.postman_environment.json --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET}
 done
 
