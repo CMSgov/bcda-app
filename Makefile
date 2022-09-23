@@ -22,7 +22,7 @@ lint:
 
 smoke-test:
 	docker-compose -f docker-compose.test.yml build tests
-	test/smoke_test/smoke_test.sh
+	test/smoke_test/smoke_test.sh $(env)
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
@@ -85,7 +85,7 @@ test:
 	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
-	$(MAKE) smoke-test
+	$(MAKE) smoke-test env=local
 
 load-fixtures:
 	# Rebuild the databases to ensure that we're starting in a fresh state

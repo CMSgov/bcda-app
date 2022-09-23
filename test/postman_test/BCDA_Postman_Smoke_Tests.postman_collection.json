@@ -1,0 +1,988 @@
+{
+	"info": {
+		"_postman_id": "0a159e61-1020-4d66-946f-c0495782e91f",
+		"name": "BCDA Postman Smoke Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "20786112"
+	},
+	"item": [
+		{
+			"name": "Invalid Token",
+			"item": [
+				{
+					"name": "Authentication",
+					"item": [
+						{
+							"name": "Set dummy auth token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.environment.set(\"token\", \"invalidtoken\");",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{scheme}}://{{host}}/auth/token",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"auth",
+										"token"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Requests",
+					"item": [
+						{
+							"name": "Unauthorized",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 401\", function() {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"var respJson = pm.response.json();",
+											"",
+											"pm.test(\"Resource type is OperationOutcome\", function() {",
+											"    var respJson = pm.response.json();",
+											"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+											"});",
+											"",
+											"pm.test(\"Issue details code is Invalid Token\", function() {",
+											"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/fhir+json",
+										"type": "text"
+									},
+									{
+										"key": "Prefer",
+										"value": "respond-async",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"api",
+										"v2",
+										"Patient",
+										"$export"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Valid Token",
+			"item": [
+				{
+					"name": "Authentication",
+					"item": [
+						{
+							"name": "Get auth token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var env = pm.environment.get(\"env\");",
+											"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
+											"pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
+											"pm.test(\"Status code is 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"var responseJSON;",
+											"try {",
+											"   responseJSON = JSON.parse(responseBody);",
+											"   tests['response is valid JSON'] = true;",
+											"}",
+											"catch (e) {",
+											"   responseJSON = {};",
+											"   tests['response is valid JSON'] = false;",
+											"}",
+											"",
+											"pm.environment.set(\"token\", responseJSON.access_token);",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "password",
+											"value": "{{clientSecret}}",
+											"type": "string"
+										},
+										{
+											"key": "username",
+											"value": "{{clientId}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{scheme}}://{{host}}/auth/token",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"auth",
+										"token"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Patient",
+					"item": [
+						{
+							"name": "/all is NOT Explicit",
+							"item": [
+								{
+									"name": "Start Patient export",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"smokeTestPatientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Patient",
+												"$export"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Patient export job status",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"smokeTestPatientDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"smokeTestPatientJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Patient export still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Patient job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Patient export job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Patient export job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{smokeTestPatientJobUrl}}",
+											"host": [
+												"{{smokeTestPatientJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Patient export job data",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{smokeTestPatientDataUrl}}",
+											"host": [
+												"{{smokeTestPatientDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Group",
+					"item": [
+						{
+							"name": "/all is Explicit",
+							"item": [
+								{
+									"name": "Start Group export",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"smokeTestGroupAllJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Group/all/$export",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Group",
+												"all",
+												"$export"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Group export job status",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"smokeTestGroupAllJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Group/all export still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Group/all job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Group/all export job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Group/all export job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"smokeTestGroupAllDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{smokeTestGroupAllJobUrl}}",
+											"host": [
+												"{{smokeTestGroupAllJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Group export job data",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{smokeTestGroupAllDataUrl}}",
+											"host": [
+												"{{smokeTestGroupAllDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "/runout (EOB Resource)",
+							"item": [
+								{
+									"name": "Start Group export",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"smokeTestGroupRunoutEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v2/Group/runout/$export?_type=ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v2",
+												"Group",
+												"runout",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Group export job status",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const retryDelay = 5000;",
+													"const maxRetries = 10;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"smokeTestGroupRunoutEOBJobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Group/runout export still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Group/runout job status.\");",
+													"                postman.setNextRequest(null);",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Group/runout export job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Group/runout export job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"         pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"smokeTestGroupRunoutEOBDataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{smokeTestGroupRunoutEOBJobUrl}}",
+											"host": [
+												"{{smokeTestGroupRunoutEOBJobUrl}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Group export job data",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/fhir+json"
+											},
+											{
+												"key": "Prefer",
+												"type": "text",
+												"value": "respond-async"
+											}
+										],
+										"url": {
+											"raw": "{{smokeTestGroupRunoutEOBDataUrl}}",
+											"host": [
+												"{{smokeTestGroupRunoutEOBDataUrl}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}
