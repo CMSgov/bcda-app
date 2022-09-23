@@ -25,6 +25,8 @@ do
         BCDA_SMOKE_TEST_ENV=$1
 
         docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
-	-e test/postman_test/${BCDA_SMOKE_TEST_ENV}.postman_environment.json --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET}
+	-e test/postman_test/${BCDA_SMOKE_TEST_ENV}.postman_environment.json \
+        --global-var clientId=${CLIENT_ID} \
+        --global-var clientSecret=${CLIENT_SECRET}
 done
 
