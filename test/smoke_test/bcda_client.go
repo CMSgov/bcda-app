@@ -128,6 +128,7 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		log.Errorf("Failed to construct resquest with URL %s", url, err.Error())
 		panic(err)
 	}
 
@@ -136,6 +137,7 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 
 	resp, err := c.Do(req)
 	if err != nil {
+		log.Errorf("Exception occurred during request call %s", req, err.Error())
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -156,10 +158,12 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 	check := func() ([]string, error) {
 		req, err := http.NewRequest("GET", jobEndpoint, nil)
 		if err != nil {
+			log.Errorf("Failure to construct request %s", jobEndpoint, err.Error())
 			return nil, err
 		}
 		resp, err := c.Do(req)
 		if err != nil {
+			log.Errorf("Exception occurred during call %s", req, err.Error())
 			return nil, err
 		}
 		defer resp.Body.Close()
@@ -168,12 +172,14 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 		case http.StatusOK:
 			var objmap map[string]json.RawMessage
 			if err := json.NewDecoder(resp.Body).Decode(&objmap); err != nil {
+				log.Errorf("Failure to decode the response body %s", resp.Body, err.Error())
 				return nil, err
 			}
 
 			output := objmap["output"]
 			var data OutputCollection
 			if err := json.Unmarshal(output, &data); err != nil {
+				log.Errorf("Failure to unmarshal data %s", &data, err.Error())
 				return nil, err
 			}
 
@@ -205,6 +211,7 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 		default:
 			urls, err := check()
 			if err != nil {
+				log.Errorf("Failure on url check %s", urls, err.Error())
 				return nil, err
 			}
 			if len(urls) == 0 {
@@ -218,17 +225,20 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 func getData(c *client, dataURL string) ([]byte, error) {
 	req, err := http.NewRequest("GET", dataURL, nil)
 	if err != nil {
+		log.Errorf("Failure to construct request %s", dataURL, err.Error())
 		return nil, err
 	}
 	req.Header.Add("Accept-Encoding", "gzip")
 	resp, err := c.Do(req)
 	if err != nil {
+		log.Errorf("Exception occurred when making the call %s", req, err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		log.Errorf("Failure to read response body %s", req, err.Error())
 		return nil, err
 	}
 
@@ -244,12 +254,14 @@ func validateData(encoded []byte) error {
 	// Data is expected to be gzip encoded
 	reader, err := gzip.NewReader(bytes.NewReader(encoded))
 	if err != nil {
+		log.Errorf("Failure to construct gzip reader %s", encoded, err.Error())
 		return err
 	}
 	defer reader.Close()
 
 	decoded, err := ioutil.ReadAll(reader)
 	if err != nil {
+		log.Errorf("Failure to read decoded information in gzip %s", reader, err.Error())
 		return err
 	}
 
@@ -306,6 +318,7 @@ func (c *client) Do(req *http.Request) (*http.Response, error) {
 func (c *client) updateAccessToken() error {
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s://%s/auth/token", proto, apiHost), nil)
 	if err != nil {
+		log.Errorf("Failure to construct request %s", req, err.Error())
 		return err
 	}
 
@@ -316,6 +329,7 @@ func (c *client) updateAccessToken() error {
 	// retry loop we dont want to use the retry logic on updating the access token
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Errorf("Exception occurred when making request call %s", req, err.Error())
 		return err
 	}
 
@@ -339,6 +353,7 @@ func (c *client) updateAccessToken() error {
 	var t = tokenResponse{}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		log.Errorf("Failure to read response body %s", resp.Body, err.Error())
 		return err
 	}
 
