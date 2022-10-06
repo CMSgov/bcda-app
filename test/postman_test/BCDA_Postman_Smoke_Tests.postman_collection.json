@@ -221,7 +221,7 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
 													"if (maintenanceMode === \"eoy\") {\t\t\t\t\t    ",
 													"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
@@ -233,6 +233,8 @@
 													"    pm.test(\"Has Content-Location header\", function() {",
 													"        pm.response.to.have.header(\"Content-Location\");",
 													"    });",
+													"",
+													"    pm.environment.set(\"smokeTestPatientJobUrl\", pm.response.headers.get(\"Content-Location\"));",
 													"}"
 												],
 												"type": "text/javascript"
@@ -286,7 +288,7 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
 													"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
@@ -417,7 +419,7 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
 													"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
@@ -494,10 +496,10 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
-													"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
+													"    pm.expect((pm.response || {}).code).to.be.oneOf([400, 404, 500]);",
 													"} else {",
 													"    pm.test(\"Status code is 202\", function () {",
 													"        pm.response.to.have.status(202);",
@@ -605,10 +607,10 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
-													"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
+													"    pm.expect((pm.response || {}).code).to.be.oneOf([400, 404, 500]);",
 													"} else {",
 													"    pm.test(\"Status code is 202 or 200\", function () {",
 													"        pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
@@ -693,10 +695,10 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
-													"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
+													"    pm.expect((pm.response || {}).code).to.be.oneOf([400, 404, 500]);",
 													"} else {",
 													"    pm.test(\"Status code is 200\", function () {",
 													"        pm.response.to.have.status(200);",
@@ -765,9 +767,9 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
-													"const maintenanceModeEOYTest = function() {",
+													"var maintenanceModeEOYTest = function() {",
 													"    pm.test(\"Status code is 202\", function () {",
 													"        pm.response.to.have.status(202);",
 													"    });",
@@ -779,7 +781,7 @@
 													"    pm.environment.set(\"smokeTestGroupRunoutEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));",
 													"};",
 													"",
-													"const maintenanceMode = function() {};",
+													"const maintenanceModeTest = function() {};",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
 													"    maintenanceModeEOYTest();",
@@ -888,9 +890,9 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
-													"const maintenanceModeEOYTest = function() {",
+													"var maintenanceModeEOYTest = function() {",
 													"    pm.test(\"Status code is 202 or 200\", function () {",
 													"        pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
 													"    });",
@@ -930,7 +932,7 @@
 													"    }",
 													"};",
 													"",
-													"const maintenanceMode = function() {};",
+													"const maintenanceModeTest = function() {};",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
 													"    maintenanceModeEOYTest();",
@@ -982,9 +984,9 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
 													"",
-													"const maintenanceModeEOYTest = function() {",
+													"var maintenanceModeEOYTest = function() {",
 													"    pm.test(\"Status code is 200\", function () {",
 													"        pm.response.to.have.status(200);",
 													"    });",
@@ -994,7 +996,7 @@
 													"    });",
 													"};",
 													"",
-													"const maintenanceMode = function() {};",
+													"const maintenanceModeTest = function() {};",
 													"",
 													"if (maintenanceMode === \"eoy\") {",
 													"    maintenanceModeEOYTest();",
