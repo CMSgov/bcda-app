@@ -23,10 +23,12 @@ do
         CLIENT_ID=${CREDS[0]}
         CLIENT_SECRET=${CREDS[1]}
         BCDA_SMOKE_TEST_ENV=$1
+        BCDA_SMOKE_TEST_MAINTENANCE_MODE=$2
 
         docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
 	-e test/postman_test/${BCDA_SMOKE_TEST_ENV}.postman_environment.json \
         --global-var clientId=${CLIENT_ID} \
-        --global-var clientSecret=${CLIENT_SECRET}
+        --global-var clientSecret=${CLIENT_SECRET} \
+        --global-var maintenanceMode=${BCDA_SMOKE_TEST_MAINTENANCE_MODE}
 done
 
