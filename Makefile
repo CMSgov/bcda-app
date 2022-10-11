@@ -16,8 +16,8 @@ package:
 LINT_TIMEOUT ?= 3m
 lint:
 	docker-compose -f docker-compose.test.yml build tests
-	docker-compose -f docker-compose.test.yml run \
-	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
+	#docker-compose -f docker-compose.test.yml run \
+	#--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
 smoke-test:
