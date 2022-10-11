@@ -80,12 +80,6 @@ const (
 )
 
 func NewService(r models.Repository, cfg *Config, basePath string) Service {
-	acoMap := make(map[*regexp.Regexp]*ACOConfig)
-	for idx := range cfg.ACOConfigs {
-		acoCfg := cfg.ACOConfigs[idx]
-		acoMap[acoCfg.patternExp] = &acoCfg
-	}
-
 	return &service{
 		repository:        r,
 		logger:            log.API,
@@ -100,7 +94,7 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 			cutoffDuration: cfg.RunoutConfig.cutoffDuration,
 		},
 		bbBasePath:    basePath,
-		acoConfig:     acoMap,
+		acoConfigs:    cfg.ACOConfigs,
 		alrMBIsPerJob: cfg.AlrJobSize,
 	}
 }
@@ -115,8 +109,7 @@ type service struct {
 	rp                runoutParameters
 	bbBasePath        string
 
-	// Links pattern match to the associated ACO config
-	acoConfig map[*regexp.Regexp]*ACOConfig
+	acoConfigs []ACOConfig
 
 	alrMBIsPerJob uint
 }
@@ -496,8 +489,8 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 		args.ClaimsWindow.UpperBound = conditions.claimsDate
 	}
 
-	for pattern, cfg := range s.acoConfig {
-		if pattern.MatchString(conditions.CMSID) {
+	for _, cfg := range s.acoConfigs {
+		if cfg.patternExp.MatchString(conditions.CMSID) {
 			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
 			break
 		}
@@ -522,9 +515,9 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 
 // GetACOConfigForID gets any currently loaded ACOConfig for the matching cmsID
 func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
-	for pattern, cfg := range s.acoConfig {
-		if pattern.MatchString(cmsID) {
-			return cfg, true
+	for _, cfg := range s.acoConfigs {
+		if cfg.patternExp.MatchString(cmsID) {
+			return &cfg, true
 		}
 	}
 
