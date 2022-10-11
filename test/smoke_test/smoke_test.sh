@@ -15,6 +15,9 @@ function cleanup() {
 }
 trap cleanup EXIT
 
+BCDA_SMOKE_TEST_ENV=$1
+BCDA_SMOKE_TEST_MAINTENANCE_MODE=$2
+
 for CMS_ID in "${CMS_IDs[@]}"
 do
         ACO_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
@@ -22,8 +25,6 @@ do
         CREDS=($(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda generate-client-credentials --cms-id ${CMS_ID}' | tail -n2 | tr -d '\r'))
         CLIENT_ID=${CREDS[0]}
         CLIENT_SECRET=${CREDS[1]}
-        BCDA_SMOKE_TEST_ENV=$1
-        BCDA_SMOKE_TEST_MAINTENANCE_MODE=$2
 
         docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
 	-e test/postman_test/${BCDA_SMOKE_TEST_ENV}.postman_environment.json \
