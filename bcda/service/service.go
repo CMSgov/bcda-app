@@ -109,6 +109,7 @@ type service struct {
 	rp                runoutParameters
 	bbBasePath        string
 
+	// These are always searched in order and first matching config is used for any given ACO.
 	acoConfigs []ACOConfig
 
 	alrMBIsPerJob uint
@@ -489,6 +490,7 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 		args.ClaimsWindow.UpperBound = conditions.claimsDate
 	}
 
+	// Applies the lower bound from the first matching ACOConfig
 	for _, cfg := range s.acoConfigs {
 		if cfg.patternExp.MatchString(conditions.CMSID) {
 			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
@@ -513,7 +515,7 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 	return priority
 }
 
-// GetACOConfigForID gets any currently loaded ACOConfig for the matching cmsID
+// GetACOConfigForID gets first matching currently loaded ACOConfig for the specified cmsID
 func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
 	for _, cfg := range s.acoConfigs {
 		if cfg.patternExp.MatchString(cmsID) {
