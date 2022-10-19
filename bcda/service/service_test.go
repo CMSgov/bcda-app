@@ -962,6 +962,8 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound() {
 func (s *ServiceTestSuite) TestGetACOConfigForID() {
 	repository := &models.MockRepository{}
 
+	specificACOPattern, _ := regexp.Compile(`A9999`)
+
 	validACOPattern, _ := regexp.Compile(`A\d{4}`)
 
 	validACO := ACOConfig{
@@ -969,8 +971,13 @@ func (s *ServiceTestSuite) TestGetACOConfigForID() {
 		patternExp: validACOPattern,
 	}
 
+	specificACO := ACOConfig{
+		Model:      "Model A9999",
+		patternExp: specificACOPattern,
+	}
+
 	cfg := &Config{
-		ACOConfigs: []ACOConfig{validACO},
+		ACOConfigs: []ACOConfig{specificACO, validACO},
 	}
 
 	service := NewService(repository, cfg, "")
@@ -985,6 +992,12 @@ func (s *ServiceTestSuite) TestGetACOConfigForID() {
 			"Valid CMSID",
 			"A0000",
 			&validACO,
+			true,
+		},
+		{
+			"Specific CMSID",
+			"A9999",
+			&specificACO,
 			true,
 		},
 		{
