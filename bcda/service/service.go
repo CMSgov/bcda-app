@@ -331,69 +331,69 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 
 	return jobs, nil
 }
-
-func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
-
+func (s *service) determineCutoffTime(attributionDate time.Time) time.Time {
 	var (
 		cutoffTime time.Time
 	)
 
 	// only set cutoffTime if there is no attributionDate set
-	if s.stdCutoffDuration > 0 && conditions.attributionDate.IsZero() {
+	if s.stdCutoffDuration > 0 && attributionDate.IsZero() {
 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
+	return cutoffTime
+}
+
+func (s *service) getNewCCLFFile(ctx context.Context, conditions RequestConditions) (*models.CCLFFile, error) {
+	cutoffTime := s.determineCutoffTime(conditions.attributionDate)
 
 	// will get all benes between cutoff time and now, or all benes up until the attribution date
 	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
 		cutoffTime, conditions.attributionDate, conditions.fileType)
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
+		return nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
 	if cclfFileNew == nil {
-		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
+		return nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
+	return cclfFileNew, nil
+}
+
+func (s *service) getOldCCLFFile(ctx context.Context, conditions RequestConditions) (*models.CCLFFile, error) {
 
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
 		time.Time{}, conditions.Since, models.FileTypeDefault)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
+		return nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
-
-	if cclfFileOld == nil {
-		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
-			conditions.CMSID, conditions.Since)
-		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
-		if err != nil {
-			return nil, nil, err
-		}
-		if len(newBeneficiaries) == 0 {
-			return nil, nil, fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-				conditions.CMSID, cclfFileNew.ID)
-		}
-		return newBeneficiaries, nil, nil
-	}
-
-	oldMBIs, err := s.repository.GetCCLFBeneficiaryMBIs(ctx, cclfFileOld.ID)
+	return cclfFileOld, nil
+}
+func (s *service) findBenesFromFile(ctx context.Context, id uint, conditions RequestConditions) ([]*models.CCLFBeneficiary, error) {
+	beneficiaries, err := s.getBenesByFileID(ctx, id, conditions)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s cclfFileID %d %s",
-			conditions.CMSID, cclfFileOld.ID, err.Error())
+		return nil, err
 	}
+	if len(beneficiaries) == 0 {
+		return nil, fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID %s cclfFileID %d",
+			conditions.CMSID, id)
+	}
+	return beneficiaries, nil
+}
 
-	// Retrieve all of the benes associated with this CCLF file.
-	benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
+func (s *service) createOldMBIMap(ctx context.Context, id uint, conditions RequestConditions) (map[string]struct{}, error) {
+	oldMBIs, err := s.repository.GetCCLFBeneficiaryMBIs(ctx, id)
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s old cclfFileID %d %s",
+			conditions.CMSID, id, err.Error())
 	}
-	if len(benes) == 0 {
-		return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-			conditions.CMSID, cclfFileNew.ID)
-	}
-
-	// Split the results beteween new and old benes based on the existence of the bene in the old map
 	oldMBIMap := make(map[string]struct{}, len(oldMBIs))
 	for _, oldMBI := range oldMBIs {
 		oldMBIMap[oldMBI] = struct{}{}
 	}
+	return oldMBIMap, nil
+}
+
+func (s *service) sortIntoBenesLists(benes []*models.CCLFBeneficiary, oldMBIMap map[string]struct{}) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary) {
 	for _, bene := range benes {
 		if _, ok := oldMBIMap[bene.MBI]; ok {
 			beneficiaries = append(beneficiaries, bene)
@@ -401,7 +401,43 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 			newBeneficiaries = append(newBeneficiaries, bene)
 		}
 	}
+	return newBeneficiaries, beneficiaries
+}
 
+func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
+	cclfFileNew, err := s.getNewCCLFFile(ctx, conditions)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cclfFileOld, err := s.getOldCCLFFile(ctx, conditions)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if cclfFileOld == nil {
+		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
+			conditions.CMSID, conditions.Since)
+
+		newBeneficiaries, err := s.findBenesFromFile(ctx, cclfFileNew.ID, conditions)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return newBeneficiaries, nil, nil
+	}
+
+	benes, err := s.findBenesFromFile(ctx, cclfFileNew.ID, conditions)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	oldMBIMap, err := s.createOldMBIMap(ctx, cclfFileOld.ID, conditions)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	newBeneficiaries, beneficiaries = s.sortIntoBenesLists(benes, oldMBIMap)
 	return newBeneficiaries, beneficiaries, nil
 }
 
