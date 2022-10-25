@@ -485,9 +485,9 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		Data:          []string{constants.Adjudicated},
 	}
 
-	acoCfgs := map[*regexp.Regexp]*ACOConfig{
-		defaultACO.patternExp:  &defaultACO,
-		lookbackACO.patternExp: &lookbackACO,
+	acoCfgs := []ACOConfig{
+		defaultACO,
+		lookbackACO,
 	}
 
 	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
@@ -606,7 +606,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				},
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
-			serviceInstance.(*service).acoConfig = acoCfgs
+			serviceInstance.(*service).acoConfigs = acoCfgs
 
 			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)
@@ -671,8 +671,8 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 		Data:       []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 	}
 
-	acoCfgs := map[*regexp.Regexp]*ACOConfig{
-		defaultACO.patternExp: &defaultACO,
+	acoCfgs := []ACOConfig{
+		defaultACO,
 	}
 
 	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
@@ -745,7 +745,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 				},
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
-			serviceInstance.(*service).acoConfig = acoCfgs
+			serviceInstance.(*service).acoConfigs = acoCfgs
 
 			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)
@@ -962,6 +962,8 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound() {
 func (s *ServiceTestSuite) TestGetACOConfigForID() {
 	repository := &models.MockRepository{}
 
+	specificACOPattern, _ := regexp.Compile(`A9999`)
+
 	validACOPattern, _ := regexp.Compile(`A\d{4}`)
 
 	validACO := ACOConfig{
@@ -969,8 +971,13 @@ func (s *ServiceTestSuite) TestGetACOConfigForID() {
 		patternExp: validACOPattern,
 	}
 
+	specificACO := ACOConfig{
+		Model:      "Model A9999",
+		patternExp: specificACOPattern,
+	}
+
 	cfg := &Config{
-		ACOConfigs: []ACOConfig{validACO},
+		ACOConfigs: []ACOConfig{specificACO, validACO},
 	}
 
 	service := NewService(repository, cfg, "")
@@ -985,6 +992,12 @@ func (s *ServiceTestSuite) TestGetACOConfigForID() {
 			"Valid CMSID",
 			"A0000",
 			&validACO,
+			true,
+		},
+		{
+			"Specific CMSID",
+			"A9999",
+			&specificACO,
 			true,
 		},
 		{
