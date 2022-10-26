@@ -10039,3 +10039,5 @@ VALUES
     (Large, '1S00E00JG97'),
     (Large, '1S00E00MA06');
 
+END $$;
+COMMIT;
