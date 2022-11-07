@@ -220,3 +220,37 @@ func MakeTestServerWithIntrospectReturn502() *httptest.Server {
 	})
 	return httptest.NewServer(router)
 }
+
+//MakeTestServerWithTokenRequestTimeout creates an httptest.Server with an token request endpoint that will sleep for 10 seconds.
+//Useful in testing where the env timeout is set to something less (ex. 5 seconds) and you want to ensure *url.Error.Timeout() returns true.
+func MakeTestServerWithTokenRequestTimeout() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Second * 10)
+	})
+
+	return httptest.NewServer(router)
+}
+
+func MakeTestServerWithValidTokenRequestEndpoint() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	return httptest.NewServer(router)
+}
+
+func MakeTestServerWithInvalidTokenRequestEndpoint() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, err := w.Write([]byte(`Unauthorized`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	return httptest.NewServer(router)
+}

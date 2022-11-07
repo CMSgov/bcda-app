@@ -3,6 +3,8 @@ package auth
 import (
 	"fmt"
 	"net/http"
+
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
 /*
@@ -35,12 +37,19 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	token, expiresIn, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
+		switch err.(type) {
+		case *customErrors.RequestTimeoutError:
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		case *customErrors.UnexpectedSSASError:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		default:
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		}
 	}
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
 
+	// move to a helper function
 	body := []byte(fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, token, expiresIn))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")

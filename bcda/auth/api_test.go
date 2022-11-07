@@ -47,54 +47,67 @@ func (s *AuthAPITestSuite) SetupTest() {
 	s.rr = httptest.NewRecorder()
 }
 
-func (s *AuthAPITestSuite) TestAuthToken() {
-	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+func (s *AuthAPITestSuite) MockMakeAccessToken() {
+	clientID, clientSecret, accessToken := "happy", "client", "goodToken"
 	mock := &auth.MockProvider{}
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
 		Return(accessToken, constants.ExpiresInDefault, nil)
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
 		Return("", "", errors.New("some auth error"))
 	auth.SetMockProvider(s.T(), mock)
+}
 
+func (s *AuthAPITestSuite) TestBadRequestAuthToken() {
+	s.MockMakeAccessToken()
 	// Missing authorization header
 	req := httptest.NewRequest("POST", constants.TokenPath, nil)
 	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestBadRequestAuthTokenHeader() {
+	s.MockMakeAccessToken()
 
 	// Malformed authorization header
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", constants.TokenPath, nil)
+	req := httptest.NewRequest("POST", constants.TokenPath, nil)
 	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
 	req.Header.Add("Accept", constants.JsonContentType)
-	handler = http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestUnauthorizedAuthTokenBasicAuth() {
+	s.MockMakeAccessToken()
 
 	// Invalid credentials
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", constants.TokenPath, nil)
+	req := httptest.NewRequest("POST", constants.TokenPath, nil)
 	req.SetBasicAuth("not_a_client", "not_a_secret")
 	req.Header.Add("Accept", constants.JsonContentType)
-	handler = http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestSuccessAuthToken() {
+	s.MockMakeAccessToken()
 
 	// Success!?
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", constants.TokenPath, nil)
-	req.SetBasicAuth(clientID, clientSecret)
+	req := httptest.NewRequest("POST", constants.TokenPath, nil)
+	req.SetBasicAuth("happy", "client")
 	req.Header.Add("Accept", constants.JsonContentType)
-	handler = http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 
 	var t TokenResponse
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
-	assert.Equal(s.T(), accessToken, t.AccessToken)
+	assert.Equal(s.T(), "goodToken", t.AccessToken)
 	assert.Equal(s.T(), constants.ExpiresInDefault, t.ExpiresIn)
-
-	mock.AssertExpectations(s.T())
 }
 
 func (s *AuthAPITestSuite) TestWelcome() {

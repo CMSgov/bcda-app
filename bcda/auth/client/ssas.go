@@ -295,16 +295,20 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
 func (c *SSASClient) GetToken(credentials Credentials) ([]byte, []byte, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
-	url := fmt.Sprintf("%s/token", public)
-	req, err := http.NewRequest("POST", url, nil)
+	tokenUrl := fmt.Sprintf("%s/token", public)
+	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, constants.RequestStructErr)
+		return nil, nil, &customErrors.UnexpectedSSASError{Err: err, Msg: constants.RequestStructErr}
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "token request failed")
+		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
+			return nil, nil, &customErrors.RequestTimeoutError{Err: errors.New("Request Timed Out - Please Retry"), Msg: constants.EmptyString}
+		} else {
+			return nil, nil, &customErrors.UnexpectedSSASError{Err: errors.New("Token Request Failed"), SsasStatusCode: resp.StatusCode, Msg: constants.RequestStructErr}
+		}
 	}
 
 	defer resp.Body.Close()

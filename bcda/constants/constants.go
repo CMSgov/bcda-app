@@ -37,3 +37,6 @@ const JOBIDPath = "/jobs/{jobID}"
 const IssuerSSAS = "ssas"
 
 const EmptyString = ""
+
+const FiveSeconds = "5"
+const FiveHundredSeconds = "500"
