@@ -186,7 +186,11 @@ type gzipResponseWriter struct {
 }
 
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+	int, err := w.Writer.Write(b)
+	if err != nil {
+		log.API.Errorf("Error encountered in writing bytes with gzip writer: %s", err.Error())
+	}
+	return int, err
 }
 
 /*
@@ -283,6 +287,7 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 		gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
 		http.ServeFile(gzw, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	} else {
+		log.API.Warnf("API request to serve data is being made without gzip for file %s for jobId %s", fileName, jobID)
 		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	}
 }
