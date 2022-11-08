@@ -28,7 +28,7 @@ postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
-	# For example: make postman env=test token=<MY_TOKEN>
+	# For example: make postman env=test token=<MY_TOKEN> maintenanceMode=<CURRENT_MAINTENANCE_MODE>
 	$(eval BLACKLIST_CLIENT_ID=$(shell docker-compose exec -T api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
 	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker-compose exec -T api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
 
@@ -43,7 +43,8 @@ postman:
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
 	--global-var v2Disabled=false \
-	--global-var alrEnabled=true
+	--global-var alrEnabled=true \
+	--global-var maintenanceMode=$(maintenanceMode)
 
 unit-test: unit-test-ssas unit-test-db load-fixtures-ssas
 	docker-compose -f docker-compose.test.yml build tests
@@ -84,7 +85,7 @@ performance-test:
 test:
 	$(MAKE) lint
 	$(MAKE) unit-test
-	$(MAKE) postman env=local
+	$(MAKE) postman env=local maintenanceMode=""
 	$(MAKE) smoke-test env=local maintenanceMode=""
 
 load-fixtures:
@@ -149,7 +150,7 @@ docker-build:
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap: docker-build documentation load-fixtures
+docker-bootstrap: docker-build load-fixtures
 
 api-shell:
 	docker-compose exec -T api bash
