@@ -65,18 +65,18 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	const badAuthHeader = "not_an_encoded_client_and_secret"
 
 	tests := []struct {
-		scenarioName        string
-		statusCode          int
-		clientId            string
-		clientSecret        string
-		authHeader          string
-		expectedTokenString string
-		expiresIn           string
+		scenarioName       string
+		clientId           string
+		clientSecret       string
+		authHeader         string
+		tokenString        string
+		expiresIn          string
+		expectedStatusCode int
 	}{
-		{"Uauthorized Auth Token", http.StatusUnauthorized, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString},
-		{"Uauthorized Auth Token Header", http.StatusUnauthorized, constants.EmptyString, constants.EmptyString, badAuthHeader, constants.EmptyString, constants.EmptyString},
-		{"Uauthorized Token Basic Auth", http.StatusUnauthorized, badClientId, badClientSecret, constants.EmptyString, constants.EmptyString, constants.EmptyString},
-		{"Authorized Token Basic Auth", http.StatusOK, goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault},
+		{"Uauthorized Auth Token", constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized},
+		{"Uauthorized Auth Token Header", constants.EmptyString, constants.EmptyString, badAuthHeader, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized},
+		{"Uauthorized Token Basic Auth", badClientId, badClientSecret, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized},
+		{"Authorized Token Basic Auth", goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusOK},
 	}
 
 	for _, tt := range tests {
@@ -91,12 +91,12 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 			handler := http.HandlerFunc(auth.GetAuthToken)
 			handler.ServeHTTP(s.rr, req)
 
-			assert.Equal(s.T(), tt.statusCode, s.rr.Code)
+			assert.Equal(s.T(), tt.expectedStatusCode, s.rr.Code)
 
 			if s.rr.Code == 200 {
 				var t TokenResponse
 				assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
-				assert.Equal(s.T(), tt.expectedTokenString, t.AccessToken)
+				assert.Equal(s.T(), tt.tokenString, t.AccessToken)
 				assert.Equal(s.T(), tt.expiresIn, t.ExpiresIn)
 			}
 		})
