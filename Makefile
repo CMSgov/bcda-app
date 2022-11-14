@@ -150,7 +150,7 @@ docker-build:
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap: docker-build load-fixtures
+docker-bootstrap: docker-build documentation load-fixtures
 
 api-shell:
 	docker-compose exec -T api bash
