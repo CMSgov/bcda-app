@@ -130,14 +130,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+							"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=ExplanationOfBenefit",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"api",
-								"v1",
+								"v2",
 								"Patient",
 								"$export"
 							],
@@ -202,7 +202,7 @@
 									"    });",
 									"",
 									"    pm.test(\"Issue details text is Invalid Token\", function() {",
-									"        pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
+									"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
 									"    });",
 									"}"
 								],
@@ -279,7 +279,14 @@
 					],
 					"request": {
 						"auth": {
-							"type": "noauth"
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
 						},
 						"method": "GET",
 						"header": [
@@ -295,14 +302,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
+							"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"api",
-								"v1",
+								"v2",
 								"Patient",
 								"$export"
 							],
@@ -347,7 +354,7 @@
 									"    });",
 									"",
 									"    pm.test(\"Issue details text is Invalid Token\", function() {",
-									"        pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
+									"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
 									"    });",
 									"}"
 								],
@@ -424,7 +431,14 @@
 					],
 					"request": {
 						"auth": {
-							"type": "noauth"
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
 						},
 						"method": "GET",
 						"header": [
@@ -440,14 +454,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
+							"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Coverage",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"api",
-								"v1",
+								"v2",
 								"Patient",
 								"$export"
 							],
@@ -520,93 +534,6 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "Get status, valid token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 202 or 200\", function() {",
-									"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
-									"});",
-									"",
-									"if (pm.response.code === 202) {",
-									"    pm.test(\"Has X-Progress header\", function() {",
-									"        pm.response.to.have.header(\"X-Progress\", \"In Progress\");",
-									"    });",
-									"} else if (pm.response.code === 200) {",
-									"    const schema = {",
-									"        \"properties\": {",
-									"            \"transactionTime\": {",
-									"                \"type\": \"string\"",
-									"            },",
-									"            \"request\": {",
-									"                \"type\": \"string\"",
-									"            },",
-									"            \"requiresAccessToken\": {",
-									"                \"type\": \"boolean\"",
-									"            },",
-									"            \"output\": {",
-									"                \"type\": \"array\"",
-									"            },",
-									"            \"error\": {",
-									"                \"type\": \"array\"",
-									"            }",
-									"        }",
-									"    };",
-									"    ",
-									"    pm.test(\"Schema is valid\", function() {",
-									"        pm.expect(tv4.validate(pm.response.json(), schema)).to.be.true;",
-									"    })",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"type": "text",
-								"value": "application/fhir+json",
-								"disabled": true
-							},
-							{
-								"key": "Prefer",
-								"type": "text",
-								"value": "respond-async",
-								"disabled": true
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"jobs",
-								"{{jobId}}"
-							]
-						}
-					},
-					"response": []
 				}
 			]
 		},
@@ -636,53 +563,6 @@
 					"request": {
 						"auth": {
 							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"data",
-								"{{jobId}}",
-								"{{acoId}}.ndjson"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get data, valid token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function() {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Body contains data\", function() {",
-									"    pm.expect(pm.response.length > 0)",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
 						},
 						"method": "GET",
 						"header": [],
@@ -847,14 +727,14 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/metadata",
+					"raw": "{{scheme}}://{{host}}/api/v2/metadata",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
 					],
 					"path": [
 						"api",
-						"v1",
+						"v2",
 						"metadata"
 					]
 				}
@@ -869,18 +749,24 @@
 					"script": {
 						"exec": [
 							"var env = pm.environment.get(\"env\");",
-							"if (env === \"local\" || env === \"dev\") {",
-							"    pm.test(\"Status code is 200\", function() {",
-							"        pm.response.to.have.status(200);",
-							"    });",
-							"    ",
-							"    // Set token for use in other tests",
-							"    pm.environment.set(\"token\", pm.response.text());",
-							"} else {",
-							"     pm.test(\"Status code is 404\", function() {",
-							"        pm.response.to.have.status(404);",
-							"    });",
-							"}"
+							"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
+							"pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var responseJSON;",
+							"try {",
+							"   responseJSON = JSON.parse(responseBody);",
+							"   tests['response is valid JSON'] = true;",
+							"}",
+							"catch (e) {",
+							"   responseJSON = {};",
+							"   tests['response is valid JSON'] = false;",
+							"}",
+							"",
+							"pm.environment.set(\"token\", responseJSON.access_token);",
+							""
 						],
 						"type": "text/javascript"
 					}
@@ -888,19 +774,51 @@
 			],
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{clientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{clientId}}",
+							"type": "string"
+						}
+					]
 				},
-				"method": "GET",
-				"header": [],
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/token",
+					"raw": "{{scheme}}://{{host}}/auth/token",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
 					],
 					"path": [
-						"api",
-						"v1",
+						"auth",
 						"token"
 					]
 				}
