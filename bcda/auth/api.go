@@ -3,6 +3,8 @@ package auth
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/CMSgov/bcda-app/log"
 )
 
 /*
@@ -35,6 +37,8 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	token, expiresIn, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
+		log.API.Errorf("Error making access token - %s | HTTPS Status Code: %s", err.Error(), http.StatusText(http.StatusUnauthorized))
+
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -47,6 +51,8 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 	_, err = w.Write(body)
 	if err != nil {
+		log.API.Errorf("Error writing response - %s | HTTPS Status Code: %s", err.Error(), http.StatusText(http.StatusInternalServerError))
+
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

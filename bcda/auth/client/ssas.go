@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -304,13 +305,19 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, []byte, error) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "token request failed")
+		return nil, nil, errors.Wrap(err, "token request failed;")
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("token request failed; %v", resp.StatusCode)
+		b, err := io.ReadAll(resp.Body)
+		// b, err := ioutil.ReadAll(resp.Body)  Go.1.15 and earlier
+		if err != nil {
+			return nil, nil, fmt.Errorf("Cannot read response body, token request failed;")
+		} else {
+			return nil, nil, fmt.Errorf("Response Body: %s, token request failed;", string(b))
+		}
 	}
 
 	var t = TokenResponse{}
