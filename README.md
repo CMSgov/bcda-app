@@ -94,7 +94,7 @@ make unit-test
 3. Run postman integration tests:
 
 ```sh
-make postman env=local
+make postman env=local maintenanceMode=""
 ```
 
 4. Run smoke tests:
