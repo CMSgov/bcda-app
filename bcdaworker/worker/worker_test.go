@@ -316,7 +316,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
-	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
+	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
@@ -363,7 +363,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
 	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
-	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
+	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)

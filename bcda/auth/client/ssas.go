@@ -314,9 +314,9 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, []byte, error) {
 		b, err := io.ReadAll(resp.Body)
 		// b, err := ioutil.ReadAll(resp.Body)  Go.1.15 and earlier
 		if err != nil {
-			return nil, nil, fmt.Errorf("Cannot read response body, token request failed;")
+			return nil, nil, fmt.Errorf("Cannot read response body, token request failed; HTTPS Status Code: %v", resp.StatusCode)
 		} else {
-			return nil, nil, fmt.Errorf("Response Body: %s, token request failed;", string(b))
+			return nil, nil, fmt.Errorf("The token request failed; Response Body: %s, HTTPS Status Code: %v", string(b), resp.StatusCode)
 		}
 	}
 
