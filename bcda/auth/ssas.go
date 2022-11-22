@@ -96,14 +96,14 @@ func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
 }
 
 // MakeAccessToken mints an access token for the given credentials.
-func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, string, error) {
-	tokenString, expiresIn, err := s.client.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret})
+func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	tokenInfo, err := s.client.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret})
 	if err != nil {
 		log.SSAS.Errorf("Failed to get token; %s", err.Error())
-		return "", "", err
+		return "", err
 	}
 
-	return string(tokenString), string(expiresIn), nil
+	return string(tokenInfo), nil
 }
 
 // RevokeAccessToken revokes a specific access token identified in a base64-encoded token string.

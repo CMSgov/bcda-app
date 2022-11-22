@@ -293,36 +293,42 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 }
 
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
-func (c *SSASClient) GetToken(credentials Credentials) ([]byte, []byte, error) {
+func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	tokenUrl := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
-		return nil, nil, &customErrors.UnexpectedSSASError{Err: err, Msg: constants.RequestStructErr}
+		return nil, &customErrors.UnexpectedSSASError{Err: err, Msg: constants.RequestStructErr}
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
 	resp, err := c.Do(req)
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
-			return nil, nil, &customErrors.RequestTimeoutError{Err: errors.New("Request Timed Out - Please Retry"), Msg: constants.EmptyString}
+			return nil, &customErrors.RequestTimeoutError{Err: err, Msg: "token request failed - the SSAS /token request timed out"}
 		} else {
-			return nil, nil, &customErrors.UnexpectedSSASError{Err: errors.New("Token Request Failed"), SsasStatusCode: resp.StatusCode, Msg: constants.RequestStructErr}
+			return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - unexpected error occurred while performing SSAS token request"}
 		}
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("token request failed; %v", resp.StatusCode)
+		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - unexpected error occurred while performing SSAS token request"}
 	}
 
 	var t = TokenResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
-		return nil, nil, errors.Wrap(err, "could not decode token response")
+		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - could not decode token response"}
 	}
 
-	return []byte(t.AccessToken), []byte(t.ExpiresIn), nil
+	jsonData, err := json.Marshal(t)
+
+	if err != nil {
+		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - unexpected error occurred while performing SSAS token request"}
+	}
+
+	return []byte(jsonData), nil
 }
 
 func (c *SSASClient) Ping() error {

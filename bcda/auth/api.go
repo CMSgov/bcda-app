@@ -1,11 +1,17 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   string `json:"expires_in,omitempty"`
+	TokenType   string `json:"token_type"`
+}
 
 /*
 	swagger:route POST /auth/token auth GetAuthToken
@@ -28,6 +34,7 @@ import (
 		401: invalidCredentials
 		500: serverError
 */
+
 func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	clientId, secret, ok := r.BasicAuth()
 	if !ok {
@@ -35,28 +42,31 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, expiresIn, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
+	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
 		switch err.(type) {
 		case *customErrors.RequestTimeoutError:
-			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+			//default retrySeconds: 1 second (may convert to environmental variable later)
+			retrySeconds := strconv.FormatInt(int64(1), 10)
+			w.Header().Set("Retry-After", retrySeconds)
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		case *customErrors.UnexpectedSSASError:
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		default:
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 		}
+		return
 	}
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
 
-	// move to a helper function
-	body := []byte(fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, token, expiresIn))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
-	_, err = w.Write(body)
+	_, err = w.Write([]byte(tokenInfo))
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 }
 

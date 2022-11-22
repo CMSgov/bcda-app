@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -51,11 +52,11 @@ func (s *AuthAPITestSuite) MockMakeAccessToken() {
 	clientID, clientSecret, accessToken := "happy", "client", "goodToken"
 	mock := &auth.MockProvider{}
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "", ClientSecret: ""}).
-		Return("", "", errors.New("some auth error"))
+		Return("", errors.New("some auth error"))
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
-		Return("", "", errors.New("some auth error"))
+		Return("", errors.New("some auth error"))
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
-		Return(accessToken, constants.ExpiresInDefault, nil)
+		Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "%s", "expires_in": "%s" }`, accessToken, constants.ExpiresInDefault), nil)
 	auth.SetMockProvider(s.T(), mock)
 }
 
@@ -94,10 +95,12 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 			assert.Equal(s.T(), tt.expectedStatusCode, s.rr.Code)
 
 			if s.rr.Code == 200 {
-				var t TokenResponse
-				assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
-				assert.Equal(s.T(), tt.tokenString, t.AccessToken)
-				assert.Equal(s.T(), tt.expiresIn, t.ExpiresIn)
+				respMap := make(map[string]string)
+				bodyBytes, err := io.ReadAll(s.rr.Body)
+				assert.Nil(s.T(), err)
+				assert.NoError(s.T(), json.Unmarshal(bodyBytes, &respMap))
+				assert.Equal(s.T(), tt.tokenString, respMap["access_token"])
+				assert.Equal(s.T(), tt.expiresIn, respMap["expires_in"])
 			}
 		})
 	}

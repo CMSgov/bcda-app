@@ -2,7 +2,6 @@ package client_test
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -439,7 +438,7 @@ func (s *SSASClientTestSuite) TestSSASClientTokenAuthentication() {
 		expiresIn       []byte
 	}{
 		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequestEndpoint(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
-		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequestEndpoint(), constants.FiveHundredSeconds, []byte(nil), errors.New("Unauthorized"), []byte(nil)},
+		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequestEndpoint(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
 		{"Token request timed out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
 	}
 
@@ -454,10 +453,10 @@ func (s *SSASClientTestSuite) TestSSASClientTokenAuthentication() {
 				log.Fatalf(constants.SsasClientErr, err.Error())
 			}
 
-			tokenString, expiresIn, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
+			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
 
-			assert.Equal(t, tt.bytesToReturn, tokenString)
-			assert.Equal(t, tt.expiresIn, expiresIn)
+			assert.Contains(t, string(tokenInfo), string(tt.bytesToReturn))
+			assert.Contains(t, string(tokenInfo), string(tt.expiresIn))
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
 	}

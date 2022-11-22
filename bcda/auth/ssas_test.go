@@ -212,40 +212,35 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	tokenString, expiresIn, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
+	tokenInfo, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
 	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), tokenString)
-	assert.Equal(s.T(), expiresIn, constants.ExpiresInDefault)
-	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), tokenString)
+	assert.NotEmpty(s.T(), string(tokenInfo))
+	assert.Contains(s.T(), string(tokenInfo), constants.ExpiresInDefault)
+	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), string(tokenInfo))
 
-	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), tokenString)
-	assert.Empty(s.T(), expiresIn)
+	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), tokenString)
-	assert.Empty(s.T(), expiresIn)
+	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), tokenString)
-	assert.Empty(s.T(), expiresIn)
+	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), tokenString)
-	assert.Empty(s.T(), expiresIn)
+	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenString, expiresIn, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), tokenString)
-	assert.Empty(s.T(), expiresIn)
+	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 }
 
