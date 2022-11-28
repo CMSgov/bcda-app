@@ -305,16 +305,16 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	resp, err := c.Do(req)
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
-			return nil, &customErrors.RequestTimeoutError{Err: err, Msg: "token request failed - the SSAS /token request timed out"}
+			return nil, &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}
 		} else {
-			return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - unexpected error occurred while performing SSAS token request"}
+			return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 		}
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - unexpected error occurred while performing SSAS token request"}
+		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 	}
 
 	var t = TokenResponse{}
@@ -325,7 +325,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	jsonData, err := json.Marshal(t)
 
 	if err != nil {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - unexpected error occurred while performing SSAS token request"}
+		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 	}
 
 	return []byte(jsonData), nil

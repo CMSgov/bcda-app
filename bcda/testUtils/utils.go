@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
@@ -259,7 +260,7 @@ func MakeTestServerWithInvalidTokenRequest() *httptest.Server {
 
 func MakeTestServerWithBadAuthTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
-	router.Post("/auth/token", func(w http.ResponseWriter, r *http.Request) {
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, err := w.Write([]byte(`Bad Request`))
 		if err != nil {
@@ -271,7 +272,7 @@ func MakeTestServerWithBadAuthTokenRequest() *httptest.Server {
 
 func MakeTestServerWithAuthTokenRequestTimeout() *httptest.Server {
 	router := chi.NewRouter()
-	router.Post("/auth/token", func(w http.ResponseWriter, r *http.Request) {
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
 		retrySeconds := strconv.FormatInt(int64(1), 10)
 		w.Header().Set("Retry-After", retrySeconds)
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -283,7 +284,7 @@ func MakeTestServerWithAuthTokenRequestTimeout() *httptest.Server {
 
 func MakeTestServerWithValidAuthTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
-	router.Post("/auth/token", func(w http.ResponseWriter, r *http.Request) {
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
 		if err != nil {
 			log.Fatal(err)
@@ -294,7 +295,7 @@ func MakeTestServerWithValidAuthTokenRequest() *httptest.Server {
 
 func MakeTestServerWithInvalidAuthTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
-	router.Post("/auth/token", func(w http.ResponseWriter, r *http.Request) {
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`Unauthorized`))
 		if err != nil {
@@ -306,7 +307,7 @@ func MakeTestServerWithInvalidAuthTokenRequest() *httptest.Server {
 
 func MakeTestServerWithInternalServerErrAuthTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
-	router.Post("/auth/token", func(w http.ResponseWriter, r *http.Request) {
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte(`Unexpected Error`))
 		if err != nil {

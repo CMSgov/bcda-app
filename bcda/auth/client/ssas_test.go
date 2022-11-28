@@ -426,7 +426,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
 	}
 }
 
-func (s *SSASClientTestSuite) TestSSASClientTokenAuthentication() {
+func (s *SSASClientTestSuite) TestGetToken() {
 	const clientId, clientSecret, token = "happy", "client", "goodToken"
 
 	tests := []struct {
