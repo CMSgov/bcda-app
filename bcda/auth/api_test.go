@@ -27,8 +27,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/CMSgov/bcda-app/conf"
-
-	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
 type TokenResponse struct {
@@ -80,16 +78,15 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 		expiresIn             string
 		expectedStatusCode    int
 		HeaderRetryAfterValue string
-		errTypeToReturn       error
 		sSasTimeout           string
 	}{
-		{"Uauthorized Auth Token", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
-		{"Uauthorized Auth Token Header", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), constants.EmptyString, constants.EmptyString, badAuthHeader, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
-		{"Uauthorized Token Basic Auth", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), badClientId, badClientSecret, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
-		{"Bad Auth Token Request", testUtils.MakeTestServerWithBadAuthTokenRequest(), constants.EmptyString, constants.EmptyString, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusBadRequest, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
-		{"Authorized Token Basic Auth", testUtils.MakeTestServerWithValidAuthTokenRequest(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusOK, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
-		{"Internal Server Error Token Request (500)", testUtils.MakeTestServerWithInternalServerErrAuthTokenRequest(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusInternalServerError, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
-		{"Token Request Timed Out (503)", testUtils.MakeTestServerWithAuthTokenRequestTimeout(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusServiceUnavailable, "1", &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, constants.FiveSeconds},
+		{"Uauthorized Auth Token", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, constants.FiveHundredSeconds},
+		{"Uauthorized Auth Token Header", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), constants.EmptyString, constants.EmptyString, badAuthHeader, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, constants.FiveHundredSeconds},
+		{"Uauthorized Token Basic Auth", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), badClientId, badClientSecret, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, constants.FiveHundredSeconds},
+		{"Bad Auth Token Request", testUtils.MakeTestServerWithBadAuthTokenRequest(), constants.EmptyString, constants.EmptyString, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusBadRequest, constants.EmptyString, constants.FiveHundredSeconds},
+		{"Authorized Token Basic Auth", testUtils.MakeTestServerWithValidAuthTokenRequest(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusOK, constants.EmptyString, constants.FiveHundredSeconds},
+		{"Internal Server Error Token Request (500)", testUtils.MakeTestServerWithInternalServerErrAuthTokenRequest(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusInternalServerError, constants.EmptyString, constants.FiveHundredSeconds},
+		{"Token Request Timed Out (503)", testUtils.MakeTestServerWithAuthTokenRequestTimeout(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusServiceUnavailable, "1", constants.FiveSeconds},
 	}
 
 	for _, tt := range tests {
