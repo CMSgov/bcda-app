@@ -437,9 +437,9 @@ func (s *SSASClientTestSuite) TestSSASClientTokenAuthentication() {
 		errTypeToReturn error
 		expiresIn       []byte
 	}{
-		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequestEndpoint(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
-		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequestEndpoint(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
-		{"Token request timed out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
+		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequest(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
+		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
+		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
 	}
 
 	for _, tt := range tests {

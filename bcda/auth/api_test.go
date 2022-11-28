@@ -24,6 +24,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+
+	"github.com/CMSgov/bcda-app/conf"
+
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
 type TokenResponse struct {
@@ -66,37 +71,54 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	const badAuthHeader = "not_an_encoded_client_and_secret"
 
 	tests := []struct {
-		scenarioName       string
-		clientId           string
-		clientSecret       string
-		authHeader         string
-		tokenString        string
-		expiresIn          string
-		expectedStatusCode int
+		scenarioName          string
+		server                *httptest.Server
+		clientId              string
+		clientSecret          string
+		authHeader            string
+		tokenString           string
+		expiresIn             string
+		expectedStatusCode    int
+		HeaderRetryAfterValue string
+		errTypeToReturn       error
+		sSasTimeout           string
 	}{
-		{"Uauthorized Auth Token", constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized},
-		{"Uauthorized Auth Token Header", constants.EmptyString, constants.EmptyString, badAuthHeader, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized},
-		{"Uauthorized Token Basic Auth", badClientId, badClientSecret, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized},
-		{"Authorized Token Basic Auth", goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusOK},
+		{"Uauthorized Auth Token", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
+		{"Uauthorized Auth Token Header", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), constants.EmptyString, constants.EmptyString, badAuthHeader, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
+		{"Uauthorized Token Basic Auth", testUtils.MakeTestServerWithInvalidAuthTokenRequest(), badClientId, badClientSecret, constants.EmptyString, constants.EmptyString, constants.EmptyString, http.StatusUnauthorized, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
+		{"Bad Auth Token Request", testUtils.MakeTestServerWithBadAuthTokenRequest(), constants.EmptyString, constants.EmptyString, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusBadRequest, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
+		{"Authorized Token Basic Auth", testUtils.MakeTestServerWithValidAuthTokenRequest(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusOK, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
+		{"Internal Server Error Token Request (500)", testUtils.MakeTestServerWithInternalServerErrAuthTokenRequest(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusInternalServerError, constants.EmptyString, &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, constants.FiveHundredSeconds},
+		{"Token Request Timed Out (503)", testUtils.MakeTestServerWithAuthTokenRequestTimeout(), goodClientId, goodClientSecret, constants.EmptyString, goodToken, constants.ExpiresInDefault, http.StatusServiceUnavailable, "1", &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, constants.FiveSeconds},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.scenarioName, func(t *testing.T) {
+			conf.SetEnv(t, "SSAS_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_TIMEOUT_MS", tt.sSasTimeout)
 			s.MockMakeAccessToken()
 
-			s.rr = httptest.NewRecorder()
-			req := httptest.NewRequest("POST", constants.TokenPath, nil)
+			req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", tt.server.URL), nil)
+			if err != nil {
+				assert.FailNow(s.T(), err.Error())
+			}
 			req.Header.Add("Authorization", fmt.Sprintf("Basic %s", tt.authHeader))
 			req.Header.Add("Accept", constants.JsonContentType)
 			req.SetBasicAuth(tt.clientId, tt.clientSecret)
-			handler := http.HandlerFunc(auth.GetAuthToken)
-			handler.ServeHTTP(s.rr, req)
 
-			assert.Equal(s.T(), tt.expectedStatusCode, s.rr.Code)
+			client := tt.server.Client()
+			resp, err := client.Do(req)
+			if err != nil {
+				assert.FailNow(s.T(), err.Error())
+			}
 
-			if s.rr.Code == 200 {
+			assert.Equal(s.T(), tt.expectedStatusCode, resp.StatusCode)
+			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
+
+			if resp.StatusCode == 200 {
 				respMap := make(map[string]string)
-				bodyBytes, err := io.ReadAll(s.rr.Body)
+				bodyBytes, err := io.ReadAll(resp.Body)
 				assert.Nil(s.T(), err)
 				assert.NoError(s.T(), json.Unmarshal(bodyBytes, &respMap))
 				assert.Equal(s.T(), tt.tokenString, respMap["access_token"])
