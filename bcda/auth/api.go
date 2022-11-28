@@ -7,12 +7,6 @@ import (
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
-type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   string `json:"expires_in,omitempty"`
-	TokenType   string `json:"token_type"`
-}
-
 /*
 	swagger:route POST /auth/token auth GetAuthToken
 
