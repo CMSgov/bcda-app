@@ -65,7 +65,7 @@ func (s *AuthAPITestSuite) MockMakeAccessToken() {
 	auth.SetMockProvider(s.T(), mock)
 }
 
-func (s *AuthAPITestSuite) TestAuthToken() {
+func (s *AuthAPITestSuite) TestGetAuthToken() {
 	const goodClientId, goodClientSecret, goodToken = "happy", "client", "goodToken"
 	const badClientId, badClientSecret = "not_a_client", "not_a_secret"
 	const badAuthHeader = "not_an_encoded_client_and_secret"
