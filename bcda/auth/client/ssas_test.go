@@ -455,8 +455,8 @@ func (s *SSASClientTestSuite) TestGetToken() {
 
 			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
 
-			assert.Contains(t, string(tokenInfo), string(tt.bytesToReturn))
-			assert.Contains(t, string(tokenInfo), string(tt.expiresIn))
+			assert.Contains(t, tokenInfo, string(tt.bytesToReturn))
+			assert.Contains(t, tokenInfo, string(tt.expiresIn))
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
 	}

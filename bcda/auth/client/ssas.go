@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -293,42 +294,37 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 }
 
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
-func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
+func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	tokenUrl := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
-		return nil, &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
+		return "", &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
 	resp, err := c.Do(req)
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
-			return nil, &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}
+			return "", &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}
 		} else {
-			return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 		}
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+		return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 	}
 
-	var t = TokenResponse{}
-	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
-		return nil, &customErrors.InternalParsingError{Err: err, Msg: constants.TokenRequestDecodingErr}
-	}
-
-	jsonData, err := json.Marshal(t)
+	b, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		return nil, &customErrors.InternalParsingError{Err: err, Msg: "token request failed - error marshalling response to json"}
+		return "", &customErrors.InternalParsingError{Err: err, Msg: "token request failed - error parsing response to json"}
 	}
 
-	return []byte(jsonData), nil
+	return string(b), nil
 }
 
 func (c *SSASClient) Ping() error {

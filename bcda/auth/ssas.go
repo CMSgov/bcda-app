@@ -103,7 +103,7 @@ func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
 		return "", err
 	}
 
-	return string(tokenInfo), nil
+	return tokenInfo, nil
 }
 
 // RevokeAccessToken revokes a specific access token identified in a base64-encoded token string.
