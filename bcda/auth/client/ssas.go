@@ -298,7 +298,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	tokenUrl := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, Msg: constants.RequestStructErr}
+		return nil, &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
@@ -319,13 +319,13 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 
 	var t = TokenResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "token request failed - could not decode token response"}
+		return nil, &customErrors.InternalParsingError{Err: err, Msg: constants.TokenRequestDecodingErr}
 	}
 
 	jsonData, err := json.Marshal(t)
 
 	if err != nil {
-		return nil, &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+		return nil, &customErrors.InternalParsingError{Err: err, Msg: "token request failed - error marshalling response to json"}
 	}
 
 	return []byte(jsonData), nil
