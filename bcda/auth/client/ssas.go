@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -318,13 +317,12 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 		return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 	}
 
-	b, err := io.ReadAll(resp.Body)
-
-	if err != nil {
+	var t = TokenResponse{}
+	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
 		return "", &customErrors.InternalParsingError{Err: err, Msg: "token request failed - error parsing response to json"}
 	}
 
-	return string(b), nil
+	return fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, t.AccessToken, t.ExpiresIn), nil
 }
 
 func (c *SSASClient) Ping() error {
