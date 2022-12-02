@@ -72,6 +72,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 	}{
 		{"Token Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, "1"},
 		{"Token Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, constants.EmptyString},
+		{"Token Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, constants.EmptyString},
 		{"Token Default Error Return 401", errors.New(errorHappened), 401, constants.EmptyString},
 	}
 

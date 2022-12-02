@@ -44,7 +44,7 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 			retrySeconds := strconv.FormatInt(int64(1), 10)
 			w.Header().Set("Retry-After", retrySeconds)
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-		case *customErrors.UnexpectedSSASError:
+		case *customErrors.UnexpectedSSASError, *customErrors.InternalParsingError:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		default:
 			http.Error(w, err.Error(), http.StatusUnauthorized)
