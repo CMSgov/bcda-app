@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
 	"time"
 
@@ -200,48 +199,6 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 
 func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {
 	// TestRevokeSystemCredentials is a test script to showcase the ability to revoke client ids/credentials
-}
-
-func (s *SSASPluginTestSuite) TestMakeAccessToken() {
-	_, tokenString, _, _ := MockSSASToken()
-	MockSSASServer(tokenString)
-
-	c, err := client.NewSSASClient()
-	if err != nil {
-		log.Fatalf(constants.SsasClientErr, err.Error())
-	}
-	s.p = SSASPlugin{client: c, repository: s.r}
-
-	tokenInfo, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
-	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), string(tokenInfo), constants.ExpiresInDefault)
-	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), string(tokenInfo))
-
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), err.Error(), "401")
-
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{})
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), err.Error(), "401")
-
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), err.Error(), "401")
-
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), err.Error(), "401")
-
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), err.Error(), "401")
 }
 
 func (s *SSASPluginTestSuite) TestRevokeAccessToken() {

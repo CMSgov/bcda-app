@@ -38,6 +38,15 @@ func (e *ConfigError) Error() string {
 	return fmt.Sprintf("Configuration Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
+type RequestError struct {
+	Err error
+	Msg string
+}
+
+func (e *RequestError) Error() string {
+	return fmt.Sprintf("Request Error encountered - %s. Err: %s", e.Msg, e.Err)
+}
+
 type RequestTimeoutError struct {
 	Err error
 	Msg string
@@ -55,6 +64,15 @@ type UnexpectedSSASError struct {
 
 func (e *UnexpectedSSASError) Error() string {
 	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
+}
+
+type UnauthorizedError struct {
+	Err error
+	Msg string
+}
+
+func (e *UnauthorizedError) Error() string {
+	return fmt.Sprintf("Token Request Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
 type ExpiredTokenError struct {

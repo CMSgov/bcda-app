@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -427,6 +428,8 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
 }
 
 func (s *SSASClientTestSuite) TestGetToken() {
+	const errorHappened = "Error Happened!"
+	const errMsg = "Error Message"
 	const clientId, clientSecret, token = "happy", "client", "goodToken"
 
 	tests := []struct {
@@ -437,9 +440,10 @@ func (s *SSASClientTestSuite) TestGetToken() {
 		errTypeToReturn error
 		expiresIn       []byte
 	}{
+		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: errMsg, Err: errors.New(errorHappened)}, []byte(nil)},
+		{"Bad Request", testUtils.MakeTestServerWithBadTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, []byte(nil)},
+		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnauthorizedError{Msg: errMsg, Err: errors.New(errorHappened)}, []byte(nil)},
 		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequest(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
-		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
-		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
 	}
 
 	for _, tt := range tests {
@@ -455,8 +459,10 @@ func (s *SSASClientTestSuite) TestGetToken() {
 
 			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
 
-			assert.Contains(t, tokenInfo, string(tt.bytesToReturn))
-			assert.Contains(t, tokenInfo, string(tt.expiresIn))
+			if err == nil {
+				assert.Contains(t, string(tokenInfo), string(tt.bytesToReturn))
+				assert.Contains(t, string(tokenInfo), string(tt.expiresIn))
+			}
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
 	}

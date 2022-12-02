@@ -246,6 +246,18 @@ func MakeTestServerWithValidTokenRequest() *httptest.Server {
 	return httptest.NewServer(router)
 }
 
+func MakeTestServerWithBadTokenRequest() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write([]byte(`Bad Request`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	return httptest.NewServer(router)
+}
+
 func MakeTestServerWithInvalidTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
 	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {

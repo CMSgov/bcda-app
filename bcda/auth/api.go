@@ -39,15 +39,21 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
 		switch err.(type) {
+		case *customErrors.RequestError:
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		case *customErrors.RequestTimeoutError:
 			//default retrySeconds: 1 second (may convert to environmental variable later)
 			retrySeconds := strconv.FormatInt(int64(1), 10)
 			w.Header().Set("Retry-After", retrySeconds)
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		case *customErrors.InternalParsingError:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		case *customErrors.UnexpectedSSASError:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-		default:
+		case *customErrors.UnauthorizedError:
 			http.Error(w, err.Error(), http.StatusUnauthorized)
+		default:
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		}
 		return
 	}

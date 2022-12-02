@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -298,7 +299,7 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 	tokenUrl := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
-		return "", &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
+		return "", &customErrors.RequestError{Err: err, Msg: constants.RequestStructErr}
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
@@ -306,15 +307,24 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
 			return "", &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}
-		} else {
-			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
 		}
 	}
 
-	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
-		return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+		bodyBytes, err := io.ReadAll(resp.Body)
+
+		if err == nil {
+			bodyString := string(bodyBytes)
+			bodyStringToLowerCase := strings.ToLower(bodyString)
+			isUnauthorized := strings.Contains(bodyStringToLowerCase, "unauthorized")
+
+			defer resp.Body.Close()
+
+			if isUnauthorized {
+				return "", &customErrors.UnauthorizedError{Err: err, Msg: constants.TokenRequestUnauthorizedErr}
+			}
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+		}
 	}
 
 	var t = TokenResponse{}
