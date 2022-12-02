@@ -372,9 +372,15 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
-	req.Header.Add(jobIDHeader, jobID)
-	req.Header.Add(clientIDHeader, cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
+
+	jobIDLength := len(string(jobID))
+	cmsIDLength := len(cmsID)
+
+	if jobIDLength > 0 && cmsIDLength > 0 {
+		req.Header.Add(jobIDHeader, jobID)
+		req.Header.Add(clientIDHeader, cmsID)
+	}
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
 	// If we specify this header at the client level, then we must be responsible for decompressing the response.
