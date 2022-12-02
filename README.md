@@ -100,7 +100,7 @@ make postman env=local maintenanceMode=""
 4. Run smoke tests:
 
 ```sh
-make smoke-test env=local
+make smoke-test env=local maintenanceMode=""
 ```
 
 5. Run full test suite (executes all of items in 1-4 above):

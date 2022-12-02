@@ -79,7 +79,7 @@ type Provider interface {
 	RevokeSystemCredentials(clientID string) error
 
 	// MakeAccessToken mints an access token for the given credentials
-	MakeAccessToken(credentials Credentials) (string, string, error)
+	MakeAccessToken(credentials Credentials) (string, error)
 
 	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error

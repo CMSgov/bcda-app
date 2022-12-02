@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
@@ -253,35 +253,6 @@ func (s *SSASClientTestSuite) TestRevokeAccessToken() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *SSASClientTestSuite) TestGetToken() {
-	const tokenString = "totallyfake.tokenstringfor.testing"
-	router := chi.NewRouter()
-	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `", "expires_in": "` + constants.ExpiresInDefault + `" }`))
-		if err != nil {
-			log.Fatal(err)
-		}
-	})
-	server := httptest.NewServer(router)
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-
-	client, err := authclient.NewSSASClient()
-	if err != nil {
-		s.FailNow(constants.CreateSsasErr, err.Error())
-	}
-
-	respKey, respExp, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
-	if err != nil {
-		s.FailNow("Failed to get token", err.Error())
-	}
-
-	assert.Equal(s.T(), tokenString, string(respKey))
-	assert.Equal(s.T(), constants.ExpiresInDefault, string(respExp))
-}
-
 func (s *SSASClientTestSuite) TestGetVersionPassing() {
 	router := chi.NewRouter()
 	router.Get("/_version", func(w http.ResponseWriter, r *http.Request) {
@@ -450,6 +421,42 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
 
 			bytes, err := client.CallSSASIntrospect(tt.tokenString)
 			assert.Equal(t, tt.bytesToReturn, bytes)
+			assert.IsType(t, tt.errTypeToReturn, err)
+		})
+	}
+}
+
+func (s *SSASClientTestSuite) TestGetToken() {
+	const clientId, clientSecret, token = "happy", "client", "goodToken"
+
+	tests := []struct {
+		scenarioName    string
+		server          *httptest.Server
+		sSasTimeout     string
+		bytesToReturn   []byte
+		errTypeToReturn error
+		expiresIn       []byte
+	}{
+		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequest(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
+		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
+		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.scenarioName, func(t *testing.T) {
+			conf.SetEnv(t, "SSAS_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.server.URL)
+			conf.SetEnv(t, "SSAS_TIMEOUT_MS", tt.sSasTimeout)
+
+			client, err := authclient.NewSSASClient()
+			if err != nil {
+				log.Fatalf(constants.SsasClientErr, err.Error())
+			}
+
+			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
+
+			assert.Contains(t, tokenInfo, string(tt.bytesToReturn))
+			assert.Contains(t, tokenInfo, string(tt.expiresIn))
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
 	}
