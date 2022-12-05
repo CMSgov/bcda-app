@@ -27,7 +27,10 @@ const ContentType = "Content-Type"
 const JsonContentType = "application/json"
 
 const BBHeaderTS = "BlueButton-OriginalQueryTimestamp"
+const BBHeaderOriginURL = "BlueButton-OriginalUrl"
 const BBHeaderOriginQID = "BlueButton-OriginalQueryId"
+const BBHeaderOriginQ = "BlueButton-OriginalQuery"
+const BBHeaderOriginQC = "BlueButton-OriginalQueryCounter"
 
 const CCLFFileRetID = "%s RETURNING id"
 const JobKeyCreateErr = "failed to create job key: %w"
