@@ -534,6 +534,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
+				noBulkRequestHeaders,
 				hasDefaultRequestHeaders,
 			},
 		},
@@ -917,6 +918,12 @@ func hasDefaultRequestHeaders(t *testing.T, req *http.Request) {
 func hasBulkRequestHeaders(t *testing.T, req *http.Request) {
 	assert.NotEmpty(t, req.Header.Get(jobIDHeader))
 	assert.NotEmpty(t, req.Header.Get(clientIDHeader))
+}
+func noBulkRequestHeaders(t *testing.T, req *http.Request) {
+	for k := range req.Header {
+		assert.NotEqual(t, k, jobIDHeader)
+		assert.NotEqual(t, k, clientIDHeader)
+	}
 }
 
 func TestBBTestSuite(t *testing.T) {
