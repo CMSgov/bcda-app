@@ -266,7 +266,6 @@ func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobID, cmsID string, head
 	return b, nil
 }
 
-// add comment
 func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, headers http.Header) (*models.Bundle, *url.URL, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
@@ -317,7 +316,6 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, h
 	return result, nextURL, nil
 }
 
-// add comment
 func (bbc *BlueButtonClient) getRawData(u *url.URL) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
@@ -366,7 +364,6 @@ func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, e
 	return u, nil
 }
 
-// function to add headers for bulk requests
 func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("keep-alive", "")
