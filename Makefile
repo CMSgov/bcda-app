@@ -38,12 +38,12 @@ postman:
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
+	# to test alrEnabled, include --global-var alrEnabled=true below
 	docker-compose -f docker-compose.test.yml build postman_test
 	@docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
 	--global-var v2Disabled=false \
-	--global-var alrEnabled=true \
 	--global-var maintenanceMode=$(maintenanceMode)
 
 unit-test: unit-test-ssas unit-test-db load-fixtures-ssas
