@@ -295,7 +295,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, h
 		}
 
 		queryID := uuid.NewRandom()
-		addRequestHeaders(req, queryID, jobID, cmsID)
+		addBulkRequestHeaders(req, queryID, jobID, cmsID)
 
 		result, nextURL, err = bbc.client.DoBundleRequest(req)
 		if err != nil {
@@ -333,7 +333,7 @@ func (bbc *BlueButtonClient) getRawData(u *url.URL) (string, error) {
 			logger.Error(err)
 			return err
 		}
-		addRequestHeaders(req, uuid.NewRandom(), "", "")
+		addNonBulkRequestHeaders(req, uuid.NewRandom())
 
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
@@ -364,16 +364,14 @@ func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, e
 	return u, nil
 }
 
-func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
+func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
+	req.Header.Add("keep-alive", "")
 	req.Header.Add(constants.BBHeaderTS, time.Now().String())
 	req.Header.Add(constants.BBHeaderOriginQID, reqID.String())
-	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
-	req.Header.Add("keep-alive", "")
-	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
-	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
-	req.Header.Add(jobIDHeader, jobID)
-	req.Header.Add(clientIDHeader, cmsID)
+	req.Header.Add(constants.BBHeaderOriginQC, "1")
+	req.Header.Add(constants.BBHeaderOriginURL, req.URL.String())
+	req.Header.Add(constants.BBHeaderOriginQ, req.URL.RawQuery)
 	req.Header.Add("IncludeIdentifiers", "mbi")
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
@@ -387,7 +385,21 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	//req.Header.Add("BlueButton-BeneficiaryId", "")
 	//req.Header.Add("BlueButton-OriginatingIpAddress", "")
 	//req.Header.Add("BlueButton-BackendCall", "")
+}
 
+// function to add headers for bulk requests
+func addBulkRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
+	// Info: https://github.com/CMSgov/beneficiary-fhir-data/blob/master/docs/request-audit-headers.md
+	addDefaultRequestHeaders(req, reqID)
+
+	req.Header.Add(jobIDHeader, jobID)
+	req.Header.Add(clientIDHeader, cmsID)
+}
+
+// function to add headers for non-bulk requests
+func addNonBulkRequestHeaders(req *http.Request, reqID uuid.UUID) {
+	// Info: https://github.com/CMSgov/beneficiary-fhir-data/blob/master/docs/request-audit-headers.md
+	addDefaultRequestHeaders(req, reqID)
 }
 
 func GetDefaultParams() (params url.Values) {

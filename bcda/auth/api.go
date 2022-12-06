@@ -60,7 +60,6 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write([]byte(tokenInfo))
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
 	}
 }
 
