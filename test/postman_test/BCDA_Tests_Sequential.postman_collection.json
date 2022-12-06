@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "9d91c94f-169e-4fb9-a53c-93eb08f854c0",
+		"_postman_id": "702c5849-e046-4465-8bd7-214891ae3fe9",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "20886263"
@@ -7030,6 +7030,92 @@
 									"response": []
 								},
 								{
+									"name": "Start /Patient Mix BCDA & PACA resource type export",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {\t",
+													"    console.log(\"EOY mode is enabled - Skipping Patient with Mix BCDA & PACA (Coverage & ClaimResponse resource type) request\");",
+													"",
+													"    pm.test(\"Status code is 400, 404, or 500\", function() {",
+													"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
+													"    });",
+													"} else {",
+													"    pm.test(\"Status code is 400\", function() {",
+													"        pm.response.to.have.status(400);",
+													"    });",
+													"",
+													"    var respJson = pm.response.json();",
+													"",
+													"    pm.test(\"Resource type is OperationOutcome\", function() {",
+													"        pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"    });",
+													"",
+													"    pm.test(\"Issue details code is Request Error\", function() {",
+													"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+													"    });",
+													"",
+													"",
+													"    pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+													"        pm.expect(respJson.issue[0].details.text).to.include(\"invalid resource type\")",
+													"    });",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage,ClaimResponse",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v1",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Coverage,ClaimResponse"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Start /Group non-existing resource type export",
 									"event": [
 										{
@@ -7281,6 +7367,92 @@
 												{
 													"key": "_type",
 													"value": "ClaimResponse"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start /Group Mix BCDA & PACA resource type export",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {\t",
+													"    console.log(\"EOY mode is enabled - Skipping Group/all with Mix BCDA & PACA (Patient & Claim) resource type request\");",
+													"",
+													"    pm.test(\"Status code is 400, 404, or 500\", function() {",
+													"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
+													"    });",
+													"} else {",
+													"    pm.test(\"Status code is 400\", function() {",
+													"        pm.response.to.have.status(400);",
+													"    });",
+													"",
+													"    var respJson = pm.response.json();",
+													"",
+													"    pm.test(\"Resource type is OperationOutcome\", function() {",
+													"        pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"    });",
+													"",
+													"    pm.test(\"Issue details code is Request Error\", function() {",
+													"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+													"    });",
+													"",
+													"    pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+													"        pm.expect(respJson.issue[0].details.text).to.include(\"invalid resource type\")",
+													"    });",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Claim,Patient",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v1",
+												"Group",
+												"all",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Claim,Patient"
 												}
 											]
 										}
