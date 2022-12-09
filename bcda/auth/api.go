@@ -1,10 +1,12 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/log"
+	"strconv"
+
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
 
 /*
@@ -28,6 +30,7 @@ import (
 		401: invalidCredentials
 		500: serverError
 */
+
 func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	clientId, secret, ok := r.BasicAuth()
 	if !ok {
@@ -35,21 +38,36 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, expiresIn, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
+	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
-		log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusUnauthorized)
 
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		switch err.(type) {
+		case *customErrors.RequestTimeoutError:
+			//default retrySeconds: 1 second (may convert to environmental variable later)
+			retrySeconds := strconv.FormatInt(int64(1), 10)
+			w.Header().Set("Retry-After", retrySeconds)
+
+			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusServiceUnavailable)
+
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		case *customErrors.UnexpectedSSASError, *customErrors.InternalParsingError:
+			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
+
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		default:
+			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusUnauthorized)
+
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		}
 		return
 	}
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
 
-	body := []byte(fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, token, expiresIn))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
-	_, err = w.Write(body)
+	_, err = w.Write([]byte(tokenInfo))
 	if err != nil {
 		log.API.Errorf("Error writing response - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 

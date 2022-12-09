@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,20 +23,21 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   string `json:"expires_in,omitempty"`
-	TokenType   string `json:"token_type"`
-}
-
 type AuthAPITestSuite struct {
 	suite.Suite
-	rr *httptest.ResponseRecorder
-	db *sql.DB
-	r  models.Repository
+	rr     *httptest.ResponseRecorder
+	db     *sql.DB
+	r      models.Repository
+	server *httptest.Server
+}
+
+func (s *AuthAPITestSuite) CreateRouter() http.Handler {
+	r := auth.NewAuthRouter()
+	return r
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
@@ -45,56 +47,107 @@ func (s *AuthAPITestSuite) SetupSuite() {
 
 func (s *AuthAPITestSuite) SetupTest() {
 	s.rr = httptest.NewRecorder()
+	s.server = httptest.NewServer(s.CreateRouter())
 }
 
-func (s *AuthAPITestSuite) TestAuthToken() {
-	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
-	mock := &auth.MockProvider{}
-	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
-		Return(accessToken, constants.ExpiresInDefault, nil)
-	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
-		Return("", "", errors.New("some auth error"))
-	auth.SetMockProvider(s.T(), mock)
+func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
+	const errorHappened = "Error Happened!"
+	const errMsg = "Error Message"
 
-	// Missing authorization header
-	req := httptest.NewRequest("POST", constants.TokenPath, nil)
-	handler := http.HandlerFunc(auth.GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
-
-	// Malformed authorization header
-	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", constants.TokenPath, nil)
-	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", s.server.URL), nil)
+	if err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	//req.Header.Add("Authorization", fmt.Sprintf("Basic %s", tt.authHeader))
 	req.Header.Add("Accept", constants.JsonContentType)
-	handler = http.HandlerFunc(auth.GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+	req.SetBasicAuth("good", "client")
 
-	// Invalid credentials
-	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", constants.TokenPath, nil)
-	req.SetBasicAuth("not_a_client", "not_a_secret")
+	client := s.server.Client()
+
+	tests := []struct {
+		ScenarioName          string
+		ErrorToReturn         error
+		StatusCode            int
+		HeaderRetryAfterValue string
+	}{
+		{"Token Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, "1"},
+		{"Token Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, constants.EmptyString},
+		{"Token Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, constants.EmptyString},
+		{"Token Default Error Return 401", errors.New(errorHappened), 401, constants.EmptyString},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.ScenarioName, func(t *testing.T) {
+
+			//setup mocks
+			mock := &auth.MockProvider{}
+			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return("", tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mock)
+
+			//Act
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			//Assert
+			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
+			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
+			mock.AssertExpectations(s.T())
+		})
+	}
+}
+
+func (s *AuthAPITestSuite) TestGetAuthToken() {
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", s.server.URL), nil)
+	if err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
 	req.Header.Add("Accept", constants.JsonContentType)
-	handler = http.HandlerFunc(auth.GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	req.SetBasicAuth("good", "client")
 
-	// Success!?
-	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", constants.TokenPath, nil)
-	req.SetBasicAuth(clientID, clientSecret)
-	req.Header.Add("Accept", constants.JsonContentType)
-	handler = http.HandlerFunc(auth.GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	client := s.server.Client()
 
-	var t TokenResponse
-	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
-	assert.Equal(s.T(), accessToken, t.AccessToken)
-	assert.Equal(s.T(), constants.ExpiresInDefault, t.ExpiresIn)
+	tests := []struct {
+		ScenarioName          string
+		ErrorToReturn         error
+		StatusCode            int
+		HeaderRetryAfterValue string
+	}{
+		{"Authorized Token Basic Auth", nil, 200, constants.EmptyString},
+	}
 
-	mock.AssertExpectations(s.T())
+	for _, tt := range tests {
+		s.T().Run(tt.ScenarioName, func(t *testing.T) {
+
+			//setup mocks
+			mock := &auth.MockProvider{}
+			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mock)
+
+			//Act
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			respMap := make(map[string]string)
+			bodyBytes, err := io.ReadAll(resp.Body)
+
+			//Assert
+			assert.Nil(s.T(), err)
+			assert.NoError(s.T(), json.Unmarshal(bodyBytes, &respMap))
+			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
+			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
+			assert.Equal(s.T(), resp.Header.Get("Content-Type"), "application/json")
+			assert.Equal(s.T(), resp.Header.Get("Cache-Control"), "no-store")
+			assert.Equal(s.T(), resp.Header.Get("Pragma"), "no-cache")
+			assert.Equal(s.T(), "goodToken", respMap["access_token"])
+			assert.Equal(s.T(), constants.ExpiresInDefault, respMap["expires_in"])
+			mock.AssertExpectations(s.T())
+		})
+	}
+
 }
 
 func (s *AuthAPITestSuite) TestWelcome() {
@@ -130,7 +183,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	respMap := make(map[string]string)
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	assert.Nil(s.T(), err)
 	assert.NoError(s.T(), json.Unmarshal(bodyBytes, &respMap))
 	assert.NotEmpty(s.T(), respMap)

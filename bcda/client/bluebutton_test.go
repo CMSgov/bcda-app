@@ -349,6 +349,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noServiceDateChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -368,6 +370,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noServiceDateChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -388,6 +392,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noServiceDateLowerBoundChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -408,6 +414,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noServiceDateUpperBoundChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -428,6 +436,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				serviceDateUpperBoundChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -446,6 +456,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noExcludeSAMHSAChecker,
 				includeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -464,6 +476,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noExcludeSAMHSAChecker,
 				includeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -482,6 +496,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -500,6 +516,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -516,6 +534,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
+				noBulkRequestHeaders,
+				hasDefaultRequestHeaders,
 			},
 		},
 		{
@@ -535,6 +555,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -554,6 +576,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -574,6 +598,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -594,6 +620,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -614,6 +642,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -633,6 +663,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -652,6 +684,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -672,6 +706,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -692,6 +728,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 		{
@@ -712,6 +750,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
 			},
 		},
 	}
@@ -740,8 +780,6 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 					"%s does not end with %s", req.Header.Get("BlueButton-OriginalUrl"), req.URL.String())
 				assert.Equal(t, req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
 
-				assert.Equal(t, jobID, req.Header.Get(jobIDHeader))
-				assert.Equal(t, cmsID, req.Header.Get(clientIDHeader))
 				assert.Empty(t, req.Header.Get(oldJobIDHeader))
 				assert.Empty(t, req.Header.Get(oldClientIDHeader))
 
@@ -869,6 +907,23 @@ func noIncludeTaxNumbersChecker(t *testing.T, req *http.Request) {
 }
 func includeTaxNumbersChecker(t *testing.T, req *http.Request) {
 	assert.Equal(t, "true", req.Header.Get("IncludeTaxNumbers"))
+}
+func hasDefaultRequestHeaders(t *testing.T, req *http.Request) {
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderTS))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginURL))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQID))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQ))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
+}
+func hasBulkRequestHeaders(t *testing.T, req *http.Request) {
+	assert.NotEmpty(t, req.Header.Get(jobIDHeader))
+	assert.NotEmpty(t, req.Header.Get(clientIDHeader))
+}
+func noBulkRequestHeaders(t *testing.T, req *http.Request) {
+	for k := range req.Header {
+		assert.NotEqual(t, k, jobIDHeader)
+		assert.NotEqual(t, k, clientIDHeader)
+	}
 }
 
 func TestBBTestSuite(t *testing.T) {

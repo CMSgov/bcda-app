@@ -54,7 +54,7 @@ type UnexpectedSSASError struct {
 }
 
 func (e *UnexpectedSSASError) Error() string {
-	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Err: %s", e.Msg, e.Err)
+	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
 }
 
 type ExpiredTokenError struct {

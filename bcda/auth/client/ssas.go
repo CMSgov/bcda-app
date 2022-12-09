@@ -294,18 +294,22 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 }
 
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
-func (c *SSASClient) GetToken(credentials Credentials) ([]byte, []byte, error) {
+func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
-	url := fmt.Sprintf("%s/token", public)
-	req, err := http.NewRequest("POST", url, nil)
+	tokenUrl := fmt.Sprintf("%s/token", public)
+	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, constants.RequestStructErr)
+		return "", &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "token request failed;")
+		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
+			return "", &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}
+		} else {
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+		}
 	}
 
 	defer resp.Body.Close()
@@ -314,18 +318,18 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, []byte, error) {
 		b, err := io.ReadAll(resp.Body)
 		// b, err := ioutil.ReadAll(resp.Body)  Go.1.15 and earlier
 		if err != nil {
-			return nil, nil, fmt.Errorf("Cannot read response body, token request failed; HTTPS Status Code: %v", resp.StatusCode)
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "Cannot read response body, token request failed;"}
 		} else {
-			return nil, nil, fmt.Errorf("The token request failed; Response Body: %s, HTTPS Status Code: %v", string(b), resp.StatusCode)
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
 		}
 	}
 
 	var t = TokenResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
-		return nil, nil, errors.Wrap(err, "could not decode token response")
+		return "", &customErrors.InternalParsingError{Err: err, Msg: "token request failed - error parsing response to json"}
 	}
 
-	return []byte(t.AccessToken), []byte(t.ExpiresIn), nil
+	return fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, t.AccessToken, t.ExpiresIn), nil
 }
 
 func (c *SSASClient) Ping() error {

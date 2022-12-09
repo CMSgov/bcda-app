@@ -36,7 +36,9 @@ const TestFakePath = "/src/github.com/CMSgov/bcda-app/conf/FAKE"
 const TestConfPath = "/src/github.com/CMSgov/bcda-app/conf/test"
 const TestSuppressBadPath = "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"
 const JobsFilePath = "jobs/1"
-const TokenPath = "/auth/token" // #nosec - G101 credentials for unit testing
+const AuthTokenPath = "/auth/token" // #nosec - G101 credentials for unit testing
+const TokenPath = "/token" // #nosec - G101 credentials for unit testing
+const IntrospectPath = "/introspect" // #nosec - G101 credentials for unit testing
 const TestFilePathVariable = "%s/%d/%s"
 
 //ID Constants
