@@ -316,7 +316,6 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		b, err := io.ReadAll(resp.Body)
-		// b, err := ioutil.ReadAll(resp.Body)  Go.1.15 and earlier
 		if err != nil {
 			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "Cannot read response body, token request failed;"}
 		} else {

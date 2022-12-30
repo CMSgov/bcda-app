@@ -3,8 +3,9 @@ package auth
 import (
 	"net/http"
 
-	"github.com/CMSgov/bcda-app/log"
 	"strconv"
+
+	"github.com/CMSgov/bcda-app/log"
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 )
@@ -34,6 +35,8 @@ import (
 func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	clientId, secret, ok := r.BasicAuth()
 	if !ok {
+		log.API.Errorf("Error Basic Authentication - HTTPS Status Code: %v", http.StatusBadRequest)
+
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
