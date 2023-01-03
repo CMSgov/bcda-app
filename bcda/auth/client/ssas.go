@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -314,7 +315,12 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: constants.TokenRequestUnexpectedErr}
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "Cannot read response body, token request failed;"}
+		} else {
+			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
+		}
 	}
 
 	var t = TokenResponse{}
