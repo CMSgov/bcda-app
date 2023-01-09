@@ -51,7 +51,7 @@ END LOOP;
 
 --verify for each entity that they only have 1 December CCLF file that was ingested for it.
 IF (SELECT count(dec_file_count) FROM temp_affected_acos WHERE dec_file_count > 1) > 0 THEN
-RAISE EXCEPTION 'Aborting: Found more than 1 cclf file record per aco_cms_id in December!';
+RAISE EXCEPTION 'Aborting: Found more than 1 cclf file record for at least one aco_cms_id in December!';
 END IF;
 
 --Step 2: create synthetic runout file records in cclf_files & obtain the new generated file id for each entity
@@ -123,7 +123,7 @@ INSERT INTO cclf_beneficiaries (file_id, mbi)
     SELECT runout_file_id, december_mbi 
     FROM temp_runout_benes;
 
---Step 5: Cleanup - drop temp tables used in process (should be gone by end of transaction/session)
+--Step 5: Cleanup - drop temp tables used in process (should be gone by end of transaction/session regardless)
  DROP TABLE temp_runout_benes;
  DROP TABLE temp_runout_files;
  DROP TABLE temp_affected_acos;
