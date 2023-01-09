@@ -12,7 +12,7 @@ BEGIN;
 
 DO $$ 
 DECLARE
-model_type VARCHAR(8) := 'Y%'; -- model type to target. KCC model entity type (KCE and KCF) need to do 'K%' and 'C%'
+model_type VARCHAR(8) := 'Y%'; -- model type to target. KCC model entity type (KCE and KCF) need to do 'C%' and 'K%' respectively
 december_range_start_date cclf_files.created_at%TYPE := '2022-11-30';
 december_range_end_date cclf_files.created_at%TYPE := '2022-12-31';
 file_performance_year cclf_files.performance_year%TYPE := 22;
