@@ -115,10 +115,10 @@ COMMIT;
 
 -- to confirm or remove the generated synthetic runout files and benes:
 
--- select * from cclf_files where name LIKE '%SYNTHETICRUNOUTFILE'
--- DELETE from cclf_files where name LIKE '%SYNTHETICRUNOUTFILE'
+-- select * from cclf_files where name LIKE '%221231.SYNTHETICRUNOUTFILE'
+-- DELETE from cclf_files where name LIKE '%221231.SYNTHETICRUNOUTFILE'
 
--- select * from cclf_beneficiaries where file_id in (select id from cclf_files where name LIKE '%SYNTHETICRUNOUTFILE')
--- DELETE from cclf_beneficiaries where file_id in (select id from cclf_files where name LIKE '%SYNTHETICRUNOUTFILE')
+-- select * from cclf_beneficiaries where file_id in (select id from cclf_files where name LIKE '%221231.SYNTHETICRUNOUTFILE')
+-- DELETE from cclf_beneficiaries where file_id in (select id from cclf_files where name LIKE '%221231.SYNTHETICRUNOUTFILE')
 
 -----------------------------------------------------------------------------------------
