@@ -158,7 +158,7 @@ func ReadResponseBody(r *http.Response) string {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		bodyString, _ := "Error reading the body: %v\n", err
+		bodyString := fmt.Sprintf("Error reading the body: %s\n", err.Error())
 		return bodyString
 	}
 
