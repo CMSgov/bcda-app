@@ -9,14 +9,18 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	bcdaLog "github.com/CMSgov/bcda-app/log"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -77,8 +81,10 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 	}
 
 	for _, tt := range tests {
-		s.T().Run(tt.ScenarioName, func(t *testing.T) {
+		//setup logging hook for log message assertion
+		testLogger := test.NewLocal(testUtils.GetLogger(bcdaLog.API))
 
+		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//setup mocks
 			mock := &auth.MockProvider{}
 			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return("", tt.ErrorToReturn)
@@ -92,8 +98,15 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 			//Assert
 			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
+			responseBody := testUtils.ReadResponseBody(resp)
+			assert.Equal(s.T(), http.StatusText(tt.StatusCode), (strings.TrimSuffix(responseBody, "\n")))
 			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
 			mock.AssertExpectations(s.T())
+
+			//assert the correct log message wording was logged to API log
+			assert.Equal(t, 1, len(testLogger.Entries))
+			assert.Equal(t, fmt.Sprintf("Error making access token - %s | HTTPS Status Code: %v", tt.ErrorToReturn.Error(), tt.StatusCode), testLogger.LastEntry().Message)
+			testLogger.Reset()
 		})
 	}
 }
