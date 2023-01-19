@@ -3,7 +3,7 @@ FROM golang:1.18-alpine3.15
 
 RUN apk update upgrade
 
-RUN apk add bash build-base
+RUN apk add bash build-base curl
 
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 
