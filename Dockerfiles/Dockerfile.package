@@ -14,7 +14,7 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ops
-RUN git config --global --add safe.directory /go/src/github.com/CMSgov/bcda-ssas-app # fix VCS stamping warning
+RUN git config --global --add safe.directory /go/src/github.com/CMSgov/bcda-app # fix VCS stamping warning
 RUN chmod u+x build_and_package.sh
 
 ENTRYPOINT ["sh", "build_and_package.sh"]
