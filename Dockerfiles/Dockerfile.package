@@ -1,4 +1,4 @@
-FROM golang:1.18.10-alpine3.17
+FROM golang:1.18-alpine3.15
 
 ARG GPG_PUB_KEY_FILE
 ARG GPG_SEC_KEY_FILE
@@ -7,7 +7,7 @@ ARG GPG_RPM_EMAIL
 ARG BCDA_GPG_RPM_PASSPHRASE
 
 RUN apk update upgrade
-RUN apk add gcompat build-base gcc ruby ruby-dev rpm git gpg gpg-agent
+RUN apk add build-base gcc ruby ruby-dev rpm git gpg gpg-agent
 RUN gem install --no-document fpm etc
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
