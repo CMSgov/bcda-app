@@ -1,5 +1,7 @@
 FROM golang:1.18-alpine3.15
 
+ENV CGO_ENABLED=0 # resolve missing musl lib
+
 ARG GPG_PUB_KEY_FILE
 ARG GPG_SEC_KEY_FILE
 ARG GPG_RPM_USER
