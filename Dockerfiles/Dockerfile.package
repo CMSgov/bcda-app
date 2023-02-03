@@ -1,4 +1,6 @@
-FROM golang:1.18
+FROM golang:1.18-alpine3.15
+
+ENV CGO_ENABLED=0
 
 ARG GPG_PUB_KEY_FILE
 ARG GPG_SEC_KEY_FILE
@@ -6,14 +8,15 @@ ARG GPG_RPM_USER
 ARG GPG_RPM_EMAIL
 ARG BCDA_GPG_RPM_PASSPHRASE
 
-RUN apt-get update
-RUN apt-get install -y build-essential ruby ruby-dev rpm git
+RUN apk update upgrade
+RUN apk add gcompat build-base gcc ruby ruby-dev rpm git gpg gpg-agent
 RUN gem install --no-document fpm etc
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ops
+RUN git config --global --add safe.directory /go/src/github.com/CMSgov/bcda-app
 RUN chmod u+x build_and_package.sh
 
 ENTRYPOINT ["sh", "build_and_package.sh"]
