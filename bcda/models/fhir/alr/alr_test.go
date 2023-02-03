@@ -22,7 +22,6 @@ import (
 
 var output *bool = flag.Bool("output", false, "write FHIR resources to a file")
 var version *int = flag.Int("version", 1, "version of FHIR resources")
-var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 
 const SIZE = 200
 
@@ -77,7 +76,6 @@ func TestGenerateAlr(t *testing.T) {
 		return
 	}
 
-
 	ch := make(chan *alr.AlrFhirBulk, 1000) // 1000 rows before blocking
 	workerutils.AlrSlicer(alrs, ch, 100, "/v2/fhir")
 	dir := writeToFileV2(t, ch)
@@ -87,12 +85,12 @@ func TestGenerateAlr(t *testing.T) {
 
 // writeToFile writes the FHIR resources to a file returning the directory
 func writeToFileV1(t *testing.T, fhirBulk chan *alr.AlrFhirBulk) string {
-
 	assert.NotNil(t, fhirBulk)
 
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
+	var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 	fieldNum := len(resources)
 	writerPool := make([]*bufio.Writer, fieldNum)
 
@@ -140,6 +138,7 @@ func writeToFileV2(t *testing.T, fhirBulk chan *alr.AlrFhirBulk) string {
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
+	var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 	fieldNum := len(resources)
 	writerPool := make([]*bufio.Writer, fieldNum)
 
