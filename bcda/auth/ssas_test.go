@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"testing"
 	"time"
+	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -215,7 +216,7 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	tokenInfo, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), string(tokenInfo))
-	assert.Contains(s.T(), string(tokenInfo), constants.ExpiresInDefault)
+	assert.Contains(s.T(), string(tokenInfo), strconv.Itoa(constants.ExpiresInDefault))
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), string(tokenInfo))
 
 	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
@@ -524,7 +525,7 @@ func MockSSASServer(tokenString string) {
 	conf.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 }
 
-func MockSSASToken() (*jwt.Token, string, string, error) {
+func MockSSASToken() (*jwt.Token, string, int, error) {
 	// NB: currently, BCDA expects only 1 item in the array of cms_ids. At some point, ACO-MS will want to send more than one
 	claims := CommonClaims{
 		SystemID: "mock-system",
@@ -541,7 +542,7 @@ func MockSSASToken() (*jwt.Token, string, string, error) {
 	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
 	pk, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", 0, err
 	}
 
 	tokenString, err := t.SignedString(pk)

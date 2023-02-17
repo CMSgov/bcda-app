@@ -31,7 +31,7 @@ type SSASMiddlewareTestSuite struct {
 	server      *httptest.Server
 	token       *jwt.Token
 	tokenString string
-	expiresIn   string
+	expiresIn   int
 	ad          auth.AuthData
 }
 

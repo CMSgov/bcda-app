@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -435,11 +436,11 @@ func (s *SSASClientTestSuite) TestGetToken() {
 		sSasTimeout     string
 		bytesToReturn   []byte
 		errTypeToReturn error
-		expiresIn       []byte
+		expiresIn       int
 	}{
-		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequest(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
-		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
-		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
+		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequest(), constants.FiveHundredSeconds, []byte(token), nil, constants.ExpiresInDefault},
+		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, 0},
+		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, 0},
 	}
 
 	for _, tt := range tests {
@@ -455,8 +456,10 @@ func (s *SSASClientTestSuite) TestGetToken() {
 
 			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
 
-			assert.Contains(t, tokenInfo, string(tt.bytesToReturn))
-			assert.Contains(t, tokenInfo, string(tt.expiresIn))
+			if err == nil {
+				assert.Contains(t, tokenInfo, string(tt.bytesToReturn))
+				assert.Contains(t, tokenInfo, strconv.Itoa(tt.expiresIn))
+			}
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
 	}

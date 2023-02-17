@@ -31,7 +31,7 @@ type SSASClient struct {
 
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
-	ExpiresIn   string `json:"expires_in,omitempty"`
+	ExpiresIn   int `json:"expires_in,omitempty"`
 	TokenType   string `json:"token_type"`
 }
 
@@ -328,7 +328,7 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 		return "", &customErrors.InternalParsingError{Err: err, Msg: "token request failed - error parsing response to json"}
 	}
 
-	return fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, t.AccessToken, t.ExpiresIn), nil
+	return fmt.Sprintf(`{"access_token": "%s", "expires_in": %v, "token_type":"bearer"}`, t.AccessToken, t.ExpiresIn), nil
 }
 
 func (c *SSASClient) Ping() error {

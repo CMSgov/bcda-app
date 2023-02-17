@@ -135,7 +135,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 
 			//setup mocks
 			mock := &auth.MockProvider{}
-			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
+			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": %v }`, constants.ExpiresInDefault), tt.ErrorToReturn)
 			auth.SetMockProvider(s.T(), mock)
 
 			//Act
@@ -144,7 +144,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 				log.Fatal(err)
 			}
 
-			respMap := make(map[string]string)
+			respMap := make(map[string]interface{})
 			bodyBytes, err := io.ReadAll(resp.Body)
 
 			//Assert
@@ -156,7 +156,9 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 			assert.Equal(s.T(), resp.Header.Get("Cache-Control"), "no-store")
 			assert.Equal(s.T(), resp.Header.Get("Pragma"), "no-cache")
 			assert.Equal(s.T(), "goodToken", respMap["access_token"])
-			assert.Equal(s.T(), constants.ExpiresInDefault, respMap["expires_in"])
+
+			var expiresIn int = int(respMap["expires_in"].(float64))
+			assert.Equal(s.T(), constants.ExpiresInDefault, expiresIn)
 			mock.AssertExpectations(s.T())
 		})
 	}

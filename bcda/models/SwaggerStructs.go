@@ -286,7 +286,7 @@ type TokenResponse struct {
 	Body struct {
 		// Required: true
 		AccessToken string `json:"access_token"`
-		ExpiresIn   string `json:"expires_in,omitempty"`
+		ExpiresIn   int `json:"expires_in,omitempty"`
 		TokenType   string `json:"token_type"`
 	}
 }

@@ -238,7 +238,7 @@ func MakeTestServerWithTokenRequestTimeout() *httptest.Server {
 func MakeTestServerWithValidTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
 	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": 1200 }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -285,7 +285,7 @@ func MakeTestServerWithAuthTokenRequestTimeout() *httptest.Server {
 func MakeTestServerWithValidAuthTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
 	router.Post(constants.AuthTokenPath, func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": 1200 }`))
 		if err != nil {
 			log.Fatal(err)
 		}
