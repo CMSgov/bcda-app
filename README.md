@@ -9,7 +9,8 @@ To get started, install some dependencies:
 1. Install [Go](https://golang.org/doc/install)
 2. Install [Docker](https://docs.docker.com/install/)
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
-4. Install [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html)
+4. Install [Ansible Vault](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) and its dependencies
+For further ansible documentation see: (https://docs.ansible.com/ansible/2.4/vault.html)
 5. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
 ## Sensitive Docker Configuration Files
@@ -73,6 +74,12 @@ docker-compose up
 
 Run tests and produce test metrics.
 The items identified above in the `Build/Start` section are prerequisites to running tests.
+
+   *Note: If this is the first time running the tests follow instructions in the 'Updating seed data for unit tests' and the 'Running unit tests locally' sections of this README. Then run:
+   ```sh
+   make load-fixtures
+   ```
+
 In order to keep the test feedback loop optimized, the following items must be handled by the caller (and are not handled by the test targets):
 
 - Ensuring the compose stack is up and running
