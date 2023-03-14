@@ -1,68 +1,33 @@
-<!--
+## 🎫 Ticket
 
---- PR Hygiene Checklist ---
+https://jira.cms.gov/browse/BCDA-xxx
 
-1. Make sure your branch is named with this format: `user-initials/description-ABC-123`. For example, `jj/add-awesomeness-bcda-99999`
-2. Update the PR title: `bcda-99999 Feature: Add Awesomeness`
-3. Edit the text below - do not leave placeholders in the text.
-4. Add any other details that will be helpful for the reviewers: details description, screenshots, etc
-5. Request a review from someone/multiple someones
--->
+## 🛠 Changes
 
-<!-- Replace xxx with the JIRA ticket number: -->
+(What was added, updated, or removed in this PR.)
 
-### Fixes [BCDA-xxx](https://jira.cms.gov/browse/BCDA-xxx)
+## ℹ️ Context for reviewers
 
-<!-- Describe the problem being solved here: -->
+(Background context, more in-depth details of the implementation, and anything else you'd like to call out or ask reviewers.)
 
-### Proposed Changes
+## ✅ Acceptance Validation
 
-<!-- List of changes with bullet points here: -->
+(How were the changes verified? Did you fully test the acceptance criteria in the ticket? Provide reproducible testing instructions and screenshots if applicable.)
 
-### Change Details
+## 🔒 Security Implications
 
-<!-- Add detailed discussion of changes here: -->
+- [ ] New data is stored or transmitted.
+  <!-- What data are we storing or transmitting? Is the data considered PII/PHI? -->
 
-### Security Implications
+- [ ] This change introduces new software dependencies.
+  <!-- List the new dependencies and briefly note relevant security impacts -->
 
-<!-- Does the change deal with PII/PHI at all? What should reviewers look for in
-terms of security concerns? -->
+- [ ] This change impacts security controls or alters supporting software.
+  <!-- What security controls or supporting software are affected? -->
 
-- [ ] new software dependencies
+- [ ] A security checklist is completed for this change.
+  <!-- If yes, provide a link to the security checklist in Confluence here. -->
 
-<!-- If yes, list the new dependencies and briefly note any relevant security impacts -->
-
-- [ ] security controls or supporting software altered
-
-<!-- If yes, what security controls or supporting software are affected? -->
-
-- [ ] new data stored or transmitted
-
-<!-- If yes, what new data are we storing or transmitting? Is the data considered PII/PHI? -->
-
-- [ ] security checklist is completed for this change
-
-<!-- If yes, provide a link to the security checklist in Confluence here. -->
-
-- [ ] requires more information or team discussion to evaluate security implications
-
-<!-- Use this to indicate you're unsure how this change may impact system security
-and would like to solicit the team's feedback. Optionally, provide background
-information regarding your questions and concerns. -->
-
-- [ ] no PHI/PII is affected by this change
-
-<!-- If yes, provide what PHI/PII is affected by this change -->
-
-### Acceptance Validation
-<!-- Were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
-
-<!-- Insert screenshots if applicable (drag images here) -->
-
-<!-- Did you deploy this feature branch to the AWS `dev` environment?  https://bcda-ci.adhocteam.us/job/BCDA%20-%20Build%20and%20Package/build 
-<!-- If not, why does this change not break CI/CD?  How is it not affected by using a persistent
-  database? -->
-
-### Feedback Requested
-
-<!-- What type of feedback you want from your reviewers? -->
+- [ ] More team discussion required to evaluate security implications.
+  <!-- Use this if you are unsure how this change may impact system security
+       and would like to solicit the team's feedback. Provide some context. -->
