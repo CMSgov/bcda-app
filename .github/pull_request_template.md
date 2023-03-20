@@ -25,7 +25,7 @@ https://jira.cms.gov/browse/BCDA-xxx
 - [ ] This change impacts security controls or alters supporting software.
   <!-- What security controls or supporting software are affected? -->
 
-- [ ] A security checklist is completed for this change.
+- [ ] A [security checklist](https://confluence.cms.gov/display/BCDA/Security+Checklists) is completed for this change.
   <!-- If yes, provide a link to the security checklist in Confluence here. -->
 
 - [ ] More team discussion required to evaluate security implications.
