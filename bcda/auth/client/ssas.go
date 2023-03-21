@@ -319,7 +319,14 @@ func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
 		if err != nil {
 			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: "Cannot read response body, token request failed;"}
 		} else {
-			return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
+			switch resp.StatusCode {
+			case 401:
+				return "", &customErrors.SSASErrorUnauthorized{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
+			case 400:
+				return "", &customErrors.SSASErrorBadRequest{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
+			default:
+				return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
+			}
 		}
 	}
 

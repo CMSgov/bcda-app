@@ -57,6 +57,26 @@ func (e *UnexpectedSSASError) Error() string {
 	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
 }
 
+type SSASErrorUnauthorized struct {
+	Err            error
+	Msg            string
+	SsasStatusCode int
+}
+
+func (e *SSASErrorUnauthorized) Error() string {
+	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
+}
+
+type SSASErrorBadRequest struct {
+	Err            error
+	Msg            string
+	SsasStatusCode int
+}
+
+func (e *SSASErrorBadRequest) Error() string {
+	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
+}
+
 type ExpiredTokenError struct {
 	Err error
 	Msg string
