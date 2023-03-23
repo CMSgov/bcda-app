@@ -53,7 +53,7 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusServiceUnavailable)
 
 			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
-		case *customErrors.UnexpectedSSASError, *customErrors.InternalParsingError:
+		case *customErrors.InternalParsingError:
 			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -66,9 +66,9 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		default:
-			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusUnauthorized)
+			log.API.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		return
 	}
