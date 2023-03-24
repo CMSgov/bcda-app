@@ -61,7 +61,7 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 	s.server.Close()
 }
 
-//integration test: makes HTTP request & asserts HTTP response
+// integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignature() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
@@ -80,7 +80,7 @@ func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignat
 	assert.Nil(s.T(), err)
 }
 
-//unit test
+// unit test
 func (s *MiddlewareTestSuite) TestRequireTokenAuthReturn401WhenInvalidToken() {
 	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
@@ -111,7 +111,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthReturn401WhenInvalidToken() {
 	mock.AssertExpectations(s.T())
 }
 
-//integration test: makes HTTP request & asserts HTTP response
+// integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearerTokenSupplied() {
 	bearerString := uuid.New()
 
@@ -209,7 +209,7 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 		{"Config Error Return 500", &customErrors.ConfigError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
 		{"Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, responseutils.InternalErr, "1"},
 		{"Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
-		{"Expired Token Error Return 401", &customErrors.ExpiredTokenError{Err: errors.New(errorHappened), Msg: errMsg}, 401, responseutils.TokenErr, constants.EmptyString},
+		{"Expired Token Error Return 401", &customErrors.ExpiredTokenError{Err: errors.New(errorHappened), Msg: errMsg}, 401, responseutils.ExpiredErr, constants.EmptyString},
 		{"Default Error Return 401", errors.New(errorHappened), 401, responseutils.TokenErr, constants.EmptyString},
 	}
 
@@ -309,7 +309,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 	mock.AssertExpectations(s.T())
 }
 
-//integration test: makes HTTP request & asserts HTTP response
+// integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTokenSupplied() {
 	client := s.server.Client()
 
@@ -327,7 +327,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTok
 	assert.Equal(s.T(), 401, resp.StatusCode)
 }
 
-//integration test: involves db connection to postgres
+// integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDataProvided() {
 	db := database.Connection
 	j := models.Job{
@@ -374,7 +374,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 	}
 }
 
-//integration test: involves db connection to postgres
+// integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccountableCareOrganizationAndJob() {
 	db := database.Connection
 
@@ -407,7 +407,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 	assert.Equal(s.T(), 200, s.rr.Code)
 }
 
-//integration test: involves db connection to postgres
+// integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataProvidedInContext() {
 	db := database.Connection
 
@@ -434,7 +434,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
-//unit test
+// unit test
 func (s *MiddlewareTestSuite) TestCheckBlacklist() {
 	blacklisted := testUtils.RandomHexID()[0:4]
 	notBlacklisted := testUtils.RandomHexID()[0:4]

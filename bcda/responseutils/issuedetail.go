@@ -3,6 +3,7 @@ package responseutils
 // Internal codes: These will be modified over time
 const (
 	TokenErr        = "Invalid Token"
+	ExpiredErr      = "Expired Token"
 	DbErr           = "Database Error"
 	FormatErr       = "Formatting Error"
 	BbErr           = "Blue Button Error"
@@ -13,7 +14,7 @@ const (
 	DeletedErr      = "Deleted Error"
 )
 
-//External messaging: Messages that will be in response body
+// External messaging: Messages that will be in response body
 const (
 	UnknownEntityErr = "unknown entity"
 )

@@ -99,7 +99,7 @@ func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, 
 	if err != nil {
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
-			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
 		case *customErrors.RequestorDataError:
 			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
 		case *customErrors.RequestTimeoutError:
