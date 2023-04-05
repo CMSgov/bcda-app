@@ -16,7 +16,6 @@ import (
 	// test dependencies
 	_ "github.com/securego/gosec/cmd/gosec"
 	_ "github.com/tsenart/vegeta"
-	//_ "github.com/xo/usql"
 	_ "gotest.tools/gotestsum"
 	// end test dependencies
 )
