@@ -447,6 +447,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
+		log.API.Error(err)
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
