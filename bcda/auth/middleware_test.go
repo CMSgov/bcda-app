@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
@@ -77,6 +78,33 @@ func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignat
 	assert.NotNil(s.T(), resp)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 400, resp.StatusCode)
+	assert.Nil(s.T(), err)
+}
+
+// integration test: makes HTTP request & asserts HTTP response
+func (s *MiddlewareTestSuite) TestReturn400WhenExpiredToken() {
+	client := s.server.Client()
+	expiredToken := jwt.NewWithClaims( jwt.SigningMethodRS512, &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+				ExpiresAt: time.Now().Unix(),
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     `{"cms_ids":["A9994"]}`,
+		})
+
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, expiredToken))
+	resp, err := client.Do(req)
+
+	assert.NotNil(s.T(), resp)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 401, resp.StatusCode)
 	assert.Nil(s.T(), err)
 }
 
