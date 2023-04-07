@@ -75,7 +75,7 @@ docker-compose up
 Run tests and produce test metrics.
 The items identified above in the `Build/Start` section are prerequisites to running tests.
 
-   *Note: If this is the first time running the tests follow instructions in the 'Running unit tests locally' section of this README. Then run:
+   *Note: If this is the first time running the tests follow instructions in the 'Running u|nit tests locally' section of this README. Then run:
    ```sh
    make load-fixtures
    ```

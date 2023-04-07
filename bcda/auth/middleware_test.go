@@ -82,17 +82,17 @@ func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignat
 }
 
 // integration test: makes HTTP request & asserts HTTP response
-func (s *MiddlewareTestSuite) TestReturn400WhenExpiredToken() {
+func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
 	client := s.server.Client()
-	expiredToken := jwt.NewWithClaims( jwt.SigningMethodRS512, &auth.CommonClaims{
-			StandardClaims: jwt.StandardClaims{
-				Issuer: "ssas",
-				ExpiresAt: time.Now().Unix(),
-			},
-			ClientID: uuid.New(),
-			SystemID: uuid.New(),
-			Data:     `{"cms_ids":["A9994"]}`,
-		})
+	expiredToken := jwt.NewWithClaims(jwt.SigningMethodRS512, &auth.CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer:    "ssas",
+			ExpiresAt: time.Now().Unix(),
+		},
+		ClientID: uuid.New(),
+		SystemID: uuid.New(),
+		Data:     `{"cms_ids":["A9994"]}`,
+	})
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
