@@ -2,6 +2,8 @@ package auth_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -93,18 +95,22 @@ func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
 		SystemID: uuid.New(),
 		Data:     `{"cms_ids":["A9994"]}`,
 	})
+	pk, _ := rsa.GenerateKey(rand.Reader, 2048)
+	tokenString, _ := expiredToken.SignedString(pk)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, expiredToken))
+	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, tokenString))
 	resp, err := client.Do(req)
 
 	assert.NotNil(s.T(), resp)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 401, resp.StatusCode)
+	assert.Equal(s.T(), "401 Unauthorized", resp.Status)
+	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), "Expired Token")
 	assert.Nil(s.T(), err)
 }
 
@@ -135,7 +141,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthReturn401WhenInvalidToken() {
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
-
 	mock.AssertExpectations(s.T())
 }
 
@@ -353,6 +358,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTok
 		log.Fatal(err)
 	}
 	assert.Equal(s.T(), 401, resp.StatusCode)
+	assert.Equal(s.T(), "401 Unauthorized", resp.Status)
 }
 
 // integration test: involves db connection to postgres
