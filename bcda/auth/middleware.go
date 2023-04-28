@@ -86,8 +86,8 @@ func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
 	}
 
 	claims, ok := token.Claims.(*CommonClaims)
-	if !ok {
-		// This is already validated by VerifyToken so in theory it's unreachable code.
+	if !ok || !token.Valid {
+		// These should already trigger an error within VerifyToken, so in theory it's unreachable code.
 		return nil, ad, errors.New("invalid ssas claims")
 	}
 
