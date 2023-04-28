@@ -274,7 +274,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
-	err = s.p.AuthorizeAccess(tokenString)
+	_, _, err = AuthorizeAccess(tokenString)
 	require.Nil(s.T(), err)
 }
 
@@ -289,7 +289,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	invalidTokenString := ""
-	err = s.p.AuthorizeAccess(invalidTokenString)
+	_, _, err = AuthorizeAccess(invalidTokenString)
 	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token contains an invalid number of segments")
 }
 
@@ -360,7 +360,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFro
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	err = s.p.AuthorizeAccess(ts)
+	_, _, err = AuthorizeAccess(ts)
 	assert.EqualError(s.T(), err, "can't decode data claim ac; invalid character 'a' looking for beginning of value")
 }
 

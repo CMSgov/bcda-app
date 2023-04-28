@@ -84,10 +84,6 @@ type Provider interface {
 	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
 
-	// TODO refactor input to be AuthData
-	// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API
-	AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error)
-
 	// VerifyToken decodes a base64 encoded token string into a structured token
 	VerifyToken(tokenString string) (*jwt.Token, error)
 

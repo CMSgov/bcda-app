@@ -161,48 +161,6 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 	return ad, nil
 }
 
-// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func (sSASPlugin SSASPlugin) AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
-	tknEvent := event{op: "AuthorizeAccess"}
-	operationStarted(tknEvent)
-	token, err := sSASPlugin.VerifyToken(tokenString)
-
-	var ad AuthData
-
-	if err != nil {
-		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
-		operationFailed(tknEvent)
-		return nil, ad, err
-	}
-
-	// Maybe split this back out to ensure that we don't start failing requests that used to succeed...
-	// except it's only in this specific scenario that it fails. otherwise it continues to getAuthDataFromClaims
-	// and returns an error anyways, so we're probably good to continue with this approach.
-	claims, ok := token.Claims.(*CommonClaims)
-	if !ok || !token.Valid {
-		return nil, ad, errors.New("invalid ssas claims")
-	}
-
-	switch claims.Issuer {
-	case "ssas":
-		ad, err = sSASPlugin.getAuthDataFromClaims(claims)
-		if err != nil {
-			tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
-			operationFailed(tknEvent)
-			return nil, ad, err
-		}
-	default:
-		tknEvent.help = fmt.Sprintf("Unsupported claims issuer; %s", claims.Issuer)
-		operationFailed(tknEvent)
-		msg := fmt.Sprintf("Claim issuer '%s' is not supported", claims.Issuer)
-		err := &customErrors.UnsupportedClaimsIssuerError{Err: errors.New(msg), Msg: msg}
-		return nil, ad, err
-	}
-
-	operationSucceeded(tknEvent)
-	return token, ad, nil
-}
-
 // VerifyToken decodes a base64-encoded token string into a structured token,
 // verifies token with SSAS and calls check for token expiration.
 func (sSASPlugin SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
