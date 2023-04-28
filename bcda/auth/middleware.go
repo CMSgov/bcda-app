@@ -85,11 +85,9 @@ func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
 		return nil, ad, err
 	}
 
-	// Maybe split this back out to ensure that we don't start failing requests that used to succeed...
-	// except it's only in this specific scenario that it fails. otherwise it continues to getAuthDataFromClaims
-	// and returns an error anyways, so we're probably good to continue with this approach.
 	claims, ok := token.Claims.(*CommonClaims)
-	if !ok || !token.Valid {
+	if !ok {
+		// This is already validated by VerifyToken so in theory it's unreachable code.
 		return nil, ad, errors.New("invalid ssas claims")
 	}
 
