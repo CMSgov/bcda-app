@@ -91,19 +91,10 @@ func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
 		return nil, ad, errors.New("invalid ssas claims")
 	}
 
-	switch claims.Issuer {
-	case "ssas":
-		ad, err = GetProvider().getAuthDataFromClaims(claims)
-		if err != nil {
-			tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
-			operationFailed(tknEvent)
-			return nil, ad, err
-		}
-	default:
-		tknEvent.help = fmt.Sprintf("Unsupported claims issuer; %s", claims.Issuer)
+	ad, err = GetProvider().getAuthDataFromClaims(claims)
+	if err != nil {
+		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
-		msg := fmt.Sprintf("Claim issuer '%s' is not supported", claims.Issuer)
-		err := &customErrors.UnsupportedClaimsIssuerError{Err: errors.New(msg), Msg: msg}
 		return nil, ad, err
 	}
 
@@ -120,8 +111,6 @@ func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, 
 			rw.Exception(w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
 		case *customErrors.EntityNotFoundError:
 			rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
-		case *customErrors.UnsupportedClaimsIssuerError:
-			rw.Exception(w, http.StatusNotFound, responseutils.TokenErr, "")
 		case *customErrors.RequestorDataError:
 			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
 		case *customErrors.RequestTimeoutError:

@@ -85,12 +85,3 @@ type ExpiredTokenError struct {
 func (e *ExpiredTokenError) Error() string {
 	return fmt.Sprintf("Expired Token Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
-
-type UnsupportedClaimsIssuerError struct {
-	Err error
-	Msg string
-}
-
-func (e *UnsupportedClaimsIssuerError) Error() string {
-	return fmt.Sprintf("Unsupported Claims Issuer Error encountered - %s. Err: %s", e.Msg, e.Err)
-}
