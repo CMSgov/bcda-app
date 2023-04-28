@@ -162,28 +162,45 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func (sSASPlugin SSASPlugin) AuthorizeAccess(tokenString string) error {
+func (sSASPlugin SSASPlugin) AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
 	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
 	token, err := sSASPlugin.VerifyToken(tokenString)
 
+	var ad AuthData
+
 	if err != nil {
 		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
 		operationFailed(tknEvent)
-		return err
+		return nil, ad, err
 	}
+
+	// Maybe split this back out to ensure that we don't start failing requests that used to succeed...
+	// except it's only in this specific scenario that it fails. otherwise it continues to getAuthDataFromClaims
+	// and returns an error anyways, so we're probably good to continue with this approach.
 	claims, ok := token.Claims.(*CommonClaims)
-	if !ok {
-		return errors.New("invalid ssas claims")
+	if !ok || !token.Valid {
+		return nil, ad, errors.New("invalid ssas claims")
 	}
-	if _, err = sSASPlugin.getAuthDataFromClaims(claims); err != nil {
-		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
+
+	switch claims.Issuer {
+	case "ssas":
+		ad, err = sSASPlugin.getAuthDataFromClaims(claims)
+		if err != nil {
+			tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
+			operationFailed(tknEvent)
+			return nil, ad, err
+		}
+	default:
+		tknEvent.help = fmt.Sprintf("Unsupported claims issuer; %s", claims.Issuer)
 		operationFailed(tknEvent)
-		return err
+		msg := fmt.Sprintf("Claim issuer '%s' is not supported", claims.Issuer)
+		err := &customErrors.UnsupportedClaimsIssuerError{Err: errors.New(msg), Msg: msg}
+		return nil, ad, err
 	}
 
 	operationSucceeded(tknEvent)
-	return nil
+	return token, ad, nil
 }
 
 // VerifyToken decodes a base64-encoded token string into a structured token,
@@ -251,7 +268,7 @@ func confirmRequestorTokenPayload(token *jwt.Token) error {
 	return nil
 }
 
-//checkTokenExpiration parses slice of type byte into map [string] interface & sees if "active" is set to false.
+// checkTokenExpiration parses slice of type byte into map [string] interface & sees if "active" is set to false.
 func checkTokenExpiration(bytes []byte) error {
 	var introspectResponse map[string]interface{}
 

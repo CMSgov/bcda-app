@@ -58,48 +58,29 @@ func ParseToken(next http.Handler) http.Handler {
 
 		tokenString := authSubmatches[1]
 
-		token, err := GetProvider().VerifyToken(tokenString)
+		token, ad, err := GetProvider().AuthorizeAccess(tokenString)
 		if err != nil {
-			log.Auth.Errorf("Unable to verify token; %s", err)
 			handleTokenVerificationError(w, rw, err)
 			return
 		}
 
-		var ad AuthData
-		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
-			switch claims.Issuer {
-			case "ssas":
-				ad, err = GetProvider().getAuthDataFromClaims(claims)
-				if err != nil {
-					handleSsasAuthDataError(w, rw, err)
-					return
-				}
-			default:
-				log.Auth.Errorf("Unsupported claims issuer %s", claims.Issuer)
-				rw.Exception(w, http.StatusNotFound, responseutils.TokenErr, "")
-				return
-			}
-		}
 		ctx := context.WithValue(r.Context(), TokenContextKey, token)
 		ctx = context.WithValue(ctx, AuthDataContextKey, ad)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func handleSsasAuthDataError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
-	log.Auth.Error(err)
-	if _, ok := err.(*customErrors.EntityNotFoundError); ok {
-		rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
-	} else {
-		rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
-	}
-}
-
 func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
 	if err != nil {
+		log.Auth.Error(err)
+
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
 			rw.Exception(w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
+		case *customErrors.EntityNotFoundError:
+			rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
+		case *customErrors.UnsupportedClaimsIssuerError:
+			rw.Exception(w, http.StatusNotFound, responseutils.TokenErr, "")
 		case *customErrors.RequestorDataError:
 			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
 		case *customErrors.RequestTimeoutError:
@@ -112,6 +93,8 @@ func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, 
 	}
 }
 
+// Verify that a token was verified and stored in the request context.
+// This depends on ParseToken being called beforehand in the routing middleware.
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := getRespWriter(r.URL.Path)
@@ -123,14 +106,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		if token, ok := token.(*jwt.Token); ok {
-			err := GetProvider().AuthorizeAccess(token.Raw)
-			if err != nil {
-				log.Auth.Error(err)
-				handleTokenVerificationError(w, rw, err)
-				return
-			}
-
+		if _, ok := token.(*jwt.Token); ok {
 			next.ServeHTTP(w, r)
 		}
 	})
