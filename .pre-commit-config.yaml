@@ -3,5 +3,3 @@ repos:
     rev: v8.16.1
     hooks:
       - id: gitleaks
-
-default_install_hook_types: [pre-commit, gitleaks]
