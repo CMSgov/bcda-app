@@ -14,7 +14,7 @@ https://jira.cms.gov/browse/BCDA-xxx
 
 (How were the changes verified? Did you fully test the acceptance criteria in the ticket? Provide reproducible testing instructions and screenshots if applicable.)
 
-### What Security Implications Does This PR Have?
+## 🔒 What Security Implications Does This PR Have?
 
 Submitters should complete the following questionnaire:
 
