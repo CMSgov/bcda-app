@@ -4714,7 +4714,7 @@
 													"}",
 													"",
 													"let date = new Date();",
-													"date.setMinutes(date.getMinutes() - minutes);",
+													"date.setMinutes(date.getMinutes() - 1);",
 													"",
 													"let timestamp = date.toJSON();",
 													"pm.environment.set('now', timestamp);"
