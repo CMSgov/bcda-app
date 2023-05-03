@@ -4713,7 +4713,10 @@
 													"    return;",
 													"}",
 													"",
-													"let timestamp = new Date().toJSON();",
+													"let date = new Date();",
+													"date.setMinutes(date.getMinutes() - minutes);",
+													"",
+													"let timestamp = date.toJSON();",
 													"pm.environment.set('now', timestamp);"
 												],
 												"type": "text/javascript"
