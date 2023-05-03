@@ -11,7 +11,7 @@ DECLARE ACO1 cclf_files.id%TYPE;
 
 -- Adding three rows into cclf_files for three new CCLF files associated to synthea (improved data)
 BEGIN
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.D9991.ZC8Y23.D230503.T0000000', 'D9990', '2023-05-03', 23, 'Completed', 0) RETURNING id INTO DCE1;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.D9990.ZC8Y23.D230503.T0000000', 'D9990', '2023-05-03', 23, 'Completed', 0) RETURNING id INTO DCE1;
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.D9991.ZC8Y23.D230503.T0000000', 'D9991', '2023-05-03', 23, 'Completed', 0) RETURNING id INTO DCE2;
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.D9992.ZC8Y23.D230503.T0000000', 'D9992', '2023-05-03', 23, 'Completed', 0) RETURNING id INTO DCE3;
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.A9996.ZC8Y23.D230503.T0000000', 'A9996', '2023-05-03', 23, 'Completed', 0) RETURNING id INTO ACO1;
