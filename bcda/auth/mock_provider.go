@@ -12,20 +12,6 @@ type MockProvider struct {
 	mock.Mock
 }
 
-// AuthorizeAccess provides a mock function with given fields: tokenString
-func (_m *MockProvider) AuthorizeAccess(tokenString string) error {
-	ret := _m.Called(tokenString)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(tokenString)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // GetVersion provides a mock function with given fields:
 func (_m *MockProvider) GetVersion() (string, error) {
 	ret := _m.Called()
