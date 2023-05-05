@@ -168,9 +168,20 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 func (s *AuthAPITestSuite) TestWelcome() {
 	goodToken, badToken := uuid.New(), uuid.New()
 	mock := &auth.MockProvider{}
-	mock.On("VerifyToken", goodToken).Return(&jwt.Token{Raw: goodToken}, nil)
+
+	var ad auth.AuthData
+	token := &jwt.Token{Raw: goodToken, Valid: true, Claims: &auth.CommonClaims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "ssas",
+		},
+		ClientID: uuid.New(),
+		SystemID: uuid.New(),
+		Data:     `{"cms_ids":["A9994"]}`,
+	}}
+
+	mock.On("VerifyToken", goodToken).Return(token, nil)
 	mock.On("VerifyToken", badToken).Return(nil, errors.New("bad token"))
-	mock.On("AuthorizeAccess", goodToken).Return(nil)
+	mock.On("getAuthDataFromClaims", token.Claims).Return(ad, nil)
 	auth.SetMockProvider(s.T(), mock)
 
 	// Expect failure with invalid token
