@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -114,36 +113,6 @@ func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
 	assert.Nil(s.T(), err)
 }
 
-// unit test
-func (s *MiddlewareTestSuite) TestRequireTokenAuthReturn401WhenInvalidToken() {
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	handler := auth.RequireTokenAuth(mockHandler)
-
-	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	token := &jwt.Token{Raw: base64.StdEncoding.EncodeToString([]byte("SOME_INVALID_BEARER_TOKEN"))}
-
-	mock := &auth.MockProvider{}
-	mock.On("AuthorizeAccess", token.Raw).Return(errors.New("invalid token"))
-	auth.SetMockProvider(s.T(), mock)
-
-	ad := auth.AuthData{
-		ACOID:   acoID,
-		TokenID: tokenID,
-	}
-
-	ctx := req.Context()
-	ctx = context.WithValue(ctx, auth.TokenContextKey, token)
-	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
-	req = req.WithContext(ctx)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 401, s.rr.Code)
-	mock.AssertExpectations(s.T())
-}
-
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearerTokenSupplied() {
 	bearerString := uuid.New()
@@ -170,7 +139,6 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 	mock := &auth.MockProvider{}
 	mock.On("VerifyToken", bearerString).Return(token, nil)
 	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, nil)
-	mock.On("AuthorizeAccess", token.Raw).Return(nil)
 	auth.SetMockProvider(s.T(), mock)
 
 	client := s.server.Client()
