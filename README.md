@@ -51,10 +51,6 @@ pre-commit install
 
 This will download and install the pre-commit hooks specified in `.pre-commit-config.yaml`.
 
-#### Git hook
-
-To avoid committing and pushing unencrypted secret files, use the included `scripts/pre-commit` git pre-commit hook by running the following script from the repository root directory:
-
 ```
 cp ops/pre-commit .git/hooks
 ```
