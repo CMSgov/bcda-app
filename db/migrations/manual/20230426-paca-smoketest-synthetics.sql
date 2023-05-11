@@ -1,17 +1,17 @@
 -- This is a manual migration to attribute existing synthetic MBIs to a new ACO to be used for PACA smoke tests (BCDA-6873)
--- We will be copying the MBIs from ACO A9994 since those are also used for smoke tests 
+-- We will be copying the MBIs from ACO A9994 (opensbx) to ACO TEST993 since those are also used for smoke tests 
 
 BEGIN;
 DO $$
 DECLARE PACA cclf_files.id%TYPE;
 
 
--- Adding three rows into cclf_files for three new CCLF files associated to synthea (improved data)
+-- Adding one row into cclf_files for one new CCLF file associated to synthea 
 BEGIN
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.A9995.ZC8Y23.D230427.T1057310', 'A9995', CURRENT_DATE, 23, 'Completed', 0) RETURNING id INTO PACA;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST993.ZC8Y23.D230427.T1057310', 'TEST993', CURRENT_DATE, 23, 'Completed', 0) RETURNING id INTO PACA;
 
 
--- Adding rows into cclf_beneficiaries for A9995
+-- Adding rows into cclf_beneficiaries for TEST993
 INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
     (PACA, '4SJ0A00AA00'),
@@ -146,3 +146,4 @@ VALUES
     (PACA, '4SM0A00AA00');
 END $$;
 COMMIT;
+
