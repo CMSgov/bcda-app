@@ -151,9 +151,9 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
 	db := database.Connection
-	repository := postgres.NewRepository(db)
+	repository, newRelicCtx := postgres.NewRepositoryWithContext(db, ctx)
 
-	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
+	exists, err := repository.GetCCLFFileExistsByName(newRelicCtx, fileMetadata.name)
 	if err != nil {
 		fmt.Printf("failed to check existence of CCLF%d file.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
@@ -181,7 +181,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		return err
 	}
 
-	rtx := postgres.NewRepositoryPgxTx(tx)
+	rtx, newRelicCtxTx := postgres.NewRepositoryPgxTx(tx, ctx)
 
 	defer func() {
 		if err != nil {
@@ -221,7 +221,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		Type:            fileMetadata.fileType,
 	}
 
-	cclfFile.ID, err = rtx.CreateCCLFFile(ctx, cclfFile)
+	cclfFile.ID, err = rtx.CreateCCLFFile(newRelicCtxTx, cclfFile)
 	if err != nil {
 		fmt.Printf("Could not create CCLF%d file record.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
@@ -263,7 +263,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
 
-	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
+	err = rtx.UpdateCCLFFileImportStatus(newRelicCtxTx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
 		fmt.Printf("Could not update cclf file record for file: %s. \n", fileMetadata)
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata)

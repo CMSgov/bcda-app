@@ -46,7 +46,7 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
-
+	// QUESTION
 	exportJob, err := w.r.GetJobByID(ctx, uint(jobArgs.ID))
 	if goerrors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound

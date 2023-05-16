@@ -37,6 +37,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db, db}
 }
 
+// QUESTION
 func NewRepositoryTx(tx *sql.Tx) *Repository {
 	return &Repository{tx, tx}
 }

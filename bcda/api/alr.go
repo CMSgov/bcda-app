@@ -32,10 +32,10 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Currently, we don't do anything with resource types, thus commented out
 	//if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
-		//oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-			//err.Error())
-		//responseutils.WriteError(oo, w, http.StatusBadRequest)
-		//return
+	//oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+	//err.Error())
+	//responseutils.WriteError(oo, w, http.StatusBadRequest)
+	//return
 	//}
 
 	// Depending on how the request is sent to the handler,
@@ -90,9 +90,9 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Use a transaction to guarantee that the job only gets created if we queue all of the alrJobs
-	rtx := postgres.NewRepositoryTx(tx)
+	rtx, newRelicCtx := postgres.NewRepositoryTx(tx, ctx)
 
-	alrMBIs, err := h.r.GetAlrMBIs(ctx, ad.CMSID)
+	alrMBIs, err := h.r.GetAlrMBIs(newRelicCtx, ad.CMSID)
 	if err != nil {
 		return // Rollback handled in defer
 	}
@@ -101,7 +101,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	alrJobs := h.Svc.GetAlrJobs(ctx, alrMBIs)
 
 	newJob.JobCount = len(alrJobs)
-	newJob.ID, err = rtx.CreateJob(ctx, newJob)
+	newJob.ID, err = rtx.CreateJob(newRelicCtx, newJob)
 	if err != nil {
 		return // Rollback handled in the defer
 	}

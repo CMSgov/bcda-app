@@ -180,9 +180,9 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			return
 		}
 
-		repository := postgres.NewRepository(database.Connection)
+		repository, newRelicCtx := postgres.NewRepositoryWithContext(database.Connection, r.Context())
 
-		job, err := repository.GetJobByID(context.Background(), uint(jobID))
+		job, err := repository.GetJobByID(newRelicCtx, uint(jobID))
 		if err != nil {
 			log.Auth.Error(err)
 			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")

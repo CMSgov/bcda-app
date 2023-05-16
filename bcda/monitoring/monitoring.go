@@ -1,13 +1,13 @@
 package monitoring
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"context"
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	
+
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
@@ -17,8 +17,6 @@ type apm struct {
 	App *newrelic.Application
 }
 
-// QUESTION: CAN I NOT MAKE THE LAST TWO PARAMS OPTIONAL?
-// QUESTION: HOW IS TRANSACTION ADDED TO CONTEXT? IS IT?
 func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic.Transaction {
 	if a.App != nil {
 		txn := a.App.StartTransaction(msg)
@@ -29,14 +27,13 @@ func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic
 	return nil
 }
 
-// ALTERNATIVE TO START BC OF QUESTION ON LINE 20
-func (a apm) NewTransaction(name string) (*newrelic.Transaction) {
+func (a apm) NewTransaction(name string, ctx context.Context) (*newrelic.Transaction, context.Context) {
 	if a.App != nil {
-		txn := a.App.StartTransaction(name) // transaction trace
-		// ctx := newrelic.NewContext(context.Background(), txn) // parent context
-		return txn
+		txn := a.App.StartTransaction(name)          // transaction trace
+		newRelicCtx := newrelic.NewContext(ctx, txn) // parent context
+		return txn, newRelicCtx
 	}
-	return nil
+	return nil, nil
 }
 
 func NewSpan(parentCtx context.Context, name string) (close func()) {
@@ -67,7 +64,7 @@ func GetMonitor() *apm {
 			newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
 			newrelic.ConfigLicense(conf.GetEnv("NEW_RELIC_LICENSE_KEY")),
 			newrelic.ConfigEnabled(true),
-			newrelic.ConfigDistributedTracerEnabled(true),
+			newrelic.ConfigDistributedTracerEnabled(true), // NOTE: send lauren doc on this
 			func(cfg *newrelic.Config) {
 				cfg.HighSecurity = true
 			},

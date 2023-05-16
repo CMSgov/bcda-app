@@ -48,8 +48,9 @@ const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
 var (
-	db *sql.DB
-	r  models.Repository
+	db          *sql.DB
+	r           models.Repository
+	newRelicCtx context.Context
 )
 
 func GetApp() *cli.App {
@@ -63,7 +64,7 @@ func setUpApp() *cli.App {
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
 		db = database.Connection
-		r = postgres.NewRepository(db)
+		r, newRelicCtx = postgres.NewRepositoryWithContext(db, context.Background())
 		return nil
 	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
@@ -264,7 +265,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+				aco, err := r.GetACOByCMSID(newRelicCtx, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -408,7 +409,7 @@ func setUpApp() *cli.App {
 					return errors.New("alr template file must be specified")
 				}
 
-				file, err := r.GetLatestCCLFFile(context.Background(), acoCMSID, 8, "Completed",
+				file, err := r.GetLatestCCLFFile(newRelicCtx, acoCMSID, 8, "Completed",
 					time.Time{}, time.Time{}, models.FileTypeDefault)
 				if err != nil {
 					return err
@@ -432,7 +433,7 @@ func setUpApp() *cli.App {
 				}
 
 				mbiSupplier := func() ([]string, error) {
-					return r.GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
+					return r.GetCCLFBeneficiaryMBIs(newRelicCtx, file.ID)
 				}
 				if err := gen.UpdateCSV(tempFile.Name(), mbiSupplier); err != nil {
 					return err
@@ -580,12 +581,12 @@ func createGroup(id, name, acoID string) (string, error) {
 	)
 
 	if match := service.IsSupportedACO(acoID); match {
-		aco, err = r.GetACOByCMSID(context.Background(), acoID)
+		aco, err = r.GetACOByCMSID(newRelicCtx, acoID)
 		if err != nil {
 			return "", err
 		}
 	} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
-		aco, err = r.GetACOByUUID(context.Background(), uuid.Parse(acoID))
+		aco, err = r.GetACOByUUID(newRelicCtx, uuid.Parse(acoID))
 		if err != nil {
 			return "", err
 		}
@@ -613,7 +614,7 @@ func createGroup(id, name, acoID string) (string, error) {
 	if aco.UUID != nil {
 		aco.GroupID = ssasID
 
-		err := r.UpdateACO(context.Background(), aco.UUID,
+		err := r.UpdateACO(newRelicCtx, aco.UUID,
 			map[string]interface{}{"group_id": ssasID})
 		if err != nil {
 			return ssasID, errors.Wrapf(err, "group %s was created, but ACO could not be updated", ssasID)
@@ -640,7 +641,7 @@ func createACO(name, cmsID string) (string, error) {
 	id := uuid.NewRandom()
 	aco := models.ACO{Name: name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err := r.CreateACO(context.Background(), aco)
+	err := r.CreateACO(newRelicCtx, aco)
 	if err != nil {
 		return "", err
 	}
@@ -649,7 +650,7 @@ func createACO(name, cmsID string) (string, error) {
 }
 
 func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
-	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+	aco, err := r.GetACOByCMSID(newRelicCtx, acoCMSID)
 	if err != nil {
 		return "", err
 	}
@@ -676,7 +677,7 @@ func revokeAccessToken(accessToken string) error {
 func archiveExpiring(maxDate time.Time) error {
 	log.API.Info("Archiving expiring job files...")
 
-	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(newRelicCtx,
 		time.Time{}, maxDate, models.JobStatusCompleted)
 	if err != nil {
 		log.API.Error(err)
@@ -701,7 +702,7 @@ func archiveExpiring(maxDate time.Time) error {
 		}
 
 		j.Status = models.JobStatusArchived
-		err = r.UpdateJob(context.Background(), *j)
+		err = r.UpdateJob(newRelicCtx, *j)
 		if err != nil {
 			log.API.Error(err)
 			lastJobError = err
@@ -712,7 +713,7 @@ func archiveExpiring(maxDate time.Time) error {
 }
 
 func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
-	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(newRelicCtx,
 		time.Time{}, maxDate, currentStatus)
 	if err != nil {
 		return err
@@ -730,7 +731,7 @@ func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, ro
 		}
 
 		job.Status = newStatus
-		err = r.UpdateJob(context.Background(), *job)
+		err = r.UpdateJob(newRelicCtx, *job)
 		if err != nil {
 			log.API.Errorf("Failed to update job status to %s %s", newStatus, err)
 			continue
@@ -758,12 +759,11 @@ func cleanupJobData(jobID uint, rootDirs ...string) error {
 }
 
 func setBlacklistState(cmsID string, td *models.Termination) error {
-	ctx := context.Background()
-	aco, err := r.GetACOByCMSID(ctx, cmsID)
+	aco, err := r.GetACOByCMSID(newRelicCtx, cmsID)
 	if err != nil {
 		return err
 	}
-	return r.UpdateACO(context.Background(), aco.UUID,
+	return r.UpdateACO(newRelicCtx, aco.UUID,
 		map[string]interface{}{"termination_details": td})
 }
 

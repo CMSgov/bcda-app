@@ -25,27 +25,34 @@ const (
 // Ensure Repository satisfies the interface
 var _ models.Repository = &Repository{}
 
-// TODO: START A HIGH LEVEL TRANSACTION / PARENT 
-// EACH DB CALL SHOULD BE A SEGMENT / CHILD 
-
 type Repository struct {
 	database.Queryable
 	database.Executable
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	newRelicApp := monitoring.GetMonitor()
-	txn := newRelicApp.NewTransaction("DBTransaction")
-	defer newRelicApp.End(txn)
 	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}
 }
 
-func NewRepositoryTx(tx *sql.Tx) *Repository {
-	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
+func NewRepositoryWithContext(db *sql.DB, ctx context.Context) (*Repository, context.Context) {
+	newRelicApp := monitoring.GetMonitor()
+	txn, newRelicCtx := newRelicApp.NewTransaction("DBTransaction", ctx)
+	defer newRelicApp.End(txn)
+	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}, newRelicCtx
 }
 
-func NewRepositoryPgxTx(tx *pgx.Tx) *Repository {
-	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
+func NewRepositoryTx(tx *sql.Tx, ctx context.Context) (*Repository, context.Context) {
+	newRelicApp := monitoring.GetMonitor()
+	txn, newRelicCtx := newRelicApp.NewTransaction("DBTransaction", ctx)
+	defer newRelicApp.End(txn)
+	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}, newRelicCtx
+}
+
+func NewRepositoryPgxTx(tx *pgx.Tx, ctx context.Context) (*Repository, context.Context) {
+	newRelicApp := monitoring.GetMonitor()
+	txn, newRelicCtx := newRelicApp.NewTransaction("DBTransaction", ctx)
+	defer newRelicApp.End(txn)
+	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}, newRelicCtx
 }
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
@@ -54,7 +61,7 @@ func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name,
 		termination{aco.TerminationDetails})
 	query, args := ib.Build()
-	// QUESTION: SHOULD SPAN NAME BE INTERPOLATED WITH SPECIFICS ? 
+	// QUESTION: SHOULD SPAN NAME BE INTERPOLATED WITH SPECIFICS ?
 	close := monitoring.NewSpan(ctx, "CreateACO")
 	defer close()
 	_, err := r.ExecContext(ctx, query, args...)
