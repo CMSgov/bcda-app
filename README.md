@@ -43,13 +43,13 @@ Other installation options can be found in the [pre-commit documentation](https:
 
 ##### Step 2: Install the hooks
 
-Run the following command to install the gitleaks hook:
+Run the following command to install the hook:
 
 ```sh
 pre-commit install
 ```
 
-This will download and install the pre-commit hooks specified in `.pre-commit-config.yaml`.
+This will download and install the pre-commit hooks specified in `.pre-commit-config.yaml`, which includes gitleaks for secret scanning and go-imports to ensure that any added, copied, or modified go files are formatted properly.
 
 ### Managing encrypted files
 
