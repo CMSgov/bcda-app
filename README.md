@@ -43,6 +43,12 @@ Other installation options can be found in the [pre-commit documentation](https:
 
 ##### Step 2: Install the hooks
 
+You will need to manually install `goimports` for the following commands to function:
+
+```
+go install golang.org/x/tools/cmd/goimports@latest
+```
+
 Run the following command to install the hook:
 
 ```sh
