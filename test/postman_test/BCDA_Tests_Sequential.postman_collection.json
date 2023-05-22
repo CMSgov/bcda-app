@@ -6071,7 +6071,7 @@
 											"script": {
 												"exec": [
 													"const retryDelay = 5000;",
-													"const maxRetries = 10;",
+													"const maxRetries = 20;",
 													"",
 													"var eobJobReq = {",
 													"  url: pm.environment.get(\"groupRunoutJobUrl\"),",
@@ -6321,7 +6321,7 @@
 											"script": {
 												"exec": [
 													"const retryDelay = 5000;",
-													"const maxRetries = 10;",
+													"const maxRetries = 20;",
 													"",
 													"var eobJobReq = {",
 													"  url: pm.environment.get(\"groupRunoutv2JobUrl\"),",
