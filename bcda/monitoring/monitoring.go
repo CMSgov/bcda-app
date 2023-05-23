@@ -21,7 +21,6 @@ func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic
 		txn := a.App.StartTransaction(msg)
 		txn.SetWebResponse(w)
 		txn.SetWebRequestHTTP(r)
-		newrelic.NewContext(r.Context(), txn)
 		return txn
 	}
 	return nil
@@ -43,7 +42,7 @@ func GetMonitor() *apm {
 			newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
 			newrelic.ConfigLicense(conf.GetEnv("NEW_RELIC_LICENSE_KEY")),
 			newrelic.ConfigEnabled(true),
-			newrelic.ConfigDistributedTracerEnabled(true), // NOTE: send lauren doc on this
+			newrelic.ConfigDistributedTracerEnabled(true),
 			func(cfg *newrelic.Config) {
 				cfg.HighSecurity = true
 			},
