@@ -63,7 +63,7 @@ func setUpApp() *cli.App {
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
 		db = database.Connection
-		r = postgres.newRepository(db)
+		r = postgres.NewRepository(db)
 		return nil
 	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
