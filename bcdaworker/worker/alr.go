@@ -108,7 +108,6 @@ func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 	for resource, path := range fileMap {
 		filename := filepath.Base(path.Name())
 		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
-		// QUESTION
 		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
 			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
 			return

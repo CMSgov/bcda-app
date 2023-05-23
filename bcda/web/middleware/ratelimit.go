@@ -53,7 +53,6 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 		}
 
 		acoID := uuid.Parse(ad.ACOID)
-		// QUESTION
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
 		if err != nil {
 			log.API.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
