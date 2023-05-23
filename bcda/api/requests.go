@@ -515,7 +515,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
-	newJob.ID, err = rtx.CreateJob(newRelicCtx, newJob)
+	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		log.API.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
@@ -570,7 +570,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	newJob.JobCount = len(queJobs)
 
 	// We've now computed all of the fields necessary to populate a fully defined job
-	if err = rtx.UpdateJob(newRelicCtx, newJob); err != nil {
+	if err = rtx.UpdateJob(ctx, newJob); err != nil {
 		log.API.Error(err.Error())
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
