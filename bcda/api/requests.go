@@ -483,7 +483,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		return
 	}
 	// Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
-	rtx, newRelicCtx := postgres.NewRepositoryTx(tx, ctx)
+	rtx := postgres.NewRepositoryTx(tx)
 
 	defer func() {
 		if err != nil {

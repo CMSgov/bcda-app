@@ -14,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/log"
 )
 
@@ -34,25 +33,12 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}
 }
 
-func NewRepositoryWithContext(db *sql.DB, ctx context.Context) (*Repository, context.Context) {
-	newRelicApp := monitoring.GetMonitor()
-	txn, newRelicCtx := newRelicApp.NewTransaction("DBTransaction", ctx)
-	defer newRelicApp.End(txn)
-	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}, newRelicCtx
+func NewRepositoryTx(tx *sql.Tx) (*Repository) {
+	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
 }
 
-func NewRepositoryTx(tx *sql.Tx, ctx context.Context) (*Repository, context.Context) {
-	newRelicApp := monitoring.GetMonitor()
-	txn, newRelicCtx := newRelicApp.NewTransaction("DBTransaction", ctx)
-	defer newRelicApp.End(txn)
-	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}, newRelicCtx
-}
-
-func NewRepositoryPgxTx(tx *pgx.Tx, ctx context.Context) (*Repository, context.Context) {
-	newRelicApp := monitoring.GetMonitor()
-	txn, newRelicCtx := newRelicApp.NewTransaction("DBTransaction", ctx)
-	defer newRelicApp.End(txn)
-	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}, newRelicCtx
+func NewRepositoryPgxTx(tx *pgx.Tx) (*Repository) {
+	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
 }
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
@@ -61,26 +47,18 @@ func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name,
 		termination{aco.TerminationDetails})
 	query, args := ib.Build()
-	// QUESTION: SHOULD SPAN NAME BE INTERPOLATED WITH SPECIFICS ?
-	close := monitoring.NewSpan(ctx, "CreateACO")
-	defer close()
+
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
 }
 
 func (r *Repository) GetACOByUUID(ctx context.Context, uuid uuid.UUID) (*models.ACO, error) {
-	close := monitoring.NewSpan(ctx, "getACOByUUID")
-	defer close()
 	return r.getACO(ctx, "uuid", uuid)
 }
 func (r *Repository) GetACOByClientID(ctx context.Context, clientID string) (*models.ACO, error) {
-	close := monitoring.NewSpan(ctx, "GetACOByClientID")
-	defer close()
 	return r.getACO(ctx, "client_id", clientID)
 }
 func (r *Repository) GetACOByCMSID(ctx context.Context, cmsID string) (*models.ACO, error) {
-	close := monitoring.NewSpan(ctx, "GetACOByCMSID")
-	defer close()
 	return r.getACO(ctx, "cms_id", cmsID)
 }
 
@@ -98,8 +76,6 @@ func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAnd
 	ub.Where(ub.Equal("uuid", acoUUID))
 
 	query, args := ub.Build()
-	close := monitoring.NewSpan(ctx, "UpdateACO")
-	defer close()
 	result, err := r.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
@@ -126,8 +102,6 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	var rc int
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetCCLFFileExistsByName")
-	defer close()
 	row := r.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&rc); err != nil {
 		return false, err
@@ -171,8 +145,6 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 	sb.OrderBy("timestamp").Desc().Limit(1)
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetLatestCCLFFile")
-	defer close()
 	row := r.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -194,8 +166,6 @@ func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFil
 	query = fmt.Sprintf(constants.CCLFFileRetID, query)
 
 	var id uint
-	close := monitoring.NewSpan(ctx, "CreateCCLFFile")
-	defer close()
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
 		return 0, err
 	}
@@ -210,8 +180,6 @@ func (r *Repository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint
 
 	query, args := ub.Build()
 
-	close := monitoring.NewSpan(ctx, "UpdateCCLFFileImportStatus")
-	defer close()
 	result, err := r.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
@@ -235,8 +203,6 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint
 	sb.Where(sb.Equal("file_id", cclfFileID))
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetCCLFBeneficiaryMBIs")
-	defer close()
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -282,8 +248,6 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	}
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetCCLFBeneficiaries")
-	defer close()
 	rows, err := r.QueryContext(ctx, query, args...)
 
 	if err != nil {
@@ -319,8 +283,6 @@ func (r *Repository) CreateSuppression(ctx context.Context, suppression models.S
 			suppression.BeneficiaryLinkKey, suppression.ACOCMSID)
 	query, args := ib.Build()
 
-	close := monitoring.NewSpan(ctx, "CreateSuppression")
-	defer close()
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
 }
@@ -343,8 +305,6 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, up
 	sb.Where(sb.Equal("preference_indicator", "N"))
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetSuppressedMBIs")
-	defer close()
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -373,8 +333,6 @@ func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile 
 	// Append the RETURNING id to retrieve the auto-generated ID value associated with the suppression file
 	query = fmt.Sprintf(constants.CCLFFileRetID, query)
 	var id uint
-	close := monitoring.NewSpan(ctx, "CreateSuppressionFile")
-	defer close()
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
 		return 0, err
 	}
@@ -388,8 +346,6 @@ func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, file
 	ub.Where(ub.Equal("id", fileID))
 
 	query, args := ub.Build()
-	close := monitoring.NewSpan(ctx, "UpdateSuppressionFileImportStatus")
-	defer close()
 	result, err := r.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
@@ -426,8 +382,6 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...m
 	}
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetJobs")
-	defer close()
 	return r.getJobs(ctx, query, args...)
 
 }
@@ -451,8 +405,6 @@ func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBoun
 	}
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetJobsByUpdateTimeAndStatus")
-	defer close()
 	return r.getJobs(ctx, query, args...)
 }
 
@@ -468,8 +420,6 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 		transactionTime, createdAt, updatedAt sql.NullTime
 	)
 
-	close := monitoring.NewSpan(ctx, "GetJobByID")
-	defer close()
 	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
 		&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
@@ -496,8 +446,6 @@ func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) 
 	query = fmt.Sprintf(constants.CCLFFileRetID, query)
 
 	var id uint
-	close := monitoring.NewSpan(ctx, "CreateJob")
-	defer close()
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
 		return 0, err
 	}
@@ -519,8 +467,6 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 	ub.Where(ub.Equal("id", j.ID))
 	query, args := ub.Build()
 
-	close := monitoring.NewSpan(ctx, "UpdateJob")
-	defer close()
 	res, err := r.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
@@ -543,8 +489,6 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	sb.Where(sb.Equal("job_id", jobID))
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetJobKeys")
-	defer close()
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -572,8 +516,6 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("file_name", fileName)))
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "GetJobKey")
-	defer close()
 	row := r.QueryRowContext(ctx, query, args...)
 
 	jk := &models.JobKey{JobID: jobID}
@@ -586,8 +528,6 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 }
 
 func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {
-	close := monitoring.NewSpan(ctx, "getJobs")
-	defer close()
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -622,8 +562,6 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	sb.Where(sb.Equal(field, value))
 
 	query, args := sb.Build()
-	close := monitoring.NewSpan(ctx, "getACO")
-	defer close()
 	row := r.QueryRowContext(ctx, query, args...)
 	var (
 		aco                                      models.ACO
@@ -677,8 +615,6 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) (*models.AlrM
 	sb.Where(sb.Equal("metakey", id))
 
 	query, args = sb.Build()
-	close := monitoring.NewSpan(ctx, "GetAlrMBIs")
-	defer close()
 	rows, err := r.QueryContext(ctx, query, args...)
 
 	if err != nil {

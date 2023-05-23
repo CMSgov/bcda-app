@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/newrelic/go-agent/v3/integrations/nrpgx"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
@@ -51,7 +52,7 @@ func createDB(cfg *Config) (*sql.DB, error) {
 
 	stdlib.RegisterDriverConfig(&dc)
 
-	db, err := sql.Open("pgx", dc.ConnectionString(cfg.DatabaseURL))
+	db, err := sql.Open("nrpgx", dc.ConnectionString(cfg.DatabaseURL))
 	if err != nil {
 		return nil, err
 	}

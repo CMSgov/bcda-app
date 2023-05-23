@@ -303,9 +303,9 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 
 	db := database.Connection
 
-	r, newRelicCtx := postgres.NewRepositoryWithContext(db, context.Background())
+	r := postgres.NewRepository(db)
 
-	if suppressionMetaFile.ID, err = r.CreateSuppressionFile(newRelicCtx, suppressionMetaFile); err != nil {
+	if suppressionMetaFile.ID, err = r.CreateSuppressionFile(context.Background(), suppressionMetaFile); err != nil {
 		fmt.Printf("Could not create suppression file record for file: %s. \n", metadata)
 		err = errors.Wrapf(err, "could not create suppression file record for file: %s.", metadata)
 		log.API.Error(err)
@@ -414,9 +414,9 @@ func (m suppressionFileMetadata) String() string {
 
 func updateImportStatus(fileID uint, status string) {
 	db := database.Connection
-	r, newRelicCtx := postgres.NewRepositoryWithContext(db, context.Background())
+	r := postgres.NewRepository(db)
 
-	if err := r.UpdateSuppressionFileImportStatus(newRelicCtx, fileID, status); err != nil {
+	if err := r.UpdateSuppressionFileImportStatus(context.Background(), fileID, status); err != nil {
 		fmt.Printf("Could not update suppression file record for file_id: %d. \n", fileID)
 		err = errors.Wrapf(err, "could not update suppression file record for file_id: %d.", fileID)
 		log.API.Error(err)

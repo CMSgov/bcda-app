@@ -90,9 +90,9 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Use a transaction to guarantee that the job only gets created if we queue all of the alrJobs
-	rtx, newRelicCtx := postgres.NewRepositoryTx(tx, ctx)
+	rtx := postgres.NewRepositoryTx(tx)
 
-	alrMBIs, err := h.r.GetAlrMBIs(newRelicCtx, ad.CMSID)
+	alrMBIs, err := h.r.GetAlrMBIs(ctx, ad.CMSID)
 	if err != nil {
 		return // Rollback handled in defer
 	}
@@ -101,7 +101,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	alrJobs := h.Svc.GetAlrJobs(ctx, alrMBIs)
 
 	newJob.JobCount = len(alrJobs)
-	newJob.ID, err = rtx.CreateJob(newRelicCtx, newJob)
+	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		return // Rollback handled in the defer
 	}

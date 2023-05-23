@@ -1,7 +1,6 @@
 package monitoring
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
@@ -22,30 +21,10 @@ func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic
 		txn := a.App.StartTransaction(msg)
 		txn.SetWebResponse(w)
 		txn.SetWebRequestHTTP(r)
+		newrelic.NewContext(r.Context(), txn)
 		return txn
 	}
 	return nil
-}
-
-func (a apm) NewTransaction(name string, ctx context.Context) (*newrelic.Transaction, context.Context) {
-	if a.App != nil {
-		txn := a.App.StartTransaction(name)          // transaction trace
-		newRelicCtx := newrelic.NewContext(ctx, txn) // parent context
-		return txn, newRelicCtx
-	}
-	return nil, nil
-}
-
-func NewSpan(parentCtx context.Context, name string) (close func()) {
-	txn := newrelic.FromContext(parentCtx)
-	if txn == nil {
-		log.API.Warn("No transaction found. Cannot create child.")
-	}
-	segment := txn.StartSegment(name)
-
-	return func() {
-		segment.End()
-	}
 }
 
 func (a apm) End(txn *newrelic.Transaction) {

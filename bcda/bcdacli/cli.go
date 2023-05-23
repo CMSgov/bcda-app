@@ -50,7 +50,6 @@ const Usage = "Beneficiary Claims Data API CLI"
 var (
 	db          *sql.DB
 	r           models.Repository
-	newRelicCtx context.Context
 )
 
 func GetApp() *cli.App {
@@ -64,7 +63,7 @@ func setUpApp() *cli.App {
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
 		db = database.Connection
-		r, newRelicCtx = postgres.NewRepositoryWithContext(db, context.Background())
+		r = postgres.newRepository(db)
 		return nil
 	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
