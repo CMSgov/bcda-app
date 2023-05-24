@@ -46,6 +46,7 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
+	// CONTEXT: que.go ln 103
 	exportJob, err := w.r.GetJobByID(ctx, uint(jobArgs.ID))
 	if goerrors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound
@@ -67,7 +68,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	ctx = metrics.NewContext(ctx, t)
 	ctx, c := metrics.NewParent(ctx, fmt.Sprintf("ProcessJob-%s", jobArgs.ResourceType))
 	defer c()
-
+// CONTEXT COMES FROM QUE.GO > line 103
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("ProcessJob: could not retrieve ACO from database by UUID %s", job.ACOID))
@@ -147,7 +148,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			return err
 		}
 	}
-
+// CONTEXT COMES FROM QUE.GO > line 103
 	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s for jobId %s for cmsID %s", fileName, jobID, *aco.CMSID))
@@ -398,6 +399,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 }
 
 func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
+	// CURRENT
 	j, err := r.GetJobByID(ctx, jobID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Failed retrieve job by id (Job %d)", jobID))

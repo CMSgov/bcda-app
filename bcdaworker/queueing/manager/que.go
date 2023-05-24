@@ -100,6 +100,7 @@ func (q *masterQueue) StopQue() {
 }
 
 func (q *queue) processJob(job *que.Job) error {
+	// HERE for worker.go ln 71 and worker.go ln 50 & ln 151
 	ctx, cancel := context.WithCancel(context.Background())
 
 	defer q.updateJobQueueCountCloudwatchMetric()

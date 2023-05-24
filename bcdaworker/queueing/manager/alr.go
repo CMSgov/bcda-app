@@ -41,6 +41,7 @@ func checkIfCancelled(ctx context.Context, r repository.Repository,
 	for {
 		select {
 		case <-time.After(time.Duration(wait) * time.Second):
+			// CONTEXT in this file ln 71
 			jobStatus, err := r.GetJobByID(ctx, jobID)
 
 			if err != nil {
@@ -67,6 +68,7 @@ func checkIfCancelled(ctx context.Context, r repository.Repository,
 func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// Creating Context for possible cancellation; used by checkIfCancelled fn
+	// CONTEXT HERE FOR THIS FILE ln 44
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -160,7 +162,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
 		return err
 	}
-
+// CONTEXT HERE FOR this file ln 193
 	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)
 	if err != nil {
 		q.alrLog.Warnf("Failed to check job completion %s", err)
@@ -188,6 +190,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 }
 
 func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
+	// CONTEXT this file ln 165
 	j, err := q.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get job: %w", err)

@@ -232,7 +232,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
-
+// context here for servige.go ln 186
 	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
 	if err != nil {
 		log.API.Error(err)
@@ -325,7 +325,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
-
+// CONTEXT for service.go ln 241
 	_, err = h.Svc.CancelJob(context.Background(), uint(jobID))
 	if err != nil {
 		switch err {

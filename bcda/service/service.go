@@ -183,6 +183,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 }
 
 func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error) {
+	// context from requests.go: ln 235
 	j, err := s.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
@@ -192,7 +193,7 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 	if j.Status != models.JobStatusCompleted {
 		return j, nil, nil
 	}
-
+	// context from requests.go: ln 235
 	keys, err := s.repository.GetJobKeys(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
@@ -237,6 +238,7 @@ func (e JobsNotFoundError) Error() string {
 
 func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	// Assumes the job exists and retrieves the job by ID
+	// CONTEXT: requests.go ln 329
 	job, err := s.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return 0, err
@@ -245,6 +247,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	// Check if the job is pending or in progress.
 	if job.Status == models.JobStatusPending || job.Status == models.JobStatusInProgress {
 		job.Status = models.JobStatusCancelled
+			// CONTEXT: requests.go ln 329
 		err = s.repository.UpdateJob(ctx, *job)
 		if err != nil {
 			return 0, ErrJobNotCancelled
@@ -462,6 +465,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 // timeConstraints searches for any time bounds that we should apply on the associated ACO
 func (s *service) timeConstraints(ctx context.Context, cmsID string) (timeConstraint, error) {
 	var constraint timeConstraint
+	// CONTEXT COMES FROM 
 	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
 	if err != nil {
 		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
