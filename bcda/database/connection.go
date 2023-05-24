@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/jackc/pgx/stdlib"
+
+	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	"github.com/sirupsen/logrus"
 )
 
