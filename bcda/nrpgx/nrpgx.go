@@ -3,6 +3,7 @@
 //  1. Switch from pgx/v4/stdlib to pgx/stdlib to align with our current version of pgx (v3)
 //     and avoid "Register called twice for driver pgx" errors.
 //  2. To enable a custom connection and logging configuration, use stdlib.getDefaultDriver().
+//     See: https://github.com/newrelic/go-agent/issues/435
 //
 // Copyright 2021 New Relic Corporation. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
