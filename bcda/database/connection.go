@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/newrelic/go-agent/v3/integrations/nrpgx"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/jackc/pgx/stdlib"
+	_ "github.com/newrelic/go-agent/v3/integrations/nrpgx"
 	"github.com/sirupsen/logrus"
 )
 
