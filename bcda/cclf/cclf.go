@@ -152,7 +152,6 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
 	db := database.Connection
 	repository := postgres.NewRepository(db)
-// CONTEXT from this file line 289
 	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
 	if err != nil {
 		fmt.Printf("failed to check existence of CCLF%d file.\n", fileMetadata.cclfNum)
@@ -220,7 +219,6 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		ImportStatus:    constants.ImportInprog,
 		Type:            fileMetadata.fileType,
 	}
-// Context comes from this file line 289
 	cclfFile.ID, err = rtx.CreateCCLFFile(ctx, cclfFile)
 	if err != nil {
 		fmt.Printf("Could not create CCLF%d file record.\n", fileMetadata.cclfNum)
@@ -262,7 +260,6 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
-// Context comes from this file line 289
 	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
 		fmt.Printf("Could not update cclf file record for file: %s. \n", fileMetadata)
@@ -286,7 +283,6 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	t := metrics.GetTimer()
 	defer t.Close()
-	// HERE for this file line 158
 	ctx := metrics.NewContext(context.Background(), t)
 
 	// We are not going to create any children from this parent so we can

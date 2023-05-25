@@ -52,22 +52,18 @@ func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	return err
 }
 
-// NO: sass.go, worker.go
 func (r *Repository) GetACOByUUID(ctx context.Context, uuid uuid.UUID) (*models.ACO, error) {
 	return r.getACO(ctx, "uuid", uuid)
 }
 
-// NO: sass.go
 func (r *Repository) GetACOByClientID(ctx context.Context, clientID string) (*models.ACO, error) {
 	return r.getACO(ctx, "client_id", clientID)
 }
 
-// NO: sass.go
 func (r *Repository) GetACOByCMSID(ctx context.Context, cmsID string) (*models.ACO, error) {
 	return r.getACO(ctx, "cms_id", cmsID)
 }
 
-// NO: sass.go 
 func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
 	for field, value := range fieldsAndValues {
@@ -99,7 +95,6 @@ func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAnd
 	return nil
 }
 
-// NO: cclf.go 
 func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (bool, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("COUNT(*)")
@@ -163,7 +158,6 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 	return &cclfFile, nil
 }
 
-// NO: cclf
 func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFile) (uint, error) {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("cclf_files")
 	ib.Cols("cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").
@@ -181,7 +175,6 @@ func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFil
 	return id, nil
 }
 
-// NO: cclf
 func (r *Repository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("cclf_files")
 	ub.Set(ub.Assign("import_status", importStatus))
@@ -282,7 +275,6 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	return beneficiaries, nil
 }
 
-// NO: Suppression.go
 func (r *Repository) CreateSuppression(ctx context.Context, suppression models.Suppression) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppressions").
 		Cols("file_id", "mbi", "source_code", "effective_date", "preference_indicator",
@@ -335,7 +327,6 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, up
 	return suppressedMBIs, nil
 }
 
-// NO: suppression.go
 func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile models.SuppressionFile) (uint, error) {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppression_files")
 	ib.Cols("name", "timestamp", "import_status").
@@ -351,7 +342,6 @@ func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile 
 	return id, nil
 }
 
-// NO: suppression.go
 func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("suppression_files")
 	ub.Set(ub.Assign("import_status", importStatus))
@@ -376,7 +366,7 @@ func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, file
 }
 
 var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at"}
-// NO: requests.go
+
 func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
 	for i, v := range statuses {
@@ -398,7 +388,6 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...m
 
 }
 
-// NO: cli
 func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
 	for i, v := range statuses {
@@ -421,7 +410,6 @@ func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBoun
 	return r.getJobs(ctx, query, args...)
 }
 
-// NO: service.go, alr.go, worker.go
 func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select(jobColumns...)
@@ -467,7 +455,6 @@ func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) 
 	return id, nil
 }
 
-// NO: service.go
 func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
 	ub.Set(
@@ -499,7 +486,6 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 	return nil
 }
 
-// NO: service.go
 func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobKey, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_name", "resource_type").From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))

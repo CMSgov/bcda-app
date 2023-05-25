@@ -68,7 +68,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	ctx = metrics.NewContext(ctx, t)
 	ctx, c := metrics.NewParent(ctx, fmt.Sprintf("ProcessJob-%s", jobArgs.ResourceType))
 	defer c()
-// CONTEXT COMES FROM QUE.GO > line 103
+
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("ProcessJob: could not retrieve ACO from database by UUID %s", job.ACOID))

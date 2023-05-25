@@ -238,7 +238,6 @@ func (e JobsNotFoundError) Error() string {
 
 func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	// Assumes the job exists and retrieves the job by ID
-	// CONTEXT: requests.go ln 329
 	job, err := s.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return 0, err

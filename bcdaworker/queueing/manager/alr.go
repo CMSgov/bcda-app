@@ -41,7 +41,6 @@ func checkIfCancelled(ctx context.Context, r repository.Repository,
 	for {
 		select {
 		case <-time.After(time.Duration(wait) * time.Second):
-			// CONTEXT in this file ln 71
 			jobStatus, err := r.GetJobByID(ctx, jobID)
 
 			if err != nil {
@@ -190,7 +189,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 }
 
 func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
-	// CONTEXT this file ln 165
 	j, err := q.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get job: %w", err)

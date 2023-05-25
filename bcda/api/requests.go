@@ -191,7 +191,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jobs, err := h.Svc.GetJobs(context.Background(), uuid.Parse(ad.ACOID), statusTypes...)
+	jobs, err := h.Svc.GetJobs(r.Context(), uuid.Parse(ad.ACOID), statusTypes...)
 	if err != nil {
 		log.API.Error(err)
 
@@ -232,8 +232,8 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
-// context here for servige.go ln 186
-	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
+
+	job, jobKeys, err := h.Svc.GetJobAndKeys(r.Context(), uint(jobID))
 	if err != nil {
 		log.API.Error(err)
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
@@ -325,8 +325,8 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
-// CONTEXT for service.go ln 241
-	_, err = h.Svc.CancelJob(context.Background(), uint(jobID))
+
+	_, err = h.Svc.CancelJob(r.Context(), uint(jobID))
 	if err != nil {
 		switch err {
 		case service.ErrJobNotCancellable:
