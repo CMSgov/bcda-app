@@ -29,7 +29,6 @@ var _ Provider = SSASPlugin{}
 // RegisterSystemWithIPs adds a software client for the ACO identified by localID.
 func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	creds := Credentials{}
-	// HERE
 	aco, err := s.repository.GetACOByUUID(context.Background(), uuid.Parse(localID))
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to create system")
@@ -72,7 +71,6 @@ func (s SSASPlugin) GetVersion() (string, error) {
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
 func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 	creds := Credentials{}
-// HERE
 	aco, err := s.repository.GetACOByClientID(context.Background(), clientID)
 	if err != nil {
 		return creds, err
@@ -151,7 +149,6 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 	ad.CMSID = xData.IDList[0]
 
 	var aco *models.ACO
-	//  HERE 
 	if aco, err = s.repository.GetACOByCMSID(context.Background(), ad.CMSID); err != nil {
 		entityNotFoundError := &customErrors.EntityNotFoundError{Err: err, CMSID: ad.CMSID}
 		log.SSAS.Errorf(entityNotFoundError.Error())
