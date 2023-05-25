@@ -183,7 +183,6 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 }
 
 func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error) {
-	// context from requests.go: ln 235
 	j, err := s.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
@@ -193,7 +192,6 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 	if j.Status != models.JobStatusCompleted {
 		return j, nil, nil
 	}
-	// context from requests.go: ln 235
 	keys, err := s.repository.GetJobKeys(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
@@ -464,7 +462,6 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 // timeConstraints searches for any time bounds that we should apply on the associated ACO
 func (s *service) timeConstraints(ctx context.Context, cmsID string) (timeConstraint, error) {
 	var constraint timeConstraint
-	// CONTEXT COMES FROM 
 	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
 	if err != nil {
 		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
