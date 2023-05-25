@@ -33,11 +33,11 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}
 }
 
-func NewRepositoryTx(tx *sql.Tx) (*Repository) {
+func NewRepositoryTx(tx *sql.Tx) *Repository {
 	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
 }
 
-func NewRepositoryPgxTx(tx *pgx.Tx) (*Repository) {
+func NewRepositoryPgxTx(tx *pgx.Tx) *Repository {
 	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
 }
 
