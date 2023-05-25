@@ -46,7 +46,6 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
-	// CONTEXT: que.go ln 103
 	exportJob, err := w.r.GetJobByID(ctx, uint(jobArgs.ID))
 	if goerrors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound
@@ -82,7 +81,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
 		// could also occur if job was marked as cancelled
-
 		log.Worker.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		err = errors.Wrap(err, "ProcessJob: could not update job status in database")
@@ -148,7 +146,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			return err
 		}
 	}
-// CONTEXT COMES FROM QUE.GO > line 103
 	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s for jobId %s for cmsID %s", fileName, jobID, *aco.CMSID))
@@ -399,7 +396,6 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 }
 
 func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
-	// CURRENT
 	j, err := r.GetJobByID(ctx, jobID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Failed retrieve job by id (Job %d)", jobID))
