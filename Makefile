@@ -195,3 +195,6 @@ credentials:
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials 
 	@docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
+
+psql:
+	psql -U postgres -p 5432 -h localhost -W bcda
