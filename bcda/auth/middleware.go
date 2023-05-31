@@ -10,6 +10,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
@@ -58,48 +59,58 @@ func ParseToken(next http.Handler) http.Handler {
 
 		tokenString := authSubmatches[1]
 
-		token, err := GetProvider().VerifyToken(tokenString)
+		token, ad, err := AuthorizeAccess(tokenString)
 		if err != nil {
-			log.Auth.Errorf("Unable to verify token; %s", err)
 			handleTokenVerificationError(w, rw, err)
 			return
 		}
 
-		var ad AuthData
-		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
-			switch claims.Issuer {
-			case "ssas":
-				ad, err = GetProvider().getAuthDataFromClaims(claims)
-				if err != nil {
-					handleSsasAuthDataError(w, rw, err)
-					return
-				}
-			default:
-				log.Auth.Errorf("Unsupported claims issuer %s", claims.Issuer)
-				rw.Exception(w, http.StatusNotFound, responseutils.TokenErr, "")
-				return
-			}
-		}
 		ctx := context.WithValue(r.Context(), TokenContextKey, token)
 		ctx = context.WithValue(ctx, AuthDataContextKey, ad)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func handleSsasAuthDataError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
-	log.Auth.Error(err)
-	if _, ok := err.(*customErrors.EntityNotFoundError); ok {
-		rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
-	} else {
-		rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
+func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
+	tknEvent := event{op: "AuthorizeAccess"}
+	operationStarted(tknEvent)
+	token, err := GetProvider().VerifyToken(tokenString)
+
+	var ad AuthData
+
+	if err != nil {
+		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
+		operationFailed(tknEvent)
+		return nil, ad, err
 	}
+
+	claims, ok := token.Claims.(*CommonClaims)
+	if !ok || !token.Valid {
+		// These should already trigger an error within VerifyToken, so in theory it's unreachable code.
+		return nil, ad, errors.New("invalid ssas claims")
+	}
+
+	ad, err = GetProvider().getAuthDataFromClaims(claims)
+	if err != nil {
+		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
+		operationFailed(tknEvent)
+		return nil, ad, err
+	}
+
+	operationSucceeded(tknEvent)
+	return token, ad, nil
 }
 
 func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
 	if err != nil {
+		log.Auth.Error(err)
+
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
-			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
+		case *customErrors.EntityNotFoundError:
+			rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
 		case *customErrors.RequestorDataError:
 			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
 		case *customErrors.RequestTimeoutError:
@@ -112,6 +123,8 @@ func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, 
 	}
 }
 
+// Verify that a token was verified and stored in the request context.
+// This depends on ParseToken being called beforehand in the routing middleware.
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := getRespWriter(r.URL.Path)
@@ -123,14 +136,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		if token, ok := token.(*jwt.Token); ok {
-			err := GetProvider().AuthorizeAccess(token.Raw)
-			if err != nil {
-				log.Auth.Error(err)
-				handleTokenVerificationError(w, rw, err)
-				return
-			}
-
+		if _, ok := token.(*jwt.Token); ok {
 			next.ServeHTTP(w, r)
 		}
 	})

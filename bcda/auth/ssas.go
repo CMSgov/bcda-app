@@ -161,31 +161,6 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 	return ad, nil
 }
 
-// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func (sSASPlugin SSASPlugin) AuthorizeAccess(tokenString string) error {
-	tknEvent := event{op: "AuthorizeAccess"}
-	operationStarted(tknEvent)
-	token, err := sSASPlugin.VerifyToken(tokenString)
-
-	if err != nil {
-		tknEvent.help = fmt.Sprintf("VerifyToken failed in AuthorizeAccess; %s", err.Error())
-		operationFailed(tknEvent)
-		return err
-	}
-	claims, ok := token.Claims.(*CommonClaims)
-	if !ok {
-		return errors.New("invalid ssas claims")
-	}
-	if _, err = sSASPlugin.getAuthDataFromClaims(claims); err != nil {
-		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
-		operationFailed(tknEvent)
-		return err
-	}
-
-	operationSucceeded(tknEvent)
-	return nil
-}
-
 // VerifyToken decodes a base64-encoded token string into a structured token,
 // verifies token with SSAS and calls check for token expiration.
 func (sSASPlugin SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
@@ -251,7 +226,7 @@ func confirmRequestorTokenPayload(token *jwt.Token) error {
 	return nil
 }
 
-//checkTokenExpiration parses slice of type byte into map [string] interface & sees if "active" is set to false.
+// checkTokenExpiration parses slice of type byte into map [string] interface & sees if "active" is set to false.
 func checkTokenExpiration(bytes []byte) error {
 	var introspectResponse map[string]interface{}
 

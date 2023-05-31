@@ -439,7 +439,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	}{
 		{"Active Credentials", testUtils.MakeTestServerWithValidTokenRequest(), constants.FiveHundredSeconds, []byte(token), nil, []byte(constants.ExpiresInDefault)},
 		{"Token Request Timed Out", testUtils.MakeTestServerWithTokenRequestTimeout(), constants.FiveSeconds, []byte(nil), &customErrors.RequestTimeoutError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
-		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.UnexpectedSSASError{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
+		{"Invalid Credentials", testUtils.MakeTestServerWithInvalidTokenRequest(), constants.FiveHundredSeconds, []byte(nil), &customErrors.SSASErrorUnauthorized{Msg: constants.EmptyString, Err: nil}, []byte(nil)},
 	}
 
 	for _, tt := range tests {

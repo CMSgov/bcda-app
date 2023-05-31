@@ -344,12 +344,11 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 
 func setExpectedMockCalls(s *RouterTestSuite, mock *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
 	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("AuthorizeAccess", token.Raw).Return(nil)
 	mock.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
 	auth.SetMockProvider(s.T(), mock)
 }
 
-//integration test, requires connection to postgres db
+// integration test, requires connection to postgres db
 // TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
 func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	// Use a new router to ensure that v2 endpoints are active
