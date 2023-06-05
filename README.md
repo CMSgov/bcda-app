@@ -11,7 +11,8 @@ To get started, install some dependencies:
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
 4. Install [Ansible Vault](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) and its dependencies
 For further ansible documentation see: (https://docs.ansible.com/ansible/2.4/vault.html)
-5. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
+5. Install [Pre-commit](https://pre-commit.com/) with [Gitleaks](https://github.com/gitleaks/gitleaks)
+6. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
 ## Sensitive Docker Configuration Files
 
@@ -25,15 +26,36 @@ The files committed in the `shared_files/encrypted` directory hold secret inform
 - Create a file named `.vault_password` in the root directory of the repository
 - Place the Ansible Vault password in this file
 
-#### Git hook
 
-To avoid committing and pushing unencrypted secret files, use the included `scripts/pre-commit` git pre-commit hook by running the following script from the repository root directory:
+#### Installing and Using Pre-commit
+
+Anyone committing to this repo must use the pre-commit hook to lower the likelihood that secrets will be exposed.
+
+##### Step 1: Install pre-commit
+
+You can install pre-commit using the MacOS package manager Homebrew:
+
+```sh
+brew install pre-commit
+```
+
+Other installation options can be found in the [pre-commit documentation](https://pre-commit.com/#install).
+
+##### Step 2: Install the hooks
+
+You will need to manually install `goimports` for the following commands to function:
 
 ```
-cp ops/pre-commit .git/hooks
+go install golang.org/x/tools/cmd/goimports@latest
 ```
 
-The pre-commit hook will also ensure that any added, copied, or modified go files are formatted properly.
+Run the following command to install the hook:
+
+```sh
+pre-commit install
+```
+
+This will download and install the pre-commit hooks specified in `.pre-commit-config.yaml`, which includes gitleaks for secret scanning and go-imports to ensure that any added, copied, or modified go files are formatted properly.
 
 ### Managing encrypted files
 
