@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/jackc/pgx/stdlib"
+
+	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,7 +53,7 @@ func createDB(cfg *Config) (*sql.DB, error) {
 
 	stdlib.RegisterDriverConfig(&dc)
 
-	db, err := sql.Open("pgx", dc.ConnectionString(cfg.DatabaseURL))
+	db, err := sql.Open("nrpgx", dc.ConnectionString(cfg.DatabaseURL))
 	if err != nil {
 		return nil, err
 	}

@@ -71,7 +71,6 @@ func (s SSASPlugin) GetVersion() (string, error) {
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
 func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 	creds := Credentials{}
-
 	aco, err := s.repository.GetACOByClientID(context.Background(), clientID)
 	if err != nil {
 		return creds, err

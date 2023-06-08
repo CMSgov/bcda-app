@@ -42,6 +42,7 @@ func GetMonitor() *apm {
 			newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
 			newrelic.ConfigLicense(conf.GetEnv("NEW_RELIC_LICENSE_KEY")),
 			newrelic.ConfigEnabled(true),
+			newrelic.ConfigDistributedTracerEnabled(true),
 			func(cfg *newrelic.Config) {
 				cfg.HighSecurity = true
 			},
