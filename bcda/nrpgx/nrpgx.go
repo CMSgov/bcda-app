@@ -266,7 +266,7 @@ func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, strin
 		var ppoid string
 
 		if p, ok := cc.RuntimeParams["port"]; ok {
-			cc.Port, ppoid = parsePort(p)
+			cc.Port, _ = parsePort(p)
 		}
 
 		if cc.Port == 0 {
