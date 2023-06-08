@@ -758,8 +758,7 @@ func cleanupJobData(jobID uint, rootDirs ...string) error {
 }
 
 func setBlacklistState(cmsID string, td *models.Termination) error {
-	ctx := context.Background()
-	aco, err := r.GetACOByCMSID(ctx, cmsID)
+	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
 	if err != nil {
 		return err
 	}

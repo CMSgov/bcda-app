@@ -47,6 +47,7 @@ func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name,
 		termination{aco.TerminationDetails})
 	query, args := ib.Build()
+
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
 }
@@ -54,9 +55,11 @@ func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 func (r *Repository) GetACOByUUID(ctx context.Context, uuid uuid.UUID) (*models.ACO, error) {
 	return r.getACO(ctx, "uuid", uuid)
 }
+
 func (r *Repository) GetACOByClientID(ctx context.Context, clientID string) (*models.ACO, error) {
 	return r.getACO(ctx, "client_id", clientID)
 }
+
 func (r *Repository) GetACOByCMSID(ctx context.Context, cmsID string) (*models.ACO, error) {
 	return r.getACO(ctx, "cms_id", cmsID)
 }

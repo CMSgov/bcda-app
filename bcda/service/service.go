@@ -192,7 +192,6 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 	if j.Status != models.JobStatusCompleted {
 		return j, nil, nil
 	}
-
 	keys, err := s.repository.GetJobKeys(ctx, jobID)
 	if err != nil {
 		return nil, nil, err

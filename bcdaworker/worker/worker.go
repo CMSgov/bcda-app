@@ -46,7 +46,6 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
-
 	exportJob, err := w.r.GetJobByID(ctx, uint(jobArgs.ID))
 	if goerrors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound
@@ -82,7 +81,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
 		// could also occur if job was marked as cancelled
-
 		log.Worker.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		err = errors.Wrap(err, "ProcessJob: could not update job status in database")
@@ -148,7 +146,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			return err
 		}
 	}
-
 	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s for jobId %s for cmsID %s", fileName, jobID, *aco.CMSID))
