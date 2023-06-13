@@ -99,29 +99,29 @@ func TestParseDSN(t *testing.T) {
 		// key,value pairs
 		// #11
 		{
-			dsn:             "host=1.2.3.4 port=1234 dbname=mydb",
-			expHost:         "1.2.3.4",
+			dsn:             "host=0.0.0.0 port=1234 dbname=mydb",
+			expHost:         "0.0.0.0",
 			expPortPathOrID: "1234",
 			expDatabaseName: "mydb",
 		},
 		// #12
 		{
-			dsn:             "host =1.2.3.4 port= 1234 dbname = mydb",
-			expHost:         "1.2.3.4",
+			dsn:             "host =0.0.0.0 port= 1234 dbname = mydb",
+			expHost:         "0.0.0.0",
 			expPortPathOrID: "1234",
 			expDatabaseName: "mydb",
 		},
 		// #13
 		{
-			dsn:             "host =        1.2.3.4 port=\t\t1234 dbname =\n\t\t\tmydb",
-			expHost:         "1.2.3.4",
+			dsn:             "host =        0.0.0.0 port=\t\t1234 dbname =\n\t\t\tmydb",
+			expHost:         "0.0.0.0",
 			expPortPathOrID: "1234",
 			expDatabaseName: "mydb",
 		},
 		// #14
 		{
-			dsn:             "host ='1.2.3.4' port= '1234' dbname = 'mydb'",
-			expHost:         "1.2.3.4",
+			dsn:             "host ='0.0.0.0' port= '1234' dbname = 'mydb'",
+			expHost:         "0.0.0.0",
 			expPortPathOrID: "1234",
 			expDatabaseName: "mydb",
 		},
@@ -140,20 +140,20 @@ func TestParseDSN(t *testing.T) {
 		},
 		// #17
 		{
-			dsn:             "host=1.2.3.4 hostaddr=5.6.7.8",
+			dsn:             "host=0.0.0.0 hostaddr=5.6.7.8",
 			expHost:         "5.6.7.8",
 			expPortPathOrID: "5432",
 		},
 		// #18
 		{
-			dsn:             "hostaddr=5.6.7.8 host=1.2.3.4",
+			dsn:             "hostaddr=5.6.7.8 host=0.0.0.0",
 			expHost:         "5.6.7.8",
 			expPortPathOrID: "5432",
 		},
 		// #19
 		{
-			dsn:             "hostaddr=1.2.3.4",
-			expHost:         "1.2.3.4",
+			dsn:             "hostaddr=0.0.0.0",
+			expHost:         "0.0.0.0",
 			expPortPathOrID: "5432",
 		},
 		// #20
