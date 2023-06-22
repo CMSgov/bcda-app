@@ -54,7 +54,7 @@ func NewAPIRouter() http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
-		if conf.GetEnv("ENABLE_ALR_ENDPOINTS") != "true" {
+		if conf.GetEnv("ENABLE_ALR_ENDPOINTS") == "true" {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v1.ALRRequest))
 		}
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
@@ -69,7 +69,7 @@ func NewAPIRouter() http.Handler {
 		FileServer(r, "/api/v2/swagger", http.Dir("./swaggerui/v2"))
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
-			if conf.GetEnv("ENABLE_ALR_ENDPOINTS") != "true" {
+			if conf.GetEnv("ENABLE_ALR_ENDPOINTS") == "true" {
 				r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v2.ALRRequest))
 			}
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
