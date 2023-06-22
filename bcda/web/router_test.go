@@ -32,14 +32,20 @@ var version1ALRExportURL string = "/api/v1/alr/$export"
 
 type RouterTestSuite struct {
 	suite.Suite
-	apiRouter  http.Handler
-	dataRouter http.Handler
+	apiRouter        http.Handler
+	dataRouter       http.Handler
+	alrEnabledEnvVar string
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
+	s.alrEnabledEnvVar = conf.GetEnv("ENABLE_ALR_ENDPOINTS")
 	s.apiRouter = NewAPIRouter()
 	s.dataRouter = NewDataRouter()
+}
+
+func (s *RouterTestSuite) TearDownTest() {
+	conf.SetEnv(s.T(), "ENABLE_ALR_ENDPOINTS", s.alrEnabledEnvVar)
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
