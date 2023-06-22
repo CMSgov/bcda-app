@@ -40,6 +40,7 @@ type RouterTestSuite struct {
 func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
 	s.alrEnabledEnvVar = conf.GetEnv("ENABLE_ALR_ENDPOINTS")
+	conf.SetEnv(s.T(), "ENABLE_ALR_ENDPOINTS", "true")
 	s.apiRouter = NewAPIRouter()
 	s.dataRouter = NewDataRouter()
 }
