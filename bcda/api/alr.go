@@ -10,12 +10,18 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
 )
 
 func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
+	if conf.GetEnv("ENABLE_ALR_ENDPOINTS") != "true" {
+		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "Endpoint Not Found")
+		return
+	}
+
 	ctx := r.Context()
 
 	// retrieve ACO & cms_id data from the context through value
