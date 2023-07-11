@@ -601,7 +601,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
 
-			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) {
+			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) && h.apiVersion != "v1" {
 				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
 			}
 		}

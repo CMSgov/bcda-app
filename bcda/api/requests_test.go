@@ -709,6 +709,34 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 	}
 }
 
+func (s *RequestsTestSuite) TestGetResourceTypes() {
+
+	testCases := []struct {
+		aco               string
+		apiVersion        string
+		expectedResources []string
+	}{
+		{"TEST123", "v1", []string{"Patient", "ExplanationOfBenefit", "Coverage"}},
+		{"D1234", "v1", []string{"Patient", "ExplanationOfBenefit", "Coverage"}},
+		{"A0000", "v1", []string{"Patient", "ExplanationOfBenefit", "Coverage"}},
+		{"TEST123", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage", "Claim", "ClaimResponse"}},
+		{"A0000", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage"}},
+	}
+	for _, test := range testCases {
+		h := newHandler(s.resourceType, "/"+test.apiVersion+"/fhir", test.apiVersion, s.db)
+		rp := middleware.RequestParameters{
+			Version:       test.apiVersion,
+			ResourceTypes: []string{},
+			Since:         time.Time{},
+		}
+		rt := h.getResourceTypes(rp, test.aco)
+
+		s.T().Log("bar foo", rt, test.aco, test.apiVersion, h.apiVersion)
+		assert.Equal(s.T(), rt, test.expectedResources)
+	}
+
+}
+
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 
