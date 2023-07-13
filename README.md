@@ -151,7 +151,7 @@ After we successfully retrieve a token, we can make a request to any of the avai
 
 ## **Run Tests**
 
-**Prerequisite**: Before running the tests and produce test metrics, you must complete the `Build Images` step from `Start the API` section. 
+**Prerequisite**: Before running the tests and producing test metrics, you must complete the `Build Images` step from `Start the API` section. 
 
 ### **1. Seed The Database**
 Spin up the Postgres container & run migrations:
