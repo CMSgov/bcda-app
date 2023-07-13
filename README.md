@@ -6,7 +6,6 @@
 
 [API documentation](https://bcda.cms.gov/sandbox/user-guide/)
 
-# 
 ## **Required Setup**
 
 The steps below are necessary to run the project.
@@ -129,7 +128,7 @@ docker-compose up
 
 ### **2. Get a token**
 
-Once the containers are running, you will need to generate a set of credentials for an ACO so that you can get a token. The loaded fixtures will include some ACOs that have beneficiaries attributed to them already. The ACOs loaded in the previous step can be found in the database.
+Once the containers are running, you will need to generate a set of credentials for an ACO so that you can get a token. The loaded fixtures will include some ACOs that have beneficiaries attributed to them already. The ACOs loaded in the previous step are A9994 and A9996, but you can also look in the application database to view and modify more.
 
 ```sh
 ACO_CMS_ID=<> make credentials
