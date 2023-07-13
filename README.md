@@ -153,6 +153,9 @@ After we successfully retrieve a token, we can make a request to any of the avai
 **Prerequisite**: Before running the tests and producing test metrics, you must complete the `Build Images` step from `Start the API` section. 
 
 ### **1. Seed The Database**
+
+***Note** `make unit-test` will automatically run the command below, so this step is not necessary if you'd like to just simply run the unit tests. 
+
 Spin up the Postgres container & run migrations:
    ```sh
    $ make unit-test-db
