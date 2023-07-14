@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,9 +34,10 @@ const (
 )
 
 type OptOutImporter struct {
-	FileHandler OptOutFileHandler
-	Saver       Saver
-	Logger      logrus.FieldLogger
+	FileHandler          OptOutFileHandler
+	Saver                Saver
+	Logger               logrus.FieldLogger
+	ImportStatusInterval int
 }
 
 func (importer OptOutImporter) ImportSuppressionDirectory() (success, failure, skipped int, err error) {
@@ -189,7 +189,6 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *SuppressionFi
 
 	metadata.fileID = suppressionMetaFile.ID
 
-	importStatusInterval := utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
 
 	sc, close, err := importer.FileHandler.OpenFile(metadata)
@@ -215,7 +214,7 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *SuppressionFi
 				return err
 			}
 			importedCount++
-			if importedCount%importStatusInterval == 0 {
+			if importedCount%importer.ImportStatusInterval == 0 {
 				fmt.Printf("Suppression records imported: %d\n", importedCount)
 			}
 		}

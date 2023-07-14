@@ -478,7 +478,8 @@ func setUpApp() *cli.App {
 					Saver: suppression.BCDASaver{
 						Repo: r,
 					},
-					Logger: log.API,
+					Logger:               log.API,
+					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 				}
 				s, f, sk, err := importer.ImportSuppressionDirectory()
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
