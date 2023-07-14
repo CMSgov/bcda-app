@@ -12,16 +12,15 @@ import (
 )
 
 type LocalFileHandler struct {
-	FilePath               string
 	Logger                 logrus.FieldLogger
 	PendingDeletionDir     string
 	FileArchiveThresholdHr uint
 }
 
-func (handler LocalFileHandler) LoadSuppressionFiles() (suppressList []*SuppressionFileMetadata, skipped int, err error) {
+func (handler LocalFileHandler) LoadSuppressionFiles(path string) (suppressList []*SuppressionFileMetadata, skipped int, err error) {
 	var suppresslist []*SuppressionFileMetadata
 
-	err = filepath.Walk(handler.FilePath, handler.getSuppressionFileMetadata(&suppresslist, &skipped))
+	err = filepath.Walk(path, handler.getSuppressionFileMetadata(&suppresslist, &skipped))
 	return suppressList, skipped, err
 }
 

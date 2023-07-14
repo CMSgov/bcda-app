@@ -12,8 +12,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
@@ -41,6 +44,22 @@ func (s *SuppressionTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
+func (s *SuppressionTestSuite) createImporter() OptOutImporter {
+	repo := postgres.NewRepository(database.Connection)
+	return OptOutImporter{
+		FileHandler: LocalFileHandler{
+			Logger:                 log.StandardLogger(),
+			PendingDeletionDir:     s.pendingDeletionDir,
+			FileArchiveThresholdHr: 72,
+		},
+		Saver: suppression.BCDASaver{
+			Repo: repo,
+		},
+		Logger:               log.StandardLogger(),
+		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
+	}
+}
+
 func (s *SuppressionTestSuite) TearDownSuite() {
 	os.RemoveAll(s.pendingDeletionDir)
 }
@@ -58,16 +77,18 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata := &suppressionFileMetadata{
-		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-		name:         constants.TestSuppressMetaFileName,
-		deliveryDate: time.Now(),
+	metadata := &SuppressionFileMetadata{
+		Timestamp:    fileTime,
+		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
+		Name:         constants.TestSuppressMetaFileName,
+		DeliveryDate: time.Now(),
 	}
-	err := importSuppressionData(metadata)
+
+	importer := s.createImporter()
+	err := importer.ImportSuppressionData(metadata)
 	assert.Nil(err)
 
-	suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
+	suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
 	assert.Equal(constants.TestSuppressMetaFileName, suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
@@ -87,16 +108,18 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
-	metadata = &suppressionFileMetadata{
-		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"),
-		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
-		deliveryDate: time.Now(),
+	metadata = &SuppressionFileMetadata{
+		Timestamp:    fileTime,
+		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"),
+		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
+		DeliveryDate: time.Now(),
 	}
-	err = importSuppressionData(metadata)
+
+	importer = s.createImporter()
+	err = importer.ImportSuppressionData(metadata)
 	assert.Nil(err)
 
-	suppressionFile = postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
+	suppressionFile = postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 
@@ -121,8 +144,9 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	db := database.Connection
 
 	// Verify empty file is rejected
-	metadata := &suppressionFileMetadata{}
-	err := importSuppressionData(metadata)
+	metadata := &SuppressionFileMetadata{}
+	importer := s.createImporter()
+	err := importer.ImportSuppressionData(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
@@ -138,13 +162,14 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			fp := filepath.Join(s.basePath, "suppressionfile_MissingData/"+tt.name)
-			metadata = &suppressionFileMetadata{
-				timestamp:    time.Now(),
-				filePath:     fp,
-				name:         tt.name,
-				deliveryDate: time.Now(),
+			metadata = &SuppressionFileMetadata{
+				Timestamp:    time.Now(),
+				FilePath:     fp,
+				Name:         tt.name,
+				DeliveryDate: time.Now(),
 			}
-			err = importSuppressionData(metadata)
+			importer := s.createImporter()
+			err = importer.ImportSuppressionData(metadata)
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
@@ -161,7 +186,7 @@ func (s *SuppressionTestSuite) TestValidate() {
 	// positive
 	suppressionfilePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	metadata := &suppressionFileMetadata{timestamp: time.Now(), filePath: suppressionfilePath}
-	err := validate(metadata)
+	err := importer.validate(metadata)
 	assert.Nil(err)
 
 	// bad file path
@@ -184,39 +209,6 @@ func (s *SuppressionTestSuite) TestValidate() {
 	metadata.filePath = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
 	err = validate(metadata)
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.filePath+"'. Expected record count: 5, Actual record count: 4")
-}
-
-func (s *SuppressionTestSuite) TestParseMetadata() {
-	assert := assert.New(s.T())
-
-	// positive
-	expTime, _ := time.Parse(time.RFC3339, "2018-11-20T20:13:01Z")
-	metadata, err := parseMetadata("blah/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T2013010")
-	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D181120.T2013010", metadata.name)
-	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
-	assert.Nil(err)
-
-	// change the name and timestamp
-	expTime, _ = time.Parse(time.RFC3339, "2019-12-20T21:09:42Z")
-	metadata, err = parseMetadata("blah/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
-	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420", metadata.name)
-	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
-	assert.Nil(err)
-}
-
-func (s *SuppressionTestSuite) TestParseMetadata_InvalidFilename() {
-	assert := assert.New(s.T())
-
-	// invalid file name
-	_, err := parseMetadata("/path/to/file")
-	assert.EqualError(err, "invalid filename for file: /path/to/file")
-
-	_, err = parseMetadata("/path/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000010")
-	assert.EqualError(err, "invalid filename for file: /path/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000010")
-
-	// invalid date
-	_, err = parseMetadata("/path/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420")
-	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 }
 
 func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {

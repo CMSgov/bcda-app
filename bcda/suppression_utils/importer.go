@@ -26,8 +26,8 @@ type OptOutImporter struct {
 	ImportStatusInterval int
 }
 
-func (importer OptOutImporter) ImportSuppressionDirectory() (success, failure, skipped int, err error) {
-	suppresslist, skipped, err := importer.FileHandler.LoadSuppressionFiles()
+func (importer OptOutImporter) ImportSuppressionDirectory(path string) (success, failure, skipped int, err error) {
+	suppresslist, skipped, err := importer.FileHandler.LoadSuppressionFiles(path)
 	if err != nil {
 		return 0, 0, 0, err
 	}

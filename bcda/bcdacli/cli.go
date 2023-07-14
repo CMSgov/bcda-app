@@ -470,7 +470,6 @@ func setUpApp() *cli.App {
 				r := postgres.NewRepository(db)
 				importer := suppression_utils.OptOutImporter{
 					FileHandler: suppression_utils.LocalFileHandler{
-						FilePath:               filePath,
 						Logger:                 log.API,
 						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 						FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
@@ -481,7 +480,7 @@ func setUpApp() *cli.App {
 					Logger:               log.API,
 					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 				}
-				s, f, sk, err := importer.ImportSuppressionDirectory()
+				s, f, sk, err := importer.ImportSuppressionDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				return err
 			},

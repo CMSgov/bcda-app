@@ -5,7 +5,7 @@ import (
 )
 
 type OptOutFileHandler interface {
-	LoadSuppressionFiles() (suppressList []*SuppressionFileMetadata, skipped int, err error)
+	LoadSuppressionFiles(path string) (suppressList []*SuppressionFileMetadata, skipped int, err error)
 	CleanupSuppression(suppressList []*SuppressionFileMetadata) error
 	OpenFile(metadata *SuppressionFileMetadata) (*bufio.Scanner, func(), error)
 }
