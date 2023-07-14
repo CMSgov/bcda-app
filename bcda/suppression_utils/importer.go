@@ -6,8 +6,6 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,18 +17,6 @@ const (
 const (
 	headTrailStart, headTrailEnd = 0, 15
 	recCountStart, recCountEnd   = 23, 33
-)
-
-const (
-	mbiStart, mbiEnd                             = 0, 11
-	lKeyStart, lKeyEnd                           = 11, 21
-	effectiveDtStart, effectiveDtEnd             = 354, 362
-	sourceCdeStart, sourceCdeEnd                 = 362, 367
-	prefIndtorStart, prefIndtorEnd               = 368, 369
-	samhsaEffectiveDtStart, samhsaEffectiveDtEnd = 369, 377
-	samhsaSourceCdeStart, samhsaSourceCdeEnd     = 377, 382
-	samhsaPrefIndtorStart, samhsaPrefIndtorEnd   = 383, 384
-	acoIdStart, acoIdEnd                         = 384, 389
 )
 
 type OptOutImporter struct {
@@ -158,10 +144,10 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *SuppressionFileMe
 	})
 
 	if err != nil {
-		importer.updateImportStatus(metadata, constants.ImportFail)
+		importer.updateImportStatus(metadata, ImportFail)
 		return err
 	}
-	importer.updateImportStatus(metadata, constants.ImportComplete)
+	importer.updateImportStatus(metadata, ImportComplete)
 	return nil
 }
 
@@ -177,7 +163,7 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *SuppressionFi
 	suppressionMetaFile := SuppressionFile{
 		Name:         metadata.Name,
 		Timestamp:    metadata.Timestamp,
-		ImportStatus: constants.ImportInprog,
+		ImportStatus: ImportInprog,
 	}
 
 	if suppressionMetaFile.ID, err = importer.Saver.SaveFile(suppressionMetaFile); err != nil {

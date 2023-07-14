@@ -10,6 +10,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	mbiStart, mbiEnd                             = 0, 11
+	lKeyStart, lKeyEnd                           = 11, 21
+	effectiveDtStart, effectiveDtEnd             = 354, 362
+	sourceCdeStart, sourceCdeEnd                 = 362, 367
+	prefIndtorStart, prefIndtorEnd               = 368, 369
+	samhsaEffectiveDtStart, samhsaEffectiveDtEnd = 369, 377
+	samhsaSourceCdeStart, samhsaSourceCdeEnd     = 377, 382
+	samhsaPrefIndtorStart, samhsaPrefIndtorEnd   = 383, 384
+	acoIdStart, acoIdEnd                         = 384, 389
+)
+
 func ParseMetadata(filename string) (SuppressionFileMetadata, error) {
 	var metadata SuppressionFileMetadata
 	// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst

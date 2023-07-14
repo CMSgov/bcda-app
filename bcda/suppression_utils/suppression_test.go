@@ -1,4 +1,4 @@
-package suppression
+package suppression_utils
 
 import (
 	"fmt"

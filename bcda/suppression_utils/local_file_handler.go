@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -83,7 +82,11 @@ func (handler LocalFileHandler) OpenFile(metadata *SuppressionFileMetadata) (*bu
 	}
 
 	sc := bufio.NewScanner(f)
-	return sc, func() { utils.CloseFileAndLogError(f) }, nil
+	return sc, func() {
+		if err := f.Close(); err != nil {
+			handler.Logger.Error(err)
+		}
+	}, nil
 }
 
 func (handler LocalFileHandler) CleanupSuppression(suppresslist []*SuppressionFileMetadata) error {
@@ -95,8 +98,8 @@ func (handler LocalFileHandler) CleanupSuppression(suppresslist []*SuppressionFi
 		if !suppressionFile.Imported {
 			// check the timestamp on the failed files
 			elapsed := time.Since(suppressionFile.DeliveryDate).Hours()
-			deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
-			if int(elapsed) > deleteThreshold {
+
+			if int(elapsed) > int(handler.FileArchiveThresholdHr) {
 				err := os.Rename(suppressionFile.FilePath, newpath)
 				if err != nil {
 					errCount++

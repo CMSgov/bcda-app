@@ -2,6 +2,10 @@ package suppression_utils
 
 import "time"
 
+const ImportInprog = "In-Progress"
+const ImportComplete = "Completed"
+const ImportFail = "Failed"
+
 type SuppressionFile struct {
 	ID           uint
 	Name         string
