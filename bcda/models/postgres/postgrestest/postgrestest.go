@@ -13,6 +13,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/suppression_utils"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -241,7 +242,7 @@ func DeleteJobKeysByJobIDs(t *testing.T, db *sql.DB, jobIDs ...uint) {
 	assert.NoError(t, err)
 }
 
-func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []models.SuppressionFile {
+func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []suppression_utils.SuppressionFile {
 	nameArgs := make([]interface{}, len(names))
 	for i, name := range names {
 		nameArgs[i] = name
@@ -256,9 +257,9 @@ func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []model
 
 	defer rows.Close()
 
-	var files []models.SuppressionFile
+	var files []suppression_utils.SuppressionFile
 	for rows.Next() {
-		var sf models.SuppressionFile
+		var sf suppression_utils.SuppressionFile
 		err = rows.Scan(&sf.ID, &sf.Name, &sf.Timestamp, &sf.ImportStatus)
 		assert.NoError(t, err)
 		files = append(files, sf)
@@ -286,7 +287,7 @@ func DeleteSuppressionFileByID(t *testing.T, db *sql.DB, id uint) {
 	assert.NoError(t, err)
 }
 
-func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []models.Suppression {
+func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []suppression_utils.Suppression {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_id", "mbi", "source_code", "effective_date", "preference_indicator",
 		"samhsa_source_code", "samhsa_effective_date", "samhsa_preference_indicator",
 		"beneficiary_link_key", "aco_cms_id").From("suppressions")
@@ -298,9 +299,9 @@ func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []models.Sup
 	assert.NoError(t, err)
 	defer rows.Close()
 
-	var suppressions []models.Suppression
+	var suppressions []suppression_utils.Suppression
 	for rows.Next() {
-		var s models.Suppression
+		var s suppression_utils.Suppression
 		err = rows.Scan(&s.ID, &s.FileID, &s.MBI, &s.SourceCode, &s.EffectiveDt, &s.PrefIndicator,
 			&s.SAMHSASourceCode, &s.SAMHSAEffectiveDt, &s.SAMHSAPrefIndicator,
 			&s.BeneficiaryLinkKey, &s.ACOCMSID)
