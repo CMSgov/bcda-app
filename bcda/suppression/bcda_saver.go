@@ -15,8 +15,8 @@ func (saver BCDASaver) SaveFile(suppressionMetaFile suppression_utils.Suppressio
 	return saver.Repo.CreateSuppressionFile(context.Background(), suppressionMetaFile)
 }
 
-func (saver BCDASaver) UpdateImportStatus(fileID uint, status string) error {
-	return saver.Repo.UpdateSuppressionFileImportStatus(context.Background(), fileID, status)
+func (saver BCDASaver) UpdateImportStatus(metadata suppression_utils.SuppressionFileMetadata, status string) error {
+	return saver.Repo.UpdateSuppressionFileImportStatus(context.Background(), metadata.FileID, status)
 }
 
 func (saver BCDASaver) SaveSuppression(suppression suppression_utils.Suppression) error {

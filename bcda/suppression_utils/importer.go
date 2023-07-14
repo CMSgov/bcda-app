@@ -158,10 +158,10 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *SuppressionFileMe
 	})
 
 	if err != nil {
-		importer.updateImportStatus(metadata.fileID, constants.ImportFail)
+		importer.updateImportStatus(metadata, constants.ImportFail)
 		return err
 	}
-	importer.updateImportStatus(metadata.fileID, constants.ImportComplete)
+	importer.updateImportStatus(metadata, constants.ImportComplete)
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *SuppressionFi
 		return err
 	}
 
-	metadata.fileID = suppressionMetaFile.ID
+	metadata.FileID = suppressionMetaFile.ID
 
 	importedCount := 0
 
@@ -226,10 +226,10 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *SuppressionFi
 	return nil
 }
 
-func (importer OptOutImporter) updateImportStatus(fileID uint, status string) {
-	if err := importer.Saver.UpdateImportStatus(fileID, status); err != nil {
-		fmt.Printf("Could not update suppression file record for file_id: %d. \n", fileID)
-		err = errors.Wrapf(err, "could not update suppression file record for file_id: %d.", fileID)
+func (importer OptOutImporter) updateImportStatus(metadata *SuppressionFileMetadata, status string) {
+	if err := importer.Saver.UpdateImportStatus(*metadata, status); err != nil {
+		fmt.Printf("Could not update suppression file record for file_id: %s. \n", metadata.String())
+		err = errors.Wrapf(err, "could not update suppression file record for file_id: %s.", metadata.String())
 		importer.Logger.Error(err)
 	}
 }

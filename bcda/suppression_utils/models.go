@@ -15,7 +15,7 @@ type SuppressionFileMetadata struct {
 	FilePath     string
 	Imported     bool
 	DeliveryDate time.Time
-	fileID       uint
+	FileID       uint
 }
 
 func (m SuppressionFileMetadata) String() string {
