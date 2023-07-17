@@ -1,0 +1,455 @@
+{
+	"info": {
+		"_postman_id": "822c9ece-c7f0-4241-b5cf-83247225a0b2",
+		"name": "BCDA Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "26533169"
+	},
+	"item": [
+		{
+			"name": "v1",
+			"item": [
+				{
+					"name": "/Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v1/Group/all/$export",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v1",
+								"Group",
+								"all",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Patient",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v1/Patient/$export",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v1",
+								"Patient",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Metadata",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v1/metadata",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v1",
+								"metadata"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v1/jobs/{{jobId}}",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v1",
+								"jobs",
+								"{{jobId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Attribution_Status Copy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v1/attribution_status",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v1",
+								"attribution_status"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "v2",
+			"item": [
+				{
+					"name": "/Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v2/Group/all/$export",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v2",
+								"Group",
+								"all",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Patient",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v2/Patient/$export",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v2",
+								"Patient",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Metadata",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v2/metadata",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v2",
+								"metadata"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v2/jobs/{{jobId}}",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v2",
+								"jobs",
+								"{{jobId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/Attribution_Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://sandbox.bcda.cms.gov/api/v2/attribution_status",
+							"protocol": "https",
+							"host": [
+								"sandbox",
+								"bcda",
+								"cms",
+								"gov"
+							],
+							"path": [
+								"api",
+								"v2",
+								"attribution_status"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{clientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{clientId}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "https://sandbox.bcda.cms.gov/auth/token",
+					"protocol": "https",
+					"host": [
+						"sandbox",
+						"bcda",
+						"cms",
+						"gov"
+					],
+					"path": [
+						"auth",
+						"token"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
