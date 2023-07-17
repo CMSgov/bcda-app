@@ -2,24 +2,15 @@ package optout
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type OptOutTestSuite struct {
 	suite.Suite
-	basePath string
-	cleanup  func()
-}
-
-func (s *OptOutTestSuite) SetupTest() {
-	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../shared_files/")
 }
 
 func (s *OptOutTestSuite) TestParseMetadata() {
@@ -63,8 +54,8 @@ func (s *OptOutTestSuite) TestParseSuppressionLine_Success() {
 	line := []byte("5SJ0A00AA001847800005John                          Mitchell                      Doe                                     198203218702 E Fake St.                                        Apt. 63L                                               Region                                                 Las Vegas                               NV423139954M20190618201907011-800TY201907011-800TNT9992WeCare Medical                                                        ")
 	metadata := &SuppressionFileMetadata{
 		Timestamp:    fileTime,
-		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-		Name:         constants.TestSuppressMetaFileName,
+		FilePath:     "full-fake-filename",
+		Name:         "fake-filename",
 		DeliveryDate: time.Now(),
 	}
 
