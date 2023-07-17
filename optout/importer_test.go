@@ -13,8 +13,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
-	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -52,9 +50,7 @@ func (s *SuppressionTestSuite) createImporter() OptOutImporter {
 			PendingDeletionDir:     s.pendingDeletionDir,
 			FileArchiveThresholdHr: 72,
 		},
-		Saver: suppression.BCDASaver{
-			Repo: repo,
-		},
+		Saver:                MockSaver{},
 		Logger:               log.StandardLogger(),
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 	}
@@ -87,13 +83,14 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	importer := s.createImporter()
 	err := importer.ImportSuppressionData(metadata)
 	assert.Nil(err)
+	assert.Len(importer.Saver.Files, 1)
 
-	suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
+	suppressionFile := importer.Saver.Files[0]
 	assert.Equal(constants.TestSuppressMetaFileName, suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
-	suppressions := postgrestest.GetSuppressionsByFileID(s.T(), db, suppressionFile.ID)
+	suppressions := importer.Saver.Suppressions
 	assert.Len(suppressions, 4)
 	assert.Equal("5SJ0A00AA00", suppressions[0].MBI)
 	assert.Equal("1-800", suppressions[0].SourceCode)
@@ -103,8 +100,6 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("", suppressions[2].SourceCode)
 	assert.Equal("8SG0A00AA00", suppressions[3].MBI)
 	assert.Equal("1-800", suppressions[3].SourceCode)
-
-	postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
 
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
@@ -118,12 +113,13 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	importer = s.createImporter()
 	err = importer.ImportSuppressionData(metadata)
 	assert.Nil(err)
+	assert.Len(importer.Saver.Files, 1)
 
-	suppressionFile = postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
+	suppressionFile := importer.Saver.Files[0]
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 
-	suppressions = postgrestest.GetSuppressionsByFileID(s.T(), db, suppressionFile.ID)
+	suppressions := importer.Saver.Suppressions
 	assert.Len(suppressions, 250)
 	assert.Equal("1000000019", suppressions[0].MBI)
 	assert.Equal("N", suppressions[0].PrefIndicator)
@@ -135,8 +131,6 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("N", suppressions[200].PrefIndicator)
 	assert.Equal("1000098787", suppressions[249].MBI)
 	assert.Equal(" ", suppressions[249].PrefIndicator)
-
-	postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
 }
 
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
@@ -173,15 +167,15 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
-			suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
+			suppressionFile := importer.Saver.Files[0]
 			assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-			postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
 		})
 	}
 }
 
 func (s *SuppressionTestSuite) TestValidate() {
 	assert := assert.New(s.T())
+	importer := s.createImporter()
 
 	// positive
 	suppressionfilePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
