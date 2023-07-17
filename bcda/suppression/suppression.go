@@ -188,7 +188,7 @@ func importSuppressionData(metadata *optout.SuppressionFileMetadata) error {
 			return err
 		}
 
-		if err = r.CreateSuppression(context.Background(), suppression); err != nil {
+		if err = r.CreateSuppression(context.Background(), *suppression); err != nil {
 			fmt.Println("Could not create suppression record.")
 			err = errors.Wrap(err, "could not create suppression record")
 			log.API.Error(err)

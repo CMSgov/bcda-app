@@ -13,6 +13,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/optout"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -241,7 +242,7 @@ func DeleteJobKeysByJobIDs(t *testing.T, db *sql.DB, jobIDs ...uint) {
 	assert.NoError(t, err)
 }
 
-func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []models.SuppressionFile {
+func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []optout.SuppressionFile {
 	nameArgs := make([]interface{}, len(names))
 	for i, name := range names {
 		nameArgs[i] = name
@@ -256,7 +257,7 @@ func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []model
 
 	defer rows.Close()
 
-	var files []models.SuppressionFile
+	var files []optout.SuppressionFile
 	for rows.Next() {
 		var sf models.SuppressionFile
 		err = rows.Scan(&sf.ID, &sf.Name, &sf.Timestamp, &sf.ImportStatus)
