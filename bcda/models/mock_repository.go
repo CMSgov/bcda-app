@@ -8,6 +8,7 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	optout "github.com/CMSgov/bcda-app/optout"
 	uuid "github.com/pborman/uuid"
 )
 
@@ -73,11 +74,11 @@ func (_m *MockRepository) CreateJob(ctx context.Context, j Job) (uint, error) {
 }
 
 // CreateSuppression provides a mock function with given fields: ctx, suppression
-func (_m *MockRepository) CreateSuppression(ctx context.Context, suppression Suppression) error {
+func (_m *MockRepository) CreateSuppression(ctx context.Context, suppression optout.Suppression) error {
 	ret := _m.Called(ctx, suppression)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, Suppression) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, optout.Suppression) error); ok {
 		r0 = rf(ctx, suppression)
 	} else {
 		r0 = ret.Error(0)
@@ -87,18 +88,18 @@ func (_m *MockRepository) CreateSuppression(ctx context.Context, suppression Sup
 }
 
 // CreateSuppressionFile provides a mock function with given fields: ctx, suppressionFile
-func (_m *MockRepository) CreateSuppressionFile(ctx context.Context, suppressionFile SuppressionFile) (uint, error) {
+func (_m *MockRepository) CreateSuppressionFile(ctx context.Context, suppressionFile optout.SuppressionFile) (uint, error) {
 	ret := _m.Called(ctx, suppressionFile)
 
 	var r0 uint
-	if rf, ok := ret.Get(0).(func(context.Context, SuppressionFile) uint); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, optout.SuppressionFile) uint); ok {
 		r0 = rf(ctx, suppressionFile)
 	} else {
 		r0 = ret.Get(0).(uint)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, SuppressionFile) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, optout.SuppressionFile) error); ok {
 		r1 = rf(ctx, suppressionFile)
 	} else {
 		r1 = ret.Error(1)
