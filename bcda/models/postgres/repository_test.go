@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 
@@ -590,19 +591,19 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	fileID := uint(rand.Int31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
-	tooOld := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	tooOld := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-365 * 24 * time.Hour)}
 	// Effective date is after the upper bound
-	tooNew := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	tooNew := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now()}
 	// Mismatching preference indicators
-	mismatch1 := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
+	mismatch1 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	mismatch2 := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "",
+	mismatch2 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	suppressed1 := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	suppressed1 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	suppressed2 := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	suppressed2 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-time.Hour)}
 
 	assert.NoError(r.repository.CreateSuppression(ctx, tooOld))
@@ -634,17 +635,17 @@ func (r *RepositoryTestSuite) TestSuppressionFileMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
-	inProgress := models.SuppressionFile{
+	inProgress := optout.SuppressionFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: constants.ImportInprog,
 	}
-	failed := models.SuppressionFile{
+	failed := optout.SuppressionFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: constants.ImportFail,
 	}
-	other := models.SuppressionFile{
+	other := optout.SuppressionFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: "Other",
@@ -888,11 +889,15 @@ func (r *RepositoryTestSuite) TestCCLFFileExistsByName() {
 	r.False(exists)
 }
 
-/*******************************************************************************
+/*
+******************************************************************************
+
 	TestAddAlrGetAlr tests the following
 		1. AddAlr
 		2. GetAlr
-*******************************************************************************/
+
+******************************************************************************
+*/
 func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 
 	// Generate some data
@@ -1011,7 +1016,7 @@ func assertEqualCCLFFile(assert *assert.Assertions, expected, actual models.CCLF
 	assert.Equal(expected, actual)
 }
 
-func assertEqualSuppressionFile(assert *assert.Assertions, expected, actual models.SuppressionFile) {
+func assertEqualSuppressionFile(assert *assert.Assertions, expected, actual optout.SuppressionFile) {
 	// normalize timestamps so we can use equality checks
 	expected.Timestamp = expected.Timestamp.UTC()
 	actual.Timestamp = actual.Timestamp.UTC()
