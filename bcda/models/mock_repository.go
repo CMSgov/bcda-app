@@ -6,9 +6,9 @@ import (
 	context "context"
 	time "time"
 
+	optout "github.com/CMSgov/bcda-app/optout"
 	mock "github.com/stretchr/testify/mock"
 
-	optout "github.com/CMSgov/bcda-app/optout"
 	uuid "github.com/pborman/uuid"
 )
 
