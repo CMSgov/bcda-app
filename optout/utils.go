@@ -75,6 +75,7 @@ func ParseSuppressionLine(metadata *SuppressionFileMetadata, b []byte) (*Suppres
 	}
 
 	return &Suppression{
+		FileID:              metadata.FileID,
 		MBI:                 string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
 		SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),
 		EffectiveDt:         dt,
