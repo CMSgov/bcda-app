@@ -181,7 +181,7 @@ func validate(metadata *optout.OptOutFilenameMetadata) error {
 
 func importSuppressionData(metadata *optout.OptOutFilenameMetadata) error {
 	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, r models.Repository) error {
-		suppression, err := optout.ParseSuppressionLine(metadata, b)
+		suppression, err := optout.ParseRecord(metadata, b)
 
 		if err != nil {
 			log.API.Error(err)

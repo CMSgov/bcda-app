@@ -59,7 +59,7 @@ func (s *OptOutTestSuite) TestParseSuppressionLine_Success() {
 		DeliveryDate: time.Now(),
 	}
 
-	suppression, err := ParseSuppressionLine(metadata, line)
+	suppression, err := ParseRecord(metadata, line)
 	assert.Nil(err)
 	assert.Equal("5SJ0A00AA00", suppression.MBI)
 	assert.Equal("1-800", suppression.SourceCode)
@@ -90,7 +90,7 @@ func (s *OptOutTestSuite) TestParseSuppressionLine_InvalidData() {
 				Name:         tt.line,
 				DeliveryDate: time.Now(),
 			}
-			suppression, err := ParseSuppressionLine(metadata, []byte(tt.line))
+			suppression, err := ParseRecord(metadata, []byte(tt.line))
 			assert.Nil(suppression)
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))

@@ -48,7 +48,7 @@ func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 	return metadata, nil
 }
 
-func ParseSuppressionLine(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
+func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 	dt, err := ConvertDt(ds)
 	if err != nil {
