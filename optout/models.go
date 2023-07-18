@@ -6,14 +6,14 @@ const ImportInprog = "In-Progress"
 const ImportComplete = "Completed"
 const ImportFail = "Failed"
 
-type SuppressionFile struct {
+type OptOutFile struct {
 	ID           uint
 	Name         string
 	Timestamp    time.Time
 	ImportStatus string
 }
 
-type SuppressionFileMetadata struct {
+type OptOutFilenameMetadata struct {
 	Name         string
 	Timestamp    time.Time
 	FilePath     string
@@ -22,14 +22,14 @@ type SuppressionFileMetadata struct {
 	FileID       uint
 }
 
-func (m SuppressionFileMetadata) String() string {
+func (m OptOutFilenameMetadata) String() string {
 	if m.FilePath != "" {
 		return m.FilePath
 	}
 	return m.Name
 }
 
-type Suppression struct {
+type OptOutRecord struct {
 	ID                  uint
 	FileID              uint
 	MBI                 string

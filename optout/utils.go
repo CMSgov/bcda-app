@@ -22,8 +22,8 @@ const (
 	acoIdStart, acoIdEnd                         = 384, 389
 )
 
-func ParseMetadata(filename string) (SuppressionFileMetadata, error) {
-	var metadata SuppressionFileMetadata
+func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
+	var metadata OptOutFilenameMetadata
 	// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod;
 	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
@@ -48,7 +48,7 @@ func ParseMetadata(filename string) (SuppressionFileMetadata, error) {
 	return metadata, nil
 }
 
-func ParseSuppressionLine(metadata *SuppressionFileMetadata, b []byte) (*Suppression, error) {
+func ParseSuppressionLine(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 	dt, err := ConvertDt(ds)
 	if err != nil {
@@ -74,7 +74,7 @@ func ParseSuppressionLine(metadata *SuppressionFileMetadata, b []byte) (*Suppres
 		return nil, err
 	}
 
-	return &Suppression{
+	return &OptOutRecord{
 		FileID:              metadata.FileID,
 		MBI:                 string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
 		SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),

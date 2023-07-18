@@ -29,7 +29,7 @@ const (
 )
 
 func ImportSuppressionDirectory(filePath string) (success, failure, skipped int, err error) {
-	var suppresslist []*optout.SuppressionFileMetadata
+	var suppresslist []*optout.OptOutFilenameMetadata
 
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	if err != nil {
@@ -72,7 +72,7 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 	return success, failure, skipped, err
 }
 
-func getSuppressionFileMetadata(suppresslist *[]*optout.SuppressionFileMetadata, skipped *int) filepath.WalkFunc {
+func getSuppressionFileMetadata(suppresslist *[]*optout.OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -118,7 +118,7 @@ func getSuppressionFileMetadata(suppresslist *[]*optout.SuppressionFileMetadata,
 	}
 }
 
-func validate(metadata *optout.SuppressionFileMetadata) error {
+func validate(metadata *optout.OptOutFilenameMetadata) error {
 	fmt.Printf("Validating suppression file %s...\n", metadata)
 	log.API.Infof("Validating suppression file %s...", metadata)
 
@@ -179,7 +179,7 @@ func validate(metadata *optout.SuppressionFileMetadata) error {
 	return nil
 }
 
-func importSuppressionData(metadata *optout.SuppressionFileMetadata) error {
+func importSuppressionData(metadata *optout.OptOutFilenameMetadata) error {
 	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, r models.Repository) error {
 		suppression, err := optout.ParseSuppressionLine(metadata, b)
 
@@ -205,7 +205,7 @@ func importSuppressionData(metadata *optout.SuppressionFileMetadata) error {
 	return nil
 }
 
-func importSuppressionMetadata(metadata *optout.SuppressionFileMetadata, importFunc func(uint, []byte, models.Repository) error) error {
+func importSuppressionMetadata(metadata *optout.OptOutFilenameMetadata, importFunc func(uint, []byte, models.Repository) error) error {
 	fmt.Printf("Importing suppression file %s...\n", metadata)
 	log.API.Infof("Importing suppression file %s...", metadata)
 
@@ -214,7 +214,7 @@ func importSuppressionMetadata(metadata *optout.SuppressionFileMetadata, importF
 		err                          error
 	)
 
-	suppressionMetaFile := optout.SuppressionFile{
+	suppressionMetaFile := optout.OptOutFile{
 		Name:         metadata.Name,
 		Timestamp:    metadata.Timestamp,
 		ImportStatus: optout.ImportInprog,
@@ -271,7 +271,7 @@ func importSuppressionMetadata(metadata *optout.SuppressionFileMetadata, importF
 	return nil
 }
 
-func cleanupSuppression(suppresslist []*optout.SuppressionFileMetadata) error {
+func cleanupSuppression(suppresslist []*optout.OptOutFilenameMetadata) error {
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)

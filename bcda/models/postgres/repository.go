@@ -276,7 +276,7 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	return beneficiaries, nil
 }
 
-func (r *Repository) CreateSuppression(ctx context.Context, suppression optout.Suppression) error {
+func (r *Repository) CreateSuppression(ctx context.Context, suppression optout.OptOutRecord) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppressions").
 		Cols("file_id", "mbi", "source_code", "effective_date", "preference_indicator",
 			"samhsa_source_code", "samhsa_effective_date", "samhsa_preference_indicator",
@@ -328,7 +328,7 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, up
 	return suppressedMBIs, nil
 }
 
-func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile optout.SuppressionFile) (uint, error) {
+func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile optout.OptOutFile) (uint, error) {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppression_files")
 	ib.Cols("name", "timestamp", "import_status").
 		Values(suppressionFile.Name, suppressionFile.Timestamp, suppressionFile.ImportStatus)

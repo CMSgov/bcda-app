@@ -591,19 +591,19 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	fileID := uint(rand.Int31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
-	tooOld := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	tooOld := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-365 * 24 * time.Hour)}
 	// Effective date is after the upper bound
-	tooNew := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	tooNew := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now()}
 	// Mismatching preference indicators
-	mismatch1 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
+	mismatch1 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	mismatch2 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "",
+	mismatch2 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	suppressed1 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	suppressed1 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	suppressed2 := optout.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	suppressed2 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-time.Hour)}
 
 	assert.NoError(r.repository.CreateSuppression(ctx, tooOld))
@@ -635,17 +635,17 @@ func (r *RepositoryTestSuite) TestSuppressionFileMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
-	inProgress := optout.SuppressionFile{
+	inProgress := optout.OptOutFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: constants.ImportInprog,
 	}
-	failed := optout.SuppressionFile{
+	failed := optout.OptOutFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: constants.ImportFail,
 	}
-	other := optout.SuppressionFile{
+	other := optout.OptOutFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: "Other",
@@ -1016,7 +1016,7 @@ func assertEqualCCLFFile(assert *assert.Assertions, expected, actual models.CCLF
 	assert.Equal(expected, actual)
 }
 
-func assertEqualSuppressionFile(assert *assert.Assertions, expected, actual optout.SuppressionFile) {
+func assertEqualSuppressionFile(assert *assert.Assertions, expected, actual optout.OptOutFile) {
 	// normalize timestamps so we can use equality checks
 	expected.Timestamp = expected.Timestamp.UTC()
 	actual.Timestamp = actual.Timestamp.UTC()

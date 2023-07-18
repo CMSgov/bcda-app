@@ -242,7 +242,7 @@ func DeleteJobKeysByJobIDs(t *testing.T, db *sql.DB, jobIDs ...uint) {
 	assert.NoError(t, err)
 }
 
-func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []optout.SuppressionFile {
+func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []optout.OptOutFile {
 	nameArgs := make([]interface{}, len(names))
 	for i, name := range names {
 		nameArgs[i] = name
@@ -257,9 +257,9 @@ func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []optou
 
 	defer rows.Close()
 
-	var files []optout.SuppressionFile
+	var files []optout.OptOutFile
 	for rows.Next() {
-		var sf optout.SuppressionFile
+		var sf optout.OptOutFile
 		err = rows.Scan(&sf.ID, &sf.Name, &sf.Timestamp, &sf.ImportStatus)
 		assert.NoError(t, err)
 		files = append(files, sf)
@@ -287,7 +287,7 @@ func DeleteSuppressionFileByID(t *testing.T, db *sql.DB, id uint) {
 	assert.NoError(t, err)
 }
 
-func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []optout.Suppression {
+func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []optout.OptOutRecord {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_id", "mbi", "source_code", "effective_date", "preference_indicator",
 		"samhsa_source_code", "samhsa_effective_date", "samhsa_preference_indicator",
 		"beneficiary_link_key", "aco_cms_id").From("suppressions")
@@ -299,9 +299,9 @@ func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []optout.Sup
 	assert.NoError(t, err)
 	defer rows.Close()
 
-	var suppressions []optout.Suppression
+	var suppressions []optout.OptOutRecord
 	for rows.Next() {
-		var s optout.Suppression
+		var s optout.OptOutRecord
 		err = rows.Scan(&s.ID, &s.FileID, &s.MBI, &s.SourceCode, &s.EffectiveDt, &s.PrefIndicator,
 			&s.SAMHSASourceCode, &s.SAMHSAEffectiveDt, &s.SAMHSAPrefIndicator,
 			&s.BeneficiaryLinkKey, &s.ACOCMSID)
