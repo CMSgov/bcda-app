@@ -46,7 +46,7 @@ func (s *OptOutTestSuite) TestParseMetadata_InvalidData() {
 	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 }
 
-func (s *OptOutTestSuite) TestParseSuppressionLine_Success() {
+func (s *OptOutTestSuite) TestParseRecord_Success() {
 	assert := assert.New(s.T())
 
 	// 181120 file
@@ -65,7 +65,7 @@ func (s *OptOutTestSuite) TestParseSuppressionLine_Success() {
 	assert.Equal("1-800", suppression.SourceCode)
 }
 
-func (s *OptOutTestSuite) TestParseSuppressionLine_InvalidData() {
+func (s *OptOutTestSuite) TestParseRecord_InvalidData() {
 	assert := assert.New(s.T())
 	fp := "testfilepath"
 
