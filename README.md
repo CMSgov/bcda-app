@@ -2,7 +2,15 @@
 
 [![Build Status](https://github.com/CMSgov/bcda-app/actions/workflows/ci-workflow.yml/badge.svg?branch=master)](https://github.com/CMSgov/bcda-app/actions?query=branch%3Amaster)
 
-## Dependencies
+## **Documentation**
+
+[API documentation](https://bcda.cms.gov/sandbox/user-guide/)
+
+## **Required Setup**
+
+The steps below are necessary to run the project.
+
+### **Dependencies**
 
 To get started, install some dependencies:
 
@@ -14,42 +22,79 @@ For further ansible documentation see: (https://docs.ansible.com/ansible/2.4/vau
 5. Install [Pre-commit](https://pre-commit.com/) with [Gitleaks](https://github.com/gitleaks/gitleaks)
 6. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
-## Sensitive Docker Configuration Files
+
+### **Secrets**
 
 The files committed in the `shared_files/encrypted` directory hold secret information, and are encrypted with [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html).
 
-### Setup
-
-#### Password
+#### **Ansible Vault**
 
 - See a team member for the Ansible Vault password
 - Create a file named `.vault_password` in the root directory of the repository
 - Place the Ansible Vault password in this file
 
+#### **Decrypt/Encrypt Secrets**
 
-#### Installing and Using Pre-commit
+You can temporarily decrypt files by running the following command from the repository root directory:
 
-Anyone committing to this repo must use the pre-commit hook to lower the likelihood that secrets will be exposed.
+```
+./ops/secrets --decrypt
+```
 
-##### Step 1: Install pre-commit
+While files are decrypted, copy the files in this directory to the sibling directory `shared_files/decrypted`. Encrypt changed files with:
 
-You can install pre-commit using the MacOS package manager Homebrew:
+```
+./ops/secrets --encrypt <filename>
+```
+
+#### **Using Secrets**
+**Never put passwords, keys, or secrets of any kind in application code. Instead, use the strategy outlined here:**
+
+1. In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed:
+
+```
+$ touch .env.sh
+```
+
+2. Edit `.env.sh` to include the bash shebang and any necessary environment variables like this"
+
+```
+#!/bin/bash
+export BCDA_SSAS_CLIENT_ID="<clientID>"
+export BCDA_SSAS_SECRET="<clientSecret>"
+```
+
+3. Source the file to add the variables to your local development environment:
+
+```
+$ source .env.sh
+```
+
+Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line:
+
+```
+source [src-path]/bcda-app/.env.sh
+```
+
+`[src-path]` is your relative path to the bcda-app repo.
+
+### **Pre-commit**
+
+Anyone committing to this repo must use the pre-commit hook to lower the likelihood that secrets will be exposed. You can install pre-commit using the MacOS package manager `Homebrew` below, or use installation options that can be found in the [pre-commit documentation](https://pre-commit.com/#install):
 
 ```sh
 brew install pre-commit
 ```
 
-Other installation options can be found in the [pre-commit documentation](https://pre-commit.com/#install).
 
-##### Step 2: Install the hooks
 
-You will need to manually install `goimports` for the following commands to function:
+Before you can install the `hooks`, you will need to manually install `goimports`::
 
 ```
 go install golang.org/x/tools/cmd/goimports@latest
 ```
 
-Run the following command to install the hook:
+After that is installed, we can, install the hooks:
 
 ```sh
 pre-commit install
@@ -57,50 +102,75 @@ pre-commit install
 
 This will download and install the pre-commit hooks specified in `.pre-commit-config.yaml`, which includes gitleaks for secret scanning and go-imports to ensure that any added, copied, or modified go files are formatted properly.
 
-### Managing encrypted files
 
-- Temporarily decrypt files by running the following command from the repository root directory:
 
-```
-./ops/secrets --decrypt
-```
-
-- While files are decrypted, copy the files in this directory to the sibling directory `shared_files/decrypted`
-- Encrypt changed files with:
-
-```
-./ops/secrets --encrypt <filename>
-```
-
-## Go Modules
+### **Go Modules**
 
 The project uses [Go Modules](https://golang.org/ref/mod) allowing you to clone the repo outside of the `$GOPATH`. This also means that running `go get` inside the repo will add the dependency to the project, not globally.
+#
 
-## Build / Start
+## **Start the API**
 
-Build the images and start the containers:
+### **1. Build Images**
 
-1. Build the images and load with fixture data
+Before we can run the application locally, we need to build the docker images and load the fixtures:
 
 ```sh
 make docker-bootstrap
 ```
+*Known Issue: If the swagger/documentation container fails to build or start, edit the makefile locally to remove `documentation` from the `docker-bootstrap` command line.
 
-2. Start the containers
+After that has completed successfully, we can start the containers:
 
 ```sh
 docker-compose up
 ```
 
-## Test
+### **2. Get a token**
 
-Run tests and produce test metrics.
-The items identified above in the `Build/Start` section are prerequisites to running tests.
+Once the containers are running, you will need to generate a set of credentials for an ACO so that you can get a token. The loaded fixtures will include some ACOs that have beneficiaries attributed to them already. The ACOs loaded in the previous step are A9994 and A9996, but you can also look in the application database to view and modify more.
 
-   *Note: If this is the first time running the tests follow instructions in the 'Running unit tests locally' section of this README. Then run:
+```sh
+ACO_CMS_ID=<> make credentials
+```
+
+This will generate a client ID and secret that can be used to acquire a token from the SSAS App:
+
+```sh
+curl --location --request POST 'http://localhost:3003/token' \
+--header 'Accept: application/json' \
+--user '<clientid:secret>'
+```
+
+### **3. Make a request**
+
+After we successfully retrieve a token, we can make a request to any of the available endpoints. The PostMan collections under `test/postman_test/...` can be imported into postman directly and used to make requests, or you can use any tool like `curl`.
+
+#
+
+## **Run Tests**
+
+**Prerequisite**: Before running the tests and producing test metrics, you must complete the `Build Images` step from `Start the API` section. 
+
+### **1. Seed The Database**
+
+***Note** `make unit-test` will automatically run the command below, so this step is not necessary if you'd like to just simply run the unit tests. 
+
+Spin up the Postgres container & run migrations:
    ```sh
-   make load-fixtures
+   $ make unit-test-db
    ```
+### **2. Source Environment Variables**
+Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
+
+   **NOTE:** Since we're connecting to Postgres externally, we need to use the local host/port instead.
+
+   For vscode users, these variables are already by the workspace settings file (`./.vscode/settings.json`)
+
+*Note: If this is the first time running the tests follow instructions in the 'Running unit tests locally' section of this README. Then run:
+```sh
+make load-fixtures
+```
 
 In order to keep the test feedback loop optimized, the following items must be handled by the caller (and are not handled by the test targets):
 
@@ -108,6 +178,7 @@ In order to keep the test feedback loop optimized, the following items must be h
 - Ensuring the database has been seeded
 - Managing images/containers (if Dockerfile changes have occurred, an image rebuild is required and won't occur as part of the test targets)
 
+### **Test Containers**
 1. Run golang linter and gosec:
 
 ```sh
@@ -144,9 +215,9 @@ make test
 make performance-test
 ```
 
-### Updating seed data for unit tests
+### **Update Database Seed Data**
 
-After the user has finished updating the Postgres db used for unit testing with the new data, the user can update
+After the user has finished updating the Postgres database used for unit testing with the new data, the user can update
 the seed data by running the following comamnd:
 
 ```sh
@@ -159,21 +230,10 @@ This file is used to initialize the Postgres db with all of the necessary data n
 For more information on intialization, please see `db/testing/docker-entrypoint-initdb.d/01-restore.sh`.
 This script is executed when the Postgres container is launched.
 
-The updated `dump.pgdata` should be committed with the other associated changes.
+***Note**: The updated `dump.pgdata` should be committed with the other associated changes.
 
-### Running unit tests locally
 
-1. Spin up the Postgres unit test container
-   ```sh
-   $ make unit-test-db
-   ```
-2. Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
-
-   **NOTE:** Since we're connecting to Postgres externally, we need to use the local host/port instead.
-
-   For vscode users, these variables are already by the workspace settings file (`./.vscode/settings.json`)
-
-### Auto-generating mock implementations
+### **Auto-generating mock implementations**
 
 Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md). Mockery uses interfaces to generate the mocks. In the example below, the Repository interface in `repository.go` will be used to generate the mocks.
 
@@ -183,49 +243,13 @@ Example:
 mockery --name Repository --inpackage --case snake
 ```
 
-## Use the application
+#
 
-See: [API documentation](https://bcda.cms.gov/sandbox/user-guide/)
-
-## Handling secrets
-
-### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE! INSTEAD, USE THE STRATEGY OUTLINED HERE**
-
-In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed
-
-```
-$ touch .env.sh
-```
-
-Next, edit `.env.sh` to include the bash shebang and any necessary environment variables like this
-
-```
-#!/bin/bash
-export BCDA_SSAS_CLIENT_ID="<clientID>"
-export BCDA_SSAS_SECRET="<clientSecret>"
-```
-
-Lastly, source the file to add the variables to your local development environment
-
-```
-$ source .env.sh
-```
-
-You're good to go! 
-
-Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
-
-```
-source [src-path]/bcda-app/.env.sh
-```
-
-where `[src-path]` is your relative path to the bcda-app repo.
-
-## Environment variables
+## **Environment variables**
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
 
-### bcda
+### **bcda**
 
 ```
 BCDA_ERROR_LOG <file_path>
@@ -238,7 +262,7 @@ FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```
 
-### bcdaworker
+### **bcdaworker**
 
 ```
 BCDA_WORKER_ERROR_LOG <file_path>
@@ -250,15 +274,17 @@ FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
 ```
 
-## Other things you can do
+## **Container Interaction**
 
-Use docker to look at the api database with psql:
+You can use docker to run commands against the running containers. 
+
+**Example:** Use docker to look at the api database with psql.
 
 ```sh
 docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
 ```
 
-See docker-compose.yml for the password.
+**Example:** See docker-compose.yml for the password.
 
 Use docker to run the CLI against an API instance
 
@@ -266,11 +292,6 @@ Use docker to run the CLI against an API instance
 docker exec -it bcda-app_api_1 sh -c 'bcda -h'
 ```
 
-If you have no data in your database, you can load the fixture data with
-
-```sh
-make load-fixtures
-```
 
 # IDE Setup
 
