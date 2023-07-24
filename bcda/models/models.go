@@ -111,27 +111,6 @@ type CCLFBeneficiary struct {
 	BlueButtonID string
 }
 
-type SuppressionFile struct {
-	ID           uint
-	Name         string
-	Timestamp    time.Time
-	ImportStatus string
-}
-
-type Suppression struct {
-	ID                  uint
-	FileID              uint
-	MBI                 string
-	SourceCode          string
-	EffectiveDt         time.Time
-	PrefIndicator       string
-	SAMHSASourceCode    string
-	SAMHSAEffectiveDt   time.Time
-	SAMHSAPrefIndicator string
-	ACOCMSID            string
-	BeneficiaryLinkKey  int
-}
-
 type JobEnqueueArgs struct {
 	ID              int
 	ACOID           string

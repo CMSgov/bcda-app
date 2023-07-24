@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/CMSgov/bcda-app/optout"
 	"github.com/pborman/uuid"
 )
 
@@ -60,11 +61,11 @@ type cclfBeneficiaryRepository interface {
 type suppressionRepository interface {
 	GetSuppressedMBIs(ctx context.Context, lookbackDays int, upperBound time.Time) ([]string, error)
 
-	CreateSuppression(ctx context.Context, suppression Suppression) error
+	CreateSuppression(ctx context.Context, suppression optout.OptOutRecord) error
 }
 
 type suppressionFileRepository interface {
-	CreateSuppressionFile(ctx context.Context, suppressionFile SuppressionFile) (uint, error)
+	CreateSuppressionFile(ctx context.Context, suppressionFile optout.OptOutFile) (uint, error)
 
 	UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error
 }

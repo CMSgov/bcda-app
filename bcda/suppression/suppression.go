@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
@@ -24,22 +23,13 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 )
 
-type suppressionFileMetadata struct {
-	name         string
-	timestamp    time.Time
-	filePath     string
-	imported     bool
-	deliveryDate time.Time
-	fileID       uint
-}
-
 const (
 	headerCode  = "HDR_BENEDATASHR"
 	trailerCode = "TRL_BENEDATASHR"
 )
 
 func ImportSuppressionDirectory(filePath string) (success, failure, skipped int, err error) {
-	var suppresslist []*suppressionFileMetadata
+	var suppresslist []*optout.OptOutFilenameMetadata
 
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	if err != nil {
@@ -63,7 +53,7 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 				log.API.Errorf("Failed to import suppression file: %s ", metadata)
 				failure++
 			} else {
-				metadata.imported = true
+				metadata.Imported = true
 				success++
 			}
 		}
@@ -82,7 +72,7 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 	return success, failure, skipped, err
 }
 
-func getSuppressionFileMetadata(suppresslist *[]*suppressionFileMetadata, skipped *int) filepath.WalkFunc {
+func getSuppressionFileMetadata(suppresslist *[]*optout.OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -99,19 +89,21 @@ func getSuppressionFileMetadata(suppresslist *[]*suppressionFileMetadata, skippe
 			return nil
 		}
 
-		metadata, err := parseMetadata(info.Name())
-		metadata.filePath = path
-		metadata.deliveryDate = info.ModTime()
+		metadata, err := optout.ParseMetadata(info.Name())
+		metadata.FilePath = path
+		metadata.DeliveryDate = info.ModTime()
 		if err != nil {
+			log.API.Error(err)
+
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 			fmt.Printf("Unknown file found: %s.\n", metadata)
 			log.API.Errorf("Unknown file found: %s", metadata)
 			*skipped = *skipped + 1
 
 			deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72))
-			if metadata.deliveryDate.Add(deleteThreshold).Before(time.Now()) {
+			if metadata.DeliveryDate.Add(deleteThreshold).Before(time.Now()) {
 				newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), info.Name())
-				err = os.Rename(metadata.filePath, newpath)
+				err = os.Rename(metadata.FilePath, newpath)
 				if err != nil {
 					fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", metadata)
 					err = fmt.Errorf("error moving unknown file %s to pending deletion dir", metadata)
@@ -126,39 +118,11 @@ func getSuppressionFileMetadata(suppresslist *[]*suppressionFileMetadata, skippe
 	}
 }
 
-func parseMetadata(filename string) (suppressionFileMetadata, error) {
-	var metadata suppressionFileMetadata
-	// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
-	// Prefix: T = test, P = prod;
-	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filename)
-	if len(filenameMatches) < 4 {
-		fmt.Printf("Invalid filename for file: %s.\n", filename)
-		err := fmt.Errorf("invalid filename for file: %s", filename)
-		log.API.Error(err)
-		return metadata, err
-	}
-
-	filenameDate := filenameMatches[3]
-	t, err := time.Parse("D060102.T150405", filenameDate)
-	if err != nil || t.IsZero() {
-		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filename)
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
-		log.API.Error(err)
-		return metadata, err
-	}
-
-	metadata.timestamp = t
-	metadata.name = filenameMatches[0]
-
-	return metadata, nil
-}
-
-func validate(metadata *suppressionFileMetadata) error {
+func validate(metadata *optout.OptOutFilenameMetadata) error {
 	fmt.Printf("Validating suppression file %s...\n", metadata)
 	log.API.Infof("Validating suppression file %s...", metadata)
 
-	f, err := os.Open(metadata.filePath)
+	f, err := os.Open(metadata.FilePath)
 	if err != nil {
 		fmt.Printf("Could not read file %s.\n", metadata)
 		err = errors.Wrapf(err, "could not read file %s", metadata)
@@ -180,8 +144,8 @@ func validate(metadata *suppressionFileMetadata) error {
 		if count == 0 {
 			if metaInfo != headerCode {
 				// invalid file header found
-				fmt.Printf("Invalid file header for file: %s.\n", metadata.filePath)
-				err := fmt.Errorf("invalid file header for file: %s", metadata.filePath)
+				fmt.Printf("Invalid file header for file: %s.\n", metadata.FilePath)
+				err := fmt.Errorf("invalid file header for file: %s", metadata.FilePath)
 				log.API.Error(err)
 				return err
 			}
@@ -195,16 +159,16 @@ func validate(metadata *suppressionFileMetadata) error {
 			// trailer info
 			expectedCount, err := strconv.Atoi(string(bytes.TrimSpace(b[recCountStart:recCountEnd])))
 			if err != nil {
-				fmt.Printf("Failed to parse record count from file: %s.\n", metadata.filePath)
-				err = fmt.Errorf("failed to parse record count from file: %s", metadata.filePath)
+				fmt.Printf("Failed to parse record count from file: %s.\n", metadata.FilePath)
+				err = fmt.Errorf("failed to parse record count from file: %s", metadata.FilePath)
 				log.API.Error(err)
 				return err
 			}
 			// subtract the single count from the header
 			count--
 			if count != expectedCount {
-				fmt.Printf("Incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d.\n", metadata.filePath, expectedCount, count)
-				err = fmt.Errorf("incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d", metadata.filePath, expectedCount, count)
+				fmt.Printf("Incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d.\n", metadata.FilePath, expectedCount, count)
+				err = fmt.Errorf("incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d", metadata.FilePath, expectedCount, count)
 				log.API.Error(err)
 				return err
 			}
@@ -215,61 +179,16 @@ func validate(metadata *suppressionFileMetadata) error {
 	return nil
 }
 
-func importSuppressionData(metadata *suppressionFileMetadata) error {
+func importSuppressionData(metadata *optout.OptOutFilenameMetadata) error {
 	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, r models.Repository) error {
-		var (
-			mbiStart, mbiEnd                             = 0, 11
-			lKeyStart, lKeyEnd                           = 11, 21
-			effectiveDtStart, effectiveDtEnd             = 354, 362
-			sourceCdeStart, sourceCdeEnd                 = 362, 367
-			prefIndtorStart, prefIndtorEnd               = 368, 369
-			samhsaEffectiveDtStart, samhsaEffectiveDtEnd = 369, 377
-			samhsaSourceCdeStart, samhsaSourceCdeEnd     = 377, 382
-			samhsaPrefIndtorStart, samhsaPrefIndtorEnd   = 383, 384
-			acoIdStart, acoIdEnd                         = 384, 389
-		)
-		ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
-		dt, err := convertDt(ds)
+		suppression, err := optout.ParseRecord(metadata, b)
+
 		if err != nil {
-			fmt.Printf("Failed to parse the effective date '%s' from file: %s.\n", ds, metadata.filePath)
-			err = errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.filePath)
-			log.API.Error(err)
-			return err
-		}
-		ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
-		samhsaDt, err := convertDt(ds)
-		if err != nil {
-			fmt.Printf("Failed to parse the samhsa effective date '%s' from file: %s.\n", ds, metadata.filePath)
-			err = errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.filePath)
-			log.API.Error(err)
-			return err
-		}
-		keyval := string(bytes.TrimSpace(b[lKeyStart:lKeyEnd]))
-		if keyval == "" {
-			keyval = "0"
-		}
-		lk, err := strconv.Atoi(keyval)
-		if err != nil {
-			fmt.Printf("Failed to parse beneficiary link key from file: %s.\n", metadata.filePath)
-			err = errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.filePath)
 			log.API.Error(err)
 			return err
 		}
 
-		suppression := models.Suppression{
-			FileID:              fileID,
-			MBI:                 string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
-			SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),
-			EffectiveDt:         dt,
-			PrefIndicator:       string(bytes.TrimSpace(b[prefIndtorStart:prefIndtorEnd])),
-			SAMHSASourceCode:    string(bytes.TrimSpace(b[samhsaSourceCdeStart:samhsaSourceCdeEnd])),
-			SAMHSAEffectiveDt:   samhsaDt,
-			SAMHSAPrefIndicator: string(bytes.TrimSpace(b[samhsaPrefIndtorStart:samhsaPrefIndtorEnd])),
-			BeneficiaryLinkKey:  lk,
-			ACOCMSID:            string(bytes.TrimSpace(b[acoIdStart:acoIdEnd])),
-		}
-
-		if err = r.CreateSuppression(context.Background(), suppression); err != nil {
+		if err = r.CreateSuppression(context.Background(), *suppression); err != nil {
 			fmt.Println("Could not create suppression record.")
 			err = errors.Wrap(err, "could not create suppression record")
 			log.API.Error(err)
@@ -279,14 +198,14 @@ func importSuppressionData(metadata *suppressionFileMetadata) error {
 	})
 
 	if err != nil {
-		updateImportStatus(metadata.fileID, constants.ImportFail)
+		updateImportStatus(metadata.FileID, optout.ImportFail)
 		return err
 	}
-	updateImportStatus(metadata.fileID, constants.ImportComplete)
+	updateImportStatus(metadata.FileID, optout.ImportComplete)
 	return nil
 }
 
-func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc func(uint, []byte, models.Repository) error) error {
+func importSuppressionMetadata(metadata *optout.OptOutFilenameMetadata, importFunc func(uint, []byte, models.Repository) error) error {
 	fmt.Printf("Importing suppression file %s...\n", metadata)
 	log.API.Infof("Importing suppression file %s...", metadata)
 
@@ -295,10 +214,10 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 		err                          error
 	)
 
-	suppressionMetaFile := models.SuppressionFile{
-		Name:         metadata.name,
-		Timestamp:    metadata.timestamp,
-		ImportStatus: constants.ImportInprog,
+	suppressionMetaFile := optout.OptOutFile{
+		Name:         metadata.Name,
+		Timestamp:    metadata.Timestamp,
+		ImportStatus: optout.ImportInprog,
 	}
 
 	db := database.Connection
@@ -312,11 +231,11 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 		return err
 	}
 
-	metadata.fileID = suppressionMetaFile.ID
+	metadata.FileID = suppressionMetaFile.ID
 
 	importStatusInterval := utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
-	f, err := os.Open(metadata.filePath)
+	f, err := os.Open(metadata.FilePath)
 	if err != nil {
 		fmt.Printf("Could not read file %s.\n", metadata)
 		err = errors.Wrapf(err, "could not read file %s", metadata)
@@ -352,18 +271,18 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 	return nil
 }
 
-func cleanupSuppression(suppresslist []*suppressionFileMetadata) error {
+func cleanupSuppression(suppresslist []*optout.OptOutFilenameMetadata) error {
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
 		log.API.Infof("Cleaning up file %s", suppressionFile)
-		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), suppressionFile.name)
-		if !suppressionFile.imported {
+		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), suppressionFile.Name)
+		if !suppressionFile.Imported {
 			// check the timestamp on the failed files
-			elapsed := time.Since(suppressionFile.deliveryDate).Hours()
+			elapsed := time.Since(suppressionFile.DeliveryDate).Hours()
 			deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
 			if int(elapsed) > deleteThreshold {
-				err := os.Rename(suppressionFile.filePath, newpath)
+				err := os.Rename(suppressionFile.FilePath, newpath)
 				if err != nil {
 					errCount++
 					errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", suppressionFile, err)
@@ -376,7 +295,7 @@ func cleanupSuppression(suppresslist []*suppressionFileMetadata) error {
 			}
 		} else {
 			// move the successful files to the deletion dir
-			err := os.Rename(suppressionFile.filePath, newpath)
+			err := os.Rename(suppressionFile.FilePath, newpath)
 			if err != nil {
 				errCount++
 				errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", suppressionFile, err)
@@ -392,24 +311,6 @@ func cleanupSuppression(suppresslist []*suppressionFileMetadata) error {
 		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 	return nil
-}
-
-func convertDt(s string) (time.Time, error) {
-	if s == "" {
-		return time.Time{}, nil
-	}
-	t, err := time.Parse("20060102", s)
-	if err != nil || t.IsZero() {
-		return t, err
-	}
-	return t, nil
-}
-
-func (m suppressionFileMetadata) String() string {
-	if m.filePath != "" {
-		return m.filePath
-	}
-	return m.name
 }
 
 func updateImportStatus(fileID uint, status string) {

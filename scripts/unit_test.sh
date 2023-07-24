@@ -13,7 +13,7 @@ mkdir -p test_results/latest
 echo "Running unit tests and placing results/coverage in test_results/${timestamp} on host..."
 
 # Avoid the db/migrations package since it only contains test code
-PACKAGES_TO_COVER=$(go list ./... | egrep -v 'test|mock|db/migrations' | tr "\n" "," | sed -e 's/,$//g')
+PACKAGES_TO_COVER=$(go list ./... ./optout | egrep -v 'test|mock|db/migrations' | tr "\n" "," | sed -e 's/,$//g')
 # Leverage the coverpkg flag to allow for coverage of packages even if there are tests outside of its package.
 # Useful for packages related to our database interactions.
 # Supply the following flag to gotestsum command: -coverpkg ${PACKAGES_TO_COVER}
