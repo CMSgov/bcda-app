@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -40,10 +41,10 @@ func (s *SuppressionTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
-func (s *SuppressionTestSuite) createImporter() (OptOutImporter, MockSaver) {
-	saver := MockSaver{}
+func (s *SuppressionTestSuite) createImporter() (OptOutImporter, optout.MockSaver) {
+	saver := optout.MockSaver{}
 	return OptOutImporter{
-		FileHandler: LocalFileHandler{
+		FileHandler: optout.LocalFileHandler{
 			Logger:                 log.StandardLogger(),
 			PendingDeletionDir:     s.pendingDeletionDir,
 			FileArchiveThresholdHr: 72,
@@ -70,7 +71,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata := &OptOutFilenameMetadata{
+	metadata := &optout.OptOutFilenameMetadata{
 		Timestamp:    fileTime,
 		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
 		Name:         constants.TestSuppressMetaFileName,
@@ -100,7 +101,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
-	metadata = &OptOutFilenameMetadata{
+	metadata = &optout.OptOutFilenameMetadata{
 		Timestamp:    fileTime,
 		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"),
 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
@@ -134,7 +135,7 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert := assert.New(s.T())
 
 	// Verify empty file is rejected
-	metadata := &OptOutFilenameMetadata{}
+	metadata := &optout.OptOutFilenameMetadata{}
 	importer, _ := s.createImporter()
 	err := importer.ImportSuppressionData(metadata)
 	assert.NotNil(err)
@@ -152,7 +153,7 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			fp := filepath.Join(s.basePath, "suppressionfile_MissingData/"+tt.name)
-			metadata = &OptOutFilenameMetadata{
+			metadata = &optout.OptOutFilenameMetadata{
 				Timestamp:    time.Now(),
 				FilePath:     fp,
 				Name:         tt.name,
@@ -175,7 +176,7 @@ func (s *SuppressionTestSuite) TestValidate() {
 
 	// positive
 	suppressionfilePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	metadata := &OptOutFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
+	metadata := &optout.OptOutFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
 	err := importer.validate(metadata)
 	assert.Nil(err)
 
@@ -282,11 +283,11 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
 
-	var suppresslist []*OptOutFilenameMetadata
+	var suppresslist []*optout.OptOutFilenameMetadata
 
 	// failed import: file that's within the threshold - stay put
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-	metadata := &OptOutFilenameMetadata{
+	metadata := &optout.OptOutFilenameMetadata{
 		Name:         constants.TestSuppressMetaFileName,
 		Timestamp:    fileTime,
 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
@@ -296,7 +297,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 
 	// failed import: file that's over the threshold - should move
 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata2 := &OptOutFilenameMetadata{
+	metadata2 := &optout.OptOutFilenameMetadata{
 		Name:         constants.TestSuppressBadPath,
 		Timestamp:    fileTime,
 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
@@ -305,7 +306,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	}
 
 	// successful import: should move
-	metadata3 := &OptOutFilenameMetadata{
+	metadata3 := &optout.OptOutFilenameMetadata{
 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
 		Timestamp:    fileTime,
 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
@@ -313,7 +314,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 		DeliveryDate: time.Now(),
 	}
 
-	suppresslist = []*OptOutFilenameMetadata{metadata, metadata2, metadata3}
+	suppresslist = []*optout.OptOutFilenameMetadata{metadata, metadata2, metadata3}
 	err := importer.FileHandler.CleanupOptOutFiles(suppresslist)
 	assert.Nil(err)
 

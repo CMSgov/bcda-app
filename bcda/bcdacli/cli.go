@@ -467,7 +467,7 @@ func setUpApp() *cli.App {
 				ignoreSignals()
 				db := database.Connection
 				r := postgres.NewRepository(db)
-				importer := optout.OptOutImporter{
+				importer := suppression.OptOutImporter{
 					FileHandler: optout.LocalFileHandler{
 						Logger:                 log.API,
 						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
