@@ -1,4 +1,4 @@
-package optout
+package suppression
 
 import (
 	"fmt"

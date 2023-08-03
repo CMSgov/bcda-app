@@ -1,10 +1,11 @@
-package optout
+package suppression
 
 import (
 	"bytes"
 	"fmt"
 	"strconv"
 
+	"github.com/CMSgov/bcda-app/optout"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -20,8 +21,8 @@ const (
 )
 
 type OptOutImporter struct {
-	FileHandler          OptOutFileHandler
-	Saver                Saver
+	FileHandler          optout.OptOutFileHandler
+	Saver                optout.Saver
 	Logger               logrus.FieldLogger
 	ImportStatusInterval int
 }
@@ -68,7 +69,7 @@ func (importer OptOutImporter) ImportSuppressionDirectory(path string) (success,
 	return success, failure, skipped, err
 }
 
-func (importer OptOutImporter) validate(metadata *OptOutFilenameMetadata) error {
+func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata) error {
 	fmt.Printf("Validating suppression file %s...\n", metadata)
 	importer.Logger.Infof("Validating suppression file %s...", metadata)
 
@@ -125,9 +126,9 @@ func (importer OptOutImporter) validate(metadata *OptOutFilenameMetadata) error 
 	return nil
 }
 
-func (importer OptOutImporter) ImportSuppressionData(metadata *OptOutFilenameMetadata) error {
+func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFilenameMetadata) error {
 	err := importer.importSuppressionMetadata(metadata, func(fileID uint, b []byte) error {
-		suppression, err := ParseRecord(metadata, b)
+		suppression, err := optout.ParseRecord(metadata, b)
 
 		if err != nil {
 			importer.Logger.Error(err)
@@ -144,14 +145,14 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *OptOutFilenameMet
 	})
 
 	if err != nil {
-		importer.updateImportStatus(metadata, ImportFail)
+		importer.updateImportStatus(metadata, optout.ImportFail)
 		return err
 	}
-	importer.updateImportStatus(metadata, ImportComplete)
+	importer.updateImportStatus(metadata, optout.ImportComplete)
 	return nil
 }
 
-func (importer OptOutImporter) importSuppressionMetadata(metadata *OptOutFilenameMetadata, importFunc func(uint, []byte) error) error {
+func (importer OptOutImporter) importSuppressionMetadata(metadata *optout.OptOutFilenameMetadata, importFunc func(uint, []byte) error) error {
 	fmt.Printf("Importing suppression file %s...\n", metadata)
 	importer.Logger.Infof("Importing suppression file %s...", metadata)
 
@@ -160,10 +161,10 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *OptOutFilenam
 		err                          error
 	)
 
-	suppressionMetaFile := OptOutFile{
+	suppressionMetaFile := optout.OptOutFile{
 		Name:         metadata.Name,
 		Timestamp:    metadata.Timestamp,
-		ImportStatus: ImportInprog,
+		ImportStatus: optout.ImportInprog,
 	}
 
 	if suppressionMetaFile.ID, err = importer.Saver.SaveFile(suppressionMetaFile); err != nil {
@@ -212,7 +213,7 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *OptOutFilenam
 	return nil
 }
 
-func (importer OptOutImporter) updateImportStatus(metadata *OptOutFilenameMetadata, status string) {
+func (importer OptOutImporter) updateImportStatus(metadata *optout.OptOutFilenameMetadata, status string) {
 	if err := importer.Saver.UpdateImportStatus(*metadata, status); err != nil {
 		fmt.Printf("Could not update suppression file record for file_id: %s. \n", metadata.String())
 		err = errors.Wrapf(err, "could not update suppression file record for file_id: %s.", metadata.String())
