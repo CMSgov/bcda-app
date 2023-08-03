@@ -36,6 +36,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pborman/uuid"
@@ -464,7 +465,21 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				s, f, sk, err := suppression.ImportSuppressionDirectory(filePath)
+				db := database.Connection
+				r := postgres.NewRepository(db)
+				importer := optout.OptOutImporter{
+					FileHandler: optout.LocalFileHandler{
+						Logger:                 log.API,
+						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+						FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+					},
+					Saver: suppression.BCDASaver{
+						Repo: r,
+					},
+					Logger:               log.API,
+					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
+				}
+				s, f, sk, err := importer.ImportSuppressionDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				return err
 			},
