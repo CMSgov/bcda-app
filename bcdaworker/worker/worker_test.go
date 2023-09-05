@@ -164,7 +164,8 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ClaimsWindow: claimsWindow}
-			uuid, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
+			logCtx := logrus.Fields{"cms_id": "A9999", "job_id": 12}
+			uuid, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs, logCtx)
 			if tt.expectZeroSize {
 				assert.EqualValues(t, 0, size)
 			} else {
@@ -237,7 +238,8 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	_, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	logCtx := logrus.Fields{"cms_id": "A9999", "job_id": 12}
+	_, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs, logCtx)
 	assert.EqualValues(s.T(), 0, size)
 	assert.NoError(s.T(), err)
 }
@@ -266,7 +268,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	fileUUID, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	logCtx := logrus.Fields{"cms_id": "A9999", "job_id": 12}
+	fileUUID, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs, logCtx)
 	assert.NotEqual(s.T(), int64(0), size)
 	assert.NoError(s.T(), err)
 
@@ -284,8 +287,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 
 	// Assert cmsID and jobID fields are being added to the logs
 	assert.Equal(s.T(), 2, len(logHook.Entries))
-	assert.Equal(s.T(), logHook.Entries[0].Data["cmsID"], "A1B2C")
-	assert.Contains(s.T(), logHook.Entries[0].Data, "jobID")
+	assert.Equal(s.T(), logHook.Entries[0].Data["cms_id"], "A1B2C")
+	assert.Contains(s.T(), logHook.Entries[0].Data, "job_id")
 
 	bbc.AssertExpectations(s.T())
 }
@@ -315,7 +318,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	logCtx := logrus.Fields{"cms_id": "A9999", "job_id": 12}
+	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs, logCtx)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)
@@ -336,8 +340,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 
 	// Assert cmsID and jobID fields are being added to the logs
 	assert.Equal(s.T(), 2, len(logHook.Entries))
-	assert.Equal(s.T(), logHook.Entries[0].Data["cmsID"], "A1B2C")
-	assert.Contains(s.T(), logHook.Entries[0].Data, "jobID")
+	assert.Equal(s.T(), logHook.Entries[0].Data["cms_id"], "A1B2C")
+	assert.Contains(s.T(), logHook.Entries[0].Data, "job_id")
 
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
@@ -362,7 +366,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	logCtx := logrus.Fields{"cms_id": "A9999", "job_id": 12}
+	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs, logCtx)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)
@@ -503,6 +508,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 
 	assert.Contains(s.T(), s.w.ProcessJob(context.Background(), j, jobArgs).Error(), "could not create Blue Button client")
 }
+
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	ctx := context.Background()

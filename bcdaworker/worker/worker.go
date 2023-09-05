@@ -68,30 +68,30 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	ctx, c := metrics.NewParent(ctx, fmt.Sprintf("ProcessJob-%s", jobArgs.ResourceType))
 	defer c()
 
+	logFields := logrus.Fields{"job_id": jobArgs.ID}
+
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("ProcessJob: could not retrieve ACO from database by UUID %s", job.ACOID))
+		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not retrieve ACO from database by UUID %s", job.ACOID))
+		log.Worker.WithFields(logFields).Error(err)
+		return err
 	}
-
-	log.Worker.WithFields(logrus.Fields{
-		"jobID": jobArgs.ID,
-		"cmsID": *aco.CMSID,
-	})
+	logFields["cms_id"] = *aco.CMSID
 
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
 		// could also occur if job was marked as cancelled
-		log.Worker.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
+		log.Worker.WithFields(logFields).Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		err = errors.Wrap(err, "ProcessJob: could not update job status in database")
-		log.Worker.Error(err)
+		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
 	if err != nil {
 		err = errors.Wrap(err, "ProcessJob: could not create Blue Button client")
-		log.Worker.Error(err)
+		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
 
@@ -101,70 +101,74 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 	if err = createDir(stagingPath); err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR staging path directory for jobID %s", jobID))
-		log.Worker.Error(err)
+		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
 
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
 	if err = createDir(payloadPath); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR payload path directory for jobID %s", jobID))
-		log.Worker.Error(err)
+		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR payload path directory"))
+		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
 
-	fileUUID, fileSize, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs)
+	fileUUID, fileSize, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs, logFields)
+	if err != nil {
+		log.Worker.WithFields(logFields).Error(err)
+	}
 	fileName := fileUUID + ".ndjson"
 
-	log.Worker.WithFields(logrus.Fields{"fileUUID": fileUUID, "fileSize": fileSize})
+	logFields["file_uuid"] = fileUUID
+	logFields["file_size"] = fileSize
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
-		log.Worker.Error(errors.Wrap(err, fmt.Sprintf("ProcessJob: Error occurred when writing BFD Data to file for jobId %s for cmsID %s", jobID, *aco.CMSID)))
+		log.Worker.WithFields(logFields).Error(errors.Wrap(err, fmt.Sprintf("ProcessJob: Error occurred when writing BFD Data to file")))
 
 		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
 		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
 		if goerrors.Is(err, repository.ErrJobNotUpdated) {
-			jobUpdateFailMessage := fmt.Sprintf("ProcessJob: Failed to update job (job cancelled) for jobId %s for cmsID %s: %s", jobID, *aco.CMSID, err)
-			log.Worker.Warn(jobUpdateFailMessage)
+			jobUpdateFailMessage := fmt.Sprintf("ProcessJob: Failed to update job (job cancelled): %s", err)
+			log.Worker.WithFields(logFields).Warn(jobUpdateFailMessage)
 			return errors.Wrap(err, jobUpdateFailMessage)
 		} else if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s for jobId %s for cmsID %s", models.JobStatusFailed, jobID, *aco.CMSID))
-			log.Worker.Error(err)
+			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s", models.JobStatusFailed))
+			log.Worker.WithFields(logFields).Error(err)
 			return err
 		}
 	} else {
 		if fileSize == 0 {
-			log.Worker.Warnf("ProcessJob: File %s is empty (fileSize 0) for jobId %s for cmsID %s, will rename file to %s", fileName, jobID, *aco.CMSID, models.BlankFileName)
+			log.Worker.WithFields(logFields).Warnf("ProcessJob: File %s is empty (fileSize 0), will rename file to %s", fileName, models.BlankFileName)
 			fileName = models.BlankFileName
 		}
 
 		jk := models.JobKey{JobID: job.ID, FileName: fileName, ResourceType: jobArgs.ResourceType}
 		if err := w.r.CreateJobKey(ctx, jk); err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error creating job key record for filename %s for jobId %s for cmsID %s", fileName, jobID, *aco.CMSID))
-			log.Worker.Error(err)
+			err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error creating job key record for filename %s", fileName))
+			log.Worker.WithFields(logFields).Error(err)
 			return err
 		}
 	}
 	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s for jobId %s for cmsID %s", fileName, jobID, *aco.CMSID))
-		log.Worker.Error(err)
+		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s", fileName))
+		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
 	// CompletedJobCount is purely information and can be off.
 	if err := w.r.IncrementCompletedJobCount(ctx, job.ID); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Failed to update completed job count for job %d. Will continue. ", job.ID))
-		log.Worker.Warn(err)
+		err = errors.Wrap(err, fmt.Sprint("ProcessJob: Failed to update completed job count. Will continue. "))
+		log.Worker.WithFields(logFields).Warn(err)
 	}
 
 	return nil
 }
 
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
+	cmsID string, jobArgs models.JobEnqueueArgs, logFields logrus.Fields) (fileUUID string, size int64, err error) {
 
 	close := metrics.NewChild(ctx, "writeBBDataToFile")
 	defer close()
@@ -208,15 +212,18 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			return bb.GetClaimResponse(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
 		}
 	default:
-		return "", 0, fmt.Errorf("unsupported resource type requested for jobId %s for cmsID %s : %s", strconv.Itoa(jobArgs.ID), cmsID, jobArgs.ResourceType)
+		err = fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
+		log.Worker.WithFields(logFields).Error(err)
+		return "", 0, err
 	}
 
 	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileUUID = uuid.New()
+	logFields["file_uuid"] = fileUUID
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error in creating ndjson file for fileUUID %s jobId %d for cmsID %s", fileUUID, jobArgs.ID, cmsID))
-		log.Worker.Error(err)
+		err = errors.Wrap(err, fmt.Sprintf("Error creating ndjson file"))
+		log.Worker.WithFields(logFields).Error(err)
 		return "", 0, err
 	}
 
@@ -263,9 +270,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 		if err != nil {
 			log.Worker.WithFields(logrus.Fields{
-				"jobID":    jobArgs.ID,
-				"cmsID":    cmsID,
-				"fileUUID": fileUUID,
+				"job_id":    jobArgs.ID,
+				"cms_id":    cmsID,
+				"file_uuid": fileUUID,
 			}).Error(err)
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, fileErrMsg, jobArgs.ID)
