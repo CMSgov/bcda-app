@@ -288,7 +288,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	if failed {
 		if ctx.Err() == context.Canceled {
-			return "", 0, errors.New(fmt.Sprintf("Parent job was cancelled"))
+			return "", 0, errors.New("Parent job was cancelled")
 		}
 		return "", 0, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
 	}
