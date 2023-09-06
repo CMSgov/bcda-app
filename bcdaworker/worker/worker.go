@@ -110,7 +110,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
 	if err = createDir(payloadPath); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR payload path directory"))
+		err = errors.Wrap(err, "ProcessJob: could not create FHIR payload path directory")
 		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
@@ -127,7 +127,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
-		log.Worker.WithFields(logFields).Error(errors.Wrap(err, fmt.Sprintf("ProcessJob: Error occurred when writing BFD Data to file")))
+		log.Worker.WithFields(logFields).Error(errors.Wrap(err, "ProcessJob: Error occurred when writing BFD Data to file"))
 
 		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
 		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
@@ -163,7 +163,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
 	// CompletedJobCount is purely information and can be off.
 	if err := w.r.IncrementCompletedJobCount(ctx, job.ID); err != nil {
-		err = errors.Wrap(err, fmt.Sprint("ProcessJob: Failed to update completed job count. Will continue. "))
+		err = errors.Wrap(err, "ProcessJob: Failed to update completed job count. Will continue.")
 		log.Worker.WithFields(logFields).Warn(err)
 	}
 
@@ -224,7 +224,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	logFields["file_uuid"] = fileUUID
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error creating ndjson file"))
+		err = errors.Wrap(err, "Error creating ndjson file")
 		log.Worker.WithFields(logFields).Error(err)
 		return "", 0, err
 	}
