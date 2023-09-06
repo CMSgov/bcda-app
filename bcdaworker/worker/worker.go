@@ -18,11 +18,11 @@ import (
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	workerlog "github.com/CMSgov/bcda-app/bcdaworker/log"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/sirupsen/logrus"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
@@ -62,13 +62,13 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 
 func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
 
+	logFields := workerlog.GetLogFields(ctx)
+
 	t := metrics.GetTimer()
 	defer t.Close()
 	ctx = metrics.NewContext(ctx, t)
 	ctx, c := metrics.NewParent(ctx, fmt.Sprintf("ProcessJob-%s", jobArgs.ResourceType))
 	defer c()
-
-	logFields := logrus.Fields{"job_id": jobArgs.ID}
 
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
@@ -76,7 +76,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		log.Worker.WithFields(logFields).Error(err)
 		return err
 	}
-	logFields["cms_id"] = *aco.CMSID
+
+	logFields["cms_id"] = aco.CMSID
+	ctx = workerlog.WithLogFields(ctx, logFields)
 
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
@@ -113,7 +115,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return err
 	}
 
-	fileUUID, fileSize, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs, logFields)
+	fileUUID, fileSize, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs)
 	if err != nil {
 		log.Worker.WithFields(logFields).Error(err)
 	}
@@ -121,6 +123,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 	logFields["file_uuid"] = fileUUID
 	logFields["file_size"] = fileSize
+	ctx = workerlog.WithLogFields(ctx, logFields)
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
@@ -168,8 +171,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 }
 
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, jobArgs models.JobEnqueueArgs, logFields logrus.Fields) (fileUUID string, size int64, err error) {
+	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 
+	logFields := workerlog.GetLogFields(ctx)
 	close := metrics.NewChild(ctx, "writeBBDataToFile")
 	defer close()
 
@@ -212,9 +216,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			return bb.GetClaimResponse(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
 		}
 	default:
-		err = fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
-		log.Worker.WithFields(logFields).Error(err)
-		return "", 0, err
+		return "", 0, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
 	}
 
 	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
@@ -269,11 +271,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}()
 
 		if err != nil {
-			log.Worker.WithFields(logrus.Fields{
-				"job_id":    jobArgs.ID,
-				"cms_id":    cmsID,
-				"file_uuid": fileUUID,
-			}).Error(err)
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, fileErrMsg, jobArgs.ID)
 		}
@@ -286,22 +283,19 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if err = w.Flush(); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error in writing the buffered data to the writer for fileUUID %s jobId %d for cmsID %s", fileUUID, jobArgs.ID, cmsID))
-		log.Worker.Error(err)
-		return "", 0, err
+		return "", 0, errors.Wrap(err, fmt.Sprintf("Error in writing the buffered data to the writer"))
 	}
 
 	if failed {
 		if ctx.Err() == context.Canceled {
-			return "", 0, errors.New(fmt.Sprintf("Failing file UUID %s : Parent job %d was cancelled for cmsID %s", fileUUID, jobArgs.ID, cmsID))
+			return "", 0, errors.New(fmt.Sprintf("Parent job was cancelled"))
 		}
-		return "", 0, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f for fileUUID %s jobId %d for cmsID %s", failThreshold, fileUUID, jobArgs.ID, cmsID))
+		return "", 0, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
 	}
 
 	fstat, err := f.Stat()
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Error in obtaining FileInfo structure describing the file for ndjson fileUUID %s jobId %d for cmsID %s", fileUUID, jobArgs.ID, cmsID))
-		log.Worker.Error(err)
 		return "", 0, err
 	}
 
@@ -351,6 +345,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	close := metrics.NewChild(ctx, "appendErrorToFile")
 	defer close()
 
+	logFields := workerlog.GetLogFields(ctx)
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
 	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
@@ -359,27 +354,27 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Unable to append error to file: OS error encountered while opening the file for fileUUID %s jobId %d", fileUUID, jobID))
-		log.Worker.Error(err)
+		err = errors.Wrap(err, fmt.Sprintf("Unable to append error to file: OS error encountered while opening the file"))
+		log.Worker.WithFields(logFields).Error(err)
 	}
 
 	defer utils.CloseFileAndLogError(f)
 	if _, err := responseutils.WriteOperationOutcome(f, oo); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Issue during append error to file: Error encountered during WriteOperationalOutcome for fileUUID %s jobId %d", fileUUID, jobID))
-		log.Worker.Error(err)
+		err = errors.Wrap(err, fmt.Sprintf("Issue during append error to file: Error encountered during WriteOperationalOutcome"))
+		log.Worker.WithFields(logFields).Error(err)
 	}
 
 	// Separate any subsequent error entries
 	if _, err := f.WriteString("\n"); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Issue during append error to file: Unable to write new line separator in fileUUID %s jobId %d", fileUUID, jobID))
-		log.Worker.Error(err)
+		err = errors.Wrap(err, fmt.Sprintf("Issue during append error to file: Unable to write new line separator "))
+		log.Worker.WithFields(logFields).Error(err)
 	}
 }
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
 	defer close()
-
+	logFields := workerlog.GetLogFields(ctx)
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
 			continue
@@ -388,14 +383,14 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		entryJSON, err := json.Marshal(entry["resource"])
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.
 		if err != nil {
-			log.Worker.Error(err)
+			log.Worker.WithFields(logFields).Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
 		_, err = w.WriteString(string(entryJSON) + "\n")
 		if err != nil {
-			log.Worker.Error(err)
+			log.Worker.WithFields(logFields).Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		}
@@ -403,6 +398,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 }
 
 func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
+	logFields := workerlog.GetLogFields(ctx)
 	j, err := r.GetJobByID(ctx, jobID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Failed retrieve job by id (Job %d)", jobID))
@@ -414,7 +410,7 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		return true, nil
 	case models.JobStatusCancelled, models.JobStatusFailed:
 		// don't update job, Cancelled and Failed are terminal statuses
-		log.Worker.Warnf("Failed to mark job as completed (Job %s) for job id: %d", j.Status, jobID)
+		log.Worker.WithFields(logFields).Warnf("Failed to mark job as completed (Job %s)", j.Status)
 		return true, nil
 	}
 
