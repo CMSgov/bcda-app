@@ -93,15 +93,20 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
 
 	if strings.ToLower(conf.GetEnv("BB_CHECK_CERT")) != "false" {
-		caFile := conf.GetEnv("BB_CLIENT_CA_FILE")
-		caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
-		if err != nil {
-			return nil, errors.Wrap(err, "could not read CA file")
-		}
+		caFilePaths := strings.Split(conf.GetEnv("BB_CLIENT_CA_FILE"), ",")
 		caCertPool := x509.NewCertPool()
-		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
-			return nil, errors.New("could not append CA certificate(s)")
+
+		for _, caFile := range caFilePaths {
+			caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
+			if err != nil {
+				return nil, errors.Wrap(err, "could not read CA file")
+			}
+
+			if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+				return nil, errors.New("could not append CA certificate(s)")
+			}
 		}
+
 		tlsConfig.RootCAs = caCertPool
 	} else {
 		tlsConfig.InsecureSkipVerify = true
