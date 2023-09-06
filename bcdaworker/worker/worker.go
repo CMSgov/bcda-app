@@ -283,7 +283,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if err = w.Flush(); err != nil {
-		return "", 0, errors.Wrap(err, fmt.Sprintf("Error in writing the buffered data to the writer"))
+		return "", 0, errors.Wrap(err, "Error in writing the buffered data to the writer")
 	}
 
 	if failed {
@@ -354,19 +354,19 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Unable to append error to file: OS error encountered while opening the file"))
+		err = errors.Wrap(err, "Unable to append error to file: OS error encountered while opening the file")
 		log.Worker.WithFields(logFields).Error(err)
 	}
 
 	defer utils.CloseFileAndLogError(f)
 	if _, err := responseutils.WriteOperationOutcome(f, oo); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Issue during append error to file: Error encountered during WriteOperationalOutcome"))
+		err = errors.Wrap(err, "Issue during append error to file: Error encountered during WriteOperationalOutcome")
 		log.Worker.WithFields(logFields).Error(err)
 	}
 
 	// Separate any subsequent error entries
 	if _, err := f.WriteString("\n"); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Issue during append error to file: Unable to write new line separator "))
+		err = errors.Wrap(err, "Issue during append error to file: Unable to write new line separator ")
 		log.Worker.WithFields(logFields).Error(err)
 	}
 }
