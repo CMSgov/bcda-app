@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -135,4 +136,29 @@ func Redact(uri string) string {
 		uri = strings.Replace(uri, match[1], "<redacted>", 1)
 	}
 	return uri
+}
+
+type commonLogCtxKeyType string
+
+const commonLogCtxKey commonLogCtxKeyType = "commonLog"
+
+func NewCommonLogFields(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logFields := logrus.Fields{}
+		logFields["request_id"] = middleware.GetReqID(r.Context())
+		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
+			logFields["cms_id"] = ad.CMSID
+		}
+		r = r.WithContext(context.WithValue(r.Context(), commonLogCtxKey, logFields))
+		next.ServeHTTP(w, r)
+	})
+}
+
+func GetLogFields(ctx context.Context) logrus.Fields {
+	logFields, ok := ctx.Value(commonLogCtxKey).(logrus.Fields)
+	if !ok {
+		// Log this issue
+		return logrus.Fields{}
+	}
+	return logFields
 }
