@@ -138,9 +138,9 @@ func Redact(uri string) string {
 	return uri
 }
 
-type commonLogCtxKeyType string
+type CommonLogCtxKeyType string
 
-const commonLogCtxKey commonLogCtxKeyType = "commonLog"
+const CommonLogCtxKey CommonLogCtxKeyType = "commonLog"
 
 func NewCommonLogFields(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -149,15 +149,14 @@ func NewCommonLogFields(next http.Handler) http.Handler {
 		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
 			logFields["cms_id"] = ad.CMSID
 		}
-		r = r.WithContext(context.WithValue(r.Context(), commonLogCtxKey, logFields))
+		r = r.WithContext(context.WithValue(r.Context(), CommonLogCtxKey, logFields))
 		next.ServeHTTP(w, r)
 	})
 }
 
 func GetLogFields(ctx context.Context) logrus.Fields {
-	logFields, ok := ctx.Value(commonLogCtxKey).(logrus.Fields)
+	logFields, ok := ctx.Value(CommonLogCtxKey).(logrus.Fields)
 	if !ok {
-		// Log this issue
 		return logrus.Fields{}
 	}
 	return logFields
