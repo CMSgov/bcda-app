@@ -202,6 +202,18 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 	assert.EqualError(err, "could not append CA certificate(s)")
 }
 
+func (s *BBTestSuite) TestNewBlueButtonClientMultipleCaFiles() {
+	origCertFile := conf.GetEnv("BB_CLIENT_CA_FILE")
+	defer conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", origCertFile)
+
+	assert := assert.New(s.T())
+
+	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt,../../shared_files/localhost.crt")
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	assert.NotNil(bbc)
+	assert.Nil(err)
+}
+
 func (s *BBTestSuite) TestGetDefaultParams() {
 	params := client.GetDefaultParams()
 	assert.Equal(s.T(), "application/fhir+json", params.Get("_format"))
