@@ -244,20 +244,32 @@ func TestResourceTypeLogging(t *testing.T) {
 func TestMiddlewareLogCtx(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		val := r.Context().Value(logging.CommonLogCtxKey).(logrus.Fields)
+		val := r.Context().Value(logging.CommonLogCtxKey).(*logging.StructuredLoggerEntry)
 		if val == nil {
 			t.Error("no log context")
 		}
-		if val["cms_id"] == nil {
-			t.Error("no cms_id value")
-		}
-		if val["request_id"] == nil {
-			t.Error("no request_id value")
-		}
+
 	})
 
 	handlerToTest := contextToken(middleware.RequestID(logging.NewCommonLogFields(nextHandler)))
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
+}
+
+func TestLogEntrySetField(t *testing.T) {
+	ctx := context.Background()
+	ctx = logging.LogEntrySetField(ctx, "request_id", "123456")
+	ctx = logging.LogEntrySetField(ctx, "cms_id", "A0000")
+	ctxEntryAppend := ctx.Value(logging.CommonLogCtxKey).(*logging.StructuredLoggerEntry)
+	entry := ctxEntryAppend.Logger.WithField("test", "entry")
+	if entry == nil {
+		t.Errorf("entry should not be nil")
+	}
+	if entry.Data["cms_id"] != "A0000" {
+		t.Errorf("unexpected value for cms_id")
+	}
+	if entry.Data["request_id"] != "123456" {
+		t.Errorf("unexpected value for request_id")
+	}
 }

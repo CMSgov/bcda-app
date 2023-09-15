@@ -149,7 +149,8 @@ func NewCommonLogFields(next http.Handler) http.Handler {
 		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
 			logFields["cms_id"] = ad.CMSID
 		}
-		r = r.WithContext(context.WithValue(r.Context(), CommonLogCtxKey, logFields))
+		newLogEntry := &StructuredLoggerEntry{Logger: log.API.WithFields(logFields)}
+		r = r.WithContext(context.WithValue(r.Context(), CommonLogCtxKey, newLogEntry))
 		next.ServeHTTP(w, r)
 	})
 }
@@ -160,4 +161,22 @@ func GetLogFields(ctx context.Context) logrus.Fields {
 		return logrus.Fields{}
 	}
 	return logFields
+}
+
+func GetLogEntry(ctx context.Context) logrus.FieldLogger {
+	entry := ctx.Value(CommonLogCtxKey).(*StructuredLoggerEntry)
+	return entry.Logger
+}
+
+func LogEntrySetField(ctx context.Context, key string, value interface{}) context.Context {
+	if entry, ok := ctx.Value(CommonLogCtxKey).(*StructuredLoggerEntry); ok {
+		entry.Logger = entry.Logger.WithField(key, value)
+		nCtx := context.WithValue(ctx, CommonLogCtxKey, entry)
+		return nCtx
+	}
+
+	var lggr logrus.Logger
+	newLogEntry := &StructuredLoggerEntry{Logger: lggr.WithField(key, value)}
+	nCtx := context.WithValue(ctx, CommonLogCtxKey, newLogEntry)
+	return nCtx
 }
