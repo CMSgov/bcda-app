@@ -263,13 +263,19 @@ func TestLogEntrySetField(t *testing.T) {
 	ctx = logging.LogEntrySetField(ctx, "cms_id", "A0000")
 	ctxEntryAppend := ctx.Value(logging.CommonLogCtxKey).(*logging.StructuredLoggerEntry)
 	entry := ctxEntryAppend.Logger.WithField("test", "entry")
-	if entry == nil {
-		t.Errorf("entry should not be nil")
+
+	if cmsId, ok := entry.Data["cms_id"]; ok {
+		if cmsId != "A0000" {
+			t.Errorf("unexpected value for cms_id")
+		}
+	} else {
+		t.Errorf("key cms_id does not exist")
 	}
-	if entry.Data["cms_id"] != "A0000" {
-		t.Errorf("unexpected value for cms_id")
-	}
-	if entry.Data["request_id"] != "123456" {
-		t.Errorf("unexpected value for request_id")
+	if reqId, ok := entry.Data["request_id"]; ok {
+		if reqId != "123456" {
+			t.Errorf("unexpected value for request_id")
+		}
+	} else {
+		t.Errorf("key request_id does not exist")
 	}
 }
