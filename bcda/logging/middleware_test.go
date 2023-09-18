@@ -259,8 +259,8 @@ func TestMiddlewareLogCtx(t *testing.T) {
 
 func TestSetCtxLogger(t *testing.T) {
 	ctx := context.Background()
-	ctx = logging.SetCtxLogger(ctx, "request_id", "123456")
-	ctx = logging.SetCtxLogger(ctx, "cms_id", "A0000")
+	ctx, _ = logging.SetCtxLogger(ctx, "request_id", "123456")
+	ctx, _ = logging.SetCtxLogger(ctx, "cms_id", "A0000")
 	ctxEntryAppend := ctx.Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
 	entry := ctxEntryAppend.Logger.WithField("test", "entry")
 

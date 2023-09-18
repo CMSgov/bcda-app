@@ -165,15 +165,15 @@ func GetCtxLogger(ctx context.Context) logrus.FieldLogger {
 }
 
 // Appends additional or creates new logrus.Fields to a logrus.FieldLogger within a context
-func SetCtxLogger(ctx context.Context, key string, value interface{}) context.Context {
+func SetCtxLogger(ctx context.Context, key string, value interface{}) (context.Context, logrus.FieldLogger) {
 	if entry, ok := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry); ok {
 		entry.Logger = entry.Logger.WithField(key, value)
 		nCtx := context.WithValue(ctx, CtxLoggerKey, entry)
-		return nCtx
+		return nCtx, entry.Logger
 	}
 
 	var lggr logrus.Logger
 	newLogEntry := &StructuredLoggerEntry{Logger: lggr.WithField(key, value)}
 	nCtx := context.WithValue(ctx, CtxLoggerKey, newLogEntry)
-	return nCtx
+	return nCtx, newLogEntry.Logger
 }

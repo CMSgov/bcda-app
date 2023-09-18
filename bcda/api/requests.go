@@ -530,8 +530,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 
 	if newJob.ID != 0 {
-		ctx = logging.SetCtxLogger(ctx, "job_id", newJob.ID)
-		logger = logging.GetCtxLogger(ctx)
+		ctx, logger = logging.SetCtxLogger(ctx, "job_id", newJob.ID)
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
