@@ -244,24 +244,24 @@ func TestResourceTypeLogging(t *testing.T) {
 func TestMiddlewareLogCtx(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		val := r.Context().Value(logging.CommonLogCtxKey).(*logging.StructuredLoggerEntry)
+		val := r.Context().Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
 		if val == nil {
 			t.Error("no log context")
 		}
 
 	})
 
-	handlerToTest := contextToken(middleware.RequestID(logging.NewCommonLogFields(nextHandler)))
+	handlerToTest := contextToken(middleware.RequestID(logging.NewCtxLogger(nextHandler)))
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
 }
 
-func TestLogEntrySetField(t *testing.T) {
+func TestSetCtxLogger(t *testing.T) {
 	ctx := context.Background()
-	ctx = logging.LogEntrySetField(ctx, "request_id", "123456")
-	ctx = logging.LogEntrySetField(ctx, "cms_id", "A0000")
-	ctxEntryAppend := ctx.Value(logging.CommonLogCtxKey).(*logging.StructuredLoggerEntry)
+	ctx = logging.SetCtxLogger(ctx, "request_id", "123456")
+	ctx = logging.SetCtxLogger(ctx, "cms_id", "A0000")
+	ctxEntryAppend := ctx.Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
 	entry := ctxEntryAppend.Logger.WithField("test", "entry")
 
 	if cmsId, ok := entry.Data["cms_id"]; ok {

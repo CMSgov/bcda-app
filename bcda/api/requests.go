@@ -160,7 +160,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		statusTypes []models.JobStatus
 		err         error
 	)
-	logger := logging.GetLogEntry(r.Context())
+	logger := logging.GetCtxLogger(r.Context())
 	statusTypes = models.AllJobStatuses // default request to retrieve jobs with all statuses
 	params, ok := r.URL.Query()["_status"]
 	if ok {
@@ -223,7 +223,7 @@ func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
-	logger := logging.GetLogEntry(r.Context())
+	logger := logging.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
@@ -320,7 +320,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
-	logger := logging.GetLogEntry(r.Context())
+	logger := logging.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
@@ -405,7 +405,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
-	logger := logging.GetLogEntry(ctx)
+	logger := logging.GetCtxLogger(ctx)
 	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, fileType)
 	if err != nil {
 		logger.Error(err)
@@ -434,7 +434,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
-	logger := logging.GetLogEntry(r.Context())
+	logger := logging.GetCtxLogger(r.Context())
 
 	var (
 		ad  auth.AuthData
@@ -530,8 +530,8 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 
 	if newJob.ID != 0 {
-		logging.LogEntrySetField(ctx, "job_id", newJob.ID)
-		logger = logging.GetLogEntry(r.Context())
+		ctx = logging.SetCtxLogger(ctx, "job_id", newJob.ID)
+		logger = logging.GetCtxLogger(ctx)
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata

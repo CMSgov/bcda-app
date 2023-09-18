@@ -140,7 +140,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-			req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 			w := httptest.NewRecorder()
 			h.BulkGroupRequest(w, req)
 
@@ -223,7 +223,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 			rr := httptest.NewRecorder()
 			req := s.genGetJobsRequest(apiVersionOne, tt.statuses)
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-			req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
@@ -317,7 +317,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 			rr := httptest.NewRecorder()
 			req := s.genGetJobsRequest(apiVersionTwo, tt.statuses)
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-			req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
@@ -539,7 +539,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}))
 
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
-			r = r.WithContext(context.WithValue(r.Context(), logging.CommonLogCtxKey, newLogEntry))
+			r = r.WithContext(context.WithValue(r.Context(), logging.CtxLoggerKey, newLogEntry))
 
 			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
@@ -653,7 +653,7 @@ func (s *RequestsTestSuite) TestJobStatus() {
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
 	req = req.WithContext(ctx)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(ctx, logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry))
 	w := httptest.NewRecorder()
 	h.JobStatus(w, req)
 	s.Equal(http.StatusOK, w.Code)
@@ -710,10 +710,9 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			rctx.URLParams.Add("jobID", "1")
 
 			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-
 			req = req.WithContext(ctx)
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-			req = req.WithContext(context.WithValue(ctx, logging.CommonLogCtxKey, newLogEntry))
+			req = req.WithContext(context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry))
 
 			w := httptest.NewRecorder()
 			h.JobStatus(w, req)
@@ -764,7 +763,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
 	ctx = middleware.NewRequestParametersContext(ctx, rp)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	ctx = context.WithValue(ctx, logging.CommonLogCtxKey, newLogEntry)
+	ctx = context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry)
 	req = req.WithContext(ctx)
 
 	return req
@@ -777,7 +776,7 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	ctx = middleware.NewRequestParametersContext(ctx, rp)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	ctx = context.WithValue(ctx, logging.CommonLogCtxKey, newLogEntry)
+	ctx = context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)
 }
 
@@ -787,7 +786,7 @@ func (s *RequestsTestSuite) genASRequest() *http.Request {
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	ctx = context.WithValue(ctx, logging.CommonLogCtxKey, newLogEntry)
+	ctx = context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)
 }
 

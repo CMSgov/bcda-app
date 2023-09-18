@@ -97,7 +97,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 			ad := s.makeContextValues(acoUnderTest)
 			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-			req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 
 			JobStatus(rr, req)
 
@@ -301,7 +301,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 			ad := s.makeContextValues(acoUnderTest)
 			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-			req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 
 			JobStatus(rr, req)
 
@@ -453,7 +453,7 @@ func (s *APITestSuite) TestJobsStatus() {
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -473,7 +473,7 @@ func (s *APITestSuite) TestJobsStatusNotFound() {
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	JobsStatus(rr, req)
@@ -485,7 +485,7 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -505,7 +505,7 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -525,7 +525,7 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -553,7 +553,7 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	AttributionStatus(rr, req)
@@ -581,7 +581,7 @@ func (s *APITestSuite) createJobStatusRequest(acoID uuid.UUID, jobID uint) *http
 	rctx.URLParams.Add("jobID", fmt.Sprint(jobID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), logging.CommonLogCtxKey, newLogEntry))
+	req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 	ad := s.makeContextValues(acoID)
 	return req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 }
