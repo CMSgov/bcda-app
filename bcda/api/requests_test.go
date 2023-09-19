@@ -15,12 +15,14 @@ import (
 	"time"
 
 	"github.com/go-testfixtures/testfixtures/v3"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
+	logging "github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -137,6 +139,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			h.Svc = mockSvc
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 			w := httptest.NewRecorder()
 			h.BulkGroupRequest(w, req)
 
@@ -218,6 +222,8 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 
 			rr := httptest.NewRecorder()
 			req := s.genGetJobsRequest(apiVersionOne, tt.statuses)
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
@@ -310,6 +316,8 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 
 			rr := httptest.NewRecorder()
 			req := s.genGetJobsRequest(apiVersionTwo, tt.statuses)
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(req.Context(), logging.CtxLoggerKey, newLogEntry))
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
@@ -530,6 +538,9 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 				CMSID: test.cmsId,
 			}))
 
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
+			r = r.WithContext(context.WithValue(r.Context(), logging.CtxLoggerKey, newLogEntry))
+
 			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
@@ -641,7 +652,8 @@ func (s *RequestsTestSuite) TestJobStatus() {
 
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
 	req = req.WithContext(ctx)
-
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry))
 	w := httptest.NewRecorder()
 	h.JobStatus(w, req)
 	s.Equal(http.StatusOK, w.Code)
@@ -699,6 +711,8 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 
 			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
 			req = req.WithContext(ctx)
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry))
 
 			w := httptest.NewRecorder()
 			h.JobStatus(w, req)
@@ -748,7 +762,8 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
 	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
 	ctx = middleware.NewRequestParametersContext(ctx, rp)
-
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	ctx = context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry)
 	req = req.WithContext(ctx)
 
 	return req
@@ -758,10 +773,10 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
-
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	ctx = middleware.NewRequestParametersContext(ctx, rp)
-
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	ctx = context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)
 }
 
@@ -769,9 +784,9 @@ func (s *RequestsTestSuite) genASRequest() *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/attribution_status", nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
-
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
-
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	ctx = context.WithValue(ctx, logging.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)
 }
 
@@ -794,4 +809,10 @@ func (s *RequestsTestSuite) genGetJobsRequest(version string, statuses []models.
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 
 	return req.WithContext(ctx)
+}
+
+func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *logging.StructuredLoggerEntry {
+	var lggr logrus.Logger
+	newLogEntry := &logging.StructuredLoggerEntry{Logger: lggr.WithFields(logFields)}
+	return newLogEntry
 }
