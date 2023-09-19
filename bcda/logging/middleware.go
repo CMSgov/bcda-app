@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -135,4 +136,44 @@ func Redact(uri string) string {
 		uri = strings.Replace(uri, match[1], "<redacted>", 1)
 	}
 	return uri
+}
+
+// type to create context.Contest key
+type CtxLoggerKeyType string
+
+// context.Context key to set/get logrus.FieldLogger value within request context
+const CtxLoggerKey CtxLoggerKeyType = "ctxLogger"
+
+// NewCtxLogger adds new key value pair of {CtxLoggerKey: logrus.FieldLogger} to the requests context
+func NewCtxLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logFields := logrus.Fields{}
+		logFields["request_id"] = middleware.GetReqID(r.Context())
+		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
+			logFields["cms_id"] = ad.CMSID
+		}
+		newLogEntry := &StructuredLoggerEntry{Logger: log.API.WithFields(logFields)}
+		r = r.WithContext(context.WithValue(r.Context(), CtxLoggerKey, newLogEntry))
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Gets the logrus.FieldLogger from a context
+func GetCtxLogger(ctx context.Context) logrus.FieldLogger {
+	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)
+	return entry.Logger
+}
+
+// Appends additional or creates new logrus.Fields to a logrus.FieldLogger within a context
+func SetCtxLogger(ctx context.Context, key string, value interface{}) (context.Context, logrus.FieldLogger) {
+	if entry, ok := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry); ok {
+		entry.Logger = entry.Logger.WithField(key, value)
+		nCtx := context.WithValue(ctx, CtxLoggerKey, entry)
+		return nCtx, entry.Logger
+	}
+
+	var lggr logrus.Logger
+	newLogEntry := &StructuredLoggerEntry{Logger: lggr.WithField(key, value)}
+	nCtx := context.WithValue(ctx, CtxLoggerKey, newLogEntry)
+	return nCtx, newLogEntry.Logger
 }

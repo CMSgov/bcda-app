@@ -240,3 +240,42 @@ func TestResourceTypeLogging(t *testing.T) {
 		}
 	}
 }
+
+func TestMiddlewareLogCtx(t *testing.T) {
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		val := r.Context().Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
+		if val == nil {
+			t.Error("no log context")
+		}
+
+	})
+
+	handlerToTest := contextToken(middleware.RequestID(logging.NewCtxLogger(nextHandler)))
+	req := httptest.NewRequest("GET", "http://testing", nil)
+	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+
+}
+
+func TestSetCtxLogger(t *testing.T) {
+	ctx := context.Background()
+	ctx, _ = logging.SetCtxLogger(ctx, "request_id", "123456")
+	ctx, _ = logging.SetCtxLogger(ctx, "cms_id", "A0000")
+	ctxEntryAppend := ctx.Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
+	entry := ctxEntryAppend.Logger.WithField("test", "entry")
+
+	if cmsId, ok := entry.Data["cms_id"]; ok {
+		if cmsId != "A0000" {
+			t.Errorf("unexpected value for cms_id")
+		}
+	} else {
+		t.Errorf("key cms_id does not exist")
+	}
+	if reqId, ok := entry.Data["request_id"]; ok {
+		if reqId != "123456" {
+			t.Errorf("unexpected value for request_id")
+		}
+	} else {
+		t.Errorf("key request_id does not exist")
+	}
+}
