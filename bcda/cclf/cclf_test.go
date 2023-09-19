@@ -136,10 +136,9 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 func (s *CCLFTestSuite) TestImportCCLFDirectory() {
 	assert := assert.New(s.T())
 
-	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
-
 	//Happy case, with directory containing valid BCD files.
-	_, _, _, err := ImportCCLFDirectory(cclfDirectory + "/archives/valid_bcd")
+	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
+	_, _, _, err := ImportCCLFDirectory(filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid_bcd"))
 	assert.Nil(err)
 
 	//Directory with mixed file types + at least one bad file.
@@ -147,7 +146,8 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory() {
 	assert.EqualError(err, "one or more files failed to import correctly")
 
 	//Target bad file directory
-	_, _, _, err = ImportCCLFDirectory(cclfDirectory + "/archives/invalid_bcd")
+	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "archives", "invalid_bcd")
+	_, _, _, err = ImportCCLFDirectory(cclfDirectory)
 	assert.EqualError(err, "one or more files failed to import correctly")
 
 	//Zero CCLF files in directory
@@ -156,8 +156,9 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory() {
 	assert.Nil(err)
 
 	//additional invalid directory
-	_, _, _, err = ImportCCLFDirectory(cclfDirectory + "/archives")
-	assert.EqualError(err, "error in sorting cclf file: nil,: lstat "+cclfDirectory+"/archives: no such file or directory")
+	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "emptydir", "archives")
+	_, _, _, err = ImportCCLFDirectory(cclfDirectory)
+	assert.EqualError(err, "error in sorting cclf file: nil,: lstat "+cclfDirectory+": no such file or directory")
 
 }
 
