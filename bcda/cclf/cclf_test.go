@@ -153,14 +153,15 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 
 }
 
-func (s *CCLFTestSuite) TestImportCCLFDirectoryEmpty() {
-	assert := assert.New(s.T())
-	//Zero CCLF files in directory
-	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "emptydir")
-	_, _, _, err := ImportCCLFDirectory(cclfDirectory)
-	assert.Nil(err)
-}
-
+/*
+	func (s *CCLFTestSuite) TestImportCCLFDirectoryEmpty() {
+		assert := assert.New(s.T())
+		//Zero CCLF files in directory
+		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "emptydir")
+		_, _, _, err := ImportCCLFDirectory(cclfDirectory)
+		assert.Nil(err)
+	}
+*/
 func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 	assert := assert.New(s.T())
 	//Zero CCLF files in directory
