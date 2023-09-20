@@ -133,16 +133,17 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 549}, validator["CCLF8"])
 }
 
-func (s *CCLFTestSuite) TestImportCCLFDirectory() {
+func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	assert := assert.New(s.T())
-
 	//Happy case, with directory containing valid BCD files.
-	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
 	_, _, _, err := ImportCCLFDirectory(filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid_bcd"))
 	assert.Nil(err)
-
+}
+func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
+	assert := assert.New(s.T())
 	//Directory with mixed file types + at least one bad file.
-	_, _, _, err = ImportCCLFDirectory(cclfDirectory)
+	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
+	_, _, _, err := ImportCCLFDirectory(cclfDirectory)
 	assert.EqualError(err, "one or more files failed to import correctly")
 
 	//Target bad file directory
@@ -150,14 +151,22 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory() {
 	_, _, _, err = ImportCCLFDirectory(cclfDirectory)
 	assert.EqualError(err, "one or more files failed to import correctly")
 
-	//Zero CCLF files in directory
-	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "emptydir")
-	_, _, _, err = ImportCCLFDirectory(cclfDirectory)
-	assert.Nil(err)
+}
 
+func (s *CCLFTestSuite) TestImportCCLFDirectoryEmpty() {
+	assert := assert.New(s.T())
+	//Zero CCLF files in directory
+	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "emptydir")
+	_, _, _, err := ImportCCLFDirectory(cclfDirectory)
+	assert.Nil(err)
+}
+
+func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
+	assert := assert.New(s.T())
+	//Zero CCLF files in directory
 	//additional invalid directory
-	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "emptydir", "archives")
-	_, _, _, err = ImportCCLFDirectory(cclfDirectory)
+	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "emptydir", "archives")
+	_, _, _, err := ImportCCLFDirectory(cclfDirectory)
 	assert.EqualError(err, "error in sorting cclf file: nil,: lstat "+cclfDirectory+": no such file or directory")
 
 }
