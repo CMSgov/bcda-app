@@ -258,14 +258,14 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			getCCLFFile(4),
 			nil,
 			nil,
-			fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID"),
+			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoBenesFoundNewAndOld",
 			getCCLFFile(5),
 			getCCLFFile(6),
 			nil,
-			fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID"),
+			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoMBIsForOldCCLF",
