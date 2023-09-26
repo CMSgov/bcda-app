@@ -134,10 +134,10 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		expectedErr error
 		expLogMsg   string
 	}{
-		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `^Removing queuejob from que; parent job \d+ cancelled.`},
-		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job does not contain valid base path; removing queuejob from que.`},
-		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found, retrying`},
-		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found. Retries exhausted. Removing job from queue.`},
+		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `^queJob \d+ associated with a cancelled parent Job`},
+		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job \d+ does not contain valid base path`},
+		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found for ID: \d+ acoID.*Will retry`},
+		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
 		{"OtherError", fmt.Errorf(constants.DefaultError), fmt.Errorf(constants.DefaultError), ""},
 	}
 	hook := test.NewLocal(testUtils.GetLogger(log.Worker))

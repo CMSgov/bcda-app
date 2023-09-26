@@ -120,23 +120,24 @@ func (q *queue) processJob(job *que.Job) error {
 	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
-		logger.Warnf("Removing queuejob from que; parent job %d cancelled.", jobArgs.ID)
+		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
 		return nil
 	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
 		// Data is corrupted, we cannot work on this job.
-		logger.Warnf("Job does not contain valid base path; removing queuejob from que.")
+		logger.Warnf("Job %d does not contain valid base path. Removing queuejob from que.", jobArgs.ID)
 		return nil
 	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
 		if job.ErrorCount >= maxNotFoundRetries {
-			logger.Errorf("No job found. Retries exhausted. Removing job from queue.")
+			logger.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
+				jobArgs.ACOID)
 			// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
 			return nil
 		}
 
-		logger.Warnf("No job found, retrying")
+		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
 		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
 	} else if err != nil {
 		err := errors.Wrap(err, "failed to validate job")
