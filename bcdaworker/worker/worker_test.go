@@ -30,15 +30,15 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	workerlog "github.com/CMSgov/bcda-app/bcdaworker/log"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/log"
+	log "github.com/CMSgov/bcda-app/log"
 )
 
 var logHook *test.Hook
 var oldLogger logrus.FieldLogger
+var GlobalLogger *logrus.Logger
 
 type WorkerTestSuite struct {
 	suite.Suite
@@ -99,11 +99,11 @@ func (s *WorkerTestSuite) SetupTest() {
 
 	// Due to test not being able to handle a FieldLogger and our log package not storing the logger,
 	// we have to recreate the logger so we have access to both
-	logger := logrus.New()
-	log.Worker = logger.WithFields(logrus.Fields{
-		"unitTest": true,
-	})
-	logHook = test.NewLocal(logger)
+	// logger := logrus.New()
+	// log.Worker = logger.WithFields(logrus.Fields{
+	// 	"unitTest": true,
+	// })
+	// logHook = test.NewLocal(logger)
 }
 
 func (s *WorkerTestSuite) TearDownTest() {
@@ -165,9 +165,8 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ClaimsWindow: claimsWindow}
-			ctxFields := logrus.Fields{"job_id": s.jobID, "aco_id": s.testACO.ID}
 			ctx := context.Background()
-			ctx = workerlog.WithLogFields(ctx, ctxFields)
+			ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 			uuid, size, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 			if tt.expectZeroSize {
 				assert.EqualValues(t, 0, size)
@@ -241,9 +240,8 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	ctxFields := logrus.Fields{"job_id": jobArgs.ID, "aco_id": jobArgs.ACOID}
 	ctx := context.Background()
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	_, size, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.EqualValues(s.T(), 0, size)
 	assert.NoError(s.T(), err)
@@ -273,9 +271,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	ctxFields := logrus.Fields{"job_id": jobArgs.ID, "aco_id": jobArgs.ACOID}
 	ctx := context.Background()
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	fileUUID, size, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 	assert.NoError(s.T(), err)
@@ -320,9 +317,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	ctxFields := logrus.Fields{"job_id": jobArgs.ID, "aco_id": jobArgs.ACOID}
 	ctx := context.Background()
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	_, _, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
@@ -367,9 +363,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	ctxFields := logrus.Fields{"job_id": jobArgs.ID, "aco_id": jobArgs.ACOID}
 	ctx := context.Background()
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	_, _, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
@@ -431,7 +426,9 @@ func (s *WorkerTestSuite) TestGetFailureThreshold() {
 }
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
-	appendErrorToFile(context.Background(), s.testACO.UUID.String(),
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	appendErrorToFile(ctx, s.testACO.UUID.String(),
 		fhircodes.IssueTypeCode_CODE_INVALID,
 		"", "", s.jobID)
 
@@ -463,8 +460,9 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	ctxFields := logrus.Fields{"job_id": j.ID, "aco_id": j.ACOID}
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, logger := log.SetCtxLogger(ctx, "job_id", j.ID)
+	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
 	complete, err := checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
@@ -479,10 +477,11 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	}
 
 	err = s.w.ProcessJob(ctx, j, jobArgs)
+	entries := logHook.AllEntries()
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), logHook.Entries[0].Data, "cms_id")
-	assert.Contains(s.T(), logHook.Entries[0].Data, "job_id")
-	assert.Contains(s.T(), logHook.Entries[0].Data, "aco_id")
+	assert.Contains(s.T(), entries[0].Data, "cms_id")
+	assert.Contains(s.T(), entries[0].Data, "job_id")
+
 	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
@@ -512,8 +511,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	}
 
 	ctx := context.Background()
-	ctxFields := logrus.Fields{"job_id": jobArgs.ID, "aco_id": jobArgs.ACOID}
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
@@ -538,9 +536,6 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 		ResourceType:   "ExplanationOfBenefit",
 		BBBasePath:     constants.TestFHIRPath,
 	}
-
-	ctxFields := logrus.Fields{"job_id": jobArgs.ID, "aco_id": jobArgs.ACOID}
-	ctx = workerlog.WithLogFields(ctx, ctxFields)
 
 	processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
 	completedJob, _ := s.r.GetJobByID(ctx, j.ID)
@@ -605,7 +600,9 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 				}
 			}
 
-			completed, err := checkJobCompleteAndCleanup(context.Background(), repository, jobID)
+			ctx := context.Background()
+			ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+			completed, err := checkJobCompleteAndCleanup(ctx, repository, jobID)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.completed, completed)
 

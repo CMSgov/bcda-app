@@ -23,7 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	logging "github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -160,7 +159,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		statusTypes []models.JobStatus
 		err         error
 	)
-	logger := logging.GetCtxLogger(r.Context())
+	logger := log.GetCtxLogger(r.Context())
 	statusTypes = models.AllJobStatuses // default request to retrieve jobs with all statuses
 	params, ok := r.URL.Query()["_status"]
 	if ok {
@@ -223,7 +222,7 @@ func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
-	logger := logging.GetCtxLogger(r.Context())
+	logger := log.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
@@ -320,7 +319,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
-	logger := logging.GetCtxLogger(r.Context())
+	logger := log.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
@@ -405,7 +404,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
-	logger := logging.GetCtxLogger(ctx)
+	logger := log.GetCtxLogger(ctx)
 	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, fileType)
 	if err != nil {
 		logger.Error(err)
@@ -434,7 +433,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
-	logger := logging.GetCtxLogger(r.Context())
+	logger := log.GetCtxLogger(r.Context())
 
 	var (
 		ad  auth.AuthData
@@ -530,7 +529,8 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 
 	if newJob.ID != 0 {
-		ctx, logger = logging.SetCtxLogger(ctx, "job_id", newJob.ID)
+		ctx, logger = log.SetCtxLogger(ctx, "job_id", newJob.ID)
+		logger.Info("job id created")
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata

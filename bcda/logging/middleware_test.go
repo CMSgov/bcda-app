@@ -183,7 +183,7 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 
 type mockLogger struct {
 	Logger logrus.FieldLogger
-	entry  *logging.StructuredLoggerEntry
+	entry  *log.StructuredLoggerEntry
 }
 
 func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
@@ -219,7 +219,7 @@ func TestResourceTypeLogging(t *testing.T) {
 			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), constants.TestBlobFileName).Return(nil, errors.New("expected error"))
 		}
 
-		entry := &logging.StructuredLoggerEntry{Logger: log.Request}
+		entry := &log.StructuredLoggerEntry{Logger: log.Request}
 
 		logger := logging.ResourceTypeLogger{
 			Repository: repository,
@@ -244,7 +244,7 @@ func TestResourceTypeLogging(t *testing.T) {
 func TestMiddlewareLogCtx(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		val := r.Context().Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
+		val := r.Context().Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
 		if val == nil {
 			t.Error("no log context")
 		}
@@ -259,9 +259,9 @@ func TestMiddlewareLogCtx(t *testing.T) {
 
 func TestSetCtxLogger(t *testing.T) {
 	ctx := context.Background()
-	ctx, _ = logging.SetCtxLogger(ctx, "request_id", "123456")
-	ctx, _ = logging.SetCtxLogger(ctx, "cms_id", "A0000")
-	ctxEntryAppend := ctx.Value(logging.CtxLoggerKey).(*logging.StructuredLoggerEntry)
+	ctx, _ = log.SetCtxLogger(ctx, "request_id", "123456")
+	ctx, _ = log.SetCtxLogger(ctx, "cms_id", "A0000")
+	ctxEntryAppend := ctx.Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
 	entry := ctxEntryAppend.Logger.WithField("test", "entry")
 
 	if cmsId, ok := entry.Data["cms_id"]; ok {
