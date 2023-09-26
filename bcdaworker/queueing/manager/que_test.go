@@ -22,6 +22,7 @@ import (
 	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -133,13 +134,13 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		expectedErr error
 		expLogMsg   string
 	}{
-		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `^queJob \d+ associated with a cancelled parent Job`},
-		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job \d+ does not contain valid base path`},
-		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found for ID: \d+ acoID.*Will retry`},
-		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
+		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `^Removing queuejob from que; parent job \d+ cancelled.`},
+		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job does not contain valid base path; removing queuejob from que.`},
+		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found, retrying`},
+		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found. Retries exhausted. Removing job from queue.`},
 		{"OtherError", fmt.Errorf(constants.DefaultError), fmt.Errorf(constants.DefaultError), ""},
 	}
-
+	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
@@ -170,7 +171,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			}
 
 			if tt.expLogMsg != "" {
-				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), logHook.LastEntry().Message)
+				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
 			}
 		})
 	}
