@@ -250,7 +250,10 @@ func (s *SSASClientTestSuite) TestDeleteGroupTable() {
 		}
 
 		if tc.createGroup {
-			client.CreateGroup(tc.fnInput[0], tc.fnInput[1], tc.fnInput[2])
+			_, err = client.CreateGroup(tc.fnInput[0], tc.fnInput[1], tc.fnInput[2])
+			if err != nil {
+				s.T().Fatal(err)
+			}
 		}
 		err = client.DeleteGroup(tc.ID)
 		if tc.errorExpected {
