@@ -178,7 +178,7 @@ func (s *SSASClientTestSuite) TestCreateGroupTable() {
 			w.WriteHeader(tc.header)
 			_, err := w.Write([]byte(tc.fnInput[3]))
 			if err != nil {
-				s.Fail(err.Error())
+				s.T().Fatal(err)
 			}
 		})
 		server := httptest.NewServer(router)
@@ -227,7 +227,7 @@ func (s *SSASClientTestSuite) TestDeleteGroupTable() {
 			w.WriteHeader(http.StatusCreated)
 			_, err := w.Write([]byte(tc.fnInput[3]))
 			if err != nil {
-				s.Fail(err.Error())
+				s.T().Fatal(err)
 			}
 		})
 		router.Delete("/group/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -468,7 +468,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 			}
 			client, err := authclient.NewSSASClient()
 			if err != nil {
-				s.Fail(err.Error())
+				s.T().Fatal(err)
 			}
 
 			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
@@ -537,7 +537,7 @@ func (s *SSASClientTestSuite) TestGetPublicKeyTable() {
 		router.Get("/system/{systemID}/key", func(w http.ResponseWriter, r *http.Request) {
 			_, err := w.Write([]byte(`{ "client_id": "123456", "public_key": "` + keyStr + `" }`))
 			if err != nil {
-				s.Fail(err.Error())
+				s.T().Fatal(err)
 			}
 		})
 		server := httptest.NewServer(router)
@@ -715,7 +715,7 @@ func (s *SSASClientTestSuite) TestCreateSystemTable() {
 			if tc.header == http.StatusCreated {
 				_, err := w.Write([]byte(`{"system_id": "1", "client_id":` + constants.FakeClientIDBt + `, "client_secret": ` + constants.FakeSecretBt + `, "client_name": "fake-name"}`))
 				if err != nil {
-					s.Fail(err.Error())
+					s.T().Fatal(err)
 				}
 			}
 
