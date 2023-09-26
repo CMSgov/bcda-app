@@ -604,7 +604,8 @@ func (s *SSASClientTestSuite) TestResetCredentialsTable() {
 		} else {
 			assert.Nil(s.T(), err, nil)
 			creds := auth.Credentials{}
-			_ = json.Unmarshal(resp, &creds)
+			err = json.Unmarshal(resp, &creds)
+			assert.Nil(s.T(), err)
 			assert.Equal(s.T(), constants.FakeClientID, creds.ClientID)
 			assert.Equal(s.T(), constants.FakeSecret, creds.ClientSecret)
 		}
