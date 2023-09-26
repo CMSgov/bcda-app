@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -179,7 +178,7 @@ func (s *SSASClientTestSuite) TestCreateGroupTable() {
 			w.WriteHeader(tc.header)
 			_, err := w.Write([]byte(tc.fnInput[3]))
 			if err != nil {
-				log.Fatal(err)
+				s.Fail(err.Error())
 			}
 		})
 		server := httptest.NewServer(router)
@@ -194,7 +193,6 @@ func (s *SSASClientTestSuite) TestCreateGroupTable() {
 			s.FailNow(constants.CreateSsasErr, err.Error())
 		}
 
-		fmt.Println(tc)
 		resp, err := client.CreateGroup(tc.fnInput[0], tc.fnInput[1], tc.fnInput[2])
 
 		if tc.errorExpected {
@@ -229,7 +227,7 @@ func (s *SSASClientTestSuite) TestDeleteGroupTable() {
 			w.WriteHeader(http.StatusCreated)
 			_, err := w.Write([]byte(tc.fnInput[3]))
 			if err != nil {
-				log.Fatal(err)
+				s.Fail(err.Error())
 			}
 		})
 		router.Delete("/group/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -251,10 +249,8 @@ func (s *SSASClientTestSuite) TestDeleteGroupTable() {
 			s.FailNow(constants.CreateSsasErr, err.Error())
 		}
 
-		fmt.Println(tc)
 		if tc.createGroup {
-			resp, _ := client.CreateGroup(tc.fnInput[0], tc.fnInput[1], tc.fnInput[2])
-			fmt.Println(string(resp))
+			client.CreateGroup(tc.fnInput[0], tc.fnInput[1], tc.fnInput[2])
 		}
 		err = client.DeleteGroup(tc.ID)
 		if tc.errorExpected {
@@ -472,7 +468,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 			}
 			client, err := authclient.NewSSASClient()
 			if err != nil {
-				log.Fatalf(constants.SsasClientErr, err.Error())
+				s.Fail(err.Error())
 			}
 
 			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
@@ -541,7 +537,7 @@ func (s *SSASClientTestSuite) TestGetPublicKeyTable() {
 		router.Get("/system/{systemID}/key", func(w http.ResponseWriter, r *http.Request) {
 			_, err := w.Write([]byte(`{ "client_id": "123456", "public_key": "` + keyStr + `" }`))
 			if err != nil {
-				log.Fatal(err)
+				s.Fail(err.Error())
 			}
 		})
 		server := httptest.NewServer(router)
@@ -719,7 +715,7 @@ func (s *SSASClientTestSuite) TestCreateSystemTable() {
 			if tc.header == http.StatusCreated {
 				_, err := w.Write([]byte(`{"system_id": "1", "client_id":` + constants.FakeClientIDBt + `, "client_secret": ` + constants.FakeSecretBt + `, "client_name": "fake-name"}`))
 				if err != nil {
-					log.Fatal(err)
+					s.Fail(err.Error())
 				}
 			}
 
