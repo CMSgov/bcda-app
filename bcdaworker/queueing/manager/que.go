@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
@@ -113,37 +114,44 @@ func (q *queue) processJob(job *que.Job) error {
 		return nil
 	}
 
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, logger := log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
+
 	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
-		q.log.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
+		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
 		return nil
 	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
 		// Data is corrupted, we cannot work on this job.
-		q.log.Warnf("Job %d does not contain valid base path. Removing queuejob from que.", jobArgs.ID)
+		logger.Warnf("Job %d does not contain valid base path. Removing queuejob from que.", jobArgs.ID)
 		return nil
 	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
 		if job.ErrorCount >= maxNotFoundRetries {
-			q.log.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
+			logger.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
 				jobArgs.ACOID)
 			// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
 			return nil
 		}
 
-		q.log.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
+		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
 		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
 	} else if err != nil {
-		return errors.Wrap(err, "failed to validate job")
+		err := errors.Wrap(err, "failed to validate job")
+		logger.Error(err)
+		return err
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
 	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 15)
 
 	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
-		return errors.Wrap(err, "failed to process job")
+		err := errors.Wrap(err, "failed to process job")
+		logger.Error(err)
+		return err
 	}
 
 	return nil
