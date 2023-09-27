@@ -153,7 +153,7 @@ func GetLogger(logger logrus.FieldLogger) *logrus.Logger {
 	return logger.(*logrus.Logger)
 }
 
-//ReadResponseBody will read http.Response and return the body contents as a string.
+// ReadResponseBody will read http.Response and return the body contents as a string.
 func ReadResponseBody(r *http.Response) string {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
@@ -166,9 +166,9 @@ func ReadResponseBody(r *http.Response) string {
 	return bodyString
 }
 
-//MakeTestServerWithIntrospectEndpoint creates an httptest.Server with an introspect endpoint that will
-//return back a response with a json body indicating if "active" is set to true or false (set by active
-//token parameter)
+// MakeTestServerWithIntrospectEndpoint creates an httptest.Server with an introspect endpoint that will
+// return back a response with a json body indicating if "active" is set to true or false (set by active
+// token parameter)
 func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
 	router := chi.NewRouter()
 	router.Post(constants.IntrospectPath, func(w http.ResponseWriter, r *http.Request) {
@@ -202,8 +202,8 @@ func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
 	return httptest.NewServer(router)
 }
 
-//MakeTestServerWithIntrospectTimeout creates an httptest.Server with an introspect endpoint that will sleep for 10 seconds.
-//Useful in testing where the env timeout is set to something less (ex. 5 seconds) and you want to ensure *url.Error.Timeout() returns true.
+// MakeTestServerWithIntrospectTimeout creates an httptest.Server with an introspect endpoint that will sleep for 10 seconds.
+// Useful in testing where the env timeout is set to something less (ex. 5 seconds) and you want to ensure *url.Error.Timeout() returns true.
 func MakeTestServerWithIntrospectTimeout() *httptest.Server {
 	router := chi.NewRouter()
 	router.Post(constants.IntrospectPath, func(w http.ResponseWriter, r *http.Request) {
@@ -213,8 +213,8 @@ func MakeTestServerWithIntrospectTimeout() *httptest.Server {
 	return httptest.NewServer(router)
 }
 
-//MakeTestServerWithIntrospectReturn502 creates an httptest.Server
-//with an introspect endpoint that will return 502 Status Code.
+// MakeTestServerWithIntrospectReturn502 creates an httptest.Server
+// with an introspect endpoint that will return 502 Status Code.
 func MakeTestServerWithIntrospectReturn502() *httptest.Server {
 	router := chi.NewRouter()
 	router.Post(constants.IntrospectPath, func(w http.ResponseWriter, r *http.Request) {
@@ -239,6 +239,29 @@ func MakeTestServerWithValidTokenRequest() *httptest.Server {
 	router := chi.NewRouter()
 	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	return httptest.NewServer(router)
+}
+
+func MakeTestServerWithInvalidCarriage() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post(constants.TokenPath+"\n", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	return httptest.NewServer(router)
+}
+
+func MakeTestServerWithBadRequest() *httptest.Server {
+	router := chi.NewRouter()
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write([]byte(`Bad Request`))
 		if err != nil {
 			log.Fatal(err)
 		}
