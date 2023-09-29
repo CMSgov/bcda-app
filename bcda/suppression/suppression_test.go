@@ -345,41 +345,11 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	}
 }
 
-func (s *SuppressionTestSuite) TestCleanupSuppression_Bad() {
+func (s *SuppressionTestSuite) TestCleanupSuppression_RenameFileError() {
 	assert := assert.New(s.T())
 	var suppresslist []*optout.OptOutFilenameMetadata
 
-	//new use cases
-	conf.SetEnv(s.T(), "PENDING_DELETION_DIR", "\n")
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata1 := &optout.OptOutFilenameMetadata{
-		Name:         constants.TestSuppressBadPath,
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
-		Imported:     false,
-		DeliveryDate: fileTime,
-	}
-
-	//
-	metadata2 := &optout.OptOutFilenameMetadata{
-		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
-		Imported:     true,
-		DeliveryDate: time.Now(),
-	}
-
-	suppresslist = []*optout.OptOutFilenameMetadata{metadata1, metadata2}
-	err := cleanupSuppression(suppresslist)
-	assert.EqualError(err, "2 files could not be cleaned up")
-
-}
-
-func (s *SuppressionTestSuite) TestCleanupSuppression_Bad2() {
-	assert := assert.New(s.T())
-	var suppresslist []*optout.OptOutFilenameMetadata
-
-	//new use cases
+	//Induce an error when attempting to rename file
 	conf.SetEnv(s.T(), "PENDING_DELETION_DIR", "\n")
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata1 := &optout.OptOutFilenameMetadata{
