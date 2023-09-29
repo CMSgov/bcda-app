@@ -492,6 +492,66 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.Equal(s.T(), 1, completedJob.CompletedJobCount)
 }
 
+func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
+	ctx := context.Background()
+	j := models.Job{
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     models.JobStatusPending,
+		JobCount:   1,
+	}
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, logger := log.SetCtxLogger(ctx, "job_id", j.ID)
+	logHook = test.NewLocal(testUtils.GetLogger(logger))
+
+	jobArgs := models.JobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		BeneficiaryIDs: []string{"10000", "11000"},
+		ResourceType:   "ExplanationOfBenefit",
+		BBBasePath:     constants.TestFHIRPath,
+	}
+	r := &repository.MockRepository{}
+	defer r.AssertExpectations(s.T())
+	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(s.testACO, nil)
+	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, uint(jobArgs.ID), models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
+	w := &worker{r}
+	err := w.ProcessJob(ctx, j, jobArgs)
+	assert.NotNil(s.T(), err)
+
+}
+
+func (s *WorkerTestSuite) TestProcessJobACOUUID() {
+	ctx := context.Background()
+	j := models.Job{
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     models.JobStatusPending,
+		JobCount:   1,
+	}
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, logger := log.SetCtxLogger(ctx, "job_id", j.ID)
+	logHook = test.NewLocal(testUtils.GetLogger(logger))
+
+	jobArgs := models.JobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		BeneficiaryIDs: []string{"10000", "11000"},
+		ResourceType:   "ExplanationOfBenefit",
+		BBBasePath:     constants.TestFHIRPath,
+	}
+
+	r := &repository.MockRepository{}
+	defer r.AssertExpectations(s.T())
+	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
+	w := &worker{r}
+	err := w.ProcessJob(ctx, j, jobArgs)
+	assert.NotNil(s.T(), err)
+
+}
+
 func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
