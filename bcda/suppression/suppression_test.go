@@ -187,6 +187,50 @@ func (s *SuppressionTestSuite) TestValidate() {
 	err = validate(metadata)
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.FilePath+"'. Expected record count: 5, Actual record count: 4")
 }
+func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
+	assert := assert.New(s.T())
+	var suppresslist []*optout.OptOutFilenameMetadata
+	var skipped int
+
+	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
+	err := filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	assert.Nil(err)
+	assert.Equal(2, len(suppresslist))
+	assert.Equal(0, skipped)
+
+	suppresslist = []*optout.OptOutFilenameMetadata{}
+	skipped = 0
+	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
+	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	assert.Nil(err)
+	assert.Equal(0, len(suppresslist))
+	assert.Equal(2, skipped)
+
+	suppresslist = []*optout.OptOutFilenameMetadata{}
+	skipped = 0
+	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
+	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	assert.Nil(err)
+	modtimeAfter := time.Now().Truncate(time.Second)
+	// check current value and change mod time
+	for _, f := range suppresslist {
+		fInfo, _ := os.Stat(f.FilePath)
+		assert.Equal(fInfo.ModTime().Format("010203040506"), f.DeliveryDate.Format("010203040506"))
+
+		err = os.Chtimes(f.FilePath, modtimeAfter, modtimeAfter)
+		if err != nil {
+			s.FailNow(constants.TestChangeTimeErr, err)
+		}
+	}
+
+	suppresslist = []*optout.OptOutFilenameMetadata{}
+	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
+	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	assert.Nil(err)
+	for _, f := range suppresslist {
+		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
+	}
+}
 
 func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	assert := assert.New(s.T())
