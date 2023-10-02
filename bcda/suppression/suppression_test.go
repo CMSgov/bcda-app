@@ -129,12 +129,14 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert.Contains(err.Error(), "could not read file")
 
 	tests := []struct {
-		name   string
-		expErr string
+		name    string
+		expErr  string
+		dbError bool
 	}{
-		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "failed to parse the effective date '20191301' from file"},
-		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012", "failed to parse the samhsa effective date '20191301' from file"},
-		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013", "failed to parse beneficiary link key from file"},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "failed to parse the effective date '20191301' from file", false},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012", "failed to parse the samhsa effective date '20191301' from file", false},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013", "failed to parse beneficiary link key from file", false},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "could not create suppression file record for file", true},
 	}
 
 	for _, tt := range tests {
@@ -146,13 +148,20 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 				Name:         tt.name,
 				DeliveryDate: time.Now(),
 			}
+
+			if tt.dbError {
+				db.Close()
+			}
 			err = importSuppressionData(metadata)
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
-			suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
-			assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-			postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
+			if !tt.dbError {
+				suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
+				assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
+				postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
+			}
+
 		})
 	}
 }
