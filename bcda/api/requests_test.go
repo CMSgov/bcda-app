@@ -64,9 +64,6 @@ type RequestsTestSuite struct {
 	resourceType map[string]service.DataType
 }
 
-func (s *RequestsTestSuite) resetBBPaths() {
-	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
-}
 func TestRequestsTestSuite(t *testing.T) {
 	suite.Run(t, new(RequestsTestSuite))
 }
@@ -687,68 +684,6 @@ func (s *RequestsTestSuite) TestRequests() {
 				Since:         since,
 			}
 			rr := httptest.NewRecorder()
-			h.BulkPatientRequest(rr, s.genPatientRequest(rp))
-			assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-		}
-	}
-}
-
-func (s *RequestsTestSuite) TestRequests_Negative() {
-
-	apiVersion := "v2"
-	fhirPath := "/" + apiVersion + "/fhir"
-	resourceMap := s.resourceType
-
-	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
-
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := &queueing.MockEnqueuer{}
-	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return()
-	h.Enq = enqueuer
-	mockSvc := service.MockService{}
-
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
-	mockAco := service.ACOConfig{
-		Data: []string{"adjudicated"},
-	}
-	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
-
-	h.Svc = &mockSvc
-
-	// Test Group and Patient
-	// Patient, Coverage, and ExplanationOfBenefit
-	// with And without Since parameter
-	resources := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
-	sinces := []time.Time{{}, time.Now().Round(time.Millisecond).Add(-24 * time.Hour)}
-	groupIDs := []string{"all", "runout"}
-
-	// Validate group requests
-	for _, resource := range resources {
-		for _, since := range sinces {
-			for _, groupID := range groupIDs {
-				rp := middleware.RequestParameters{
-					Version:       apiVersionOne,
-					ResourceTypes: []string{resource},
-					Since:         since,
-				}
-				rr := httptest.NewRecorder()
-				req := s.genGroupRequest(groupID, rp)
-				h.BulkGroupRequest(rr, req)
-				assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-			}
-		}
-	}
-
-	// Validate patient requests
-	for _, resource := range resources {
-		for _, since := range sinces {
-			rp := middleware.RequestParameters{
-				Version:       apiVersionOne,
-				ResourceTypes: []string{resource},
-				Since:         since,
-			}
-			rr := httptest.NewRecorder()
-			//	s.db.Close()
 			h.BulkPatientRequest(rr, s.genPatientRequest(rp))
 			assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 		}
