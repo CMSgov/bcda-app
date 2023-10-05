@@ -35,6 +35,7 @@ const TestSynthMedFilesPath = "synthetic1800MedicareFiles/test/"
 const TestFakePath = "/src/github.com/CMSgov/bcda-app/conf/FAKE"
 const TestConfPath = "/src/github.com/CMSgov/bcda-app/conf/test"
 const TestSuppressBadPath = "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"
+const TestSuppressBadDeletePath = "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"
 const JobsFilePath = "jobs/1"
 const AuthTokenPath = "/auth/token"  // #nosec - G101 credentials for unit testing
 const TokenPath = "/token"           // #nosec - G101 credentials for unit testing
