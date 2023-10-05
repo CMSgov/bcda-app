@@ -229,7 +229,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		//We don't need to return the full error to a consumer.
+		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "")
+
 		return
 	}
 
@@ -238,7 +241,9 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		logger.Error(err)
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
 		// So returning a StatusNotFound may be a misnomer
+		//In contrast to above, if the input COULD be valid, we return a not found header (404)
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, "")
+
 		return
 	}
 
@@ -258,7 +263,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			h.RespWriter.Exception(w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", constants.JsonContentType)
 		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
