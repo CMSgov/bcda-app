@@ -161,9 +161,8 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 }
 
 func WriteError(outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
-	//Write application/fhir+json header on OperationOutcome responses
-	//https://build.fhir.org/ig/HL7/bulk-data/export.html#response---error-status-1
-	w.Header().Set(constants.ContentType, constants.FHIRJsonContentType)
+
+	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)
 	if err != nil {
