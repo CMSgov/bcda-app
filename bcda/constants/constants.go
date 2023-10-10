@@ -15,7 +15,7 @@ var Version = "latest"
 const Adjudicated = "adjudicated"
 const PartiallyAdjudicated = "partially-adjudicated"
 
-//Cli.go constants
+// Cli.go constants
 const CliCMSIDArg = "cms-id"
 const CliCMSIDDesc = "CMS ID of ACO"
 const CliArchDesc = "How long files should wait in archive before deletion"
@@ -25,6 +25,7 @@ const CliDataImpCategory = "Data import"
 
 const ContentType = "Content-Type"
 const JsonContentType = "application/json"
+const FHIRJsonContentType = "application/fhir+json"
 
 const BBHeaderTS = "BlueButton-OriginalQueryTimestamp"
 const BBHeaderOriginURL = "BlueButton-OriginalUrl"

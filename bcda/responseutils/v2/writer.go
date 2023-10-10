@@ -161,6 +161,7 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 }
 
 func WriteError(outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
+
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)

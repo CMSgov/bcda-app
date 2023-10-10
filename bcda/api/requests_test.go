@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -144,7 +144,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			h.BulkGroupRequest(w, req)
 
 			resp := w.Result()
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.respCode, resp.StatusCode)
@@ -258,65 +258,83 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 	tests := []struct {
 		name string
 
-		respCode int
-		statuses []models.JobStatus
-		codes    []fhircodesv2.TaskStatusCode_Value
+		respCode                 int
+		statuses                 []models.JobStatus
+		codes                    []fhircodesv2.TaskStatusCode_Value
+		useMock                  bool
+		throwInternalServerError bool
 	}{
-		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
-		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
-		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}},
+		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}, true, false},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}, true, false},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}, true, false},
 		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
 			[]fhircodesv2.TaskStatusCode_Value{
 				fhircodesv2.TaskStatusCode_ACCEPTED, fhircodesv2.TaskStatusCode_IN_PROGRESS, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED,
-			},
-		},
-		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
+			}, true, false},
+		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil, true, false},
+		{"Too Many Statuses", http.StatusBadRequest, []models.JobStatus{models.JobStatusCompleted, models.JobStatusCompleted}, nil, true, false},
+		{"Invalid Status Type", http.StatusBadRequest, []models.JobStatus{"Eaten by alligators"}, nil, false, false},
+		{"Invalid Auth Data", http.StatusBadRequest, []models.JobStatus{models.JobStatusCompleted}, nil, false, false},
+		{"Other error", http.StatusInternalServerError, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}, true, true},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mockSvc := &service.MockService{}
 
-			switch tt.respCode {
-			case http.StatusNotFound:
-				mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
-					nil, service.JobsNotFoundError{},
-				)
-			case http.StatusOK:
-				var (
-					jobs     []*models.Job
-					mockArgs []interface{}
-				)
+			if tt.useMock {
 
-				mockArgs = append(mockArgs, testUtils.CtxMatcher, mock.Anything)
-				if tt.statuses == nil {
-					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					for range models.AllJobStatuses {
-						mockArgs = append(mockArgs, mock.Anything)
+				switch tt.respCode {
+				case http.StatusNotFound:
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+						nil, service.JobsNotFoundError{},
+					)
+				case http.StatusInternalServerError:
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+						nil, errors.New("New Error"),
+					)
+
+				case http.StatusOK:
+					var (
+						jobs     []*models.Job
+						mockArgs []interface{}
+					)
+
+					mockArgs = append(mockArgs, testUtils.CtxMatcher, mock.Anything)
+					if tt.statuses == nil {
+						jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+						for range models.AllJobStatuses {
+							mockArgs = append(mockArgs, mock.Anything)
+						}
+					} else {
+						for k := range tt.statuses {
+							mockArgs = append(mockArgs, mock.Anything)
+							jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+						}
 					}
-				} else {
-					for k := range tt.statuses {
-						mockArgs = append(mockArgs, mock.Anything)
-						jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
-					}
+
+					mockSvc.On("GetJobs", mockArgs...).Return(
+						jobs, nil,
+					)
+
 				}
-
-				mockSvc.On("GetJobs", mockArgs...).Return(
-					jobs, nil,
-				)
 			}
-
 			h := newHandler(map[string]service.DataType{
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
 			}, v2BasePath, apiVersionTwo, s.db)
-			h.Svc = mockSvc
+			if tt.useMock {
+				h.Svc = mockSvc
+			}
 
 			rr := httptest.NewRecorder()
 			req := s.genGetJobsRequest(apiVersionTwo, tt.statuses)
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+			if !tt.useMock {
+				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ""))
+			}
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
@@ -361,14 +379,18 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 	tests := []struct {
 		name string
 
-		respCode  int
-		fileNames []string
-		fileTypes []string
+		respCode    int
+		fileNames   []string
+		fileTypes   []string
+		invalidAuth bool
 	}{
-		{"Successful with both files", http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}},
-		{"Successful with default file", http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}},
-		{"Successful with runout file", http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}},
-		{"No CCLF files found", http.StatusNotFound, []string{"", ""}, []string{"", ""}},
+		{"Successful with both files", http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}, false},
+		{"Successful with default file", http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}, false},
+		{"Successful with runout file", http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}, false},
+		{"No CCLF files found", http.StatusNotFound, []string{"", ""}, []string{"", ""}, false},
+		{"Invalid Auth, no CCLF Files found", http.StatusUnauthorized, []string{"", ""}, []string{"", ""}, true},
+		{"Simulate error pulling from repository - Default", http.StatusInternalServerError, []string{"InduceError_Default", ""}, []string{"", ""}, false},
+		{"Simulate error pulling from repository - Runout", http.StatusInternalServerError, []string{"", "InduceError_Runout"}, []string{"", ""}, false},
 	}
 
 	for _, tt := range tests {
@@ -390,6 +412,17 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 							FileType:   0,
 							CutoffTime: time.Time{}},
 					)
+
+				case "InduceError_Default": //for this use case, we're going to pretend that the db connection is closed.
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, models.FileTypeDefault).Return(
+						nil,
+						errors.New("Database connection closed."),
+					)
+				case "InduceError_Runout": //for this use case, we're going to pretend that the db connection is closed.
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, models.FileTypeRunout).Return(
+						nil,
+						errors.New("Database connection closed."),
+					)
 				default:
 					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
 						&models.CCLFFile{
@@ -401,6 +434,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 						nil,
 					)
 				}
+
 			}
 			apiVersion := "v1"
 			fhirPath := "/" + apiVersion + "/fhir"
@@ -411,6 +445,10 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 
 			rr := httptest.NewRecorder()
 			req := s.genASRequest()
+			if tt.invalidAuth {
+				req = s.genASRequestInvalidAuth()
+			}
+
 			h.AttributionStatus(rr, req)
 
 			switch tt.respCode {
@@ -442,7 +480,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	h.BulkGroupRequest(w, req)
 
 	resp := w.Result()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	s.NoError(err)
 	s.Equal(http.StatusBadRequest, resp.StatusCode)
@@ -495,7 +533,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
 	mockEnq := &queueing.MockEnqueuer{}
-	mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
 	h.Enq = mockEnq
 	h.supportedDataTypes = dataTypeMap
 
@@ -506,50 +544,87 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	tests := []struct {
 		name string
 
-		cmsId        string
-		resources    []string
-		expectedCode int
-		acoConfig    *service.ACOConfig
+		cmsId           string
+		resources       []string
+		expectedCode    int
+		acoConfig       *service.ACOConfig
+		supplyAuthData  bool
+		breakBB         bool
+		mockQueueFilled bool
+		closeDB         bool
+		breakBBInit     bool
 	}{
-		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA},
-		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB},
-		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB},
-		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC},
-		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC},
-		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD},
-		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD},
+		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, false, false, false, false},
+		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, false, false, false, false},
+		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, false, false},
+		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, false, false},
+		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, false, false, false, false},
+		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, false, false},
+		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, false, false},
+		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, false, false},
+		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false, false},
+		{"Break Blue Button Patient call", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, false, false},
+		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, false, true, false},
+		{"Break Blue button client init", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, false, false, true},
 	}
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
-			mockSvc := service.MockService{}
 
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+			mockSvc := service.MockService{}
+			if test.mockQueueFilled {
+				mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: int(15), ACOID: uuid.New()}}, nil)
+				mockSvc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1), nil)
+
+			} else {
+				mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+
+			}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
 
 			h.Svc = &mockSvc
 
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
-
-			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
-				ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
-				CMSID: test.cmsId,
-			}))
-
+			if test.supplyAuthData {
+				r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
+					ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+					CMSID: test.cmsId,
+				}))
+			}
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
-
 			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
 			}))
 
+			if test.breakBB {
+				h.bbBasePath = "\n"
+			}
+			if test.breakBBInit {
+				t.Setenv("BB_CLIENT_CA_FILE", "ex,124234,1234")
+				t.Setenv("BB_CHECK_CERT", "true")
+			}
+			temp_db := &h.db
+			if test.closeDB {
+				h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+				h.db.Close()
+			}
+
 			h.bulkRequest(w, r, service.DefaultRequest)
+			if test.breakBB {
+				h.bbBasePath = v2BasePath
+			}
+			if h.db == nil {
+				h.db = *temp_db
+			}
 
 			assert.Equal(s.T(), test.expectedCode, w.Code)
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
 		})
+
 	}
 }
 
@@ -615,47 +690,164 @@ func (s *RequestsTestSuite) TestRequests() {
 	}
 }
 
-func (s *RequestsTestSuite) TestJobStatus() {
-	apiVersion := "v1"
-	fhirPath := "/" + apiVersion + "/fhir"
+func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
+
+	basePath := v2BasePath
+	apiVersion := apiVersionTwo
+	requestUrl := v2JobRequestUrl
+
+	tests := []struct {
+		testName        string
+		status          models.JobStatus
+		jobId           string
+		responseHeader  int
+		useMockService  bool
+		timestampOffset int
+		envVarOverride  string
+	}{
+		{testName: "Invalid jobID (Overflow)",
+			status:         models.JobStatusFailedExpired,
+			jobId:          "123412341234123412341234123412341234",
+			responseHeader: http.StatusBadRequest,
+			useMockService: false},
+		{testName: "Invalid jobID (Non-overflow)",
+			status: models.JobStatusFailedExpired,
+			jobId:  "12345", responseHeader: http.StatusNotFound,
+			useMockService: false},
+		{testName: "Pending Job",
+			status: models.JobStatusPending,
+			jobId:  "1", responseHeader: http.StatusAccepted,
+			useMockService: true},
+		{testName: "Archived Job",
+			status: models.JobStatusArchived,
+			jobId:  "1", responseHeader: http.StatusGone,
+			useMockService: true},
+		{testName: "Cancelled Job",
+			status: models.JobStatusCancelled,
+			jobId:  "1", responseHeader: http.StatusNotFound,
+			useMockService: true},
+		{testName: "Expired Job - Not Cleaned Up",
+			status: models.JobStatusCompleted,
+			jobId:  "1", responseHeader: http.StatusGone,
+			useMockService: true, timestampOffset: -100000000000000},
+		{testName: "Acceptable Job",
+			status:         models.JobStatusCompleted,
+			jobId:          "1",
+			useMockService: true, responseHeader: http.StatusOK},
+	}
+
 	resourceMap := s.resourceType
-	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
-	mockSrv := service.MockService{}
-	timestp := time.Now()
-	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
-		&models.Job{
-			ID:                1,
-			ACOID:             uuid.NewRandom(),
-			RequestURL:        v1JobRequestUrl,
-			Status:            models.JobStatusCompleted,
-			TransactionTime:   timestp,
-			JobCount:          100,
-			CompletedJobCount: 100,
-			CreatedAt:         timestp,
-			UpdatedAt:         timestp,
-		},
-		[]*models.JobKey{{
-			ID:           1,
-			JobID:        1,
-			FileName:     "testingtesting",
-			ResourceType: "Patient",
-		}},
-		nil,
-	)
-	h.Svc = &mockSrv
 
-	req := httptest.NewRequest("GET", v1JobRequestUrl, nil)
+	for _, tt := range tests {
+		s.T().Run(tt.testName, func(t *testing.T) {
+			h := newHandler(resourceMap, basePath, apiVersion, s.db)
+			if tt.useMockService {
+				mockSrv := service.MockService{}
+				timestp := time.Now()
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", "1")
+				mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+					&models.Job{
+						ID:                1,
+						ACOID:             uuid.NewRandom(),
+						RequestURL:        requestUrl,
+						Status:            tt.status,
+						TransactionTime:   timestp,
+						JobCount:          100,
+						CompletedJobCount: 100,
+						CreatedAt:         timestp,
+						UpdatedAt:         timestp.Add(time.Duration(tt.timestampOffset)),
+					},
+					[]*models.JobKey{{
+						ID:           1,
+						JobID:        1,
+						FileName:     "testingtesting",
+						ResourceType: "Patient",
+					}},
+					nil,
+				)
+				h.Svc = &mockSrv
 
-	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-	req = req.WithContext(ctx)
-	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
-	w := httptest.NewRecorder()
-	h.JobStatus(w, req)
-	s.Equal(http.StatusOK, w.Code)
+			}
+
+			req := httptest.NewRequest("GET", requestUrl, nil)
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", tt.jobId)
+
+			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+			req = req.WithContext(ctx)
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
+
+			w := httptest.NewRecorder()
+			h.JobStatus(w, req)
+			s.Equal(tt.responseHeader, w.Code)
+			switch tt.responseHeader {
+			case http.StatusOK, http.StatusBadRequest, http.StatusNotFound, http.StatusGone:
+				s.Equal(constants.JsonContentType, w.Header().Get("Content-Type"))
+			}
+
+		})
+	}
+}
+
+func (s *RequestsTestSuite) TestDeleteJob() {
+	// DeleteJob
+	basePath := v2BasePath
+	apiVersion := apiVersionTwo
+	requestUrl := v2JobRequestUrl
+	tests := []struct {
+		name           string
+		jobId          string
+		responseHeader int
+		useMockService bool
+	}{
+		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, useMockService: true},
+		{name: "Invalid Job ID (Overflow)", jobId: "112341234123412341234123412341234123", responseHeader: http.StatusBadRequest, useMockService: false},
+		{name: "Unable to cancel job", jobId: "1", responseHeader: http.StatusGone, useMockService: true},
+		{name: "Internal Server Error Deleting Job", jobId: "1", responseHeader: http.StatusInternalServerError, useMockService: true},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			handler := newHandler(s.resourceType, basePath, apiVersion, s.db)
+
+			if tt.useMockService {
+				mockSrv := service.MockService{}
+				switch tt.responseHeader {
+				case http.StatusAccepted:
+					mockSrv.On("CancelJob", testUtils.CtxMatcher, uint(1)).Return(
+						uint(0), nil,
+					)
+				case http.StatusGone:
+					mockSrv.On("CancelJob", testUtils.CtxMatcher, uint(1)).Return(
+						uint(0), service.ErrJobNotCancellable,
+					)
+				default:
+					mockSrv.On("CancelJob", testUtils.CtxMatcher, uint(1)).Return(
+						uint(0), errors.New("New Error (doesn't matter)"),
+					)
+				}
+				handler.Svc = &mockSrv
+			}
+
+			r := httptest.NewRequest("DELETE", requestUrl, nil)
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", tt.jobId)
+
+			ctx := context.WithValue(r.Context(), chi.RouteCtxKey, rctx)
+			r = r.WithContext(ctx)
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			r = r.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
+
+			w := httptest.NewRecorder()
+
+			handler.DeleteJob(w, r)
+
+			assert.Equal(t, tt.responseHeader, w.Code)
+		})
+	}
+
 }
 
 func (s *RequestsTestSuite) TestJobFailedStatus() {
@@ -788,6 +980,13 @@ func (s *RequestsTestSuite) genASRequest() *http.Request {
 	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)
 }
+func (s *RequestsTestSuite) genASRequestInvalidAuth() *http.Request {
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/attribution_status", nil)
+	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, "")
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
+	return req.WithContext(ctx)
+}
 
 func (s *RequestsTestSuite) genGetJobsRequest(version string, statuses []models.JobStatus) *http.Request {
 	target := fmt.Sprintf("http://bcda.cms.gov/api/%s/jobs", version)
@@ -814,4 +1013,16 @@ func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *log.StructuredLogge
 	var lggr logrus.Logger
 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logFields)}
 	return newLogEntry
+}
+
+func (s *RequestsTestSuite) TestValidateResources() {
+	apiVersion := "v1"
+	fhirPath := "/" + apiVersion + "/fhir"
+	h := newHandler(map[string]service.DataType{
+		"Patient":              {},
+		"Coverage":             {},
+		"ExplanationOfBenefit": {},
+	}, fhirPath, apiVersion, s.db)
+	err := h.validateResources([]string{"Vegetable"}, "1234")
+	assert.Contains(s.T(), err.Error(), "invalid resource type")
 }
