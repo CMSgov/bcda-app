@@ -213,7 +213,6 @@ func importSuppressionMetadata(metadata *optout.OptOutFilenameMetadata, importFu
 		headTrailStart, headTrailEnd = 0, 15
 		err                          error
 	)
-
 	suppressionMetaFile := optout.OptOutFile{
 		Name:         metadata.Name,
 		Timestamp:    metadata.Timestamp,
