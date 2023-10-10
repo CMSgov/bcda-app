@@ -783,11 +783,10 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			h.JobStatus(w, req)
 			s.Equal(tt.responseHeader, w.Code)
 			switch tt.responseHeader {
-			case http.StatusBadRequest, http.StatusNotFound, http.StatusGone:
-				s.Equal(constants.FHIRJsonContentType, w.Header().Get("Content-Type"))
-			case http.StatusOK:
-				s.Equal(w.Header().Get("Content-Type"), constants.JsonContentType)
+			case http.StatusOK, http.StatusBadRequest, http.StatusNotFound, http.StatusGone:
+				s.Equal(constants.JsonContentType, w.Header().Get("Content-Type"))
 			}
+
 		})
 	}
 }
