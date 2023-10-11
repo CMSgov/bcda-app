@@ -358,8 +358,8 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	// - and they request all beneficiary data “since January 1st, 2023"
 	// - any beneficiaries added in 2023 are considered "new."
 	//
-	oldFileUpperBound := cclfFileNew.Timestamp.Add(-1 * time.Second)
-	if cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
+	oldFileUpperBound := conditions.Since
+	if !conditions.Since.IsZero() && cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
 		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
 	}
 
