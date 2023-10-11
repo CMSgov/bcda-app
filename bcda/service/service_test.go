@@ -1078,8 +1078,7 @@ func (s *ServiceTestSuite) TestGetACOConfigForID() {
 
 func getCCLFFile(id uint) *models.CCLFFile {
 	return &models.CCLFFile{
-		ID:        id,
-		Timestamp: time.Now(),
+		ID: id,
 	}
 }
 
