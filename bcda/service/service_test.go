@@ -323,7 +323,10 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 				}),
 				time.Time{},
 				models.FileTypeDefault).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, since, models.FileTypeDefault).Return(tt.cclfFileOld, nil)
+
+			if tt.cclfFileNew != nil {
+				repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, tt.cclfFileNew.Timestamp.Add(-1*time.Second), models.FileTypeDefault).Return(tt.cclfFileOld, nil)
+			}
 
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
