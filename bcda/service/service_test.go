@@ -368,7 +368,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 	}
 }
 
-// Integration Test
+// * Live database test *
 //
 // Given the following example scenario:
 // - CCLF File 1 (June)
