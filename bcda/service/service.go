@@ -359,6 +359,9 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	// - any beneficiaries added in 2023 are considered "new."
 	//
 	oldFileUpperBound := conditions.Since
+
+	// If the _since parameter is more recent than the latest CCLF file, set the upper bound
+	// for the older file to be prior to cclfFileNew.Timestamp.
 	if !conditions.Since.IsZero() && cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
 		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
 	}
