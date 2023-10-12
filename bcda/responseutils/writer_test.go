@@ -51,6 +51,8 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Coding[0].Display.Value)
 	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Text.Value)
 	assert.Equal(s.T(), RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
+	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
+
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
@@ -69,6 +71,7 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Coding[0].Display.Value)
 	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Text.Value)
 	assert.Equal(s.T(), RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
+	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {

@@ -158,7 +158,7 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 }
 
 func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, code int) {
-	w.Header().Set(constants.ContentType, constants.JsonContentType)
+	w.Header().Set(constants.ContentType, constants.FHIRJsonContentType)
 	if code == http.StatusServiceUnavailable {
 		includeRetryAfterHeader(w)
 	}
