@@ -325,6 +325,8 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 	return jobs, nil
 }
 
+// Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
+// split between existing beneficiaries and newly-attributed beneficiaries.
 func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
 
 	var (
@@ -336,7 +338,9 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
 
-	// will get all benes between cutoff time and now, or all benes up until the attribution date
+	// Retrieve beneficiaries from either:
+	// - The newest CCLF file in the last X days (where X is the environment's configured cutoff duration)
+	// - OR the newest CCLF file prior to the requested attributionDate
 	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
 		cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
@@ -346,8 +350,24 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
+	// Retrieve an older CCLF file for beneficiary comparison.
+	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
+	//
+	// e.g.
+	// - If it’s October 2023
+	// - and they request all beneficiary data “since January 1st, 2023"
+	// - any beneficiaries added in 2023 are considered "new."
+	//
+	oldFileUpperBound := conditions.Since
+
+	// If the _since parameter is more recent than the latest CCLF file, set the upper bound
+	// for the older file to be prior to cclfFileNew.Timestamp.
+	if !conditions.Since.IsZero() && cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
+		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
+	}
+
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		time.Time{}, conditions.Since, models.FileTypeDefault)
+		time.Time{}, oldFileUpperBound, models.FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
