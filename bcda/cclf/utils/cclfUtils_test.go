@@ -46,6 +46,21 @@ func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert.EqualError(err, "invalid argument for environment")
 }
 
+func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
+	assert := assert.New(s.T())
+	err := ImportCCLFPackage("improved-small", "test-partially-adjudicated", models.FileTypeRunout)
+	assert.EqualError(err, "unable to locate ../../../../../../shared_files/cclf/files/synthetic/test-partially-adjudicated/small in file path")
+}
+
+// func (s *CCLFUtilTestSuite) TestAddFileToZip() {
+// 	assert := assert.New(s.T())
+// 	newZipFile, err := os.Create("file.zip")
+// 	defer utils.CloseFileAndLogError(newZipFile)
+// 	zipWriter := zip.NewWriter(newZipFile)
+// 	err = addFileToZip(zipWriter, "")
+// 	assert.EqualError(err, "")
+// }
+
 func (s *CCLFUtilTestSuite) TestImport() {
 	tests := []struct {
 		env     string
