@@ -117,21 +117,3 @@ func (s *CCLFUtilTestSuite) TestHasAnyPrefix() {
 			})
 	}
 }
-
-func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {
-	cclfName = uuid.New()
-
-	f, err := os.CreateTemp("", "*")
-	assert.NoError(t, err)
-
-	w := zip.NewWriter(f)
-	f1, err := w.Create(cclfName)
-	assert.NoError(t, err)
-
-	_, err = f1.Write([]byte(data))
-	assert.NoError(t, err)
-
-	assert.NoError(t, w.Close())
-
-	return f.Name(), cclfName
-}
