@@ -56,7 +56,6 @@ func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
 	assert.EqualError(err, "unable to locate ../../../../../../shared_files/cclf/files/synthetic/test-partially-adjudicated/small in file path")
 }
 
-<<<<<<< HEAD
 func (s *CCLFUtilTestSuite) TestAddFileToZipInvalidFile() {
 	assert := assert.New(s.T())
 	tempZip, err := os.CreateTemp("", "*")
@@ -70,8 +69,6 @@ func (s *CCLFUtilTestSuite) TestAddFileToZipInvalidFile() {
 	}
 }
 
-=======
->>>>>>> fa3e3c0e990030df2204c3c9ba9bec22e5073ad3
 func (s *CCLFUtilTestSuite) TestImport() {
 	tests := []struct {
 		env     string
