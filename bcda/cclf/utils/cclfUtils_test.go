@@ -1,11 +1,15 @@
 package testutils
 
 import (
+	"archive/zip"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/pborman/uuid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -52,14 +56,18 @@ func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
 	assert.EqualError(err, "unable to locate ../../../../../../shared_files/cclf/files/synthetic/test-partially-adjudicated/small in file path")
 }
 
-// func (s *CCLFUtilTestSuite) TestAddFileToZip() {
-// 	assert := assert.New(s.T())
-// 	newZipFile, err := os.Create("file.zip")
-// 	defer utils.CloseFileAndLogError(newZipFile)
-// 	zipWriter := zip.NewWriter(newZipFile)
-// 	err = addFileToZip(zipWriter, "")
-// 	assert.EqualError(err, "")
-// }
+func (s *CCLFUtilTestSuite) TestAddFileToZipInvalidFile() {
+	assert := assert.New(s.T())
+	tempZip, err := os.CreateTemp("", "*")
+	if err != nil {
+		defer utils.CloseFileAndLogError(tempZip)
+		zipWriter := zip.NewWriter(tempZip)
+		err = addFileToZip(zipWriter, uuid.New())
+		if err != nil {
+			assert.EqualError(err, "open file: no such file or directory")
+		}
+	}
+}
 
 func (s *CCLFUtilTestSuite) TestImport() {
 	tests := []struct {
@@ -108,4 +116,22 @@ func (s *CCLFUtilTestSuite) TestHasAnyPrefix() {
 				assert.Equal(t, tt.found, hasAnyPrefix(tt.s, tt.prefixes...))
 			})
 	}
+}
+
+func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {
+	cclfName = uuid.New()
+
+	f, err := os.CreateTemp("", "*")
+	assert.NoError(t, err)
+
+	w := zip.NewWriter(f)
+	f1, err := w.Create(cclfName)
+	assert.NoError(t, err)
+
+	_, err = f1.Write([]byte(data))
+	assert.NoError(t, err)
+
+	assert.NoError(t, w.Close())
+
+	return f.Name(), cclfName
 }
