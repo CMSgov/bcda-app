@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/pborman/uuid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -59,12 +58,25 @@ func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
 func (s *CCLFUtilTestSuite) TestAddFileToZipInvalidFile() {
 	assert := assert.New(s.T())
 	tempZip, err := os.CreateTemp("", "*")
-	if err != nil {
+	if err == nil {
 		defer utils.CloseFileAndLogError(tempZip)
 		zipWriter := zip.NewWriter(tempZip)
-		err = addFileToZip(zipWriter, uuid.New())
+		err = addFileToZip(zipWriter, "file__name")
 		if err != nil {
 			assert.EqualError(err, "open file: no such file or directory")
+		}
+	}
+}
+
+func (s *CCLFUtilTestSuite) TestInvalidFilenameFormat() {
+	assert := assert.New(s.T())
+	tempZip, err := os.CreateTemp("", "*")
+	if err == nil {
+		defer utils.CloseFileAndLogError(tempZip)
+		zipWriter := zip.NewWriter(tempZip)
+		err = addFileToZip(zipWriter, "filename")
+		if err != nil {
+			assert.EqualError(err, "invalid filename format")
 		}
 	}
 }

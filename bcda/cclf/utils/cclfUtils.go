@@ -140,6 +140,9 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 
 // addFileToZip adds the file to a zip archive. The filename supplied has the schema srcname__dstname
 func addFileToZip(zipWriter *zip.Writer, filename string) error {
+	if strings.Index(filename, "__") == -1 {
+		return errors.New("invalid filename format")
+	}
 	sourceData := strings.Split(filename, "__")
 	src := sourceData[0]
 	filename = sourceData[1]
