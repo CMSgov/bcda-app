@@ -24,7 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
-	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
+	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
