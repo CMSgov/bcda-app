@@ -59,7 +59,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	zipReader, err := zip.OpenReader(filepath.Clean(path))
 	if err != nil {
 		p.skipped = p.skipped + 1
-		msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
+		msg := fmt.Sprintf("Skipping %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
 		log.API.Warn(msg)
 		return nil
@@ -168,6 +168,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 
 	if len(parts) != 7 {
 		err := fmt.Errorf("invalid filename ('%s') for CCLF file, parts: %v", fileName, parts)
+		fmt.Println(err.Error())
 		log.API.Error(err)
 		return metadata, err
 	}
