@@ -538,8 +538,16 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		logger.Info("job id created")
 	}
 
+	jobData := models.JobEnqueueArgs{
+		ID:              int(newJob.ID),
+		ACOID:           acoID.String(),
+		Since:           "",
+		TransactionTime: time.Now(),
+		CMSID:           ad.CMSID,
+	}
+
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	b, err := bb.GetPatient("0", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
+	b, err := bb.GetPatient(jobData, "0")
 	if err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")

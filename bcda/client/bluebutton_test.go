@@ -4,23 +4,23 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/twinj/uuid"
 
-	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -49,6 +49,7 @@ var (
 	since        = "gt2020-02-14"
 	claimsDate   = client.ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
 		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
+	jobData = models.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionTime: now}
 )
 
 func (s *BBTestSuite) SetupSuite() {
@@ -224,64 +225,64 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 
 /* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
 func (s *BBRequestTestSuite) TestGetPatient() {
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", "", now)
+	p, err := s.bbClient.GetPatient(jobData, "012345")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(p.Entries))
 	assert.Equal(s.T(), "20000000000001", p.Entries[0]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", "", now)
+	p, err := s.bbClient.GetPatient(jobData, "012345")
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), p)
 }
 
 func (s *BBRequestTestSuite) TestGetCoverage() {
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	c, err := s.bbClient.GetCoverage(jobData, "012345")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 3, len(c.Entries))
 	assert.Equal(s.T(), "part-b-20000000000001", c.Entries[1]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetCoverage_500() {
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	c, err := s.bbClient.GetCoverage(jobData, "012345")
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), c)
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
+	e, err := s.bbClient.GetExplanationOfBenefit(jobData, "012345", client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
+	e, err := s.bbClient.GetExplanationOfBenefit(jobData, "012345", client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
 func (s *BBRequestTestSuite) TestGetClaim() {
-	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
 func (s *BBRequestTestSuite) TestGetClaim_500() {
-	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse() {
-	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse_500() {
-	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -300,9 +301,33 @@ func (s *BBRequestTestSuite) TestGetMetadata_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash() {
-	p, err := s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
+	p, err := s.bbClient.GetPatientByIdentifierHash(models.JobEnqueueArgs{}, "hashedIdentifier")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `"id": "20000000000001"`)
+}
+
+func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash_500() {
+	var cms_id, job_id bool
+	hook := test.NewLocal(logrus.StandardLogger())
+	jobData := models.JobEnqueueArgs{
+		ID:    1,
+		CMSID: "A0000",
+	}
+	p, err := s.bbClient.GetPatientByIdentifierHash(jobData, "hashedIdentifier")
+	entry := hook.AllEntries()
+	for _, t := range entry {
+		s.T().Log(t.Data)
+		if _, ok := t.Data["cms_id"]; ok {
+			cms_id = true
+		}
+		if _, ok := t.Data["job_id"]; ok {
+			job_id = true
+		}
+	}
+	assert.True(s.T(), cms_id, "Log entry should have a value for field `cms_id`.")
+	assert.True(s.T(), job_id, "Log entry should have a value for field `job_id`.")
+	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get response`, err.Error())
+	assert.Equal(s.T(), "", p)
 }
 
 // Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
@@ -334,23 +359,24 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
+	jobDataNoSince := models.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
 	defer conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", old)
 	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0") // Need to ensure that requests do not have the _count parameter
 
 	tests := []struct {
 		name          string
-		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error)
+		funcUnderTest func(bbClient *client.BlueButtonClient) (interface{}, error)
 		// Lighter validation checks since we've already thoroughly tested the methods in other tests
 		payloadChecker func(t *testing.T, payload interface{})
 		pathCheckers   []func(t *testing.T, req *http.Request)
 	}{
 		{
 			"GetExplanationOfBenefit",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -367,11 +393,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitNoSince",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, client.ClaimsWindow{})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobDataNoSince, "patient1", client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -388,11 +414,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitWithUpperBoundServiceDate",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -410,11 +436,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitWithLowerBoundServiceDate",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -432,11 +458,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitWithLowerAndUpperBoundServiceDate",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, claimsDate)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -454,11 +480,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetPatient",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetPatient("patient2", jobID, cmsID, since, now)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetPatient(jobData, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -474,11 +500,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetPatientNoSince",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetPatient("patient2", jobID, cmsID, "", now)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetPatient(jobDataNoSince, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -494,11 +520,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetCoverage",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetCoverage("beneID1", jobID, cmsID, since, now)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetCoverage(jobData, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -514,11 +540,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetCoverageNoSince",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetCoverage("beneID1", jobID, cmsID, "", now)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetCoverage(jobDataNoSince, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -534,8 +560,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetPatientByIdentifierHash",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetPatientByIdentifierHash("hashedIdentifier")
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetPatientByIdentifierHash(models.JobEnqueueArgs{}, "hashedIdentifier")
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(string)
@@ -552,11 +578,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaim",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -573,11 +599,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimNoSinceChecker",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaim("beneID1", jobID, cmsID, "", now, client.ClaimsWindow{})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobDataNoSince, "beneID1", client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -594,11 +620,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimNoServiceDateUpperBound",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -616,11 +642,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimNoServiceDateLowerBound",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -638,11 +664,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimWithUpperAndLowerBoundServiceDate",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, claimsDate)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -660,11 +686,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponse",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -681,11 +707,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseNoSinceChecker",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, "", now, client.ClaimsWindow{})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobDataNoSince, "beneID1", client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -702,11 +728,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseNoServiceDateUpperBound",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -724,11 +750,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseNoServiceDateLowerBound",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -746,11 +772,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseWithUpperAndLowerBoundServiceDate",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, claimsDate)
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*models.Bundle)
+				result, ok := payload.(*fhirModels.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -770,18 +796,13 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			var jobID, cmsID string
-
-			// GetPatientByIdentifierHash does not send in jobID and cmsID as arguments
-			// so we DO NOT expected the associated headers to be set.
-			// Only set the fields if we pass those parameters in.
-			if tt.name != "GetPatientByIdentifierHash" {
-				jobID = strconv.FormatUint(rand.Uint64(), 10)
-				cmsID = strconv.FormatUint(rand.Uint64(), 10)
-			}
 
 			tsValidation := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				assert.NotNil(t, uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId")))
+				uid, err := uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId"))
+				if err != nil {
+					assert.FailNow(t, err.Error())
+				}
+				assert.NotNil(t, uid)
 				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
 				assert.Empty(t, req.Header.Get("keep-alive"))
@@ -818,7 +839,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.FailNow(t, err.Error())
 			}
 
-			data, err := tt.funcUnderTest(bbClient, jobID, cmsID)
+			data, err := tt.funcUnderTest(bbClient)
 			if err != nil {
 				assert.FailNow(t, err.Error())
 			}
