@@ -201,15 +201,12 @@ func (s *WorkerTestSuite) TestWriteUnsupportedResourceToFile() {
 	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "UnsupportedResourceType")
 	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
 	assert.EqualValues(s.T(), 0, size)
-
-	files, err1 := ioutil.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err1)
-
 	assert.Error(s.T(), err)
 	assert.Empty(s.T(), uuid)
-	files, err = ioutil.ReadDir(s.stagingDir)
+	files, err := ioutil.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), files, 0)
+
 }
 
 func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Context, models.JobEnqueueArgs, *client.MockBlueButtonClient) {
