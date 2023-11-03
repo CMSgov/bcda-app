@@ -114,6 +114,7 @@ type CCLFBeneficiary struct {
 type JobEnqueueArgs struct {
 	ID              int
 	ACOID           string
+	CMSID           string
 	BeneficiaryIDs  []string
 	ResourceType    string
 	Since           string

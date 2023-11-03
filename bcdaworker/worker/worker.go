@@ -178,19 +178,18 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	switch jobArgs.ResourceType {
 	case "Coverage":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
-			return bb.GetCoverage(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+			return bb.GetCoverage(jobArgs, bene.BlueButtonID)
 		}
 	case "ExplanationOfBenefit":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
-			return bb.GetExplanationOfBenefit(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime,
-				cw)
+			return bb.GetExplanationOfBenefit(jobArgs, bene.BlueButtonID, cw)
 		}
 	case "Patient":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
-			return bb.GetPatient(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+			return bb.GetPatient(jobArgs, bene.BlueButtonID)
 		}
 		//NOTE: The assumption is Claim/ClaimResponse is always partially-adjudicated, future work may require checking what
 		//kind of backing data to pull from
@@ -199,14 +198,14 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
-			return bb.GetClaim(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
+			return bb.GetClaim(jobArgs, bene.MBI, cw)
 		}
 	case "ClaimResponse":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
-			return bb.GetClaimResponse(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
+			return bb.GetClaimResponse(jobArgs, bene.MBI, cw)
 		}
 	default:
 		return "", 0, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
@@ -246,7 +245,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			// that is not yet possible because their are no Patient FHIR resources. This
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := jobArgs.DataType != constants.PartiallyAdjudicated
-			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId)
+			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_NOT_FOUND, err
@@ -294,7 +293,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
-func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool) (models.CCLFBeneficiary, error) {
+func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData models.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
 	bene, err := r.GetCCLFBeneficiaryByID(ctx, beneID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Error retrieving cclfBeneficiary record by cclfBeneficiaryId %d", beneID))
@@ -304,7 +303,7 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 	cclfBeneficiary := *bene
 
 	if fetchBBId {
-		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI)
+		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI, jobData)
 
 		if err != nil {
 			err = errors.Wrap(err, fmt.Sprintf("failed to get blueButtonId for cclfBeneficiaryId %d", beneID))
