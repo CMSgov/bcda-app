@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/alr/gen"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+
 	"github.com/CMSgov/bcda-app/bcda/cclf"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -362,6 +363,17 @@ func setUpApp() *cli.App {
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
 				success, failure, skipped, err := cclf.ImportCCLFDirectory(filePath)
+				if err != nil {
+					log.API.Error("error returned from ImportCCLFDirectory: ", err)
+					cli.NewExitError("an error occurred during the cclf-import process, see logs for more details", 1)
+					return err
+				}
+				if failure > 0 || skipped > 0 {
+					log.API.Error("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details. ", err)
+					cli.NewExitError("some files failed to import or were skipped, see logs for more details", 1)
+					return err
+				}
+				log.API.Infof("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				return err
 			},
