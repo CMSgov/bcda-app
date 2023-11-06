@@ -711,7 +711,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
 	err := s.testApp.Run(args)
-	assert.Nil(err)
+	assert.NotNil(err)
 	var success, failed, skipped bool
 	for _, entry := range hook.AllEntries() {
 		if strings.Contains(entry.Message, "Successfully imported 2 files.") {
@@ -727,6 +727,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.True(success)
 	assert.True(failed)
 	assert.True(skipped)
+
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
