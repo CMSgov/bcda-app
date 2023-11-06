@@ -365,13 +365,13 @@ func setUpApp() *cli.App {
 				success, failure, skipped, err := cclf.ImportCCLFDirectory(filePath)
 				if err != nil {
 					log.API.Error("error returned from ImportCCLFDirectory: ", err)
-					cli.NewExitError("an error occurred during the cclf-import process, see logs for more details", 1)
-					return err
+					return cli.NewExitError("an error occurred during the cclf-import process, see logs for more details", 1)
+
 				}
 				if failure > 0 || skipped > 0 {
 					log.API.Errorf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped, err)
-					cli.NewExitError("some files failed to import or were skipped, see logs for more details", 1)
-					return err
+					return cli.NewExitError("some files failed to import or were skipped, see logs for more details", 1)
+
 				}
 				log.API.Infof("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
