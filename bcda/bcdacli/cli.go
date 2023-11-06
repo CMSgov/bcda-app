@@ -369,7 +369,7 @@ func setUpApp() *cli.App {
 					return err
 				}
 				if failure > 0 || skipped > 0 {
-					log.API.Error("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details. ", err)
+					log.API.Error("files failed to import or were skipped.  See logs for more details. ", err)
 					cli.NewExitError("some files failed to import or were skipped, see logs for more details", 1)
 					return err
 				}
