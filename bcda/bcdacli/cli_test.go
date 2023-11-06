@@ -28,10 +28,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	logger "github.com/CMSgov/bcda-app/log"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
@@ -699,13 +701,10 @@ func (s *CLITestSuite) TestCreateACO() {
 func (s *CLITestSuite) TestImportCCLFDirectory() {
 	targetACO := "A0002"
 	assert := assert.New(s.T())
+	hook := test.NewLocal(testUtils.GetLogger(logger.API))
 
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
 
 	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/archives/valid2/")
 	defer cleanup()
@@ -713,12 +712,21 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 1 files.")
-
-	buf.Reset()
+	var success, failed, skipped bool
+	for _, entry := range hook.AllEntries() {
+		if strings.Contains(entry.Message, "Successfully imported 2 files.") {
+			success = true
+		}
+		if strings.Contains(entry.Message, "Failed to import 0 files.") {
+			failed = true
+		}
+		if strings.Contains(entry.Message, "Skipped 1 files.") {
+			skipped = true
+		}
+	}
+	assert.True(success)
+	assert.True(failed)
+	assert.True(skipped)
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
