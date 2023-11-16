@@ -141,6 +141,37 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
 	assert.Nil(s.T(), cclfMap)
 }
 
+func (s *FileProcessorTestSuite) TestProcessCCLFArchives_SkippedDownloading() {
+	assert := assert.New(s.T())
+	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
+	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
+	secondsAgo := time.Now().Add(time.Duration(-30) * time.Second)
+
+	err := os.Chtimes(filePath, secondsAgo, secondsAgo)
+
+	if err == nil {
+		cclfMap, skipped, err := processCCLFArchives(filePath)
+		assert.Nil(err)
+		assert.Equal(1, skipped)
+		assert.Empty(cclfMap)
+	}
+}
+
+// func (s *FileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
+// 	assert := assert.New(s.T())
+// 	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
+// 	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
+// 	yesterday := time.Now().AddDate(0, 0, -1)
+// 	err := os.Chtimes(filePath, yesterday, yesterday)
+
+// 	if err == nil {
+// 		cclfMap, skipped, err := processCCLFArchives(filePath)
+// 		assert.Equal("", err)
+// 		assert.Equal(0, skipped)
+// 		assert.Nil(cclfMap)
+// 	}
+// }
+
 func TestFileProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(FileProcessorTestSuite))
 }
@@ -425,6 +456,14 @@ func TestGetCCLFMetadata(t *testing.T) {
 			assert.Equal(sub, tt.metadata, metadata)
 		})
 	}
+}
+
+func TestStillDownloading(t *testing.T) {
+	secondsAgo := time.Now().Add(time.Duration(-30) * time.Second)
+	minutesAgo := time.Now().Add(time.Duration(-2) * time.Minute)
+
+	assert.True(t, stillDownloading(secondsAgo))
+	assert.False(t, stillDownloading(minutesAgo))
 }
 
 func TestMultipleFileTypes(t *testing.T) {
