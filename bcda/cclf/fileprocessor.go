@@ -38,6 +38,7 @@ type processor struct {
 	cclfMap map[string]map[metadataKey][]*cclfFileMetadata
 }
 
+// (?) I'm not fully clear how these params are populated -- line 30
 func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		// In case the caller supplied an err, we know that info is nil
@@ -56,14 +57,26 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	zipReader, err := zip.OpenReader(filepath.Clean(path))
+	zipFile := filepath.Clean(path)
+	zipReader, err := zip.OpenReader(zipFile)
+
 	if err != nil {
-		p.skipped = p.skipped + 1
-		msg := fmt.Sprintf("Skipping %s: file could not be opened as a CCLF archive. %s", path, err.Error())
+		modTime, err2 := getModTime(zipFile)
+		if err2 == nil && stillDownloading(modTime) {
+			p.skipped = p.skipped + 1
+			msg := fmt.Sprintf("Skipping %s: file was last modified on: %s and is still downloading. err: %s", path, modTime, err.Error())
+			fmt.Println(msg)
+			log.API.Warn(msg)
+			return nil
+		}
+
+		msg := fmt.Errorf("Corrupted %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
-		log.API.Warn(msg)
+		log.API.Error(msg)
 		return nil
+		// (?) how do I increment the failures counter?
 	}
+
 	if err = zipReader.Close(); err != nil {
 		log.API.Warnf("Failed to close zip file %s", err.Error())
 	}
@@ -249,4 +262,21 @@ func checkDeliveryDate(folderPath string, deliveryDate time.Time) error {
 		}
 	}
 	return nil
+}
+
+func stillDownloading(modTime time.Time) bool {
+	// modified date < 1 min: still downloading
+	now := time.Now()
+	oneMinuteAgo := now.Add(time.Duration(-1) * time.Minute)
+
+	return modTime.After(oneMinuteAgo)
+}
+
+func getModTime(file string) (time.Time, error) {
+	fileInfo, err := os.Stat(file)
+
+	if err != nil {
+		log.API.Warn(err.Error())
+	}
+	return fileInfo.ModTime(), err
 }
