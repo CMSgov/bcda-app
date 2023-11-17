@@ -56,8 +56,17 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
+	// ignore the opt out file, and don't add it to the skipped count
+	optOut := isOptOut(info.Name())
+	if optOut {
+		fmt.Print("Skipping opt-out file: ", info.Name())
+		log.API.Info("Skipping opt-out file: ", info.Name())
+		return nil
+	}
+
 	zipReader, err := zip.OpenReader(filepath.Clean(path))
 	if err != nil {
+
 		p.skipped = p.skipped + 1
 		msg := fmt.Sprintf("Skipping %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
@@ -117,6 +126,15 @@ func (p *processor) handleArchiveError(path string, info os.FileInfo, cause erro
 	}
 
 	return err
+}
+
+func isOptOut(filename string) (isOptOut bool) {
+	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
+	filenameMatches := filenameRegexp.FindStringSubmatch(filename)
+	if len(filenameMatches) > 3 {
+		isOptOut = true
+	}
+	return isOptOut
 }
 
 func getCMSID(name string) (string, error) {
