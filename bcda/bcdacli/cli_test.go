@@ -29,6 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	logger "github.com/CMSgov/bcda-app/log"
+	"github.com/pkg/errors"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
@@ -703,31 +704,50 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert := assert.New(s.T())
 	hook := test.NewLocal(testUtils.GetLogger(logger.API))
 
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
-	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
-
-	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/archives/valid2/")
-	defer cleanup()
-
-	args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
-	err := s.testApp.Run(args)
-	assert.NotNil(err)
-	var success, failed, skipped bool
-	for _, entry := range hook.AllEntries() {
-		if strings.Contains(entry.Message, "Successfully imported 2 files.") {
-			success = true
-		}
-		if strings.Contains(entry.Message, "Failed to import 0 files.") {
-			failed = true
-		}
-		if strings.Contains(entry.Message, "Skipped 1 files.") {
-			skipped = true
-		}
+	type test struct {
+		path         string
+		success      int
+		failure      int
+		skipped      int
+		err          error
+		expectedLogs []string
 	}
-	assert.True(success)
-	assert.True(failed)
-	assert.True(skipped)
 
+	tests := []test{
+		{path: "../../shared_files/cclf/archives/valid2/", err: nil, expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 1 files."}},
+		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("one or more files failed to import correctly"), expectedLogs: []string{"error returned from ImportCCLFDirectory", "", ""}},
+		{path: "../../shared_files/cclf/archives/skip/", err: errors.New("Files failed to import or no files were imported. See logs for more details."), expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 1 files."}},
+	}
+
+	for _, tc := range tests {
+		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+		path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tc.path)
+		defer cleanup()
+		args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
+		err := s.testApp.Run(args)
+		if tc.err == nil {
+			assert.Nil(err)
+		} else {
+			assert.NotNil(err)
+		}
+
+		var success, failed, skipped bool
+		for _, entry := range hook.AllEntries() {
+			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
+				success = true
+			}
+			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
+				failed = true
+			}
+			if strings.Contains(entry.Message, tc.expectedLogs[2]) {
+				skipped = true
+			}
+		}
+		assert.True(success)
+		assert.True(failed)
+		assert.True(skipped)
+	}
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
