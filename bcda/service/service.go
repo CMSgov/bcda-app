@@ -307,7 +307,6 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 								s.setClaimsDate(&enqueueArgs, conditions)
 
 								jobs = append(jobs, &enqueueArgs)
-								log.API.Info("DEBUG: ", enqueueArgs.CMSID, enqueueArgs.ID)
 							}
 
 						} else {

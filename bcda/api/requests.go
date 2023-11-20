@@ -546,8 +546,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		CMSID:           ad.CMSID,
 	}
 
-	logger.Info("foo bar")
-
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
 	b, err := bb.GetPatient(jobData, "0")
 	if err != nil {
