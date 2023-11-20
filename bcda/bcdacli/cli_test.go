@@ -706,9 +706,6 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	type test struct {
 		path         string
-		success      int
-		failure      int
-		skipped      int
 		err          error
 		expectedLogs []string
 	}
