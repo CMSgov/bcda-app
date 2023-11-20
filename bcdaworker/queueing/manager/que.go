@@ -148,6 +148,8 @@ func (q *queue) processJob(job *que.Job) error {
 	// start a goroutine that will periodically check the status of the parent job
 	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 15)
 
+	log.API.Info("DEBUG: ", jobArgs.CMSID, jobArgs.ID)
+
 	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")
 		logger.Error(err)
