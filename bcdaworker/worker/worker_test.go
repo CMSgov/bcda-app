@@ -224,21 +224,24 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 	ctx := context.Background()
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 
+	id, err := client.HashIdentifier(cclfBeneficiary.MBI)
+	assert.Nil(s.T(), err)
+
 	switch resource {
 	case "ExplanationOfBenefit":
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 	case "Coverage":
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetCoverage", jobArgs, beneID).Return(bbc.GetBundleData("Coverage", beneID))
 	case "Patient":
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetPatient", jobArgs, beneID).Return(bbc.GetBundleData("Patient", beneID))
 	case "Claim":
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetClaim", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("Claim", beneID))
 	case "ClaimResponse":
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetClaimResponse", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ClaimResponse", beneID))
 
 	}
@@ -286,7 +289,11 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 	cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
+
+	id, err := client.HashIdentifier(cclfBeneficiary.MBI)
+	assert.Nil(s.T(), err)
+
+	bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneficiaryID))
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
@@ -313,7 +320,10 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
+
+		id, err := client.HashIdentifier(cclfBeneficiary.MBI)
+		assert.Nil(s.T(), err)
+		bbc.On("GetPatientByIdentifierHash", id).Return(bbc.GetData("Patient", beneficiaryID))
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
@@ -364,14 +374,19 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[0], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[1], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
+	id0, err := client.HashIdentifier(beneficiaryIDs[0])
+	assert.Nil(s.T(), err)
+	bbc.On("GetPatientByIdentifierHash", id0).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
+
 	bbc.MBI = &beneficiaryIDs[1]
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[1])).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
+	id1, err := client.HashIdentifier(beneficiaryIDs[1])
+	assert.Nil(s.T(), err)
+	bbc.On("GetPatientByIdentifierHash", id1).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	ctx := context.Background()
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, _, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	_, _, err = writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)

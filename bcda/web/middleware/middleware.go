@@ -40,11 +40,13 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 
 			version, err := getVersion(r.URL.Path)
 			if err != nil {
+				log.API.Error(err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			rw, err := getRespWriter(version)
 			if err != nil {
+				log.API.Error(err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}

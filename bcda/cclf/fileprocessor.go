@@ -65,6 +65,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 	if err = zipReader.Close(); err != nil {
+		fmt.Printf("Failed to close zip file %s\n", err.Error())
 		log.API.Warnf("Failed to close zip file %s", err.Error())
 	}
 

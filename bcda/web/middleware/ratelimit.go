@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -43,11 +44,13 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 
 		version, err := getVersion(r.URL.Path)
 		if err != nil {
+			log.API.Error(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		rw, err := getRespWriter(version)
 		if err != nil {
+			log.API.Error(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -79,46 +82,56 @@ func hasDuplicates(pendingAndInProgressJobs []*models.Job, types []string, versi
 	allResources := len(types) == 0
 
 	for _, job := range pendingAndInProgressJobs {
+		log.API.Infof("Checking if new request is duplicate of pending or in-progress job %d\n", job.ID)
+
 		// Cannot determine duplicates if we can't get the underlying URL
 		req, err := url.Parse(job.RequestURL)
 		if err != nil {
+			log.API.Warn(errors.Wrap(err, "Could not parse job request URL to determine duplicates -- ignoring existing job"))
 			continue
 		}
 
 		// Cannot determine duplicates if we can't figure out the version
 		jobVersion, err := getVersion(req.Path)
 		if err != nil {
+			log.API.Warn(errors.Wrap(err, "Could not parse job's API version to determine duplicates -- ignoring existing job"))
 			continue
 		}
 
 		// We allow different API versions to trigger jobs with the same resource type
 		if jobVersion != version {
+			log.API.Info("Existing Job version differs from new job version -- ignoring existing job")
 			continue
 		}
 
 		// If the job has timed-out we will allow new job to be created
 		if time.Now().After(job.CreatedAt.Add(jobTimeout)) {
+			log.API.Info("Existing job timed out -- ignoring existing job")
 			continue
 		}
 
 		// Any in-progress job will have duplicate types since the caller
 		// is requesting all resources
 		if allResources {
+			log.API.Info("New request is for all resources and will overlap with existing job -- disallowing request")
 			return true
 		}
 
 		if requestedTypes, ok := req.Query()["_type"]; ok {
 			for _, rt := range requestedTypes {
 				if _, ok := typeSet[rt]; ok {
+					log.API.Info("New request types overlap with existing job types -- disallowing request")
 					return true
 				}
 			}
 		} else {
 			// we have an export all types that is still in progress
+			log.API.Info("Existing job is exporting all types -- disallowing request")
 			return true
 		}
 	}
 
 	// No duplicates
+	log.API.Info("No duplicate jobs exist for incoming request -- allowing request")
 	return false
 }

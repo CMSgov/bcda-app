@@ -12,7 +12,11 @@ import (
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func getBlueButtonID(bb client.APIClient, mbi string, jobData models.JobEnqueueArgs) (blueButtonID string, err error) {
-	hashedIdentifier := client.HashIdentifier(mbi)
+	hashedIdentifier, err := client.HashIdentifier(mbi)
+	if err != nil {
+		return "", err
+	}
+
 	jsonData, err := bb.GetPatientByIdentifierHash(jobData, hashedIdentifier)
 	if err != nil {
 		return "", err
@@ -40,7 +44,7 @@ func getBlueButtonID(bb client.APIClient, mbi string, jobData models.JobEnqueueA
 		} else if strings.Contains(identifier.System, "bene_id") && identifier.Value == blueButtonID {
 			foundBlueButtonID = true
 		} else if strings.EqualFold(identifier.System, "http://terminology.hl7.org/CodeSystem/v2-0203") {
-			// This hot-fix logic to handle the changes made in this PR: 
+			// This hot-fix logic to handle the changes made in this PR:
 			// https://github.com/CMSgov/beneficiary-fhir-data/pull/474
 			// Specifically:
 			// https://github.com/CMSgov/beneficiary-fhir-data/pull/474/files#diff-97195cabdd2698fa9148e9ad32fb8fef8dd462a55dabb9eaf4a4b4300f691fddL112
