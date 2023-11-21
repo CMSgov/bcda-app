@@ -94,7 +94,11 @@ func (l *StructuredLoggerEntry) Write(status int, bytes int, header http.Header,
 		"resp_elapsed_ms": float64(elapsed.Nanoseconds()) / 1000000.0,
 	})
 
-	l.Logger.Infoln("request complete")
+	if status >= 500 {
+		l.Logger.Errorln("request complete")
+	} else {
+		l.Logger.Infoln("request complete")
+	}
 }
 
 func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
