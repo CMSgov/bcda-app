@@ -40,19 +40,22 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 
 			version, err := getVersion(r.URL.Path)
 			if err != nil {
-				log.API.Error(err)
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error(err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			rw, err := getRespWriter(version)
 			if err != nil {
-				log.API.Error(err)
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error(err)
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
 			if cfg.IsACODisabled(ad.CMSID) {
-				log.API.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
 				rw.Exception(w, http.StatusUnauthorized, responseutils.InternalErr, "")
 				return
 			}

@@ -81,19 +81,13 @@ func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler
 
 		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
-			log.API.Error(err)
-			return
-		}
-		// Note: could split this out into a function for adding to the context log
-		entry, ok := middleware.GetLogEntry(r).(*log.StructuredLoggerEntry)
-		if !ok {
-			log.API.Error("Incorrect type of logger used in request context")
+			logger := log.GetCtxLogger(r.Context())
+			logger.Error(err)
 			return
 		}
 
-		entry.Logger = entry.Logger.WithFields(logrus.Fields{
-			"resource_type": jobKey.ResourceType,
-		})
+		ctx, _ := log.SetCtxLogger(r.Context(), "resource_type", jobKey.ResourceType)
+		r = r.WithContext(ctx)
 	})
 }
 

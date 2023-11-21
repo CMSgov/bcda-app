@@ -408,14 +408,16 @@ func GetAuthInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
-		log.API.Error(err)
+		logger := log.GetCtxLogger(r.Context())
+		logger.Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	_, err = w.Write(respBytes)
 	if err != nil {
-		log.API.Error(err)
+		logger := log.GetCtxLogger(r.Context())
+		logger.Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

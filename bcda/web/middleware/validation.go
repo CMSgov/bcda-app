@@ -144,38 +144,40 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 		acceptHeader := h.Get("Accept")
 		preferHeader := h.Get("Prefer")
 
+		logger := log.GetCtxLogger(r.Context())
+
 		// Get API version
 		version, err := getVersion(r.URL.Path)
 		if err != nil {
 			// If we cannot discern the version, we cannot discern what fhir response to build so we default.
 			// This should never come up as we require a version in the route for all that use this middleware.
-			log.API.Error(err)
+			logger.Error(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		rw, err := getRespWriter(version)
 		if err != nil {
-			log.API.Error(err)
+			logger.Error(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		if acceptHeader == "" {
-			log.API.Warn("Accept header is required")
+			logger.Warn("Accept header is required")
 			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
 			return
 		} else if acceptHeader != "application/fhir+json" {
-			log.API.Warn("application/fhir+json is the only supported response format")
+			logger.Warn("application/fhir+json is the only supported response format")
 			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			return
 		}
 
 		if preferHeader == "" {
-			log.API.Warn("Prefer header is required")
+			logger.Warn("Prefer header is required")
 			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
 			return
 		} else if preferHeader != "respond-async" {
-			log.API.Warn("Only asynchronous responses are supported")
+			logger.Warn("Only asynchronous responses are supported")
 			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
 			return
 		}
