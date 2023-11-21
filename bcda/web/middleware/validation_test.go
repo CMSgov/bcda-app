@@ -79,8 +79,12 @@ func TestInvalidRequestURL(t *testing.T) {
 }
 
 func TestValidRequestHeaders(t *testing.T) {
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 	req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
 	assert.NoError(t, err)
+
+	req = req.WithContext(ctx)
 	req.Header.Set("Accept", "application/fhir+json")
 	req.Header.Set("Prefer", constants.TestRespondAsync)
 
