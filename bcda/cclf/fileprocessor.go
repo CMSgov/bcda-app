@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/pkg/errors"
 )
@@ -57,7 +58,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	}
 
 	// ignore the opt out file, and don't add it to the skipped count
-	optOut := isOptOut(info.Name())
+	optOut, _ := optout.IsOptOut(info.Name())
 	if optOut {
 		fmt.Print("Skipping opt-out file: ", info.Name())
 		log.API.Info("Skipping opt-out file: ", info.Name())
@@ -126,15 +127,6 @@ func (p *processor) handleArchiveError(path string, info os.FileInfo, cause erro
 	}
 
 	return err
-}
-
-func isOptOut(filename string) (isOptOut bool) {
-	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filename)
-	if len(filenameMatches) > 3 {
-		isOptOut = true
-	}
-	return isOptOut
 }
 
 func getCMSID(name string) (string, error) {
