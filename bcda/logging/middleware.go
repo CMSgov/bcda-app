@@ -77,8 +77,6 @@ type ResourceTypeLogger struct {
 
 func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-
 		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
 			logger := log.GetCtxLogger(r.Context())

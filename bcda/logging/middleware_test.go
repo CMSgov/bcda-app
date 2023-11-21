@@ -215,9 +215,10 @@ func TestResourceTypeLogging(t *testing.T) {
 		}
 
 		r := chi.NewRouter()
-		r.With(
-			logging.NewCtxLogger,
-			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		newLogEntry := &log.StructuredLoggerEntry{Logger: logrus.New()}
+		req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+
+		r.With(logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// Test route handler method for retrieving resources
 		}))
 
