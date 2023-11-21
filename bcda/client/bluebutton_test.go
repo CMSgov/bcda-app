@@ -303,6 +303,7 @@ func (s *BBRequestTestSuite) TestGetClaim_HashIdentifierError() {
 
 	_, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err, "Failed to decode bluebutton hash pepper")
 }
 
 func (s *BBRequestTestSuite) TestGetClaim_500() {
@@ -326,9 +327,9 @@ func (s *BBRequestTestSuite) TestGetClaimResponse_HashIdentifierError() {
 
 	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
 
-	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
-	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), 1, len(e.Entries))
+	_, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err, "Failed to decode bluebutton hash pepper")
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse_500() {

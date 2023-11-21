@@ -43,7 +43,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 			panic("RequestParameters should be set before calling this handler")
 		}
 
-		rw := getResponseWriterFromRequestPath(w, r)
+		rw, _ := getResponseWriterFromRequestPath(w, r)
 		if rw == nil {
 			return
 		}
