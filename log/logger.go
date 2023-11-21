@@ -110,6 +110,12 @@ func NewStructuredLoggerEntry(logger logrus.FieldLogger, ctx context.Context) co
 	return ctx
 }
 
+// Gets the logrus.StructuredLoggerEntry from a context
+func GetCtxEntry(ctx context.Context) *StructuredLoggerEntry {
+	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)
+	return entry
+}
+
 // Gets the logrus.FieldLogger from a context
 func GetCtxLogger(ctx context.Context) logrus.FieldLogger {
 	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)

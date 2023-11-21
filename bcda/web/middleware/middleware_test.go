@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -147,6 +148,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 
 		rr := httptest.NewRecorder()
 		ACOMiddleware := ACOEnabled(cfg)
+
 		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// ACO middleware test route, blank return for overrides
 		})).ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
@@ -157,5 +159,6 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
 	ctx = NewRequestParametersContext(ctx, rp)
+	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
 }
