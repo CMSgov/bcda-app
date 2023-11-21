@@ -38,18 +38,8 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 				panic("AuthData should be set before calling this handler")
 			}
 
-			version, err := getVersion(r.URL.Path)
-			if err != nil {
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error(err)
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			rw, err := getRespWriter(version)
-			if err != nil {
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error(err)
-				http.Error(w, err.Error(), http.StatusBadRequest)
+			rw := getResponseWriterFromRequestPath(w, r)
+			if rw == nil {
 				return
 			}
 

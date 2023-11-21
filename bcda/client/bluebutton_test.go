@@ -292,6 +292,19 @@ func (s *BBRequestTestSuite) TestGetClaim() {
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
+func (s *BBRequestTestSuite) TestGetClaim_HashIdentifierError() {
+	existingPepper := conf.GetEnv("BB_HASH_PEPPER")
+
+	defer func() {
+		conf.SetEnv(s.T(), "BB_HASH_PEPPER", existingPepper)
+	}()
+
+	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
+
+	_, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
+	assert.NotNil(s.T(), err)
+}
+
 func (s *BBRequestTestSuite) TestGetClaim_500() {
 	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
@@ -299,6 +312,20 @@ func (s *BBRequestTestSuite) TestGetClaim_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse() {
+	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 1, len(e.Entries))
+}
+
+func (s *BBRequestTestSuite) TestGetClaimResponse_HashIdentifierError() {
+	existingPepper := conf.GetEnv("BB_HASH_PEPPER")
+
+	defer func() {
+		conf.SetEnv(s.T(), "BB_HASH_PEPPER", existingPepper)
+	}()
+
+	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
+
 	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
@@ -381,6 +408,21 @@ func (s *BBTestSuite) TestHashIdentifier() {
 	MBIHash, err = client.HashIdentifier(MBI)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", MBIHash)
+}
+
+func (s *BBTestSuite) TestHashIdentifierFailure() {
+	assert.NotZero(s.T(), conf.GetEnv("BB_HASH_PEPPER"))
+	existingPepper := conf.GetEnv("BB_HASH_PEPPER")
+
+	defer func() {
+		conf.SetEnv(s.T(), "BB_HASH_PEPPER", existingPepper)
+	}()
+
+	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
+
+	HICN := "1000067585"
+	_, err := client.HashIdentifier(HICN)
+	assert.NotNil(s.T(), err)
 }
 
 func (s *BBRequestTestSuite) TearDownAllSuite() {

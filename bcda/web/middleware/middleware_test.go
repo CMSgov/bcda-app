@@ -156,6 +156,63 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 	}
 }
 
+func (s *MiddlewareTestSuite) TestACOEnabled_NoContextKey() {
+	cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
+	assert.NoError(s.T(), cfg.ComputeFields())
+
+	rr := httptest.NewRecorder()
+	ACOMiddleware := ACOEnabled(cfg)
+
+	ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// ACO middleware test route, blank return for overrides
+	})).ServeHTTP(rr, httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(context.Background()))
+	assert.Equal(s.T(), http.StatusInternalServerError, rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersion() {
+	cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
+	assert.NoError(s.T(), cfg.ComputeFields())
+
+	rr := httptest.NewRecorder()
+	ACOMiddleware := ACOEnabled(cfg)
+
+	ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// ACO middleware test route, blank return for overrides
+	})).ServeHTTP(rr, httptest.NewRequest("GET", "/Patient", nil).WithContext(context.Background()))
+	assert.Equal(s.T(), http.StatusBadRequest, rr.Code)
+	assert.Contains(s.T(), rr.Body.String(), "not enough parts in path")
+}
+
+func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
+	tests := []struct {
+		name         string
+		path         string
+		expected_err string
+	}{
+		{"Not Enough Parts", "/Patient", "not enough parts"},
+		{"Invalid Version", "/api/fakeV/Patient", "unexpected API version"},
+	}
+
+	for _, tt := range tests {
+		ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "A1234"})
+		ctx = NewRequestParametersContext(ctx, RequestParameters{})
+		ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
+
+		cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
+		assert.NoError(s.T(), cfg.ComputeFields())
+
+		rr := httptest.NewRecorder()
+		ACOMiddleware := ACOEnabled(cfg)
+
+		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			// ACO middleware test route, blank return for overrides
+		})).ServeHTTP(rr, httptest.NewRequest("GET", tt.path, nil).WithContext(ctx))
+
+		assert.Equal(s.T(), http.StatusBadRequest, rr.Code)
+		assert.Contains(s.T(), rr.Body.String(), tt.expected_err)
+	}
+}
+
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
 	ctx = NewRequestParametersContext(ctx, rp)

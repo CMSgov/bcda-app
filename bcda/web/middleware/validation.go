@@ -44,23 +44,8 @@ func RequestParametersFromContext(ctx context.Context) (RequestParameters, bool)
 // These paramters can be retrieved by calling RequestParametersFromContext.
 func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var rp RequestParameters
-
-		// Get API version
-		version, err := getVersion(r.URL.Path)
-		if err != nil {
-			// If we cannot discern the version, we cannot discern what fhir response to build so we default.
-			// This should never come up as we require a version in the route for all that use this middleware.
-			log.API.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		rp.Version = version
-
-		rw, err := getRespWriter(version)
-		if err != nil {
-			log.API.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		rw := getResponseWriterFromRequestPath(w, r)
+		if rw == nil {
 			return
 		}
 
@@ -94,6 +79,8 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 				return
 			}
 		}
+
+		var rp RequestParameters
 
 		// validate optional "_since" parameter
 		params, ok = r.URL.Query()["_since"]
@@ -146,19 +133,8 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		logger := log.GetCtxLogger(r.Context())
 
-		// Get API version
-		version, err := getVersion(r.URL.Path)
-		if err != nil {
-			// If we cannot discern the version, we cannot discern what fhir response to build so we default.
-			// This should never come up as we require a version in the route for all that use this middleware.
-			logger.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		rw, err := getRespWriter(version)
-		if err != nil {
-			logger.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		rw := getResponseWriterFromRequestPath(w, r)
+		if rw == nil {
 			return
 		}
 
@@ -218,4 +194,23 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}
+}
+
+func getResponseWriterFromRequestPath(w http.ResponseWriter, r *http.Request) fhirResponseWriter {
+	version, err := getVersion(r.URL.Path)
+	if err != nil {
+		logger := log.GetCtxLogger(r.Context())
+		logger.Error(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+	rw, err := getRespWriter(version)
+	if err != nil {
+		logger := log.GetCtxLogger(r.Context())
+		logger.Error(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+
+	return rw
 }

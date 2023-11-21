@@ -43,23 +43,15 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 			panic("RequestParameters should be set before calling this handler")
 		}
 
-		logger := log.GetCtxLogger(r.Context())
-		version, err := getVersion(r.URL.Path)
-		if err != nil {
-			logger.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		rw, err := getRespWriter(version)
-		if err != nil {
-			logger.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		rw := getResponseWriterFromRequestPath(w, r)
+		if rw == nil {
 			return
 		}
 
 		acoID := uuid.Parse(ad.ACOID)
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
 		if err != nil {
+			logger := log.GetCtxLogger(r.Context())
 			logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
 			rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
