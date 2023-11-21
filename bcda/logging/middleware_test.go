@@ -181,15 +181,6 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMiddlewareTestSuite))
 }
 
-type mockLogger struct {
-	Logger logrus.FieldLogger
-	entry  *log.StructuredLoggerEntry
-}
-
-func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	return l.entry
-}
-
 func TestResourceTypeLogging(t *testing.T) {
 	testCases := []struct {
 		jobID        string
