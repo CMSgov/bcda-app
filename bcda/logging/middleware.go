@@ -87,7 +87,7 @@ func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler
 		}
 
 		ctx, _ := log.SetCtxLogger(r.Context(), "resource_type", jobKey.ResourceType)
-		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
