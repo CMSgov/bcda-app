@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -44,6 +46,7 @@ type BBRequestTestSuite struct {
 
 var (
 	ts200, ts500 *httptest.Server
+	logger       = testUtils.GetLogger(logrus.StandardLogger())
 	now          = time.Now()
 	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 	since        = "gt2020-02-14"
@@ -60,7 +63,7 @@ func (s *BBTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_TIMEOUT_MS", "2000")
 
 	// Set up the logger since we're using the real client
-	client.SetLogger(logrus.StandardLogger())
+	client.SetLogger(logger)
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -74,6 +77,7 @@ func (s *BBRequestTestSuite) SetupSuite() {
 }
 
 func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
+	client.SetLogger(logger)
 	if strings.Contains(testName, "500") {
 		s.ts = ts500
 	} else {
@@ -221,6 +225,25 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 	assert.Equal(s.T(), "", params.Get("patient"))
 	assert.Equal(s.T(), "", params.Get("beneficiary"))
 
+}
+
+func (s *BBRequestTestSuite) TestGetBBLogs() {
+	hook := test.NewLocal(logger)
+	_, err := s.bbClient.GetPatient(jobData, "012345")
+	var logCMSID, logJobID bool
+	for _, entry := range hook.AllEntries() {
+		test := entry.Data
+		s.T().Log(test)
+		if entry.Data["cms_id"] == jobData.CMSID {
+			logCMSID = true
+		}
+		if entry.Data["job_id"] == strconv.Itoa(jobData.ID) {
+			logJobID = true
+		}
+	}
+	assert.True(s.T(), logCMSID)
+	assert.True(s.T(), logJobID)
+	assert.Nil(s.T(), err)
 }
 
 /* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
