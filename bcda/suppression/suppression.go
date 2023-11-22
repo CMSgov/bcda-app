@@ -96,7 +96,7 @@ func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata)
 				return err
 			}
 			count++
-			return nil
+			continue
 		}
 
 		if metaInfo != trailerCode {
