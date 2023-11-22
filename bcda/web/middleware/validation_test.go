@@ -107,8 +107,12 @@ func TestInvalidRequestHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 			req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
 			assert.NoError(t, err)
+
+			req = req.WithContext(ctx)
 			req.Header.Set("Accept", tt.acceptHeader)
 			req.Header.Set("Prefer", tt.preferHeader)
 
