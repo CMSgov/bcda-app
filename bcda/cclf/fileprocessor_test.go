@@ -157,20 +157,20 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_SkippedDownloading() {
 	}
 }
 
-// func (s *FileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
-// 	assert := assert.New(s.T())
-// 	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
-// 	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
-// 	yesterday := time.Now().AddDate(0, 0, -1)
-// 	err := os.Chtimes(filePath, yesterday, yesterday)
+func (s *FileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
+	assert := assert.New(s.T())
+	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
+	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
+	yesterday := time.Now().AddDate(0, 0, -1)
+	err := os.Chtimes(filePath, yesterday, yesterday)
 
-// 	if err == nil {
-// 		cclfMap, skipped, err := processCCLFArchives(filePath)
-// 		assert.Equal("", err)
-// 		assert.Equal(0, skipped)
-// 		assert.Nil(cclfMap)
-// 	}
-// }
+	if err == nil {
+		cclfMap, skipped, err := processCCLFArchives(filePath)
+		assert.NotNil(err)
+		assert.Equal(0, skipped)
+		assert.Nil(cclfMap)
+	}
+}
 
 func TestFileProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(FileProcessorTestSuite))
