@@ -1,10 +1,13 @@
 package testutils
 
 import (
+	"archive/zip"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
@@ -44,6 +47,38 @@ func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert := assert.New(s.T())
 	err := ImportCCLFPackage("dev", "environment", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for environment")
+}
+
+func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
+	assert := assert.New(s.T())
+	err := ImportCCLFPackage("improved-small", "test-partially-adjudicated", models.FileTypeRunout)
+	assert.EqualError(err, "unable to locate ../../../../../../shared_files/cclf/files/synthetic/test-partially-adjudicated/small in file path")
+}
+
+func (s *CCLFUtilTestSuite) TestAddFileToZipInvalidFile() {
+	assert := assert.New(s.T())
+	tempZip, err := os.CreateTemp("", "*")
+	if err == nil {
+		defer utils.CloseFileAndLogError(tempZip)
+		zipWriter := zip.NewWriter(tempZip)
+		err = addFileToZip(zipWriter, "file__name")
+		if err != nil {
+			assert.EqualError(err, "open file: no such file or directory")
+		}
+	}
+}
+
+func (s *CCLFUtilTestSuite) TestInvalidFilenameFormat() {
+	assert := assert.New(s.T())
+	tempZip, err := os.CreateTemp("", "*")
+	if err == nil {
+		defer utils.CloseFileAndLogError(tempZip)
+		zipWriter := zip.NewWriter(tempZip)
+		err = addFileToZip(zipWriter, "filename")
+		if err != nil {
+			assert.EqualError(err, "invalid filename format")
+		}
+	}
 }
 
 func (s *CCLFUtilTestSuite) TestImport() {

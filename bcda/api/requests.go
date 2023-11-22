@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	gcmw "github.com/go-chi/chi/v5/middleware"
+
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -159,7 +159,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		statusTypes []models.JobStatus
 		err         error
 	)
-
+	logger := log.GetCtxLogger(r.Context())
 	statusTypes = models.AllJobStatuses // default request to retrieve jobs with all statuses
 	params, ok := r.URL.Query()["_status"]
 	if ok {
@@ -181,19 +181,21 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 
 		// validate status types provided match our valid list of statuses
 		if err = h.validateStatuses(statusTypes); err != nil {
+			logger.Error(err)
 			h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 	}
 
 	if ad, err = readAuthData(r); err != nil {
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
 	jobs, err := h.Svc.GetJobs(r.Context(), uuid.Parse(ad.ACOID), statusTypes...)
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 
 		if ok := goerrors.As(err, &service.JobsNotFoundError{}); ok {
 			h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, err.Error())
@@ -212,7 +214,6 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
-
 	for _, statusType := range statusTypes {
 		if _, ok := h.supportedStatuses[statusType]; !ok {
 			return fmt.Errorf("invalid status type %s. Supported types %s", statusType, h.supportedStatuses)
@@ -223,28 +224,35 @@ func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
+	logger := log.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
-		log.API.Error(err)
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		logger.Error(err)
+		//We don't need to return the full error to a consumer.
+		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "")
+
 		return
 	}
 
 	job, jobKeys, err := h.Svc.GetJobAndKeys(r.Context(), uint(jobID))
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
 		// So returning a StatusNotFound may be a misnomer
+		//In contrast to above, if the input COULD be valid, we return a not found header (404)
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, "")
+
 		return
 	}
 
 	switch job.Status {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
+		logger.Error(job.Status)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
 		w.Header().Set("X-Progress", job.StatusMessage())
@@ -257,7 +265,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			h.RespWriter.Exception(w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", constants.JsonContentType)
 		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
@@ -295,12 +303,14 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
+			logger.Error(err)
 			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
+			logger.Error(err)
 			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
@@ -316,12 +326,13 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	logger := log.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
-		log.API.Error(err)
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -330,10 +341,11 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrJobNotCancellable:
+			logger.Info(errors.Wrap(err, "Job is not cancellable"))
 			h.RespWriter.Exception(w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
-			log.API.Error(err)
+			logger.Error(err)
 			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, err.Error())
 			return
 		}
@@ -352,6 +364,7 @@ type AttributionFileStatusResponse struct {
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	logger := log.GetCtxLogger(ctx)
 
 	var (
 		ad   auth.AuthData
@@ -360,6 +373,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if ad, err = readAuthData(r); err != nil {
+		logger.Error(err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -367,6 +381,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the most recent cclf 8 file we have successfully ingested
 	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
 	if err != nil {
+		logger.Error(errors.Wrap(err, "Failed to retrieve recent CCLF8 file"))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -377,6 +392,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
 	if err != nil {
+		logger.Error(errors.Wrap(err, "Failed to retrieve recent runout CCLF8 file"))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -385,6 +401,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.Data == nil {
+		logger.Error(errors.New("Could not find any CCLF8 files"))
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
 	}
@@ -393,6 +410,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
+		logger.Error(errors.Wrap(err, "Failed to encode JSON response"))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
@@ -400,9 +418,10 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
+	logger := log.GetCtxLogger(ctx)
 	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, fileType)
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 
 		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
 			return nil, nil
@@ -428,6 +447,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
+	logger := log.GetCtxLogger(r.Context())
 
 	var (
 		ad  auth.AuthData
@@ -435,6 +455,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	)
 
 	if ad, err = readAuthData(r); err != nil {
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
@@ -447,14 +468,14 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
@@ -478,7 +499,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
-		log.API.Error(err)
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
@@ -488,7 +509,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	defer func() {
 		if err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
-				log.API.Warnf("Failed to rollback transaction %s", err.Error())
+				logger.Warnf("Failed to rollback transaction %s", err.Error())
 			}
 			// We've already written out the HTTP response so we can return after we've rolled back the transaction
 			return
@@ -505,7 +526,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		// This does introduce an error scenario where we have queuejobs but no parent job.
 		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
-			log.API.Error(err.Error())
+			logger.Error(err.Error())
 			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
@@ -517,20 +538,28 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
 
 	if newJob.ID != 0 {
-		requestID := gcmw.GetReqID(r.Context())
-		log.API.Infof("requestID %s jobID %d", requestID, newJob.ID)
+		ctx, logger = log.SetCtxLogger(ctx, "job_id", newJob.ID)
+		logger.Info("job id created")
+	}
+
+	jobData := models.JobEnqueueArgs{
+		ID:              int(newJob.ID),
+		ACOID:           acoID.String(),
+		Since:           "",
+		TransactionTime: time.Now(),
+		CMSID:           ad.CMSID,
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	b, err := bb.GetPatient("0", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
+	b, err := bb.GetPatient(jobData, "0")
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		return
 	}
@@ -552,7 +581,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
 	if err != nil {
-		log.API.Error(err)
+		logger.Error(err)
 		var (
 			respCode int
 			errType  string
@@ -571,7 +600,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	// We've now computed all of the fields necessary to populate a fully defined job
 	if err = rtx.UpdateJob(ctx, newJob); err != nil {
-		log.API.Error(err.Error())
+		logger.Error(err.Error())
 		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
@@ -584,7 +613,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
 		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
-			log.API.Error(err)
+			logger.Error(err)
 			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}

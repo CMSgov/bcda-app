@@ -30,7 +30,7 @@ func (s *AlrTestSuite) SetupSuite() {
 	r := postgres.NewRepository(db)
 	cfg, err := LoadConfig()
 	if err != nil {
-		assert.FailNowf(s.T(), "Failed ot load service config", err.Error())
+		assert.FailNowf(s.T(), "Failed to load service config", err.Error())
 	}
 
 	// Test case here is 54, so settting it to 10

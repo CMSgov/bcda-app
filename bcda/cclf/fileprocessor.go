@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/pkg/errors"
 )
@@ -56,15 +57,25 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
+	// ignore the opt out file, and don't add it to the skipped count
+	optOut, _ := optout.IsOptOut(info.Name())
+	if optOut {
+		fmt.Print("Skipping opt-out file: ", info.Name())
+		log.API.Info("Skipping opt-out file: ", info.Name())
+		return nil
+	}
+
 	zipReader, err := zip.OpenReader(filepath.Clean(path))
 	if err != nil {
+
 		p.skipped = p.skipped + 1
-		msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
+		msg := fmt.Sprintf("Skipping %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
 		log.API.Warn(msg)
 		return nil
 	}
 	if err = zipReader.Close(); err != nil {
+		fmt.Printf("Failed to close zip file %s\n", err.Error())
 		log.API.Warnf("Failed to close zip file %s", err.Error())
 	}
 
@@ -168,6 +179,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 
 	if len(parts) != 7 {
 		err := fmt.Errorf("invalid filename ('%s') for CCLF file, parts: %v", fileName, parts)
+		fmt.Println(err.Error())
 		log.API.Error(err)
 		return metadata, err
 	}

@@ -14,17 +14,18 @@ import (
 
 // Timer provides methods for timing methods.
 // Typical Usage scenario:
-//		timer := metrics.GetTimer()
-//		defer timer.Close()
-//		ctx := metrics.NewContext(ctx, timer)
-// 		ctx, close := metrics.NewParent(ctx)
-// 		defer close()
-// 		close1 := metrics.NewChild(ctx, "Ingest #1")
-// 		// Perform Ingest #1 call
-// 		close1()
-// 		close2 := metrics.NewChild(ctx, "Ingest #2")
-// 		// Perform Ingest #2 call
-// 		close2()
+//
+//	timer := metrics.GetTimer()
+//	defer timer.Close()
+//	ctx := metrics.NewContext(ctx, timer)
+//	ctx, close := metrics.NewParent(ctx)
+//	defer close()
+//	close1 := metrics.NewChild(ctx, "Ingest #1")
+//	// Perform Ingest #1 call
+//	close1()
+//	close2 := metrics.NewChild(ctx, "Ingest #2")
+//	// Perform Ingest #2 call
+//	close2()
 type Timer interface {
 	// new creates a new timer and embeds it into the returned context.
 	// To start timing methods, caller should start with this call
@@ -146,7 +147,7 @@ type noopTimer struct {
 }
 
 func (t *noopTimer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
-	return context.Background(), noop
+	return parentCtx, noop
 }
 
 func (t *noopTimer) newChild(parentCtx context.Context, name string) (close func()) {

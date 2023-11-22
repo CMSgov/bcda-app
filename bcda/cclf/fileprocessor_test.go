@@ -66,7 +66,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 	}{
 		{filepath.Join(s.basePath, "cclf/archives/valid/"), 2, 1, 1, 1},
 		{filepath.Join(s.basePath, "cclf/archives/bcd/"), 2, 1, 1, 1},
-		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 2, 5, 1, 1},
+		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 2, 4, 1, 1},
 		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 3, 3, 3, 0},
 		{filepath.Join(s.basePath, "cclf/archives/8/valid/"), 5, 0, 0, 5},
 		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 4, 0, 0},
@@ -112,7 +112,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert.Nil(err)
 	cclfList := cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
-	assert.Equal(5, skipped)
+	assert.Equal(4, skipped)
 	// assert that this file is still here.
 	_, err = os.Open(filePath)
 	assert.Nil(err)
@@ -127,7 +127,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert.Nil(err)
 	cclfList = cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
-	assert.Equal(5, skipped)
+	assert.Equal(4, skipped)
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)

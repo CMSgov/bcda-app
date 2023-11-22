@@ -22,6 +22,7 @@ import (
 	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -139,7 +140,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
 		{"OtherError", fmt.Errorf(constants.DefaultError), fmt.Errorf(constants.DefaultError), ""},
 	}
-
+	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
@@ -170,7 +171,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			}
 
 			if tt.expLogMsg != "" {
-				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), logHook.LastEntry().Message)
+				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
 			}
 		})
 	}

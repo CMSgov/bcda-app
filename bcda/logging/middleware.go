@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -29,7 +30,7 @@ type StructuredLogger struct {
 }
 
 func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	entry := &StructuredLoggerEntry{Logger: l.Logger}
+	entry := &log.StructuredLoggerEntry{Logger: l.Logger}
 	logFields := logrus.Fields{}
 
 	logFields["ts"] = time.Now().UTC().Format(time.RFC1123)
@@ -70,45 +71,21 @@ type StructuredLoggerEntry struct {
 	Logger logrus.FieldLogger
 }
 
-func (l *StructuredLoggerEntry) Write(status int, bytes int, header http.Header, elapsed time.Duration, extra interface{}) {
-	l.Logger = l.Logger.WithFields(logrus.Fields{
-		"resp_status": status, "resp_bytes_length": bytes,
-		"resp_elapsed_ms": float64(elapsed.Nanoseconds()) / 1000000.0,
-	})
-
-	l.Logger.Infoln("request complete")
-}
-
-func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
-	l.Logger = l.Logger.WithFields(logrus.Fields{
-		"stack": string(stack),
-		"panic": fmt.Sprintf("%+v", v),
-	})
-}
-
 type ResourceTypeLogger struct {
 	Repository models.JobKeyRepository
 }
 
 func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-
 		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
-			log.API.Error(err)
-			return
-		}
-		// Note: could split this out into a function for adding to the context log
-		entry, ok := middleware.GetLogEntry(r).(*StructuredLoggerEntry)
-		if !ok {
-			log.API.Error("Incorrect type of logger used in request context")
+			logger := log.GetCtxLogger(r.Context())
+			logger.Error(err)
 			return
 		}
 
-		entry.Logger = entry.Logger.WithFields(logrus.Fields{
-			"resource_type": jobKey.ResourceType,
-		})
+		ctx, _ := log.SetCtxLogger(r.Context(), "resource_type", jobKey.ResourceType)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -135,4 +112,18 @@ func Redact(uri string) string {
 		uri = strings.Replace(uri, match[1], "<redacted>", 1)
 	}
 	return uri
+}
+
+// NewCtxLogger adds new key value pair of {CtxLoggerKey: logrus.FieldLogger} to the requests context
+func NewCtxLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logFields := logrus.Fields{}
+		logFields["request_id"] = middleware.GetReqID(r.Context())
+		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
+			logFields["cms_id"] = ad.CMSID
+		}
+		newLogEntry := &log.StructuredLoggerEntry{Logger: log.API.WithFields(logFields)}
+		r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+		next.ServeHTTP(w, r)
+	})
 }

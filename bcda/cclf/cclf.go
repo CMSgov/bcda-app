@@ -348,11 +348,13 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		defer c()
 		return cleanUpCCLF(ctx, cclfMap)
 	}(); err != nil {
+		fmt.Println(err.Error())
 		log.API.Error(err)
 	}
 
 	if failure > 0 {
 		err = errors.New("one or more files failed to import correctly")
+		fmt.Println(err.Error())
 		log.API.Error(err)
 	} else {
 		err = nil

@@ -27,6 +27,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/fhir/go/fhirversion"
@@ -108,6 +109,8 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 			ad := s.makeContextValues(acoUnderTest)
 			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
 			JobStatus(rr, req)
 
@@ -299,6 +302,8 @@ func (s *APITestSuite) TestJobsStatus() {
 	req := httptest.NewRequest("GET", "/api/v2/jobs", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -317,6 +322,8 @@ func (s *APITestSuite) TestJobsStatusNotFound() {
 	req := httptest.NewRequest("GET", "/api/v2/jobs", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	JobsStatus(rr, req)
@@ -327,6 +334,8 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 	req := httptest.NewRequest("GET", "/api/v2/jobs?_status=Failed", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -345,6 +354,8 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 	req := httptest.NewRequest("GET", "/api/v2/jobs?_status=Failed", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -363,6 +374,8 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 	req := httptest.NewRequest("GET", "/api/v2/jobs?_status=Completed,Failed", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	j := models.Job{
@@ -398,7 +411,8 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 			ad := s.makeContextValues(acoUnderTest)
 			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 			JobStatus(rr, req)
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
@@ -437,6 +451,9 @@ func (s *APITestSuite) TestDeleteJob() {
 
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
+
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
 			DeleteJob(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
@@ -562,6 +579,8 @@ func (s *APITestSuite) TestResourceTypes() {
 				ad := s.getAuthData()
 				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 				req = req.WithContext(middleware.NewRequestParametersContext(req.Context(), rp))
+				newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+				req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
 				handler(rr, req)
 				assert.Equal(t, tt.statusCode, rr.Code)
@@ -578,6 +597,8 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	req := httptest.NewRequest("GET", "/api/v2/attribution_status", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
 	AttributionStatus(rr, req)
@@ -610,6 +631,8 @@ func (s *APITestSuite) createJobStatusRequest(acoID uuid.UUID, jobID uint) *http
 	rctx.URLParams.Add("jobID", fmt.Sprint(jobID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := s.makeContextValues(acoID)
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	return req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 }
 
@@ -631,4 +654,10 @@ func getOperationOutcome(t *testing.T, data []byte) *fhiroo.OperationOutcome {
 	container, err := unmarshaller.Unmarshal(data)
 	assert.NoError(t, err)
 	return container.(*fhirresources.ContainedResource).GetOperationOutcome()
+}
+
+func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *log.StructuredLoggerEntry {
+	var lggr logrus.Logger
+	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logFields)}
+	return newLogEntry
 }

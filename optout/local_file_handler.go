@@ -44,7 +44,6 @@ func (handler LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFil
 		metadata, err := ParseMetadata(info.Name())
 		metadata.FilePath = path
 		metadata.DeliveryDate = info.ModTime()
-
 		if err != nil {
 			handler.Logger.Error(err)
 
@@ -58,8 +57,9 @@ func (handler LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFil
 				newpath := fmt.Sprintf("%s/%s", handler.PendingDeletionDir, info.Name())
 				err = os.Rename(metadata.FilePath, newpath)
 				if err != nil {
-					fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", metadata)
-					err = fmt.Errorf("error moving unknown file %s to pending deletion dir", metadata)
+					errmsg := fmt.Sprintf("error moving unknown file %s to pending deletion dir", metadata)
+					err = errors.Wrap(err, errmsg)
+					fmt.Println(errmsg)
 					handler.Logger.Error(err)
 					return err
 				}

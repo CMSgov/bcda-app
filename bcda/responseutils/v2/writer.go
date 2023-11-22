@@ -10,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
+	logAPI "github.com/CMSgov/bcda-app/log"
 
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
@@ -161,10 +162,13 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 }
 
 func WriteError(outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
-	w.Header().Set(constants.ContentType, constants.JsonContentType)
+	//Write application/fhir+json header on OperationOutcome responses
+	//https://build.fhir.org/ig/HL7/bulk-data/export.html#response---error-status-1
+	w.Header().Set(constants.ContentType, constants.FHIRJsonContentType)
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -280,6 +284,7 @@ func WriteCapabilityStatement(statement *fhirmodelCS.CapabilityStatement, w http
 	}
 	statementJSON, err := marshaller.Marshal(resource)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -288,6 +293,7 @@ func WriteCapabilityStatement(statement *fhirmodelCS.CapabilityStatement, w http
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(statementJSON)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -299,6 +305,7 @@ func WriteBundleResponse(bundle *fhirmodelCR.Bundle, w http.ResponseWriter) {
 	}
 	bundleJSON, err := marshaller.Marshal(resource)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -307,6 +314,7 @@ func WriteBundleResponse(bundle *fhirmodelCR.Bundle, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(bundleJSON)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

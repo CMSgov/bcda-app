@@ -181,15 +181,6 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMiddlewareTestSuite))
 }
 
-type mockLogger struct {
-	Logger logrus.FieldLogger
-	entry  *logging.StructuredLoggerEntry
-}
-
-func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	return l.entry
-}
-
 func TestResourceTypeLogging(t *testing.T) {
 	testCases := []struct {
 		jobID        string
@@ -219,24 +210,63 @@ func TestResourceTypeLogging(t *testing.T) {
 			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), constants.TestBlobFileName).Return(nil, errors.New("expected error"))
 		}
 
-		entry := &logging.StructuredLoggerEntry{Logger: log.Request}
-
 		logger := logging.ResourceTypeLogger{
 			Repository: repository,
 		}
 
 		r := chi.NewRouter()
-		r.With(
-			middleware.RequestLogger(&mockLogger{Logger: log.Request, entry: entry}),
-			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		newLogEntry := &log.StructuredLoggerEntry{Logger: logrus.New()}
+		req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+
+		r.With(logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// Test route handler method for retrieving resources
 		}))
 
 		rw := httptest.NewRecorder()
 		r.ServeHTTP(rw, req)
-		testEntry := entry.Logger.WithField("test", nil)
+		ctxEntry := log.GetCtxEntry(req.Context())
+		testEntry := ctxEntry.Logger.WithField("test", nil)
 		if respT := testEntry.Data["resource_type"]; respT != test.ResourceType {
 			t.Error("Failed to find resource_type in logs", respT, testEntry)
 		}
+	}
+}
+
+func TestMiddlewareLogCtx(t *testing.T) {
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		val := r.Context().Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
+		if val == nil {
+			t.Error("no log context")
+		}
+
+	})
+
+	handlerToTest := contextToken(middleware.RequestID(logging.NewCtxLogger(nextHandler)))
+	req := httptest.NewRequest("GET", "http://testing", nil)
+	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+
+}
+
+func TestSetCtxLogger(t *testing.T) {
+	ctx := context.Background()
+	ctx, _ = log.SetCtxLogger(ctx, "request_id", "123456")
+	ctx, _ = log.SetCtxLogger(ctx, "cms_id", "A0000")
+	ctxEntryAppend := ctx.Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
+	entry := ctxEntryAppend.Logger.WithField("test", "entry")
+
+	if cmsId, ok := entry.Data["cms_id"]; ok {
+		if cmsId != "A0000" {
+			t.Errorf("unexpected value for cms_id")
+		}
+	} else {
+		t.Errorf("key cms_id does not exist")
+	}
+	if reqId, ok := entry.Data["request_id"]; ok {
+		if reqId != "123456" {
+			t.Errorf("unexpected value for request_id")
+		}
+	} else {
+		t.Errorf("key request_id does not exist")
 	}
 }
