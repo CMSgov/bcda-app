@@ -24,17 +24,14 @@ const (
 
 func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 	var metadata OptOutFilenameMetadata
-	// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
-	// Prefix: T = test, P = prod;
-	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filename)
-	if len(filenameMatches) < 4 {
+	isOptOut, matches := IsOptOut(filename)
+	if !isOptOut {
 		fmt.Printf("Invalid filename for file: %s.\n", filename)
 		err := fmt.Errorf("invalid filename for file: %s", filename)
 		return metadata, err
 	}
 
-	filenameDate := filenameMatches[3]
+	filenameDate := matches[3]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filename)
@@ -43,9 +40,18 @@ func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 	}
 
 	metadata.Timestamp = t
-	metadata.Name = filenameMatches[0]
+	metadata.Name = matches[0]
 
 	return metadata, nil
+}
+
+func IsOptOut(filename string) (isOptOut bool, matches []string) {
+	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
+	matches = filenameRegexp.FindStringSubmatch(filename)
+	if len(matches) > 3 {
+		isOptOut = true
+	}
+	return isOptOut, matches
 }
 
 func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
