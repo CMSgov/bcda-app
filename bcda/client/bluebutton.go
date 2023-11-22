@@ -123,7 +123,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	}
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("BB_TIMEOUT_MS")); err != nil {
-		logger.Info("Could not get Blue Button timeout from environment variable; using default value of 500.")
+		logger.Warn(errors.Wrap(err, "Could not get Blue Button timeout from environment variable; using default value of 500."))
 		timeout = 500
 	}
 
@@ -188,7 +188,11 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 
-	mbiHash := HashIdentifier(mbi)
+	mbiHash, err := HashIdentifier(mbi)
+	if err != nil {
+		return nil, err
+	}
+
 	params := GetDefaultParams()
 	params.Set("mbi", mbiHash)
 	params.Set("excludeSAMHSA", "true")
@@ -208,7 +212,11 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 
-	mbiHash := HashIdentifier(mbi)
+	mbiHash, err := HashIdentifier(mbi)
+	if err != nil {
+		return nil, err
+	}
+
 	params := GetDefaultParams()
 	params.Set("mbi", mbiHash)
 	params.Set("excludeSAMHSA", "true")
@@ -402,16 +410,17 @@ func GetDefaultParams() (params url.Values) {
 	return params
 }
 
-func HashIdentifier(toHash string) (hashedValue string) {
+func HashIdentifier(toHash string) (hashedValue string, err error) {
 	blueButtonPepper := conf.GetEnv("BB_HASH_PEPPER")
 	blueButtonIter := utils.GetEnvInt("BB_HASH_ITER", 1000)
 
 	pepper, err := hex.DecodeString(blueButtonPepper)
-	// not sure how this can happen
+
 	if err != nil {
-		return ""
+		return "", errors.Wrap(err, "Failed to decode bluebutton hash pepper")
 	}
-	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New))
+
+	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New)), nil
 }
 
 func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {

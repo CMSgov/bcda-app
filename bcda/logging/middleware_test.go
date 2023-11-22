@@ -181,15 +181,6 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMiddlewareTestSuite))
 }
 
-type mockLogger struct {
-	Logger logrus.FieldLogger
-	entry  *log.StructuredLoggerEntry
-}
-
-func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	return l.entry
-}
-
 func TestResourceTypeLogging(t *testing.T) {
 	testCases := []struct {
 		jobID        string
@@ -219,22 +210,22 @@ func TestResourceTypeLogging(t *testing.T) {
 			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), constants.TestBlobFileName).Return(nil, errors.New("expected error"))
 		}
 
-		entry := &log.StructuredLoggerEntry{Logger: log.Request}
-
 		logger := logging.ResourceTypeLogger{
 			Repository: repository,
 		}
 
 		r := chi.NewRouter()
-		r.With(
-			middleware.RequestLogger(&mockLogger{Logger: log.Request, entry: entry}),
-			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		newLogEntry := &log.StructuredLoggerEntry{Logger: logrus.New()}
+		req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+
+		r.With(logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// Test route handler method for retrieving resources
 		}))
 
 		rw := httptest.NewRecorder()
 		r.ServeHTTP(rw, req)
-		testEntry := entry.Logger.WithField("test", nil)
+		ctxEntry := log.GetCtxEntry(req.Context())
+		testEntry := ctxEntry.Logger.WithField("test", nil)
 		if respT := testEntry.Data["resource_type"]; respT != test.ResourceType {
 			t.Error("Failed to find resource_type in logs", respT, testEntry)
 		}

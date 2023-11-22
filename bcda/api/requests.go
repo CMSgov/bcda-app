@@ -181,12 +181,14 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 
 		// validate status types provided match our valid list of statuses
 		if err = h.validateStatuses(statusTypes); err != nil {
+			logger.Error(err)
 			h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 	}
 
 	if ad, err = readAuthData(r); err != nil {
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
@@ -339,6 +341,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrJobNotCancellable:
+			logger.Info(errors.Wrap(err, "Job is not cancellable"))
 			h.RespWriter.Exception(w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
@@ -361,6 +364,7 @@ type AttributionFileStatusResponse struct {
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	logger := log.GetCtxLogger(ctx)
 
 	var (
 		ad   auth.AuthData
@@ -369,6 +373,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if ad, err = readAuthData(r); err != nil {
+		logger.Error(err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -376,6 +381,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the most recent cclf 8 file we have successfully ingested
 	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
 	if err != nil {
+		logger.Error(errors.Wrap(err, "Failed to retrieve recent CCLF8 file"))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -386,6 +392,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
 	if err != nil {
+		logger.Error(errors.Wrap(err, "Failed to retrieve recent runout CCLF8 file"))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -394,6 +401,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.Data == nil {
+		logger.Error(errors.New("Could not find any CCLF8 files"))
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
 	}
@@ -402,6 +410,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
+		logger.Error(errors.Wrap(err, "Failed to encode JSON response"))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
@@ -446,6 +455,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	)
 
 	if ad, err = readAuthData(r); err != nil {
+		logger.Error(err)
 		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}

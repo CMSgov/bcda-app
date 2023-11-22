@@ -11,7 +11,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -100,6 +102,7 @@ func TestFailedToGetJobs(t *testing.T) {
 func getRequest(rp RequestParameters) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{ACOID: uuid.New()})
 	ctx = NewRequestParametersContext(ctx, rp)
+	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	// Since we're supplying the request parameters in the context, the actual req URL does not matter
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
 }

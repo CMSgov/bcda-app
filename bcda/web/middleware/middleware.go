@@ -35,22 +35,21 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 			if !ok {
-				panic("AuthData should be set before calling this handler")
+				// We cannot get the correct FHIR response writer from here, so
+				// return a non-FHIR-compliant HTTP response
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error("AuthData should be set before calling this handler")
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 
-			version, err := getVersion(r.URL.Path)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			rw, err := getRespWriter(version)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+			rw, _ := getResponseWriterFromRequestPath(w, r)
+			if rw == nil {
 				return
 			}
 
 			if cfg.IsACODisabled(ad.CMSID) {
-				log.API.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
 				rw.Exception(w, http.StatusUnauthorized, responseutils.InternalErr, "")
 				return
 			}
