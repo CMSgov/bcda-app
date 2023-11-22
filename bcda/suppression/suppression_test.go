@@ -224,7 +224,7 @@ func (s *SuppressionTestSuite) TestValidate() {
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.FilePath+"'. Expected record count: 5, Actual record count: 4")
 }
 
-func (s *SuppressionTestSuite) TestGetOptOutFilenameMetadata() {
+func (s *SuppressionTestSuite) TestLoadOptOutFiles() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
 
@@ -241,7 +241,7 @@ func (s *SuppressionTestSuite) TestGetOptOutFilenameMetadata() {
 	assert.Equal(2, skipped)
 
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(filePath)
+	suppresslist, _, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
 	// check current value and change mod time
@@ -263,7 +263,7 @@ func (s *SuppressionTestSuite) TestGetOptOutFilenameMetadata() {
 	}
 }
 
-func (s *SuppressionTestSuite) TestGetOptOutFilenameMetadata_TimeChange() {
+func (s *SuppressionTestSuite) TestLoadOptOutFiles_TimeChange() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
 	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
