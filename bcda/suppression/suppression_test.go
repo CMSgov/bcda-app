@@ -256,7 +256,7 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles() {
 	}
 
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(filePath)
+	suppresslist, _, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
 	for _, f := range suppresslist {
 		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
