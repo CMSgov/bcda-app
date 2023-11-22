@@ -312,8 +312,7 @@ func (s *SuppressionTestSuite) TestGetOptOutFilenameMetadata_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	s.pendingDeletionDir = "\n"
-	importer, _ = s.createImporter()
+	importer.FileHandler.(*optout.LocalFileHandler).PendingDeletionDir = "\n"
 	_, _, err = importer.FileHandler.LoadOptOutFiles(folderPath)
 	assert.Equal(true, strings.Contains(err.Error(), "error moving unknown file"))
 }
