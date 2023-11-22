@@ -123,7 +123,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	}
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("BB_TIMEOUT_MS")); err != nil {
-		logger.Info(errors.Wrap(err, "Could not get Blue Button timeout from environment variable; using default value of 500."))
+		logger.Warn(errors.Wrap(err, "Could not get Blue Button timeout from environment variable; using default value of 500."))
 		timeout = 500
 	}
 
