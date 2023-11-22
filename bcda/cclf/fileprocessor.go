@@ -38,7 +38,6 @@ type processor struct {
 	cclfMap map[string]map[metadataKey][]*cclfFileMetadata
 }
 
-// (?) I'm not fully clear how these params are populated -- line 30
 func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		// In case the caller supplied an err, we know that info is nil
