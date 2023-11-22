@@ -295,6 +295,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 								enqueueArgs := models.JobEnqueueArgs{
 									ID:              int(conditions.JobID),
 									ACOID:           conditions.ACOID.String(),
+									CMSID:           conditions.CMSID,
 									BeneficiaryIDs:  jobIDs,
 									ResourceType:    rt,
 									Since:           sinceArg,
@@ -307,6 +308,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 
 								jobs = append(jobs, &enqueueArgs)
 							}
+
 						} else {
 							// This should never be possible, would have returned earlier
 							return nil, errors.New("Invalid resource type: " + rt)
