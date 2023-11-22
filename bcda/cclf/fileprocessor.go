@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/pkg/errors"
 )
@@ -56,8 +57,17 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
+	// ignore the opt out file, and don't add it to the skipped count
+	optOut, _ := optout.IsOptOut(info.Name())
+	if optOut {
+		fmt.Print("Skipping opt-out file: ", info.Name())
+		log.API.Info("Skipping opt-out file: ", info.Name())
+		return nil
+	}
+
 	zipReader, err := zip.OpenReader(filepath.Clean(path))
 	if err != nil {
+
 		p.skipped = p.skipped + 1
 		msg := fmt.Sprintf("Skipping %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
