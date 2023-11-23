@@ -231,13 +231,13 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles() {
 	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
 	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	assert.Equal(2, len(suppresslist))
+	assert.Equal(2, len(*suppresslist))
 	assert.Equal(0, skipped)
 
 	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
 	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	assert.Equal(0, len(suppresslist))
+	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
@@ -245,7 +245,7 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles() {
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
 	// check current value and change mod time
-	for _, f := range suppresslist {
+	for _, f := range *suppresslist {
 		fInfo, _ := os.Stat(f.FilePath)
 		assert.Equal(fInfo.ModTime().Format("010203040506"), f.DeliveryDate.Format("010203040506"))
 
@@ -258,7 +258,7 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles() {
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
 	suppresslist, _, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	for _, f := range suppresslist {
+	for _, f := range *suppresslist {
 		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
 	}
 }
@@ -277,7 +277,7 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles_TimeChange() {
 
 	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	assert.Equal(0, len(suppresslist))
+	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
 	// assert that this file is still here.
@@ -293,7 +293,7 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles_TimeChange() {
 
 	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	assert.Equal(0, len(suppresslist))
+	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
 	// assert that this file is not still here.
