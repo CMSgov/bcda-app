@@ -17,14 +17,13 @@ type LocalFileHandler struct {
 	FileArchiveThresholdHr uint
 }
 
-func (handler LocalFileHandler) LoadOptOutFiles(path string) (suppressList []*OptOutFilenameMetadata, skipped int, err error) {
-	var suppresslist []*OptOutFilenameMetadata
-
-	err = filepath.Walk(path, handler.getOptOutFileMetadata(&suppresslist, &skipped))
-	return suppressList, skipped, err
+func (handler *LocalFileHandler) LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
+	var result []*OptOutFilenameMetadata
+	err = filepath.Walk(path, handler.getOptOutFileMetadata(&result, &skipped))
+	return &result, skipped, err
 }
 
-func (handler LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
+func (handler *LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -66,12 +65,13 @@ func (handler LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFil
 			}
 			return nil
 		}
+
 		*suppresslist = append(*suppresslist, &metadata)
 		return nil
 	}
 }
 
-func (handler LocalFileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
+func (handler *LocalFileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
 	f, err := os.Open(metadata.FilePath)
 	if err != nil {
 		fmt.Printf("Could not read file %s.\n", metadata)
@@ -88,7 +88,7 @@ func (handler LocalFileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*buf
 	}, nil
 }
 
-func (handler LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
+func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)

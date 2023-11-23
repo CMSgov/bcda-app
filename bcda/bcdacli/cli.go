@@ -481,12 +481,12 @@ func setUpApp() *cli.App {
 				db := database.Connection
 				r := postgres.NewRepository(db)
 				importer := suppression.OptOutImporter{
-					FileHandler: optout.LocalFileHandler{
+					FileHandler: &optout.LocalFileHandler{
 						Logger:                 log.API,
 						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 						FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
 					},
-					Saver: suppression.BCDASaver{
+					Saver: &suppression.BCDASaver{
 						Repo: r,
 					},
 					Logger:               log.API,

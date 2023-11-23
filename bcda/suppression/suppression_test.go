@@ -45,18 +45,18 @@ func (s *SuppressionTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
-func (s *SuppressionTestSuite) createImporter() (OptOutImporter, optout.MockSaver) {
+func (s *SuppressionTestSuite) createImporter() (OptOutImporter, *optout.MockSaver) {
 	saver := optout.MockSaver{}
 	return OptOutImporter{
-		FileHandler: optout.LocalFileHandler{
+		FileHandler: &optout.LocalFileHandler{
 			Logger:                 log.StandardLogger(),
 			PendingDeletionDir:     s.pendingDeletionDir,
 			FileArchiveThresholdHr: 72,
 		},
-		Saver:                saver,
+		Saver:                &saver,
 		Logger:               log.StandardLogger(),
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
-	}, saver
+	}, &saver
 }
 
 func (s *SuppressionTestSuite) TearDownSuite() {
@@ -170,7 +170,7 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 			db := database.Connection
 
 			if tt.dbError {
-				importer.Saver = BCDASaver{
+				importer.Saver = &BCDASaver{
 					Repo: postgres.NewRepository(db),
 				}
 				db.Close()

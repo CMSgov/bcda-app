@@ -33,12 +33,12 @@ func (importer OptOutImporter) ImportSuppressionDirectory(path string) (success,
 		return 0, 0, 0, err
 	}
 
-	if len(suppresslist) == 0 {
+	if len(*suppresslist) == 0 {
 		importer.Logger.Info("Failed to find any suppression files in directory")
 		return 0, 0, skipped, nil
 	}
 
-	for _, metadata := range suppresslist {
+	for _, metadata := range *suppresslist {
 		err = importer.validate(metadata)
 		if err != nil {
 			fmt.Printf("Failed to validate suppression file: %s.\n", metadata)
@@ -55,7 +55,7 @@ func (importer OptOutImporter) ImportSuppressionDirectory(path string) (success,
 			}
 		}
 	}
-	err = importer.FileHandler.CleanupOptOutFiles(suppresslist)
+	err = importer.FileHandler.CleanupOptOutFiles(*suppresslist)
 	if err != nil {
 		importer.Logger.Error(err)
 	}
