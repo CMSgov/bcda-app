@@ -17,7 +17,6 @@ func (m *MockSaver) SaveOptOutRecord(optOutRecord OptOutRecord) error {
 }
 
 func (m *MockSaver) UpdateImportStatus(metadata OptOutFilenameMetadata, status string) error {
-	file := m.Files[metadata.FileID]
-	file.ImportStatus = status
+	m.Files[metadata.FileID].ImportStatus = status
 	return nil
 }
