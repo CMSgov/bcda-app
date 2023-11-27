@@ -288,7 +288,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
 	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
-	cclfMap, skipped, err := processCCLFArchives(filePath)
+	cclfMap, skipped, failure, err := processCCLFArchives(filePath)
 	c()
 
 	if err != nil {
