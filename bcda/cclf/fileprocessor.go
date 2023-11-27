@@ -25,16 +25,17 @@ type metadataKey struct {
 
 // processCCLFArchives walks through all of the CCLF files captured in the root path and generates
 // a mapping between CMS_ID + perf year and associated CCLF Metadata
-func processCCLFArchives(rootPath string) (map[string]map[metadataKey][]*cclfFileMetadata, int, error) {
-	p := &processor{0, make(map[string]map[metadataKey][]*cclfFileMetadata)}
+func processCCLFArchives(rootPath string) (map[string]map[metadataKey][]*cclfFileMetadata, int, int, error) {
+	p := &processor{0, 0, make(map[string]map[metadataKey][]*cclfFileMetadata)}
 	if err := filepath.Walk(rootPath, p.walk); err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
-	return p.cclfMap, p.skipped, nil
+	return p.cclfMap, p.skipped, p.failure, nil
 }
 
 type processor struct {
 	skipped int
+	failure int
 	cclfMap map[string]map[metadataKey][]*cclfFileMetadata
 }
 
@@ -60,8 +61,8 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	zipReader, err := zip.OpenReader(zipFile)
 
 	if err != nil {
-		modTime, err2 := getModTime(zipFile)
-		if err2 == nil && stillDownloading(modTime) {
+		modTime := info.ModTime()
+		if stillDownloading(modTime) {
 			p.skipped = p.skipped + 1
 			msg := fmt.Sprintf("Skipping %s: file was last modified on: %s and is still downloading. err: %s", path, modTime, err.Error())
 			fmt.Println(msg)
@@ -69,10 +70,11 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 			return nil
 		}
 
+		p.failure = p.failure + 1
 		msg := fmt.Errorf("Corrupted %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
 		log.API.Error(msg)
-		return err
+		return nil
 	}
 
 	if err = zipReader.Close(); err != nil {
@@ -268,13 +270,4 @@ func stillDownloading(modTime time.Time) bool {
 	oneMinuteAgo := now.Add(time.Duration(-1) * time.Minute)
 
 	return modTime.After(oneMinuteAgo)
-}
-
-func getModTime(file string) (time.Time, error) {
-	fileInfo, err := os.Stat(file)
-
-	if err != nil {
-		log.API.Warn(err.Error())
-	}
-	return fileInfo.ModTime(), err
 }
