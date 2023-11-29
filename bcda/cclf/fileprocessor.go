@@ -63,7 +63,6 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		modTime := info.ModTime()
 		if stillDownloading(modTime) {
-			p.skipped = p.skipped + 1
 			msg := fmt.Sprintf("Skipping %s: file was last modified on: %s and is still downloading. err: %s", path, modTime, err.Error())
 			fmt.Println(msg)
 			log.API.Warn(msg)
@@ -118,7 +117,6 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 }
 
 func (p *processor) handleArchiveError(path string, info os.FileInfo, cause error) error {
-	p.skipped = p.skipped + 1
 	msg := fmt.Sprintf("Skipping CCLF archive (%s): %s.", info.Name(), cause)
 	fmt.Println(msg)
 	log.API.Warn(msg)
