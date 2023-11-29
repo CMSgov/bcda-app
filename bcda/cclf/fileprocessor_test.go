@@ -146,7 +146,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
 	assert.Nil(s.T(), cclfMap)
 }
 
-func (s *FileProcessorTestSuite) TestProcessCCLFArchives_SkippedDownloading() {
+func (s *FileProcessorTestSuite) TestProcessCCLFArchives_Downloading() {
 	assert := assert.New(s.T())
 	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
 	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
@@ -157,7 +157,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_SkippedDownloading() {
 	if err == nil {
 		cclfMap, skipped, failure, err := processCCLFArchives(filePath)
 		assert.Nil(err)
-		assert.Equal(1, skipped)
+		assert.Equal(0, skipped)
 		assert.Equal(0, failure)
 		assert.Empty(cclfMap)
 	}
