@@ -20,6 +20,7 @@ const (
 	recCountStart, recCountEnd   = 23, 33
 )
 
+// An OptOutImporter imports opt out files based on the provided file handler and saver.
 type OptOutImporter struct {
 	FileHandler          optout.OptOutFileHandler
 	Saver                optout.Saver
