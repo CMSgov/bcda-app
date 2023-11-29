@@ -547,6 +547,18 @@ func (s *APITestSuite) TestHealthCheck() {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 }
+func (s *APITestSuite) TestAuthInfo() {
+	req, err := http.NewRequest("GET", "/_auth", nil)
+	assert.Nil(s.T(), err)
+	handler := http.HandlerFunc(GetAuthInfo)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+
+	var resp map[string]string
+	err = json.Unmarshal(s.rr.Body.Bytes(), &resp)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "ssas", resp["auth_provider"])
+}
 
 func (s *APITestSuite) TestGetAttributionStatus() {
 	req := httptest.NewRequest("GET", "/api/v1/attribution_status", nil)

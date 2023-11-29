@@ -165,6 +165,7 @@ func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, cod
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -291,6 +292,7 @@ func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.
 	}
 	statementJSON, err := marshaller.Marshal(resource)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -299,6 +301,7 @@ func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(statementJSON)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -319,6 +322,7 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(resourceJSON)
 	if err != nil {
+		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

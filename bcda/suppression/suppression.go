@@ -105,8 +105,9 @@ func getSuppressionFileMetadata(suppresslist *[]*optout.OptOutFilenameMetadata, 
 				newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), info.Name())
 				err = os.Rename(metadata.FilePath, newpath)
 				if err != nil {
-					fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", metadata)
-					err = fmt.Errorf("error moving unknown file %s to pending deletion dir", metadata)
+					errmsg := fmt.Sprintf("error moving unknown file %s to pending deletion dir", metadata)
+					err = errors.Wrap(err, errmsg)
+					fmt.Println(errmsg)
 					log.API.Error(err)
 					return err
 				}
