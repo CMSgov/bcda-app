@@ -83,6 +83,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		msg := fmt.Errorf("Corrupted %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
 		log.API.Error(msg)
+		return nil
 	}
 
 	if err = zipReader.Close(); err != nil {
