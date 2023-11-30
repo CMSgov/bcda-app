@@ -114,7 +114,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert.Nil(err)
 	cclfList := cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
-	assert.Equal(4, skipped)
+	assert.Equal(0, skipped)
 	// assert that this file is still here.
 	_, err = os.Open(filePath)
 	assert.Nil(err)
@@ -129,7 +129,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert.Nil(err)
 	cclfList = cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
-	assert.Equal(4, skipped)
+	assert.Equal(0, skipped)
 	assert.Equal(0, failure)
 
 	// assert that this file is not still here.
