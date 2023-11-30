@@ -185,7 +185,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			return nil
 		}
 
-		f, err := os.Open(path)
+		f, err := os.Open(filepath.Clean(path))
 		if err != nil {
 			return err
 		}
