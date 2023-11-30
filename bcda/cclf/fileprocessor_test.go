@@ -130,6 +130,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	cclfList = cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
 	assert.Equal(4, skipped)
+	assert.Equal(0, failure)
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)
