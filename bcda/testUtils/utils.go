@@ -19,7 +19,12 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/otiai10/copy"
@@ -131,6 +136,82 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 	}
 
 	return newPath, cleanup
+}
+
+// CopyToS3 copies all of the content found at src into a temporary S3 folder within localstack.
+// The path to the temporary S3 directory is returned along with a function that can be called to clean up the data.
+func CopyToS3(t *testing.T, src string) (string, func()) {
+	tempBucket, err := uuid.NewUUID()
+
+	if err != nil {
+		t.Fatalf("Failed to generate temporary path name: %s", err.Error())
+	}
+
+	endpoint := "http://localhost:4566"
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for S3: %s", err.Error())
+	}
+
+	svc := s3.New(sess)
+
+	_, err = svc.CreateBucket(&s3.CreateBucketInput{
+		Bucket: aws.String(tempBucket.String()),
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create bucket %s: %s", tempBucket.String(), err.Error())
+	}
+
+	uploader := s3manager.NewUploader(sess)
+
+	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		_, err = uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(tempBucket.String()),
+			Key:    aws.String(info.Name()),
+			Body:   f,
+		})
+
+		fmt.Printf("Uploaded file in bucket %s, key %s", tempBucket.String(), info.Name())
+		return err
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to upload files to S3: %s", err.Error())
+	}
+
+	cleanup := func() {
+		svc := s3.New(sess)
+		iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
+			Bucket: aws.String(tempBucket.String()),
+		})
+
+		// Traverse iterator deleting each object
+		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
+			log.Printf("Unable to delete objects from bucket %s, %s", tempBucket, err)
+		}
+	}
+
+	return tempBucket.String(), cleanup
 }
 
 // GetRandomIPV4Address returns a random IPV4 address using rand.Read() to generate the values.

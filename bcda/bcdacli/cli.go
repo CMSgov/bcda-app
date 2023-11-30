@@ -68,7 +68,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
 	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -475,17 +475,40 @@ func setUpApp() *cli.App {
 					Usage:       "Directory where suppression files are located",
 					Destination: &filePath,
 				},
+				cli.StringFlag{
+					Name:        "filesource",
+					Usage:       "Source of files. Must be one of 'local', 's3'. Defaults to 'local'",
+					Destination: &fileSource,
+				},
+				cli.StringFlag{
+					Name:        "s3endpoint",
+					Usage:       "Custom S3 endpoint",
+					Destination: &s3Endpoint,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
 				db := database.Connection
 				r := postgres.NewRepository(db)
-				importer := suppression.OptOutImporter{
-					FileHandler: &optout.LocalFileHandler{
+
+				var file_handler optout.OptOutFileHandler
+
+				if fileSource == "s3" {
+					file_handler = &optout.S3FileHandler{
+						Logger:        log.API,
+						Endpoint:      s3Endpoint,
+						AssumeRoleArn: conf.GetEnv("BFD_S3_ASSUME_ROLE_ARN"),
+					}
+				} else {
+					file_handler = &optout.LocalFileHandler{
 						Logger:                 log.API,
 						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 						FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
-					},
+					}
+				}
+
+				importer := suppression.OptOutImporter{
+					FileHandler: file_handler,
 					Saver: &suppression.BCDASaver{
 						Repo: r,
 					},
