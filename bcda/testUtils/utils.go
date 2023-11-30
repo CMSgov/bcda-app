@@ -177,6 +177,10 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 	uploader := s3manager.NewUploader(sess)
 
 	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			t.Fatalf("Unexpected error reading path")
+		}
+
 		if info.IsDir() {
 			return nil
 		}
