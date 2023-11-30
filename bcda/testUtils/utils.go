@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,13 +186,15 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			return err
 		}
 
+		key := strings.TrimPrefix(path, "../../shared_files/")
+
 		_, err = uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(tempBucket.String()),
-			Key:    aws.String(info.Name()),
+			Key:    aws.String(key),
 			Body:   f,
 		})
 
-		fmt.Printf("Uploaded file in bucket %s, key %s", tempBucket.String(), info.Name())
+		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket.String(), info.Name())
 		return err
 	})
 
@@ -207,11 +210,44 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 
 		// Traverse iterator deleting each object
 		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
-			log.Printf("Unable to delete objects from bucket %s, %s", tempBucket, err)
+			log.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
 		}
 	}
 
 	return tempBucket.String(), cleanup
+}
+
+func ListS3Objects(t *testing.T, bucket string, prefix string) []*s3.Object {
+	endpoint := "http://localhost:4566"
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for S3: %s", err.Error())
+	}
+
+	svc := s3.New(sess)
+
+	fmt.Printf("Listing objects in bucket %s, prefix %s", bucket, prefix)
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
+	}
+
+	return resp.Contents
 }
 
 // GetRandomIPV4Address returns a random IPV4 address using rand.Read() to generate the values.
@@ -261,12 +297,12 @@ func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
 		)
 		buf, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			fmt.Printf("Unexpected error creating test server: Error in reading request body: %s", err.Error())
+			fmt.Printf("Unexpected error creating test server: Error in reading request body: %s\n", err.Error())
 			return
 		}
 
 		if unmarshalErr := json.Unmarshal(buf, &input); unmarshalErr != nil {
-			fmt.Printf("Unexpected error creating test server: Error in unmarshalling the buffered input to JSON: %s", unmarshalErr.Error())
+			fmt.Printf("Unexpected error creating test server: Error in unmarshalling the buffered input to JSON: %s\n", unmarshalErr.Error())
 			return
 		}
 
@@ -276,7 +312,7 @@ func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
 
 		_, responseWriterErr := w.Write(body)
 		if responseWriterErr != nil {
-			fmt.Printf("Unexpected error creating test server: Error reading request body: %s", responseWriterErr.Error())
+			fmt.Printf("Unexpected error creating test server: Error reading request body: %s\n", responseWriterErr.Error())
 		}
 
 	})

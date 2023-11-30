@@ -20,27 +20,43 @@ type S3FileHandler struct {
 	AssumeRoleArn string
 }
 
+// Define logger functions to ensure that logs get sent to:
+// 1. Splunk (Logger.*)
+// 2. stdout (Jenkins)
+
+func (handler *S3FileHandler) Infof(format string, rest ...interface{}) {
+	fmt.Printf(format, rest...)
+	handler.Logger.Infof(format, rest...)
+}
+
+func (handler *S3FileHandler) Warningf(format string, rest ...interface{}) {
+	fmt.Printf(format, rest...)
+	handler.Logger.Warningf(format, rest...)
+}
+
+func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
+	fmt.Printf(format, rest...)
+	handler.Logger.Errorf(format, rest...)
+}
+
 func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
 	var result []*OptOutFilenameMetadata
 
 	bucket, prefix, err := parseS3Uri(path)
 	if err != nil {
-		fmt.Printf("Failed to parse S3 path: %s", err)
-		handler.Logger.Errorf("Failed to parse S3 path: %s", err)
+		handler.Errorf("Failed to parse S3 path: %s", err)
 		return &result, skipped, err
 	}
 
 	sess, err := handler.createSession()
 	if err != nil {
-		fmt.Printf("Failed to create S3 session: %s", err)
-		handler.Logger.Errorf("Failed to create S3 session: %s", err)
+		handler.Errorf("Failed to create S3 session: %s", err)
 		return &result, skipped, err
 	}
 
 	svc := s3.New(sess)
 
-	fmt.Printf("Listing objects in bucket %s, prefix %s", bucket, prefix)
-	handler.Logger.Infof("Listing objects in bucket %s, prefix %s", bucket, prefix)
+	handler.Infof("Listing objects in bucket %s, prefix %s", bucket, prefix)
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -48,8 +64,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	})
 
 	if err != nil {
-		fmt.Printf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
-		handler.Logger.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
+		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
 		return &result, skipped, err
 	}
 
@@ -59,12 +74,10 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 		metadata.DeliveryDate = *obj.LastModified
 
 		if err != nil {
-			handler.Logger.Error(err)
-
 			// Skip files with a bad name.  An unknown file in this dir isn't a blocker
-			fmt.Printf("Unknown file found: %s. Skipping.\n", metadata)
-			handler.Logger.Warningf("Unknown file found: %s. Skipping.", metadata)
+			handler.Warningf("Unknown file found: %s. Skipping.", metadata)
 			skipped = skipped + 1
+			continue
 		}
 
 		result = append(result, &metadata)
@@ -74,7 +87,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 }
 
 func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
-	handler.Logger.Infof("Opening file %s", metadata.FilePath)
+	handler.Infof("Opening file %s", metadata.FilePath)
 	bucket, file, err := parseS3Uri(metadata.FilePath)
 	if err != nil {
 		return nil, nil, err
@@ -93,11 +106,11 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	})
 
 	if err != nil {
-		handler.Logger.Errorf("Failed to download bucket %s, key %s", bucket, file)
+		handler.Errorf("Failed to download bucket %s, key %s", bucket, file)
 		return nil, nil, err
 	}
 
-	handler.Logger.Infof("file downloaded: size=%d", numBytes)
+	handler.Infof("file downloaded: size=%d", numBytes)
 
 	byte_arr := buff.Bytes()
 	sc := bufio.NewScanner(bytes.NewReader(byte_arr))
@@ -115,13 +128,11 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		if !suppressionFile.Imported {
 			// Don't do anything. The S3 bucket should have a retention policy that
 			// automatically cleans up files after a specified period of time,
-			fmt.Printf("File %s was not imported successfully. Skipping cleanup.", suppressionFile)
-			handler.Logger.Warningf("File %s was not imported successfully. Skipping cleanup.", suppressionFile)
+			handler.Warningf("File %s was not imported successfully. Skipping cleanup.", suppressionFile)
 			continue
 		}
 
-		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
-		handler.Logger.Infof("Cleaning up file %s", suppressionFile)
+		handler.Infof("Cleaning up file %s", suppressionFile)
 
 		bucket, file, err := parseS3Uri(suppressionFile.FilePath)
 		if err != nil {
@@ -132,9 +143,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(file)})
 
 		if err != nil {
-			errMsg := fmt.Sprintf("File %s failed to clean up properly, error occurred while deleting object: %v", suppressionFile, err)
-			fmt.Println(errMsg)
-			handler.Logger.Error(errMsg)
+			handler.Errorf("File %s failed to clean up properly, error occurred while deleting object: %v", suppressionFile, err)
 			errCount++
 			continue
 		}
@@ -145,20 +154,18 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		})
 
 		if err != nil {
-			errMsg := fmt.Sprintf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v", suppressionFile, err)
-			fmt.Println(errMsg)
-			handler.Logger.Error(errMsg)
+			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v", suppressionFile, err)
 			errCount++
 			continue
 		}
 
-		fmt.Printf("File %s successfully ingested and deleted from S3.\n", suppressionFile)
-		handler.Logger.Infof("File %s successfully ingested and deleted from S3.", suppressionFile)
+		handler.Infof("File %s successfully ingested and deleted from S3.", suppressionFile)
 	}
 
 	if errCount > 0 {
 		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
+
 	return nil
 }
 
