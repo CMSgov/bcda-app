@@ -45,8 +45,8 @@ func (s *SuppressionTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
-func (s *SuppressionTestSuite) createImporter() (OptOutImporter, *optout.MockSaver) {
-	saver := optout.MockSaver{}
+func (s *SuppressionTestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
+	saver := optout.FakeSaver{}
 	return OptOutImporter{
 		FileHandler: &optout.LocalFileHandler{
 			Logger:                 log.StandardLogger(),
