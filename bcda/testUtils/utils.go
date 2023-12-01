@@ -148,7 +148,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 		t.Fatalf("Failed to generate temporary path name: %s", err.Error())
 	}
 
-	endpoint := "http://localhost:4566"
+	endpoint := "http://localstack:4566"
 
 	config := aws.Config{
 		Region:           aws.String("us-east-1"),
@@ -222,7 +222,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 }
 
 func ListS3Objects(t *testing.T, bucket string, prefix string) []*s3.Object {
-	endpoint := "http://localhost:4566"
+	endpoint := "http://localstack:4566"
 
 	config := aws.Config{
 		Region:           aws.String("us-east-1"),

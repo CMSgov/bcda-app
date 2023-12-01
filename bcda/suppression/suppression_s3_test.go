@@ -30,7 +30,7 @@ func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeS
 	return OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
 			Logger:   log.StandardLogger(),
-			Endpoint: "http://localhost:4566",
+			Endpoint: "http://localstack:4566",
 		},
 		Saver:                &saver,
 		Logger:               log.StandardLogger(),
