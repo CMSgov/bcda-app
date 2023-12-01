@@ -9,6 +9,10 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
+      # Set default values for Localstack to work
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
+      
       - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
