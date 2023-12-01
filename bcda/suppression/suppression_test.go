@@ -12,8 +12,10 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/optout"
 
@@ -43,6 +45,20 @@ func (s *SuppressionTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
+func (s *SuppressionTestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
+	saver := optout.FakeSaver{}
+	return OptOutImporter{
+		FileHandler: &optout.LocalFileHandler{
+			Logger:                 log.StandardLogger(),
+			PendingDeletionDir:     s.pendingDeletionDir,
+			FileArchiveThresholdHr: 72,
+		},
+		Saver:                &saver,
+		Logger:               log.StandardLogger(),
+		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
+	}, &saver
+}
+
 func (s *SuppressionTestSuite) TearDownSuite() {
 	os.RemoveAll(s.pendingDeletionDir)
 }
@@ -56,7 +72,6 @@ func TestSuppressionTestSuite(t *testing.T) {
 
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
-	db := database.Connection
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -66,15 +81,18 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 		Name:         constants.TestSuppressMetaFileName,
 		DeliveryDate: time.Now(),
 	}
-	err := importSuppressionData(metadata)
-	assert.Nil(err)
 
-	suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
+	importer, saver := s.createImporter()
+	err := importer.ImportSuppressionData(metadata)
+	assert.Nil(err)
+	assert.Len(saver.Files, 1)
+
+	suppressionFile := saver.Files[0]
 	assert.Equal(constants.TestSuppressMetaFileName, suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.UTC().Format("010203040506"))
 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
-	suppressions := postgrestest.GetSuppressionsByFileID(s.T(), db, suppressionFile.ID)
+	suppressions := saver.OptOutRecords
 	assert.Len(suppressions, 4)
 	assert.Equal("5SJ0A00AA00", suppressions[0].MBI)
 	assert.Equal("1-800", suppressions[0].SourceCode)
@@ -85,8 +103,6 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("8SG0A00AA00", suppressions[3].MBI)
 	assert.Equal("1-800", suppressions[3].SourceCode)
 
-	postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
-
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
 	metadata = &optout.OptOutFilenameMetadata{
@@ -95,14 +111,17 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
 		DeliveryDate: time.Now(),
 	}
-	err = importSuppressionData(metadata)
-	assert.Nil(err)
 
-	suppressionFile = postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
+	importer, saver = s.createImporter()
+	err = importer.ImportSuppressionData(metadata)
+	assert.Nil(err)
+	assert.Len(saver.Files, 1)
+
+	suppressionFile = saver.Files[0]
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.UTC().Format("010203040506"))
 
-	suppressions = postgrestest.GetSuppressionsByFileID(s.T(), db, suppressionFile.ID)
+	suppressions = saver.OptOutRecords
 	assert.Len(suppressions, 250)
 	assert.Equal("1000000019", suppressions[0].MBI)
 	assert.Equal("N", suppressions[0].PrefIndicator)
@@ -113,18 +132,16 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("1000026399", suppressions[200].MBI)
 	assert.Equal("N", suppressions[200].PrefIndicator)
 	assert.Equal("1000098787", suppressions[249].MBI)
-	assert.Equal(" ", suppressions[249].PrefIndicator)
-
-	postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
+	assert.Equal("", suppressions[249].PrefIndicator)
 }
 
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert := assert.New(s.T())
-	db := database.Connection
 
 	// Verify empty file is rejected
 	metadata := &optout.OptOutFilenameMetadata{}
-	err := importSuppressionData(metadata)
+	importer, _ := s.createImporter()
+	err := importer.ImportSuppressionData(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
@@ -149,80 +166,82 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 				DeliveryDate: time.Now(),
 			}
 
+			importer, saver := s.createImporter()
+			db := database.Connection
+
 			if tt.dbError {
+				importer.Saver = &BCDASaver{
+					Repo: postgres.NewRepository(db),
+				}
 				db.Close()
 			}
-			err = importSuppressionData(metadata)
+
+			err = importer.ImportSuppressionData(metadata)
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
 			if !tt.dbError {
-				suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.Name)[0]
+				suppressionFile := saver.Files[0]
 				assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-				postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
 			}
-
 		})
 	}
 }
 
 func (s *SuppressionTestSuite) TestValidate() {
 	assert := assert.New(s.T())
+	importer, _ := s.createImporter()
 
 	// positive
 	suppressionfilePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	metadata := &optout.OptOutFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
-	err := validate(metadata)
+	err := importer.validate(metadata)
 	assert.Nil(err)
 
 	// bad file path
 	metadata.FilePath = metadata.FilePath + "/blah/"
-	err = validate(metadata)
+	err = importer.validate(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file "+metadata.FilePath)
 
 	// invalid file header
 	metadata.FilePath = filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	err = validate(metadata)
+	err = importer.validate(metadata)
 	assert.EqualError(err, "invalid file header for file: "+metadata.FilePath)
 
 	// missing record count
 	metadata.FilePath = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	err = validate(metadata)
+	err = importer.validate(metadata)
 	assert.EqualError(err, "failed to parse record count from file: "+metadata.FilePath)
 
 	// incorrect record count
 	metadata.FilePath = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
-	err = validate(metadata)
+	err = importer.validate(metadata)
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.FilePath+"'. Expected record count: 5, Actual record count: 4")
 }
-func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
+
+func (s *SuppressionTestSuite) TestLoadOptOutFiles() {
 	assert := assert.New(s.T())
-	var suppresslist []*optout.OptOutFilenameMetadata
-	var skipped int
+	importer, _ := s.createImporter()
 
 	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	err := filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	assert.Equal(2, len(suppresslist))
+	assert.Equal(2, len(*suppresslist))
 	assert.Equal(0, skipped)
 
-	suppresslist = []*optout.OptOutFilenameMetadata{}
-	skipped = 0
 	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
-	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	assert.Equal(0, len(suppresslist))
+	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
-	suppresslist = []*optout.OptOutFilenameMetadata{}
-	skipped = 0
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	suppresslist, _, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
 	// check current value and change mod time
-	for _, f := range suppresslist {
+	for _, f := range *suppresslist {
 		fInfo, _ := os.Stat(f.FilePath)
 		assert.Equal(fInfo.ModTime().Format("010203040506"), f.DeliveryDate.Format("010203040506"))
 
@@ -232,20 +251,21 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 		}
 	}
 
-	suppresslist = []*optout.OptOutFilenameMetadata{}
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	suppresslist, _, err = importer.FileHandler.LoadOptOutFiles(filePath)
 	assert.Nil(err)
-	for _, f := range suppresslist {
+	for _, f := range *suppresslist {
 		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
 	}
 }
 
-func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
+func (s *SuppressionTestSuite) TestLoadOptOutFiles_TimeChange() {
 	assert := assert.New(s.T())
-	testUtils.SetPendingDeletionDir(s.Suite, s.pendingDeletionDir)
-	var suppresslist []*optout.OptOutFilenameMetadata
-	var skipped int
+	importer, _ := s.createImporter()
+	importer.Saver = &BCDASaver{
+		Repo: postgres.NewRepository(database.Connection),
+	}
+
 	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
 	filePath := filepath.Join(folderPath, constants.TestSuppressBadPath)
 
@@ -255,10 +275,9 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	skipped = 0
-	err = filepath.Walk(folderPath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(folderPath)
 	assert.Nil(err)
-	assert.Equal(0, len(suppresslist))
+	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
 	// assert that this file is still here.
@@ -272,11 +291,9 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	suppresslist = []*optout.OptOutFilenameMetadata{}
-	skipped = 0
-	err = filepath.Walk(folderPath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(folderPath)
 	assert.Nil(err)
-	assert.Equal(0, len(suppresslist))
+	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
 	// assert that this file is not still here.
@@ -295,15 +312,15 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	suppresslist = []*optout.OptOutFilenameMetadata{}
-	conf.SetEnv(s.T(), "PENDING_DELETION_DIR", "\n")
-	err = filepath.Walk(folderPath, getSuppressionFileMetadata(&suppresslist, &skipped))
+	importer.FileHandler.(*optout.LocalFileHandler).PendingDeletionDir = "\n"
+	_, _, err = importer.FileHandler.LoadOptOutFiles(folderPath)
 	assert.Equal(true, strings.Contains(err.Error(), "error moving unknown file"))
-
 }
 
 func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	assert := assert.New(s.T())
+	importer, _ := s.createImporter()
+
 	var suppresslist []*optout.OptOutFilenameMetadata
 
 	// failed import: file that's within the threshold - stay put
@@ -336,7 +353,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	}
 
 	suppresslist = []*optout.OptOutFilenameMetadata{metadata, metadata2, metadata3}
-	err := cleanupSuppression(suppresslist)
+	err := importer.FileHandler.CleanupOptOutFiles(suppresslist)
 	assert.Nil(err)
 
 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
@@ -356,10 +373,12 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 
 func (s *SuppressionTestSuite) TestCleanupSuppression_Bad() {
 	assert := assert.New(s.T())
+	importer, _ := s.createImporter()
+	importer.FileHandler.(*optout.LocalFileHandler).PendingDeletionDir = "\n"
+
 	var suppresslist []*optout.OptOutFilenameMetadata
 
 	//new use cases
-	conf.SetEnv(s.T(), "PENDING_DELETION_DIR", "\n")
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata1 := &optout.OptOutFilenameMetadata{
 		Name:         constants.TestSuppressBadPath,
@@ -379,17 +398,18 @@ func (s *SuppressionTestSuite) TestCleanupSuppression_Bad() {
 	}
 
 	suppresslist = []*optout.OptOutFilenameMetadata{metadata1, metadata2}
-	err := cleanupSuppression(suppresslist)
+	err := importer.FileHandler.CleanupOptOutFiles(suppresslist)
 	assert.EqualError(err, "2 files could not be cleaned up")
-
 }
 
 func (s *SuppressionTestSuite) TestCleanupSuppression_RenameFileError() {
 	assert := assert.New(s.T())
+	importer, _ := s.createImporter()
+	importer.FileHandler.(*optout.LocalFileHandler).PendingDeletionDir = "\n"
+
 	var suppresslist []*optout.OptOutFilenameMetadata
 
 	//Induce an error when attempting to rename file
-	conf.SetEnv(s.T(), "PENDING_DELETION_DIR", "\n")
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata1 := &optout.OptOutFilenameMetadata{
 		Name:         constants.TestSuppressBadPath,
@@ -400,14 +420,18 @@ func (s *SuppressionTestSuite) TestCleanupSuppression_RenameFileError() {
 	}
 
 	suppresslist = []*optout.OptOutFilenameMetadata{metadata1}
-	err := cleanupSuppression(suppresslist)
+	err := importer.FileHandler.CleanupOptOutFiles(suppresslist)
 	assert.EqualError(err, "1 files could not be cleaned up")
-
 }
 
 func (s *SuppressionTestSuite) TestImportSuppressionDirectoryTable() {
 	assert := assert.New(s.T())
+	importer, _ := s.createImporter()
 	db := database.Connection
+
+	importer.Saver = &BCDASaver{
+		Repo: postgres.NewRepository(db),
+	}
 
 	tests := []struct {
 		name           string
@@ -435,7 +459,7 @@ func (s *SuppressionTestSuite) TestImportSuppressionDirectoryTable() {
 				path += "\n"
 			}
 
-			success, failure, skipped, err := ImportSuppressionDirectory(path)
+			success, failure, skipped, err := importer.ImportSuppressionDirectory(path)
 			if tt.errorExpected {
 				assert.Equal(true, strings.Contains(err.Error(), tt.errMessage))
 			} else {
