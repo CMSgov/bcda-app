@@ -7,7 +7,8 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.tests
     depends_on:
-      - localstack
+      localstack:
+        condition: service_healthy
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -47,6 +48,12 @@ services:
     volumes:
       - "./.localstack_volume:/var/lib/localstack"
       - '/var/run/docker.sock:/var/run/docker.sock'
+    healthcheck:
+      test: "curl --silent --fail localhost:4566/_localstack/health | grep '\"s3\": \"available\"'"
+      interval: 10s
+      retries: 6
+      start_period: 10s
+      timeout: 10s
   postman_test:
     build:
       context: .
