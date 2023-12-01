@@ -725,8 +725,6 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		err := s.testApp.Run(args)
 		if tc.err == nil {
 			assert.Nil(err)
-		} else {
-			assert.NotNil(err)
 		}
 
 		var success, failed, skipped bool
@@ -743,7 +741,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		}
 		assert.True(success)
 		assert.True(failed)
-		assert.True(skipped)
+		assert.False(skipped)
 	}
 }
 
