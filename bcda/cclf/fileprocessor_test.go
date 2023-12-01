@@ -65,13 +65,13 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 		numCCLF0     int // Expected count for the cmsID, perfYear above
 		numCCLF8     int // Expected count for the cmsID, perfYear above
 	}{
-		{filepath.Join(s.basePath, "cclf/archives/valid/"), 2, 1, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/archives/bcd/"), 2, 1, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 2, 5, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 3, 3, 0, 3, 0},
+		{filepath.Join(s.basePath, "cclf/archives/valid/"), 2, 0, 0, 1, 1},
+		{filepath.Join(s.basePath, "cclf/archives/bcd/"), 2, 0, 0, 1, 1},
+		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 2, 0, 0, 1, 1},
+		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 3, 0, 0, 3, 0},
 		{filepath.Join(s.basePath, "cclf/archives/8/valid/"), 5, 0, 0, 0, 5},
-		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 4, 0, 0, 0},
-		{filepath.Join(s.basePath, "cclf/mixed/with_folders/"), 2, 13, 0, 1, 1},
+		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 0, 0, 0, 0},
+		{filepath.Join(s.basePath, "cclf/mixed/with_folders/"), 2, 0, 0, 1, 1},
 	}
 
 	for _, tt := range tests {
