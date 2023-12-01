@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.tests
+    depends_on:
+      - localstack
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -32,6 +34,19 @@ services:
       - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
     # Pass a flag so we'll log all queries executed on the test db.
     command: [ "postgres", "-c", "log_statement=all" ]
+  # Spin up a local S3 server for CCLF and Opt Out File import testing
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - GATEWAY_LISTEN=0.0.0.0:4566
+      - SERVICES=s3
+      - DEBUG=1
+    ports:
+      - '4566-4583:4566-4583'
+    volumes:
+      - "./.localstack_volume:/var/lib/localstack"
+      - '/var/run/docker.sock:/var/run/docker.sock'
   postman_test:
     build:
       context: .

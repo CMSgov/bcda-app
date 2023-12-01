@@ -18,19 +18,6 @@ services:
       - "5432:5432"
     volumes:
       - ./db:/var/db
-  # Spin up a local S3 server for CCLF and Opt Out File import testing
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      - AWS_DEFAULT_REGION=us-east-1
-      - GATEWAY_LISTEN=0.0.0.0:4566
-      - SERVICES=s3
-      - DEBUG=1
-    ports:
-      - '4566-4583:4566-4583'
-    volumes:
-      - "./.localstack_volume:/var/lib/localstack"
-      - '/var/run/docker.sock:/var/run/docker.sock'
   api:
     build:
       context: .
@@ -54,7 +41,6 @@ services:
       - ssas
       - db
       - queue
-      - localstack
   worker:
     build:
       context: .
