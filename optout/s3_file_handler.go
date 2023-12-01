@@ -14,9 +14,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// S3FileHandler manages files located on AWS S3.
 type S3FileHandler struct {
-	Logger        logrus.FieldLogger
-	Endpoint      string
+	Logger logrus.FieldLogger
+	// Optional S3 endpoint to use for connection.
+	Endpoint string
+	// Optional role to assume when connecting to S3.
 	AssumeRoleArn string
 }
 
