@@ -818,7 +818,7 @@ func (s *CLITestSuite) TestImportSuppressionDirectoryFromS3() {
 	path, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test2/")
 	defer cleanup()
 
-	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path, constants.FileSourceArg, "s3", constants.S3EndpointArg, "http://localstack:4566"}
+	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path, constants.FileSourceArg, "s3", constants.S3EndpointArg, conf.GetEnv("BFD_S3_ENDPOINT")}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)

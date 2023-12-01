@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeS
 	return OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
 			Logger:   log.StandardLogger(),
-			Endpoint: "http://localstack:4566",
+			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},
 		Saver:                &saver,
 		Logger:               log.StandardLogger(),
