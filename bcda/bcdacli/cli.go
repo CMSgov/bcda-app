@@ -68,7 +68,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
 	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -485,6 +485,11 @@ func setUpApp() *cli.App {
 					Usage:       "Custom S3 endpoint",
 					Destination: &s3Endpoint,
 				},
+				cli.StringFlag{
+					Name:        "assume-role-arn",
+					Usage:       "Optional IAM role ARN to assume for S3",
+					Destination: &assumeRoleArn,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
@@ -497,7 +502,7 @@ func setUpApp() *cli.App {
 					file_handler = &optout.S3FileHandler{
 						Logger:        log.API,
 						Endpoint:      s3Endpoint,
-						AssumeRoleArn: conf.GetEnv("BFD_S3_ASSUME_ROLE_ARN"),
+						AssumeRoleArn: assumeRoleArn,
 					}
 				} else {
 					file_handler = &optout.LocalFileHandler{
