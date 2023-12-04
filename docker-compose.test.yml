@@ -52,7 +52,7 @@ services:
     healthcheck:
       test: "curl --silent --fail localstack:4566/_localstack/health | grep '\"s3\": \"available\"'"
       interval: 10s
-      retries: 12
+      retries: 24
       start_period: 10s
       timeout: 10s
   postman_test:
