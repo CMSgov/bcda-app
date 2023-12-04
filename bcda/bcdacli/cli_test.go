@@ -741,7 +741,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		}
 		assert.True(success)
 		assert.True(failed)
-		assert.False(skipped)
+		assert.True(skipped)
 	}
 }
 
