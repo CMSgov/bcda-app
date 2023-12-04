@@ -50,9 +50,9 @@ services:
       - "./.localstack_volume:/var/lib/localstack"
       - '/var/run/docker.sock:/var/run/docker.sock'
     healthcheck:
-      test: "curl --silent --fail localhost:4566/_localstack/health | grep '\"s3\": \"available\"'"
+      test: "curl --silent --fail localstack:4566/_localstack/health | grep '\"s3\": \"available\"'"
       interval: 10s
-      retries: 6
+      retries: 12
       start_period: 10s
       timeout: 10s
   postman_test:
