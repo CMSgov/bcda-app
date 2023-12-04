@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -167,13 +168,15 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 			}
 
 			importer, saver := s.createImporter()
-			db := database.Connection
 
 			if tt.dbError {
+				db, _, err := sqlmock.New()
+				assert.NoError(err)
+				db.Close()
+
 				importer.Saver = &BCDASaver{
 					Repo: postgres.NewRepository(db),
 				}
-				db.Close()
 			}
 
 			err = importer.ImportSuppressionData(metadata)
