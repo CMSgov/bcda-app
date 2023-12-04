@@ -26,16 +26,17 @@ type metadataKey struct {
 
 // processCCLFArchives walks through all of the CCLF files captured in the root path and generates
 // a mapping between CMS_ID + perf year and associated CCLF Metadata
-func processCCLFArchives(rootPath string) (map[string]map[metadataKey][]*cclfFileMetadata, int, error) {
-	p := &processor{0, make(map[string]map[metadataKey][]*cclfFileMetadata)}
+func processCCLFArchives(rootPath string) (map[string]map[metadataKey][]*cclfFileMetadata, int, int, error) {
+	p := &processor{0, 0, make(map[string]map[metadataKey][]*cclfFileMetadata)}
 	if err := filepath.Walk(rootPath, p.walk); err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
-	return p.cclfMap, p.skipped, nil
+	return p.cclfMap, p.skipped, p.failure, nil
 }
 
 type processor struct {
 	skipped int
+	failure int
 	cclfMap map[string]map[metadataKey][]*cclfFileMetadata
 }
 
@@ -65,15 +66,26 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	zipReader, err := zip.OpenReader(filepath.Clean(path))
-	if err != nil {
+	zipFile := filepath.Clean(path)
+	zipReader, err := zip.OpenReader(zipFile)
 
-		p.skipped = p.skipped + 1
-		msg := fmt.Sprintf("Skipping %s: file could not be opened as a CCLF archive. %s", path, err.Error())
+	if err != nil {
+		modTime := info.ModTime()
+		if stillDownloading(modTime) {
+			// ignore downlading file, and don't add it to the skipped count
+			msg := fmt.Sprintf("Skipping %s: file was last modified on: %s and is still downloading. err: %s", path, modTime, err.Error())
+			fmt.Println(msg)
+			log.API.Warn(msg)
+			return nil
+		}
+
+		p.failure = p.failure + 1
+		msg := fmt.Errorf("Corrupted %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
-		log.API.Warn(msg)
+		log.API.Error(msg)
 		return nil
 	}
+
 	if err = zipReader.Close(); err != nil {
 		fmt.Printf("Failed to close zip file %s\n", err.Error())
 		log.API.Warnf("Failed to close zip file %s", err.Error())
@@ -116,7 +128,6 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 }
 
 func (p *processor) handleArchiveError(path string, info os.FileInfo, cause error) error {
-	p.skipped = p.skipped + 1
 	msg := fmt.Sprintf("Skipping CCLF archive (%s): %s.", info.Name(), cause)
 	fmt.Println(msg)
 	log.API.Warn(msg)
@@ -260,4 +271,12 @@ func checkDeliveryDate(folderPath string, deliveryDate time.Time) error {
 		}
 	}
 	return nil
+}
+
+func stillDownloading(modTime time.Time) bool {
+	// modified date < 1 min: still downloading
+	now := time.Now()
+	oneMinuteAgo := now.Add(time.Duration(-1) * time.Minute)
+
+	return modTime.After(oneMinuteAgo)
 }
