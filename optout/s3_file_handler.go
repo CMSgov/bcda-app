@@ -172,6 +172,8 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 	return nil
 }
 
+// Creates a new AWS S3 session. If the handler is given a custom S3 endpoint
+// and/or IAM role ARN to assume, the new session connects using those parameters.
 func (handler *S3FileHandler) createSession() (*session.Session, error) {
 	sess := session.Must(session.NewSession())
 
@@ -196,6 +198,16 @@ func (handler *S3FileHandler) createSession() (*session.Session, error) {
 	})
 }
 
+// Parses an S3 URI and returns the bucket and key.
+//
+// @example:
+//   input: s3://my-bucket/path/to/file
+//   output: "my-bucket", "path/to/file"
+//
+// @example
+//   input: s3://my-bucket
+//   output: "my-bucket", ""
+//
 func parseS3Uri(str string) (bucket string, key string, err error) {
 	workingString := strings.TrimPrefix(str, "s3://")
 	resultArr := strings.SplitN(workingString, "/", 2)
