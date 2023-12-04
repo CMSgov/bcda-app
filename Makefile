@@ -47,7 +47,6 @@ postman:
 	--global-var maintenanceMode=$(maintenanceMode)
 
 unit-test: unit-test-ssas unit-test-db load-fixtures-ssas
-	docker-compose -f docker-compose.test.yml up -d localstack
 	docker-compose -f docker-compose.test.yml build tests
 	@docker-compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
