@@ -69,11 +69,34 @@ const (
 // if configuration file found and loaded, state doesn't changed
 var state configStatus = configGood
 
-/*
-   This is the private helper function that sets up viper. This function is
-   called by the init() function only once during initialization of the package.
-*/
-func setup(locations ...string) (config, configStatus) {
+// init: First thing to run when this package is loaded by the binary.
+// Even if multiple packages import conf, this will be called and ran ONLY once.
+func init() {
+	apiConfigPath := os.Getenv("BCDA_API_CONFIG_PATH")
+	workerConfigPath := os.Getenv("BCDA_WORKER_CONFIG_PATH")
+
+	env := os.Getenv("DEPLOYMENT_TARGET")
+	gopath := os.Getenv("GOPATH")
+
+	if gopath == "" {
+		gopath = build.Default.GOPATH
+	}
+
+	// might be better suited to pull the config file path from Docker, then we can use
+	// a test-specific file in the future instead of using 'fakes' in the same dir as the real ones
+	envPath := gopath + fmt.Sprintf("/src/github.com/CMSgov/bcda-app/conf/configs/%s.env", env)
+
+	configPaths := configPaths(envPath, apiConfigPath, workerConfigPath)
+	// TODO: if a config file is not found, this should panic. Because of the use of
+	// init(), this cannot be done because it breaks tests. We should load in the configs
+	// in main.go for the worker and api instead.
+	envVars, state = loadConfigs(configPaths...)
+
+}
+
+// This is the private helper function that sets up viper. This function is
+// called by the init() function only once during initialization of the package.
+func loadConfigs(locations ...string) (config, configStatus) {
 	status := noConfigFound
 
 	var v = viper.New()
@@ -100,46 +123,28 @@ func setup(locations ...string) (config, configStatus) {
 	return config{*v}, status
 }
 
-/*
-   init:
-   First thing to run when this package is loaded by the binary.
-   Even if multiple packages import conf, this will be called and ran ONLY once.
-*/
-func init() {
-
-	// Find the gopath on the machine running the application
-	gopath := os.Getenv("GOPATH")
-
-	if gopath == "" {
-		gopath = build.Default.GOPATH
+func configPaths(envFilePath string, apiPath string, workerPath string) (configPaths []string) {
+	configPaths = []string{
+		envFilePath,
 	}
 
-	apiConfigPath := os.Getenv("BCDA_API_CONFIG_PATH")
-	workerConfigPath := os.Getenv("BCDA_WORKER_CONFIG_PATH")
-
-	// Possible configuration file locations: local and PROD/DEV/TEST respectfully.
-	var locations = []string{
-		gopath + "/src/github.com/CMSgov/bcda-app/shared_files/decrypted/local.env",
-		// Placeholder for configuration location for TEST/DEV/PROD once available.
+	if apiPath != "" {
+		configPaths = append(configPaths, apiPath)
+	}
+	if workerPath != "" {
+		configPaths = append(configPaths, workerPath)
 	}
 
-	if apiConfigPath != "" {
-		locations = append(locations, apiConfigPath)
-	}
-	if workerConfigPath != "" {
-		locations = append(locations, workerConfigPath)
-	}
-
-	envVars, state = setup(locations...)
+	return configPaths
 }
 
 /*
-   findEnv is a helper function that will determine what environment the application
-   is running in: local or PROD/TEST/DEV env. Each environment should have a distinct
-   path where the configuration file is located. First it check the local path,
-   then the PROD/DEV/TEST. If both not found, defaults to just using environment vars.
+findEnv is a helper function that will determine what environment the application
+is running in: local or PROD/TEST/DEV env. Each environment should have a distinct
+path where the configuration file is located. First it check the local path,
+then the PROD/DEV/TEST. If both not found, defaults to just using environment vars.
 
-   Later iterations of this package will phase out this "defaulting" behavior.
+Later iterations of this package will phase out this "defaulting" behavior.
 */
 func findEnv(location []string) (bool, string) {
 
