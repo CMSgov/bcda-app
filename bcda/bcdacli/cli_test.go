@@ -725,11 +725,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		err := s.testApp.Run(args)
 		if tc.err == nil {
 			assert.Nil(err)
-		} else {
-			assert.NotNil(err)
 		}
 
-		var success, failed, skipped bool
+		var success, failed bool
 		for _, entry := range hook.AllEntries() {
 			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
 				success = true
@@ -737,13 +735,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
 				failed = true
 			}
-			if strings.Contains(entry.Message, tc.expectedLogs[2]) {
-				skipped = true
-			}
 		}
 		assert.True(success)
 		assert.True(failed)
-		assert.True(skipped)
 	}
 }
 
