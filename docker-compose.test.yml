@@ -50,7 +50,7 @@ services:
       - "./.localstack_volume:/var/lib/localstack"
       - '/var/run/docker.sock:/var/run/docker.sock'
     healthcheck:
-      test: "curl --silent --fail localstack:4566/_localstack/health | grep -E '"s3": "(available|running)"'
+      test: "curl --silent --fail localstack:4566/_localstack/health | grep -E '\"s3\": \"(available|running)\"'"
       interval: 10s
       retries: 12
       start_period: 30s
