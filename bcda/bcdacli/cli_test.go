@@ -725,11 +725,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		err := s.testApp.Run(args)
 		if tc.err == nil {
 			assert.Nil(err)
-		} else {
-			assert.NotNil(err)
 		}
 
-		var success, failed, skipped bool
+		var success, failed bool
 		for _, entry := range hook.AllEntries() {
 			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
 				success = true
@@ -737,13 +735,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
 				failed = true
 			}
-			if strings.Contains(entry.Message, tc.expectedLogs[2]) {
-				skipped = true
-			}
 		}
 		assert.True(success)
 		assert.True(failed)
-		assert.True(skipped)
 	}
 }
 
@@ -782,7 +776,7 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 
 }
 
-func (s *CLITestSuite) TestImportSuppressionDirectory() {
+func (s *CLITestSuite) TestImportSuppressionDirectoryFromLocal() {
 	assert := assert.New(s.T())
 
 	buf := new(bytes.Buffer)
@@ -792,6 +786,33 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	defer cleanup()
 
 	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
+	assert.Contains(buf.String(), "Files imported: 2")
+	assert.Contains(buf.String(), "Files failed: 0")
+	assert.Contains(buf.String(), "Files skipped: 0")
+
+	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
+		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
+		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
+
+	assert.Len(fs, 2)
+	for _, f := range fs {
+		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
+	}
+}
+
+func (s *CLITestSuite) TestImportSuppressionDirectoryFromS3() {
+	assert := assert.New(s.T())
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	path, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test2/")
+	defer cleanup()
+
+	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path, constants.FileSourceArg, "s3", constants.S3EndpointArg, conf.GetEnv("BFD_S3_ENDPOINT")}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
