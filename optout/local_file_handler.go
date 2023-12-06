@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// LocalFileHandler manages files from local directories.
 type LocalFileHandler struct {
 	Logger                 logrus.FieldLogger
 	PendingDeletionDir     string
