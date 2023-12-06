@@ -124,9 +124,7 @@ func loadConfigs(locations ...string) (config, configStatus) {
 }
 
 func configPaths(envFilePath string, apiPath string, workerPath string) (configPaths []string) {
-	configPaths = []string{
-		envFilePath,
-	}
+	configPaths = []string{}
 
 	if apiPath != "" {
 		configPaths = append(configPaths, apiPath)
@@ -134,6 +132,8 @@ func configPaths(envFilePath string, apiPath string, workerPath string) (configP
 	if workerPath != "" {
 		configPaths = append(configPaths, workerPath)
 	}
+
+	configPaths = append(configPaths, envFilePath)
 
 	return configPaths
 }

@@ -150,7 +150,7 @@ func TestGetConfigPaths(t *testing.T) {
 		},
 		{
 			"Test case: all three paths set",
-			[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/.env", "/Somedir/foo/bar", "/test/helloworld"},
+			[]string{"/Somedir/foo/bar", "/test/helloworld", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/.env"},
 			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/.env",
 			"/Somedir/foo/bar",
 			"/test/helloworld",
