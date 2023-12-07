@@ -33,7 +33,7 @@ type LoggingMiddlewareTestSuite struct {
 
 func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
+	r.Use(middleware.RequestID, logging.TransactionHandler, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		// Base server route for logging tests to be checked, blank return for overrides
 	})
@@ -233,16 +233,27 @@ func TestResourceTypeLogging(t *testing.T) {
 }
 
 func TestMiddlewareLogCtx(t *testing.T) {
-
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		val := r.Context().Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
-		if val == nil {
+		entry := r.Context().Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
+		if entry == nil {
 			t.Error("no log context")
 		}
-
 	})
 
-	handlerToTest := contextToken(middleware.RequestID(logging.NewCtxLogger(nextHandler)))
+	handlerToTest := contextToken(middleware.RequestID(logging.TransactionHandler(logging.NewCtxLogger(nextHandler))))
+	req := httptest.NewRequest("GET", "http://testing", nil)
+	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+}
+
+func TestMiddlewareTransactionCtx(t *testing.T) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trans := r.Context().Value(logging.CtxTransactionKey).(string)
+		if trans == "" {
+			t.Error("no transaction id in context")
+		}
+	})
+
+	handlerToTest := logging.TransactionHandler(nextHandler)
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
