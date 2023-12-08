@@ -350,7 +350,6 @@ func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, u *url.UR
 			return err
 		}
 		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
-		// add transaction ID to req context
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
 			logger.Error(err)
