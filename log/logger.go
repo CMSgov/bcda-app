@@ -78,7 +78,7 @@ func logger(logger *logrus.Logger, outputFile string,
 		"version":     constants.Version})
 }
 
-// type to create context.Contest key
+// type to create context.Context key
 type CtxLoggerKeyType string
 
 // context.Context key to set/get logrus.FieldLogger value within request context

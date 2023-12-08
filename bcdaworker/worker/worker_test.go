@@ -131,7 +131,7 @@ func (s *WorkerTestSuite) TestWriteEOBToFile() {
 	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 
-	files, err1 := ioutil.ReadDir(s.stagingDir)
+	files, err1 := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err1)
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), uuid)
@@ -145,7 +145,7 @@ func (s *WorkerTestSuite) TestWriteCoverageToFile() {
 	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 
-	files, err1 := ioutil.ReadDir(s.stagingDir)
+	files, err1 := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err1)
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), uuid)
@@ -159,7 +159,7 @@ func (s *WorkerTestSuite) TestWritePatientToFile() {
 	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 
-	files, err1 := ioutil.ReadDir(s.stagingDir)
+	files, err1 := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err1)
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), uuid)
@@ -173,7 +173,7 @@ func (s *WorkerTestSuite) TestWriteClaimToFile() {
 	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 
-	files, err1 := ioutil.ReadDir(s.stagingDir)
+	files, err1 := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err1)
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), uuid)
@@ -187,7 +187,7 @@ func (s *WorkerTestSuite) TestWriteClaimResponseToFile() {
 	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 
-	files, err1 := ioutil.ReadDir(s.stagingDir)
+	files, err1 := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err1)
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), uuid)
@@ -203,7 +203,7 @@ func (s *WorkerTestSuite) TestWriteUnsupportedResourceToFile() {
 	assert.EqualValues(s.T(), 0, size)
 	assert.Error(s.T(), err)
 	assert.Empty(s.T(), uuid)
-	files, err := ioutil.ReadDir(s.stagingDir)
+	files, err := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), files, 0)
 
@@ -248,7 +248,7 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 	return ctx, jobArgs, &bbc
 }
 
-func VerifyFileContent(t *testing.T, files []fs.FileInfo, resource string, expectedCount int, jobID int) {
+func VerifyFileContent(t *testing.T, files []fs.DirEntry, resource string, expectedCount int, jobID int) {
 	for _, f := range files {
 		filePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), jobID, f.Name())
 		file, err := os.Open(filePath)
@@ -389,7 +389,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	_, _, err = writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
-	files, err := ioutil.ReadDir(s.stagingDir)
+	files, err := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
@@ -406,7 +406,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	assertEqualErrorFiles(s.T(), ooResp, string(fData))
 
 	// Assert cmsID and jobID fields are being added to the logs
-
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
 	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", jobArgs, beneficiaryIDs[2], claimsWindowMatcher())
@@ -435,7 +434,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	_, _, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
-	files, err := ioutil.ReadDir(s.stagingDir)
+	files, err := os.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
@@ -541,6 +540,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
 		BBBasePath:     constants.TestFHIRPath,
+		TransactionID:  uuid.New(),
 	}
 
 	err = s.w.ProcessJob(ctx, j, jobArgs)
@@ -548,6 +548,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), entries[0].Data, "cms_id")
 	assert.Contains(s.T(), entries[0].Data, "job_id")
+	assert.Contains(s.T(), entries[0].Data, "transaction_id")
 
 	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
@@ -567,10 +568,6 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
-
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, logger := log.SetCtxLogger(ctx, "job_id", j.ID)
-	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
 	jobArgs := models.JobEnqueueArgs{
 		ID:             int(j.ID),
@@ -597,10 +594,6 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
-
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, logger := log.SetCtxLogger(ctx, "job_id", j.ID)
-	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
 	jobArgs := models.JobEnqueueArgs{
 		ID:             int(j.ID),
