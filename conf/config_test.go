@@ -18,27 +18,27 @@ func TestGetEnv(t *testing.T) {
 		args args
 		want string
 	}{
-		{ // Test Case #1
+		{
 			"Single Value",
 			args{"TEST_HELLO"},
 			"world",
 		},
-		{ // Test Case #2
+		{
 			"Multi-value separated by commas",
 			args{"TEST_LIST"},
 			constants.TestListData,
 		},
-		{ // Test Case #3
+		{
 			"Path",
 			args{"TEST_SOMEPATH"},
 			"../../FAKE/PATH",
 		},
-		{ // Test Case #4
+		{
 			"Number",
 			args{"TEST_NUM"},
 			"1234",
 		},
-		{ // Test Case #5
+		{
 			"Boolean",
 			args{"TEST_BOOL"},
 			"true",
@@ -105,27 +105,68 @@ func TestUnsetEnv(t *testing.T) {
 	}
 }
 
-func Test_setup(t *testing.T) {
-	type args struct {
-		dir string
-	}
+func TestLoadConfigs(t *testing.T) {
 	tests := []struct {
 		name string
-		args args
+		args []string
 		want string
 	}{
 		{
 			"See if Viper sets up correctly",
-			args{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/local.env"},
+			[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/local.env"},
 			"true",
+		},
+		{
+			"test multiple locations for config files",
+			[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/local.env", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/notlocal.env"},
+			"false",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v, state := setup(tt.args.dir)
+			v, state := loadConfigs(tt.args...)
 			if !reflect.DeepEqual(v.Get("TEST").(string), tt.want) {
 				t.Errorf("setup() = %v, want %v", state, tt.want)
 			}
+		})
+	}
+}
+
+func TestGetConfigPaths(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		expected   []string
+		envPath    string
+		workerPath string
+		apiPath    string
+	}{
+		{
+			"Test case: no config paths set",
+			[]string{""},
+			"",
+			"",
+			"",
+		},
+		{
+			"Test case: all three paths set",
+			[]string{"/Somedir/foo/bar", "/test/helloworld", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/.env"},
+			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/.env",
+			"/Somedir/foo/bar",
+			"/test/helloworld",
+		},
+		{
+			"Test case: env file found, no api or worker dir found",
+			[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/local.env"},
+			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/local.env",
+			"",
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			paths := configPaths(tt.envPath, tt.workerPath, tt.apiPath)
+			assert.Equal(t, tt.expected, paths)
 		})
 	}
 }
