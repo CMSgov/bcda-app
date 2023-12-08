@@ -19,9 +19,9 @@ import (
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	"github.com/twinj/uuid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -52,7 +52,7 @@ var (
 	since        = "gt2020-02-14"
 	claimsDate   = client.ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
 		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
-	jobData = models.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionTime: now}
+	jobData = models.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionID: uuid.New(), TransactionTime: now}
 )
 
 func (s *BBTestSuite) SetupSuite() {
@@ -230,7 +230,7 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 func (s *BBRequestTestSuite) TestGetBBLogs() {
 	hook := test.NewLocal(logger)
 	_, err := s.bbClient.GetPatient(jobData, "012345")
-	var logCMSID, logJobID bool
+	var logCMSID, logJobID, logTransID bool
 	for _, entry := range hook.AllEntries() {
 		test := entry.Data
 		s.T().Log(test)
@@ -240,9 +240,13 @@ func (s *BBRequestTestSuite) TestGetBBLogs() {
 		if entry.Data["job_id"] == strconv.Itoa(jobData.ID) {
 			logJobID = true
 		}
+		if entry.Data["transaction_id"] == jobData.TransactionID {
+			logTransID = true
+		}
 	}
 	assert.True(s.T(), logCMSID)
 	assert.True(s.T(), logJobID)
+	assert.True(s.T(), logTransID)
 	assert.Nil(s.T(), err)
 }
 
@@ -871,10 +875,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		s.T().Run(tt.name, func(t *testing.T) {
 
 			tsValidation := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				uid, err := uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId"))
-				if err != nil {
-					assert.FailNow(t, err.Error())
-				}
+				uid := uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId"))
 				assert.NotNil(t, uid)
 				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
