@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -20,7 +21,6 @@ import (
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go
-
 func NewStructuredLogger() func(next http.Handler) http.Handler {
 	return middleware.RequestLogger(&StructuredLogger{Logger: log.Request})
 }
@@ -58,6 +58,10 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 		logFields["aco_id"] = ad.ACOID
 		logFields["token_id"] = ad.TokenID
 		logFields["cms_id"] = ad.CMSID
+	}
+
+	if tid, ok := r.Context().Value(CtxTransactionKey).(string); ok {
+		logFields["transaction_id"] = tid
 	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)
@@ -122,8 +126,23 @@ func NewCtxLogger(next http.Handler) http.Handler {
 		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
 			logFields["cms_id"] = ad.CMSID
 		}
+		logFields["transaction_id"] = r.Context().Value(CtxTransactionKey).(string)
 		newLogEntry := &log.StructuredLoggerEntry{Logger: log.API.WithFields(logFields)}
 		r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+		next.ServeHTTP(w, r)
+	})
+}
+
+// type to create context.Context key
+type CtxTransactionKeyType string
+
+// context.Context key to get the transaction ID from the request context
+const CtxTransactionKey CtxTransactionKeyType = "ctxTransaction"
+
+// Adds a transaction ID to the request context
+func NewTransactionID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), CtxTransactionKey, uuid.New().String()))
 		next.ServeHTTP(w, r)
 	})
 }

@@ -36,8 +36,9 @@ import (
 var logger logrus.FieldLogger
 
 const (
-	clientIDHeader = "BULK-CLIENTID"
-	jobIDHeader    = "BULK-JOBID"
+	clientIDHeader      = "BULK-CLIENTID"
+	jobIDHeader         = "BULK-JOBID"
+	transactionIDHeader = "TRANSACTIONID"
 )
 
 // BlueButtonConfig holds the configuration settings needed to create a BlueButtonClient
@@ -310,7 +311,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqu
 		}
 
 		queryID := uuid.NewRandom()
-		addDefaultRequestHeaders(req, queryID, strconv.Itoa(jobData.ID), jobData.CMSID)
+		addDefaultRequestHeaders(req, queryID, jobData)
 
 		result, nextURL, err = bbc.client.DoBundleRequest(req)
 		if err != nil {
@@ -348,8 +349,7 @@ func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, u *url.UR
 			logger.Error(err)
 			return err
 		}
-		addDefaultRequestHeaders(req, uuid.NewRandom(), strconv.Itoa(jobData.ID), jobData.CMSID)
-
+		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
 			logger.Error(err)
@@ -379,7 +379,7 @@ func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, e
 	return u, nil
 }
 
-func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
+func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData models.JobEnqueueArgs) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("keep-alive", "")
 	req.Header.Add(constants.BBHeaderTS, time.Now().String())
@@ -388,8 +388,9 @@ func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID s
 	req.Header.Add(constants.BBHeaderOriginURL, req.URL.String())
 	req.Header.Add(constants.BBHeaderOriginQ, req.URL.RawQuery)
 	req.Header.Add("IncludeIdentifiers", "mbi")
-	req.Header.Add(jobIDHeader, jobID)
-	req.Header.Add(clientIDHeader, cmsID)
+	req.Header.Add(jobIDHeader, strconv.Itoa(jobData.ID))
+	req.Header.Add(clientIDHeader, jobData.CMSID)
+	req.Header.Add(transactionIDHeader, jobData.TransactionID)
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
 	// If we specify this header at the client level, then we must be responsible for decompressing the response.
@@ -472,11 +473,12 @@ func (h *httpLogger) logRequest(req *http.Request) {
 
 func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
 	h.l.WithFields(logrus.Fields{
-		"resp_code":   resp.StatusCode,
-		"bb_query_id": req.Header.Get(constants.BBHeaderOriginQID),
-		"bb_query_ts": req.Header.Get(constants.BBHeaderTS),
-		"bb_uri":      req.URL.String(),
-		"job_id":      req.Header.Get(jobIDHeader),
-		"cms_id":      req.Header.Get(clientIDHeader),
+		"resp_code":      resp.StatusCode,
+		"bb_query_id":    req.Header.Get(constants.BBHeaderOriginQID),
+		"bb_query_ts":    req.Header.Get(constants.BBHeaderTS),
+		"bb_uri":         req.URL.String(),
+		"job_id":         req.Header.Get(jobIDHeader),
+		"cms_id":         req.Header.Get(clientIDHeader),
+		"transaction_id": req.Header.Get(transactionIDHeader),
 	}).Infoln("response")
 }

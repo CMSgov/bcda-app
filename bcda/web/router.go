@@ -30,7 +30,7 @@ var commonAuth = []func(http.Handler) http.Handler{
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
@@ -88,7 +88,7 @@ func NewAPIRouter() http.Handler {
 }
 
 func NewAuthRouter() http.Handler {
-	return auth.NewAuthRouter(gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	return auth.NewAuthRouter(gcmw.RequestID, logging.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 }
 
 func NewDataRouter() http.Handler {
@@ -97,7 +97,7 @@ func NewDataRouter() http.Handler {
 	resourceTypeLogger := &logging.ResourceTypeLogger{
 		Repository: postgres.NewRepository(database.Connection),
 	}
-	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 	r.With(append(
 		commonAuth,
 		auth.RequireTokenJobMatch,
@@ -109,7 +109,7 @@ func NewDataRouter() http.Handler {
 func NewHTTPRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(gcmw.RequestID, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(gcmw.RequestID, middleware.ConnectionClose, logging.NewTransactionID, logging.NewCtxLogger)
 	r.With(logging.NewStructuredLogger()).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		url := "https://" + req.Host + req.URL.String()
 		http.Redirect(w, req, url, http.StatusMovedPermanently)

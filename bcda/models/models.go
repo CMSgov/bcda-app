@@ -118,6 +118,7 @@ type JobEnqueueArgs struct {
 	BeneficiaryIDs  []string
 	ResourceType    string
 	Since           string
+	TransactionID   string
 	TransactionTime time.Time
 	BBBasePath      string
 	ClaimsWindow    struct {
