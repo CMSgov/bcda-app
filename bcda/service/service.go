@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -162,7 +163,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 		}
 		// add new beneficiaries to the job queue; use a default time value to ensure
 		// that we retrieve the full history for these beneficiaries
-		jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
+		jobs, err = s.createQueueJobs(ctx, conditions, time.Time{}, newBeneficiaries)
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +173,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 	}
 
 	// add existiing beneficiaries to the job queue
-	jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
+	jobs, err = s.createQueueJobs(ctx, conditions, conditions.Since, beneficiaries)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +256,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
+func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
@@ -299,6 +300,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 									BeneficiaryIDs:  jobIDs,
 									ResourceType:    rt,
 									Since:           sinceArg,
+									TransactionID:   ctx.Value(logging.CtxTransactionKey).(string),
 									TransactionTime: transactionTime,
 									BBBasePath:      s.bbBasePath,
 									DataType:        dataType,

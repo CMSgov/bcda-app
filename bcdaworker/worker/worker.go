@@ -73,7 +73,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return err
 	}
 
-	ctx, logger := log.SetCtxLogger(ctx, "cms_id", aco.CMSID)
+	ctx, _ = log.SetCtxLogger(ctx, "cms_id", aco.CMSID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {

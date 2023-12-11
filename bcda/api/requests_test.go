@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
+	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -905,8 +906,8 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			rctx.URLParams.Add("jobID", "1")
 
 			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-			req = req.WithContext(ctx)
-			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			ctx = context.WithValue(ctx, logging.CtxTransactionKey, uuid.New())
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{})
 			req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
 
 			w := httptest.NewRecorder()

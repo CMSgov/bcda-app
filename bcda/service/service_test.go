@@ -12,6 +12,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -669,8 +670,8 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
-
-			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
+			ctx := context.Background()
+			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, logging.CtxTransactionKey, uuid.New()), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -808,8 +809,8 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
-
-			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
+			ctx := context.Background()
+			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, logging.CtxTransactionKey, uuid.New()), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})

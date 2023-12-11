@@ -447,7 +447,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
-	logger := log.GetCtxLogger(r.Context())
+	logger := log.GetCtxLogger(ctx)
 
 	var (
 		ad  auth.AuthData
