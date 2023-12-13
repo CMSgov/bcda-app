@@ -517,7 +517,7 @@ func (s *WorkerTestSuite) TestAppendErrorToFile() {
 }
 
 func (s *WorkerTestSuite) TestProcessJobEOB() {
-	ctx := context.Background()
+	ctx := log.NewStructuredLoggerEntry(log.Worker, context.Background())
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
@@ -525,10 +525,6 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		JobCount:   1,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, logger := log.SetCtxLogger(ctx, "job_id", j.ID)
-	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
 	complete, err := checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
@@ -542,6 +538,11 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		BBBasePath:     constants.TestFHIRPath,
 		TransactionID:  uuid.New(),
 	}
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, _ = log.SetCtxLogger(ctx, "job_id", j.ID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
+	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
 	err = s.w.ProcessJob(ctx, j, jobArgs)
 	entries := logHook.AllEntries()

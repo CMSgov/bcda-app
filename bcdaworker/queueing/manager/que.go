@@ -115,7 +115,8 @@ func (q *queue) processJob(job *que.Job) error {
 	}
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, logger := log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
+	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 
 	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
