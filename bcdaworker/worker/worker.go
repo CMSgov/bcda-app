@@ -73,8 +73,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return err
 	}
 
-	ctx, _ = log.SetCtxLogger(ctx, "cms_id", aco.CMSID)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
+	ctx, logger := log.SetCtxLogger(ctx, "cms_id", aco.CMSID)
 
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
@@ -112,11 +111,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	}
 
 	fileUUID, fileSize, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs)
-	if err != nil {
-		logger.Error(err)
-	}
 	fileName := fileUUID + ".ndjson"
-
 	ctx, _ = log.SetCtxLogger(ctx, "file_uuid", fileUUID)
 	ctx, logger = log.SetCtxLogger(ctx, "file_size", fileSize)
 
@@ -135,19 +130,19 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			logger.Error(err)
 			return err
 		}
-	} else {
-		if fileSize == 0 {
-			logger.Warnf("ProcessJob: File %s is empty (fileSize 0), will rename file to %s", fileName, models.BlankFileName)
-			fileName = models.BlankFileName
-		}
-
-		jk := models.JobKey{JobID: job.ID, FileName: fileName, ResourceType: jobArgs.ResourceType}
-		if err := w.r.CreateJobKey(ctx, jk); err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error creating job key record for filename %s", fileName))
-			logger.Error(err)
-			return err
-		}
 	}
+	if fileSize == 0 {
+		logger.Warnf("ProcessJob: File %s is empty (fileSize 0), will rename file to %s", fileName, models.BlankFileName)
+		fileName = models.BlankFileName
+	}
+
+	jk := models.JobKey{JobID: job.ID, FileName: fileName, ResourceType: jobArgs.ResourceType}
+	if err := w.r.CreateJobKey(ctx, jk); err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error creating job key record for filename %s", fileName))
+		logger.Error(err)
+		return err
+	}
+
 	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s", fileName))
@@ -167,7 +162,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
-
+	logger := log.GetCtxLogger(ctx)
 	close := metrics.NewChild(ctx, "writeBBDataToFile")
 	defer close()
 
@@ -262,6 +257,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}()
 
 		if err != nil {
+			logger.Error(err)
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, fileErrMsg, jobArgs.ID)
 		}
