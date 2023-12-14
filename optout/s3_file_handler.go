@@ -44,12 +44,7 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 
 func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
 	var result []*OptOutFilenameMetadata
-
-	bucket, prefix, err := parseS3Uri(path)
-	if err != nil {
-		handler.Errorf("Failed to parse S3 path: %s\n", err)
-		return &result, skipped, err
-	}
+	bucket, prefix := parseS3Uri(path)
 
 	sess, err := handler.createSession()
 	if err != nil {
@@ -91,10 +86,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 
 func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
 	handler.Infof("Opening file %s\n", metadata.FilePath)
-	bucket, file, err := parseS3Uri(metadata.FilePath)
-	if err != nil {
-		return nil, nil, err
-	}
+	bucket, file := parseS3Uri(metadata.FilePath)
 
 	sess, err := handler.createSession()
 	if err != nil {
@@ -136,11 +128,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		}
 
 		handler.Infof("Cleaning up file %s\n", suppressionFile)
-
-		bucket, file, err := parseS3Uri(suppressionFile.FilePath)
-		if err != nil {
-			return err
-		}
+		bucket, file := parseS3Uri(suppressionFile.FilePath)
 
 		svc := s3.New(sess)
 		_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(file)})
@@ -208,13 +196,13 @@ func (handler *S3FileHandler) createSession() (*session.Session, error) {
 //   input: s3://my-bucket
 //   output: "my-bucket", ""
 //
-func parseS3Uri(str string) (bucket string, key string, err error) {
+func parseS3Uri(str string) (bucket string, key string) {
 	workingString := strings.TrimPrefix(str, "s3://")
 	resultArr := strings.SplitN(workingString, "/", 2)
 
 	if len(resultArr) == 1 {
-		return resultArr[0], "", nil
+		return resultArr[0], ""
 	}
 
-	return resultArr[0], resultArr[1], nil
+	return resultArr[0], resultArr[1]
 }
