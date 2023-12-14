@@ -47,19 +47,19 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 
 	bucket, prefix, err := parseS3Uri(path)
 	if err != nil {
-		handler.Errorf("Failed to parse S3 path: %s", err)
+		handler.Errorf("Failed to parse S3 path: %s\n", err)
 		return &result, skipped, err
 	}
 
 	sess, err := handler.createSession()
 	if err != nil {
-		handler.Errorf("Failed to create S3 session: %s", err)
+		handler.Errorf("Failed to create S3 session: %s\n", err)
 		return &result, skipped, err
 	}
 
 	svc := s3.New(sess)
 
-	handler.Infof("Listing objects in bucket %s, prefix %s", bucket, prefix)
+	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
 
 	resp, err := svc.ListObjects(&s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -67,7 +67,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	})
 
 	if err != nil {
-		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
+		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s\n", bucket, prefix, err)
 		return &result, skipped, err
 	}
 
@@ -78,7 +78,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 
 		if err != nil {
 			// Skip files with a bad name.  An unknown file in this dir isn't a blocker
-			handler.Warningf("Unknown file found: %s. Skipping.", metadata)
+			handler.Warningf("Unknown file found: %s. Skipping.\n", metadata)
 			skipped = skipped + 1
 			continue
 		}
@@ -90,7 +90,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 }
 
 func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
-	handler.Infof("Opening file %s", metadata.FilePath)
+	handler.Infof("Opening file %s\n", metadata.FilePath)
 	bucket, file, err := parseS3Uri(metadata.FilePath)
 	if err != nil {
 		return nil, nil, err
@@ -109,11 +109,11 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	})
 
 	if err != nil {
-		handler.Errorf("Failed to download bucket %s, key %s", bucket, file)
+		handler.Errorf("Failed to download bucket %s, key %s\n", bucket, file)
 		return nil, nil, err
 	}
 
-	handler.Infof("file downloaded: size=%d", numBytes)
+	handler.Infof("file downloaded: size=%d\n", numBytes)
 
 	byte_arr := buff.Bytes()
 	sc := bufio.NewScanner(bytes.NewReader(byte_arr))
@@ -131,11 +131,11 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		if !suppressionFile.Imported {
 			// Don't do anything. The S3 bucket should have a retention policy that
 			// automatically cleans up files after a specified period of time,
-			handler.Warningf("File %s was not imported successfully. Skipping cleanup.", suppressionFile)
+			handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", suppressionFile)
 			continue
 		}
 
-		handler.Infof("Cleaning up file %s", suppressionFile)
+		handler.Infof("Cleaning up file %s\n", suppressionFile)
 
 		bucket, file, err := parseS3Uri(suppressionFile.FilePath)
 		if err != nil {
@@ -146,7 +146,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(file)})
 
 		if err != nil {
-			handler.Errorf("File %s failed to clean up properly, error occurred while deleting object: %v", suppressionFile, err)
+			handler.Errorf("File %s failed to clean up properly, error occurred while deleting object: %v\n", suppressionFile, err)
 			errCount++
 			continue
 		}
@@ -157,16 +157,16 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		})
 
 		if err != nil {
-			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v", suppressionFile, err)
+			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", suppressionFile, err)
 			errCount++
 			continue
 		}
 
-		handler.Infof("File %s successfully ingested and deleted from S3.", suppressionFile)
+		handler.Infof("File %s successfully ingested and deleted from S3.\n", suppressionFile)
 	}
 
 	if errCount > 0 {
-		return fmt.Errorf("%d files could not be cleaned up", errCount)
+		return fmt.Errorf("%d files could not be cleaned up\n", errCount)
 	}
 
 	return nil
