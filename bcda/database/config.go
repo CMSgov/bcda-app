@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	MaxOpenConns       int `conf:"BCDA_DB_MAX_OPEN_CONNS" conf_default:"40"`
+	MaxOpenConns       int `conf:"BCDA_DB_MAX_OPEN_CONNS" conf_default:"60"`
 	MaxIdleConns       int `conf:"BCDA_DB_MAX_IDLE_CONNS" conf_default:"40"`
 	ConnMaxLifetimeMin int `conf:"BCDA_DB_CONN_MAX_LIFETIME_MIN" conf_default:"5"`
+	ConnMaxIdleTime    int `conf:"BCDA_DB_CONN_MAX_IDLE_TIME" conf_default:"30"`
 
 	DatabaseURL      string `conf:"DATABASE_URL"`
 	QueueDatabaseURL string `conf:"QUEUE_DATABASE_URL"`
