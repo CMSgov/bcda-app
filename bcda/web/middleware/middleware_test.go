@@ -3,9 +3,9 @@ package middleware
 import (
 	"context"
 	"crypto/tls"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -101,11 +101,11 @@ func TestMiddlewareTestSuite(t *testing.T) {
 }
 
 func mockTLSServerContext() context.Context {
-	crt, err := ioutil.ReadFile("../../../shared_files/localhost.crt")
+	crt, err := os.ReadFile("../../../shared_files/localhost.crt")
 	if err != nil {
 		panic(err)
 	}
-	key, err := ioutil.ReadFile("../../../shared_files/localhost.key")
+	key, err := os.ReadFile("../../../shared_files/localhost.key")
 	if err != nil {
 		panic(err)
 	}

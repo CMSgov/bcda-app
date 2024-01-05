@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -21,7 +20,7 @@ func TestETLTestSuite(t *testing.T) {
 
 func (s *ETLTestSuite) TestDeleteDirectory() {
 	assert := assert.New(s.T())
-	dirToDelete, err := ioutil.TempDir("", "*")
+	dirToDelete, err := os.MkdirTemp("", "*")
 	assert.NoError(err)
 
 	testUtils.MakeDirToDelete(s.Suite, dirToDelete)

@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -393,7 +393,7 @@ func (s *APITestSuite) TestServeData() {
 				reader, err := gzip.NewReader(s.rr.Body)
 				assert.NoError(t, err)
 				defer reader.Close()
-				b, err = ioutil.ReadAll(reader)
+				b, err = io.ReadAll(reader)
 				assert.NoError(t, err)
 			} else {
 				assert.Equal(t, "", s.rr.Header().Get("Content-Encoding"))

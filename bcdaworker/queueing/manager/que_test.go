@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -58,11 +58,11 @@ func TestProcessJob(t *testing.T) {
 	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
 
 	// Ensure we do not clutter our working directory with any data
-	tempDir1, err := ioutil.TempDir("", "*")
+	tempDir1, err := os.MkdirTemp("", "*")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	tempDir2, err := ioutil.TempDir("", "*")
+	tempDir2, err := os.MkdirTemp("", "*")
 	if err != nil {
 		t.Fatal(err.Error())
 	}

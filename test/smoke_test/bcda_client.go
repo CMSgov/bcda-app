@@ -8,7 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -145,7 +145,7 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 	if resp.StatusCode == http.StatusAccepted {
 		return resp.Header.Get("Content-Location"), nil
 	} else {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Errorf(constants.RespBodyErr, err.Error())
 		}
@@ -194,7 +194,7 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 			<-time.After(5 * time.Second)
 			return nil, nil
 		default:
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				log.Errorf(constants.RespBodyErr, err.Error())
 			}
@@ -236,7 +236,7 @@ func getData(c *client, dataURL string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Errorf("Failure to read response body %s", req, err.Error())
 		return nil, err
@@ -259,7 +259,7 @@ func validateData(encoded []byte) error {
 	}
 	defer reader.Close()
 
-	decoded, err := ioutil.ReadAll(reader)
+	decoded, err := io.ReadAll(reader)
 	if err != nil {
 		log.Errorf("Failure to read decoded information in gzip %s", reader, err.Error())
 		return err
@@ -336,7 +336,7 @@ func (c *client) updateAccessToken() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Errorf(constants.RespBodyErr, err.Error())
 		}
@@ -351,7 +351,7 @@ func (c *client) updateAccessToken() error {
 	}
 
 	var t = tokenResponse{}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Errorf("Failure to read response body %s", resp.Body, err.Error())
 		return err

@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"database/sql"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -48,7 +47,7 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 		TransactionTime: MBIs.TransactionTime,
 	})
 
-	tempDir, err := ioutil.TempDir("", "*")
+	tempDir, err := os.MkdirTemp("", "*")
 	if err != nil {
 		s.FailNow(err.Error())
 	}

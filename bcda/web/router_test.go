@@ -3,7 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -105,7 +105,7 @@ func (s *RouterTestSuite) TestMetadataRoute() {
 	res := s.getAPIRoute("/api/v1/metadata")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 
-	bytes, err := ioutil.ReadAll(res.Body)
+	bytes, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	assert.Nil(s.T(), err)
 	var obj map[string]interface{}

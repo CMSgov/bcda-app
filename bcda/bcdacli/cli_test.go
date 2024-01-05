@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -63,7 +62,7 @@ func (s *CLITestSuite) SetupSuite() {
 	origDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181125")
 
-	dir, err := ioutil.TempDir("", "*")
+	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -293,7 +292,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 
 	// check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_ARCHIVE_DIR"), j.ID)
-	_, err = ioutil.ReadFile(expPath)
+	_, err = os.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -375,7 +374,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 
 	// check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
-	_, err = ioutil.ReadFile(dataPath)
+	_, err = os.ReadFile(dataPath)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -746,7 +745,7 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	dirToDelete, err := ioutil.TempDir("", "*")
+	dirToDelete, err := os.MkdirTemp("", "*")
 	assert.NoError(err)
 	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
 	defer os.RemoveAll(dirToDelete)
@@ -758,7 +757,7 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	buf.Reset()
 
 	// File, not a directory
-	file, err := ioutil.TempFile("", "*")
+	file, err := os.CreateTemp("", "*")
 	assert.NoError(err)
 	defer os.Remove(file.Name())
 	args = []string{"bcda", constants.DelDirContents, "--dirToDelete", file.Name()}
@@ -923,7 +922,7 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	s.testApp.Writer = buf
 
 	// set up a test directory for cclf file generating and cloning
-	path, err := ioutil.TempDir(".", "clone_cclf")
+	path, err := os.MkdirTemp(".", "clone_cclf")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1067,7 +1066,7 @@ func createTestZipFile(zFile string, cclfFiles ...string) error {
 }
 
 func getFileCount(t *testing.T, path string) int {
-	f, err := ioutil.ReadDir(path)
+	f, err := os.ReadDir(path)
 	assert.NoError(t, err)
 	return len(f)
 }

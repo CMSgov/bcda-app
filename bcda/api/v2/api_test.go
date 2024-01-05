@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -476,7 +476,7 @@ func (s *APITestSuite) TestMetadataResponse() {
 	assert.Equal(s.T(), "application/json", res.Header.Get(constants.ContentType))
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 
-	resp, err := ioutil.ReadAll(res.Body)
+	resp, err := io.ReadAll(res.Body)
 	assert.NoError(s.T(), err)
 
 	resource, err := unmarshaller.Unmarshal(resp)

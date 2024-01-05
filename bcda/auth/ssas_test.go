@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -107,7 +107,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	// TODO: Mock client instead of server
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
-		reqBody, err := ioutil.ReadAll(r.Body)
+		reqBody, err := io.ReadAll(r.Body)
 		assert.NoError(tester, err)
 		var obj map[string]interface{}
 		assert.NoError(tester, json.Unmarshal(reqBody, &obj))

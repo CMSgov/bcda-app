@@ -7,9 +7,9 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -99,7 +99,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 		caCertPool := x509.NewCertPool()
 
 		for _, caFile := range caFilePaths {
-			caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
+			caCert, err := os.ReadFile(filepath.Clean(caFile))
 			if err != nil {
 				return nil, errors.Wrap(err, "could not read CA file")
 			}

@@ -2,7 +2,7 @@ package log
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -40,7 +40,7 @@ func TestLoggers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.logEnv, func(t *testing.T) {
-			logFile, err := ioutil.TempFile("", "*")
+			logFile, err := os.CreateTemp("", "*")
 			old := conf.GetEnv(tt.logEnv)
 			t.Cleanup(func() {
 				assert.NoError(t, os.Remove(logFile.Name()))
@@ -61,7 +61,7 @@ func TestLoggers(t *testing.T) {
 }
 
 func verifyAPILogs(t *testing.T, env, msg string, logFile *os.File) {
-	data, err := ioutil.ReadAll(logFile)
+	data, err := io.ReadAll(logFile)
 	assert.NoError(t, err)
 
 	res := strings.Split(string(data), "\n")
@@ -74,7 +74,7 @@ func verifyAPILogs(t *testing.T, env, msg string, logFile *os.File) {
 }
 
 func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
-	data, err := ioutil.ReadAll(logFile)
+	data, err := io.ReadAll(logFile)
 	assert.NoError(t, err)
 
 	res := strings.Split(string(data), "\n")

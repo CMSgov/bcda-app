@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -164,7 +163,7 @@ func writeResults(filename string, buf bytes.Buffer) {
 	if len(data) > 0 {
 		fn := fmt.Sprintf("%s/%s.html", reportFilePath, clean)
 		fmt.Printf("Writing results: %s\n", fn)
-		err := ioutil.WriteFile(fn, data, 0600)
+		err := os.WriteFile(fn, data, 0600)
 		if err != nil {
 			panic(err)
 		}

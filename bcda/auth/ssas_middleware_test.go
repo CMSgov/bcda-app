@@ -3,7 +3,7 @@ package auth_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -77,7 +77,7 @@ func (s *SSASMiddlewareTestSuite) TestSSASToken() {
 	require.Nil(s.T(), err, "request failed; ", err)
 	assert.Equal(s.T(), "200 OK", resp.Status)
 
-	b, _ := ioutil.ReadAll(resp.Body)
+	b, _ := io.ReadAll(resp.Body)
 	assert.NotZero(s.T(), len(b), "no content in response body")
 	var ad auth.AuthData
 	_ = json.Unmarshal(b, &ad)
