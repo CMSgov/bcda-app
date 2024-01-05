@@ -3,7 +3,6 @@ package cclf
 import (
 	"archive/zip"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,7 +37,7 @@ func (s *FileProcessorTestSuite) SetupTest() {
 func (s *FileProcessorTestSuite) SetupSuite() {
 	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
-	dir, err := ioutil.TempDir("", "*")
+	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -474,7 +473,7 @@ func TestStillDownloading(t *testing.T) {
 }
 
 func TestMultipleFileTypes(t *testing.T) {
-	dir, err := ioutil.TempDir("", "*")
+	dir, err := os.MkdirTemp("", "*")
 	assert.NoError(t, err)
 	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
 	cclfRefDate := conf.GetEnv("CCLF_REF_DATE")

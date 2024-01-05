@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -413,7 +412,7 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		staging := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), j.ID)
 		payload := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 
-		files, err := ioutil.ReadDir(staging)
+		files, err := os.ReadDir(staging)
 		if err != nil {
 			err = errors.Wrap(err, fmt.Sprintf("Error reading from the staging directory for files for Job %d", jobID))
 			return false, err

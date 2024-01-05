@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"strconv"
@@ -70,7 +69,7 @@ func (s *WorkerTestSuite) SetupSuite() {
 
 	postgrestest.CreateACO(s.T(), s.db, *s.testACO)
 
-	tempDir, err := ioutil.TempDir("", "*")
+	tempDir, err := os.MkdirTemp("", "*")
 	if err != nil {
 		s.FailNow(err.Error())
 	}
@@ -394,7 +393,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	assert.Equal(s.T(), 2, len(files))
 
 	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
-	fData, err := ioutil.ReadFile(errorFilePath)
+	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}}]}
@@ -439,7 +438,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.Equal(s.T(), 2, len(files))
 
 	dataFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
-	d, err := ioutil.ReadFile(dataFilePath)
+	d, err := os.ReadFile(dataFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
 	}
@@ -447,7 +446,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	s.Empty(d)
 
 	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
-	d, err = ioutil.ReadFile(errorFilePath)
+	d, err = os.ReadFile(errorFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
 	}
@@ -499,7 +498,7 @@ func (s *WorkerTestSuite) TestAppendErrorToFile() {
 		"", "", s.jobID)
 
 	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
-	fData, err := ioutil.ReadFile(filePath)
+	fData, err := os.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
 	type oo struct {
@@ -672,9 +671,9 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 	defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
 	defer conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", conf.GetEnv("FHIR_PAYLOAD_DIR"))
 
-	staging, err := ioutil.TempDir("", "*")
+	staging, err := os.MkdirTemp("", "*")
 	assert.NoError(s.T(), err)
-	payload, err := ioutil.TempDir("", "*")
+	payload, err := os.MkdirTemp("", "*")
 	assert.NoError(s.T(), err)
 	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", staging)
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", payload)
@@ -703,7 +702,7 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 			assert.NoError(t, os.Mkdir(sDir, os.ModePerm))
 			assert.NoError(t, os.Mkdir(pDir, os.ModePerm))
 
-			f, err := ioutil.TempFile(sDir, "")
+			f, err := os.CreateTemp(sDir, "")
 			assert.NoError(t, err)
 			assert.NoError(t, f.Close())
 

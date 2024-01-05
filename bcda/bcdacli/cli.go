@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -431,7 +430,7 @@ func setUpApp() *cli.App {
 					return fmt.Errorf("no CCLF8 file found for CMS ID %s", acoCMSID)
 				}
 
-				tempFile, err := ioutil.TempFile("", "*")
+				tempFile, err := os.CreateTemp("", "*")
 				if err != nil {
 					return err
 				}
@@ -832,7 +831,7 @@ func renameCCLF(name string) string {
 }
 
 func cloneCCLFZips(path string) (int, error) {
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return 0, err
 	}

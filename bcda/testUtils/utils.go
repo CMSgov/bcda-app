@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -120,7 +120,7 @@ func SetPendingDeletionDir(s suite.Suite, path string) {
 // CopyToTemporaryDirectory copies all of the content found at src into a temporary directory.
 // The path to the temporary directory is returned along with a function that can be called to clean up the data.
 func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
-	newPath, err := ioutil.TempDir("", "*")
+	newPath, err := os.MkdirTemp("", "*")
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory %s", err.Error())
 	}
@@ -277,7 +277,7 @@ func GetLogger(logger logrus.FieldLogger) *logrus.Logger {
 // ReadResponseBody will read http.Response and return the body contents as a string.
 func ReadResponseBody(r *http.Response) string {
 	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		bodyString := fmt.Sprintf("Error reading the body: %s\n", err.Error())
 		return bodyString
@@ -299,7 +299,7 @@ func MakeTestServerWithIntrospectEndpoint(activeToken bool) *httptest.Server {
 				Token string `json:"token"`
 			}
 		)
-		buf, err := ioutil.ReadAll(r.Body)
+		buf, err := io.ReadAll(r.Body)
 		if err != nil {
 			fmt.Printf("Unexpected error creating test server: Error in reading request body: %s\n", err.Error())
 			return
