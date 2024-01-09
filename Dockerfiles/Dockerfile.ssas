@@ -39,5 +39,7 @@ COPY --from=base /go/bcda-ssas-app/ /go/bcda-ssas-app/
 COPY --from=base /go/bin/ /go/bin/
 WORKDIR /go/bcda-ssas-app/ssas/
 
+RUN ls
+
 ENTRYPOINT ["main"]
 CMD ["--start"]
