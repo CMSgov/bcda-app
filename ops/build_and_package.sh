@@ -54,7 +54,6 @@ echo "Building bcdaworker..."
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcdaworker binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/
-ls ../conf/configs/
 
 #Sign RPMs
 echo "Importing GPG Key files"
