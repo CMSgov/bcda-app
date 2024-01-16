@@ -18,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/middleware"
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/pkg/errors"
@@ -294,13 +295,15 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 }
 
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
-func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
+func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	tokenUrl := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
 		return "", &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
 	}
+
+	req.Header.Add("transaction-id", r.Context().Value(middleware.CtxTransactionKey).(string))
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
 	resp, err := c.Do(req)

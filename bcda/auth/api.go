@@ -41,7 +41,7 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
+	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret}, r)
 	if err != nil {
 
 		switch err.(type) {

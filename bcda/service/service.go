@@ -13,11 +13,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/middleware"
 )
 
 type RequestConditions struct {
@@ -300,7 +300,7 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 									BeneficiaryIDs:  jobIDs,
 									ResourceType:    rt,
 									Since:           sinceArg,
-									TransactionID:   ctx.Value(logging.CtxTransactionKey).(string),
+									TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
 									TransactionTime: transactionTime,
 									BBBasePath:      s.bbBasePath,
 									DataType:        dataType,

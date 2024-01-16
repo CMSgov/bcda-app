@@ -22,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
-	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -32,6 +31,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
@@ -906,7 +906,7 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			rctx.URLParams.Add("jobID", "1")
 
 			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-			ctx = context.WithValue(ctx, logging.CtxTransactionKey, uuid.New())
+			ctx = context.WithValue(ctx, appMiddleware.CtxTransactionKey, uuid.New())
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{})
 			req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
 
