@@ -12,12 +12,12 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -671,7 +671,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
-			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, logging.CtxTransactionKey, uuid.New()), conditions)
+			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -810,7 +810,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
-			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, logging.CtxTransactionKey, uuid.New()), conditions)
+			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})

@@ -212,33 +212,35 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	tokenInfo, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
+	r := testUtils.ContextTransactionID()
+
+	tokenInfo, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"}, r)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), string(tokenInfo), constants.ExpiresInDefault)
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), string(tokenInfo))
 
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: "sad", ClientSecret: "customer"}, r)
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{}, r)
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String()}, r)
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientSecret: testUtils.RandomBase64(20)}, r)
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")
 
-	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
+	tokenInfo, err = s.p.MakeAccessToken(Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)}, r)
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), string(tokenInfo))
 	assert.Contains(s.T(), err.Error(), "401")

@@ -20,12 +20,13 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/otiai10/copy"
@@ -142,11 +143,7 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 // CopyToS3 copies all of the content found at src into a temporary S3 folder within localstack.
 // The path to the temporary S3 directory is returned along with a function that can be called to clean up the data.
 func CopyToS3(t *testing.T, src string) (string, func()) {
-	tempBucket, err := uuid.NewUUID()
-
-	if err != nil {
-		t.Fatalf("Failed to generate temporary path name: %s", err.Error())
-	}
+	tempBucket := uuid.NewUUID()
 
 	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
 
@@ -459,4 +456,11 @@ func MakeTestServerWithInternalServerErrAuthTokenRequest() *httptest.Server {
 		}
 	})
 	return httptest.NewServer(router)
+}
+
+func ContextTransactionID() *http.Request {
+	r := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
+	ctx := context.Background()
+	r = r.WithContext(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()))
+	return r
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 )
 
 type LoggingMiddlewareTestSuite struct {
@@ -33,7 +34,7 @@ type LoggingMiddlewareTestSuite struct {
 
 func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, logging.NewTransactionID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
+	r.Use(middleware.RequestID, appMiddleware.NewTransactionID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		// Base server route for logging tests to be checked, blank return for overrides
 	})
@@ -240,20 +241,20 @@ func TestMiddlewareLogCtx(t *testing.T) {
 		}
 	})
 
-	handlerToTest := contextToken(middleware.RequestID(logging.NewTransactionID(logging.NewCtxLogger(nextHandler))))
+	handlerToTest := contextToken(middleware.RequestID(appMiddleware.NewTransactionID(logging.NewCtxLogger(nextHandler))))
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 }
 
 func TestMiddlewareTransactionCtx(t *testing.T) {
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		trans := r.Context().Value(logging.CtxTransactionKey).(string)
+		trans := r.Context().Value(appMiddleware.CtxTransactionKey).(string)
 		if trans == "" {
 			t.Error("no transaction id in context")
 		}
 	})
 
-	handlerToTest := logging.NewTransactionID(nextHandler)
+	handlerToTest := appMiddleware.NewTransactionID(nextHandler)
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 

@@ -3,6 +3,8 @@
 package auth
 
 import (
+	"net/http"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -34,7 +36,7 @@ func (_m *MockProvider) GetVersion() (string, error) {
 }
 
 // MakeAccessToken provides a mock function with given fields: credentials
-func (_m *MockProvider) MakeAccessToken(credentials Credentials) (string, error) {
+func (_m *MockProvider) MakeAccessToken(credentials Credentials, r *http.Request) (string, error) {
 	ret := _m.Called(credentials)
 
 	var r0 string
