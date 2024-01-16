@@ -459,7 +459,8 @@ func MakeTestServerWithInternalServerErrAuthTokenRequest() *httptest.Server {
 }
 
 func ContextTransactionID() *http.Request {
-	r := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
+	// this request url is a placeholder/arbitrary
+	r := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/token", nil)
 	ctx := context.Background()
 	r = r.WithContext(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()))
 	return r
