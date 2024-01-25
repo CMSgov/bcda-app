@@ -36,6 +36,7 @@ RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/
 
 # Make sure we are in the directory to ensure the config files are resolved as expected
 COPY --from=base /go/bcda-ssas-app/ /go/bcda-ssas-app/
+COPY --from=base /go/bcda-ssas-app/ssas/cfg/configs  /go/src/github.com/CMSgov/bcda-ssas-app/ssas/cfg/configs
 COPY --from=base /go/bin/ /go/bin/
 WORKDIR /go/bcda-ssas-app/ssas/
 
