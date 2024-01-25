@@ -53,7 +53,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 		if err != nil {
 			logger := log.GetCtxLogger(r.Context())
 			logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
-			rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			rw.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 		if len(pendingAndInProgressJobs) > 0 {

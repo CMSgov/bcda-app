@@ -58,7 +58,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			if _, found := supportedOutputFormats[params[0]]; !found {
 				errMsg := fmt.Sprintf("_outputFormat parameter must be one of %v", getKeys(supportedOutputFormats))
 				log.API.Error(errMsg)
-				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 				return
 			}
 		}
@@ -68,7 +68,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		if ok {
 			errMsg := "Invalid parameter: this server does not support the _elements parameter."
 			log.API.Warn(errMsg)
-			rw.Exception(w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return
 		}
 
@@ -78,7 +78,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			if strings.HasPrefix(key, "?") {
 				errMsg := "Invalid parameter: query parameters cannot start with ?"
 				log.API.Warn(errMsg)
-				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 				return
 			}
 		}
@@ -90,12 +90,12 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			if err != nil {
 				errMsg := "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."
 				log.API.Warn(errMsg)
-				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 				return
 			} else if sinceDate.After(time.Now()) {
 				errMsg := "Invalid date format supplied in _since parameter. Date must be a date that has already passed"
 				log.API.Warn(errMsg)
-				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 				return
 			}
 			rp.Since = sinceDate
@@ -112,7 +112,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 				} else {
 					errMsg := fmt.Sprintf("Repeated resource type %s", resource)
 					log.API.Error(errMsg)
-					rw.Exception(w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 					return
 				}
 			}
@@ -141,21 +141,21 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		if acceptHeader == "" {
 			logger.Warn("Accept header is required")
-			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
 			return
 		} else if acceptHeader != "application/fhir+json" {
 			logger.Warn("application/fhir+json is the only supported response format")
-			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			return
 		}
 
 		if preferHeader == "" {
 			logger.Warn("Prefer header is required")
-			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
 			return
 		} else if preferHeader != "respond-async" {
 			logger.Warn("Only asynchronous responses are supported")
-			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
 			return
 		}
 
@@ -182,8 +182,8 @@ func getVersion(path string) (string, error) {
 }
 
 type fhirResponseWriter interface {
-	Exception(http.ResponseWriter, int, string, string)
-	NotFound(http.ResponseWriter, int, string, string)
+	Exception(context.Context, http.ResponseWriter, int, string, string)
+	NotFound(context.Context, http.ResponseWriter, int, string, string)
 }
 
 func getRespWriter(version string) (fhirResponseWriter, error) {

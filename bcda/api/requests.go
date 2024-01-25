@@ -63,9 +63,9 @@ type Handler struct {
 }
 
 type fhirResponseWriter interface {
-	Exception(http.ResponseWriter, int, string, string)
-	NotFound(http.ResponseWriter, int, string, string)
-	JobsBundle(http.ResponseWriter, []*models.Job, string)
+	Exception(context.Context, http.ResponseWriter, int, string, string)
+	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
 func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string) *Handler {
@@ -147,7 +147,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
 		return
 	}
 	h.bulkRequest(w, r, reqType)
@@ -174,7 +174,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 				statusTypes = append(statusTypes, models.JobStatus(status))
 			} else {
 				errMsg := fmt.Sprintf("Repeated status type %s", status)
-				h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return
 			}
 		}
@@ -182,14 +182,14 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		// validate status types provided match our valid list of statuses
 		if err = h.validateStatuses(statusTypes); err != nil {
 			logger.Error(err)
-			h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+			h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 	}
 
 	if ad, err = readAuthData(r); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -198,9 +198,9 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		logger.Error(err)
 
 		if ok := goerrors.As(err, &service.JobsNotFoundError{}); ok {
-			h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, err.Error())
+			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.DbErr, err.Error())
 		} else {
-			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		}
 	}
 
@@ -210,7 +210,8 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
 
-	h.RespWriter.JobsBundle(w, jobs, host)
+	// pass in the ctx here and log with the ctx logger
+	h.RespWriter.JobsBundle(r.Context(), w, jobs, host)
 }
 
 func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
@@ -233,7 +234,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		logger.Error(err)
 		//We don't need to return the full error to a consumer.
 		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "")
 
 		return
 	}
@@ -244,7 +245,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
 		// So returning a StatusNotFound may be a misnomer
 		//In contrast to above, if the input COULD be valid, we return a not found header (404)
-		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.DbErr, "")
 
 		return
 	}
@@ -253,7 +254,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		logger.Error(job.Status)
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
 		w.Header().Set("X-Progress", job.StatusMessage())
 		w.WriteHeader(http.StatusAccepted)
@@ -262,7 +263,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-			h.RespWriter.Exception(w, http.StatusGone, responseutils.NotFoundErr, "")
+			h.RespWriter.Exception(r.Context(), w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
 		w.Header().Set("Content-Type", constants.JsonContentType)
@@ -304,23 +305,23 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
 			logger.Error(err)
-			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
 			logger.Error(err)
-			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
 	case models.JobStatusArchived, models.JobStatusExpired:
 		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-		h.RespWriter.Exception(w, http.StatusGone, responseutils.NotFoundErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusGone, responseutils.NotFoundErr, "")
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
-		h.RespWriter.NotFound(w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
+		h.RespWriter.NotFound(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
 
 	}
 }
@@ -333,7 +334,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
@@ -342,11 +343,11 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case service.ErrJobNotCancellable:
 			logger.Info(errors.Wrap(err, "Job is not cancellable"))
-			h.RespWriter.Exception(w, http.StatusGone, responseutils.DeletedErr, err.Error())
+			h.RespWriter.Exception(r.Context(), w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
 			logger.Error(err)
-			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, err.Error())
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, err.Error())
 			return
 		}
 	}
@@ -402,7 +403,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 	if resp.Data == nil {
 		logger.Error(errors.New("Could not find any CCLF8 files"))
-		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
 	}
 
@@ -456,7 +457,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	if ad, err = readAuthData(r); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -469,14 +470,14 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
@@ -500,7 +501,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 	// Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
@@ -527,7 +528,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
 			logger.Error(err.Error())
-			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
 
@@ -539,7 +540,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
 
@@ -560,7 +561,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	b, err := bb.GetPatient(jobData, "0")
 	if err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		return
 	}
 	newJob.TransactionTime = b.Meta.LastUpdated
@@ -593,7 +594,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 			respCode = http.StatusInternalServerError
 			errType = responseutils.InternalErr
 		}
-		h.RespWriter.Exception(w, respCode, errType, err.Error())
+		h.RespWriter.Exception(r.Context(), w, respCode, errType, err.Error())
 		return
 	}
 	newJob.JobCount = len(queJobs)
@@ -601,7 +602,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// We've now computed all of the fields necessary to populate a fully defined job
 	if err = rtx.UpdateJob(ctx, newJob); err != nil {
 		logger.Error(err.Error())
-		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
 
@@ -614,7 +615,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
 			logger.Error(err)
-			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 	}
