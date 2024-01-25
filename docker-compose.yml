@@ -80,6 +80,7 @@ services:
       dockerfile: Dockerfiles/Dockerfile.ssas
     environment:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+      - DEPLOYMENT_TARGET=local
       - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
