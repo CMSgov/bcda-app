@@ -63,7 +63,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 		log.API.Error(err.Error())
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.InternalErr, err.Error())
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		responseutils.WriteError(ctx, oo, w, http.StatusInternalServerError)
 		return
 	}
 
@@ -74,14 +74,14 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 			}
 			log.API.Errorf("Could not handle ALR request %s", err.Error())
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			responseutils.WriteError(ctx, oo, w, http.StatusInternalServerError)
 			return
 		}
 
 		if err = tx.Commit(); err != nil {
 			log.API.Errorf("Failed to commit transaction %s", err.Error())
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			responseutils.WriteError(ctx, oo, w, http.StatusInternalServerError)
 			return
 		}
 

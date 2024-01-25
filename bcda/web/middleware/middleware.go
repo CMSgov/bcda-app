@@ -50,7 +50,7 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 			if cfg.IsACODisabled(ad.CMSID) {
 				logger := log.GetCtxLogger(r.Context())
 				logger.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
-				rw.Exception(w, http.StatusUnauthorized, responseutils.InternalErr, "")
+				rw.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.InternalErr, "")
 				return
 			}
 			next.ServeHTTP(w, r)

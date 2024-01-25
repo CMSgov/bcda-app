@@ -1,6 +1,7 @@
 package responseutils
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -9,12 +10,14 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -38,7 +41,9 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	rw := NewResponseWriter()
-	rw.Exception(s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterExcepton")
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
+	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
+	rw.Exception(ctx, s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterExcepton")
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
 	assert.NoError(s.T(), err)
@@ -57,8 +62,9 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	rw := NewResponseWriter()
-
-	rw.NotFound(s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterNotFound")
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
+	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
+	rw.NotFound(ctx, s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterNotFound")
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
 	assert.NoError(s.T(), err)
@@ -84,8 +90,10 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
+	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
-	WriteError(oo, s.rr, http.StatusAccepted)
+	WriteError(ctx, oo, s.rr, http.StatusAccepted)
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
 	assert.NoError(s.T(), err)
@@ -119,7 +127,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 	relversion := "r1"
 	baseurl := "bcda.cms.gov"
 	cs := CreateCapabilityStatement(time.Now(), relversion, baseurl)
-	WriteCapabilityStatement(cs, s.rr)
+	WriteCapabilityStatement(context.Background(), cs, s.rr)
 	var respCS *fhirmodels.CapabilityStatement
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
@@ -228,4 +236,10 @@ func (s *ResponseUtilsWriterTestSuite) TestGetFhirStatusCode() {
 			assert.Equal(s.T(), tt.code, code)
 		})
 	}
+}
+
+func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *log.StructuredLoggerEntry {
+	var lggr logrus.Logger
+	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logFields)}
+	return newLogEntry
 }

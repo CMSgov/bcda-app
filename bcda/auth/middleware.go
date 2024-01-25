@@ -53,7 +53,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Auth.Warn("Invalid Authorization header value")
-			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
 		}
 
@@ -61,7 +61,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 		token, ad, err := AuthorizeAccess(tokenString)
 		if err != nil {
-			handleTokenVerificationError(w, rw, err)
+			handleTokenVerificationError(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, rw, err)
 			return
 		}
 
@@ -102,23 +102,23 @@ func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
 	return token, ad, nil
 }
 
-func handleTokenVerificationError(w http.ResponseWriter, rw fhirResponseWriter, err error) {
+func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw fhirResponseWriter, err error) {
 	if err != nil {
 		log.Auth.Error(err)
 
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
-			rw.Exception(w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
+			rw.Exception(ctx, w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
 		case *customErrors.EntityNotFoundError:
-			rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
+			rw.Exception(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
 		case *customErrors.RequestorDataError:
-			rw.Exception(w, http.StatusBadRequest, responseutils.InternalErr, "")
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.InternalErr, "")
 		case *customErrors.RequestTimeoutError:
-			rw.Exception(w, http.StatusServiceUnavailable, responseutils.InternalErr, "")
+			rw.Exception(ctx, w, http.StatusServiceUnavailable, responseutils.InternalErr, "")
 		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
-			rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			rw.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		default:
-			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		}
 	}
 }
@@ -132,7 +132,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
 			log.Auth.Error("No token found")
-			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
 		}
 
@@ -150,12 +150,12 @@ func CheckBlacklist(next http.Handler) http.Handler {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Auth.Error()
-			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
 			return
 		}
 
 		if ad.Blacklisted {
-			rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -169,14 +169,14 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Auth.Error()
-			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
 			return
 		}
 
 		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Auth.Error(err)
-			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, err.Error())
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, err.Error())
 			return
 		}
 
@@ -185,7 +185,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		job, err := repository.GetJobByID(r.Context(), uint(jobID))
 		if err != nil {
 			log.Auth.Error(err)
-			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
 			return
 		}
 
@@ -193,7 +193,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 			log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
 				ad.ACOID, job.ID, job.ACOID)
-			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -201,8 +201,8 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 }
 
 type fhirResponseWriter interface {
-	Exception(http.ResponseWriter, int, string, string)
-	NotFound(http.ResponseWriter, int, string, string)
+	Exception(context.Context, http.ResponseWriter, int, string, string)
+	NotFound(context.Context, http.ResponseWriter, int, string, string)
 }
 
 func getRespWriter(path string) fhirResponseWriter {
