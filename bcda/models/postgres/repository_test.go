@@ -61,7 +61,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY timestamp DESC LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY performance_year DESC, timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -69,7 +69,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeRunout,
-			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY timestamp DESC LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY performance_year DESC, timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeRunout),
 		},
 		{
@@ -77,7 +77,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Now(),
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 ORDER BY timestamp DESC LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 ORDER BY performance_year DESC, timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -85,7 +85,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Now(),
 			models.FileTypeDefault,
-			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5 ORDER BY timestamp DESC LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5 ORDER BY performance_year DESC, timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -93,7 +93,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Now(),
 			time.Now(),
 			models.FileTypeDefault,
-			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6 ORDER BY timestamp DESC LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6 ORDER BY performance_year DESC, timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -101,7 +101,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY timestamp DESC LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY performance_year DESC, timestamp DESC LIMIT 1`,
 			nil,
 		},
 	}
