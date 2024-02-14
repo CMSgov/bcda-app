@@ -279,7 +279,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			nil,
 		},
 		{
-			"NoMBIsForOldCCLF",
+			"NoCCLFPerfYearIncompatible",
 			getCCLFFile(7, false, true),
 			getCCLFFile(8, false, false),
 			nil,
