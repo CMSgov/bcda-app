@@ -35,4 +35,4 @@ SET performance_year =
         WHEN type = 0 THEN CAST(RIGHT(EXTRACT(YEAR FROM CURRENT_TIMESTAMP)::text, 2) AS integer)
         ELSE CAST(RIGHT(EXTRACT(YEAR FROM CURRENT_TIMESTAMP - INTERVAL '1 year')::text, 2) AS integer)
     END
-WHERE aco_cms_id IN ('A9997', 'A9994', 'A9990', 'TEST001','A9996');
+WHERE aco_cms_id LIKE 'A888%' OR aco_cms_id LIKE 'A999%' OR aco_cms_id LIKE 'TEST%' OR aco_cms_id LIKE 'D999%';
