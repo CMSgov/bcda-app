@@ -350,7 +350,12 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
-	if cclfFileNew == nil {
+	performanceYear := time.Now().Year() % 100
+	if conditions.fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+	//Note, we only compare performanceYear for the new CCLF file since the old file will only be used for identifying new ones.
+	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
@@ -441,7 +446,12 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
 			conditions.CMSID, conditions.fileType, err.Error())
 	}
-	if cclfFile == nil {
+	performanceYear := time.Now().Year() % 100
+	if conditions.fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+
+	if cclfFile == nil || performanceYear != cclfFile.PerformanceYear {
 		return nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 

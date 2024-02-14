@@ -28,3 +28,11 @@ where cms_id = 'A9990';
 update acos
 set system_id = 5, group_id = 'TEST001'
 where cms_id = 'TEST001';
+
+UPDATE cclf_files
+SET performance_year = 
+    CASE 
+        WHEN type = 0 THEN CAST(RIGHT(EXTRACT(YEAR FROM CURRENT_TIMESTAMP)::text, 2) AS integer)
+        ELSE CAST(RIGHT(EXTRACT(YEAR FROM CURRENT_TIMESTAMP - INTERVAL '1 year')::text, 2) AS integer)
+    END
+WHERE aco_cms_id LIKE 'A888%' OR aco_cms_id LIKE 'A999%' OR aco_cms_id LIKE 'TEST%' OR aco_cms_id LIKE 'D999%';

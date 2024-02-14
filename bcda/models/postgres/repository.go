@@ -145,7 +145,7 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 			sb.LessEqualThan("timestamp", upperBound),
 		)
 	}
-	sb.OrderBy("timestamp").Desc().Limit(1)
+	sb.OrderBy("performance_year DESC, timestamp DESC").Limit(1)
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
