@@ -184,8 +184,8 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 	}{
 		{
 			"GetNewAndExistingBeneficiaries",
-			getCCLFFile(1),
-			getCCLFFile(2),
+			getCCLFFile(1, false, false),
+			getCCLFFile(2, false, false),
 			func(serv *service) error {
 				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), conditions)
 				return err
@@ -193,7 +193,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 		},
 		{
 			"GetBeneficiaries",
-			getCCLFFile(3),
+			getCCLFFile(3, false, false),
 			nil,
 			func(serv *service) error {
 				_, err := serv.getBeneficiaries(context.Background(), conditions)
@@ -238,14 +238,14 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 	}{
 		{
 			"NewAndExistingBenes",
-			getCCLFFile(1),
-			getCCLFFile(2),
+			getCCLFFile(1, false, false),
+			getCCLFFile(2, false, false),
 			[]string{"123", "456"},
 			nil,
 		},
 		{
 			"NewBenesOnly",
-			getCCLFFile(3),
+			getCCLFFile(3, false, false),
 			nil,
 			nil,
 			nil,
@@ -259,24 +259,31 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 		},
 		{
 			"NoBenesFoundNew",
-			getCCLFFile(4),
+			getCCLFFile(4, false, false),
 			nil,
 			nil,
 			fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoBenesFoundNewAndOld",
-			getCCLFFile(5),
-			getCCLFFile(6),
+			getCCLFFile(5, false, false),
+			getCCLFFile(6, false, false),
 			nil,
 			fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoMBIsForOldCCLF",
-			getCCLFFile(7),
-			getCCLFFile(8),
+			getCCLFFile(7, false, false),
+			getCCLFFile(8, false, false),
 			nil,
 			nil,
+		},
+		{
+			"NoCCLFPerfYearIncompatible",
+			getCCLFFile(7, false, true),
+			getCCLFFile(8, false, false),
+			nil,
+			fmt.Errorf("no CCLF8 file found for cmsID"),
 		},
 	}
 
@@ -386,8 +393,9 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, "A0005")
 
 	acoID := "A0005"
-	cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: 23, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
-	cclfFileNew := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-24 * time.Hour), PerformanceYear: 23, Name: "T.BCD.A0005.ZC8Y23.D231120.T1000009", ImportStatus: constants.ImportComplete}
+	performanceYear := time.Now().Year() % 100
+	cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
+	cclfFileNew := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-24 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231120.T1000009", ImportStatus: constants.ImportComplete}
 	postgrestest.CreateCCLFFile(s.T(), db, cclfFileOld)
 	postgrestest.CreateCCLFFile(s.T(), db, cclfFileNew)
 
@@ -435,7 +443,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 		{
 			"BenesReturned",
 			models.FileTypeDefault,
-			getCCLFFile(1),
+			getCCLFFile(1, false, false),
 			nil,
 		},
 		{
@@ -447,14 +455,26 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 		{
 			"NoBenesFound",
 			models.FileTypeDefault,
-			getCCLFFile(2),
+			getCCLFFile(2, false, false),
 			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"BenesReturnedRunout",
 			models.FileTypeRunout,
-			getCCLFFile(3),
+			getCCLFFile(3, true, false),
 			nil,
+		},
+		{
+			"NoBenesReturnedOld",
+			models.FileTypeRunout,
+			getCCLFFile(4, false, true),
+			fmt.Errorf("no CCLF8 file found for cmsID"),
+		},
+		{
+			"NoBenesReturnedOldRunout",
+			models.FileTypeRunout,
+			getCCLFFile(4, true, true),
+			fmt.Errorf("no CCLF8 file found for cmsID"),
 		},
 	}
 
@@ -654,7 +674,11 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			repository := &models.MockRepository{}
 			repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
 				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			if tt.reqType == Runout {
+				repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, true, false), nil)
+			} else {
+				repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
+			}
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
@@ -793,7 +817,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 			repository := &models.MockRepository{}
 			repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
 				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
@@ -998,7 +1022,7 @@ func (s *ServiceTestSuite) TestGetJobsNotFound() {
 
 func (s *ServiceTestSuite) TestGetLatestCCLFFile() {
 	repository := &models.MockRepository{}
-	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
@@ -1080,9 +1104,17 @@ func (s *ServiceTestSuite) TestGetACOConfigForID() {
 	}
 }
 
-func getCCLFFile(id uint) *models.CCLFFile {
+func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
+	performanceYear := time.Now().Year() % 100
+	if isRunout {
+		performanceYear -= 1
+	}
+	if forceIncorrect {
+		performanceYear -= 10
+	}
 	return &models.CCLFFile{
-		ID: id,
+		ID:              id,
+		PerformanceYear: performanceYear,
 	}
 }
 
