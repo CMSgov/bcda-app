@@ -12,3 +12,4 @@ linters:
     - unused
     - godox
     - gosec
+    - gosimple
