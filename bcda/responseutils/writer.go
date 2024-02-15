@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -327,5 +328,20 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 		logAPI.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+}
+
+type FhirResponseWriter interface {
+	Exception(context.Context, http.ResponseWriter, int, string, string)
+	NotFound(context.Context, http.ResponseWriter, int, string, string)
+}
+
+func GetRespWriter(path string) FhirResponseWriter {
+	if strings.Contains(path, "/v1/") {
+		return NewResponseWriter()
+	} else if strings.Contains(path, "/v2/") {
+		return NewResponseWriter()
+	} else {
+		return NewResponseWriter()
 	}
 }

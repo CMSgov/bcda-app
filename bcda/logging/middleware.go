@@ -15,6 +15,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -81,10 +82,12 @@ type ResourceTypeLogger struct {
 
 func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := responseutils.GetRespWriter(r.URL.Path)
 		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
 			logger := log.GetCtxLogger(r.Context())
-			logger.Error(err)
+			logger.Error("job key not found: ", err)
+			rw.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
 			return
 		}
 

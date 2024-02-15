@@ -16,7 +16,6 @@ import (
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
-	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/log"
 )
 
@@ -47,7 +46,7 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		rw := getRespWriter(r.URL.Path)
+		rw := responseutils.GetRespWriter(r.URL.Path)
 
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
@@ -102,7 +101,7 @@ func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
 	return token, ad, nil
 }
 
-func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw fhirResponseWriter, err error) {
+func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw responseutils.FhirResponseWriter, err error) {
 	if err != nil {
 		log.Auth.Error(err)
 
@@ -127,7 +126,7 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 // This depends on ParseToken being called beforehand in the routing middleware.
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := responseutils.GetRespWriter(r.URL.Path)
 
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
@@ -145,7 +144,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 // CheckBlacklist checks the auth data is associated with a blacklisted entity
 func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := responseutils.GetRespWriter(r.URL.Path)
 
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
@@ -164,7 +163,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := responseutils.GetRespWriter(r.URL.Path)
 
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
@@ -198,21 +197,4 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-type fhirResponseWriter interface {
-	Exception(context.Context, http.ResponseWriter, int, string, string)
-	NotFound(context.Context, http.ResponseWriter, int, string, string)
-}
-
-func getRespWriter(path string) fhirResponseWriter {
-	if strings.Contains(path, "/v1/") {
-		return responseutils.NewResponseWriter()
-	} else if strings.Contains(path, "/v2/") {
-		return responseutilsv2.NewResponseWriter()
-	} else {
-		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
-		// In the cases we cannot discern a version we default to v1
-		return responseutils.NewResponseWriter()
-	}
 }

@@ -186,29 +186,33 @@ func TestResourceTypeLogging(t *testing.T) {
 	testCases := []struct {
 		jobID        string
 		ResourceType interface{}
+		httpStatus   int
 	}{
 		{
 			jobID:        "1234",
 			ResourceType: "Coverage",
+			httpStatus:   http.StatusOK,
 		},
 		{
 			jobID:        "bad",
 			ResourceType: nil,
+			httpStatus:   http.StatusNotFound,
 		},
 		{
 			jobID:        "4321",
 			ResourceType: nil,
+			httpStatus:   http.StatusNotFound,
 		},
 	}
 
 	for _, test := range testCases {
-		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/blob.ndjson", test.jobID), nil)
+		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/%s", test.jobID, "blob.ndjson"), nil)
 		repository := &models.MockRepository{}
 		if test.ResourceType != nil {
 			j := &models.JobKey{ID: 1, JobID: 1234, FileName: constants.TestBlobFileName, ResourceType: test.ResourceType.(string)}
 			repository.On("GetJobKey", testUtils.CtxMatcher, uint(1234), constants.TestBlobFileName).Return(j, nil)
 		} else {
-			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), constants.TestBlobFileName).Return(nil, errors.New("expected error"))
+			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), "blob.ndjson").Return(nil, errors.New("expected error"))
 		}
 
 		logger := logging.ResourceTypeLogger{
@@ -230,6 +234,7 @@ func TestResourceTypeLogging(t *testing.T) {
 		if respT := testEntry.Data["resource_type"]; respT != test.ResourceType {
 			t.Error("Failed to find resource_type in logs", respT, testEntry)
 		}
+		assert.Equal(t, test.httpStatus, rw.Result().StatusCode)
 	}
 }
 
