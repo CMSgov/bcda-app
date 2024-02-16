@@ -241,9 +241,8 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	job, jobKeys, err := h.Svc.GetJobAndKeys(r.Context(), uint(jobID))
 	if err != nil {
-		logger.Error(err)
-		if err == sql.ErrNoRows {
-			log.API.Info("Requested job not found.")
+		if errors.Is(err, sql.ErrNoRows) {
+			log.API.Info("Requested job not found.", err.Error())
 			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
 		} else {
 			log.API.Error("Error attempting to request job. Error:", err.Error())
