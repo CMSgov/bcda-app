@@ -4,7 +4,6 @@ repos:
     hooks:
       - id: gitleaks
   - repo: https://github.com/tekwizely/pre-commit-golang
-    rev: master
+    rev: v1.0.0-rc.1
     hooks:
-      - id: go-imports
-        args: ['-w']
+      - id: golangci-lint
