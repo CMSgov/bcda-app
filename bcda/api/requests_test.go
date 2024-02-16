@@ -698,13 +698,14 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 	requestUrl := v2JobRequestUrl
 
 	tests := []struct {
-		testName        string
-		status          models.JobStatus
-		jobId           string
-		responseHeader  int
-		useMockService  bool
-		timestampOffset int
-		envVarOverride  string
+		testName           string
+		status             models.JobStatus
+		jobId              string
+		responseHeader     int
+		useMockService     bool
+		timestampOffset    int
+		envVarOverride     string
+		instigateDBFailure bool
 	}{
 		{testName: "Invalid jobID (Overflow)",
 			status:         models.JobStatusFailedExpired,
@@ -735,6 +736,10 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			status:         models.JobStatusCompleted,
 			jobId:          "1",
 			useMockService: true, responseHeader: http.StatusOK},
+		{testName: "Simulate unspecified DB Failure",
+			status: models.JobStatusFailedExpired,
+			jobId:  "1", responseHeader: http.StatusInternalServerError,
+			useMockService: true, instigateDBFailure: true},
 	}
 
 	resourceMap := s.resourceType
@@ -745,6 +750,10 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			if tt.useMockService {
 				mockSrv := service.MockService{}
 				timestp := time.Now()
+				var errResp error = nil
+				if tt.instigateDBFailure {
+					errResp = sql.ErrConnDone
+				}
 
 				mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
 					&models.Job{
@@ -764,8 +773,9 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 						FileName:     "testingtesting",
 						ResourceType: "Patient",
 					}},
-					nil,
+					errResp,
 				)
+
 				h.Svc = &mockSrv
 
 			}
