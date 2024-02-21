@@ -109,10 +109,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return err
 	}
 
-	fileUUID, fileSize, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs)
-	fileName := fileUUID + ".ndjson"
-	ctx, _ = log.SetCtxLogger(ctx, "file_uuid", fileUUID)
-	ctx, logger = log.SetCtxLogger(ctx, "file_size", fileSize)
+	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs)
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
@@ -130,23 +127,10 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			return err
 		}
 	}
-	if fileSize == 0 {
-		logger.Warnf("ProcessJob: File %s is empty (fileSize 0), will rename file to %s", fileName, models.BlankFileName)
-		fileName = models.BlankFileName
-	}
 
-	jk := models.JobKey{JobID: job.ID, FileName: fileName, ResourceType: jobArgs.ResourceType}
-	if err := w.r.CreateJobKey(ctx, jk); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error creating job key record for filename %s", fileName))
-		logger.Error(err)
-		return err
-	}
-
-	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
+	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: Error checking job completion & cleanup for filename %s", fileName))
 		logger.Error(err)
-		return err
 	}
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
@@ -159,8 +143,14 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	return nil
 }
 
+// writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
+// A list of JobKeys are returned, containining the names of files that were created.
+// Filesnames can be "blank.ndjson", "<uuid>.ndjson", or "<uuid>-error.ndjson".
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
+	cmsID string, jobArgs models.JobEnqueueArgs) (jobKeys []models.JobKey, err error) {
+
+	jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
+
 	logger := log.GetCtxLogger(ctx)
 	close := metrics.NewChild(ctx, "writeBBDataToFile")
 	defer close()
@@ -203,15 +193,15 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			return bb.GetClaimResponse(jobArgs, bene.MBI, cw)
 		}
 	default:
-		return "", 0, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
+		return jobKeys, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
 	}
 
 	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
-	fileUUID = uuid.New()
+	fileUUID := uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
 		err = errors.Wrap(err, "Error creating ndjson file")
-		return "", 0, err
+		return jobKeys, err
 	}
 
 	defer utils.CloseFileAndLogError(f)
@@ -269,23 +259,31 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if err = w.Flush(); err != nil {
-		return "", 0, errors.Wrap(err, "Error in writing the buffered data to the writer")
+		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
 	}
 
 	if failed {
 		if ctx.Err() == context.Canceled {
-			return "", 0, errors.New("Parent job was cancelled")
+			return jobKeys, errors.New("Parent job was cancelled")
 		}
-		return "", 0, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
+		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
 	}
 
 	fstat, err := f.Stat()
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Error in obtaining FileInfo structure describing the file for ndjson fileUUID %s jobId %d for cmsID %s", fileUUID, jobArgs.ID, cmsID))
-		return "", 0, err
+		return jobKeys, err
 	}
 
-	return fileUUID, fstat.Size(), nil
+	if fstat.Size() != 0 {
+		pr := &jobKeys[0]
+		(*pr).FileName = fileUUID + ".ndjson"
+	}
+
+	if errorCount > 0 {
+		jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
+	}
+	return jobKeys, nil
 }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
@@ -444,6 +442,21 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	}
 	// We still have parts of the job that are not complete
 	return false, nil
+}
+
+func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []models.JobKey, id uint) error {
+	for i := 0; i < len(jobKeys); i++ {
+		if err := r.CreateJobKey(ctx, jobKeys[i]); err != nil {
+			err = errors.Wrap(err, fmt.Sprintf("Error creating job key record for filename %s", jobKeys[i].FileName))
+			return err
+		}
+		_, err := checkJobCompleteAndCleanup(ctx, r, id)
+		if err != nil {
+			err = errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for filename %s", jobKeys[i].FileName))
+			return err
+		}
+	}
+	return nil
 }
 
 func createDir(path string) error {

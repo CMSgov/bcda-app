@@ -52,6 +52,8 @@ type WorkerTestSuite struct {
 	db *sql.DB
 	r  repository.Repository
 	w  Worker
+
+	logctx context.Context
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
@@ -83,6 +85,9 @@ func (s *WorkerTestSuite) SetupSuite() {
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BBWorker)
 	oldLogger = log.Worker
+
+	ctx := context.Background()
+	s.logctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 }
 
 func (s *WorkerTestSuite) SetupTest() {
@@ -124,88 +129,36 @@ func TestWorkerTestSuite(t *testing.T) {
 	suite.Run(t, new(WorkerTestSuite))
 }
 
-func (s *WorkerTestSuite) TestWriteEOBToFile() {
+func (s *WorkerTestSuite) TestWriteResourcesToFile() {
+	tests := []struct {
+		resource      string
+		jobKeysCount  int
+		fileCount     int
+		expectedCount int
+		err           error
+	}{
+		{"ExplanationOfBenefit", 1, 1, 33, nil},
+		{"Coverage", 1, 1, 3, nil},
+		{"Patient", 1, 1, 1, nil},
+		{"Claim", 1, 1, 1, nil},
+		{"ClaimResponse", 1, 1, 1, nil},
+		{"UnsupportedResource", 1, 0, 0, errors.Errorf("unsupported resouce")},
+	}
 
-	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "ExplanationOfBenefit")
-	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), int64(0), size)
-
-	files, err1 := os.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err1)
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), uuid)
-	assert.Len(s.T(), files, 1)
-
-	VerifyFileContent(s.T(), files, "ExplanationOfBenefit", 33, s.jobID)
-}
-
-func (s *WorkerTestSuite) TestWriteCoverageToFile() {
-	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "Coverage")
-	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), int64(0), size)
-
-	files, err1 := os.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err1)
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), uuid)
-	assert.Len(s.T(), files, 1)
-
-	VerifyFileContent(s.T(), files, "Coverage", 3, s.jobID)
-}
-
-func (s *WorkerTestSuite) TestWritePatientToFile() {
-	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "Patient")
-	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), int64(0), size)
-
-	files, err1 := os.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err1)
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), uuid)
-	assert.Len(s.T(), files, 1)
-
-	VerifyFileContent(s.T(), files, "Patient", 1, s.jobID)
-}
-
-func (s *WorkerTestSuite) TestWriteClaimToFile() {
-	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "Claim")
-	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), int64(0), size)
-
-	files, err1 := os.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err1)
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), uuid)
-	assert.Len(s.T(), files, 1)
-
-	VerifyFileContent(s.T(), files, "Claim", 1, s.jobID)
-}
-
-func (s *WorkerTestSuite) TestWriteClaimResponseToFile() {
-	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "ClaimResponse")
-	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), int64(0), size)
-
-	files, err1 := os.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err1)
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), uuid)
-	assert.Len(s.T(), files, 1)
-
-	VerifyFileContent(s.T(), files, "ClaimResponse", 1, s.jobID)
-
-}
-
-func (s *WorkerTestSuite) TestWriteUnsupportedResourceToFile() {
-	ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "UnsupportedResourceType")
-	uuid, size, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
-	assert.EqualValues(s.T(), 0, size)
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), uuid)
-	files, err := os.ReadDir(s.stagingDir)
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), files, 0)
-
+	for _, tt := range tests {
+		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
+		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
+		if tt.err == nil {
+			assert.NoError(s.T(), err)
+		} else {
+			assert.Error(s.T(), err)
+		}
+		files, err := os.ReadDir(s.stagingDir)
+		assert.NoError(s.T(), err)
+		assert.Len(s.T(), jobKeys, tt.jobKeysCount)
+		assert.Len(s.T(), files, tt.fileCount)
+		VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.jobID)
+	}
 }
 
 func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Context, models.JobEnqueueArgs, *client.MockBlueButtonClient) {
@@ -297,10 +250,8 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, size, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
-	assert.EqualValues(s.T(), 0, size)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
 
@@ -330,13 +281,12 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	fileUUID, size, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), int64(0), size)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
+	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
+	assert.Len(s.T(), jobKeys, 2)
 	assert.NoError(s.T(), err)
-
-	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, fileUUID)
+	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, jobKeys[1].FileName)
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -383,9 +333,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.On("GetPatientByIdentifierHash", id1).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, _, err = writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	assert.Len(s.T(), jobKeys, 1)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := os.ReadDir(s.stagingDir)
@@ -428,9 +377,9 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, _, err := writeBBDataToFile(ctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	assert.Len(s.T(), jobKeys, 1)
+	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := os.ReadDir(s.stagingDir)
@@ -491,9 +440,7 @@ func (s *WorkerTestSuite) TestGetFailureThreshold() {
 }
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	appendErrorToFile(ctx, s.testACO.UUID.String(),
+	appendErrorToFile(s.logctx, s.testACO.UUID.String(),
 		fhircodes.IssueTypeCode_CODE_INVALID,
 		"", "", s.jobID)
 
@@ -516,7 +463,6 @@ func (s *WorkerTestSuite) TestAppendErrorToFile() {
 }
 
 func (s *WorkerTestSuite) TestProcessJobEOB() {
-	ctx := log.NewStructuredLoggerEntry(log.Worker, context.Background())
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
@@ -525,7 +471,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := checkJobCompleteAndCleanup(ctx, s.r, j.ID)
+	complete, err := checkJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -538,12 +484,12 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		TransactionID:  uuid.New(),
 	}
 
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, _ = log.SetCtxLogger(ctx, "job_id", j.ID)
+	ctx, _ := log.SetCtxLogger(s.logctx, "job_id", j.ID)
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
 	err = s.w.ProcessJob(ctx, j, jobArgs)
+
 	entries := logHook.AllEntries()
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), entries[0].Data, "cms_id")
@@ -630,13 +576,11 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 		BBBasePath:     constants.TestFHIRPath,
 	}
 
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), s.w.ProcessJob(ctx, j, jobArgs).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
@@ -720,9 +664,7 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 				}
 			}
 
-			ctx := context.Background()
-			ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-			completed, err := checkJobCompleteAndCleanup(ctx, repository, jobID)
+			completed, err := checkJobCompleteAndCleanup(s.logctx, repository, jobID)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.completed, completed)
 
@@ -787,6 +729,31 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	j, err = w.ValidateJob(ctx, validJob)
 	assert.NoError(s.T(), err)
 	assert.EqualValues(s.T(), validJob.ID, j.ID)
+}
+
+func (s *WorkerTestSuite) TestCreateJobKeys() {
+	j := models.Job{
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     models.JobStatusPending,
+		JobCount:   1,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+
+	complete, err := checkJobCompleteAndCleanup(s.logctx, s.r, j.ID)
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), complete)
+
+	keys := []models.JobKey{
+		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
+		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
+	}
+	err = createJobKeys(s.logctx, s.r, keys, j.ID)
+	assert.NoError(s.T(), err)
+	for i := 0; i < len(keys); i++ {
+		job, _ := postgrestest.GetJobKey(s.db, int(keys[i].JobID))
+		assert.NotEmpty(s.T(), job)
+	}
 }
 
 func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
