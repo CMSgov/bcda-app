@@ -16,6 +16,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+
+	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -82,7 +84,7 @@ type ResourceTypeLogger struct {
 
 func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := responseutils.GetRespWriter(r.URL.Path)
+		rw := getRespWriter(r.URL.Path)
 		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
 			logger := log.GetCtxLogger(r.Context())
@@ -134,4 +136,19 @@ func NewCtxLogger(next http.Handler) http.Handler {
 		r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 		next.ServeHTTP(w, r)
 	})
+}
+
+type fhirResponseWriter interface {
+	Exception(context.Context, http.ResponseWriter, int, string, string)
+	NotFound(context.Context, http.ResponseWriter, int, string, string)
+}
+
+func getRespWriter(path string) fhirResponseWriter {
+	if strings.Contains(path, "/v1/") {
+		return responseutils.NewResponseWriter()
+	} else if strings.Contains(path, "/v2/") {
+		return responseutilsv2.NewResponseWriter()
+	} else {
+		return responseutils.NewResponseWriter()
+	}
 }

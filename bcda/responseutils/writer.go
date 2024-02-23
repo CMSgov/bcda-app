@@ -329,12 +329,3 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 		return
 	}
 }
-
-type FhirResponseWriter interface {
-	Exception(context.Context, http.ResponseWriter, int, string, string)
-	NotFound(context.Context, http.ResponseWriter, int, string, string)
-}
-
-func GetRespWriter(path string) FhirResponseWriter {
-	return NewResponseWriter()
-}
