@@ -16,7 +16,7 @@ import (
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
-	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/V2"
+	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/log"
 )
 
