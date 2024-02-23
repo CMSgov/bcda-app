@@ -144,7 +144,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 }
 
 // writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
-// A list of JobKeys are returned, containining the names of files that were created.
+// A list of JobKeys are returned, containing the names of files that were created.
 // Filesnames can be "blank.ndjson", "<uuid>.ndjson", or "<uuid>-error.ndjson".
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (jobKeys []models.JobKey, err error) {
