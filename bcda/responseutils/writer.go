@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -337,11 +336,5 @@ type FhirResponseWriter interface {
 }
 
 func GetRespWriter(path string) FhirResponseWriter {
-	if strings.Contains(path, "/v1/") {
-		return NewResponseWriter()
-	} else if strings.Contains(path, "/v2/") {
-		return NewResponseWriter()
-	} else {
-		return NewResponseWriter()
-	}
+	return NewResponseWriter()
 }
