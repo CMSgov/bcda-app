@@ -76,7 +76,6 @@ func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, 
 	}
 
 	allResources := len(types) == 0
-	fmt.Println("Potaoto: ", newRequestUrl)
 
 	for _, job := range pendingAndInProgressJobs {
 		logger.Infof("Checking if new request is duplicate of pending or in-progress job %d\n", job.ID)
