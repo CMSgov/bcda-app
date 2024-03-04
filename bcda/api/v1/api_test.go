@@ -448,7 +448,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	req := s.createJobStatusRequest(uuid.Parse(constants.LargeACOUUID), j.ID)
 
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
 
 func (s *APITestSuite) TestJobsStatus() {

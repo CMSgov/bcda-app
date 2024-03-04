@@ -168,15 +168,16 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
-			log.Auth.Error()
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
+			log.Auth.Error("Auth data not found")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
 			return
 		}
 
+		//Throw an invalid request for non-unsigned integers
 		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Auth.Error(err)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, err.Error())
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 
@@ -193,7 +194,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 			log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
 				ad.ACOID, job.ID, job.ACOID)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
 			return
 		}
 		next.ServeHTTP(w, r)
