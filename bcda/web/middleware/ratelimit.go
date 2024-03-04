@@ -57,7 +57,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 			return
 		}
 		if len(pendingAndInProgressJobs) > 0 {
-			if hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version) {
+			if hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
 				w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
 				w.WriteHeader(http.StatusTooManyRequests)
 				return
@@ -67,7 +67,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 	})
 }
 
-func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string) bool {
+func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {
 	logger := log.GetCtxLogger(ctx)
 
 	typeSet := make(map[string]struct{}, len(types))
@@ -76,6 +76,7 @@ func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, 
 	}
 
 	allResources := len(types) == 0
+	fmt.Println("Potaoto: ", newRequestUrl)
 
 	for _, job := range pendingAndInProgressJobs {
 		logger.Infof("Checking if new request is duplicate of pending or in-progress job %d\n", job.ID)
@@ -104,6 +105,12 @@ func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, 
 		if time.Now().After(job.CreatedAt.Add(jobTimeout)) {
 			logger.Info("Existing job timed out -- ignoring existing job")
 			continue
+		}
+
+		// Ensure that the requestUrls are not the same
+		if job.RequestURL == newRequestUrl {
+			logger.Info("New request has the same requestUrl as existing job -- disallowing request")
+			return true
 		}
 
 		// Any in-progress job will have duplicate types since the caller
