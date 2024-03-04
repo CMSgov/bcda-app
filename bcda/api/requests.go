@@ -290,11 +290,17 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				Type: jobKey.ResourceType,
 				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
-			rb.Files = append(rb.Files, fi)
 
-			// error files
+			// Check if "error" is not in the filename
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") {
+				rb.Files = append(rb.Files, fi)
+			}
+
+			// Error files
 			errFileName := strings.Split(jobKey.FileName, ".")[0]
 			errFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
+
+			// Check if the error file exists
 			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 				errFI := FileItem{
 					Type: "OperationOutcome",
@@ -302,6 +308,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				}
 				rb.Errors = append(rb.Errors, errFI)
 			}
+
 		}
 
 		jsonData, err := json.Marshal(rb)

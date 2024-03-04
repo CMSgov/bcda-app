@@ -271,6 +271,9 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
 	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
+	for _, file := range rb.Files {
+		assert.NotContains(s.T(), file.URL, "-error.ndjson")
+	}
 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
 	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
