@@ -342,13 +342,14 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 	jobID := strconv.Itoa(int(j.ID))
 
 	tests := []struct {
-		name  string
-		jobID string
-		ACOID string
+		name    string
+		jobID   string
+		ACOID   string
+		errCode int
 	}{
-		{"Invalid JobID", "someNonNumericInput", j.ACOID.String()},
-		{"Mismatching JobID", "0", j.ACOID.String()},
-		{"Mismatching ACOID", jobID, uuid.New()},
+		{"Invalid JobID", "someNonNumericInput", j.ACOID.String(), http.StatusBadRequest},
+		{"Mismatching JobID", "0", j.ACOID.String(), http.StatusNotFound},
+		{"Mismatching ACOID", jobID, uuid.New(), http.StatusUnauthorized},
 	}
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
@@ -371,7 +372,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 
 			req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 			handler.ServeHTTP(s.rr, req)
-			assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+			assert.Equal(s.T(), tt.errCode, s.rr.Code)
 		})
 	}
 }
@@ -433,7 +434,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
 
 // unit test
