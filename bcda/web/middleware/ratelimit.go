@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -69,6 +70,9 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 
 func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {
 	logger := log.GetCtxLogger(ctx)
+	if strings.Contains(newRequestUrl, "/jobs") && !strings.Contains(newRequestUrl, "$export") {
+		return false
+	}
 
 	typeSet := make(map[string]struct{}, len(types))
 	for _, t := range types {
