@@ -29,6 +29,8 @@ func TestNoConcurrentJobs(t *testing.T) {
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath}}},
 		{"DifferentType", RequestParameters{Version: "v1", ResourceTypes: []string{"Coverage"}},
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath}}},
+		{"JobGroupExportJustPatient", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v2", RequestURL: "/v2/Group/all/$export?_type=Patient"},
+			[]*models.Job{{RequestURL: constants.V2Path + constants.PatientEOBPath, CreatedAt: time.Now()}}},
 	}
 
 	for _, tt := range tests {
@@ -65,6 +67,8 @@ func TestHasConcurrentJobs(t *testing.T) {
 		{"DuplicateType", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"}, nil},
 		{"JobAllResources", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"},
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath, CreatedAt: time.Now()}}},
+		{"JobGroupExportDuplicateAll", RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/v2/Group/all/$export"},
+			[]*models.Job{{RequestURL: constants.V2Path + constants.GroupExportPath, CreatedAt: time.Now()}}},
 	}
 
 	for _, tt := range tests {

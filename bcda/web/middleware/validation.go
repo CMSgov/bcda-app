@@ -22,6 +22,7 @@ type RequestParameters struct {
 	Since         time.Time
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
+	RequestURL    string
 }
 
 // requestkey is an unexported context key to avoid collisions
@@ -51,6 +52,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 
 		var rp RequestParameters
 		rp.Version = version
+		rp.RequestURL = r.URL.String()
 
 		//validate "_outputFormat" parameter
 		params, ok := r.URL.Query()["_outputFormat"]
