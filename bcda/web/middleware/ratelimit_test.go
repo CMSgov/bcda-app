@@ -67,7 +67,7 @@ func TestHasConcurrentJobs(t *testing.T) {
 		{"DuplicateType", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"}, nil},
 		{"JobAllResources", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"},
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath, CreatedAt: time.Now()}}},
-		{"JobGroupExportDuplicateAll", RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/v2/Group/all/$export"},
+		{"JobGroupExportDuplicateAll", RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/api/v2/Group/all/$export"},
 			[]*models.Job{{RequestURL: constants.V2Path + constants.GroupExportPath, CreatedAt: time.Now()}}},
 	}
 
