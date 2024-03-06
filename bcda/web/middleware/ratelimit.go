@@ -105,9 +105,16 @@ func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, 
 			logger.Info("Existing job timed out -- ignoring existing job")
 			continue
 		}
+		//Error is ignored here due to url.Parse handling above.
+		unescapedOldJobURL, _ := url.QueryUnescape(req.Path + "?" + req.RawQuery)
 
+		unescapedNewJobURL, err := url.QueryUnescape(newRequestUrl)
+		if err != nil {
+			logger.Info("Unable to unescape new job URL -- ignoring new job")
+			continue
+		}
 		// Ensure that the requestUrls are not the same
-		if job.RequestURL == newRequestUrl {
+		if unescapedOldJobURL == unescapedNewJobURL {
 			logger.Info("New request has the same requestUrl as existing job -- disallowing request")
 			return true
 		}
