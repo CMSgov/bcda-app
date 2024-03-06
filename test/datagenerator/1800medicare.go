@@ -20,10 +20,10 @@ type field struct {
 }
 
 type record struct {
-	hicn                            field
-	firstName, middleName, lastName field
-	dob                             field
-	effDate, prefInd                field
+	hicn                field
+	firstName, lastName field
+	dob                 field
+	effDate, prefInd    field
 }
 
 func main() {
@@ -31,44 +31,89 @@ func main() {
 	now := time.Now()
 
 	// 1-800-MEDICARE filename format: (T|P)#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
-	fileName := fmt.Sprintf("P#EFT.ON.DPC.NGD.REQ.%s", now.Format("D060102.T1504050"))
-	outf, err := os.Create(filepath.Clean(fileName))
+	reqFileName := fmt.Sprintf("P.DPC.NGD.REQ.%s.OUT", now.Format("D060102.T1504050"))
+	confFileName := fmt.Sprintf("P.DPC.NGD.CONF.%s.OUT", now.Format("D060102.T1504050"))
+
+	reqOutf, err := os.Create(filepath.Clean(reqFileName))
+
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = outf.WriteString(fmt.Sprintf("HDR_BENEDATAREQ%s\n", now.Format("20060102")))
+	confOutf, err := os.Create(filepath.Clean(confFileName))
+
 	if err != nil {
 		panic(err)
 	}
 
-	recCount := 0
+	_, err = reqOutf.WriteString(fmt.Sprintf("HDR_BENEDATAREQ%s\n", now.Format("20060102")))
+
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = confOutf.WriteString(fmt.Sprintf("HDR_BENECONFIRM%s\n", now.Format("20060102")))
+
+	if err != nil {
+		panic(err)
+	}
+
+	reqRecCount := 0
+	confRecCount := 0
 
 	for i := 0; i < 10; i++ {
 		hicn := randMbi()
 		p := profile(hicn)
 		recs := records(p)
 		for _, r := range recs {
-			for _, f := range []field{r.hicn, r.firstName, r.middleName, r.lastName, r.dob, r.effDate, r.prefInd} {
-				_, err = outf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
+			for _, f := range []field{r.hicn, r.firstName, r.lastName, r.dob, r.effDate, r.prefInd} {
+				_, err = reqOutf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
 				if err != nil {
 					panic(err)
 				}
 			}
-			_, err = outf.WriteString("\n")
+
+			if r.prefInd.v != "" {
+				confRecCount += 1
+
+				for _, f := range []field{r.hicn, r.effDate, r.prefInd, {l: 10, v: "Accepted"}, {l: 2, v: "00"}} {
+					_, err = confOutf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
+					if err != nil {
+						panic(err)
+					}
+				}
+				_, err = confOutf.WriteString("\n")
+				if err != nil {
+					panic(err)
+				}
+			}
+			_, err = reqOutf.WriteString("\n")
 			if err != nil {
 				panic(err)
 			}
+
 		}
-		recCount += len(recs)
+		reqRecCount += 1
 	}
 
-	_, err = outf.WriteString(fmt.Sprintf("TRL_BENEDATAREQ%s%-10d", now.Format("20060102"), recCount))
+	_, err = reqOutf.WriteString(fmt.Sprintf("TRL_BENEDATAREQ%s%010d", now.Format("20060102"), reqRecCount))
+
 	if err != nil {
 		panic(err)
 	}
 
-	err = outf.Close()
+	_, err = confOutf.WriteString(fmt.Sprintf("TRL_BENECONFIRM%s%010d", now.Format("20060102"), confRecCount))
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = reqOutf.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	err = confOutf.Close()
 	if err != nil {
 		panic(err)
 	}
