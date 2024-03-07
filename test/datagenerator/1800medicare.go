@@ -20,7 +20,7 @@ type field struct {
 }
 
 type record struct {
-	hicn                field
+	mbi                 field
 	firstName, lastName field
 	dob                 field
 	effDate, prefInd    field
@@ -30,11 +30,22 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	now := time.Now()
 
-	// 1-800-MEDICARE filename format: (T|P)#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
+	// These filenames match the expected filenames that NGD receives. These are NOT the same as the filenames that we send as AB2D/DPC.
+	//
+	// AB2D/DPC SEND 1-800-MEDICARE filename format: P#EFT.ON.<TEAM>.NGD.REQ.Dyymmdd.Thhmmsst
+	// NGD RECEIVE 1-800-MEDICARE filename format: P.<TEAM>.NGD.REQ.Dyymmdd.Thhmmsst.OUT
+	//
 	reqFileName := fmt.Sprintf("P.DPC.NGD.REQ.%s.OUT", now.Format("D060102.T1504050"))
+	reqAb2dFileName := fmt.Sprintf("P.AB2D.NGD.REQ.%s.OUT", now.Format("D060102.T1504050"))
 	confFileName := fmt.Sprintf("P.DPC.NGD.CONF.%s.OUT", now.Format("D060102.T1504050"))
 
 	reqOutf, err := os.Create(filepath.Clean(reqFileName))
+
+	if err != nil {
+		panic(err)
+	}
+
+	reqAb2dOutf, err := os.Create(filepath.Clean(reqAb2dFileName))
 
 	if err != nil {
 		panic(err)
@@ -52,6 +63,12 @@ func main() {
 		panic(err)
 	}
 
+	_, err = reqAb2dOutf.WriteString(fmt.Sprintf("HDR_BENEDATAREQ%s\n", now.Format("20060102")))
+
+	if err != nil {
+		panic(err)
+	}
+
 	_, err = confOutf.WriteString(fmt.Sprintf("HDR_BENECONFIRM%s\n", now.Format("20060102")))
 
 	if err != nil {
@@ -59,14 +76,50 @@ func main() {
 	}
 
 	reqRecCount := 0
+	reqAb2dRecCount := 0
 	confRecCount := 0
 
-	for i := 0; i < 10; i++ {
-		hicn := randMbi()
-		p := profile(hicn)
+	// AB2D
+	// Generate request file.
+	//
+	numAb2dReqRecords := 10
+	for i := 0; i < numAb2dReqRecords; i++ {
+		mbi := randMbi()
+		p := profile(mbi)
 		recs := records(p)
 		for _, r := range recs {
-			for _, f := range []field{r.hicn, r.firstName, r.lastName, r.dob, r.effDate, r.prefInd} {
+			for _, f := range []field{r.mbi, r.effDate, r.prefInd} {
+				_, err = reqAb2dOutf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			_, err = reqAb2dOutf.WriteString("\n")
+			if err != nil {
+				panic(err)
+			}
+
+		}
+		reqAb2dRecCount += 1
+	}
+
+	_, err = reqAb2dOutf.WriteString(fmt.Sprintf("TRL_BENEDATAREQ%s%010d", now.Format("20060102"), reqAb2dRecCount))
+
+	if err != nil {
+		panic(err)
+	}
+
+	// DPC
+	// Generate request and confirmation file.
+	//
+	numDpcReqRecords := 10
+	for i := 0; i < numDpcReqRecords; i++ {
+		mbi := randMbi()
+		p := profile(mbi)
+		recs := records(p)
+		for _, r := range recs {
+			for _, f := range []field{r.mbi, r.firstName, r.lastName, r.dob, r.effDate, r.prefInd} {
 				_, err = reqOutf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
 				if err != nil {
 					panic(err)
@@ -76,7 +129,7 @@ func main() {
 			if r.prefInd.v != "" {
 				confRecCount += 1
 
-				for _, f := range []field{r.hicn, r.effDate, r.prefInd, {l: 10, v: "Accepted"}, {l: 2, v: "00"}} {
+				for _, f := range []field{r.mbi, r.effDate, r.prefInd, {l: 10, v: "Accepted"}, {l: 2, v: "00"}} {
 					_, err = confOutf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
 					if err != nil {
 						panic(err)
@@ -119,12 +172,12 @@ func main() {
 	}
 }
 
-func profile(hicn string) record {
+func profile(mbi string) record {
 	dobMin, _ := time.Parse("2006-01-02", "1900-01-01")
 	dobMax := time.Now().Add(-65 * 365 * 24 * time.Hour)
 
 	p := record{
-		hicn:      field{l: 11, v: hicn},                                          // HICN
+		mbi:       field{l: 11, v: mbi},                                           // mbi
 		firstName: field{l: 30, v: randomdata.FirstName(randomdata.RandomGender)}, // Beneficiary first name
 		lastName:  field{l: 40, v: randomdata.LastName()},                         // Beneficiary last name
 		dob:       field{l: 8, v: ccyymmdd(dobMin, dobMax)},                       // Beneficiary date of birth
