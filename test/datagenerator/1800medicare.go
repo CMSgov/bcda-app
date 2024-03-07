@@ -109,6 +109,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = reqAb2dOutf.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	// DPC
 	// Generate request and confirmation file.
