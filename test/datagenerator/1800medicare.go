@@ -82,7 +82,7 @@ func main() {
 	// AB2D
 	// Generate request file.
 	//
-	numAb2dReqRecords := 10
+	numAb2dReqRecords := 200
 	for i := 0; i < numAb2dReqRecords; i++ {
 		mbi := randMbi()
 		p := profile(mbi)
@@ -104,7 +104,7 @@ func main() {
 		reqAb2dRecCount += 1
 	}
 
-	_, err = reqAb2dOutf.WriteString(fmt.Sprintf("TRL_BENEDATAREQ%s%010d", now.Format("20060102"), reqAb2dRecCount))
+	_, err = reqAb2dOutf.WriteString(fmt.Sprintf("TLR_BENEDATAREQ%s%010d", now.Format("20060102"), reqAb2dRecCount))
 
 	if err != nil {
 		panic(err)
@@ -117,7 +117,7 @@ func main() {
 	// DPC
 	// Generate request and confirmation file.
 	//
-	numDpcReqRecords := 10
+	numDpcReqRecords := 200
 	for i := 0; i < numDpcReqRecords; i++ {
 		mbi := randMbi()
 		p := profile(mbi)
@@ -153,13 +153,13 @@ func main() {
 		reqRecCount += 1
 	}
 
-	_, err = reqOutf.WriteString(fmt.Sprintf("TRL_BENEDATAREQ%s%010d", now.Format("20060102"), reqRecCount))
+	_, err = reqOutf.WriteString(fmt.Sprintf("TLR_BENEDATAREQ%s%010d", now.Format("20060102"), reqRecCount))
 
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = confOutf.WriteString(fmt.Sprintf("TRL_BENECONFIRM%s%010d", now.Format("20060102"), confRecCount))
+	_, err = confOutf.WriteString(fmt.Sprintf("TLR_BENECONFIRM%s%010d", now.Format("20060102"), confRecCount))
 
 	if err != nil {
 		panic(err)
