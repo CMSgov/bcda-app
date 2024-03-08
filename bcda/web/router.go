@@ -49,7 +49,7 @@ func NewAPIRouter() http.Handler {
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
 	if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" || conf.GetEnv("DEPLOYMENT_TARGET") == "test" {
-		// Apply rate limiting on production only
+		// Apply rate limiting on test +  production only
 		requestValidators = append(requestValidators, middleware.CheckConcurrentJobs)
 	}
 
