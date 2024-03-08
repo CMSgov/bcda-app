@@ -466,6 +466,7 @@ func (s *RouterTestSuite) TestRateLimitRoutes() {
 		hasRateLimit bool
 	}{
 		{"dev", false},
+		{"test", true},
 		{"prod", true},
 	}
 
