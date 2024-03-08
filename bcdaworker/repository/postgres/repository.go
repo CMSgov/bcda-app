@@ -155,6 +155,7 @@ func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) err
 func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
+	sb.Where(sb.NotLike("file_name", "%-error.ndjson")) //Ignore error files from completed count.
 
 	query, args := sb.Build()
 	var count int

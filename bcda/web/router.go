@@ -43,6 +43,9 @@ func NewAPIRouter() http.Handler {
 	var requestValidators = []func(http.Handler) http.Handler{
 		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 	}
+	nonExportRequestValidators := []func(http.Handler) http.Handler{
+		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+	}
 
 	if conf.GetEnv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
@@ -60,7 +63,7 @@ func NewAPIRouter() http.Handler {
 		}
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v1.JobStatus))
-		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/jobs", v1.JobsStatus))
+		r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v1.JobsStatus))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler(constants.JOBIDPath, v1.DeleteJob))
 		r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v1.AttributionStatus))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
@@ -75,7 +78,7 @@ func NewAPIRouter() http.Handler {
 			}
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v2.JobStatus))
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/jobs", v2.JobsStatus))
+			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v2.JobsStatus))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler(constants.JOBIDPath, v2.DeleteJob))
 			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v2.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
