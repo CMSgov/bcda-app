@@ -1154,6 +1154,7 @@ func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
 	return &models.CCLFFile{
 		ID:              id,
 		PerformanceYear: performanceYear,
+		CreatedAt:       time.Now(),
 	}
 }
 
