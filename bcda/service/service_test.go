@@ -379,12 +379,108 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 // * Live database test *
 //
 // Given the following example scenario:
+// - CCLF File 1 (June 1 timestamp)
+// - CCLF File 2 (July 1 timestamp, July 3rd created at)
+//
+// This tests two scenarios:
+// - Request made with "since" parameter on July 2nd
+// - Request made with "since" parameter after July 3rd
+//
+// We should diff between the correct files:
+// - Diff between CCLF File 1 and CCLF File 2
+// - No diff - consider all beneficiaries at pre-existing
+//
+func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParameter() {
+	db := database.Connection
+	acoID := "A0005"
+
+	// Test Setup
+	testSetup := func(t *testing.T) []string {
+		postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
+		defer postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
+
+		performanceYear := time.Now().Year() % 100
+		cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
+		cclfFileNew := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-24 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231120.T1000009", ImportStatus: constants.ImportComplete}
+		postgrestest.CreateCCLFFile(t, db, cclfFileOld)
+		postgrestest.CreateCCLFFile(t, db, cclfFileNew)
+
+		bene1OldRecord := &models.CCLFBeneficiary{FileID: cclfFileOld.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
+		bene1NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: bene1OldRecord.MBI, BlueButtonID: testUtils.RandomHexID()}
+		bene2NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
+
+		postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
+		postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
+		postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
+		return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}
+	}
+
+	tests := []struct {
+		name                  string
+		sinceOffset           time.Duration
+		expectedOldMBIIndexes []int
+		expectedNewMBIIndexes []int
+	}{
+		{
+			"BetweenTimestampAndCreatedAt",
+			-12,
+			[]int{0},
+			[]int{1},
+		},
+		{
+			"LaterThanCreatedAt",
+			1,
+			[]int{0, 1},
+			[]int{},
+		},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			generatedMbis := testSetup(t)
+
+			cfg := &Config{
+				cutoffDuration:          -50 * time.Hour,
+				SuppressionLookbackDays: int(30),
+				RunoutConfig: RunoutConfig{
+					cutoffDuration: defaultRunoutCutoff,
+					claimThru:      defaultRunoutClaimThru,
+				},
+			}
+
+			since := time.Now().Add(tt.sinceOffset * time.Hour)
+
+			repository := postgres.NewRepository(db)
+			serviceInstance := NewService(repository, cfg, "").(*service)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
+				RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
+
+			// Assert
+			assert.NoError(err)
+			assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
+			assert.Len(newBenes, len(tt.expectedNewMBIIndexes))
+
+			for idx, mbiIdx := range tt.expectedOldMBIIndexes {
+				assert.Equal(generatedMbis[mbiIdx], oldBenes[idx].MBI, "MBI %s should be found in old MBI map %v", oldBenes[idx].MBI, oldBenes)
+			}
+
+			for idx, mbiIdx := range tt.expectedNewMBIIndexes {
+				assert.Equal(generatedMbis[mbiIdx], newBenes[idx].MBI, "MBI %s should be found in new MBI map %v", newBenes[idx].MBI, newBenes)
+			}
+		})
+	}
+}
+
+// * Live database test *
+//
+// Given the following example scenario:
 // - CCLF File 1 (June)
 // - CCLF File 2 (July)
 // - Request made with "since" parameter later than July
 //
 // We should diff between the correct files (CCLF File 1 and CCLF File 2).
-func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParameter() {
+func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_SinceParameterLaterThanCreatedAt() {
 	assert := assert.New(s.T())
 	db := database.Connection
 
@@ -417,7 +513,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 		},
 	}
 
-	since := time.Now()
+	since := time.Now().Add(1 * time.Hour)
 
 	repository := postgres.NewRepository(db)
 	serviceInstance := NewService(repository, cfg, "").(*service)
