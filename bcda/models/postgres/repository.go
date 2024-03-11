@@ -117,9 +117,9 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	return true, nil
 }
 
-func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("id", "name", "timestamp", "performance_year")
+	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
 	sb.From("cclf_files")
 	sb.Where(
 		sb.Equal("aco_cms_id", cmsID),
@@ -145,11 +145,12 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 			sb.LessEqualThan("timestamp", upperBound),
 		)
 	}
+
 	sb.OrderBy("performance_year DESC, timestamp DESC").Limit(1)
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
-	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
+	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear, &cclfFile.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}

@@ -100,6 +100,9 @@ type CCLFFile struct {
 	PerformanceYear int
 	ImportStatus    string
 	Type            CCLFFileType
+	// CreatedAt is automatically set by the database. This is only
+	// set/pulled when querying data in the DB.
+	CreatedAt time.Time
 }
 
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
