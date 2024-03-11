@@ -373,7 +373,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 				conditions.CMSID, cclfFileNew.ID)
 		}
 
-		return newBeneficiaries, beneficiaries, nil
+		return newBeneficiaries, benes, nil
 	}
 
 	// Retrieve an older CCLF file for beneficiary comparison.
