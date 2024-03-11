@@ -1013,6 +1013,9 @@ func assertEqualCCLFFile(assert *assert.Assertions, expected, actual models.CCLF
 	expected.Timestamp = expected.Timestamp.UTC()
 	actual.Timestamp = actual.Timestamp.UTC()
 
+	// sync CreatedAt timestamps so we can ignore differences between in-memory and saved data
+	expected.CreatedAt = actual.Timestamp.UTC()
+
 	assert.Equal(expected, actual)
 }
 
