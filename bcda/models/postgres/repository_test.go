@@ -141,7 +141,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			if tt.result == nil {
 				assert.Nil(t, cclfFile)
 			} else {
-				assert.Equal(t, tt.result, cclfFile)
+				assertEqualCCLFFile(assert.New(t), *tt.result, *cclfFile)
 			}
 		})
 	}

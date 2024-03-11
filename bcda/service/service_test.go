@@ -395,9 +395,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 	acoID := "A0005"
 
 	// Test Setup
-	testSetup := func(t *testing.T) []string {
+	testSetup := func(t *testing.T) ([]string, func()) {
 		postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
-		defer postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
 
 		performanceYear := time.Now().Year() % 100
 		cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
@@ -412,7 +411,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 		postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
 		postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
 		postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
-		return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}
+		return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
 	}
 
 	tests := []struct {
@@ -438,7 +437,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			generatedMbis := testSetup(t)
+			generatedMbis, cleanup := testSetup(t)
+			defer cleanup()
 
 			cfg := &Config{
 				cutoffDuration:          -50 * time.Hour,
