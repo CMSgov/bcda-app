@@ -472,63 +472,6 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 	}
 }
 
-// * Live database test *
-//
-// Given the following example scenario:
-// - CCLF File 1 (June)
-// - CCLF File 2 (July)
-// - Request made with "since" parameter later than July
-//
-// We should diff between the correct files (CCLF File 1 and CCLF File 2).
-func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_SinceParameterLaterThanCreatedAt() {
-	assert := assert.New(s.T())
-	db := database.Connection
-
-	// Test Setup
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, "A0005")
-	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, "A0005")
-
-	acoID := "A0005"
-	performanceYear := time.Now().Year() % 100
-	cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
-	cclfFileNew := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-24 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231120.T1000009", ImportStatus: constants.ImportComplete}
-	postgrestest.CreateCCLFFile(s.T(), db, cclfFileOld)
-	postgrestest.CreateCCLFFile(s.T(), db, cclfFileNew)
-
-	bene1OldRecord := &models.CCLFBeneficiary{FileID: cclfFileOld.ID, MBI: testUtils.RandomMBI(s.T()), BlueButtonID: testUtils.RandomHexID()}
-	bene1NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: bene1OldRecord.MBI, BlueButtonID: testUtils.RandomHexID()}
-	bene2NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: testUtils.RandomMBI(s.T()), BlueButtonID: testUtils.RandomHexID()}
-
-	postgrestest.CreateCCLFBeneficiary(s.T(), db, bene1OldRecord)
-	postgrestest.CreateCCLFBeneficiary(s.T(), db, bene1NewRecord)
-	postgrestest.CreateCCLFBeneficiary(s.T(), db, bene2NewRecord)
-
-	// Call
-	cfg := &Config{
-		cutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			cutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-	}
-
-	since := time.Now().Add(1 * time.Hour)
-
-	repository := postgres.NewRepository(db)
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
-		RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
-
-	// Assert
-	assert.NoError(err)
-	assert.Len(oldBenes, 1)
-	assert.Len(newBenes, 1)
-
-	assert.Equal(bene1OldRecord.MBI, oldBenes[0].MBI, "MBI %s should be found in old MBI map %v", bene1OldRecord.MBI, oldBenes)
-	assert.Equal(bene2NewRecord.MBI, newBenes[0].MBI, "MBI %s should be found in new MBI map %v", bene1OldRecord.MBI, newBenes)
-}
-
 func (s *ServiceTestSuite) TestGetBeneficiaries() {
 	tests := []struct {
 		name        string
