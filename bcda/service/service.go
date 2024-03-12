@@ -359,6 +359,23 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
+	// If the _since parameter is more recent than the latest CCLF file processing date,
+	// all beneficiaries should be considered pre-existing benes.
+	if !conditions.Since.IsZero() && cclfFileNew.CreatedAt.Sub(conditions.Since) < 0 {
+		// Retrieve all of the benes associated with this CCLF file.
+		benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if len(benes) == 0 {
+			return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+				conditions.CMSID, cclfFileNew.ID)
+		}
+
+		return newBeneficiaries, benes, nil
+	}
+
 	// Retrieve an older CCLF file for beneficiary comparison.
 	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
 	//
@@ -369,8 +386,8 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	//
 	oldFileUpperBound := conditions.Since
 
-	// If the _since parameter is more recent than the latest CCLF file, set the upper bound
-	// for the older file to be prior to cclfFileNew.Timestamp.
+	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
+	// for the older file to be prior to the newest file's timestamp.
 	if !conditions.Since.IsZero() && cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
 		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
 	}
@@ -384,6 +401,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	if cclfFileOld == nil {
 		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
 			conditions.CMSID, conditions.Since)
+
 		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
 		if err != nil {
 			return nil, nil, err

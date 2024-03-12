@@ -379,58 +379,124 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 // * Live database test *
 //
 // Given the following example scenario:
-// - CCLF File 1 (June)
-// - CCLF File 2 (July)
-// - Request made with "since" parameter later than July
+// - CCLF File 1 (June 1 timestamp)
+// - CCLF File 2 (July 1 timestamp, July 3rd created at)
 //
-// We should diff between the correct files (CCLF File 1 and CCLF File 2).
+// This tests two scenarios:
+// - Request made with "since" parameter on July 2nd
+// - Request made with "since" parameter after July 3rd
+//
+// We should diff between the correct files:
+// - Diff between CCLF File 1 and CCLF File 2
+// - No diff - consider all beneficiaries at pre-existing
+//
 func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParameter() {
-	assert := assert.New(s.T())
 	db := database.Connection
+	acoID := "A0005"
 
 	// Test Setup
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, "A0005")
-	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, "A0005")
+	testSetup := func(t *testing.T, populateBenes bool) ([]string, func()) {
+		postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
 
-	acoID := "A0005"
-	performanceYear := time.Now().Year() % 100
-	cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
-	cclfFileNew := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-24 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231120.T1000009", ImportStatus: constants.ImportComplete}
-	postgrestest.CreateCCLFFile(s.T(), db, cclfFileOld)
-	postgrestest.CreateCCLFFile(s.T(), db, cclfFileNew)
+		performanceYear := time.Now().Year() % 100
+		cclfFileOld := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-48 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231119.T1000009", ImportStatus: constants.ImportComplete}
+		cclfFileNew := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now().Add(-24 * time.Hour), PerformanceYear: performanceYear, Name: "T.BCD.A0005.ZC8Y23.D231120.T1000009", ImportStatus: constants.ImportComplete}
+		postgrestest.CreateCCLFFile(t, db, cclfFileOld)
+		postgrestest.CreateCCLFFile(t, db, cclfFileNew)
 
-	bene1OldRecord := &models.CCLFBeneficiary{FileID: cclfFileOld.ID, MBI: testUtils.RandomMBI(s.T()), BlueButtonID: testUtils.RandomHexID()}
-	bene1NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: bene1OldRecord.MBI, BlueButtonID: testUtils.RandomHexID()}
-	bene2NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: testUtils.RandomMBI(s.T()), BlueButtonID: testUtils.RandomHexID()}
+		if populateBenes {
+			bene1OldRecord := &models.CCLFBeneficiary{FileID: cclfFileOld.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
+			bene1NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: bene1OldRecord.MBI, BlueButtonID: testUtils.RandomHexID()}
+			bene2NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
 
-	postgrestest.CreateCCLFBeneficiary(s.T(), db, bene1OldRecord)
-	postgrestest.CreateCCLFBeneficiary(s.T(), db, bene1NewRecord)
-	postgrestest.CreateCCLFBeneficiary(s.T(), db, bene2NewRecord)
+			postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
+			postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
+			postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
+			return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+		} else {
+			return []string{}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+		}
+	}
 
-	// Call
-	cfg := &Config{
-		cutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			cutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
+	tests := []struct {
+		name                  string
+		sinceOffset           time.Duration
+		expectedOldMBIIndexes []int
+		expectedNewMBIIndexes []int
+		populateBenes         bool
+	}{
+		{
+			"BetweenTimestampAndCreatedAt",
+			-12,
+			[]int{0},
+			[]int{1},
+			true,
+		},
+		{
+			"LaterThanCreatedAt",
+			1,
+			[]int{0, 1},
+			[]int{},
+			true,
+		},
+		{
+			"LaterThanCreatedAtNoBenes",
+			1,
+			[]int{},
+			[]int{},
+			false,
 		},
 	}
 
-	since := time.Now()
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			generatedMbis, cleanup := testSetup(t, tt.populateBenes)
+			defer cleanup()
 
-	repository := postgres.NewRepository(db)
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
-		RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
+			cfg := &Config{
+				cutoffDuration:          -50 * time.Hour,
+				SuppressionLookbackDays: int(30),
+				RunoutConfig: RunoutConfig{
+					cutoffDuration: defaultRunoutCutoff,
+					claimThru:      defaultRunoutClaimThru,
+				},
+			}
 
-	// Assert
-	assert.NoError(err)
-	assert.Len(oldBenes, 1)
-	assert.Len(newBenes, 1)
+			since := time.Now().Add(tt.sinceOffset * time.Hour)
 
-	assert.Equal(bene1OldRecord.MBI, oldBenes[0].MBI, "MBI %s should be found in old MBI map %v", bene1OldRecord.MBI, oldBenes)
-	assert.Equal(bene2NewRecord.MBI, newBenes[0].MBI, "MBI %s should be found in new MBI map %v", bene1OldRecord.MBI, newBenes)
+			repository := postgres.NewRepository(db)
+			serviceInstance := NewService(repository, cfg, "").(*service)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
+				RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
+
+			// Assert
+			if !tt.populateBenes {
+				assert.ErrorContains(err, "Found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
+			} else {
+				assert.NoError(err)
+				assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
+				assert.Len(newBenes, len(tt.expectedNewMBIIndexes))
+
+				contains := func(arr []*models.CCLFBeneficiary, mbi string) bool {
+					for _, bene := range arr {
+						if bene.MBI == mbi {
+							return true
+						}
+					}
+					return false
+				}
+
+				for _, mbiIdx := range tt.expectedOldMBIIndexes {
+					assert.True(contains(oldBenes, generatedMbis[mbiIdx]), "MBI %s should be found in old MBI map %v", generatedMbis[mbiIdx], oldBenes)
+				}
+
+				for _, mbiIdx := range tt.expectedNewMBIIndexes {
+					assert.True(contains(newBenes, generatedMbis[mbiIdx]), "MBI %s should be found in new MBI map %v", generatedMbis[mbiIdx], newBenes)
+				}
+			}
+		})
+	}
 }
 
 func (s *ServiceTestSuite) TestGetBeneficiaries() {
@@ -1115,6 +1181,7 @@ func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
 	return &models.CCLFFile{
 		ID:              id,
 		PerformanceYear: performanceYear,
+		CreatedAt:       time.Now(),
 	}
 }
 
