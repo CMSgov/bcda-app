@@ -461,12 +461,21 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 			assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
 			assert.Len(newBenes, len(tt.expectedNewMBIIndexes))
 
-			for idx, mbiIdx := range tt.expectedOldMBIIndexes {
-				assert.Equal(generatedMbis[mbiIdx], oldBenes[idx].MBI, "MBI %s should be found in old MBI map %v", oldBenes[idx].MBI, oldBenes)
+			contains := func(arr []*models.CCLFBeneficiary, mbi string) bool {
+				for _, bene := range arr {
+					if bene.MBI == mbi {
+						return true
+					}
+				}
+				return false
 			}
 
-			for idx, mbiIdx := range tt.expectedNewMBIIndexes {
-				assert.Equal(generatedMbis[mbiIdx], newBenes[idx].MBI, "MBI %s should be found in new MBI map %v", newBenes[idx].MBI, newBenes)
+			for _, mbiIdx := range tt.expectedOldMBIIndexes {
+				assert.True(contains(oldBenes, generatedMbis[mbiIdx]), "MBI %s should be found in old MBI map %v", generatedMbis[mbiIdx], oldBenes)
+			}
+
+			for _, mbiIdx := range tt.expectedNewMBIIndexes {
+				assert.True(contains(newBenes, generatedMbis[mbiIdx]), "MBI %s should be found in new MBI map %v", generatedMbis[mbiIdx], newBenes)
 			}
 		})
 	}
