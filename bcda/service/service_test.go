@@ -395,7 +395,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 	acoID := "A0005"
 
 	// Test Setup
-	testSetup := func(t *testing.T) ([]string, func()) {
+	testSetup := func(t *testing.T, populateBenes bool) ([]string, func()) {
 		postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
 
 		performanceYear := time.Now().Year() % 100
@@ -404,14 +404,18 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 		postgrestest.CreateCCLFFile(t, db, cclfFileOld)
 		postgrestest.CreateCCLFFile(t, db, cclfFileNew)
 
-		bene1OldRecord := &models.CCLFBeneficiary{FileID: cclfFileOld.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
-		bene1NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: bene1OldRecord.MBI, BlueButtonID: testUtils.RandomHexID()}
-		bene2NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
+		if populateBenes {
+			bene1OldRecord := &models.CCLFBeneficiary{FileID: cclfFileOld.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
+			bene1NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: bene1OldRecord.MBI, BlueButtonID: testUtils.RandomHexID()}
+			bene2NewRecord := &models.CCLFBeneficiary{FileID: cclfFileNew.ID, MBI: testUtils.RandomMBI(t), BlueButtonID: testUtils.RandomHexID()}
 
-		postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
-		postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
-		postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
-		return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+			postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
+			postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
+			postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
+			return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+		} else {
+			return []string{}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+		}
 	}
 
 	tests := []struct {
@@ -419,25 +423,35 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 		sinceOffset           time.Duration
 		expectedOldMBIIndexes []int
 		expectedNewMBIIndexes []int
+		populateBenes         bool
 	}{
 		{
 			"BetweenTimestampAndCreatedAt",
 			-12,
 			[]int{0},
 			[]int{1},
+			true,
 		},
 		{
 			"LaterThanCreatedAt",
 			1,
 			[]int{0, 1},
 			[]int{},
+			true,
+		},
+		{
+			"LaterThanCreatedAtNoBenes",
+			1,
+			[]int{},
+			[]int{},
+			false,
 		},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			generatedMbis, cleanup := testSetup(t)
+			generatedMbis, cleanup := testSetup(t, tt.populateBenes)
 			defer cleanup()
 
 			cfg := &Config{
@@ -457,25 +471,29 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 				RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
 
 			// Assert
-			assert.NoError(err)
-			assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
-			assert.Len(newBenes, len(tt.expectedNewMBIIndexes))
+			if !tt.populateBenes {
+				assert.ErrorContains(err, "Found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
+			} else {
+				assert.NoError(err)
+				assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
+				assert.Len(newBenes, len(tt.expectedNewMBIIndexes))
 
-			contains := func(arr []*models.CCLFBeneficiary, mbi string) bool {
-				for _, bene := range arr {
-					if bene.MBI == mbi {
-						return true
+				contains := func(arr []*models.CCLFBeneficiary, mbi string) bool {
+					for _, bene := range arr {
+						if bene.MBI == mbi {
+							return true
+						}
 					}
+					return false
 				}
-				return false
-			}
 
-			for _, mbiIdx := range tt.expectedOldMBIIndexes {
-				assert.True(contains(oldBenes, generatedMbis[mbiIdx]), "MBI %s should be found in old MBI map %v", generatedMbis[mbiIdx], oldBenes)
-			}
+				for _, mbiIdx := range tt.expectedOldMBIIndexes {
+					assert.True(contains(oldBenes, generatedMbis[mbiIdx]), "MBI %s should be found in old MBI map %v", generatedMbis[mbiIdx], oldBenes)
+				}
 
-			for _, mbiIdx := range tt.expectedNewMBIIndexes {
-				assert.True(contains(newBenes, generatedMbis[mbiIdx]), "MBI %s should be found in new MBI map %v", generatedMbis[mbiIdx], newBenes)
+				for _, mbiIdx := range tt.expectedNewMBIIndexes {
+					assert.True(contains(newBenes, generatedMbis[mbiIdx]), "MBI %s should be found in new MBI map %v", generatedMbis[mbiIdx], newBenes)
+				}
 			}
 		})
 	}
