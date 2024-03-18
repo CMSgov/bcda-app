@@ -259,7 +259,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivepath)
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
 
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	newpath := conf.GetEnv("FHIR_ARCHIVE_DIR")
@@ -351,7 +351,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivepath)
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
 
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -400,7 +400,14 @@ func (s *CLITestSuite) TestCleanArchive() {
 	args := []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivepath)
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
+
+	// condition: FHIR_STAGING_DIR doesn't exist
+	conf.UnsetEnv(s.T(), "FHIR_STAGING_DIR")
+	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", constants.TestStagingPath)
 
 	// condition: no jobs exist
 	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
