@@ -40,7 +40,6 @@ require (
 	golang.org/x/crypto v0.20.0
 	golang.org/x/text v0.14.0
 	gotest.tools/gotestsum v1.6.2
-
 )
 
 require github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
