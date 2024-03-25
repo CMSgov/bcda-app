@@ -17,7 +17,7 @@ LINT_TIMEOUT ?= 3m
 lint:
 	docker-compose -f docker-compose.test.yml build tests
 	docker-compose -f docker-compose.test.yml run \
-	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --deadline=$(LINT_TIMEOUT) --verbose
+	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./... ./optout
 
 smoke-test:
