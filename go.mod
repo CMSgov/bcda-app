@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.4.1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Pallinder/go-randomdata v1.2.0
+	github.com/aws/aws-lambda-go v1.41.0
 	github.com/aws/aws-sdk-go v1.48.9
 	github.com/bgentry/que-go v1.0.1
 	github.com/cenkalti/backoff/v4 v4.1.3
@@ -40,6 +41,7 @@ require (
 	golang.org/x/crypto v0.20.0
 	golang.org/x/text v0.14.0
 	gotest.tools/gotestsum v1.6.2
+
 )
 
 require github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
