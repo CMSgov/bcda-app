@@ -12,7 +12,7 @@ env:
 
 jobs:
   lint:
-    name: Lint
+    name: Modules Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
