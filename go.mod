@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v0.4.1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Pallinder/go-randomdata v1.2.0
-	github.com/aws/aws-lambda-go v1.41.0
 	github.com/aws/aws-sdk-go v1.48.9
 	github.com/bgentry/que-go v1.0.1
 	github.com/cenkalti/backoff/v4 v4.1.3
