@@ -41,3 +41,29 @@ jobs:
           name: codecov-umbrella # optional
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: ./test_results/latest/testcoverage.out
+
+  sonar-quality-gate:
+    name: Sonarqube Quality Gate
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Download code coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-report
+      - name: Run quality gate scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args:
+            -Dsonar.projectKey=bcda-aco-api \
+              -Dsonar.sources=. -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out \
+              -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go \
+              -Dsonar.branch.name=${{ github.ref }} -Dsonar.projectVersion=${{ github.event.pull_request.head.sha }}
