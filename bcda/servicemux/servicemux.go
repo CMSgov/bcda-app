@@ -120,6 +120,7 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 			tls.X25519,
 		},
 		MinVersion: tls.VersionTLS12,
+		NextProtos: []string{"h2", "http/1.1"},
 	}
 
 	sm.Listener = tls.NewListener(sm.Listener, &sm.TLSConfig)
