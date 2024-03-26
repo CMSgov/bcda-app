@@ -68,7 +68,7 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         with:
           args:
-            -Dsonar.projectKey=bcda-aco-api \
-              -Dsonar.sources=. -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out \
-              -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go \
+            -Dsonar.projectKey=bcda-aco-api
+              -Dsonar.sources=. -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out
+              -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go
               -Dsonar.branch.name=${{ github.ref }} -Dsonar.projectVersion=${{ github.event.pull_request.head.sha }}
