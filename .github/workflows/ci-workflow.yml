@@ -53,7 +53,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Download code coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v2
         with:
           name: code-coverage-report
       - name: Set env vars from AWS params
