@@ -11,6 +11,22 @@ env:
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
 jobs:
+  lint:
+    name: Modules Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Tidy modules
+        run: |
+          go mod tidy -v
+          CHANGES_FOUND=$(git diff-files --quiet)
+          if [[ "$(CHANGES_FOUND)" == "1" ]]; then
+            echo "Changes found. Run go mod tidy to clean up modules."
+            git diff
+            exit 1
+          fi
+
   build:
     name: Build and Test
     runs-on: ubuntu-latest
