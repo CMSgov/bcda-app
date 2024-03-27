@@ -233,13 +233,13 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
-				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_NOT_FOUND, err
+				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_PROCESSING, err
 			}
 
 			b, err := bundleFunc(bene)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
-				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
+				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_PROCESSING, err
 			}
 			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
 			return "", 0, nil
@@ -264,6 +264,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	if failed {
 		if ctx.Err() == context.Canceled {
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_PROCESSING, responseutils.BbErr, "Parent job was cancelled", jobArgs.ID)
 			return jobKeys, errors.New("Parent job was cancelled")
 		}
 		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))

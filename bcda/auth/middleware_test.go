@@ -270,7 +270,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 
 	//Assert
 	assert.Equal(s.T(), 403, resp.StatusCode)
-	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnknownEntityErr)
+	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnauthorizedErr)
 
 	mock.AssertExpectations(s.T())
 }
