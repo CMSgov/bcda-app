@@ -330,7 +330,7 @@
 													"    });",
 													"",
 													"    pm.test(\"Issue details code is Invalid Token\", function() {",
-													"        pm.expect(respJson.issue[0].diagnostics.text).to.eql(\"Invalid Token\")",
+													"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 													"    });",
 													"}"
 												],
@@ -404,7 +404,7 @@
 													"    });",
 													"",
 													"    pm.test(\"Issue details code is Invalid Token\", function() {",
-													"        pm.expect(respJson.issue[0].diagnostics.text).to.eql(\"Invalid Token\")",
+													"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 													"    });",
 													"}"
 												],
@@ -477,7 +477,7 @@
 													"    });",
 													"",
 													"    pm.test(\"Issue details code is Invalid Token\", function() {",
-													"        pm.expect(respJson.issue[0].diagnostics.text).to.eql(\"Invalid Token\")",
+													"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 													"    });",
 													"}"
 												],
@@ -703,7 +703,7 @@
 													"    });",
 													"",
 													"    pm.test(\"Issue details code is Invalid Token\", function() {",
-													"        pm.expect(respJson.issue[0].diagnostics.text).to.eql(\"Invalid Token\")",
+													"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 													"    });",
 													"}"
 												],
@@ -776,7 +776,7 @@
 													"    });",
 													"",
 													"    pm.test(\"Issue details code is Invalid Token\", function() {",
-													"        pm.expect(respJson.issue[0].diagnostics.text).to.eql(\"Invalid Token\")",
+													"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 													"    });",
 													"}"
 												],
@@ -849,7 +849,7 @@
 													"    });",
 													"",
 													"    pm.test(\"Issue details code is Invalid Token\", function() {",
-													"        pm.expect(respJson.issue[0].diagnostics.text).to.eql(\"Invalid Token\")",
+													"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 													"    });",
 													"}"
 												],

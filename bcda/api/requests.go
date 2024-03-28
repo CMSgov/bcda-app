@@ -189,7 +189,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 
 	if ad, err = readAuthData(r); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
+		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -466,7 +466,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	if ad, err = readAuthData(r); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
+		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
