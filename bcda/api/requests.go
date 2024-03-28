@@ -189,7 +189,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 
 	if ad, err = readAuthData(r); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 		return
 	}
 
@@ -234,7 +234,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		logger.Error(err)
 		//We don't need to return the full error to a consumer.
 		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
 
 		return
 	}
@@ -466,7 +466,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	if ad, err = readAuthData(r); err != nil {
 		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 		return
 	}
 

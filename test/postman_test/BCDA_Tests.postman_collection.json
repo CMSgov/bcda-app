@@ -202,7 +202,7 @@
 									"    });",
 									"",
 									"    pm.test(\"Issue details text is Invalid Token\", function() {",
-									"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
+									"        pm.expect(respJson.issue[0].diagnostics.value).to.eql(\"Invalid Token\")",
 									"    });",
 									"}"
 								],
@@ -354,7 +354,7 @@
 									"    });",
 									"",
 									"    pm.test(\"Issue details text is Invalid Token\", function() {",
-									"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
+									"        pm.expect(respJson.issue[0].diagnostics.value).to.eql(\"Invalid Token\")",
 									"    });",
 									"}"
 								],

@@ -923,7 +923,6 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			w := httptest.NewRecorder()
 			h.JobStatus(w, req)
 			s.Equal(http.StatusInternalServerError, w.Code)
-			assert.Contains(s.T(), w.Body.String(), responseutils.JobFailed)
 			assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
 		})
 	}

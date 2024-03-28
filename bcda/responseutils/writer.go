@@ -134,25 +134,14 @@ func GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
 }
 
 func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
-	detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
+	errType, diagnostics string) *fhirmodels.OperationOutcome {
 
 	return &fhirmodels.OperationOutcome{
 		Issue: []*fhirmodels.OperationOutcome_Issue{
 			{
-				Severity: &fhircodes.IssueSeverityCode{Value: severity},
-				Code:     &fhircodes.IssueTypeCode{Value: code},
-				Details: &fhirdatatypes.CodeableConcept{
-					Coding: []*fhirdatatypes.Coding{
-						{
-							Code: &fhirdatatypes.Code{Value: detailsCode},
-							System: &fhirdatatypes.Uri{
-								Value: "http://hl7.org/fhir/ValueSet/operation-outcome",
-							},
-							Display: &fhirdatatypes.String{Value: detailsDisplay},
-						},
-					},
-					Text: &fhirdatatypes.String{Value: detailsDisplay},
-				},
+				Severity:    &fhircodes.IssueSeverityCode{Value: severity},
+				Code:        &fhircodes.IssueTypeCode{Value: code},
+				Diagnostics: &fhirdatatypes.String{Value: diagnostics},
 			},
 		},
 	}
