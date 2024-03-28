@@ -53,7 +53,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Auth.Warn("Invalid Authorization header value")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 			return
 		}
 
@@ -132,7 +132,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
 			log.Auth.Error("No token found")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 			return
 		}
 
