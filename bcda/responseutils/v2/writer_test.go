@@ -54,9 +54,7 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Coding[0].Display.Value)
-	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Text.Value)
-	assert.Equal(s.T(), responseutils.RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 
 }
@@ -75,9 +73,7 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_NOT_FOUND, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Coding[0].Display.Value)
-	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Text.Value)
-	assert.Equal(s.T(), responseutils.RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
+	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 
 }
@@ -86,9 +82,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "TestCreateOpOutcome")
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Coding[0].Display.Value)
-	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Text.Value)
-	assert.Equal(s.T(), responseutils.RequestErr, oo.Issue[0].Details.Coding[0].Code.Value)
+	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Diagnostics.Value)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
@@ -107,12 +101,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	assert.Equal(s.T(), oo.Issue[0].Severity, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), oo.Issue[0].Code, respOO.Issue[0].Code)
-	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Details.Coding[0].Display.Value)
-	assert.Equal(s.T(), oo.Issue[0].Details.Coding[0].Display, respOO.Issue[0].Details.Coding[0].Display)
-	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Details.Text.Value)
-	assert.Equal(s.T(), oo.Issue[0].Details.Text, respOO.Issue[0].Details.Text)
-	assert.Equal(s.T(), responseutils.RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
-	assert.Equal(s.T(), oo.Issue[0].Details.Coding[0].Code, respOO.Issue[0].Details.Coding[0].Code)
+	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Diagnostics.Value)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
