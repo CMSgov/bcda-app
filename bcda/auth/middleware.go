@@ -112,7 +112,7 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 		case *customErrors.EntityNotFoundError:
 			rw.Exception(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden), responseutils.UnauthorizedErr)
 		case *customErrors.RequestorDataError:
-			rw.Exception(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.InternalErr)
+			rw.Exception(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.RequestErr)
 		case *customErrors.RequestTimeoutError:
 			rw.Exception(ctx, w, http.StatusServiceUnavailable, http.StatusText(http.StatusServiceUnavailable), responseutils.InternalErr)
 		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
