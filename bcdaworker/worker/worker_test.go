@@ -290,8 +290,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}]}
+	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}]}`, s.testACO.UUID, s.testACO.UUID)
 
 	// Since our error file ends with a new line character, we need
 	// to remove it in order so split OperationOutcome responses by newline character
@@ -344,9 +344,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
-
-	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}]}
+	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}]}`, s.testACO.UUID, s.testACO.UUID)
 
 	// Since our error file ends with a new line character, we need
 	// to remove it in order so split OperationOutcome responses by newline character
@@ -414,8 +413,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		issues := jsonObj["issue"].([]interface{})
 		issue := issues[0].(map[string]interface{})
 		assert.Equal(s.T(), "error", issue["severity"])
-		details := issue["details"].(map[string]interface{})
-		assert.Equal(s.T(), fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", cclfBeneficiary.MBI), details["text"])
+		assert.Equal(s.T(), "not-found", issue["code"])
+		assert.Equal(s.T(), fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", cclfBeneficiary.MBI), issue["diagnostics"])
 	}
 	assert.False(s.T(), errorFileScanner.Scan(), "There should be only 2 entries in the file.")
 

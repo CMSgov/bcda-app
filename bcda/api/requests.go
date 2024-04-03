@@ -234,7 +234,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		logger.Error(err)
 		//We don't need to return the full error to a consumer.
 		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
 
 		return
 	}
