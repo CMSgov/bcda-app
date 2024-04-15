@@ -33,7 +33,7 @@ type apm struct {
 // 	}
 // }
 
-func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic.ExternalSegment {
+func (a apm) Start(msg string, r *http.Request) *newrelic.ExternalSegment {
 	if a.App != nil {
 		txn := newrelic.FromContext(r.Context())
 		s := newrelic.StartExternalSegment(txn, r)
