@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 )
 
 type Client interface {
@@ -124,7 +125,11 @@ func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error
 }
 
 func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
+	m := monitoring.GetMonitor()
+	s := m.Start(req.URL.Path, nil, nil)
+	defer m.End(s)
 	resp, err := c.Do(req)
+	s.Response = resp
 	if resp != nil {
 		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
 		defer func() {

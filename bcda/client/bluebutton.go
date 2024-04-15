@@ -21,7 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -283,9 +282,9 @@ func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobData models.JobEnqueue
 }
 
 func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqueueArgs, headers http.Header) (*fhirModels.Bundle, *url.URL, error) {
-	m := monitoring.GetMonitor()
-	txn := m.Start(u.Path, nil, nil)
-	defer m.End(txn)
+	// m := monitoring.GetMonitor()
+	// txn := m.Start(u.Path, nil, nil)
+	// defer m.End(txn)
 
 	var (
 		result  *fhirModels.Bundle
@@ -333,9 +332,9 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqu
 }
 
 func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, u *url.URL) (string, error) {
-	m := monitoring.GetMonitor()
-	txn := m.Start(u.Path, nil, nil)
-	defer m.End(txn)
+	// m := monitoring.GetMonitor()
+	// s := m.Start(u.Path, nil, nil)
+	// defer m.End(s)
 
 	eb := backoff.NewExponentialBackOff()
 	eb.InitialInterval = bbc.retryInterval
