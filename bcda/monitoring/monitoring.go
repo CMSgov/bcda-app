@@ -6,7 +6,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
@@ -51,13 +50,15 @@ func (a apm) End(s *newrelic.ExternalSegment) {
 func GetMonitor() *apm {
 	if a == nil {
 		target := conf.GetEnv("DEPLOYMENT_TARGET")
+		enabled := true
 		if target == "" {
 			target = "local"
+			enabled = false
 		}
 		app, err := newrelic.NewApplication(
+			newrelic.ConfigEnabled(enabled),
 			newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
 			newrelic.ConfigLicense(conf.GetEnv("NEW_RELIC_LICENSE_KEY")),
-			newrelic.ConfigEnabled(true),
 			newrelic.ConfigDistributedTracerEnabled(true),
 			func(cfg *newrelic.Config) {
 				cfg.HighSecurity = true
