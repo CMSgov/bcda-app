@@ -34,7 +34,7 @@ type apm struct {
 
 func (a apm) Start(msg string, r *http.Request) *newrelic.ExternalSegment {
 	if a.App != nil {
-		txn := newrelic.FromContext(r.Context())
+		txn := a.App.StartTransaction(msg)
 		s := newrelic.StartExternalSegment(txn, r)
 		return s
 	}
