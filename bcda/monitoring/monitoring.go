@@ -32,20 +32,20 @@ type apm struct {
 // 	}
 // }
 
-func (a apm) Start(msg string, r *http.Request) *newrelic.ExternalSegment {
-	if a.App != nil {
-		txn := a.App.StartTransaction(msg)
-		s := newrelic.StartExternalSegment(txn, r)
-		return s
-	}
-	return nil
-}
+// func (a apm) Start(msg string, r *http.Request) *newrelic.ExternalSegment {
+// 	if a.App != nil {
+// 		txn := a.App.StartTransaction(msg)
+// 		s := newrelic.StartExternalSegment(txn, r)
+// 		return s
+// 	}
+// 	return nil
+// }
 
-func (a apm) End(s *newrelic.ExternalSegment) {
-	if a.App != nil {
-		s.End()
-	}
-}
+// func (a apm) End(s *newrelic.ExternalSegment) {
+// 	if a.App != nil {
+// 		s.End()
+// 	}
+// }
 
 func GetMonitor() *apm {
 	if a == nil {
