@@ -10,6 +10,7 @@ import (
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 type Client interface {
@@ -126,10 +127,15 @@ func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error
 
 func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	m := monitoring.GetMonitor()
-	s := m.Start(req.URL.Path, req)
-	defer m.End(s)
+	txn := m.App.StartTransaction(req.URL.Path)
+	s := newrelic.StartExternalSegment(txn, req)
+	//s := m.Start(req.URL.Path, req)
+	//defer m.End(s)
+
 	resp, err := c.Do(req)
 	s.Response = resp
+	s.End()
+
 	if resp != nil {
 		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
 		defer func() {
