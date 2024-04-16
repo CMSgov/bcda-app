@@ -16,11 +16,13 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -332,9 +334,9 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqu
 }
 
 func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, u *url.URL) (string, error) {
-	// m := monitoring.GetMonitor()
-	// s := m.Start(u.Path, nil, nil)
-	// defer m.End(s)
+	m := monitoring.GetMonitor()
+	txn := m.Start(u.Path, nil, nil)
+	defer m.End(txn)
 
 	eb := backoff.NewExponentialBackOff()
 	eb.InitialInterval = bbc.retryInterval
@@ -348,6 +350,7 @@ func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, u *url.UR
 			logger.Error(err)
 			return err
 		}
+		req = newrelic.RequestWithTransactionContext(req, txn)
 		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {

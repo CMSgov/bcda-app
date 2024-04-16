@@ -15,22 +15,23 @@ type apm struct {
 	App *newrelic.Application
 }
 
-// func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic.Transaction {
-// 	if a.App != nil {
-// 		txn := a.App.StartTransaction(msg)
-// 		//s := newrelic.StartExternalSegment(txn, r)
-// 		txn.SetWebResponse(w)
-// 		txn.SetWebRequestHTTP(r)
-// 		return txn
-// 	}
-// 	return nil
-// }
+func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic.Transaction {
+	if a.App != nil {
+		txn := a.App.StartTransaction(msg)
+		//s := newrelic.StartExternalSegment(txn, r)
+		//txn.SetWebResponse(w)
+		//txn.SetWebRequestHTTP(r)
+		return txn //, s
+	}
+	return nil
+}
 
-// func (a apm) End(txn *newrelic.Transaction) {
-// 	if a.App != nil {
-// 		txn.End()
-// 	}
-// }
+func (a apm) End(txn *newrelic.Transaction) {
+	if a.App != nil {
+		//seg.End()
+		txn.End()
+	}
+}
 
 // func (a apm) Start(msg string, r *http.Request) *newrelic.ExternalSegment {
 // 	if a.App != nil {
