@@ -127,7 +127,6 @@ func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error
 func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	txn := newrelic.FromContext(req.Context())
 	s := newrelic.StartExternalSegment(txn, req)
-	//defer m.End(s)
 
 	resp, err := c.Do(req)
 	s.Response = resp

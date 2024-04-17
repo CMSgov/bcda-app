@@ -284,9 +284,9 @@ func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobData models.JobEnqueue
 }
 
 func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqueueArgs, headers http.Header) (*fhirModels.Bundle, *url.URL, error) {
-	// m := monitoring.GetMonitor()
-	// txn := m.Start(u.Path, nil, nil)
-	// defer m.End(txn)
+	m := monitoring.GetMonitor()
+	txn := m.Start(u.Path, nil, nil)
+	defer m.End(txn)
 
 	var (
 		result  *fhirModels.Bundle
@@ -304,7 +304,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqu
 			logger.Error(err)
 			return err
 		}
-
+		req = newrelic.RequestWithTransactionContext(req, txn)
 		for key, values := range headers {
 			for _, value := range values {
 				req.Header.Add(key, value)

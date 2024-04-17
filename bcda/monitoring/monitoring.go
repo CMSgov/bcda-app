@@ -18,35 +18,16 @@ type apm struct {
 func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic.Transaction {
 	if a.App != nil {
 		txn := a.App.StartTransaction(msg)
-		//s := newrelic.StartExternalSegment(txn, r)
-		//txn.SetWebResponse(w)
-		//txn.SetWebRequestHTTP(r)
-		return txn //, s
+		return txn
 	}
 	return nil
 }
 
 func (a apm) End(txn *newrelic.Transaction) {
 	if a.App != nil {
-		//seg.End()
 		txn.End()
 	}
 }
-
-// func (a apm) Start(msg string, r *http.Request) *newrelic.ExternalSegment {
-// 	if a.App != nil {
-// 		txn := a.App.StartTransaction(msg)
-// 		s := newrelic.StartExternalSegment(txn, r)
-// 		return s
-// 	}
-// 	return nil
-// }
-
-// func (a apm) End(s *newrelic.ExternalSegment) {
-// 	if a.App != nil {
-// 		s.End()
-// 	}
-// }
 
 func GetMonitor() *apm {
 	if a == nil {
