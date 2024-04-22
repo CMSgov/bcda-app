@@ -55,7 +55,7 @@ require (
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
-	github.com/docker/docker v20.10.27+incompatible // indirect
+	github.com/docker/docker v24.0.9+incompatible // indirect
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
