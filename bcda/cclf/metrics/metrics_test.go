@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -111,5 +112,10 @@ func (s *MetricTestSuite) TestNoOpTimer() {
 func (s *MetricTestSuite) TestDefaultTimer() {
 	t := GetTimer()
 	assert.NotNil(s.T(), t)
-	assert.IsType(s.T(), &noopTimer{}, t)
+	if conf.GetEnv("NEW_RELIC_LICENSE_KEY") == "" {
+		assert.IsType(s.T(), &noopTimer{}, t)
+	} else {
+		assert.IsType(s.T(), &timer{}, t)
+	}
+
 }
