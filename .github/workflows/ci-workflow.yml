@@ -79,4 +79,4 @@ jobs:
             -Dsonar.projectKey=bcda-aco-api
               -Dsonar.sources=. -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out
               -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go
-              -Dsonar.branch.name=${{ github.event.pull_request.head.ref }} -Dsonar.projectVersion=${{ github.event.pull_request.head.sha }}
+              -Dsonar.branch.name=${{ github.ref }} -Dsonar.projectVersion=${{ github.sha }}
