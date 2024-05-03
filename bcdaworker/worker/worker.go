@@ -207,6 +207,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	defer utils.CloseFileAndLogError(f)
 
 	w := bufio.NewWriter(f)
+	defer w.Flush()
 	errorCount := 0
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := getFailureThreshold()
@@ -341,6 +342,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	if err != nil {
 		err = errors.Wrap(err, "Unable to append error to file: OS error encountered while opening the file")
 		logger.Error(err)
+		return
 	}
 
 	defer utils.CloseFileAndLogError(f)
