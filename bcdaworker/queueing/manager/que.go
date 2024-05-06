@@ -97,6 +97,7 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
 
 // StopQue cleans up any resources created
 func (q *masterQueue) StopQue() {
+	q.queDB.Close()
 	q.quePool.Shutdown()
 }
 
