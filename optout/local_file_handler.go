@@ -132,11 +132,11 @@ func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilena
 	return nil
 }
 
-func (handler *LocalFileHandler) OpenZipArchive(metadata *OptOutFilenameMetadata) (*zip.Reader, error) {
-	reader, err := zip.OpenReader(metadata.FilePath)
+func (handler *LocalFileHandler) OpenZipArchive(filePath string) (*zip.Reader, func() error, error) {
+	reader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &reader.Reader, nil
+	return &reader.Reader, reader.Close, err
 }

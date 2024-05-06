@@ -106,7 +106,7 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	return sc, func() {}, err
 }
 
-func (handler *S3FileHandler) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
+func (handler *S3FileHandler) OpenZipArchive(filePath string) (*zip.Reader, func() error, error) {
 	byte_arr, err := handler.OpenFileBytes(filePath)
 
 	if err != nil {
@@ -115,7 +115,7 @@ func (handler *S3FileHandler) OpenZipArchive(filePath string) (*zip.Reader, func
 	}
 
 	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
-	return reader, func() {}, err
+	return reader, func() error { return nil }, err
 }
 
 func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {

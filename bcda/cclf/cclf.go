@@ -50,8 +50,8 @@ type CclfFileProcessor interface {
 }
 
 type CclfImporter struct {
-	fileHandler   optout.OptOutFileHandler
-	fileProcessor CclfFileProcessor
+	FileHandler   optout.OptOutFileHandler
+	FileProcessor CclfFileProcessor
 }
 
 func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
@@ -65,7 +65,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclf
 	fmt.Printf("Importing CCLF0 file %s...\n", fileMetadata)
 	log.API.Infof("Importing CCLF0 file %s...", fileMetadata)
 
-	r, closeReader, err := importer.fileHandler.OpenZipArchive(fileMetadata.filePath)
+	r, closeReader, err := importer.FileHandler.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read CCLF0 archive %s.\n", fileMetadata)
 		err := errors.Wrapf(err, "could not read CCLF0 archive %s", fileMetadata)
@@ -201,7 +201,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclf
 		}
 	}()
 
-	r, closeReader, err := importer.fileHandler.OpenZipArchive(fileMetadata.filePath)
+	r, closeReader, err := importer.FileHandler.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
@@ -298,7 +298,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
 	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
-	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(filePath)
+	cclfMap, skipped, failure, err := importer.FileProcessor.LoadCclfFiles(filePath)
 	c()
 
 	if err != nil {
@@ -394,7 +394,7 @@ func (importer CclfImporter) validate(ctx context.Context, fileMetadata *cclfFil
 		return err
 	}
 
-	r, closeReader, err := importer.fileHandler.OpenZipArchive(fileMetadata.filePath)
+	r, closeReader, err := importer.FileHandler.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read archive %s.\n", fileMetadata.filePath)
 		err := errors.Wrapf(err, "could not read archive %s", fileMetadata.filePath)
