@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 )
 
 type cclfFileMetadata struct {
@@ -44,7 +45,16 @@ type cclfFileValidator struct {
 	maxRecordLength  int
 }
 
-func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
+type CclfFileProcessor interface {
+	LoadCclfFiles(path string) (cclfList map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error)
+}
+
+type CclfImporter struct {
+	fileHandler   optout.OptOutFileHandler
+	fileProcessor CclfFileProcessor
+}
+
+func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
 	if fileMetadata == nil {
 		fmt.Println("File CCLF0 not found.")
 		err := errors.New("file CCLF0 not found")
@@ -55,14 +65,14 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 	fmt.Printf("Importing CCLF0 file %s...\n", fileMetadata)
 	log.API.Infof("Importing CCLF0 file %s...", fileMetadata)
 
-	r, err := zip.OpenReader(filepath.Clean(fileMetadata.filePath))
+	r, closeReader, err := importer.fileHandler.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read CCLF0 archive %s.\n", fileMetadata)
 		err := errors.Wrapf(err, "could not read CCLF0 archive %s", fileMetadata)
 		log.API.Error(err)
 		return nil, err
 	}
-	defer r.Close()
+	defer closeReader()
 
 	const (
 		fileNumStart, fileNumEnd           = 0, 7
@@ -149,7 +159,7 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 	return validator, nil
 }
 
-func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
+func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
 	db := database.Connection
 	repository := postgres.NewRepository(db)
 	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
@@ -191,14 +201,14 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		}
 	}()
 
-	r, err := zip.OpenReader(filepath.Clean(fileMetadata.filePath))
+	r, closeReader, err := importer.fileHandler.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
 		log.API.Error(err)
 		return err
 	}
-	defer r.Close()
+	defer closeReader()
 
 	if len(r.File) < 1 {
 		fmt.Printf("No files found in CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
@@ -280,7 +290,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	return nil
 }
 
-func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
+func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	t := metrics.GetTimer()
 	defer t.Close()
 	ctx := metrics.NewContext(context.Background(), t)
@@ -288,7 +298,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
 	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
-	cclfMap, skipped, failure, err := processCCLFArchives(filePath)
+	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(filePath)
 	c()
 
 	if err != nil {
@@ -313,7 +323,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 						cclf8 = cclf
 					}
 				}
-				cclfvalidator, err := importCCLF0(ctx, cclf0)
+				cclfvalidator, err := importer.importCCLF0(ctx, cclf0)
 				if err != nil {
 					fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s.\n ", cclf0, cclf8)
 					log.API.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
@@ -323,13 +333,13 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				} else {
 					success++
 				}
-				err = validate(ctx, cclf8, cclfvalidator)
+				err = importer.validate(ctx, cclf8, cclfvalidator)
 				if err != nil {
 					fmt.Printf("Failed to validate CCLF8 file: %s.\n", cclf8)
 					log.API.Errorf("Failed to validate CCLF8 file: %s", cclf8)
 					failure++
 				} else {
-					if err = importCCLF8(ctx, cclf8); err != nil {
+					if err = importer.importCCLF8(ctx, cclf8); err != nil {
 						fmt.Printf("Failed to import CCLF8 file: %s %s.\n", cclf8, err)
 						log.API.Errorf("Failed to import CCLF8 file: %s %s", cclf8, err)
 						failure++
@@ -346,7 +356,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	if err = func() error {
 		ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
 		defer c()
-		return cleanUpCCLF(ctx, cclfMap)
+		return importer.cleanUpCCLF(ctx, cclfMap)
 	}(); err != nil {
 		fmt.Println(err.Error())
 		log.API.Error(err)
@@ -363,7 +373,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	return success, failure, skipped, err
 }
 
-func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
+func (importer CclfImporter) validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
 	if fileMetadata == nil {
 		fmt.Printf("File not found.\n")
 		err := errors.New("file not found")
@@ -384,14 +394,14 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 		return err
 	}
 
-	r, err := zip.OpenReader(filepath.Clean(fileMetadata.filePath))
+	r, closeReader, err := importer.fileHandler.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read archive %s.\n", fileMetadata.filePath)
 		err := errors.Wrapf(err, "could not read archive %s", fileMetadata.filePath)
 		log.API.Error(err)
 		return err
 	}
-	defer r.Close()
+	defer closeReader()
 
 	close := metrics.NewChild(ctx, "validate")
 	defer close()
@@ -449,7 +459,7 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	return nil
 }
 
-func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
+func (importer CclfImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
 	errCount := 0
 	for _, cclfFileMap := range cclfMap {
 		for _, cclfFileList := range cclfFileMap {

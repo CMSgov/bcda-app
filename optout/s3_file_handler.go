@@ -1,10 +1,10 @@
 package optout
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
@@ -44,29 +44,15 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 
 func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
 	var result []*OptOutFilenameMetadata
-	bucket, prefix := parseS3Uri(path)
 
-	sess, err := handler.createSession()
+	bucket, prefix := ParseS3Uri(path)
+	s3Objects, err := handler.ListFiles(bucket, prefix)
+
 	if err != nil {
-		handler.Errorf("Failed to create S3 session: %s\n", err)
 		return &result, skipped, err
 	}
 
-	svc := s3.New(sess)
-
-	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
-
-	resp, err := svc.ListObjects(&s3.ListObjectsInput{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(prefix),
-	})
-
-	if err != nil {
-		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s\n", bucket, prefix, err)
-		return &result, skipped, err
-	}
-
-	for _, obj := range resp.Contents {
+	for _, obj := range s3Objects {
 		metadata, err := ParseMetadata(*obj.Key)
 		metadata.FilePath = fmt.Sprintf("s3://%s/%s", bucket, *obj.Key)
 		metadata.DeliveryDate = *obj.LastModified
@@ -84,13 +70,61 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	return &result, skipped, err
 }
 
+func (handler *S3FileHandler) ListFiles(bucket, prefix string) (objects []*s3.Object, err error) {
+	sess, err := handler.createSession()
+	if err != nil {
+		handler.Errorf("Failed to create S3 session: %s\n", err)
+		return nil, err
+	}
+
+	svc := s3.New(sess)
+
+	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
+
+	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	})
+
+	if err != nil {
+		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s\n", bucket, prefix, err)
+		return nil, err
+	}
+
+	return resp.Contents, nil
+}
+
 func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
-	handler.Infof("Opening file %s\n", metadata.FilePath)
-	bucket, file := parseS3Uri(metadata.FilePath)
+	byte_arr, err := handler.OpenFileBytes(metadata.FilePath)
+
+	if err != nil {
+		handler.Errorf("Failed to download %s\n", metadata.FilePath)
+		return nil, nil, err
+	}
+
+	sc := bufio.NewScanner(bytes.NewReader(byte_arr))
+	return sc, func() {}, err
+}
+
+func (handler *S3FileHandler) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
+	byte_arr, err := handler.OpenFileBytes(filePath)
+
+	if err != nil {
+		handler.Errorf("Failed to download %s\n", filePath)
+		return nil, nil, err
+	}
+
+	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
+	return reader, func() {}, err
+}
+
+func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
+	handler.Infof("Opening file %s\n", filePath)
+	bucket, file := ParseS3Uri(filePath)
 
 	sess, err := handler.createSession()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	downloader := s3manager.NewDownloader(sess)
@@ -101,15 +135,12 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	})
 
 	if err != nil {
-		handler.Errorf("Failed to download bucket %s, key %s\n", bucket, file)
-		return nil, nil, err
+		return nil, err
 	}
 
 	handler.Infof("file downloaded: size=%d\n", numBytes)
-
 	byte_arr := buff.Bytes()
-	sc := bufio.NewScanner(bytes.NewReader(byte_arr))
-	return sc, func() {}, err
+	return byte_arr, err
 }
 
 func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
@@ -128,7 +159,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		}
 
 		handler.Infof("Cleaning up file %s\n", suppressionFile)
-		bucket, file := parseS3Uri(suppressionFile.FilePath)
+		bucket, file := ParseS3Uri(suppressionFile.FilePath)
 
 		svc := s3.New(sess)
 		_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(file)})
@@ -184,25 +215,4 @@ func (handler *S3FileHandler) createSession() (*session.Session, error) {
 	return session.NewSessionWithOptions(session.Options{
 		Config: config,
 	})
-}
-
-// Parses an S3 URI and returns the bucket and key.
-//
-// @example:
-//   input: s3://my-bucket/path/to/file
-//   output: "my-bucket", "path/to/file"
-//
-// @example
-//   input: s3://my-bucket
-//   output: "my-bucket", ""
-//
-func parseS3Uri(str string) (bucket string, key string) {
-	workingString := strings.TrimPrefix(str, "s3://")
-	resultArr := strings.SplitN(workingString, "/", 2)
-
-	if len(resultArr) == 1 {
-		return resultArr[0], ""
-	}
-
-	return resultArr[0], resultArr[1]
 }
