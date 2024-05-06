@@ -25,8 +25,9 @@ type FileProcessorTestSuite struct {
 	cclfRefDate        string
 	pendingDeletionDir string
 
-	basePath string
-	cleanup  func()
+	processor CclfFileProcessor
+	basePath  string
+	cleanup   func()
 }
 
 func (s *FileProcessorTestSuite) SetupTest() {
@@ -40,6 +41,8 @@ func (s *FileProcessorTestSuite) SetupSuite() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	s.processor = &LocalFileProcessor{}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
@@ -177,11 +180,11 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
 	}
 }
 
-func TestFileProcessorTestSuite(t *testing.T) {
+func (s *FileProcessorTestSuite) TestFileProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(FileProcessorTestSuite))
 }
 
-func TestStillDownloading(t *testing.T) {
+func (s *FileProcessorTestSuite) TestStillDownloading(t *testing.T) {
 	secondsAgo := time.Now().Add(time.Duration(-30) * time.Second)
 	minutesAgo := time.Now().Add(time.Duration(-2) * time.Minute)
 
@@ -189,7 +192,7 @@ func TestStillDownloading(t *testing.T) {
 	assert.False(t, stillDownloading(minutesAgo))
 }
 
-func TestMultipleFileTypes(t *testing.T) {
+func (s *FileProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
 	dir, err := os.MkdirTemp("", "*")
 	assert.NoError(t, err)
 	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
@@ -207,9 +210,9 @@ func TestMultipleFileTypes(t *testing.T) {
 	// different perf year and file type
 	createZip(t, dir, "T.BCD.A9990.ZCR19.D201113.T0000000", "T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010")
 
-	m, s, f, err := processCCLFArchives(dir)
+	m, skipped, f, err := processCCLFArchives(dir)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, s)
+	assert.Equal(t, 0, skipped)
 	assert.Equal(t, 0, f)
 	assert.Equal(t, 1, len(m)) // Only one ACO present
 
@@ -237,7 +240,7 @@ func createZip(t *testing.T, dir, zipName string, cclfNames ...string) {
 	assert.NoError(t, w.Close())
 }
 
-func (s *CCLFTestSuite) TestCleanupCCLF() {
+func (s *FileProcessorTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string]map[metadataKey][]*cclfFileMetadata)
 
@@ -286,7 +289,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
 		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf0metadata, cclf8metadata, cclf9metadata},
 	}
-	err := s.importer.FileProcessor.CleanUpCCLF(context.Background(), cclfmap)
+	err := s.processor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
 
 	//negative cases
@@ -317,7 +320,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
 		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf10metadata, cclf11metadata},
 	}
-	err = s.importer.FileProcessor.CleanUpCCLF(context.Background(), cclfmap)
+	err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.EqualError(err, "2 files could not be cleaned up")
 
 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))

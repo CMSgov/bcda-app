@@ -218,6 +218,54 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 	return tempBucket.String(), cleanup
 }
 
+func WriteToS3(t *testing.T, b []byte, bucket, fileName string) (string, func()) {
+	tempBucket := uuid.NewUUID()
+
+	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for S3: %s", err.Error())
+	}
+
+	uploader := s3manager.NewUploader(sess)
+
+	_, s3Err := s3manager.Uploader.Upload(*uploader, &s3manager.UploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(fileName),
+		Body:   bytes.NewReader(b),
+	})
+
+	assert.NoError(t, s3Err)
+
+	if err != nil {
+		t.Fatalf("Failed to create bucket %s: %s", tempBucket.String(), err.Error())
+	}
+
+	cleanup := func() {
+		svc := s3.New(sess)
+		iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
+			Bucket: aws.String(tempBucket.String()),
+		})
+
+		// Traverse iterator deleting each object
+		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
+			log.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
+		}
+	}
+
+	return tempBucket.String(), cleanup
+}
+
 func ListS3Objects(t *testing.T, bucket string, prefix string) []*s3.Object {
 	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
 
