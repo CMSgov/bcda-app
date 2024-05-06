@@ -2,11 +2,13 @@ package cclf
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -164,4 +166,63 @@ func stillDownloading(modTime time.Time) bool {
 	oneMinuteAgo := now.Add(time.Duration(-1) * time.Minute)
 
 	return modTime.After(oneMinuteAgo)
+}
+
+func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
+	errCount := 0
+	for _, cclfFileMap := range cclfMap {
+		for _, cclfFileList := range cclfFileMap {
+			for _, cclf := range cclfFileList {
+				func() {
+					close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
+					defer close()
+
+					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
+					log.API.Infof("Cleaning up file %s", cclf.filePath)
+					folderName := filepath.Base(cclf.filePath)
+					newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
+					if !cclf.imported {
+						// check the timestamp on the failed files
+						elapsed := time.Since(cclf.deliveryDate).Hours()
+						deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
+						if int(elapsed) > deleteThreshold {
+							if _, err := os.Stat(newpath); err == nil {
+								return
+							}
+							// move the (un)successful files to the deletion dir
+							err := os.Rename(cclf.filePath, newpath)
+							if err != nil {
+								errCount++
+								errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
+								fmt.Println(errMsg)
+								log.API.Error(errMsg)
+							} else {
+								fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
+								log.API.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
+							}
+						}
+					} else {
+						if _, err := os.Stat(newpath); err == nil {
+							return
+						}
+						// move the successful files to the deletion dir
+						err := os.Rename(cclf.filePath, newpath)
+						if err != nil {
+							errCount++
+							errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
+							fmt.Println(errMsg)
+							log.API.Error(errMsg)
+						} else {
+							fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
+							log.API.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
+						}
+					}
+				}()
+			}
+		}
+	}
+	if errCount > 0 {
+		return fmt.Errorf("%d files could not be cleaned up", errCount)
+	}
+	return nil
 }

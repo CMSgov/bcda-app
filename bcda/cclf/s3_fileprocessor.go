@@ -1,6 +1,10 @@
 package cclf
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/sirupsen/logrus"
@@ -83,4 +87,46 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 	}
 
 	return cclfMap, skipped, failed, err
+}
+
+func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
+	handler := optout.S3FileHandler{
+		Logger:        processor.Logger,
+		Endpoint:      processor.Endpoint,
+		AssumeRoleArn: processor.AssumeRoleArn,
+	}
+
+	errCount := 0
+
+	for _, cclfFileMap := range cclfMap {
+		for _, cclfFileList := range cclfFileMap {
+			for _, cclf := range cclfFileList {
+				close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
+				defer close()
+
+				if !cclf.imported {
+					// Don't do anything. The S3 bucket should have a retention policy that
+					// automatically cleans up files after a specified period of time,
+					handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", cclf.filePath)
+					continue
+				}
+
+				handler.Infof("Cleaning up file %s\n", cclf.filePath)
+				err := handler.Delete(cclf.filePath)
+
+				if err != nil {
+					errCount++
+					continue
+				}
+
+				handler.Infof("File %s successfully ingested and deleted from S3.\n", cclf.filePath)
+			}
+		}
+	}
+
+	if errCount > 0 {
+		return fmt.Errorf("%d files could not be cleaned up", errCount)
+	}
+
+	return nil
 }

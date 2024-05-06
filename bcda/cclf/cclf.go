@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -21,7 +19,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 )
@@ -47,6 +44,7 @@ type cclfFileValidator struct {
 
 type CclfFileProcessor interface {
 	LoadCclfFiles(path string) (cclfList map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error)
+	CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error
 }
 
 type CclfImporter struct {
@@ -356,7 +354,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	if err = func() error {
 		ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
 		defer c()
-		return importer.cleanUpCCLF(ctx, cclfMap)
+		return importer.FileProcessor.CleanUpCCLF(ctx, cclfMap)
 	}(); err != nil {
 		fmt.Println(err.Error())
 		log.API.Error(err)
@@ -456,65 +454,6 @@ func (importer CclfImporter) validate(ctx context.Context, fileMetadata *cclfFil
 	}
 	fmt.Printf("Successfully validated CCLF%d file %s.\n", fileMetadata.cclfNum, fileMetadata)
 	log.API.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
-	return nil
-}
-
-func (importer CclfImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
-	errCount := 0
-	for _, cclfFileMap := range cclfMap {
-		for _, cclfFileList := range cclfFileMap {
-			for _, cclf := range cclfFileList {
-				func() {
-					close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
-					defer close()
-
-					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
-					log.API.Infof("Cleaning up file %s", cclf.filePath)
-					folderName := filepath.Base(cclf.filePath)
-					newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
-					if !cclf.imported {
-						// check the timestamp on the failed files
-						elapsed := time.Since(cclf.deliveryDate).Hours()
-						deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
-						if int(elapsed) > deleteThreshold {
-							if _, err := os.Stat(newpath); err == nil {
-								return
-							}
-							// move the (un)successful files to the deletion dir
-							err := os.Rename(cclf.filePath, newpath)
-							if err != nil {
-								errCount++
-								errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
-								fmt.Println(errMsg)
-								log.API.Error(errMsg)
-							} else {
-								fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
-								log.API.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
-							}
-						}
-					} else {
-						if _, err := os.Stat(newpath); err == nil {
-							return
-						}
-						// move the successful files to the deletion dir
-						err := os.Rename(cclf.filePath, newpath)
-						if err != nil {
-							errCount++
-							errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
-							fmt.Println(errMsg)
-							log.API.Error(errMsg)
-						} else {
-							fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
-							log.API.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
-						}
-					}
-				}()
-			}
-		}
-	}
-	if errCount > 0 {
-		return fmt.Errorf("%d files could not be cleaned up", errCount)
-	}
 	return nil
 }
 

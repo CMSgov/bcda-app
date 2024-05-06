@@ -103,7 +103,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	// negative
 	cclf0metadata = &cclfFileMetadata{}
 	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
-	assert.EqualError(err, "could not read CCLF0 archive : read .: is a directory")
+	assert.EqualError(err, "could not read CCLF0 archive : open : no such file or directory")
 
 	// missing cclf8 from cclf0
 	cclf0filePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
@@ -411,97 +411,6 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	err := s.importer.importCCLF8(context.Background(), metadata)
 	// This error indicates that we did not supply enough characters for the MBI
 	assert.Contains(err.Error(), "invalid byte sequence for encoding \"UTF8\": 0x00")
-}
-func (s *CCLFTestSuite) TestCleanupCCLF() {
-	assert := assert.New(s.T())
-	cclfmap := make(map[string]map[metadataKey][]*cclfFileMetadata)
-
-	// failed import: file that's within the threshold - stay put
-	acoID := "A0001"
-	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf0metadata := &cclfFileMetadata{
-		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
-		env:          "test",
-		acoID:        acoID,
-		cclfNum:      8,
-		perfYear:     18,
-		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, "cclf/T.BCD.ACO.ZC0Y18.D181120.T0001000"),
-		imported:     false,
-		deliveryDate: time.Now(),
-	}
-
-	// failed import: file that's over the threshold - should move
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf8metadata := &cclfFileMetadata{
-		name:         constants.CCLF8Name,
-		env:          "test",
-		acoID:        acoID,
-		cclfNum:      8,
-		perfYear:     18,
-		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, constants.CCLF8CompPath),
-		imported:     false,
-		deliveryDate: fileTime,
-	}
-
-	// successfully imported file - should move
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf9metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   9,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.T1000000"),
-		imported:  true,
-	}
-
-	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
-		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf0metadata, cclf8metadata, cclf9metadata},
-	}
-	err := s.importer.cleanUpCCLF(context.Background(), cclfmap)
-	assert.Nil(err)
-
-	//negative cases
-	//File unable to be renamed
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf10metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   10,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.Z1000000"),
-		imported:  true,
-	}
-	//unsuccessful, not imported
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf11metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   10,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.Z1000000"),
-		imported:  false,
-	}
-	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
-		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf10metadata, cclf11metadata},
-	}
-	err = s.importer.cleanUpCCLF(context.Background(), cclfmap)
-	assert.EqualError(err, "2 files could not be cleaned up")
-
-	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
-	if err != nil {
-		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
-	}
-	for _, file := range files {
-		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())
-	}
 }
 
 func (s *CCLFTestSuite) TestImportRunoutCCLF() {

@@ -21,6 +21,7 @@ type S3FileHandler struct {
 	Endpoint string
 	// Optional role to assume when connecting to S3.
 	AssumeRoleArn string
+	Session       *session.Session
 }
 
 // Define logger functions to ensure that logs get sent to:
@@ -144,11 +145,6 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 }
 
 func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
-	sess, err := handler.createSession()
-	if err != nil {
-		return err
-	}
-
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
 		if !suppressionFile.Imported {
@@ -159,24 +155,9 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		}
 
 		handler.Infof("Cleaning up file %s\n", suppressionFile)
-		bucket, file := ParseS3Uri(suppressionFile.FilePath)
-
-		svc := s3.New(sess)
-		_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(file)})
+		err := handler.Delete(suppressionFile.FilePath)
 
 		if err != nil {
-			handler.Errorf("File %s failed to clean up properly, error occurred while deleting object: %v\n", suppressionFile, err)
-			errCount++
-			continue
-		}
-
-		err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(file),
-		})
-
-		if err != nil {
-			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", suppressionFile, err)
 			errCount++
 			continue
 		}
@@ -194,6 +175,10 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 // Creates a new AWS S3 session. If the handler is given a custom S3 endpoint
 // and/or IAM role ARN to assume, the new session connects using those parameters.
 func (handler *S3FileHandler) createSession() (*session.Session, error) {
+	if handler.Session != nil {
+		return handler.Session, nil
+	}
+
 	sess := session.Must(session.NewSession())
 
 	config := aws.Config{
@@ -212,7 +197,44 @@ func (handler *S3FileHandler) createSession() (*session.Session, error) {
 		)
 	}
 
-	return session.NewSessionWithOptions(session.Options{
+	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: config,
 	})
+
+	if err == nil {
+		handler.Session = sess
+	}
+
+	return sess, err
+}
+
+func (handler *S3FileHandler) Delete(filePath string) error {
+	sess, err := handler.createSession()
+
+	if err != nil {
+		handler.Errorf("File %s failed to clean up properly, error occurred while creating S3 session: %v\n", filePath, err)
+		return err
+	}
+
+	bucket, path := ParseS3Uri(filePath)
+
+	svc := s3.New(sess)
+	_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(path)})
+
+	if err != nil {
+		handler.Errorf("File %s failed to clean up properly, error occurred while deleting object: %v\n", filePath, err)
+		return err
+	}
+
+	err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(path),
+	})
+
+	if err != nil {
+		handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", filePath, err)
+		return err
+	}
+
+	return nil
 }
