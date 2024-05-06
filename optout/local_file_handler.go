@@ -132,11 +132,16 @@ func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilena
 	return nil
 }
 
-func (handler *LocalFileHandler) OpenZipArchive(filePath string) (*zip.Reader, func() error, error) {
+func (handler *LocalFileHandler) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return &reader.Reader, reader.Close, err
+	return &reader.Reader, func() {
+		err := reader.Close()
+		if err != nil {
+			handler.Logger.Warningf("Could not close zip archive %s", filePath)
+		}
+	}, err
 }

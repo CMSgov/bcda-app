@@ -19,5 +19,5 @@ type OptOutFileHandler interface {
 	// Open a given opt out file, specified by the metadata struct.
 	OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error)
 	// Open a zip archive
-	OpenZipArchive(name string) (*zip.Reader, func() error, error)
+	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
