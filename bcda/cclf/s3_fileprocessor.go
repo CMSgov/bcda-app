@@ -1,10 +1,7 @@
 package cclf
 
 import (
-	"fmt"
-
 	"github.com/CMSgov/bcda-app/bcda/service"
-	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/sirupsen/logrus"
 )
@@ -18,6 +15,7 @@ type S3FileProcessor struct {
 }
 
 func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error) {
+	cclfMap = make(map[string]map[metadataKey][]*cclfFileMetadata)
 	handler := optout.S3FileHandler{
 		Logger:        processor.Logger,
 		Endpoint:      processor.Endpoint,
@@ -33,24 +31,31 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 	for _, obj := range s3Objects {
 		// ignore the opt out file, and don't add it to the skipped count
-		// TODO: path or prefix
 		optOut, _ := optout.IsOptOut(path)
 		if optOut {
-			handler.Infof("Skipping opt-out file: ", path)
+			handler.Infof("Skipping opt-out file: %s", path)
 			continue
 		}
 
 		zipReader, _, err := handler.OpenZipArchive(path)
 
+		if err != nil {
+			failed++
+			handler.Warningf("Failed to open CCLF archive (%s): %s.", path, err)
+			continue
+		}
+
 		// validate the top level zipped folder
 		cmsID, err := getCMSID(path)
 		if err != nil {
+			skipped++
 			handler.Warningf("Skipping CCLF archive (%s): %s.", path, err)
 			continue
 		}
 
 		supported := service.IsSupportedACO(cmsID)
 		if !supported {
+			skipped++
 			handler.Errorf("Skipping CCLF archive (%s): cmsID %s not supported.", path, cmsID)
 			continue
 		}
@@ -62,9 +67,8 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 			if err != nil {
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-				msg := fmt.Sprintf("Unknown file found: %s.", f.Name)
-				fmt.Println(msg)
-				log.API.Error(msg)
+				skipped++
+				handler.Errorf("Unknown file found: %s.", f.Name)
 				continue
 			}
 
