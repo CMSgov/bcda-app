@@ -361,6 +361,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
 	defer close()
+	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
