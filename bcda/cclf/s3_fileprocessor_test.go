@@ -120,16 +120,16 @@ func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
 	defer cleanup()
 
 	m, skipped, f, err := s.processor.LoadCclfFiles(bucketName)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, skipped)
-	assert.Equal(t, 0, f)
-	assert.Equal(t, 1, len(m)) // Only one ACO present
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 0, skipped)
+	assert.Equal(s.T(), 0, f)
+	assert.Equal(s.T(), 1, len(m)) // Only one ACO present
 
 	for _, fileMap := range m {
 		// We should contain 4 unique entries, one for each unique perfYear:fileType tuple
-		assert.Equal(t, 4, len(fileMap))
+		assert.Equal(s.T(), 4, len(fileMap))
 		for _, files := range fileMap {
-			assert.Equal(t, 2, len(files)) // each tuple contains two files
+			assert.Equal(s.T(), 2, len(files)) // each tuple contains two files
 		}
 	}
 }
