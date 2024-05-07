@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type FileProcessorTestSuite struct {
+type LocalFileProcessorTestSuite struct {
 	suite.Suite
 	cclfRefDate        string
 	pendingDeletionDir string
@@ -30,11 +30,11 @@ type FileProcessorTestSuite struct {
 	cleanup   func()
 }
 
-func (s *FileProcessorTestSuite) SetupTest() {
+func (s *LocalFileProcessorTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
-func (s *FileProcessorTestSuite) SetupSuite() {
+func (s *LocalFileProcessorTestSuite) SetupSuite() {
 	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 	dir, err := os.MkdirTemp("", "*")
@@ -47,16 +47,16 @@ func (s *FileProcessorTestSuite) SetupSuite() {
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
 
-func (s *FileProcessorTestSuite) TearDownTest() {
+func (s *LocalFileProcessorTestSuite) TearDownTest() {
 	s.cleanup()
 }
 
-func (s *FileProcessorTestSuite) TearDownSuite() {
+func (s *LocalFileProcessorTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.cclfRefDate)
 	os.RemoveAll(s.pendingDeletionDir)
 }
 
-func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
+func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives() {
 	cmsID, key := "A0001", metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
 	tests := []struct {
 		path         string
@@ -99,7 +99,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 	}
 }
 
-func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
+func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert := assert.New(s.T())
 	key := metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
 	folderPath := filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/")
@@ -139,7 +139,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert.EqualError(err, fmt.Sprintf("open %s: no such file or directory", filePath))
 }
 
-func (s *FileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
+func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
 	cclfMap, skipped, failure, err := processCCLFArchives("./foo")
 	assert.EqualError(s.T(), err, "error in sorting cclf file: nil,: lstat ./foo: no such file or directory")
 	assert.Equal(s.T(), 0, skipped)
@@ -147,7 +147,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
 	assert.Nil(s.T(), cclfMap)
 }
 
-func (s *FileProcessorTestSuite) TestProcessCCLFArchives_Downloading() {
+func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_Downloading() {
 	assert := assert.New(s.T())
 	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
 	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
@@ -164,7 +164,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_Downloading() {
 	}
 }
 
-func (s *FileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
+func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
 	assert := assert.New(s.T())
 	folderPath := filepath.Join(s.basePath, "cclf/archives/corrupted/")
 	filePath := filepath.Join(folderPath, "T.BCD.A0001.ZCY18.D181120.T1000000")
@@ -180,11 +180,11 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
 	}
 }
 
-func (s *FileProcessorTestSuite) TestFileProcessorTestSuite(t *testing.T) {
-	suite.Run(t, new(FileProcessorTestSuite))
+func (s *LocalFileProcessorTestSuite) TestFileProcessorTestSuite(t *testing.T) {
+	suite.Run(t, new(LocalFileProcessorTestSuite))
 }
 
-func (s *FileProcessorTestSuite) TestStillDownloading(t *testing.T) {
+func (s *LocalFileProcessorTestSuite) TestStillDownloading(t *testing.T) {
 	secondsAgo := time.Now().Add(time.Duration(-30) * time.Second)
 	minutesAgo := time.Now().Add(time.Duration(-2) * time.Minute)
 
@@ -192,7 +192,7 @@ func (s *FileProcessorTestSuite) TestStillDownloading(t *testing.T) {
 	assert.False(t, stillDownloading(minutesAgo))
 }
 
-func (s *FileProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
+func (s *LocalFileProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
 	dir, err := os.MkdirTemp("", "*")
 	assert.NoError(t, err)
 	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
@@ -240,7 +240,7 @@ func createZip(t *testing.T, dir, zipName string, cclfNames ...string) {
 	assert.NoError(t, w.Close())
 }
 
-func (s *FileProcessorTestSuite) TestCleanupCCLF() {
+func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string]map[metadataKey][]*cclfFileMetadata)
 
