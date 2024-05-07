@@ -41,13 +41,17 @@ type cclfFileValidator struct {
 	maxRecordLength  int
 }
 
+// Manages the interaction of CCLF files from a given source
 type CclfFileProcessor interface {
+	// Load a list of valid CCLF files to be imported
 	LoadCclfFiles(path string) (cclfList map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error)
+	// Clean up CCLF files after failed or successful import runs
 	CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error
 	// Open a zip archive
 	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
 
+// Manages the import process for CCLF files from a given source
 type CclfImporter struct {
 	FileProcessor CclfFileProcessor
 }

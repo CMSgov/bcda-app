@@ -20,7 +20,8 @@ type S3FileHandler struct {
 	Endpoint string
 	// Optional role to assume when connecting to S3.
 	AssumeRoleArn string
-	Session       *session.Session
+	// AWS session, created once and cached here.
+	Session *session.Session
 }
 
 // Define logger functions to ensure that logs get sent to:
