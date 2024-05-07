@@ -32,7 +32,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			continue
 		}
 
-		zipReader, _, err := processor.OpenZipArchive(path)
+		zipReader, _, err := processor.OpenZipArchive(*obj.Key)
 
 		if err != nil {
 			failed++

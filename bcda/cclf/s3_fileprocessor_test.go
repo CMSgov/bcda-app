@@ -83,10 +83,10 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_InvalidPath() {
 	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles("foo")
-	assert.EqualError(s.T(), err, "error in sorting cclf file: nil,: lstat ./foo: no such file or directory")
+	assert.ErrorContains(s.T(), err, "NoSuchBucket: The specified bucket does not exist")
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
-	assert.Nil(s.T(), cclfMap)
+	assert.Empty(s.T(), cclfMap)
 }
 
 func TestS3ProcessorTestSuite(t *testing.T) {
