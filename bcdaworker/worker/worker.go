@@ -376,7 +376,8 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
-		_, err = w.WriteString(string(entryJSON) + "\n")
+
+		_, err = w.Write(append(entryJSON, '\n'))
 		if err != nil {
 			logger.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
