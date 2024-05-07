@@ -1,6 +1,8 @@
 package testUtils
 
 import (
+	"archive/zip"
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -212,6 +214,78 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 		// Traverse iterator deleting each object
 		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
 			log.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
+		}
+	}
+
+	return tempBucket.String(), cleanup
+}
+
+type ZipInput struct {
+	ZipName   string
+	CclfNames []string
+}
+
+func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
+	tempBucket := uuid.NewUUID()
+	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for S3: %s", err.Error())
+	}
+
+	svc := s3.New(sess)
+
+	_, err = svc.CreateBucket(&s3.CreateBucketInput{
+		Bucket: aws.String(tempBucket.String()),
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create bucket %s: %s", tempBucket.String(), err.Error())
+	}
+
+	for _, input := range zipInputs {
+		var b bytes.Buffer
+		f := bufio.NewWriter(&b)
+		w := zip.NewWriter(f)
+
+		for _, cclfName := range input.CclfNames {
+			_, err := w.Create(cclfName)
+			assert.NoError(t, err)
+		}
+
+		assert.NoError(t, w.Close())
+		assert.NoError(t, f.Flush())
+
+		uploader := s3manager.NewUploader(sess)
+
+		_, s3Err := s3manager.Uploader.Upload(*uploader, &s3manager.UploadInput{
+			Bucket: aws.String(tempBucket.String()),
+			Key:    aws.String(input.ZipName),
+			Body:   bytes.NewReader(b.Bytes()),
+		})
+
+		assert.NoError(t, s3Err)
+	}
+
+	cleanup := func() {
+		svc := s3.New(sess)
+		iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
+			Bucket: aws.String(tempBucket.String()),
+		})
+
+		// Traverse iterator deleting each object
+		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
+			logrus.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
 		}
 	}
 

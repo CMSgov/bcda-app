@@ -1,20 +1,12 @@
 package cclf
 
 import (
-	"archive/zip"
-	"bufio"
-	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 
@@ -98,33 +90,27 @@ func (s *S3ProcessorTestSuite) TestS3ProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(S3ProcessorTestSuite))
 }
 
-type ZipInput struct {
-	zipName   string
-	cclfNames []string
-}
-
 func (s *S3ProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
-
 	// Create various CCLF files that have unique perfYear:fileType
-	bucketName, cleanup := createZipsInS3(t,
-		ZipInput{
-			"T.BCD.A9990.ZCY20.D201113.T0000000",
-			[]string{"T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010"},
+	bucketName, cleanup := testUtils.CreateZipsInS3(t,
+		testUtils.ZipInput{
+			ZipName:   "T.BCD.A9990.ZCY20.D201113.T0000000",
+			CclfNames: []string{"T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010"},
 		},
 		// different perf year
-		ZipInput{
-			"T.BCD.A9990.ZCY19.D201113.T0000000",
-			[]string{"T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010"},
+		testUtils.ZipInput{
+			ZipName:   "T.BCD.A9990.ZCY19.D201113.T0000000",
+			CclfNames: []string{"T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010"},
 		},
 		// different file type
-		ZipInput{
-			"T.BCD.A9990.ZCR20.D201113.T0000000",
-			[]string{"T.BCD.A9990.ZC0R20.D201113.T0000010", "T.BCD.A9990.ZC8R20.D201113.T0000010"},
+		testUtils.ZipInput{
+			ZipName:   "T.BCD.A9990.ZCR20.D201113.T0000000",
+			CclfNames: []string{"T.BCD.A9990.ZC0R20.D201113.T0000010", "T.BCD.A9990.ZC8R20.D201113.T0000010"},
 		},
 		// different perf year and file type
-		ZipInput{
-			"T.BCD.A9990.ZCR20.D201113.T0000000",
-			[]string{"T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010"},
+		testUtils.ZipInput{
+			ZipName:   "T.BCD.A9990.ZCR20.D201113.T0000000",
+			CclfNames: []string{"T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010"},
 		},
 	)
 
@@ -143,75 +129,6 @@ func (s *S3ProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
 			assert.Equal(t, 2, len(files)) // each tuple contains two files
 		}
 	}
-}
-
-func createZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
-	tempBucket, err := uuid.NewUUID()
-	assert.NoError(t, err)
-
-	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
-
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
-	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for S3: %s", err.Error())
-	}
-
-	svc := s3.New(sess)
-
-	_, err = svc.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(tempBucket.String()),
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create bucket %s: %s", tempBucket.String(), err.Error())
-	}
-
-	for _, input := range zipInputs {
-		var b bytes.Buffer
-		f := bufio.NewWriter(&b)
-		w := zip.NewWriter(f)
-
-		for _, cclfName := range input.cclfNames {
-			_, err := w.Create(cclfName)
-			assert.NoError(t, err)
-		}
-
-		assert.NoError(t, w.Close())
-		assert.NoError(t, f.Flush())
-
-		uploader := s3manager.NewUploader(sess)
-
-		_, s3Err := s3manager.Uploader.Upload(*uploader, &s3manager.UploadInput{
-			Bucket: aws.String(tempBucket.String()),
-			Key:    aws.String(input.zipName),
-			Body:   bytes.NewReader(b.Bytes()),
-		})
-
-		assert.NoError(t, s3Err)
-	}
-
-	cleanup := func() {
-		svc := s3.New(sess)
-		iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
-			Bucket: aws.String(tempBucket.String()),
-		})
-
-		// Traverse iterator deleting each object
-		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
-			logrus.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
-		}
-	}
-
-	return tempBucket.String(), cleanup
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
