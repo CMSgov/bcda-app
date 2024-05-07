@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -32,7 +33,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			continue
 		}
 
-		zipReader, _, err := processor.OpenZipArchive(*obj.Key)
+		zipReader, _, err := processor.OpenZipArchive(filepath.Join(bucket, *obj.Key))
 
 		if err != nil {
 			failed++
