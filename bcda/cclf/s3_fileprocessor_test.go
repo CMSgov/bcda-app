@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,8 +28,10 @@ type S3ProcessorTestSuite struct {
 func (s *S3ProcessorTestSuite) SetupSuite() {
 	s.basePath = "../../shared_files"
 	s.processor = &S3FileProcessor{
-		Logger:   logrus.StandardLogger(),
-		Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
+		Handler: optout.S3FileHandler{
+			Logger:   logrus.StandardLogger(),
+			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
+		},
 	}
 }
 

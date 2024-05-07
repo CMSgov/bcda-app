@@ -45,15 +45,15 @@ func (s *CCLFTestSuite) SetupTest() {
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 
-	file_handler := &optout.LocalFileHandler{
-		Logger:                 log.API,
-		PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-		FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+	file_processor := &LocalFileProcessor{
+		Handler: optout.LocalFileHandler{
+			Logger:                 log.API,
+			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+		},
 	}
 
-	file_processor := &LocalFileProcessor{}
 	s.importer = CclfImporter{
-		FileHandler:   file_handler,
 		FileProcessor: file_processor,
 	}
 }
