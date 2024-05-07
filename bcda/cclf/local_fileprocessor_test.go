@@ -180,47 +180,47 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
 	}
 }
 
-func (s *LocalFileProcessorTestSuite) TestFileProcessorTestSuite(t *testing.T) {
+func TestFileProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(LocalFileProcessorTestSuite))
 }
 
-func (s *LocalFileProcessorTestSuite) TestStillDownloading(t *testing.T) {
+func (s *LocalFileProcessorTestSuite) TestStillDownloading() {
 	secondsAgo := time.Now().Add(time.Duration(-30) * time.Second)
 	minutesAgo := time.Now().Add(time.Duration(-2) * time.Minute)
 
-	assert.True(t, stillDownloading(secondsAgo))
-	assert.False(t, stillDownloading(minutesAgo))
+	assert.True(s.T(), stillDownloading(secondsAgo))
+	assert.False(s.T(), stillDownloading(minutesAgo))
 }
 
-func (s *LocalFileProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
+func (s *LocalFileProcessorTestSuite) TestMultipleFileTypes() {
 	dir, err := os.MkdirTemp("", "*")
-	assert.NoError(t, err)
+	assert.NoError(s.T(), err)
 	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
 	cclfRefDate := conf.GetEnv("CCLF_REF_DATE")
-	conf.SetEnv(t, "CCLF_REF_DATE", "201201")
-	defer conf.SetEnv(t, "CCLF_REF_DATE", cclfRefDate)
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "201201")
+	defer conf.SetEnv(s.T(), "CCLF_REF_DATE", cclfRefDate)
 	defer os.RemoveAll(dir)
 
 	// Create various CCLF files that have unique perfYear:fileType
-	createZip(t, dir, "T.BCD.A9990.ZCY20.D201113.T0000000", "T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010")
+	createZip(s.T(), dir, "T.BCD.A9990.ZCY20.D201113.T0000000", "T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010")
 	// different perf year
-	createZip(t, dir, "T.BCD.A9990.ZCY19.D201113.T0000000", "T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010")
+	createZip(s.T(), dir, "T.BCD.A9990.ZCY19.D201113.T0000000", "T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010")
 	// different file type
-	createZip(t, dir, "T.BCD.A9990.ZCR20.D201113.T0000000", "T.BCD.A9990.ZC0R20.D201113.T0000010", "T.BCD.A9990.ZC8R20.D201113.T0000010")
+	createZip(s.T(), dir, "T.BCD.A9990.ZCR20.D201113.T0000000", "T.BCD.A9990.ZC0R20.D201113.T0000010", "T.BCD.A9990.ZC8R20.D201113.T0000010")
 	// different perf year and file type
-	createZip(t, dir, "T.BCD.A9990.ZCR19.D201113.T0000000", "T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010")
+	createZip(s.T(), dir, "T.BCD.A9990.ZCR19.D201113.T0000000", "T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010")
 
 	m, skipped, f, err := processCCLFArchives(dir)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, skipped)
-	assert.Equal(t, 0, f)
-	assert.Equal(t, 1, len(m)) // Only one ACO present
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 0, skipped)
+	assert.Equal(s.T(), 0, f)
+	assert.Equal(s.T(), 1, len(m)) // Only one ACO present
 
 	for _, fileMap := range m {
 		// We should contain 4 unique entries, one for each unique perfYear:fileType tuple
-		assert.Equal(t, 4, len(fileMap))
+		assert.Equal(s.T(), 4, len(fileMap))
 		for _, files := range fileMap {
-			assert.Equal(t, 2, len(files)) // each tuple contains two files
+			assert.Equal(s.T(), 2, len(files)) // each tuple contains two files
 		}
 	}
 }

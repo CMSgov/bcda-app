@@ -35,7 +35,7 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 	}
 }
 
-func (s *S3ProcessorTestSuite) TestProcessCCLFArchives() {
+func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 	cmsID, key := "A0001", metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
 	tests := []struct {
 		path         string
@@ -81,21 +81,21 @@ func (s *S3ProcessorTestSuite) TestProcessCCLFArchives() {
 	}
 }
 
-func (s *S3ProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
-	cclfMap, skipped, failure, err := processCCLFArchives("./foo")
+func (s *S3ProcessorTestSuite) TestLoadCclfFiles_InvalidPath() {
+	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles("foo")
 	assert.EqualError(s.T(), err, "error in sorting cclf file: nil,: lstat ./foo: no such file or directory")
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
 	assert.Nil(s.T(), cclfMap)
 }
 
-func (s *S3ProcessorTestSuite) TestS3ProcessorTestSuite(t *testing.T) {
+func TestS3ProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(S3ProcessorTestSuite))
 }
 
-func (s *S3ProcessorTestSuite) TestMultipleFileTypes(t *testing.T) {
+func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
 	// Create various CCLF files that have unique perfYear:fileType
-	bucketName, cleanup := testUtils.CreateZipsInS3(t,
+	bucketName, cleanup := testUtils.CreateZipsInS3(s.T(),
 		testUtils.ZipInput{
 			ZipName:   "T.BCD.A9990.ZCY20.D201113.T0000000",
 			CclfNames: []string{"T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010"},
