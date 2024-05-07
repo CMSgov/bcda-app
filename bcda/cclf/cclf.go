@@ -20,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 )
 
 type cclfFileMetadata struct {
@@ -45,10 +44,11 @@ type cclfFileValidator struct {
 type CclfFileProcessor interface {
 	LoadCclfFiles(path string) (cclfList map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error)
 	CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error
+	// Open a zip archive
+	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
 
 type CclfImporter struct {
-	FileHandler   optout.OptOutFileHandler
 	FileProcessor CclfFileProcessor
 }
 
@@ -63,7 +63,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclf
 	fmt.Printf("Importing CCLF0 file %s...\n", fileMetadata)
 	log.API.Infof("Importing CCLF0 file %s...", fileMetadata)
 
-	r, closeReader, err := importer.FileHandler.OpenZipArchive(fileMetadata.filePath)
+	r, closeReader, err := importer.FileProcessor.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read CCLF0 archive %s.\n", fileMetadata)
 		err := errors.Wrapf(err, "could not read CCLF0 archive %s", fileMetadata)
@@ -199,7 +199,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclf
 		}
 	}()
 
-	r, closeReader, err := importer.FileHandler.OpenZipArchive(fileMetadata.filePath)
+	r, closeReader, err := importer.FileProcessor.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
@@ -392,7 +392,7 @@ func (importer CclfImporter) validate(ctx context.Context, fileMetadata *cclfFil
 		return err
 	}
 
-	r, closeReader, err := importer.FileHandler.OpenZipArchive(fileMetadata.filePath)
+	r, closeReader, err := importer.FileProcessor.OpenZipArchive(fileMetadata.filePath)
 	if err != nil {
 		fmt.Printf("Could not read archive %s.\n", fileMetadata.filePath)
 		err := errors.Wrapf(err, "could not read archive %s", fileMetadata.filePath)

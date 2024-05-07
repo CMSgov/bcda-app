@@ -1,7 +1,6 @@
 package optout
 
 import (
-	"archive/zip"
 	"bufio"
 	"fmt"
 	"os"
@@ -130,18 +129,4 @@ func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilena
 		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 	return nil
-}
-
-func (handler *LocalFileHandler) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
-	reader, err := zip.OpenReader(filePath)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &reader.Reader, func() {
-		err := reader.Close()
-		if err != nil {
-			handler.Logger.Warningf("Could not close zip archive %s", filePath)
-		}
-	}, err
 }

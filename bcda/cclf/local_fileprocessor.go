@@ -24,7 +24,9 @@ type metadataKey struct {
 	fileType models.CCLFFileType
 }
 
-type LocalFileProcessor struct{}
+type LocalFileProcessor struct {
+	Handler optout.LocalFileHandler
+}
 
 func (processor *LocalFileProcessor) LoadCclfFiles(path string) (cclfList map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error) {
 	return processCCLFArchives(path)
@@ -177,8 +179,7 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 					close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
 					defer close()
 
-					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
-					log.API.Infof("Cleaning up file %s", cclf.filePath)
+					processor.Handler.Logger.Infof("Cleaning up file %s.\n", cclf.filePath)
 					folderName := filepath.Base(cclf.filePath)
 					newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 					if !cclf.imported {
@@ -193,12 +194,9 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 							err := os.Rename(cclf.filePath, newpath)
 							if err != nil {
 								errCount++
-								errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
-								fmt.Println(errMsg)
-								log.API.Error(errMsg)
+								processor.Handler.Logger.Error("File %s failed to clean up properly: %v", cclf.filePath, err)
 							} else {
-								fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
-								log.API.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
+								processor.Handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
 							}
 						}
 					} else {
@@ -209,12 +207,9 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 						err := os.Rename(cclf.filePath, newpath)
 						if err != nil {
 							errCount++
-							errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
-							fmt.Println(errMsg)
-							log.API.Error(errMsg)
+							processor.Handler.Logger.Error("File %s failed to clean up properly: %v", cclf.filePath, err)
 						} else {
-							fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
-							log.API.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
+							processor.Handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
 						}
 					}
 				}()
@@ -225,4 +220,18 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 	return nil
+}
+
+func (processor *LocalFileProcessor) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
+	reader, err := zip.OpenReader(filePath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &reader.Reader, func() {
+		err := reader.Close()
+		if err != nil {
+			processor.Handler.Logger.Warningf("Could not close zip archive %s", filePath)
+		}
+	}, err
 }

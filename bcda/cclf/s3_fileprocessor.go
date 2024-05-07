@@ -1,33 +1,24 @@
 package cclf
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/optout"
-	"github.com/sirupsen/logrus"
 )
 
 type S3FileProcessor struct {
-	Logger logrus.FieldLogger
-	// Optional S3 endpoint to use for connection.
-	Endpoint string
-	// Optional role to assume when connecting to S3.
-	AssumeRoleArn string
+	Handler optout.S3FileHandler
 }
 
 func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string]map[metadataKey][]*cclfFileMetadata)
-	handler := optout.S3FileHandler{
-		Logger:        processor.Logger,
-		Endpoint:      processor.Endpoint,
-		AssumeRoleArn: processor.AssumeRoleArn,
-	}
-
 	bucket, prefix := optout.ParseS3Uri(path)
-	s3Objects, err := handler.ListFiles(bucket, prefix)
+	s3Objects, err := processor.Handler.ListFiles(bucket, prefix)
 
 	if err != nil {
 		return cclfMap, skipped, failed, err
@@ -37,15 +28,15 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 		// ignore the opt out file, and don't add it to the skipped count
 		optOut, _ := optout.IsOptOut(path)
 		if optOut {
-			handler.Infof("Skipping opt-out file: %s", path)
+			processor.Handler.Infof("Skipping opt-out file: %s", path)
 			continue
 		}
 
-		zipReader, _, err := handler.OpenZipArchive(path)
+		zipReader, _, err := processor.OpenZipArchive(path)
 
 		if err != nil {
 			failed++
-			handler.Warningf("Failed to open CCLF archive (%s): %s.", path, err)
+			processor.Handler.Warningf("Failed to open CCLF archive (%s): %s.", path, err)
 			continue
 		}
 
@@ -53,14 +44,14 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 		cmsID, err := getCMSID(path)
 		if err != nil {
 			skipped++
-			handler.Warningf("Skipping CCLF archive (%s): %s.", path, err)
+			processor.Handler.Warningf("Skipping CCLF archive (%s): %s.", path, err)
 			continue
 		}
 
 		supported := service.IsSupportedACO(cmsID)
 		if !supported {
 			skipped++
-			handler.Errorf("Skipping CCLF archive (%s): cmsID %s not supported.", path, cmsID)
+			processor.Handler.Errorf("Skipping CCLF archive (%s): cmsID %s not supported.", path, cmsID)
 			continue
 		}
 
@@ -72,7 +63,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			if err != nil {
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 				skipped++
-				handler.Errorf("Unknown file found: %s.", f.Name)
+				processor.Handler.Errorf("Unknown file found: %s.", f.Name)
 				continue
 			}
 
@@ -90,12 +81,6 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 }
 
 func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
-	handler := optout.S3FileHandler{
-		Logger:        processor.Logger,
-		Endpoint:      processor.Endpoint,
-		AssumeRoleArn: processor.AssumeRoleArn,
-	}
-
 	errCount := 0
 
 	for _, cclfFileMap := range cclfMap {
@@ -107,19 +92,19 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 				if !cclf.imported {
 					// Don't do anything. The S3 bucket should have a retention policy that
 					// automatically cleans up files after a specified period of time,
-					handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", cclf.filePath)
+					processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", cclf.filePath)
 					continue
 				}
 
-				handler.Infof("Cleaning up file %s\n", cclf.filePath)
-				err := handler.Delete(cclf.filePath)
+				processor.Handler.Infof("Cleaning up file %s\n", cclf.filePath)
+				err := processor.Handler.Delete(cclf.filePath)
 
 				if err != nil {
 					errCount++
 					continue
 				}
 
-				handler.Infof("File %s successfully ingested and deleted from S3.\n", cclf.filePath)
+				processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", cclf.filePath)
 			}
 		}
 	}
@@ -129,4 +114,16 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 	}
 
 	return nil
+}
+
+func (processor *S3FileProcessor) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
+	byte_arr, err := processor.Handler.OpenFileBytes(filePath)
+
+	if err != nil {
+		processor.Handler.Errorf("Failed to download %s\n", filePath)
+		return nil, nil, err
+	}
+
+	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
+	return reader, func() {}, err
 }

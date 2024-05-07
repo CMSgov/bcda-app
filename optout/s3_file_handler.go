@@ -1,7 +1,6 @@
 package optout
 
 import (
-	"archive/zip"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -105,18 +104,6 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 
 	sc := bufio.NewScanner(bytes.NewReader(byte_arr))
 	return sc, func() {}, err
-}
-
-func (handler *S3FileHandler) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
-	byte_arr, err := handler.OpenFileBytes(filePath)
-
-	if err != nil {
-		handler.Errorf("Failed to download %s\n", filePath)
-		return nil, nil, err
-	}
-
-	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
-	return reader, func() {}, err
 }
 
 func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {

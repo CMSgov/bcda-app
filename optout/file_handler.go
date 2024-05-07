@@ -1,7 +1,6 @@
 package optout
 
 import (
-	"archive/zip"
 	"bufio"
 )
 
@@ -18,6 +17,4 @@ type OptOutFileHandler interface {
 	CleanupOptOutFiles(suppressList []*OptOutFilenameMetadata) error
 	// Open a given opt out file, specified by the metadata struct.
 	OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error)
-	// Open a zip archive
-	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }

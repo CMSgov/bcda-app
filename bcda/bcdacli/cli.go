@@ -377,31 +377,27 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				var file_handler optout.OptOutFileHandler
 				var file_processor cclf.CclfFileProcessor
 
 				if fileSource == "s3" {
-					file_handler = &optout.S3FileHandler{
-						Logger:        log.API,
-						Endpoint:      s3Endpoint,
-						AssumeRoleArn: assumeRoleArn,
-					}
 					file_processor = &cclf.S3FileProcessor{
-						Logger:        log.API,
-						Endpoint:      s3Endpoint,
-						AssumeRoleArn: assumeRoleArn,
+						Handler: optout.S3FileHandler{
+							Logger:        log.API,
+							Endpoint:      s3Endpoint,
+							AssumeRoleArn: assumeRoleArn,
+						},
 					}
 				} else {
-					file_handler = &optout.LocalFileHandler{
-						Logger:                 log.API,
-						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-						FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+					file_processor = &cclf.LocalFileProcessor{
+						Handler: optout.LocalFileHandler{
+							Logger:                 log.API,
+							PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+							FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+						},
 					}
-					file_processor = &cclf.LocalFileProcessor{}
 				}
 
 				importer := cclf.CclfImporter{
-					FileHandler:   file_handler,
 					FileProcessor: file_processor,
 				}
 
