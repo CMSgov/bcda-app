@@ -129,15 +129,15 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 
 	_ = zipWriter.Close()
 
-	file_handler := &optout.LocalFileHandler{
-		Logger:                 log.API,
-		PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-		FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+	file_processor := &cclf.LocalFileProcessor{
+		Handler: optout.LocalFileHandler{
+			Logger:                 log.API,
+			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+		},
 	}
 
-	file_processor := &cclf.LocalFileProcessor{}
 	importer := cclf.CclfImporter{
-		FileHandler:   file_handler,
 		FileProcessor: file_processor,
 	}
 
