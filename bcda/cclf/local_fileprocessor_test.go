@@ -9,14 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,10 +42,16 @@ func (s *LocalFileProcessorTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
-	s.processor = &LocalFileProcessor{}
+	s.processor = &LocalFileProcessor{
+		Handler: optout.LocalFileHandler{
+			Logger:                 log.API,
+			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+		},
+	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
@@ -180,7 +189,7 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
 	}
 }
 
-func TestFileProcessorTestSuite(t *testing.T) {
+func TestLocalFileProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(LocalFileProcessorTestSuite))
 }
 
