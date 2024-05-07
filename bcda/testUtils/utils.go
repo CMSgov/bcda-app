@@ -197,7 +197,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			Body:   f,
 		})
 
-		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket.String(), info.Name())
+		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket.String(), key)
 		return err
 	})
 

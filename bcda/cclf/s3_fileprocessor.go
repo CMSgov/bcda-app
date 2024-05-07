@@ -27,9 +27,22 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 	for _, obj := range s3Objects {
 		// ignore the opt out file, and don't add it to the skipped count
-		optOut, _ := optout.IsOptOut(path)
+		optOut, _ := optout.IsOptOut(*obj.Key)
 		if optOut {
-			processor.Handler.Infof("Skipping opt-out file: %s", path)
+			processor.Handler.Infof("Skipping opt-out file: %s/%s", bucket, *obj.Key)
+			continue
+		}
+
+		// validate the top level zipped folder
+		cmsID, err := getCMSID(*obj.Key)
+		if err != nil {
+			processor.Handler.Warningf("Skipping CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
+			continue
+		}
+
+		supported := service.IsSupportedACO(cmsID)
+		if !supported {
+			processor.Handler.Errorf("Skipping CCLF archive (%s/%s): cmsID %s not supported.", bucket, *obj.Key, cmsID)
 			continue
 		}
 
@@ -37,22 +50,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 		if err != nil {
 			failed++
-			processor.Handler.Warningf("Failed to open CCLF archive (%s): %s.", path, err)
-			continue
-		}
-
-		// validate the top level zipped folder
-		cmsID, err := getCMSID(path)
-		if err != nil {
-			skipped++
-			processor.Handler.Warningf("Skipping CCLF archive (%s): %s.", path, err)
-			continue
-		}
-
-		supported := service.IsSupportedACO(cmsID)
-		if !supported {
-			skipped++
-			processor.Handler.Errorf("Skipping CCLF archive (%s): cmsID %s not supported.", path, cmsID)
+			processor.Handler.Warningf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
 			continue
 		}
 
@@ -63,7 +61,6 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 			if err != nil {
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-				skipped++
 				processor.Handler.Errorf("Unknown file found: %s.", f.Name)
 				continue
 			}

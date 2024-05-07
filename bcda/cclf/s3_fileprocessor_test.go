@@ -21,11 +21,15 @@ import (
 
 type S3ProcessorTestSuite struct {
 	suite.Suite
-	basePath  string
-	processor CclfFileProcessor
+	cclfRefDate string
+	basePath    string
+	processor   CclfFileProcessor
 }
 
 func (s *S3ProcessorTestSuite) SetupSuite() {
+	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
+
 	s.basePath = "../../shared_files"
 	s.processor = &S3FileProcessor{
 		Handler: optout.S3FileHandler{
@@ -33,6 +37,10 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},
 	}
+}
+
+func (s *S3ProcessorTestSuite) TearDownSuite() {
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.cclfRefDate)
 }
 
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
@@ -94,6 +102,11 @@ func TestS3ProcessorTestSuite(t *testing.T) {
 }
 
 func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
+	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
+	cclfRefDate := conf.GetEnv("CCLF_REF_DATE")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "201201")
+	defer conf.SetEnv(s.T(), "CCLF_REF_DATE", cclfRefDate)
+
 	// Create various CCLF files that have unique perfYear:fileType
 	bucketName, cleanup := testUtils.CreateZipsInS3(s.T(),
 		testUtils.ZipInput{
@@ -112,7 +125,7 @@ func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
 		},
 		// different perf year and file type
 		testUtils.ZipInput{
-			ZipName:   "T.BCD.A9990.ZCR20.D201113.T0000000",
+			ZipName:   "T.BCD.A9990.ZCR19.D201113.T0000000",
 			CclfNames: []string{"T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010"},
 		},
 	)
