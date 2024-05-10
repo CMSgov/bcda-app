@@ -125,6 +125,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s", models.JobStatusFailed))
 			logger.Error(err)
 			return err
+		} else {
+			logger.Error("Job failed. Job ID: %s", job.ID)
 		}
 	}
 
