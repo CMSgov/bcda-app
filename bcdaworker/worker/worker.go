@@ -126,7 +126,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			logger.Error(err)
 			return err
 		} else {
-			logger.Error("Job failed. Job ID: %s", job.ID)
+			logger.Error("Job failed. Job ID: %d", job.ID)
 		}
 	}
 
