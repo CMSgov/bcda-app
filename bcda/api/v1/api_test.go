@@ -357,12 +357,15 @@ func (s *APITestSuite) TestServeData() {
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 
 	tests := []struct {
-		name    string
-		headers []string
+		name         string
+		headers      []string
+		gzipExpected bool
 	}{
-		{"gzip-only", []string{"gzip"}},
-		{"gzip", []string{"deflate", "br", "gzip"}},
-		{"non-gzip", nil},
+		{"gzip-only", []string{"gzip"}, true},
+		{"gzip-deflate", []string{"gzip, deflate"}, true},
+		{"gzip-deflate-br-handle", []string{"gzip,deflate, br"}, true},
+		{"gzip", []string{"deflate", "br", "gzip"}, true},
+		{"non-gzip", nil, false},
 	}
 
 	for _, tt := range tests {
@@ -377,10 +380,11 @@ func (s *APITestSuite) TestServeData() {
 			var useGZIP bool
 			for _, h := range tt.headers {
 				req.Header.Add("Accept-Encoding", h)
-				if h == "gzip" {
+				if strings.Contains(h, "gzip") {
 					useGZIP = true
 				}
 			}
+			assert.Equal(t, tt.gzipExpected, useGZIP)
 
 			handler := http.HandlerFunc(ServeData)
 			handler.ServeHTTP(s.rr, req)
