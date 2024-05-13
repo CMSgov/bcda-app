@@ -365,6 +365,7 @@ func (s *APITestSuite) TestServeData() {
 		{"gzip-deflate", []string{"gzip, deflate"}, true},
 		{"gzip-deflate-br-handle", []string{"gzip,deflate, br"}, true},
 		{"gzip", []string{"deflate", "br", "gzip"}, true},
+		{"non-gzip w/ deflate and br", []string{"deflate", "br"}, false},
 		{"non-gzip", nil, false},
 	}
 
