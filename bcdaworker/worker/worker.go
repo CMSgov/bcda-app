@@ -125,6 +125,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s", models.JobStatusFailed))
 			logger.Error(err)
 			return err
+		} else {
+			logger.Error("Job failed. Job ID: ", job.ID)
 		}
 	}
 
@@ -361,6 +363,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
 	defer close()
+	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
@@ -375,7 +378,8 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
-		_, err = w.WriteString(string(entryJSON) + "\n")
+
+		_, err = w.Write(append(entryJSON, '\n'))
 		if err != nil {
 			logger.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
