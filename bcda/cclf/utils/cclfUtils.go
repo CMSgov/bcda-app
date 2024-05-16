@@ -15,6 +15,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/cclf"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 )
 
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
@@ -125,7 +128,20 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	}
 
 	_ = zipWriter.Close()
-	success, failure, skipped, err := cclf.ImportCCLFDirectory(dir)
+
+	file_processor := &cclf.LocalFileProcessor{
+		Handler: optout.LocalFileHandler{
+			Logger:                 log.API,
+			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+		},
+	}
+
+	importer := cclf.CclfImporter{
+		FileProcessor: file_processor,
+	}
+
+	success, failure, skipped, err := importer.ImportCCLFDirectory(dir)
 	if err != nil {
 		return err
 	}
