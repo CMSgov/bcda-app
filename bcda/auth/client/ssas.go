@@ -22,6 +22,8 @@ import (
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/pkg/errors"
+
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 // SSASClient is a client for interacting with the System-to-System Authentication Service.
@@ -306,7 +308,11 @@ func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, 
 	req.Header.Add("transaction-id", r.Context().Value(middleware.CtxTransactionKey).(string))
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
+	txn := newrelic.FromContext(r.Context())
+	s := newrelic.StartExternalSegment(txn, req)
 	resp, err := c.Do(req)
+	s.Response = resp
+	s.End()
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
 			return "", &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}
