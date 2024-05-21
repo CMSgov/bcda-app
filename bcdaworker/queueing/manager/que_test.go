@@ -135,6 +135,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		expLogMsg   string
 	}{
 		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `^queJob \d+ associated with a cancelled parent Job`},
+		{"ParentJobFailed", worker.ErrParentJobFailed, nil, `^queJob \d+ associated with a failed parent Job`},
 		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job \d+ does not contain valid base path`},
 		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found for ID: \d+ acoID.*Will retry`},
 		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
