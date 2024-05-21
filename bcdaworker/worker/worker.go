@@ -55,6 +55,10 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 		return nil, ErrParentJobCancelled
 	}
 
+	if exportJob.Status == models.JobStatusFailed {
+		return nil, ErrParentJobFailed
+	}
+
 	return exportJob, nil
 }
 
@@ -487,4 +491,5 @@ var (
 	ErrNoBasePathSet      = JobError{"empty BBBasePath: Must be set"}
 	ErrParentJobNotFound  = JobError{"parent job not found"}
 	ErrParentJobCancelled = JobError{"parent job cancelled"}
+	ErrParentJobFailed    = JobError{"parent job failed"}
 )
