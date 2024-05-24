@@ -354,28 +354,30 @@ func (s *APITestSuite) TestDeleteJob() {
 }
 
 func (s *APITestSuite) TestServeData() {
-	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../shared_files/gzip_feature_test/")
 
 	tests := []struct {
 		name         string
 		headers      []string
 		gzipExpected bool
+		fileName     string
+		validFile    bool
 	}{
-		{"gzip-only", []string{"gzip"}, true},
-		{"gzip-deflate", []string{"gzip, deflate"}, true},
-		{"gzip-deflate-br-handle", []string{"gzip,deflate, br"}, true},
-		{"gzip", []string{"deflate", "br", "gzip"}, true},
-		{"non-gzip w/ deflate and br", []string{"deflate", "br"}, false},
-		{"non-gzip", nil, false},
+		{"no-header-gzip-encoded", []string{""}, false, "test_gzip_encoded.ndjson", true},
+		{"yes-header-gzip-encoded", []string{"gzip"}, true, "test_gzip_encoded.ndjson", true},
+		{"yes-header-not-encoded", []string{"gzip"}, true, "test_no_encoding.ndjson", true},
+		{"bad file name", []string{""}, false, "not_a_real_file", false},
+		{"single byte file", []string{""}, false, "single_byte_file.bin", false},
+		{"no-header-corrupt-file", []string{""}, false, "corrupt_gz_file.ndjson", false}, //This file is kind of cool. has magic number, but otherwise arbitrary data.
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			defer s.SetupTest()
-			req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
+			req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s", tt.fileName), nil)
 
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("fileName", "test.ndjson")
+			rctx.URLParams.Add("fileName", tt.fileName)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			var useGZIP bool
@@ -389,6 +391,11 @@ func (s *APITestSuite) TestServeData() {
 
 			handler := http.HandlerFunc(ServeData)
 			handler.ServeHTTP(s.rr, req)
+
+			if !tt.validFile {
+				assert.Equal(t, http.StatusInternalServerError, s.rr.Code)
+				return
+			}
 
 			assert.Equal(t, http.StatusOK, s.rr.Code)
 			assert.Equal(t, "application/fhir+ndjson", s.rr.Result().Header.Get(constants.ContentType))
@@ -407,7 +414,7 @@ func (s *APITestSuite) TestServeData() {
 				b = s.rr.Body.Bytes()
 			}
 
-			assert.Contains(t, string(b), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
+			assert.Contains(t, string(b), `{"billablePeriod":{"end":"2016-10-30","start":"2016-10-30"},"contained":[{"birthDate":"1953-05-18","gender":"male","id":"patient","identifier":[{"system":"http://hl7.org/fhir/sid/us-mbi","type":{"coding":[{"code":"MC","display":"Patient's Medicare Number","system":"http://terminology.hl7.org/CodeSystem/v2-0203"}]},"value":"1S00E00KW61"}],"name":[{"family":"Quitzon246","given":["Rodolfo763"],"text":"Rodolfo763 Quitzon246 ([max 10 chars of first], [max 15 chars of last])"}],"resourceType":"Patient"},{"id":"provider-org","identifier":[{"system":"https://bluebutton.cms.gov/resources/variables/fiss/meda-prov-6","type":{"coding":[{"code":"PRN","display":"Provider number","system":"http://terminology.hl7.org/CodeSystem/v2-0203"}]},"value":"450702"},{"system":"https://bluebutton.cms.gov/resources/variables/fiss/fed-tax-nb","type":{"coding":[{"code":"TAX","display":"Tax ID number","system":"http://terminology.hl7.org/CodeSystem/v2-0203"}]},"value":"XX-XXXXXXX"},{"system":"http://hl7.org/fhir/sid/us-npi","type":{"coding":[{"code":"npi","display":"National Provider Identifier","system":"http://hl7.org/fhir/us/carin-bb/CodeSystem/C4BBIdentifierType"}]},"value":"8884381863"}],"resourceType":"Organization"}],"created":"2024-04-19T11:37:21-04:00","diagnosis":[{"diagnosisCodeableConcept":{"coding":[{"code":"P292","system":"http://hl7.org/fhir/sid/icd-10-cm"}]},"sequence":0}],"extension":[{"url":"https://bluebutton.cms.gov/resources/variables/fiss/serv-typ-cd","valueCoding":{"code":"2","system":"https://bluebutton.cms.gov/resources/variables/fiss/serv-typ-cd"}}],"facility":{"extension":[{"url":"https://bluebutton.cms.gov/resources/variables/fiss/lob-cd","valueCoding":{"code":"2","system":"https://bluebutton.cms.gov/resources/variables/fiss/lob-cd"}}]},"id":"f-LTEwMDE5NTYxNA","identifier":[{"system":"https://bluebutton.cms.gov/resources/variables/fiss/dcn","type":{"coding":[{"code":"uc","display":"Unique Claim ID","system":"http://hl7.org/fhir/us/carin-bb/CodeSystem/C4BBIdentifierType"}]},"value":"dcn-100195614"}],"insurance":[{"coverage":{"identifier":{"system":"https://bluebutton.cms.gov/resources/variables/fiss/payers-name","value":"MEDICARE"}},"focal":true,"sequence":0}],"meta":{"lastUpdated":"2023-04-13T18:18:27.334-04:00"},"patient":{"reference":"#patient"},"priority":{"coding":[{"code":"normal","display":"Normal","system":"http://terminology.hl7.org/CodeSystem/processpriority"}]},"provider":{"reference":"#provider-org"},"resourceType":"Claim","status":"active","supportingInfo":[{"category":{"coding":[{"code":"typeofbill","display":"Type of Bill","system":"http://hl7.org/fhir/us/carin-bb/CodeSystem/C4BBSupportingInfoType"}]},"code":{"coding":[{"code":"1","system":"https://bluebutton.cms.gov/resources/variables/fiss/freq-cd"}]},"sequence":1}],"total":{"currency":"USD","value":639.66},"type":{"coding":[{"code":"institutional","display":"Institutional","system":"http://terminology.hl7.org/CodeSystem/claim-type"}]},"use":"claim"}`)
 
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -290,9 +291,7 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 
 	encoded, err := isGzipEncoded(filePath)
 	if err != nil {
-		log.API.Error(err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
+		writeServeDataFailure(err, w)
 	}
 
 	var useGZIP bool
@@ -321,32 +320,34 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 			//We'll do the following: 1. Open file, 2. De-compress it, 3. Serve it up.
 			file, err := os.Open(filePath)
 			if err != nil {
-				log.API.Error(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				writeServeDataFailure(err, w)
 				return
 			}
 			defer file.Close()
 			gzipReader, err := gzip.NewReader(file)
 			if err != nil {
-				log.API.Error(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				writeServeDataFailure(err, w)
 				return
 			}
 			defer gzipReader.Close()
 			_, err = io.Copy(w, gzipReader)
 			if err != nil {
-				log.API.Error(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				writeServeDataFailure(err, w)
 				return
 			}
 		} else {
 			http.ServeFile(w, r, filePath)
 		}
-
 	}
 }
 
-// This function reads a file's magic number, to determine if it is gzipEncoded or not.
+// This function is not necessary, but helps meet the sonarQube quality gates
+func writeServeDataFailure(err error, w http.ResponseWriter) {
+	log.API.Error(err)
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+}
+
+// This function reads a file's magic number, to determine if it is gzip-encoded or not.
 func isGzipEncoded(filePath string) (encoded bool, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -360,8 +361,9 @@ func isGzipEncoded(filePath string) (encoded bool, err error) {
 		return false, err
 	}
 
+	//We can't compare to a magic number if there's less than 2 bytes returned. Also can't be ndjson
 	if bytesRead < 2 {
-		return false, nil
+		return false, errors.New("Invalid file with length 1 byte.")
 	}
 
 	comparison := []byte{0x1f, 0x8b}
