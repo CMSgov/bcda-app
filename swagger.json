@@ -1,0 +1,3896 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Beneficiary Claims Data API",
+    "description": "The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.\n\nIf you have a Client ID and Secret you can use this page to explore the API.  To do this:\n1. Click the green \"Authorize\" button below and enter your Client ID and secret in the Basic Authentication boxes.\n2. Request a bearer token from /auth/token\n3. Click the green \"Authorize\" button below and put \"Bearer {YOUR_TOKEN}\" in the bearer_token box.\n\nUntil you click logout your token will be presented with every request made.  To make requests click on the\n\"Try it out\" button for the desired endpoint.",
+    "contact": {
+      "email": "bcapi@cms.hhs.gov"
+    },
+    "license": {
+      "name": "Public Domain",
+      "url": "https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+
+  ],
+  "paths": {
+    "/_auth": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get details about auth",
+        "description": "Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).",
+        "operationId": "getAuthInfo",
+        "responses": {
+          "200": {
+            "description": "JSON object containing an auth_provider field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "auth_provider"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "auth_provider": {
+                      "type": "string",
+                      "x-go-name": "Version"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/_version": {
+      "get": {
+        "tags": [
+          "metadata"
+        ],
+        "summary": "Get API version",
+        "description": "Returns the version of the API that is currently running. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).",
+        "operationId": "getVersion",
+        "responses": {
+          "200": {
+            "description": "JSON object containing a version field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "version"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "string",
+                      "x-go-name": "Version"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/Group/{groupId}/$export": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "summary": "Start FHIR STU3 data export job for the specified group identifier and resource type(s)",
+        "description": "Initiates a job to collect data from the Beneficiary FHIR Data API for your ACO. The supported Group identifiers are `all` and `runout`. The `all` identifier returns data for the group of all patients attributed to the requesting ACO. The `runout` identifier returns claims runouts data. \n\nIf used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.\n\n",
+        "operationId": "bulkGroupRequest",
+        "parameters": [
+          {
+            "name": "_type",
+            "in": "query",
+            "description": "Resource type(s) requested. When left empty, will return all available resource types. TODO: return resource types here?",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "x-go-name": "ResourceType"
+            },
+            "x-go-name": "ResourceType"
+          },
+          {
+            "name": "_since",
+            "in": "query",
+            "description": "Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR Instant datatype (i.e., `2020-02-13T08:00:00.000-05:00`)",
+            "schema": {
+              "type": "string",
+              "x-go-name": "DateTime"
+            },
+            "x-go-name": "DateTime"
+          },
+          {
+            "name": "Prefer",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "respond-async"
+              ]
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "ID of group export",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "runout"
+              ],
+              "x-go-name": "GroupID"
+            },
+            "x-go-name": "GroupID"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "A data export job has been started successfully. ",
+            "headers": {
+              "Content-Location": {
+                "description": "Returns a URI to the jobs status endpoint, along with the job id. `/jobs/<jobId>`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          },
+          "400": {
+            "description": "Malformed request",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "429": {
+            "description": "Too many requests. A bulk export job of this resource type is already in progress for the ACO.",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/Patient/$export": {
+      "get": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Start FHIR STU3 data export job for the specified group identifier and resource type(s)",
+        "description": "Initiates a job to collect data from the Beneficiary FHIR Data API for your ACO.  \n\nIf used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date.\n\n",
+        "operationId": "bulkPatientRequest",
+        "parameters": [
+          {
+            "name": "_type",
+            "in": "query",
+            "description": "Resource types requested",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "x-go-name": "ResourceType"
+            },
+            "x-go-name": "ResourceType"
+          },
+          {
+            "name": "_since",
+            "in": "query",
+            "description": "Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR Instant datatype (i.e., `2020-02-13T08:00:00.000-05:00`)",
+            "schema": {
+              "type": "string",
+              "x-go-name": "DateTime"
+            },
+            "x-go-name": "DateTime"
+          },
+          {
+            "name": "Prefer",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "respond-async"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "A data export job has been started successfully. ",
+            "headers": {
+              "Content-Location": {
+                "description": "Returns a URI to the jobs status endpoint, along with the job id. `/jobs/<jobId>`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          },
+          "400": {
+            "description": "Malformed request",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "429": {
+            "description": "Too many requests. A bulk export job of this resource type is already in progress for the ACO.",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error. ",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attribution_status": {
+      "get": {
+        "tags": [
+          "attribution"
+        ],
+        "summary": "Get attribution status",
+        "description": "Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the attribution Type to identify which ingestion and a Timestamp for the last time it was updated.",
+        "operationId": "attributionStatus",
+        "responses": {
+          "200": {
+            "description": "Successful request. Response will contain an attribution type(s) of `last_attribution_update`, `last_runout_update`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttributionFilesParam"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attribution data was found. ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Get job(s) by status",
+        "description": "Returns the current statuses of all current and past export jobs, along with the original job request url. Supported status types are: \n\n - Completed\n\n - Archived\n\n - Expired\n\n - Failed\n\n - FailedExpired\n\n - In Progress\n\n - Pending\n\n - Cancelled\n\n - CancelledExpired\n\n If no status(s) is provided, all jobs will be returned.\n\nNote on job status to fhir task resource status mapping:\nDue to the fhir task status field having a smaller set of values, the following statuses will be set to different fhir values in the response\n\n - Archived, Expired -> Completed\n\n - FailedExpired -> Failed\n\n - Pending -> In Progress\n\n - CancelledExpired -> Cancelled\n\nThough the status name has been remapped the response will still only contain jobs pertaining to the provided job status in the request.",
+        "operationId": "jobsStatus",
+        "parameters": [
+          {
+            "name": "_status",
+            "in": "query",
+            "description": "Job statuses requested",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              "x-go-name": "Status"
+            },
+            "x-go-name": "Status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON object containing statuses of all current and previously requested jobs. The body will contain a FHIR Bundle resource in JSON format https://www.hl7.org/fhir/bundle.html and FHIR Task resources for the Bundle entries in JSON format https://www.hl7.org/fhir/task.html",
+            "headers": {
+              "Body": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BundleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request; check URI and parameters are correct. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The requested resource is no longer available. Completed jobs expire after 24 hours; request the data again. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/{jobId}": {
+      "get": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Get job status and file location(s)",
+        "description": "Returns the current status of an export job and ndjson file locations, if available. The file locations will be under `output` and any job processing that encountered errors will be written to _<...-error.ndjson>_ files and located under `errors`.",
+        "operationId": "jobStatus",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "ID of data export job",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "x-go-name": "JobID"
+            },
+            "x-go-name": "JobID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResponseBody"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Data export job is in progress.",
+            "headers": {
+              "X-Progress": {
+                "description": "The status of the job progress",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          },
+          "400": {
+            "description": "Malformed request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Cancel a job",
+        "description": "Cancels a currently running job.",
+        "operationId": "deleteJob",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "ID of data export job",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "x-go-name": "JobID"
+            },
+            "x-go-name": "JobID"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The job has been cancelled. No data will be available for download.",
+            "content": {}
+          },
+          "400": {
+            "description": "There was a problem with the request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/metadata": {
+      "get": {
+        "tags": [
+          "metadata"
+        ],
+        "summary": "Get metadata",
+        "description": "Returns metadata about the API.",
+        "operationId": "metadata",
+        "responses": {
+          "200": {
+            "description": "FHIR CapabilityStatement in JSON format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityStatement"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/Group/{groupId}/$export": {
+      "get": {
+        "tags": [
+          "group"
+        ],
+        "summary": "Start FHIR R4 data export job for the specified group identifier and resource type(s)",
+        "description": "Initiates a job to collect data from the Beneficiary FHIR Data API for your ACO. The supported Group identifiers are `all` and `runout`. The `all` identifier returns data for the group of all patients attributed to the requesting ACO. The `runout` identifier returns claims runouts data. \n\nIf used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.\n\n",
+        "operationId": "bulkGroupRequestV2",
+        "parameters": [
+          {
+            "name": "_type",
+            "in": "query",
+            "description": "Resource type(s) requested. When left empty, will return all available resource types. _Note_: Claim and ClaimResponse are only available to REACH ACOs.",
+            "required": true,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "Coverage",
+                  "Patient",
+                  "ExplanationOfBenefit",
+                  "Claim",
+                  "ClaimResponse"
+                ]
+              },
+              "x-go-name": "ResourceType"
+            },
+            "x-go-name": "ResourceType"
+          },
+          {
+            "name": "_since",
+            "in": "query",
+            "description": "Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR Instant datatype (i.e., `2020-02-13T08:00:00.000-05:00`)",
+            "schema": {
+              "type": "string",
+              "x-go-name": "DateTime"
+            },
+            "x-go-name": "DateTime"
+          },
+          {
+            "name": "Prefer",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "respond-async"
+              ]
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "ID of group export",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "runout"
+              ],
+              "x-go-name": "GroupID"
+            },
+            "x-go-name": "GroupID"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "A data export job has been started successfully. ",
+            "headers": {
+              "Content-Location": {
+                "description": "Returns a URI to the jobs status endpoint, along with the job id. `/jobs/<jobId>`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          },
+          "400": {
+            "description": "Malformed request",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "429": {
+            "description": "Too many requests. A bulk export job of this resource type is already in progress for the ACO.",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v2/Patient/$export": {
+      "get": {
+        "tags": [
+          "patient"
+        ],
+        "summary": "Start FHIR R4 data export job for the specified group identifier and resource type(s)",
+        "description": "Initiates a job to collect data from the Beneficiary FHIR Data API for your ACO.  \n\nIf used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date.\n\n",
+        "operationId": "bulkPatientRequestv2",
+        "parameters": [
+          {
+            "name": "_type",
+            "in": "query",
+            "description": "Resource types requested",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "x-go-name": "ResourceType"
+            },
+            "x-go-name": "ResourceType"
+          },
+          {
+            "name": "_since",
+            "in": "query",
+            "description": "Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR Instant datatype (i.e., `2020-02-13T08:00:00.000-05:00`)",
+            "schema": {
+              "type": "string",
+              "x-go-name": "DateTime"
+            },
+            "x-go-name": "DateTime"
+          },
+          {
+            "name": "Prefer",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "respond-async"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "A data export job has been started successfully. ",
+            "headers": {
+              "Content-Location": {
+                "description": "Returns a URI to the jobs status endpoint, along with the job id. `/jobs/<jobId>`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          },
+          "400": {
+            "description": "Malformed request",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "429": {
+            "description": "Too many requests. A bulk export job of this resource type is already in progress for the ACO.",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error. ",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v2/attribution_status": {
+      "get": {
+        "tags": [
+          "attribution"
+        ],
+        "summary": "Get attribution status",
+        "description": "Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the attribution Type to identify which ingestion and a Timestamp for the last time it was updated.",
+        "operationId": "attributionStatusv2",
+        "responses": {
+          "200": {
+            "description": "Successful request. Response will contain an attribution type(s) of `last_attribution_update`, `last_runout_update`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttributionFilesParam"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No attribution data was found. ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v2/jobs": {
+      "get": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Get job(s) by status",
+        "description": "Returns the current statuses of all current and past export jobs, along with the original job request url. Supported status types are: \n\n - Completed\n\n - Archived\n\n - Expired\n\n - Failed\n\n - FailedExpired\n\n - In Progress\n\n - Pending\n\n - Cancelled\n\n - CancelledExpired\n\n If no status(s) is provided, all jobs will be returned.\n\nNote on job status to fhir task resource status mapping:\nDue to the fhir task status field having a smaller set of values, the following statuses will be set to different fhir values in the response\n\n - Archived, Expired -> Completed\n\n - FailedExpired -> Failed\n\n - Pending -> In Progress\n\n - CancelledExpired -> Cancelled\n\nThough the status name has been remapped the response will still only contain jobs pertaining to the provided job status in the request.",
+        "operationId": "jobsStatusV2",
+        "parameters": [
+          {
+            "name": "_status",
+            "in": "query",
+            "description": "Job statuses requested",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              "x-go-name": "Status"
+            },
+            "x-go-name": "Status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON object containing statuses of all current and previously requested jobs. The body will contain a FHIR Bundle resource in JSON format https://www.hl7.org/fhir/bundle.html and FHIR Task resources for the Bundle entries in JSON format https://www.hl7.org/fhir/task.html",
+            "headers": {
+              "Body": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BundleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request; check URI and parameters are correct. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The requested resource is no longer available. Completed jobs expire after 24 hours; request the data again. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred. The body will contain a FHIR OperationOutcome resource in JSON format: https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v2/jobs/{jobId}": {
+      "get": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Get job status and file location(s)",
+        "description": "Returns the current status of an export job and ndjson file locations, if available. The file locations will be under `output` and any job processing that encountered errors will be written to _<...-error.ndjson>_ files and located under `errors`.",
+        "operationId": "jobStatusidv2",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "ID of data export job",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "x-go-name": "JobID"
+            },
+            "x-go-name": "JobID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResponseBody"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Data export job is in progress.",
+            "headers": {
+              "X-Progress": {
+                "description": "The status of the job progress",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {}
+          },
+          "400": {
+            "description": "Malformed request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "job"
+        ],
+        "summary": "Cancel a job",
+        "description": "Cancels a currently running job.",
+        "operationId": "deleteJobv2",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "ID of data export job",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "x-go-name": "JobID"
+            },
+            "x-go-name": "JobID"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The job has been cancelled. No data will be available for download.",
+            "content": {}
+          },
+          "400": {
+            "description": "There was a problem with the request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/api/v2/metadata": {
+      "get": {
+        "tags": [
+          "metadata"
+        ],
+        "summary": "Get metadata",
+        "description": "Returns metadata about the API.",
+        "operationId": "metadatav2",
+        "responses": {
+          "200": {
+            "description": "FHIR CapabilityStatement in JSON format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityStatement"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get access token",
+        "description": "Verifies Basic authentication credentials, and returns a JWT bearer token that can be presented to the other API endpoints.",
+        "operationId": "GetAuthToken",
+        "responses": {
+          "200": {
+            "description": "JSON with a valid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "access_token"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "access_token": {
+                      "type": "string",
+                      "x-go-name": "AccessToken"
+                    },
+                    "expires_in": {
+                      "type": "string",
+                      "x-go-name": "ExpiresIn"
+                    },
+                    "token_type": {
+                      "type": "string",
+                      "x-go-name": "TokenType"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing credentials",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "500": {
+            "description": "Server error",
+            "content": {}
+          }
+        },
+        "security": [
+          {
+            "basic_auth": []
+          }
+        ]
+      }
+    },
+    "/auth/welcome": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Test authentication",
+        "description": "If a valid token is presented, show a welcome message.",
+        "operationId": "welcome",
+        "responses": {
+          "200": {
+            "description": "Welcome message",
+            
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    },
+    "/data/{jobId}/{filename}": {
+      "get": {
+        "tags": [
+          "data"
+        ],
+        "summary": "Get data file",
+        "description": "Returns the NDJSON file of data generated by an export job, which can be found via the jobs/{jobId} response.  Will be in the format <UUID>.ndjson or <UUID>-error.ndjson. Gzip is highly encouraged for faster downloads.",
+        "operationId": "serveData",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "ID of data export job",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "x-go-name": "JobID"
+            },
+            "x-go-name": "JobID"
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "description": "Name of file to be downloaded",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-go-name": "Filename"
+            },
+            "x-go-name": "Filename"
+          },
+          {
+            "name": "Accept-Encoding",
+            "in": "header",
+            "description": "Encoding type to use",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gzip"
+              ],
+              "x-go-name": "AcceptEncoding"
+            },
+            "x-go-name": "AcceptEncoding"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File of newline-delimited JSON FHIR objects",
+            "headers": {
+              "Content-Encoding": {
+                "description": "Header defining encoding type used",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "gzip"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NDJSON"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html.",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+            "content": {}
+          },
+          "404": {
+            "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+            "content": {
+              "application/fhir+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOutcomeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AttributionFilesParam": {
+        "type": "object",
+        "properties": {
+          "ingestion_dates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestionDatesStatusParam"
+            },
+            "x-go-name": "IngestionDates"
+          }
+        },
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "Base64Binary": {
+        "description": "Auto-generated from StructureDefinition for base64Binary, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type base64Binary. See\nhttp://hl7.org/fhir/StructureDefinition/base64Binary",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for base64Binary",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8"
+            },
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "BulkResponseBody": {
+        "type": "object",
+        "properties": {
+          "JobID": {
+            "type": "integer",
+            "format": "uint64"
+          },
+          "error": {
+            "description": "Information about error files, including URLs for downloading",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/fileItem"
+            },
+            "x-go-name": "Errors"
+          },
+          "output": {
+            "description": "Information about generated data files, including URLs for downloading",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/fileItem"
+            },
+            "x-go-name": "Files"
+          },
+          "request": {
+            "description": "URL of the bulk data export request",
+            "type": "string",
+            "x-go-name": "RequestURL"
+          },
+          "requiresAccessToken": {
+            "description": "Indicates whether an access token is required to download generated data files",
+            "type": "boolean",
+            "x-go-name": "RequiresAccessToken"
+          },
+          "transactionTime": {
+            "description": "Server time when the query was run",
+            "type": "string",
+            "format": "date-time",
+            "x-go-name": "TransactionTime"
+          }
+        },
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/api"
+      },
+      "BundleResponse": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntryResponse"
+            },
+            "x-go-name": "Entry"
+          },
+          "resourceType": {
+            "description": "Bundle",
+            "type": "string",
+            "x-go-name": "ResourceType"
+          },
+          "total": {
+            "description": "Total number of entries",
+            "type": "integer",
+            "format": "int64",
+            "x-go-name": "Total"
+          },
+          "type": {
+            "description": "Searchset",
+            "type": "string",
+            "x-go-name": "Type"
+          }
+        },
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "CapabilityStatement": {
+        "description": "Auto-generated from StructureDefinition for CapabilityStatement, last updated\n2017-04-19T07:44:43.294+10:00. A statement of system capabilities. See\nhttp://hl7.org/fhir/StructureDefinition/CapabilityStatement",
+        "type": "object",
+        "properties": {
+          "accept_unknown": {
+            "$ref": "#/components/schemas/UnknownContentCodeCode"
+          },
+          "contact": {
+            "description": "Contact details for the publisher",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactDetail"
+            },
+            "x-go-name": "Contact"
+          },
+          "contained": {
+            "description": "Contained, inline Resources",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContainedResource"
+            },
+            "x-go-name": "Contained"
+          },
+          "copyright": {
+            "$ref": "#/components/schemas/Markdown"
+          },
+          "date": {
+            "type": "string"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Markdown"
+          },
+          "document": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Document"
+            },
+            "x-go-name": "Document"
+          },
+          "experimental": {
+            "type": "boolean"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "fhir_version": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "format": {
+            "description": "formats supported (xml | json | ttl | mime type)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MimeTypeCode"
+            },
+            "x-go-name": "Format"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "implementation": {
+            "$ref": "#/components/schemas/CapabilityStatement_Implementation"
+          },
+          "implementation_guide": {
+            "description": "Implementation guides supported",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uri"
+            },
+            "x-go-name": "ImplementationGuide"
+          },
+          "implicit_rules": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "instantiates": {
+            "description": "Canonical URL of another capability statement this implements",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uri"
+            },
+            "x-go-name": "Instantiates"
+          },
+          "jurisdiction": {
+            "description": "Intended jurisdiction for capability statement (if applicable)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodeableConcept"
+            },
+            "x-go-name": "Jurisdiction"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/LanguageCode"
+          },
+          "messaging": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Messaging"
+            },
+            "x-go-name": "Messaging"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "name": {
+            "$ref": "#/components/schemas/String"
+          },
+          "patch_format": {
+            "description": "Patch formats supported",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MimeTypeCode"
+            },
+            "x-go-name": "PatchFormat"
+          },
+          "profile": {
+            "description": "Profiles for use cases supported",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "x-go-name": "Profile"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/Markdown"
+          },
+          "rest": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest"
+            },
+            "x-go-name": "Rest"
+          },
+          "software": {
+            "$ref": "#/components/schemas/CapabilityStatement_Software"
+          },
+          "status": {
+            "type":"string"
+          },
+          "text": {
+            "$ref": "#/components/schemas/Narrative"
+          },
+          "title": {
+            "$ref": "#/components/schemas/String"
+          },
+          "url": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "use_context": {
+            "description": "Context the content is intended to support",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageContext"
+            },
+            "x-go-name": "UseContext"
+          },
+          "version": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatementKindCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/capability-statement-kind",
+        "type": "object",
+        "title": "How a capability statement is intended to be used.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/CapabilityStatementKindCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "CapabilityStatementKindCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "CapabilityStatement_Document": {
+        "description": "Document definition",
+        "type": "object",
+        "properties": {
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/DocumentModeCode"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Reference"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Implementation": {
+        "description": "If this describes a specific instance",
+        "type": "object",
+        "properties": {
+          "description": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "url": {
+            "$ref": "#/components/schemas/Uri"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Messaging": {
+        "description": "If messaging is supported",
+        "type": "object",
+        "properties": {
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "endpoint": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Messaging_Endpoint"
+            },
+            "x-go-name": "Endpoint"
+          },
+          "event": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Messaging_Event"
+            },
+            "x-go-name": "Event"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "reliable_cache": {
+            "$ref": "#/components/schemas/UnsignedInt"
+          },
+          "supported_message": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Messaging_SupportedMessage"
+            },
+            "x-go-name": "SupportedMessage"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Messaging_Endpoint": {
+        "description": "Where messages should be sent",
+        "type": "object",
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/Coding"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Messaging_Event": {
+        "description": "Declare support for this event",
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/MessageSignificanceCategoryCode"
+          },
+          "code": {
+            "$ref": "#/components/schemas/Coding"
+          },
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "focus": {
+            "$ref": "#/components/schemas/ResourceTypeCode"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/EventCapabilityModeCode"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "request": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "response": {
+            "$ref": "#/components/schemas/Reference"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Messaging_SupportedMessage": {
+        "description": "Messages supported by this system",
+        "type": "object",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/EventCapabilityModeCode"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest": {
+        "description": "If the endpoint is a RESTful one",
+        "type": "object",
+        "properties": {
+          "compartment": {
+            "description": "Compartments served/used by system",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uri"
+            },
+            "x-go-name": "Compartment"
+          },
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "interaction": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_SystemInteraction"
+            },
+            "x-go-name": "Interaction"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/RestfulCapabilityModeCode"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "operation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_Operation"
+            },
+            "x-go-name": "Operation"
+          },
+          "resource": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_Resource"
+            },
+            "x-go-name": "Resource"
+          },
+          "search_param": {
+            "description": "Search parameters for searching all resources",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_Resource_SearchParam"
+            },
+            "x-go-name": "SearchParam"
+          },
+          "security": {
+            "$ref": "#/components/schemas/CapabilityStatement_Rest_Security"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_Operation": {
+        "description": "Definition of an operation or a custom query",
+        "type": "object",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "name": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_Resource": {
+        "description": "Resource served on the REST interface",
+        "type": "object",
+        "properties": {
+          "conditional_create": {
+            "type": "boolean"
+          },
+          "conditional_delete": {
+            "$ref": "#/components/schemas/ConditionalDeleteStatusCode"
+          },
+          "conditional_read": {
+            "$ref": "#/components/schemas/ConditionalReadStatusCode"
+          },
+          "conditional_update": {
+            "type": "boolean"
+          },
+          "documentation": {
+            "$ref": "#/components/schemas/Markdown"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "interaction": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_Resource_ResourceInteraction"
+            },
+            "x-go-name": "Interaction"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "read_history": {
+            "type": "boolean"
+          },
+          "reference_policy": {
+            "description": "literal | logical | resolves | enforced | local",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceHandlingPolicyCode"
+            },
+            "x-go-name": "ReferencePolicy"
+          },
+          "search_include": {
+            "description": "_include values supported by the server",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/String"
+            },
+            "x-go-name": "SearchInclude"
+          },
+          "search_param": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_Resource_SearchParam"
+            },
+            "x-go-name": "SearchParam"
+          },
+          "search_rev_include": {
+            "description": "_revinclude values supported by the server",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/String"
+            },
+            "x-go-name": "SearchRevInclude"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ResourceTypeCode"
+          },
+          "update_create": {
+            "type": "boolean"
+          },
+          "versioning": {
+            "$ref": "#/components/schemas/ResourceVersionPolicyCode"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_Resource_ResourceInteraction": {
+        "type": "object",
+        "title": "What operations are supported?",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/TypeRestfulInteractionCode"
+          },
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_Resource_SearchParam": {
+        "description": "Search parameters supported by implementation",
+        "type": "object",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "name": {
+            "$ref": "#/components/schemas/String"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SearchParamTypeCode"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_Security": {
+        "description": "Information about security of implementation",
+        "type": "object",
+        "properties": {
+          "certificate": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapabilityStatement_Rest_Security_Certificate"
+            },
+            "x-go-name": "Certificate"
+          },
+          "cors": {
+            "type": "boolean"
+          },
+          "description": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "service": {
+            "description": "OAuth | SMART-on-FHIR | NTLM | Basic | Kerberos | Certificates",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CodeableConcept"
+            },
+            "x-go-name": "Service"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_Security_Certificate": {
+        "description": "Certificates associated with security profiles",
+        "type": "object",
+        "properties": {
+          "blob": {
+            "$ref": "#/components/schemas/Base64Binary"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MimeTypeCode"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Rest_SystemInteraction": {
+        "type": "object",
+        "title": "What operations are supported?",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/SystemRestfulInteractionCode"
+          },
+          "documentation": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "CapabilityStatement_Software": {
+        "description": "Software that is covered by this capability statement",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "modifier_extension": {
+            "description": "Extensions that cannot be ignored",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "ModifierExtension"
+          },
+          "name": {
+            "$ref": "#/components/schemas/String"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "Code": {
+        "description": "Auto-generated from StructureDefinition for code, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type code. See\nhttp://hl7.org/fhir/StructureDefinition/code",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for code",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "CodeableConcept": {
+        "description": "Auto-generated from StructureDefinition for CodeableConcept, last updated\n2017-04-19T07:44:43.294+10:00. Concept - reference to a terminology or just\ntext. See http://hl7.org/fhir/StructureDefinition/CodeableConcept",
+        "type": "object",
+        "properties": {
+          "coding": {
+            "description": "Code defined by a terminology system",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coding"
+            },
+            "x-go-name": "Coding"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "text": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Coding": {
+        "description": "Auto-generated from StructureDefinition for Coding, last updated\n2017-04-19T07:44:43.294+10:00. A reference to a code defined by a terminology\nsystem. See http://hl7.org/fhir/StructureDefinition/Coding",
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/Code"
+          },
+          "display": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "system": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "user_selected": {
+            "type": "boolean"
+          },
+          "version": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ConditionalDeleteStatusCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/conditional-delete-status",
+        "type": "object",
+        "title": "A code that indicates how the server supports conditional delete.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ConditionalDeleteStatusCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ConditionalDeleteStatusCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ConditionalReadStatusCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/conditional-read-status",
+        "type": "object",
+        "title": "A code that indicates how the server supports conditional read.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ConditionalReadStatusCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ConditionalReadStatusCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ContactDetail": {
+        "description": "Auto-generated from StructureDefinition for ContactDetail, last updated\n2017-04-19T07:44:43.294+10:00. Contact information. See\nhttp://hl7.org/fhir/StructureDefinition/ContactDetail",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "name": {
+            "$ref": "#/components/schemas/String"
+          },
+          "telecom": {
+            "description": "Contact details for individual or organization",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactPoint"
+            },
+            "x-go-name": "Telecom"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/metadatatypes_go_proto"
+      },
+      "ContactPoint": {
+        "description": "Auto-generated from StructureDefinition for ContactPoint, last updated\n2017-04-19T07:44:43.294+10:00. Details of a Technology mediated contact point\n(phone, fax, email, etc.). See\nhttp://hl7.org/fhir/StructureDefinition/ContactPoint",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "rank": {
+            "$ref": "#/components/schemas/PositiveInt"
+          },
+          "system": {
+            "$ref": "#/components/schemas/ContactPointSystemCode"
+          },
+          "use": {
+            "$ref": "#/components/schemas/ContactPointUseCode"
+          },
+          "value": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ContactPointSystemCode": {
+        "description": "Telecommunications form for contact point\nSee http://hl7.org/fhir/ValueSet/contact-point-system",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ContactPointSystemCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ContactPointSystemCode_Value": {
+        "description": "Primitive value for code",
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ContactPointUseCode": {
+        "description": "Use of contact point\nSee http://hl7.org/fhir/ValueSet/contact-point-use",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ContactPointUseCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ContactPointUseCode_Value": {
+        "description": "Primitive value for code",
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ContainedResource": {
+        "type": "object",
+        "properties": {
+          "OneofResource": {
+            "$ref": "#/components/schemas/isContainedResource_OneofResource"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+      "DateTime": {
+        "description": "Auto-generated from StructureDefinition for dateTime, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type dateTime. See\nhttp://hl7.org/fhir/StructureDefinition/dateTime",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "precision": {
+            "$ref": "#/components/schemas/DateTime_Precision"
+          },
+          "timezone": {
+            "type": "string",
+            "x-go-name": "Timezone"
+          },
+          "value_us": {
+            "description": "Primitive value for dateTime",
+            "type": "integer",
+            "format": "int64",
+            "x-go-name": "ValueUs"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "DateTime_Precision": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "DocumentModeCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/document-mode",
+        "type": "object",
+        "title": "Whether the application produces or consumes documents.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/DocumentModeCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "DocumentModeCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "EntryResponse": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "object",
+            "properties": {
+              "ExecutionPeriod": {
+                "type": "object",
+                "properties": {
+                  "end": {
+                    "description": "Time job completed",
+                    "type": "string",
+                    "format": "date-time",
+                    "x-go-name": "End"
+                  },
+                  "start": {
+                    "description": "Time job started",
+                    "type": "string",
+                    "format": "date-time",
+                    "x-go-name": "Start"
+                  }
+                }
+              },
+              "identifier": {
+                "type": "object",
+                "properties": {
+                  "system": {
+                    "description": "Url for jobs statuses",
+                    "type": "string",
+                    "x-go-name": "System"
+                  },
+                  "use": {
+                    "description": "Official",
+                    "type": "string",
+                    "x-go-name": "Use"
+                  },
+                  "value": {
+                    "description": "Job Id",
+                    "type": "string",
+                    "x-go-name": "Value"
+                  }
+                },
+                "x-go-name": "Identifier"
+              },
+              "input": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "description": "BULK FHIR Export",
+                          "type": "string",
+                          "x-go-name": "Text"
+                        }
+                      },
+                      "x-go-name": "Type"
+                    },
+                    "valueString": {
+                      "description": "Original job request url",
+                      "type": "string",
+                      "x-go-name": "ValueString"
+                    }
+                  }
+                },
+                "x-go-name": "Input"
+              },
+              "intent": {
+                "description": "Order",
+                "type": "string",
+                "x-go-name": "Intent"
+              },
+              "resourceType": {
+                "description": "Task",
+                "type": "string",
+                "x-go-name": "ResourceType"
+              },
+              "status": {
+                "description": "Job Status",
+                "type": "string",
+                "x-go-name": "Status"
+              }
+            },
+            "x-go-name": "Resource"
+          }
+        },
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "EventCapabilityModeCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/event-capability-mode",
+        "type": "object",
+        "title": "The mode of a message capability statement.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/EventCapabilityModeCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "EventCapabilityModeCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "Extension": {
+        "description": "Optional Extensions Element\nSee https://www.hl7.org/fhir/datatypes.html#Extension",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "url": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Extension_ValueX"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Extension_ValueX": {
+        "description": "Value of extension",
+        "type": "object",
+        "properties": {
+          "Choice": {
+            "$ref": "#/components/schemas/isExtension_ValueX_Choice"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Id": {
+        "description": "Auto-generated from StructureDefinition for id, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type id. See\nhttp://hl7.org/fhir/StructureDefinition/id",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for id",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Identifier": {
+        "description": "Auto-generated from StructureDefinition for Identifier, last updated\n2017-04-19T07:44:43.294+10:00. An identifier intended for computation. See\nhttp://hl7.org/fhir/StructureDefinition/Identifier",
+        "type": "object",
+        "properties": {
+          "assigner": {
+            "$ref": "#/components/schemas/Reference"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "system": {
+            "$ref": "#/components/schemas/Uri"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CodeableConcept"
+          },
+          "use": {
+            "$ref": "#/components/schemas/IdentifierUseCode"
+          },
+          "value": {
+            "$ref": "#/components/schemas/String"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "IdentifierUseCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/identifier-use",
+        "type": "object",
+        "title": "Identifies the purpose for this identifier, if known .",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/IdentifierUseCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "IdentifierUseCode_Value": {
+        "description": "Primitive value for code",
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "IngestionDatesStatusParam": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "x-go-name": "Timestamp"
+          },
+          "type": {
+            "type": "string",
+            "x-go-name": "Type"
+          }
+        },
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "Instant": {
+        "description": "Auto-generated from StructureDefinition for instant, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type instant. See\nhttp://hl7.org/fhir/StructureDefinition/instant",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "precision": {
+            "$ref": "#/components/schemas/Instant_Precision"
+          },
+          "timezone": {
+            "type": "string",
+            "x-go-name": "Timezone"
+          },
+          "value_us": {
+            "description": "Primitive value for instant",
+            "type": "integer",
+            "format": "int64",
+            "x-go-name": "ValueUs"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Instant_Precision": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "JobStatus": {
+        "type": "string",
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "LanguageCode": {
+        "description": "This value set includes common codes from BCP-47\n(http://tools.ietf.org/html/bcp47)\nSee http://hl7.org/fhir/ValueSet/languages\nNote: For historical reasons, this does not use an enum to represent value.",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for code",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Markdown": {
+        "description": "Auto-generated from StructureDefinition for markdown, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type markdown. See\nhttp://hl7.org/fhir/StructureDefinition/markdown",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for markdown",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "MessageSignificanceCategoryCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/message-significance-category",
+        "type": "object",
+        "title": "The impact of the content of a message.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/MessageSignificanceCategoryCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "MessageSignificanceCategoryCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "Meta": {
+        "description": "Auto-generated from StructureDefinition for Meta, last updated\n2017-04-19T07:44:43.294+10:00. Metadata about a resource. See\nhttp://hl7.org/fhir/StructureDefinition/Meta",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "last_updated": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "profile": {
+            "description": "Profiles this resource claims to conform to",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Uri"
+            },
+            "x-go-name": "Profile"
+          },
+          "security": {
+            "description": "Security Labels applied to this resource",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coding"
+            },
+            "x-go-name": "Security"
+          },
+          "tag": {
+            "description": "Tags applied to this resource",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coding"
+            },
+            "x-go-name": "Tag"
+          },
+          "version_id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "MimeTypeCode": {
+        "description": "See http://www.rfc-editor.org/bcp/bcp13.txt",
+        "type": "object",
+        "title": "Any valid MimeType.",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for code",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "NDJSON": {
+        "type": "string",
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "Narrative": {
+        "description": "Auto-generated from StructureDefinition for Narrative, last updated\n2017-04-19T07:44:43.294+10:00. A human-readable formatted text, including\nimages. See http://hl7.org/fhir/StructureDefinition/Narrative",
+        "type": "object",
+        "properties": {
+          "div": {
+            "$ref": "#/components/schemas/Xhtml"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "status": {
+            "$ref": "#/components/schemas/NarrativeStatusCode"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/metadatatypes_go_proto"
+      },
+      "NarrativeStatusCode": {
+        "description": "The status of a resource narrative\nSee http://hl7.org/fhir/ValueSet/narrative-status",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/NarrativeStatusCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "NarrativeStatusCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "OperationOutcomeResponse": {
+        "type": "object",
+        "properties": {
+          "Issue": {
+            "type": "object",
+            "required": [
+              "Severity",
+              "Code",
+              "Diagnostics"
+            ],
+            "properties": {
+              "Severity": {
+                "description": "Severity of the outcome: fatal | error | warning | information",
+                "type": "string"
+              },
+              "Code": {
+                "description": "Error or warning code",
+                "type": "string"
+              },
+              "Diagnostics": {
+                "description": "Additional diagnostic information about the issue",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/models"
+      },
+      "Period": {
+        "description": "Auto-generated from StructureDefinition for Period, last updated\n2017-04-19T07:44:43.294+10:00. Time range defined by start and end date/time.\nSee http://hl7.org/fhir/StructureDefinition/Period",
+        "type": "object",
+        "properties": {
+          "end": {
+            "$ref": "#/components/schemas/DateTime"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "start": {
+            "$ref": "#/components/schemas/DateTime"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "PositiveInt": {
+        "description": "Auto-generated from StructureDefinition for positiveInt, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type positiveInt. See\nhttp://hl7.org/fhir/StructureDefinition/positiveInt",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for positiveInt",
+            "type": "integer",
+            "format": "uint32",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "PublicationStatusCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/publication-status",
+        "type": "object",
+        "title": "The lifecycle status of a Value Set or Concept Map.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PublicationStatusCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "PublicationStatusCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "Reference": {
+        "description": "A reference from one resource to another\nSee https://www.hl7.org/fhir/datatypes.html#Reference",
+        "type": "object",
+        "properties": {
+          "Reference": {
+            "$ref": "#/components/schemas/isReference_Reference"
+          },
+          "display": {
+            "$ref": "#/components/schemas/String"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "identifier": {
+            "$ref": "#/components/schemas/Identifier"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "ReferenceHandlingPolicyCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/reference-handling-policy",
+        "type": "object",
+        "title": "A set of flags that defines how references are supported.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ReferenceHandlingPolicyCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ReferenceHandlingPolicyCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ResourceTypeCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/resource-types",
+        "type": "object",
+        "title": "One of the resource types defined as part of FHIR.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ResourceTypeCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ResourceTypeCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ResourceVersionPolicyCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/versioning-policy",
+        "type": "object",
+        "title": "How the system supports versioning for a resource.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ResourceVersionPolicyCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "ResourceVersionPolicyCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "RestfulCapabilityModeCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/restful-capability-mode",
+        "type": "object",
+        "title": "The mode of a RESTful capability statement.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/RestfulCapabilityModeCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "RestfulCapabilityModeCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "SearchParamTypeCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/search-param-type",
+        "type": "object",
+        "title": "Data types allowed to be used for search parameters.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SearchParamTypeCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "SearchParamTypeCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "String": {
+        "description": "Auto-generated from StructureDefinition for string, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type string. See\nhttp://hl7.org/fhir/StructureDefinition/string",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for string",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "SystemRestfulInteractionCode": {
+        "description": "http://hl7.org/fhir/ValueSet/system-restful-interaction",
+        "type": "object",
+        "title": "Operations supported by REST at the system level.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SystemRestfulInteractionCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "SystemRestfulInteractionCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "TypeRestfulInteractionCode": {
+        "description": "See http://hl7.org/fhir/ValueSet/type-restful-interaction",
+        "type": "object",
+        "title": "Operations supported by REST at the type or instance level.",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/TypeRestfulInteractionCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "TypeRestfulInteractionCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "UnknownContentCodeCode": {
+        "description": "A code that indicates whether an application accepts unknown elements or\nextensions when reading resources. See\nhttp://hl7.org/fhir/ValueSet/unknown-content-code",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/UnknownContentCodeCode_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "UnknownContentCodeCode_Value": {
+        "type": "integer",
+        "format": "int32",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+      },
+      "UnsignedInt": {
+        "description": "Auto-generated from StructureDefinition for unsignedInt, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type unsignedInt. See\nhttp://hl7.org/fhir/StructureDefinition/unsignedInt",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for unsignedInt",
+            "type": "integer",
+            "format": "uint32",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "Uri": {
+        "description": "Auto-generated from StructureDefinition for uri, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type uri. See\nhttp://hl7.org/fhir/StructureDefinition/uri",
+        "type": "object",
+        "properties": {
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Primitive value for uri",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "UsageContext": {
+        "description": "Auto-generated from StructureDefinition for UsageContext, last updated\n2017-04-19T07:44:43.294+10:00. Describes the context of use for a conformance\nor knowledge resource. See\nhttp://hl7.org/fhir/StructureDefinition/UsageContext",
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/Coding"
+          },
+          "extension": {
+            "description": "Additional Content defined by implementations",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            },
+            "x-go-name": "Extension"
+          },
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "$ref": "#/components/schemas/UsageContext_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/metadatatypes_go_proto"
+      },
+      "UsageContext_Value": {
+        "description": "Value that defines the context",
+        "type": "object",
+        "properties": {
+          "Value": {
+            "$ref": "#/components/schemas/isUsageContext_Value_Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/metadatatypes_go_proto"
+      },
+      "Xhtml": {
+        "description": "Auto-generated from StructureDefinition for xhtml, last updated\n2017-04-19T07:44:43.294+10:00. Primitive Type xhtml. See\nhttp://hl7.org/fhir/StructureDefinition/xhtml",
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/String"
+          },
+          "value": {
+            "description": "Actual xhtml",
+            "type": "string",
+            "x-go-name": "Value"
+          }
+        },
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "fileItem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "FHIR resource type of file contents",
+            "type": "string",
+            "x-go-name": "Type"
+          },
+          "url": {
+            "description": "URL of the file",
+            "type": "string",
+            "x-go-name": "URL"
+          }
+        },
+        "x-go-name": "FileItem",
+        "x-go-package": "github.com/CMSgov/bcda-app/bcda/api"
+      },
+      "isContainedResource_OneofResource": {
+        "type": "object",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+      },
+    
+      "isExtension_ValueX_Choice": {
+        "type": "object",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "isReference_Reference": {
+        "type": "object",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+      },
+      "isUsageContext_Value_Value": {
+        "type": "object",
+        "x-go-package": "github.com/google/fhir/go/proto/google/fhir/proto/stu3/metadatatypes_go_proto"
+      }
+    },
+    "responses": {
+      "AttributionFileStatusResponse": {
+        "description": "JSON object containing a cclf_files field",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/AttributionFilesParam"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AttributionFilesParam"
+            }
+          }
+        }
+      },
+      "AuthResponse": {
+        "description": "JSON object containing an auth_provider field",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "required": [
+                "auth_provider"
+              ],
+              "type": "object",
+              "properties": {
+                "auth_provider": {
+                  "type": "string",
+                  "x-go-name": "Version"
+                }
+              }
+            }
+          },
+          "application/json": {
+            "schema": {
+              "required": [
+                "auth_provider"
+              ],
+              "type": "object",
+              "properties": {
+                "auth_provider": {
+                  "type": "string",
+                  "x-go-name": "Version"
+                }
+              }
+            }
+          }
+        }
+      },
+      "BulkRequestResponse": {
+        "description": "BulkRequestResponse is the return from a request to initiate a bulk data collection process",
+        "headers": {
+          "Content-Location": {
+            "description": "The location where the job status can be checked",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {}
+      },
+      "FileNDJSON": {
+        "description": "File of newline-delimited JSON FHIR objects",
+        "headers": {
+          "Content-Encoding": {
+            "description": "Header defining encoding type used",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gzip"
+              ]
+            }
+          }
+        },
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/NDJSON"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NDJSON"
+            }
+          }
+        }
+      },
+      "MetadataResponse": {
+        "description": "FHIR CapabilityStatement in JSON format",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/CapabilityStatement"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CapabilityStatement"
+            }
+          }
+        }
+      },
+      "VersionResponse": {
+        "description": "JSON object containing a version field",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "required": [
+                "version"
+              ],
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "x-go-name": "Version"
+                }
+              }
+            }
+          },
+          "application/json": {
+            "schema": {
+              "required": [
+                "version"
+              ],
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "x-go-name": "Version"
+                }
+              }
+            }
+          }
+        }
+      },
+      "badRequestResponse": {
+        "description": "There was a problem with the request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          }
+        }
+      },
+      "completedJobResponse": {
+        "description": "Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/BulkResponseBody"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BulkResponseBody"
+            }
+          }
+        }
+      },
+      "deleteJobResponse": {
+        "description": "The job has been deleted.",
+        "content": {}
+      },
+      "errorResponse": {
+        "description": "An error occurred. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          }
+        }
+      },
+      "goneResponse": {
+        "description": "The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          }
+        }
+      },
+      "invalidCredentials": {
+        "description": "Unauthorized. The provided credentials are invalid for the requested resource.",
+        "content": {}
+      },
+      "jobStatusResponse": {
+        "description": "Data export job is in progress.",
+        "headers": {
+          "X-Progress": {
+            "description": "The status of the job progress",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {}
+      },
+      "jobsStatusResponse": {
+        "description": "JSON object containing status of requested jobs. The body will contain a FHIR Bundle resource in JSON format https://www.hl7.org/fhir/bundle.html and FHIR Task resources for the Bundle entries in JSON format https://www.hl7.org/fhir/task.html",
+        "headers": {
+          "Body": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/BundleResponse"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BundleResponse"
+            }
+          }
+        }
+      },
+      "missingCredentials": {
+        "description": "Missing credentials",
+        "content": {}
+      },
+      "notFoundResponse": {
+        "description": "The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          },
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OperationOutcomeResponse"
+            }
+          }
+        }
+      },
+      "serverError": {
+        "description": "Server error",
+        "content": {}
+      },
+      "tokenResponse": {
+        "description": "JSON with a valid JWT",
+        "content": {
+          "application/fhir+json": {
+            "schema": {
+              "required": [
+                "access_token"
+              ],
+              "type": "object",
+              "properties": {
+                "access_token": {
+                  "type": "string",
+                  "x-go-name": "AccessToken"
+                },
+                "expires_in": {
+                  "type": "string",
+                  "x-go-name": "ExpiresIn"
+                },
+                "token_type": {
+                  "type": "string",
+                  "x-go-name": "TokenType"
+                }
+              }
+            }
+          },
+          "application/json": {
+            "schema": {
+              "required": [
+                "access_token"
+              ],
+              "type": "object",
+              "properties": {
+                "access_token": {
+                  "type": "string",
+                  "x-go-name": "AccessToken"
+                },
+                "expires_in": {
+                  "type": "string",
+                  "x-go-name": "ExpiresIn"
+                },
+                "token_type": {
+                  "type": "string",
+                  "x-go-name": "TokenType"
+                }
+              }
+            }
+          }
+        }
+      },
+      "tooManyRequestsResponse": {
+        "description": "A bulk export job of this resource type is already in progress for the ACO.",
+        "content": {}
+      },
+      "welcome": {
+        "description": "Welcome message",
+        "content": {}
+      }
+    },
+    "securitySchemes": {
+      "basic_auth": {
+        "type": "http",
+        "scheme": "basic"
+      },
+      "bearer_token": {
+        "type": "apiKey",
+        "description": "The Group and Patient endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put \"Bearer {TOKEN}\" in this field (no quotes) using the bearer token retrieved in step 2",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "x-original-swagger-version": "2.0"
+}
