@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/middleware"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -665,4 +666,38 @@ func ContextTransactionID() *http.Request {
 	ctx := context.Background()
 	r = r.WithContext(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()))
 	return r
+}
+
+func GetSQSEvent(bucketName string, fileName string) events.SQSEvent {
+	jsonFile, err := os.Open("testdata/s3event.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer jsonFile.Close()
+
+	byteValue, _ := io.ReadAll(jsonFile)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var s3event events.S3Event
+	err = json.Unmarshal([]byte(byteValue), &s3event)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	s3event.Records[0].S3.Bucket.Name = bucketName
+	s3event.Records[0].S3.Object.Key = fileName
+
+	val, err := json.Marshal(s3event)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	body := fmt.Sprintf("{\"Type\" : \"Notification\",\n  \"MessageId\" : \"123456-1234-1234-1234-6e06896db643\",\n  \"TopicArn\" : \"my-topic\",\n  \"Subject\" : \"Amazon S3 Notification\",\n  \"Message\" : %s}", strconv.Quote(string(val[:])))
+	event := events.SQSEvent{
+		Records: []events.SQSMessage{{Body: body}},
+	}
+	return event
 }

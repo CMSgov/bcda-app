@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -25,13 +26,12 @@ func (s *OptOutImportMainSuite) TestOptOutImportHandlerSuccess() {
 
 	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
 		{Name: "/opt-out-import/bcda/local/bfd-bucket-role-arn", Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
-		{Name: "/opt-out-import/bcda/local/bfd-s3-import-path", Value: path, Type: "String"},
 		{Name: "/bcda/local/api/DATABASE_URL", Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
 		{Name: "/bcda/local/api/QUEUE_DATABASE_URL", Value: "doesnt-matter", Type: "SecureString"},
 	})
 	defer cleanupParams()
 
-	_, err := optOutImportHandler()
+	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent(path, "fake_filename"))
 	assert.Nil(err)
 
 	fs := postgrestest.GetSuppressionFileByName(s.T(), database.Connection,
@@ -47,24 +47,6 @@ func (s *OptOutImportMainSuite) TestOptOutImportHandlerSuccess() {
 
 func (s *OptOutImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
 	assert := assert.New(s.T())
-
-	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
-		{Name: "/opt-out-import/bcda/local/bfd-s3-import-path", Value: "any-sort-of-path", Type: "String"},
-	})
-	defer cleanupParams()
-
-	_, err := optOutImportHandler()
+	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent("doesn't-matter", "fake_filename"))
 	assert.Contains(err.Error(), "invalid parameters error: /opt-out-import/bcda/local/bfd-bucket-role-arn")
-}
-
-func (s *OptOutImportMainSuite) TestHandlerMissingS3ImportPathKey() {
-	assert := assert.New(s.T())
-
-	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
-		{Name: "/opt-out-import/bcda/local/bfd-bucket-role-arn", Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
-	})
-	defer cleanupParams()
-
-	_, err := optOutImportHandler()
-	assert.Contains(err.Error(), "invalid parameters error: /opt-out-import/bcda/local/bfd-s3-import-path")
 }
