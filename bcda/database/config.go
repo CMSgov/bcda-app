@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
@@ -28,6 +29,22 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, err
 	}
 
+	if cfg.DatabaseURL == "" || cfg.QueueDatabaseURL == "" {
+		// Attempt to load database config from parameter store if ENV var is set.
+		// This generally indicates that we are running within our lambda environment.
+		env := os.Getenv("ENV")
+
+		if env != "" {
+			cfg, err = LoadConfigFromParameterStore(
+				fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env),
+				fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env))
+
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if cfg.DatabaseURL == "" {
 		return nil, errors.New("invalid config, DatabaseURL must be set")
 	}
@@ -36,7 +53,6 @@ func LoadConfig() (cfg *Config, err error) {
 	}
 
 	log.API.Info("Successfully loaded configuration for Database.")
-
 	return cfg, nil
 }
 

@@ -69,12 +69,13 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreSuccess() {
 	defer cleanupParams()
 
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
+		{Name: "ENV", Value: "local"},
 		{Name: "DATABASE_URL", Value: ""},
 		{Name: "QUEUE_DATABASE_URL", Value: ""},
 	})
 	defer cleanupEnvVars()
 
-	cfg, err := LoadConfigFromParameterStore("/bcda/local/api/DATABASE_URL", "/bcda/local/api/QUEUE_DATABASE_URL")
+	cfg, err := LoadConfig()
 	assert.Nil(err)
 	assert.Equal("my-super-secure-database-url", cfg.DatabaseURL)
 	assert.Equal("my-super-secure-queue-database-url", cfg.QueueDatabaseURL)
@@ -89,13 +90,13 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingDatabaseUrl
 	defer cleanupParams()
 
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
+		{Name: "ENV", Value: "local"},
 		{Name: "DATABASE_URL", Value: ""},
 		{Name: "QUEUE_DATABASE_URL", Value: ""},
 	})
 	defer cleanupEnvVars()
 
-	cfg, err := LoadConfigFromParameterStore("/bcda/local/api/DATABASE_URL", "/bcda/local/api/QUEUE_DATABASE_URL")
-
+	cfg, err := LoadConfig()
 	assert.Nil(cfg)
 	assert.Contains(err.Error(), "invalid parameters error: /bcda/local/api/DATABASE_URL")
 }
@@ -109,13 +110,13 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingQueueDataba
 	defer cleanupParams()
 
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
+		{Name: "ENV", Value: "local"},
 		{Name: "DATABASE_URL", Value: ""},
 		{Name: "QUEUE_DATABASE_URL", Value: ""},
 	})
 	defer cleanupEnvVars()
 
-	cfg, err := LoadConfigFromParameterStore("/bcda/local/api/DATABASE_URL", "/bcda/local/api/QUEUE_DATABASE_URL")
-
+	cfg, err := LoadConfig()
 	assert.Nil(cfg)
 	assert.Contains(err.Error(), "invalid parameters error: /bcda/local/api/QUEUE_DATABASE_URL")
 }

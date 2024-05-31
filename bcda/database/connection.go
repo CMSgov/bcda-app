@@ -3,8 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/bgentry/que-go"
@@ -25,18 +23,7 @@ func init() {
 	var cfg *Config
 	var err error
 
-	useParamStore := os.Getenv("ENABLE_PARAM_STORE_DB_LOAD")
-
-	if useParamStore == "true" {
-		fmt.Println("Loading connection from parameter store")
-		env := os.Getenv("DEPLOYMENT_TARGET")
-		cfg, err = LoadConfigFromParameterStore(
-			fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env),
-			fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env))
-	} else {
-		fmt.Println("Loading connection from config")
-		cfg, err = LoadConfig()
-	}
+	cfg, err = LoadConfig()
 
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
