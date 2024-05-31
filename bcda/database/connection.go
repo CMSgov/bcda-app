@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/bgentry/que-go"
@@ -20,12 +22,28 @@ var (
 )
 
 func init() {
-	cfg, err := LoadConfig()
+	// TODO: Move this into lazy-loading and ensure startup at the necessary times?
+	var cfg *Config
+	var err error
+
+	useParamStore := os.Getenv("ENABLE_PARAM_STORE_DB_LOAD")
+
+	if useParamStore == "true" {
+		fmt.Println("Loading connection from parameter store")
+		env := os.Getenv("DEPLOYMENT_TARGET")
+		cfg, err = LoadConfigFromParameterStore(
+			fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env),
+			fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env))
+	} else {
+		fmt.Println("Loading connection from config")
+		cfg, err = LoadConfig()
+	}
+
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
 	}
 
-	Connection, err = createDB(cfg)
+	Connection, err = CreateDB(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create db %s", err.Error())
 	}
@@ -39,7 +57,7 @@ func init() {
 		time.Duration(cfg.HealthCheckSec)*time.Second)
 }
 
-func createDB(cfg *Config) (*sql.DB, error) {
+func CreateDB(cfg *Config) (*sql.DB, error) {
 	dc := stdlib.DriverConfig{
 		ConnConfig: pgx.ConnConfig{
 			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),

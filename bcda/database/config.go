@@ -2,7 +2,9 @@ package database
 
 import (
 	"errors"
+	"os"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -33,6 +35,28 @@ func LoadConfig() (cfg *Config, err error) {
 	}
 
 	log.API.Info("Successfully loaded configuration for Database.")
+
+	return cfg, nil
+}
+
+func LoadConfigFromParameterStore(dbUrlKey string, queueUrlKey string) (cfg *Config, err error) {
+	cfg = &Config{}
+	if err := conf.Checkout(cfg); err != nil {
+		return nil, err
+	}
+
+	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	if err != nil {
+		return nil, err
+	}
+
+	params, err := bcdaaws.GetParameters(bcdaSession, []*string{&dbUrlKey, &queueUrlKey})
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.DatabaseURL = params[dbUrlKey]
+	cfg.QueueDatabaseURL = params[queueUrlKey]
 
 	return cfg, nil
 }

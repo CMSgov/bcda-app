@@ -25,8 +25,10 @@ import (
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -189,7 +191,11 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			return err
 		}
 
-		key := strings.TrimPrefix(path, "../../shared_files/")
+		key := path
+		parts := strings.Split(path, "shared_files/")
+		if len(parts) > 1 {
+			key = parts[1]
+		}
 
 		_, err = uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(tempBucket.String()),
@@ -197,8 +203,12 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			Body:   f,
 		})
 
+		if err != nil {
+			return err
+		}
+
 		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket.String(), key)
-		return err
+		return nil
 	})
 
 	if err != nil {
@@ -323,6 +333,155 @@ func ListS3Objects(t *testing.T, bucket string, prefix string) []*s3.Object {
 	}
 
 	return resp.Contents
+}
+
+func PutParameter(t *testing.T, input *ssm.PutParameterInput) error {
+	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for SSM: %s", err.Error())
+	}
+
+	fmt.Printf("Inserting parameter %s with value %s\n", *input.Name, *input.Value)
+
+	svc := ssm.New(sess)
+	svc.PutParameter(input)
+
+	if err != nil {
+		t.Fatalf("Failed to insert parameter %s with value %s: %s\n", *input.Name, *input.Value, err)
+	}
+
+	return nil
+}
+
+type AwsParameter struct {
+	Name  string
+	Value string
+	Type  string
+}
+
+func SetParameters(t *testing.T, params []AwsParameter) func() {
+	var paramKeys []*string
+
+	for _, paramInput := range params {
+		err := PutParameter(t, &ssm.PutParameterInput{
+			Name:  &paramInput.Name,
+			Value: &paramInput.Value,
+			Type:  &paramInput.Type,
+		})
+
+		assert.Nil(t, err)
+
+		name := paramInput.Name
+		paramKeys = append(paramKeys, &name)
+	}
+
+	cleanup := func() {
+		for _, paramInput := range paramKeys {
+			fmt.Printf("Deleting %s\n", *paramInput)
+		}
+
+		err := DeleteParameters(t, &ssm.DeleteParametersInput{Names: paramKeys})
+		assert.Nil(t, err)
+	}
+
+	return cleanup
+}
+
+type EnvVar struct {
+	Name  string
+	Value string
+}
+
+func SetEnvVars(t *testing.T, vars []EnvVar) func() {
+	var origVars []EnvVar
+
+	for _, envVar := range vars {
+		origVars = append(origVars, EnvVar{Name: envVar.Name, Value: os.Getenv(envVar.Name)})
+		os.Setenv(envVar.Name, envVar.Value)
+	}
+
+	cleanup := func() {
+		for _, envVar := range origVars {
+			os.Setenv(envVar.Name, envVar.Value)
+		}
+	}
+
+	return cleanup
+}
+
+func DeleteParameters(t *testing.T, input *ssm.DeleteParametersInput) error {
+	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for SSM: %s", err.Error())
+	}
+
+	fmt.Printf("Deleting parameters from parameter store\n")
+
+	svc := ssm.New(sess)
+	svc.DeleteParameters(input)
+
+	if err != nil {
+		t.Fatalf("Failed to delete parameters: %s", err)
+	}
+
+	return nil
+}
+
+func CreateRole(t *testing.T, roleName string) error {
+	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for IAM: %s", err.Error())
+	}
+
+	fmt.Printf("Creating role %s\n", roleName)
+
+	svc := iam.New(sess)
+	policy := "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}"
+	input := iam.CreateRoleInput{
+		AssumeRolePolicyDocument: &policy,
+		RoleName:                 &roleName,
+	}
+
+	svc.CreateRole(&input)
+
+	if err != nil {
+		t.Fatalf("Failed to create role: %s", err)
+	}
+
+	return nil
 }
 
 // GetRandomIPV4Address returns a random IPV4 address using rand.Read() to generate the values.

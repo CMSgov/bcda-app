@@ -47,6 +47,7 @@ require github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
 require (
 	bitbucket.org/creachadair/stringset v0.0.10 // indirect
 	github.com/Microsoft/go-winio v0.4.17-0.20210211115548-6eac466e5fa3 // indirect
+	github.com/aws/aws-lambda-go v1.47.0 // indirect
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect

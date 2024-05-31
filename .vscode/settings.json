@@ -1,5 +1,7 @@
 {
     "go.testEnvVars": {
+        "ENV": "local",
+        "LOCAL_STACK_ENDPOINT": "http://localhost:4566",
         "DB": "postgresql://postgres:toor@localhost:15432",
         "DB_HOST_URL": "postgresql://postgres:toor@localhost:15432?sslmode=disable",
         "TEST_DB_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
