@@ -25,7 +25,6 @@ import (
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/ssm"
@@ -335,6 +334,7 @@ func ListS3Objects(t *testing.T, bucket string, prefix string) []*s3.Object {
 	return resp.Contents
 }
 
+// Inserts the provided parameter into localstack.
 func PutParameter(t *testing.T, input *ssm.PutParameterInput) error {
 	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
 
@@ -364,12 +364,43 @@ func PutParameter(t *testing.T, input *ssm.PutParameterInput) error {
 	return nil
 }
 
+// Deletes the provided parameters from localstack.
+func DeleteParameters(t *testing.T, input *ssm.DeleteParametersInput) error {
+	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
+
+	config := aws.Config{
+		Region:           aws.String("us-east-1"),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         &endpoint,
+	}
+
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Config: config,
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to create new session for SSM: %s", err.Error())
+	}
+
+	fmt.Printf("Deleting parameters from parameter store\n")
+
+	svc := ssm.New(sess)
+	svc.DeleteParameters(input)
+
+	if err != nil {
+		t.Fatalf("Failed to delete parameters: %s", err)
+	}
+
+	return nil
+}
+
 type AwsParameter struct {
 	Name  string
 	Value string
 	Type  string
 }
 
+// Insert all given parameters into localstack and return a method for deferring cleanup.
 func SetParameters(t *testing.T, params []AwsParameter) func() {
 	var paramKeys []*string
 
@@ -403,6 +434,7 @@ type EnvVar struct {
 	Value string
 }
 
+// Update all given environment variables and return a method for deferring cleanup.
 func SetEnvVars(t *testing.T, vars []EnvVar) func() {
 	var origVars []EnvVar
 
@@ -418,70 +450,6 @@ func SetEnvVars(t *testing.T, vars []EnvVar) func() {
 	}
 
 	return cleanup
-}
-
-func DeleteParameters(t *testing.T, input *ssm.DeleteParametersInput) error {
-	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
-
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
-	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for SSM: %s", err.Error())
-	}
-
-	fmt.Printf("Deleting parameters from parameter store\n")
-
-	svc := ssm.New(sess)
-	svc.DeleteParameters(input)
-
-	if err != nil {
-		t.Fatalf("Failed to delete parameters: %s", err)
-	}
-
-	return nil
-}
-
-func CreateRole(t *testing.T, roleName string) error {
-	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
-
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
-	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for IAM: %s", err.Error())
-	}
-
-	fmt.Printf("Creating role %s\n", roleName)
-
-	svc := iam.New(sess)
-	policy := "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}"
-	input := iam.CreateRoleInput{
-		AssumeRolePolicyDocument: &policy,
-		RoleName:                 &roleName,
-	}
-
-	svc.CreateRole(&input)
-
-	if err != nil {
-		t.Fatalf("Failed to create role: %s", err)
-	}
-
-	return nil
 }
 
 // GetRandomIPV4Address returns a random IPV4 address using rand.Read() to generate the values.

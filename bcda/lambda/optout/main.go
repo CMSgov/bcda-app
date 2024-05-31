@@ -1,15 +1,11 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/log/logrusadapter"
-	"github.com/jackc/pgx/stdlib"
 	"github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
@@ -78,9 +74,8 @@ func handleOptOutImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	}
 
 	s, f, sk, err := importer.ImportSuppressionDirectory(s3ImportPath)
-	// fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 	logger.Infof("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
-	return "success", err // TODO
+	return "success", err
 }
 
 func configureLogger(env, appName string) *logrus.Entry {
@@ -96,30 +91,4 @@ func configureLogger(env, appName string) *logrus.Entry {
 		"application": appName,
 		"environment": env,
 	})
-}
-
-func createDB(databaseUrl string) (*sql.DB, error) {
-	dc := stdlib.DriverConfig{
-		ConnConfig: pgx.ConnConfig{
-			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),
-			LogLevel: pgx.LogLevelError,
-		},
-		AfterConnect: func(c *pgx.Conn) error {
-			// Can be used to ensure temp tables, indexes, etc. exist
-			return nil
-		},
-	}
-
-	stdlib.RegisterDriverConfig(&dc)
-
-	db, err := sql.Open("nrpgx", dc.ConnectionString(databaseUrl))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	return db, nil
 }

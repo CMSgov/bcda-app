@@ -22,7 +22,6 @@ var (
 )
 
 func init() {
-	// TODO: Move this into lazy-loading and ensure startup at the necessary times?
 	var cfg *Config
 	var err error
 
@@ -43,7 +42,7 @@ func init() {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
 	}
 
-	Connection, err = CreateDB(cfg)
+	Connection, err = createDB(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create db %s", err.Error())
 	}
@@ -57,7 +56,7 @@ func init() {
 		time.Duration(cfg.HealthCheckSec)*time.Second)
 }
 
-func CreateDB(cfg *Config) (*sql.DB, error) {
+func createDB(cfg *Config) (*sql.DB, error) {
 	dc := stdlib.DriverConfig{
 		ConnConfig: pgx.ConnConfig{
 			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),
