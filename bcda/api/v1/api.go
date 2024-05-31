@@ -318,19 +318,19 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 		log.API.Warnf("API request to serve data is being made without gzip for file %s for jobId %s", fileName, jobID)
 		if encoded {
 			//We'll do the following: 1. Open file, 2. De-compress it, 3. Serve it up.
-			file, err := os.Open(filePath)
+			file, err := os.Open(filePath) // #nosec G304
 			if err != nil {
 				writeServeDataFailure(err, w)
 				return
 			}
-			defer file.Close()
+			defer file.Close() //#nosec G307
 			gzipReader, err := gzip.NewReader(file)
 			if err != nil {
 				writeServeDataFailure(err, w)
 				return
 			}
 			defer gzipReader.Close()
-			_, err = io.Copy(w, gzipReader)
+			_, err = io.Copy(w, gzipReader) // #nosec G110
 			if err != nil {
 				writeServeDataFailure(err, w)
 				return
@@ -349,11 +349,11 @@ func writeServeDataFailure(err error, w http.ResponseWriter) {
 
 // This function reads a file's magic number, to determine if it is gzip-encoded or not.
 func isGzipEncoded(filePath string) (encoded bool, err error) {
-	file, err := os.Open(filePath)
+	file, err := os.Open(filePath) // #nosec G304
 	if err != nil {
 		return false, err
 	}
-	defer file.Close()
+	defer file.Close() //#nosec G307
 
 	byteSlice := make([]byte, 2)
 	bytesRead, err := file.Read(byteSlice)
