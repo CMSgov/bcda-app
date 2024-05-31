@@ -355,7 +355,7 @@ func PutParameter(t *testing.T, input *ssm.PutParameterInput) error {
 	fmt.Printf("Inserting parameter %s with value %s\n", *input.Name, *input.Value)
 
 	svc := ssm.New(sess)
-	svc.PutParameter(input)
+	_, err = svc.PutParameter(input)
 
 	if err != nil {
 		t.Fatalf("Failed to insert parameter %s with value %s: %s\n", *input.Name, *input.Value, err)
@@ -385,7 +385,7 @@ func DeleteParameters(t *testing.T, input *ssm.DeleteParametersInput) error {
 	fmt.Printf("Deleting parameters from parameter store\n")
 
 	svc := ssm.New(sess)
-	svc.DeleteParameters(input)
+	_, err = svc.DeleteParameters(input)
 
 	if err != nil {
 		t.Fatalf("Failed to delete parameters: %s", err)

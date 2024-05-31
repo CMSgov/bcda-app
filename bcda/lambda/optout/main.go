@@ -20,7 +20,12 @@ import (
 
 func main() {
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		optOutImportHandler()
+		res, err := optOutImportHandler()
+		if err != nil {
+			fmt.Errorf("Failed to run opt out import: %s\n", err.Error())
+		} else {
+			fmt.Println(res)
+		}
 	} else {
 		lambda.Start(optOutImportHandler)
 	}
