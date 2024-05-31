@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 type Client interface {
@@ -124,7 +125,13 @@ func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error
 }
 
 func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
+	txn := newrelic.FromContext(req.Context())
+	s := newrelic.StartExternalSegment(txn, req)
+
 	resp, err := c.Do(req)
+	s.Response = resp
+	s.End()
+
 	if resp != nil {
 		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
 		defer func() {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -303,7 +304,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobData models.JobEnqu
 			logger.Error(err)
 			return err
 		}
-
+		req = newrelic.RequestWithTransactionContext(req, txn)
 		for key, values := range headers {
 			for _, value := range values {
 				req.Header.Add(key, value)
@@ -349,6 +350,7 @@ func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, u *url.UR
 			logger.Error(err)
 			return err
 		}
+		req = newrelic.RequestWithTransactionContext(req, txn)
 		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
