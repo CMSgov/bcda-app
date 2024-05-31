@@ -1,0 +1,25 @@
+name: opt-out-import test deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - austin/BCDA-7898
+    paths:
+      - lambda/opt-out-import/**
+      - .github/workflows/opt-out-import-test-deploy.yml
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+        - name: Print a greeting
+          env:
+            VAR1: HELLO
+            VAR2: WORLD
+          run: |
+            echo $VAR1 $VAR2
