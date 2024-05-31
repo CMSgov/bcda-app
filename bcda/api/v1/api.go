@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -287,7 +288,7 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 
 	var useGZIP bool
 	for _, header := range r.Header.Values("Accept-Encoding") {
-		if header == "gzip" {
+		if strings.Contains(header, "gzip") {
 			useGZIP = true
 			break
 		}

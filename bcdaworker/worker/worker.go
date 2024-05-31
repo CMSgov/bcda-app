@@ -55,6 +55,10 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 		return nil, ErrParentJobCancelled
 	}
 
+	if exportJob.Status == models.JobStatusFailed {
+		return nil, ErrParentJobFailed
+	}
+
 	return exportJob, nil
 }
 
@@ -125,6 +129,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s", models.JobStatusFailed))
 			logger.Error(err)
 			return err
+		} else {
+			logger.Error("Job failed. Job ID: ", job.ID)
 		}
 	}
 
@@ -207,6 +213,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	defer utils.CloseFileAndLogError(f)
 
 	w := bufio.NewWriter(f)
+	defer w.Flush()
 	errorCount := 0
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := getFailureThreshold()
@@ -264,6 +271,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	if failed {
 		if ctx.Err() == context.Canceled {
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_PROCESSING, responseutils.BbErr, "Parent job was cancelled", jobArgs.ID)
 			return jobKeys, errors.New("Parent job was cancelled")
 		}
 		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
@@ -340,6 +348,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	if err != nil {
 		err = errors.Wrap(err, "Unable to append error to file: OS error encountered while opening the file")
 		logger.Error(err)
+		return
 	}
 
 	defer utils.CloseFileAndLogError(f)
@@ -358,6 +367,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
 	defer close()
+	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
@@ -372,7 +382,8 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
-		_, err = w.WriteString(string(entryJSON) + "\n")
+
+		_, err = w.Write(append(entryJSON, '\n'))
 		if err != nil {
 			logger.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
@@ -480,4 +491,5 @@ var (
 	ErrNoBasePathSet      = JobError{"empty BBBasePath: Must be set"}
 	ErrParentJobNotFound  = JobError{"parent job not found"}
 	ErrParentJobCancelled = JobError{"parent job cancelled"}
+	ErrParentJobFailed    = JobError{"parent job failed"}
 )

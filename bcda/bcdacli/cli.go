@@ -359,10 +359,49 @@ func setUpApp() *cli.App {
 					Usage:       "Directory where CCLF files are located",
 					Destination: &filePath,
 				},
+				cli.StringFlag{
+					Name:        "filesource",
+					Usage:       "Source of files. Must be one of 'local', 's3'. Defaults to 'local'",
+					Destination: &fileSource,
+				},
+				cli.StringFlag{
+					Name:        "s3endpoint",
+					Usage:       "Custom S3 endpoint",
+					Destination: &s3Endpoint,
+				},
+				cli.StringFlag{
+					Name:        "assume-role-arn",
+					Usage:       "Optional IAM role ARN to assume for S3",
+					Destination: &assumeRoleArn,
+				},
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				success, failure, skipped, err := cclf.ImportCCLFDirectory(filePath)
+				var file_processor cclf.CclfFileProcessor
+
+				if fileSource == "s3" {
+					file_processor = &cclf.S3FileProcessor{
+						Handler: optout.S3FileHandler{
+							Logger:        log.API,
+							Endpoint:      s3Endpoint,
+							AssumeRoleArn: assumeRoleArn,
+						},
+					}
+				} else {
+					file_processor = &cclf.LocalFileProcessor{
+						Handler: optout.LocalFileHandler{
+							Logger:                 log.API,
+							PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+							FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+						},
+					}
+				}
+
+				importer := cclf.CclfImporter{
+					FileProcessor: file_processor,
+				}
+
+				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
 				if err != nil {
 					log.API.Error("error returned from ImportCCLFDirectory: ", err)
 					return err

@@ -134,25 +134,14 @@ func GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
 }
 
 func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
-	detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
+	errType, diagnostics string) *fhirmodels.OperationOutcome {
 
 	return &fhirmodels.OperationOutcome{
 		Issue: []*fhirmodels.OperationOutcome_Issue{
 			{
-				Severity: &fhircodes.IssueSeverityCode{Value: severity},
-				Code:     &fhircodes.IssueTypeCode{Value: code},
-				Details: &fhirdatatypes.CodeableConcept{
-					Coding: []*fhirdatatypes.Coding{
-						{
-							Code: &fhirdatatypes.Code{Value: detailsCode},
-							System: &fhirdatatypes.Uri{
-								Value: "http://hl7.org/fhir/ValueSet/operation-outcome",
-							},
-							Display: &fhirdatatypes.String{Value: detailsDisplay},
-						},
-					},
-					Text: &fhirdatatypes.String{Value: detailsDisplay},
-				},
+				Severity:    &fhircodes.IssueSeverityCode{Value: severity},
+				Code:        &fhircodes.IssueTypeCode{Value: code},
+				Diagnostics: &fhirdatatypes.String{Value: diagnostics},
 			},
 		},
 	}
@@ -267,7 +256,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 				},
 				Operation: []*fhirmodels.CapabilityStatement_Rest_Operation{
 					{
-						Name: &fhirdatatypes.String{Value: "patient-export"},
+						Name: &fhirdatatypes.String{Value: "export"},
 						Definition: &fhirdatatypes.Reference{
 							Reference: &fhirdatatypes.Reference_Uri{
 								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
@@ -275,7 +264,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						},
 					},
 					{
-						Name: &fhirdatatypes.String{Value: "group-export"},
+						Name: &fhirdatatypes.String{Value: "export"},
 						Definition: &fhirdatatypes.Reference{
 							Reference: &fhirdatatypes.Reference_Uri{
 								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},

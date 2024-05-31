@@ -92,8 +92,8 @@
 											"        pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 											"    });",
 											"",
-											"    pm.test(\"Issue details code is Invalid Token\", function() {",
-											"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
+											"    pm.test(\"Diagnostics is Invalid Token\", function() {",
+											"        pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
 											"    });",
 											"}"
 										],

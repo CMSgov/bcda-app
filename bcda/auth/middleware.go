@@ -53,7 +53,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Auth.Warn("Invalid Authorization header value")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
 			return
 		}
 
@@ -108,17 +108,17 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
-			rw.Exception(ctx, w, http.StatusUnauthorized, responseutils.ExpiredErr, "")
+			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.ExpiredErr)
 		case *customErrors.EntityNotFoundError:
-			rw.Exception(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, responseutils.UnknownEntityErr)
+			rw.Exception(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden), responseutils.UnauthorizedErr)
 		case *customErrors.RequestorDataError:
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.InternalErr, "")
+			rw.Exception(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.RequestErr)
 		case *customErrors.RequestTimeoutError:
-			rw.Exception(ctx, w, http.StatusServiceUnavailable, responseutils.InternalErr, "")
+			rw.Exception(ctx, w, http.StatusServiceUnavailable, http.StatusText(http.StatusServiceUnavailable), responseutils.InternalErr)
 		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
-			rw.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			rw.Exception(ctx, w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), responseutils.InternalErr)
 		default:
-			rw.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 		}
 	}
 }
@@ -132,7 +132,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
 			log.Auth.Error("No token found")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 			return
 		}
 

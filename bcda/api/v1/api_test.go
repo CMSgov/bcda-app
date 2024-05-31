@@ -31,7 +31,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -82,8 +81,8 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 		expStatusCode int
 		expErrCode    string
 	}{
-		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
-		{"DoesNotExist", "0", 404, responseutils.DbErr},
+		{"InvalidJobID", "abcd", 400, "could not parse job id"},
+		{"DoesNotExist", "0", 404, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -105,7 +104,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -289,8 +288,8 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 		expStatusCode int
 		expErrCode    string
 	}{
-		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
-		{"DoesNotExist", "0", 404, responseutils.DbErr},
+		{"InvalidJobID", "abcd", 400, "could not parse job id"},
+		{"DoesNotExist", "0", 404, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -312,7 +311,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
+			assert.Contains(t, respOO.Issue[0].Diagnostics.Value, tt.expErrCode)
 		})
 	}
 }
@@ -358,12 +357,16 @@ func (s *APITestSuite) TestServeData() {
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 
 	tests := []struct {
-		name    string
-		headers []string
+		name         string
+		headers      []string
+		gzipExpected bool
 	}{
-		{"gzip-only", []string{"gzip"}},
-		{"gzip", []string{"deflate", "br", "gzip"}},
-		{"non-gzip", nil},
+		{"gzip-only", []string{"gzip"}, true},
+		{"gzip-deflate", []string{"gzip, deflate"}, true},
+		{"gzip-deflate-br-handle", []string{"gzip,deflate, br"}, true},
+		{"gzip", []string{"deflate", "br", "gzip"}, true},
+		{"non-gzip w/ deflate and br", []string{"deflate", "br"}, false},
+		{"non-gzip", nil, false},
 	}
 
 	for _, tt := range tests {
@@ -378,10 +381,11 @@ func (s *APITestSuite) TestServeData() {
 			var useGZIP bool
 			for _, h := range tt.headers {
 				req.Header.Add("Accept-Encoding", h)
-				if h == "gzip" {
+				if strings.Contains(h, "gzip") {
 					useGZIP = true
 				}
 			}
+			assert.Equal(t, tt.gzipExpected, useGZIP)
 
 			handler := http.HandlerFunc(ServeData)
 			handler.ServeHTTP(s.rr, req)

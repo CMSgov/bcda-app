@@ -97,6 +97,7 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
 
 // StopQue cleans up any resources created
 func (q *masterQueue) StopQue() {
+	q.queDB.Close()
 	q.quePool.Shutdown()
 }
 
@@ -122,6 +123,10 @@ func (q *queue) processJob(job *que.Job) error {
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
 		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
+		return nil
+	} else if goerrors.Is(err, worker.ErrParentJobFailed) {
+		// ACK the job because we do not need to work on queue jobs associated with a failed parent job
+		logger.Warnf("queJob %d associated with a failed parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
 		return nil
 	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
 		// Data is corrupted, we cannot work on this job.

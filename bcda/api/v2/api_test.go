@@ -21,7 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
@@ -95,8 +94,8 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 		expStatusCode int
 		expErrCode    string
 	}{
-		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
-		{"DoesNotExist", "0", 404, responseutils.DbErr},
+		{"InvalidJobID", "abcd", 400, "could not parse job id"},
+		{"DoesNotExist", "0", 404, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -118,7 +117,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -400,8 +399,8 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 		expStatusCode int
 		expErrCode    string
 	}{
-		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
-		{"DoesNotExist", "0", 404, responseutils.DbErr},
+		{"InvalidJobID", "abcd", 400, "could not parse job id"},
+		{"DoesNotExist", "0", 404, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -422,7 +421,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -497,8 +496,8 @@ func (s *APITestSuite) TestMetadataResponse() {
 		opName       string
 		opDefinition string
 	}{
-		{fhircodes.ResourceTypeCode_PATIENT, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
-		{fhircodes.ResourceTypeCode_GROUP, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+		{fhircodes.ResourceTypeCode_PATIENT, "export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+		{fhircodes.ResourceTypeCode_GROUP, "export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 	}
 
 	for _, rd := range resourceData {
