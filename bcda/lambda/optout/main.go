@@ -49,7 +49,7 @@ func loadBfdS3Params() (string, string, error) {
 	}
 
 	s3AssumeRoleArnKey := fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env)
-	s3ImportPathKey := fmt.Sprintf("/opt-out-import/bcda/%s/bfd-s3-import-path", env) // TODO
+	s3ImportPathKey := fmt.Sprintf("/opt-out-import/bcda/%s/bfd-s3-import-path", env)
 
 	params, err := bcdaaws.GetParameters(bcdaSession, []*string{&s3AssumeRoleArnKey, &s3ImportPathKey})
 	if err != nil {
