@@ -25,7 +25,7 @@ func main() {
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
 		res, err := handleOptOutImport(os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
 		if err != nil {
-			fmt.Errorf("Failed to run opt out import: %s\n", err.Error())
+			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
 		} else {
 			fmt.Println(res)
 		}

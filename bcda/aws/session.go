@@ -10,7 +10,6 @@ var s3Region = "us-east-1"
 
 // Makes these easily mockable for testing
 var newSession = session.NewSession
-var newSessionWithOptions = session.NewSessionWithOptions
 
 // NewSession
 // Returns a new AWS session using the given roleArn
@@ -19,7 +18,7 @@ func NewSession(roleArn, endpoint string) (*session.Session, error) {
 	var err error
 
 	config := aws.Config{
-		Region: aws.String("us-east-1"),
+		Region: aws.String(s3Region),
 	}
 
 	if endpoint != "" {
