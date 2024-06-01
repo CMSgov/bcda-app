@@ -31,7 +31,7 @@ func (s *OptOutImportMainSuite) TestOptOutImportHandlerSuccess() {
 	})
 	defer cleanupParams()
 
-	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent(path, "fake_filename"))
+	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), path, "fake_filename"))
 	assert.Nil(err)
 
 	fs := postgrestest.GetSuppressionFileByName(s.T(), database.Connection,
@@ -47,6 +47,6 @@ func (s *OptOutImportMainSuite) TestOptOutImportHandlerSuccess() {
 
 func (s *OptOutImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
 	assert := assert.New(s.T())
-	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent("doesn't-matter", "fake_filename"))
+	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), "doesn't-matter", "fake_filename"))
 	assert.Contains(err.Error(), "invalid parameters error: /opt-out-import/bcda/local/bfd-bucket-role-arn")
 }

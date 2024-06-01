@@ -441,12 +441,14 @@ func SetEnvVars(t *testing.T, vars []EnvVar) func() {
 
 	for _, envVar := range vars {
 		origVars = append(origVars, EnvVar{Name: envVar.Name, Value: os.Getenv(envVar.Name)})
-		os.Setenv(envVar.Name, envVar.Value)
+		err := os.Setenv(envVar.Name, envVar.Value)
+		assert.Nil(t, err)
 	}
 
 	cleanup := func() {
 		for _, envVar := range origVars {
-			os.Setenv(envVar.Name, envVar.Value)
+			err := os.Setenv(envVar.Name, envVar.Value)
+			assert.Nil(t, err)
 		}
 	}
 
@@ -668,32 +670,29 @@ func ContextTransactionID() *http.Request {
 	return r
 }
 
-func GetSQSEvent(bucketName string, fileName string) events.SQSEvent {
+func GetSQSEvent(t *testing.T, bucketName string, fileName string) events.SQSEvent {
 	jsonFile, err := os.Open("testdata/s3event.json")
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer jsonFile.Close()
 
-	byteValue, _ := io.ReadAll(jsonFile)
-	if err != nil {
-		fmt.Println(err)
-	}
+	defer func() {
+		err := jsonFile.Close()
+		assert.Nil(t, err)
+	}()
+
+	byteValue, err := io.ReadAll(jsonFile)
+	assert.Nil(t, err)
 
 	var s3event events.S3Event
 	err = json.Unmarshal([]byte(byteValue), &s3event)
-	if err != nil {
-		fmt.Println(err)
-	}
+	assert.Nil(t, err)
 
 	s3event.Records[0].S3.Bucket.Name = bucketName
 	s3event.Records[0].S3.Object.Key = fileName
 
 	val, err := json.Marshal(s3event)
-
-	if err != nil {
-		fmt.Println(err)
-	}
+	assert.Nil(t, err)
 
 	body := fmt.Sprintf("{\"Type\" : \"Notification\",\n  \"MessageId\" : \"123456-1234-1234-1234-6e06896db643\",\n  \"TopicArn\" : \"my-topic\",\n  \"Subject\" : \"Amazon S3 Notification\",\n  \"Message\" : %s}", strconv.Quote(string(val[:])))
 	event := events.SQSEvent{
