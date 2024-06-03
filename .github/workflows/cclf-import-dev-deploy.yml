@@ -1,0 +1,26 @@
+name: cclf-import dev deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - lambda/cclf-import/**
+      - .github/workflows/cclf-import-dev-deploy.yml
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+        - name: Print a greeting
+          env:
+            VAR1: HELLO
+            VAR2: WORLD
+          run: |
+            echo $VAR1 $VAR2
+
