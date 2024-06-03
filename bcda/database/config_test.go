@@ -20,6 +20,7 @@ func (s *DatabaseConfigSuite) TestLoadConfigSuccess() {
 	assert := assert.New(s.T())
 
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
+		{Name: "ENV", Value: ""},
 		{Name: "DATABASE_URL", Value: "my-super-secure-database-url"},
 		{Name: "QUEUE_DATABASE_URL", Value: "my-super-secure-queue-database-url"},
 	})
@@ -35,6 +36,7 @@ func (s *DatabaseConfigSuite) TestLoadConfigMissingDatabaseUrl() {
 	assert := assert.New(s.T())
 
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
+		{Name: "ENV", Value: ""},
 		{Name: "DATABASE_URL", Value: ""},
 		{Name: "QUEUE_DATABASE_URL", Value: "my-super-secure-queue-database-url"},
 	})
@@ -49,6 +51,7 @@ func (s *DatabaseConfigSuite) TestLoadConfigMissingQueueDatabaseUrl() {
 	assert := assert.New(s.T())
 
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
+		{Name: "ENV", Value: ""},
 		{Name: "DATABASE_URL", Value: "my-super-secure-database-url"},
 		{Name: "QUEUE_DATABASE_URL", Value: ""},
 	})

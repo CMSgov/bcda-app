@@ -107,8 +107,9 @@ func handleOptOutImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	}
 
 	s, f, sk, err := importer.ImportSuppressionDirectory(s3ImportPath)
-	logger.Infof("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
-	return "success", err
+	result := fmt.Sprintf("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
+	logger.Info(result)
+	return result, err
 }
 
 func configureLogger(env, appName string) *logrus.Entry {

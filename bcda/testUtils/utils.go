@@ -671,7 +671,7 @@ func ContextTransactionID() *http.Request {
 }
 
 func GetSQSEvent(t *testing.T, bucketName string, fileName string) events.SQSEvent {
-	jsonFile, err := os.Open("testdata/s3event.json")
+	jsonFile, err := os.Open("../../../shared_files/aws/s3event.json")
 	if err != nil {
 		fmt.Println(err)
 	}
