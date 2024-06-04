@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,10 +27,14 @@ func (s *OptOutImportMainSuite) TestOptOutImportHandlerSuccess() {
 	path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/synthetic1800MedicareFiles/test2/")
 	defer cleanup()
 
+	env := uuid.NewUUID()
+	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
+	defer cleanupEnv()
+
 	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
-		{Name: "/opt-out-import/bcda/local/bfd-bucket-role-arn", Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
-		{Name: "/bcda/local/api/DATABASE_URL", Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
-		{Name: "/bcda/local/api/QUEUE_DATABASE_URL", Value: "doesnt-matter", Type: "SecureString"},
+		{Name: fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
+		{Name: fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
+		{Name: fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env), Value: "doesnt-matter", Type: "SecureString"},
 	})
 	defer cleanupParams()
 
@@ -55,10 +61,14 @@ func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Skipped() {
 	path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadFileNames/")
 	defer cleanup()
 
+	env := uuid.NewUUID()
+	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
+	defer cleanupEnv()
+
 	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
-		{Name: "/opt-out-import/bcda/local/bfd-bucket-role-arn", Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
-		{Name: "/bcda/local/api/DATABASE_URL", Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
-		{Name: "/bcda/local/api/QUEUE_DATABASE_URL", Value: "doesnt-matter", Type: "SecureString"},
+		{Name: fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
+		{Name: fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
+		{Name: fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env), Value: "doesnt-matter", Type: "SecureString"},
 	})
 	defer cleanupParams()
 
@@ -75,10 +85,14 @@ func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Failed() {
 	path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadHeader/")
 	defer cleanup()
 
+	env := uuid.NewUUID()
+	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
+	defer cleanupEnv()
+
 	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
-		{Name: "/opt-out-import/bcda/local/bfd-bucket-role-arn", Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
-		{Name: "/bcda/local/api/DATABASE_URL", Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
-		{Name: "/bcda/local/api/QUEUE_DATABASE_URL", Value: "doesnt-matter", Type: "SecureString"},
+		{Name: fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
+		{Name: fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
+		{Name: fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env), Value: "doesnt-matter", Type: "SecureString"},
 	})
 	defer cleanupParams()
 
