@@ -105,7 +105,7 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingDatabaseUrl
 
 	cfg, err := LoadConfig()
 	assert.Nil(cfg)
-	assert.Contains(err.Error(), "invalid parameters error: /bcda/local/api/DATABASE_URL")
+	assert.Contains(err.Error(), fmt.Sprintf("invalid parameters error: /bcda/%s/api/DATABASE_URL", env))
 }
 
 func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingQueueDatabaseUrl() {
@@ -126,5 +126,5 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingQueueDataba
 
 	cfg, err := LoadConfig()
 	assert.Nil(cfg)
-	assert.Contains(err.Error(), "invalid parameters error: /bcda/local/api/QUEUE_DATABASE_URL")
+	assert.Contains(err.Error(), fmt.Sprintf("invalid parameters error: /bcda/%s/api/QUEUE_DATABASE_URL", env))
 }
