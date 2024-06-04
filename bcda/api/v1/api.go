@@ -1,11 +1,14 @@
 package v1
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -284,7 +287,12 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	dataDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
-	w.Header().Set(constants.ContentType, "application/fhir+ndjson")
+	filePath := fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName)
+
+	encoded, err := isGzipEncoded(filePath)
+	if err != nil {
+		writeServeDataFailure(err, w)
+	}
 
 	var useGZIP bool
 	for _, header := range r.Header.Values("Accept-Encoding") {
@@ -293,18 +301,73 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-
+	w.Header().Set(constants.ContentType, "application/fhir+ndjson")
 	if useGZIP {
 		w.Header().Set("Content-Encoding", "gzip")
 		gz := gzip.NewWriter(w)
 		defer gz.Close()
 
 		gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
-		http.ServeFile(gzw, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+		if encoded {
+			http.ServeFile(w, r, filePath)
+		} else {
+			http.ServeFile(gzw, r, filePath)
+		}
+
 	} else {
 		log.API.Warnf("API request to serve data is being made without gzip for file %s for jobId %s", fileName, jobID)
-		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+		if encoded {
+			//We'll do the following: 1. Open file, 2. De-compress it, 3. Serve it up.
+			file, err := os.Open(filePath) // #nosec G304
+			if err != nil {
+				writeServeDataFailure(err, w)
+				return
+			}
+			defer file.Close() //#nosec G307
+			gzipReader, err := gzip.NewReader(file)
+			if err != nil {
+				writeServeDataFailure(err, w)
+				return
+			}
+			defer gzipReader.Close()
+			_, err = io.Copy(w, gzipReader) // #nosec G110
+			if err != nil {
+				writeServeDataFailure(err, w)
+				return
+			}
+		} else {
+			http.ServeFile(w, r, filePath)
+		}
 	}
+}
+
+// This function is not necessary, but helps meet the sonarQube quality gates
+func writeServeDataFailure(err error, w http.ResponseWriter) {
+	log.API.Error(err)
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+}
+
+// This function reads a file's magic number, to determine if it is gzip-encoded or not.
+func isGzipEncoded(filePath string) (encoded bool, err error) {
+	file, err := os.Open(filePath) // #nosec G304
+	if err != nil {
+		return false, err
+	}
+	defer file.Close() //#nosec G307
+
+	byteSlice := make([]byte, 2)
+	bytesRead, err := file.Read(byteSlice)
+	if err != nil {
+		return false, err
+	}
+
+	//We can't compare to a magic number if there's less than 2 bytes returned. Also can't be ndjson
+	if bytesRead < 2 {
+		return false, errors.New("Invalid file with length 1 byte.")
+	}
+
+	comparison := []byte{0x1f, 0x8b}
+	return bytes.Equal(comparison, byteSlice), nil
 }
 
 /*

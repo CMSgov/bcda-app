@@ -1,6 +1,6 @@
 # Beneficiary Claims Data API
 
-[![Build Status](https://github.com/CMSgov/bcda-app/actions/workflows/ci-workflow.yml/badge.svg?branch=master)](https://github.com/CMSgov/bcda-app/actions?query=branch%3Amaster)
+[![Build Status](https://github.com/CMSgov/bcda-app/actions/workflows/ci-workflow.yml/badge.svg?branch=main)](https://github.com/CMSgov/bcda-app/actions?query=branch%3Amain)
 
 ## **Documentation**
 

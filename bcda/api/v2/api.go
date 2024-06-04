@@ -52,211 +52,224 @@ func init() {
 }
 
 /*
-	swagger:route GET /api/v1/alr/$export alrData alrRequest
+swagger:route GET /api/v1/alr/$export alrData alrRequest
 
-	Start FHIR R4 data export for all supported resource types
+# Start FHIR R4 data export for all supported resource types
 
-	Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
+Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
 
-	Produces:
-	- application/fhir+json
+Produces:
+- application/fhir+json
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
+	bearer_token:
+
+Responses:
+
+	202: BulkRequestResponse
+	400: badRequestResponse
+	401: invalidCredentials
+	429: tooManyRequestsResponse
+	500: errorResponse
 */
 func ALRRequest(w http.ResponseWriter, r *http.Request) {
 	h.ALRRequest(w, r)
 }
 
 /*
-	swagger:route GET /api/v2/Patient/$export bulkDataV2 bulkPatientRequestV2
+swagger:route GET /api/v2/Patient/$export bulkDataV2 bulkPatientRequestV2
 
-	Start FHIR R4 data export for all supported resource types.
+Start FHIR R4 data export for all supported resource types.
 
-	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
-	Produces:
-	- application/fhir+json
+Produces:
+- application/fhir+json
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
+	bearer_token:
+
+Responses:
+
+	202: BulkRequestResponse
+	400: badRequestResponse
+	401: invalidCredentials
+	429: tooManyRequestsResponse
+	500: errorResponse
 */
 func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkPatientRequest(w, r)
 }
 
 /*
-	swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
+		swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
 
-    Start FHIR R4 data export (for the specified group identifier) for all supported resource types
+	    Start FHIR R4 data export (for the specified group identifier) for all supported resource types
 
-	Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system are `all` and `runout`.
+		Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system are `all` and `runout`.
 
-	The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
+		The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
 
-	The `runout` identifier returns claims runouts data.
+		The `runout` identifier returns claims runouts data.
 
-	Produces:
-	- application/fhir+json
+		Produces:
+		- application/fhir+json
 
-	Security:
-		bearer_token:
+		Security:
+			bearer_token:
 
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
+		Responses:
+			202: BulkRequestResponse
+			400: badRequestResponse
+			401: invalidCredentials
+			429: tooManyRequestsResponse
+			500: errorResponse
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkGroupRequest(w, r)
 }
 
 /*
-	swagger:route GET /api/v2/jobs/{jobId} jobV2 jobStatusV2
+swagger:route GET /api/v2/jobs/{jobId} jobV2 jobStatusV2
 
-	Get job status
+# Get job status
 
-	Returns the current status of an export job.
+Returns the current status of an export job.
 
-	Produces:
-	- application/fhir+json
+Produces:
+- application/fhir+json
 
-	Schemes: http, https
+Schemes: http, https
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		202: jobStatusResponse
-		200: completedJobResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		404: notFoundResponse
-		410: goneResponse
-		500: errorResponse
+	bearer_token:
+
+Responses:
+
+	202: jobStatusResponse
+	200: completedJobResponse
+	400: badRequestResponse
+	401: invalidCredentials
+	404: notFoundResponse
+	410: goneResponse
+	500: errorResponse
 */
 func JobStatus(w http.ResponseWriter, r *http.Request) {
 	h.JobStatus(w, r)
 }
 
 /*
-	swagger:route GET /api/v2/jobs jobV2 jobsStatusV2
+swagger:route GET /api/v2/jobs jobV2 jobsStatusV2
 
-	Get jobs statuses
+# Get jobs statuses
 
-	Returns the current statuses of export jobs. Supported status types are Completed, Archived, Expired, Failed, FailedExpired,
-	In Progress, Pending, Cancelled, and CancelledExpired. If no status(s) is provided, all jobs will be returned.
+Returns the current statuses of export jobs. Supported status types are Completed, Archived, Expired, Failed, FailedExpired,
+In Progress, Pending, Cancelled, and CancelledExpired. If no status(s) is provided, all jobs will be returned.
 
-	Note on job status to fhir task resource status mapping:
-	Due to the fhir task status field having a smaller set of values, the following statuses will be set to different fhir values in the response
+Note on job status to fhir task resource status mapping:
+Due to the fhir task status field having a smaller set of values, the following statuses will be set to different fhir values in the response
 
-	Archived, Expired -> Completed
-	FailedExpired -> Failed
-	Pending -> In Progress
-	CancelledExpired -> Cancelled
+Archived, Expired -> Completed
+FailedExpired -> Failed
+Pending -> In Progress
+CancelledExpired -> Cancelled
 
-	Though the status name has been remapped the response will still only contain jobs pertaining to the provided job status in the request.
+Though the status name has been remapped the response will still only contain jobs pertaining to the provided job status in the request.
 
-	Produces:
-	- application/fhir+json
+Produces:
+- application/fhir+json
 
-	Schemes: http, https
+Schemes: http, https
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		200: jobsStatusResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		404: notFoundResponse
-		410: goneResponse
-		500: errorResponse
+	bearer_token:
+
+Responses:
+
+	200: jobsStatusResponse
+	400: badRequestResponse
+	401: invalidCredentials
+	404: notFoundResponse
+	410: goneResponse
+	500: errorResponse
 */
 func JobsStatus(w http.ResponseWriter, r *http.Request) {
 	h.JobsStatus(w, r)
 }
 
 /*
-	swagger:route DELETE /api/v2/jobs/{jobId} jobV2 deleteJobV2
+swagger:route DELETE /api/v2/jobs/{jobId} jobV2 deleteJobV2
 
-	Cancel a job
+# Cancel a job
 
-	Cancels a currently running job.
+Cancels a currently running job.
 
-	Produces:
-	- application/fhir+json
+Produces:
+- application/fhir+json
 
-	Schemes: http, https
+Schemes: http, https
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		202: deleteJobResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		404: notFoundResponse
-		410: goneResponse
-		500: errorResponse
+	bearer_token:
+
+Responses:
+
+	202: deleteJobResponse
+	400: badRequestResponse
+	401: invalidCredentials
+	404: notFoundResponse
+	410: goneResponse
+	500: errorResponse
 */
 func DeleteJob(w http.ResponseWriter, r *http.Request) {
 	h.DeleteJob(w, r)
 }
 
 /*
-	swagger:route GET /api/v2/attribution_status attributionStatusV2 attributionStatus
+swagger:route GET /api/v2/attribution_status attributionStatusV2 attributionStatus
 
-	Get attribution status
+# Get attribution status
 
-	Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
+Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
 
-	Produces:
-	- application/json
+Produces:
+- application/json
 
-	Schemes: http, https
+Schemes: http, https
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		200: AttributionFileStatusResponse
-		404: notFoundResponse
+	bearer_token:
+
+Responses:
+
+	200: AttributionFileStatusResponse
+	404: notFoundResponse
 */
 func AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	h.AttributionStatus(w, r)
 }
 
 /*
-	swagger:route GET /api/v2/metadata metadataV2 metadata
+swagger:route GET /api/v2/metadata metadataV2 metadata
 
-	Get metadata
+# Get metadata
 
-	Returns metadata about the API.
+Returns metadata about the API.
 
-	Produces:
-	- application/fhir+json
+Produces:
+- application/fhir+json
 
-	Schemes: http, https
+Schemes: http, https
 
-	Responses:
-		200: MetadataResponse
+Responses:
+
+	200: MetadataResponse
 */
 func Metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
@@ -345,7 +358,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_PATIENT},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "patient-export"},
+								Name:       &fhirdatatypes.String{Value: "export"},
 								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
 							},
 						},
@@ -354,7 +367,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_GROUP},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "group-export"},
+								Name:       &fhirdatatypes.String{Value: "export"},
 								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 							},
 						},

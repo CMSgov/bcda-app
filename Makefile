@@ -146,7 +146,7 @@ load-synthetic-suppression-data:
 
 load-fixtures-ssas:
 	docker-compose up -d db
-	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#master' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
+	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
 	docker-compose run ssas --add-fixture-data
 
 docker-build:
