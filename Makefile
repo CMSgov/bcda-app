@@ -75,6 +75,8 @@ unit-test-db:
 	api sh -c 'bcda generate-synthetic-alr-data --cms-id=A9994 --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
 
 unit-test-localstack:
+	# Clean up any existing data to ensure we spin up container in a known state.
+	docker-compose -f docker-compose.test.yml rm -fsv localstack
 	docker-compose -f docker-compose.test.yml up -d localstack
 	
 unit-test-db-snapshot:
