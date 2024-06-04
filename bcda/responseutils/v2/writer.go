@@ -252,13 +252,13 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 				},
 				Operation: []*fhirmodelCS.CapabilityStatement_Rest_Resource_Operation{
 					{
-						Name: &fhirdatatypes.String{Value: "patient-export"},
+						Name: &fhirdatatypes.String{Value: "export"},
 						Definition: &fhirdatatypes.Canonical{
 							Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
 						},
 					},
 					{
-						Name: &fhirdatatypes.String{Value: "group-export"},
+						Name: &fhirdatatypes.String{Value: "export"},
 						Definition: &fhirdatatypes.Canonical{
 							Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
 						},
