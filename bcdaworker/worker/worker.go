@@ -96,8 +96,16 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
+	tempJobPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), jobID)
 	stagingPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
 	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
+
+	// Create a temporary path for the job files before they go into the staging directory
+	if err = createDir(tempJobPath); err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create temporary directory on worker for jobID %s", jobID))
+		logger.Error(err)
+		return err
+	}
 
 	if err = createDir(stagingPath); err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR staging path directory for jobID %s", jobID))
@@ -133,10 +141,22 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			logger.Error("Job failed. Job ID: ", job.ID)
 		}
 	}
+	//move the files over
+	err = moveFiles(tempJobPath, stagingPath)
+	if err != nil {
+		logger.Error(err)
+	}
 
 	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
 	if err != nil {
 		logger.Error(err)
+	}
+
+	//with job key created, delete the temp job directory.
+	//in any case, remove the file, really...
+	if err = os.RemoveAll(tempJobPath); err != nil {
+		err = errors.Wrap(err, "Error removing the temporary job path")
+		logger.Warn(err)
 	}
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
@@ -147,6 +167,26 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	}
 
 	return nil
+}
+
+func moveFiles(tempDir string, stagingDir string) error {
+	// Open the input file
+	files, err := os.ReadDir(tempDir)
+	if err != nil {
+		err = errors.Wrap(err, "Error reading from the staging directory for files for Job")
+		//probably should fail it here...
+		return err
+	}
+	for _, f := range files {
+		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
+		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
+		err := os.Rename(oldPath, newPath) //#nosec G304
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
 
 // writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
@@ -202,7 +242,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		return jobKeys, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
 	}
 
-	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
+	dataDir := conf.GetEnv("FHIR_TEMP_DIR")
 	fileUUID := uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
@@ -340,7 +380,8 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	logger := log.GetCtxLogger(ctx)
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
-	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
+	//dataDir := conf.GetEnv("FHIR_STAGING_DIR")
+	dataDir := conf.GetEnv("FHIR_TEMP_DIR")
 	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
 	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)

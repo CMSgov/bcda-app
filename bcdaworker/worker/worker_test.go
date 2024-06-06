@@ -47,6 +47,8 @@ type WorkerTestSuite struct {
 	// test params
 	jobID      int
 	stagingDir string
+	payloadDir string
+	tempDir    string
 	cclfFile   *models.CCLFFile
 
 	db *sql.DB
@@ -76,8 +78,9 @@ func (s *WorkerTestSuite) SetupSuite() {
 		s.FailNow(err.Error())
 	}
 
-	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", tempDir)
-	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", tempDir)
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", fmt.Sprintf("%s/%s", tempDir, "PAYLOAD"))
+	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", fmt.Sprintf("%s/%s", tempDir, "STAGING"))
+	conf.SetEnv(s.T(), "FHIR_TEMP_DIR", fmt.Sprintf("%s/%s", tempDir, "TEMP"))
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
@@ -94,11 +97,19 @@ func (s *WorkerTestSuite) SetupTest() {
 	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
+	s.payloadDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), s.jobID)
+	s.tempDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_TEMP_DIR"), s.jobID)
 
 	postgrestest.CreateCCLFFile(s.T(), s.db, s.cclfFile)
 	os.RemoveAll(s.stagingDir)
 
 	if err := os.MkdirAll(s.stagingDir, os.ModePerm); err != nil {
+		s.FailNow(err.Error())
+	}
+	if err := os.MkdirAll(s.payloadDir, os.ModePerm); err != nil {
+		s.FailNow(err.Error())
+	}
+	if err := os.MkdirAll(s.tempDir, os.ModePerm); err != nil {
 		s.FailNow(err.Error())
 	}
 
@@ -120,6 +131,7 @@ func (s *WorkerTestSuite) TearDownSuite() {
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	os.RemoveAll(conf.GetEnv("FHIR_TEMP_DIR"))
 
 	// Reset worker logger to original logger
 	log.Worker = oldLogger
@@ -153,7 +165,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 		} else {
 			assert.Error(s.T(), err)
 		}
-		files, err := os.ReadDir(s.stagingDir)
+		files, err := os.ReadDir(s.tempDir)
 		assert.NoError(s.T(), err)
 		assert.Len(s.T(), jobKeys, tt.jobKeysCount)
 		assert.Len(s.T(), files, tt.fileCount)
@@ -202,7 +214,7 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 
 func VerifyFileContent(t *testing.T, files []fs.DirEntry, resource string, expectedCount int, jobID int) {
 	for _, f := range files {
-		filePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), jobID, f.Name())
+		filePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), jobID, f.Name())
 		file, err := os.Open(filePath)
 		if err != nil {
 			t.FailNow()
@@ -286,7 +298,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Len(s.T(), jobKeys, 2)
 	assert.NoError(s.T(), err)
-	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, jobKeys[1].FileName)
+	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, jobKeys[1].FileName)
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -337,11 +349,11 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
-	files, err := os.ReadDir(s.stagingDir)
+	files, err := os.ReadDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, files[0].Name())
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}]}
@@ -381,11 +393,11 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
-	files, err := os.ReadDir(s.stagingDir)
+	files, err := os.ReadDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	dataFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
+	dataFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, files[1].Name())
 	d, err := os.ReadFile(dataFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -393,7 +405,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	// Should be empty
 	s.Empty(d)
 
-	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, files[0].Name())
 	d, err = os.ReadFile(errorFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -443,7 +455,7 @@ func (s *WorkerTestSuite) TestAppendErrorToFile() {
 		fhircodes.IssueTypeCode_CODE_INVALID,
 		"", "", s.jobID)
 
-	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
+	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, s.testACO.UUID)
 	fData, err := os.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
