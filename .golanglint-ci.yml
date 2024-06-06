@@ -23,4 +23,3 @@ issues:
   - path: /
     linters:
     - typecheck
-  - path: .*_test\.go$
