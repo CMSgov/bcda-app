@@ -152,8 +152,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		logger.Error(err)
 	}
 
-	//with job key created, delete the temp job directory.
-	//in any case, remove the file, really...
+	//with a job key created, delete the temp job directory.
 	if err = os.RemoveAll(tempJobPath); err != nil {
 		err = errors.Wrap(err, "Error removing the temporary job path")
 		logger.Warn(err)
@@ -514,6 +513,9 @@ func createDir(path string) error {
 		if err = os.MkdirAll(path, os.ModePerm); err != nil {
 			return err
 		}
+		return err
+	} else if err != nil {
+		return err
 	}
 	return nil
 }

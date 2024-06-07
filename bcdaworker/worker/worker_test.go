@@ -568,8 +568,9 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	assert.NotNil(s.T(), err)
 
 }
+
 func (s *WorkerTestSuite) TestCreateDir() {
-	err := createDir("/var/efs/2") //non-existant dir
+	err := createDir("/proc/invalid_path") //non-existant dir
 	assert.Error(s.T(), err)
 	err = createDir("2") //fine
 	assert.NoError(s.T(), err)
@@ -577,7 +578,7 @@ func (s *WorkerTestSuite) TestCreateDir() {
 
 func (s *WorkerTestSuite) TestMoveFiles() {
 	//negative case
-	err := moveFiles("/var/efs/2", "fake_dir")
+	err := moveFiles("/", "fake_dir")
 	assert.Error(s.T(), err)
 	//positive case, create two temporary directories + a file, and move a file between them.
 	tempDir1, err := os.MkdirTemp("", "*")
@@ -680,13 +681,13 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 			tmp, err := os.MkdirTemp("", "*")
 			assert.NoError(s.T(), err)
 			if tt.stagingFail {
-				staging = "/var/efs"
+				staging = "/proc/invalid_path"
 			}
 			if tt.payloadFail {
-				payload = "/var/efs"
+				payload = "/proc/invalid_path"
 			}
 			if tt.tempDirFail {
-				tmp = "/var/efs"
+				tmp = "/proc/invalid_path"
 			}
 
 			conf.SetEnv(s.T(), "FHIR_STAGING_DIR", staging)
@@ -713,7 +714,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 
 			// cancelled parent job status should not update after failed queuejob
 			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {
-				assert.Contains(s.T(), processJobErr.Error(), "permission denied")
+				assert.Contains(s.T(), processJobErr.Error(), "could not create")
 			} else {
 				assert.NoError(s.T(), processJobErr)
 			}
