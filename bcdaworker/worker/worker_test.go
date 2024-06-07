@@ -568,6 +568,17 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	assert.NotNil(s.T(), err)
 
 }
+func (s *WorkerTestSuite) TestCreateDir() {
+	err := createDir("/var/efs/2") //non-existant dir
+	assert.Error(s.T(), err)
+	err = createDir("2") //fine
+	assert.NoError(s.T(), err)
+}
+
+func (s *WorkerTestSuite) TestMoveFiles() {
+	err := moveFiles("/var/efs/2", "fake_dir")
+	assert.Error(s.T(), err)
+}
 
 func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	j := models.Job{
@@ -620,12 +631,82 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	assert.Equal(s.T(), models.JobStatusCancelled, completedJob.Status)
 }
 
+func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
+
+	tests := []struct {
+		name        string
+		stagingFail bool
+		payloadFail bool
+		tempDirFail bool
+	}{
+		{"TempDirFailure", false, false, true},
+		{"StagingDirFailure", true, false, false},
+		{"PayloadDirFailure", false, true, false},
+		{"NoFailure", false, false, false},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
+			// modifying the value.
+			defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
+			defer conf.SetEnv(s.T(), "FHIR_PAYL0AD_DIR", conf.GetEnv("FHIR_PAYL0AD_DIR"))
+			defer conf.SetEnv(s.T(), "FHIR_TEMP_DIR", conf.GetEnv("FHIR_TEMP_DIR"))
+			staging, err := os.MkdirTemp("", "*")
+			assert.NoError(s.T(), err)
+			payload, err := os.MkdirTemp("", "*")
+			assert.NoError(s.T(), err)
+			tmp, err := os.MkdirTemp("", "*")
+			assert.NoError(s.T(), err)
+			if tt.stagingFail {
+				staging = "/var/efs"
+			}
+			if tt.payloadFail {
+				payload = "/var/efs"
+			}
+			if tt.tempDirFail {
+				tmp = "/var/efs"
+			}
+
+			conf.SetEnv(s.T(), "FHIR_STAGING_DIR", staging)
+			conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", payload)
+			conf.SetEnv(s.T(), "FHIR_TEMP_DIR", tmp)
+			ctx := context.Background()
+			j := models.Job{
+				ACOID:      uuid.Parse(constants.TestACOID),
+				RequestURL: "/api/v1/Patient/$export",
+				Status:     models.JobStatusInProgress,
+				JobCount:   1,
+			}
+			postgrestest.CreateJobs(s.T(), s.db, &j)
+
+			jobArgs := models.JobEnqueueArgs{
+				ID:             int(j.ID),
+				ACOID:          j.ACOID.String(),
+				BeneficiaryIDs: []string{"10000", "11000"},
+				ResourceType:   "ExplanationOfBenefit",
+				BBBasePath:     constants.TestFHIRPath,
+			}
+
+			processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
+
+			// cancelled parent job status should not update after failed queuejob
+			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {
+				assert.Contains(s.T(), processJobErr.Error(), "permission denied")
+			} else {
+				assert.NoError(s.T(), processJobErr)
+			}
+
+		})
+	}
+
+}
+
 func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 	// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
 	// modifying the value.
 	defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
 	defer conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", conf.GetEnv("FHIR_PAYLOAD_DIR"))
-
 	staging, err := os.MkdirTemp("", "*")
 	assert.NoError(s.T(), err)
 	payload, err := os.MkdirTemp("", "*")

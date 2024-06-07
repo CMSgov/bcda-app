@@ -174,7 +174,6 @@ func moveFiles(tempDir string, stagingDir string) error {
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		err = errors.Wrap(err, "Error reading from the staging directory for files for Job")
-		//probably should fail it here...
 		return err
 	}
 	for _, f := range files {
@@ -380,7 +379,6 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	logger := log.GetCtxLogger(ctx)
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
-	//dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	dataDir := conf.GetEnv("FHIR_TEMP_DIR")
 	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
 	/* #nosec -- opening file defined by variable */
