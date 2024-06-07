@@ -580,6 +580,8 @@ func (s *WorkerTestSuite) TestMoveFiles() {
 	//negative case
 	err := moveFiles("/", "fake_dir")
 	assert.Error(s.T(), err)
+	err = moveFiles("/proc/fakedir", "fake_dir")
+	assert.Error(s.T(), err)
 	//positive case, create two temporary directories + a file, and move a file between them.
 	tempDir1, err := os.MkdirTemp("", "*")
 	if err != nil {
