@@ -576,8 +576,29 @@ func (s *WorkerTestSuite) TestCreateDir() {
 }
 
 func (s *WorkerTestSuite) TestMoveFiles() {
+	//negative case
 	err := moveFiles("/var/efs/2", "fake_dir")
 	assert.Error(s.T(), err)
+	//positive case, create two temporary directories + a file, and move a file between them.
+	tempDir1, err := os.MkdirTemp("", "*")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	tempDir2, err := os.MkdirTemp("", "*")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	_, err = os.CreateTemp(tempDir1, "")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	err = moveFiles(tempDir1, tempDir2)
+	assert.NoError(s.T(), err)
+	files, _ := os.ReadDir(tempDir2)
+	assert.Len(s.T(), files, 1)
+	files, _ = os.ReadDir(tempDir1)
+	assert.Len(s.T(), files, 0)
+
 }
 
 func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
