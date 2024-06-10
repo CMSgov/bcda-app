@@ -22,6 +22,8 @@ import (
 )
 
 func main() {
+	// Localstack is a local-development server that mimics AWS. The endpoint variable
+	// should only be set in local development to avoid making external calls to a real AWS account.
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
 		res, err := handleOptOutImport(os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
 		if err != nil {
