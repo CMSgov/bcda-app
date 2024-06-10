@@ -98,7 +98,7 @@ func (s *WorkerTestSuite) SetupTest() {
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
 	s.payloadDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), s.jobID)
-	s.tempDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_TEMP_DIR"), s.jobID)
+	s.tempDir = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), uuid.NewRandom())
 
 	postgrestest.CreateCCLFFile(s.T(), s.db, s.cclfFile)
 	os.RemoveAll(s.stagingDir)
@@ -159,7 +159,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 
 	for _, tt := range tests {
 		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs)
+		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
 		if tt.err == nil {
 			assert.NoError(s.T(), err)
 		} else {
@@ -169,7 +169,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 		assert.NoError(s.T(), err)
 		assert.Len(s.T(), jobKeys, tt.jobKeysCount)
 		assert.Len(s.T(), files, tt.fileCount)
-		VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.jobID)
+		VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.tempDir)
 	}
 }
 
@@ -212,9 +212,9 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 	return ctx, jobArgs, &bbc
 }
 
-func VerifyFileContent(t *testing.T, files []fs.DirEntry, resource string, expectedCount int, jobID int) {
+func VerifyFileContent(t *testing.T, files []fs.DirEntry, resource string, expectedCount int, tempDir string) {
 	for _, f := range files {
-		filePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), jobID, f.Name())
+		filePath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		file, err := os.Open(filePath)
 		if err != nil {
 			t.FailNow()
@@ -262,7 +262,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
 	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
@@ -293,12 +293,12 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Len(s.T(), jobKeys, 2)
 	assert.NoError(s.T(), err)
-	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, jobKeys[1].FileName)
+	errorFilePath := fmt.Sprintf("%s/%s", s.tempDir, jobKeys[1].FileName)
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -345,7 +345,9 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.On("GetPatientByIdentifierHash", id1).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	err = createDir(s.tempDir)
+	assert.NoError(s.T(), err)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
@@ -353,7 +355,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%s", s.tempDir, files[0].Name())
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}]}
@@ -388,7 +390,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
@@ -397,7 +399,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	dataFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, files[1].Name())
+	dataFilePath := fmt.Sprintf("%s/%s", s.tempDir, files[1].Name())
 	d, err := os.ReadFile(dataFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -405,7 +407,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	// Should be empty
 	s.Empty(d)
 
-	errorFilePath := fmt.Sprintf(constants.TestFilePathVariable, conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%s", s.tempDir, files[0].Name())
 	d, err = os.ReadFile(errorFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -453,9 +455,9 @@ func (s *WorkerTestSuite) TestGetFailureThreshold() {
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(s.logctx, s.testACO.UUID.String(),
 		fhircodes.IssueTypeCode_CODE_INVALID,
-		"", "", s.jobID)
+		"", "", s.tempDir)
 
-	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_TEMP_DIR"), s.jobID, s.testACO.UUID)
+	filePath := fmt.Sprintf("%s/%s-error.ndjson", s.tempDir, s.testACO.UUID)
 	fData, err := os.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
