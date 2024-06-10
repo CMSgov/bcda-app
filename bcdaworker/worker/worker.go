@@ -96,7 +96,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
-	tempJobPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), jobID)
+	//temp Job path is not dependent upon the directory. Using a UUID for a directory string prevents race conditions.
+	tempJobPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), uuid.NewRandom())
 	stagingPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
 	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
@@ -106,6 +107,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		logger.Error(err)
 		return err
 	}
+	defer os.RemoveAll(tempJobPath)
 
 	if err = createDir(stagingPath); err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR staging path directory for jobID %s", jobID))
@@ -150,12 +152,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
 	if err != nil {
 		logger.Error(err)
-	}
-
-	//with a job key created, delete the temp job directory.
-	if err = os.RemoveAll(tempJobPath); err != nil {
-		err = errors.Wrap(err, "Error removing the temporary job path")
-		logger.Warn(err)
 	}
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
