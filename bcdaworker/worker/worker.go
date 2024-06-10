@@ -96,8 +96,18 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
+	//temp Job path is not dependent upon the directory. Using a UUID for a directory string prevents race conditions.
+	tempJobPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), uuid.NewRandom())
 	stagingPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
 	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
+
+	// Create a temporary path for the job files before they go into the staging directory
+	if err = createDir(tempJobPath); err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create temporary directory on worker for jobID %s", jobID))
+		logger.Error(err)
+		return err
+	}
+	defer os.RemoveAll(tempJobPath)
 
 	if err = createDir(stagingPath); err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR staging path directory for jobID %s", jobID))
@@ -113,7 +123,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return err
 	}
 
-	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs)
+	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs, tempJobPath)
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
@@ -133,6 +143,11 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			logger.Error("Job failed. Job ID: ", job.ID)
 		}
 	}
+	//move the files over
+	err = moveFiles(tempJobPath, stagingPath)
+	if err != nil {
+		logger.Error(err)
+	}
 
 	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
 	if err != nil {
@@ -149,11 +164,30 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	return nil
 }
 
+func moveFiles(tempDir string, stagingDir string) error {
+	// Open the input file
+	files, err := os.ReadDir(tempDir)
+	if err != nil {
+		err = errors.Wrap(err, "Error reading from the staging directory for files for Job")
+		return err
+	}
+	for _, f := range files {
+		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
+		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
+		err := os.Rename(oldPath, newPath) //#nosec G304
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
 // writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
 // A list of JobKeys are returned, containing the names of files that were created.
 // Filesnames can be "blank.ndjson", "<uuid>.ndjson", or "<uuid>-error.ndjson".
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, jobArgs models.JobEnqueueArgs) (jobKeys []models.JobKey, err error) {
+	cmsID string, jobArgs models.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
 
 	jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
 
@@ -202,9 +236,8 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		return jobKeys, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
 	}
 
-	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileUUID := uuid.New()
-	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
+	f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", tmpDir, fileUUID))
 	if err != nil {
 		err = errors.Wrap(err, "Error creating ndjson file")
 		return jobKeys, err
@@ -248,14 +281,14 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				//MBI is appended inside file, not printed out to system logs
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
-			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
+			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir)
 			return "", 0, nil
 		}()
 
 		if err != nil {
 			logger.Error(err)
 			errorCount++
-			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, fileErrMsg, jobArgs.ID)
+			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, fileErrMsg, tmpDir)
 		}
 
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -271,7 +304,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	if failed {
 		if ctx.Err() == context.Canceled {
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_PROCESSING, responseutils.BbErr, "Parent job was cancelled", jobArgs.ID)
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_PROCESSING, responseutils.BbErr, "Parent job was cancelled", tmpDir)
 			return jobKeys, errors.New("Parent job was cancelled")
 		}
 		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
@@ -333,15 +366,14 @@ func getFailureThreshold() float64 {
 
 func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
-	detailsCode, detailsDisplay string, jobID int) {
+	detailsCode, detailsDisplay string, tempDir string) {
 	close := metrics.NewChild(ctx, "appendErrorToFile")
 	defer close()
 
 	logger := log.GetCtxLogger(ctx)
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
-	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
-	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
+	fileName := fmt.Sprintf("%s/%s-error.ndjson", tempDir, fileUUID)
 	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
@@ -364,7 +396,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	}
 }
 
-func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
+func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string) {
 	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
 	defer close()
 	defer w.Flush()
@@ -379,7 +411,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		if err != nil {
 			logger.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), tmpDir)
 			continue
 		}
 
@@ -387,7 +419,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		if err != nil {
 			logger.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), tmpDir)
 		}
 	}
 }
@@ -475,6 +507,9 @@ func createDir(path string) error {
 		if err = os.MkdirAll(path, os.ModePerm); err != nil {
 			return err
 		}
+		return err
+	} else if err != nil {
+		return err
 	}
 	return nil
 }
