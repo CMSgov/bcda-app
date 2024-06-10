@@ -21,6 +21,7 @@ var (
 
 func init() {
 	cfg, err := LoadConfig()
+
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
 	}

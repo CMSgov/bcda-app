@@ -1,5 +1,6 @@
 *tmp
 **/.DS_Store
+bcda/bin/*
 bcda/bcda
 bcda/debug
 bcdaworker/bcdaworker
