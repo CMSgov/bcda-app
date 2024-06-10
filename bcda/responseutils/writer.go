@@ -256,7 +256,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 				},
 				Operation: []*fhirmodels.CapabilityStatement_Rest_Operation{
 					{
-						Name: &fhirdatatypes.String{Value: "export"},
+						Name: &fhirdatatypes.String{Value: "patient-export"},
 						Definition: &fhirdatatypes.Reference{
 							Reference: &fhirdatatypes.Reference_Uri{
 								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
@@ -264,7 +264,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						},
 					},
 					{
-						Name: &fhirdatatypes.String{Value: "export"},
+						Name: &fhirdatatypes.String{Value: "group-export"},
 						Definition: &fhirdatatypes.Reference{
 							Reference: &fhirdatatypes.Reference_Uri{
 								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},

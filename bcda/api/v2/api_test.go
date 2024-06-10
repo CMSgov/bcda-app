@@ -496,8 +496,8 @@ func (s *APITestSuite) TestMetadataResponse() {
 		opName       string
 		opDefinition string
 	}{
-		{fhircodes.ResourceTypeCode_PATIENT, "export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
-		{fhircodes.ResourceTypeCode_GROUP, "export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+		{fhircodes.ResourceTypeCode_PATIENT, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+		{fhircodes.ResourceTypeCode_GROUP, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 	}
 
 	for _, rd := range resourceData {
