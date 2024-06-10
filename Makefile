@@ -208,3 +208,8 @@ package-opt-out: export GOOS=linux
 package-opt-out: export GOARCH=amd64
 package-opt-out:
 	cd bcda && go build -o bin/opt-out-import ./lambda/optout/main.go
+
+package-cclf-import: export GOOS=linux
+package-cclf-import: export GOARCH=amd64
+package-cclf-import:
+	cd bcda && go build -o bin/cclf-import ./lambda/cclf/main.go
