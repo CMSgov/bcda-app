@@ -174,10 +174,7 @@ func compressFiles(tempDir string, stagingDir string) error {
 		return err
 	}
 	gzipLevel, err := strconv.Atoi(os.Getenv("COMPRESSION_LEVEL"))
-	if err != nil {
-		gzipLevel = gzip.DefaultCompression
-	}
-	if gzipLevel < 1 || gzipLevel > 9 { //levels 1-9 supported by BCDA.
+	if err != nil || gzipLevel < 1 || gzipLevel > 9 { //levels 1-9 supported by BCDA.
 		gzipLevel = gzip.DefaultCompression
 	}
 	for _, f := range files {
