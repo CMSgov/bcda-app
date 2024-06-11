@@ -2,11 +2,13 @@ package worker
 
 import (
 	"bufio"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -144,7 +146,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		}
 	}
 	//move the files over
-	err = moveFiles(tempJobPath, stagingPath)
+	err = compressFiles(tempJobPath, stagingPath)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -164,18 +166,39 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	return nil
 }
 
-func moveFiles(tempDir string, stagingDir string) error {
+func compressFiles(tempDir string, stagingDir string) error {
 	// Open the input file
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		err = errors.Wrap(err, "Error reading from the staging directory for files for Job")
 		return err
 	}
+	gzipLevel, err := strconv.Atoi(os.Getenv("COMPRESSION_LEVEL"))
+	if err != nil {
+		gzipLevel = gzip.DefaultCompression
+	}
 	for _, f := range files {
 		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
-		err := os.Rename(oldPath, newPath) //#nosec G304
+		inputFile, err := os.Open(oldPath) //#nosec G304
 		if err != nil {
+			return err
+		}
+		defer inputFile.Close() //#nosec G307
+
+		outputFile, err := os.Create(newPath) //#nosec G304
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close() //#nosec G307
+		gzipWriter, err := gzip.NewWriterLevel(outputFile, gzipLevel)
+		if err != nil {
+			return err
+		}
+		defer gzipWriter.Close()
+
+		// Copy the data from the input file to the gzip writer
+		if _, err := io.Copy(gzipWriter, inputFile); err != nil {
 			return err
 		}
 	}

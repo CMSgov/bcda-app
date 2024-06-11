@@ -578,12 +578,13 @@ func (s *WorkerTestSuite) TestCreateDir() {
 	assert.NoError(s.T(), err)
 }
 
-func (s *WorkerTestSuite) TestMoveFiles() {
-	//negative case
-	err := moveFiles("/", "fake_dir")
+func (s *WorkerTestSuite) TestCompressFiles() {
+	//negative cases.
+	err := compressFiles("/", "fake_dir")
 	assert.Error(s.T(), err)
-	err = moveFiles("/proc/fakedir", "fake_dir")
+	err = compressFiles("/proc/fakedir", "fake_dir")
 	assert.Error(s.T(), err)
+
 	//positive case, create two temporary directories + a file, and move a file between them.
 	tempDir1, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -597,12 +598,16 @@ func (s *WorkerTestSuite) TestMoveFiles() {
 	if err != nil {
 		s.FailNow(err.Error())
 	}
-	err = moveFiles(tempDir1, tempDir2)
+	err = compressFiles(tempDir1, tempDir2)
 	assert.NoError(s.T(), err)
 	files, _ := os.ReadDir(tempDir2)
 	assert.Len(s.T(), files, 1)
 	files, _ = os.ReadDir(tempDir1)
-	assert.Len(s.T(), files, 0)
+	assert.Len(s.T(), files, 1)
+
+	//One more negative case, when the destination is not able to be moved.
+	err = compressFiles(tempDir2, "/proc/fakedir")
+	assert.Error(s.T(), err)
 
 }
 
