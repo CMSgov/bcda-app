@@ -590,24 +590,24 @@ func (s *WorkerTestSuite) TestCompressFilesGzipLevel() {
 	}
 
 	os.Setenv("COMPRESSION_LEVEL", "potato")
-	err = compressFiles(tempDir1, tempDir2)
+	err = compressFiles(s.logctx, tempDir1, tempDir2)
 	assert.NoError(s.T(), err)
 
 	os.Setenv("COMPRESSION_LEVEL", "1")
-	err = compressFiles(tempDir1, tempDir2)
+	err = compressFiles(s.logctx, tempDir1, tempDir2)
 	assert.NoError(s.T(), err)
 
 	os.Setenv("COMPRESSION_LEVEL", "11")
-	err = compressFiles(tempDir1, tempDir2)
+	err = compressFiles(s.logctx, tempDir1, tempDir2)
 	assert.NoError(s.T(), err)
 
 }
 
 func (s *WorkerTestSuite) TestCompressFiles() {
 	//negative cases.
-	err := compressFiles("/", "fake_dir")
+	err := compressFiles(s.logctx, "/", "fake_dir")
 	assert.Error(s.T(), err)
-	err = compressFiles("/proc/fakedir", "fake_dir")
+	err = compressFiles(s.logctx, "/proc/fakedir", "fake_dir")
 	assert.Error(s.T(), err)
 
 	//positive case, create two temporary directories + a file, and move a file between them.
@@ -623,7 +623,7 @@ func (s *WorkerTestSuite) TestCompressFiles() {
 	if err != nil {
 		s.FailNow(err.Error())
 	}
-	err = compressFiles(tempDir1, tempDir2)
+	err = compressFiles(s.logctx, tempDir1, tempDir2)
 	assert.NoError(s.T(), err)
 	files, _ := os.ReadDir(tempDir2)
 	assert.Len(s.T(), files, 1)
@@ -631,7 +631,7 @@ func (s *WorkerTestSuite) TestCompressFiles() {
 	assert.Len(s.T(), files, 1)
 
 	//One more negative case, when the destination is not able to be moved.
-	err = compressFiles(tempDir2, "/proc/fakedir")
+	err = compressFiles(s.logctx, tempDir2, "/proc/fakedir")
 	assert.Error(s.T(), err)
 
 }

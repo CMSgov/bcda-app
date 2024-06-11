@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
@@ -23,6 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
@@ -146,7 +148,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		}
 	}
 	//move the files over
-	err = compressFiles(tempJobPath, stagingPath)
+	err = compressFiles(ctx, tempJobPath, stagingPath)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -166,7 +168,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	return nil
 }
 
-func compressFiles(tempDir string, stagingDir string) error {
+func compressFiles(ctx context.Context, tempDir string, stagingDir string) error {
+	logger := log.GetCtxLogger(ctx)
 	// Open the input file
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
@@ -176,21 +179,22 @@ func compressFiles(tempDir string, stagingDir string) error {
 	gzipLevel, err := strconv.Atoi(os.Getenv("COMPRESSION_LEVEL"))
 	if err != nil || gzipLevel < 1 || gzipLevel > 9 { //levels 1-9 supported by BCDA.
 		gzipLevel = gzip.DefaultCompression
+		logger.Warnf("COMPRESSION_LEVEL not set to appropriate value.")
 	}
 	for _, f := range files {
 		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
-		inputFile, err := os.Open(oldPath) //#nosec G304
+		inputFile, err := os.Open(filepath.Clean(oldPath))
 		if err != nil {
 			return err
 		}
-		defer inputFile.Close() //#nosec G307
+		defer CloseOrLogError(logger, inputFile)
 
-		outputFile, err := os.Create(newPath) //#nosec G304
+		outputFile, err := os.Create(filepath.Clean(newPath))
 		if err != nil {
 			return err
 		}
-		defer outputFile.Close() //#nosec G307
+		defer CloseOrLogError(logger, outputFile)
 		gzipWriter, err := gzip.NewWriterLevel(outputFile, gzipLevel)
 		if err != nil {
 			return err
@@ -204,6 +208,15 @@ func compressFiles(tempDir string, stagingDir string) error {
 	}
 	return nil
 
+}
+
+func CloseOrLogError(logger logrus.FieldLogger, f *os.File) {
+	if f == nil {
+		return
+	}
+	if err := f.Close(); err != nil {
+		logger.Warnf("Error closing file: %v", err)
+	}
 }
 
 // writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
