@@ -184,27 +184,34 @@ func compressFiles(ctx context.Context, tempDir string, stagingDir string) error
 	for _, f := range files {
 		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
-		inputFile, err := os.Open(filepath.Clean(oldPath))
-		if err != nil {
-			return err
-		}
-		defer CloseOrLogError(logger, inputFile)
+		err := func() error {
+			inputFile, err := os.Open(filepath.Clean(oldPath))
+			if err != nil {
+				return err
+			}
+			defer CloseOrLogError(logger, inputFile)
 
-		outputFile, err := os.Create(filepath.Clean(newPath))
-		if err != nil {
-			return err
-		}
-		defer CloseOrLogError(logger, outputFile)
-		gzipWriter, err := gzip.NewWriterLevel(outputFile, gzipLevel)
-		if err != nil {
-			return err
-		}
-		defer gzipWriter.Close()
+			outputFile, err := os.Create(filepath.Clean(newPath))
+			if err != nil {
+				return err
+			}
+			defer CloseOrLogError(logger, outputFile)
+			gzipWriter, err := gzip.NewWriterLevel(outputFile, gzipLevel)
+			if err != nil {
+				return err
+			}
+			defer gzipWriter.Close()
 
-		// Copy the data from the input file to the gzip writer
-		if _, err := io.Copy(gzipWriter, inputFile); err != nil {
+			// Copy the data from the input file to the gzip writer
+			if _, err := io.Copy(gzipWriter, inputFile); err != nil {
+				return err
+			}
+			return nil
+		}()
+		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 
