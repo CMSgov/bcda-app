@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths-ignore:
-      - .github/workflows/opt-out-*
+      - .github/workflows/opt-out-import-*
       - optout/**
   pull_request:
     paths-ignore:
-      - .github/workflows/opt-out-*
+      - .github/workflows/opt-out-import-*
       - optout/**
 
 env:
