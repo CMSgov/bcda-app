@@ -177,6 +177,9 @@ func compressFiles(tempDir string, stagingDir string) error {
 	if err != nil {
 		gzipLevel = gzip.DefaultCompression
 	}
+	if gzipLevel < 1 || gzipLevel > 9 { //levels 1-9 supported by BCDA.
+		gzipLevel = gzip.DefaultCompression
+	}
 	for _, f := range files {
 		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())

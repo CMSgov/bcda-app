@@ -578,6 +578,31 @@ func (s *WorkerTestSuite) TestCreateDir() {
 	assert.NoError(s.T(), err)
 }
 
+func (s *WorkerTestSuite) TestCompressFilesGzipLevel() {
+	//In short, none of these should produce errors when being run.
+	tempDir1, err := os.MkdirTemp("", "*")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	tempDir2, err := os.MkdirTemp("", "*")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	os.Setenv("COMPRESSION_LEVEL", "potato")
+	err = compressFiles(tempDir1, tempDir2)
+	assert.NoError(s.T(), err)
+
+	os.Setenv("COMPRESSION_LEVEL", "1")
+	err = compressFiles(tempDir1, tempDir2)
+	assert.NoError(s.T(), err)
+
+	os.Setenv("COMPRESSION_LEVEL", "11")
+	err = compressFiles(tempDir1, tempDir2)
+	assert.NoError(s.T(), err)
+
+}
+
 func (s *WorkerTestSuite) TestCompressFiles() {
 	//negative cases.
 	err := compressFiles("/", "fake_dir")
