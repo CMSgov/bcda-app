@@ -89,6 +89,20 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 	}
 }
 
+func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
+	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "someenv"}})
+	defer cleanupEnvVars()
+
+	s3Bucket, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-someenv/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"test", "zip"}})
+	defer cleanupS3()
+
+	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(s3Bucket)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 0, skipped)
+	assert.Equal(s.T(), 0, failure)
+	assert.Empty(s.T(), cclfMap)
+}
+
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_InvalidPath() {
 	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles("foo")
 	assert.ErrorContains(s.T(), err, "NoSuchBucket: The specified bucket does not exist")
