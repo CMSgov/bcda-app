@@ -179,11 +179,12 @@ func compressFiles(ctx context.Context, tempDir string, stagingDir string) error
 	gzipLevel, err := strconv.Atoi(os.Getenv("COMPRESSION_LEVEL"))
 	if err != nil || gzipLevel < 1 || gzipLevel > 9 { //levels 1-9 supported by BCDA.
 		gzipLevel = gzip.DefaultCompression
-		logger.Warnf("COMPRESSION_LEVEL not set to appropriate value.")
+		logger.Warnf("COMPRESSION_LEVEL not set to appropriate value; using default.")
 	}
 	for _, f := range files {
 		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
+		//Anonymous function to ensure defer statements run
 		err := func() error {
 			inputFile, err := os.Open(filepath.Clean(oldPath))
 			if err != nil {
