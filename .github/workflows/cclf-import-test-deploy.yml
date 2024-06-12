@@ -21,7 +21,7 @@ jobs:
         env:
           CGO_ENABLED: 0
         run: |
-          go build -o bin/cclf-import bcda/lambda/cclf/main.go
+          go build -o bin/cclf-import ./lambda/cclf/main.go
           zip function.zip bootstrap
       - uses: aws-actions/configure-aws-credentials@v4
         with:
