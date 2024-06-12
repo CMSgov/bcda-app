@@ -2,12 +2,15 @@ package worker
 
 import (
 	"bufio"
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
@@ -21,6 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
@@ -144,7 +148,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		}
 	}
 	//move the files over
-	err = moveFiles(tempJobPath, stagingPath)
+	err = compressFiles(ctx, tempJobPath, stagingPath)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -164,23 +168,63 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	return nil
 }
 
-func moveFiles(tempDir string, stagingDir string) error {
+func compressFiles(ctx context.Context, tempDir string, stagingDir string) error {
+	logger := log.GetCtxLogger(ctx)
 	// Open the input file
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		err = errors.Wrap(err, "Error reading from the staging directory for files for Job")
 		return err
 	}
+	gzipLevel, err := strconv.Atoi(os.Getenv("COMPRESSION_LEVEL"))
+	if err != nil || gzipLevel < 1 || gzipLevel > 9 { //levels 1-9 supported by BCDA.
+		gzipLevel = gzip.DefaultCompression
+		logger.Warnf("COMPRESSION_LEVEL not set to appropriate value; using default.")
+	}
 	for _, f := range files {
 		oldPath := fmt.Sprintf("%s/%s", tempDir, f.Name())
 		newPath := fmt.Sprintf("%s/%s", stagingDir, f.Name())
-		err := os.Rename(oldPath, newPath) //#nosec G304
+		//Anonymous function to ensure defer statements run
+		err := func() error {
+			inputFile, err := os.Open(filepath.Clean(oldPath))
+			if err != nil {
+				return err
+			}
+			defer CloseOrLogError(logger, inputFile)
+
+			outputFile, err := os.Create(filepath.Clean(newPath))
+			if err != nil {
+				return err
+			}
+			defer CloseOrLogError(logger, outputFile)
+			gzipWriter, err := gzip.NewWriterLevel(outputFile, gzipLevel)
+			if err != nil {
+				return err
+			}
+			defer gzipWriter.Close()
+
+			// Copy the data from the input file to the gzip writer
+			if _, err := io.Copy(gzipWriter, inputFile); err != nil {
+				return err
+			}
+			return nil
+		}()
 		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 
+}
+
+func CloseOrLogError(logger logrus.FieldLogger, f *os.File) {
+	if f == nil {
+		return
+	}
+	if err := f.Close(); err != nil {
+		logger.Warnf("Error closing file: %v", err)
+	}
 }
 
 // writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
