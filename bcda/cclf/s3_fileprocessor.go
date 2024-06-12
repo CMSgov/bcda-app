@@ -56,7 +56,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 		for _, f := range zipReader.File {
 			metadata, err := getCCLFFileMetadata(cmsID, f.Name)
-			metadata.filePath = path
+			metadata.filePath = filepath.Join(bucket, *obj.Key)
 			metadata.deliveryDate = *obj.LastModified
 
 			if err != nil {

@@ -29,6 +29,11 @@ func createWorkerDirs() {
 	if err != nil {
 		log.Worker.Fatal(err)
 	}
+	localTemp := conf.GetEnv("FHIR_TEMP_DIR")
+	err = os.MkdirAll(localTemp, 0744)
+	if err != nil {
+		log.Worker.Fatal(err)
+	}
 }
 
 func waitForSig() {

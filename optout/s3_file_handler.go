@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
@@ -178,7 +179,7 @@ func (handler *S3FileHandler) createSession() (*session.Session, error) {
 		config.Endpoint = &handler.Endpoint
 	}
 
-	if handler.AssumeRoleArn != "" {
+	if handler.AssumeRoleArn != "" && os.Getenv("LOCAL_STACK_ENDPOINT") == "" {
 		config.Credentials = stscreds.NewCredentials(
 			sess,
 			handler.AssumeRoleArn,
