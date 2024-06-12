@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: lambda/cclf-import
+        working-directory: lambda/cclf
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
