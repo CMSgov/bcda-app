@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./optout
+        working-directory: bcda
     environment: dev
     steps:
       - uses: actions/checkout@v4
