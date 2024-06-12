@@ -1,13 +1,8 @@
 name: cclf-import test deploy
 
 on:
+  workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - lambda/cclf-import/**
-      - .github/workflows/cclf-import-test-deploy.yml
 
 jobs:
   test:
@@ -15,11 +10,26 @@ jobs:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cclf-import
     environment: test
     steps:
-        - name: Print a greeting
-          env:
-            VAR1: HELLO
-            VAR2: WORLD
-          run: |
-            echo $VAR1 $VAR2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - name: Build cclf-import zip file
+        env:
+          CGO_ENABLED: 0
+        run: |
+          go build -o bootstrap main.go parsers.go utils.go models.go db.go
+          zip function.zip bootstrap
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+      - name: Upload and reload
+        run: |
+          aws s3 cp --no-progress function.zip \
+            s3://bcda-test-cclf-import-function/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-test-cclf-import \
+            --s3-bucket bcda-test-cclf-import-function --s3-key function-${{ github.sha }}.zip
