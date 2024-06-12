@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-go@v5
       - name: Build opt-out-import zip file
         run: |
-          go build -o bin/opt-out-import lambda/optout/main.go
+          go build -o bin/opt-out-import bcda/lambda/optout/main.go
           zip function.zip bootstrap
       - uses: aws-actions/configure-aws-credentials@v4
         with:
