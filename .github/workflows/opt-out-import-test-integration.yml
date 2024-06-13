@@ -44,6 +44,7 @@ jobs:
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
         run: |
+          pwd
           aws s3 cp --no-progress shared_files/synthetic1800MedicareFiles/test/shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
             s3://bfd-test-eft/bfdeft01/bcda/in/T.NGD.DPC.RSP.D$(date +'%y%m%d').T$(date +'%H%M%S')1.IN
 
