@@ -25,7 +25,7 @@ jobs:
       - name: Build opt-out-import zip file
         run: |
           go build -o bin/opt-out-import ./lambda/optout/main.go
-          zip function.zip bin/opt-out-import
+          zip -j function.zip bin/opt-out-import
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}

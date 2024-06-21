@@ -22,7 +22,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           go build -o bin/cclf-import ./lambda/cclf/main.go
-          zip function.zip bin/cclf-import
+          zip -j function.zip bin/cclf-import
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
