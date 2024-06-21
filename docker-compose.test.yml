@@ -15,8 +15,10 @@ services:
       # Set default values for Localstack to work
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-foobar}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-foobar}
+      - LOCAL_STACK_ENDPOINT=${LOCAL_STACK_ENDPOINT:-http://localstack:4566}
       - BFD_S3_ENDPOINT=${BFD_S3_ENDPOINT:-http://localstack:4566}
 
+      - ENV=local
       - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
@@ -42,7 +44,7 @@ services:
     environment:
       - AWS_DEFAULT_REGION=us-east-1
       - GATEWAY_LISTEN=0.0.0.0:4566
-      - SERVICES=s3
+      - SERVICES=s3,ssm,sts,iam
       - DEBUG=1
     ports:
       - '4566-4583:4566-4583'

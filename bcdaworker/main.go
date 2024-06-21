@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -29,6 +30,35 @@ func createWorkerDirs() {
 	if err != nil {
 		log.Worker.Fatal(err)
 	}
+	localTemp := conf.GetEnv("FHIR_TEMP_DIR")
+	err = os.MkdirAll(localTemp, 0744)
+	if err != nil {
+		log.Worker.Fatal(err)
+	}
+	err = clearTempDirectory(localTemp)
+	if err != nil {
+		log.Worker.Fatal(err)
+	}
+
+}
+func clearTempDirectory(tempDir string) error {
+	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == tempDir {
+			return nil
+		}
+		if info.IsDir() {
+			return os.RemoveAll(path)
+		}
+		return os.Remove(path)
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func waitForSig() {

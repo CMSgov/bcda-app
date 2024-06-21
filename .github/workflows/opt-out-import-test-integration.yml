@@ -1,0 +1,51 @@
+name: opt-out-import test integration
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/opt-out-import-test-integration.yml
+      - .github/workflows/opt-out-import-test-deploy.yml
+      - optout/**
+  workflow_dispatch:
+
+# Ensure we have only one integration test running at a time
+concurrency:
+  group: opt-out-import-test-integration
+
+jobs:
+  # Deploy first if triggered by pull_request
+  deploy:
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/opt-out-import-test-deploy.yml
+    secrets: inherit
+
+  trigger:
+    if: ${{ always() }}
+    needs: deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./optout
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-opt-out-import-function
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          # Note that we use the BFD role with access to the bucket
+          role-to-assume: arn:aws:iam::${{ secrets.BFD_ACCOUNT_ID }}:role/bfd-test-eft-bcda-bucket-role
+          role-chaining: true
+          role-skip-session-tagging: true
+      - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
+        run: |
+          aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
+            s3://bfd-test-eft/bfdeft01/bcda/in/T.NGD.DPC.RSP.D$(date +'%y%m%d').T$(date +'%H%M%S')1.IN
+
+  # TODO Check bucket for response file
+  # TODO Run another job to check database for update

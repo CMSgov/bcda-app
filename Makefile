@@ -46,7 +46,7 @@ postman:
 	--global-var v2Disabled=false \
 	--global-var maintenanceMode=$(maintenanceMode)
 
-unit-test: unit-test-ssas unit-test-db load-fixtures-ssas
+unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas
 	docker-compose -f docker-compose.test.yml build tests
 	@docker-compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
@@ -73,6 +73,11 @@ unit-test-db:
 	-e DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable \
 	-e QUEUE_DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable \
 	api sh -c 'bcda generate-synthetic-alr-data --cms-id=A9994 --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
+
+unit-test-localstack:
+	# Clean up any existing data to ensure we spin up container in a known state.
+	docker-compose -f docker-compose.test.yml rm -fsv localstack
+	docker-compose -f docker-compose.test.yml up -d localstack
 	
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
@@ -195,3 +200,16 @@ credentials:
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials 
 	@docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
+
+
+# ==== Lambda ====
+
+package-opt-out: export GOOS=linux
+package-opt-out: export GOARCH=amd64
+package-opt-out:
+	cd bcda && go build -o bin/opt-out-import ./lambda/optout/main.go
+
+package-cclf-import: export GOOS=linux
+package-cclf-import: export GOARCH=amd64
+package-cclf-import:
+	cd bcda && go build -o bin/cclf-import ./lambda/cclf/main.go
