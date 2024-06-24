@@ -2,6 +2,8 @@ package bcdaaws
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/pkg/errors"
@@ -33,4 +35,14 @@ func ParseSQSEvent(event events.SQSEvent) (*events.S3Event, error) {
 	}
 
 	return &s3Event, nil
+}
+
+func ParseS3Directory(bucket, key string) string {
+	lastSeparatorIdx := strings.LastIndex(key, "/")
+
+	if lastSeparatorIdx == -1 {
+		return bucket
+	} else {
+		return fmt.Sprintf("%s/%s", bucket, key[:lastSeparatorIdx])
+	}
 }
