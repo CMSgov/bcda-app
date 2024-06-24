@@ -12,7 +12,10 @@ on:
 concurrency:
   group: opt-out-import-test-integration
 
+env:
+  FILENAME: T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1.IN 
 jobs:
+
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
@@ -45,7 +48,31 @@ jobs:
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
         run: |
           aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
-            s3://bfd-test-eft/bfdeft01/bcda/in/T.NGD.DPC.RSP.D$(date +'%y%m%d').T$(date +'%H%M%S')1.IN
+            s3://bfd-test-eft/bfdeft01/bcda/in/$FILENAME
+  verify:
+    needs: trigger
+    runs-on: self-hosted
+    steps:
+      - name: Get database credentials
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        with:
+          params: |
+            CONNECTION_URL=/bcda/test/api/DATABASE_URL
+      - name: Verify suppression file was ingested
+        run: |
+          SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = $FILENAME LIMIT 1"`
+          if [[ -z $SUPPRESSION_FILE ]]; then                       
+            echo "Suppression file not found."
+            exit 1
+          fi
+          SUPPRESSIONS=`psql -t "$CONNECTION_URL" -c "SELECT * FROM suppression_files WHERE file_id = $SUPPRESSION_FILE"`
+          if [[ -z $SUPPRESSIONS ]]; then                       
+            echo "Suppression entries for test file not found."
+            exit 1
+          fi
+  # TODO verify count of suppression entries     
 
-  # TODO Check bucket for response file
-  # TODO Run another job to check database for update
+  # TODO: database cleanup
+
+
+
