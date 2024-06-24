@@ -58,12 +58,12 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 				return "", err
 			}
 
-			parts := strings.SplitN(e.S3.Object.Key, "/", 2)
+			lastSeparatorIdx := strings.LastIndex(e.S3.Object.Key, "/")
 
-			if len(parts) == 1 {
+			if lastSeparatorIdx == -1 {
 				return handleOptOutImport(s3AssumeRoleArn, e.S3.Bucket.Name)
 			} else {
-				directory := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, parts[0])
+				directory := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key[:lastSeparatorIdx-1])
 				return handleOptOutImport(s3AssumeRoleArn, directory)
 			}
 		}
