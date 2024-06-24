@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -56,14 +55,8 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 				return "", err
 			}
 
-			lastSeparatorIdx := strings.LastIndex(e.S3.Object.Key, "/")
-
-			if lastSeparatorIdx == -1 {
-				return handleCclfImport(s3AssumeRoleArn, e.S3.Bucket.Name)
-			} else {
-				directory := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key[:lastSeparatorIdx-1])
-				return handleCclfImport(s3AssumeRoleArn, directory)
-			}
+			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
+			return handleCclfImport(s3AssumeRoleArn, dir)
 		}
 	}
 

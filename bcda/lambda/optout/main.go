@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -58,14 +57,8 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 				return "", err
 			}
 
-			lastSeparatorIdx := strings.LastIndex(e.S3.Object.Key, "/")
-
-			if lastSeparatorIdx == -1 {
-				return handleOptOutImport(s3AssumeRoleArn, e.S3.Bucket.Name)
-			} else {
-				directory := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key[:lastSeparatorIdx-1])
-				return handleOptOutImport(s3AssumeRoleArn, directory)
-			}
+			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
+			return handleOptOutImport(s3AssumeRoleArn, dir)
 		}
 	}
 
