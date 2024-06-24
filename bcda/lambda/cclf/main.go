@@ -56,7 +56,7 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 				return "", err
 			}
 
-			parts := strings.Split(e.S3.Object.Key, "/")
+			parts := strings.SplitN(e.S3.Object.Key, "/", 2)
 
 			if len(parts) == 1 {
 				return handleCclfImport(s3AssumeRoleArn, e.S3.Bucket.Name)
