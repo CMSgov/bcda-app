@@ -58,7 +58,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 				return "", err
 			}
 
-			parts := strings.Split(e.S3.Object.Key, "/")
+			parts := strings.SplitN(e.S3.Object.Key, "/", 2)
 
 			if len(parts) == 1 {
 				return handleOptOutImport(s3AssumeRoleArn, e.S3.Bucket.Name)
