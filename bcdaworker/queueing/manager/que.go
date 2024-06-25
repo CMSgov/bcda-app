@@ -119,7 +119,7 @@ func (q *queue) processJob(job *que.Job) error {
 	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 
-	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
+	exportJob, err := q.worker.ValidateJob(ctx, job.ID, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
 		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
@@ -145,6 +145,13 @@ func (q *queue) processJob(job *que.Job) error {
 
 		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
 		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
+	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
+		logger.Warnf("Queue job %d already processed for job %d. Checking completion status and removing queuejob from que.", job.ID, jobArgs.ID)
+		_, err := worker.CheckJobCompleteAndCleanup(ctx, q.repository, uint(jobArgs.ID))
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", jobArgs.ID))
+		}
+		return nil
 	} else if err != nil {
 		err := errors.Wrap(err, "failed to validate job")
 		logger.Error(err)
@@ -154,7 +161,7 @@ func (q *queue) processJob(job *que.Job) error {
 	// start a goroutine that will periodically check the status of the parent job
 	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 15)
 
-	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
+	if err := q.worker.ProcessJob(ctx, job.ID, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")
 		logger.Error(err)
 		return err
