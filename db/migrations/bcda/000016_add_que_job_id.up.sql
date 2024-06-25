@@ -1,3 +1,5 @@
+-- Add que_job_id to job_keys table
+
 BEGIN;
 
 ALTER TABLE public.job_keys ADD COLUMN que_job_id bigint DEFAULT null;
