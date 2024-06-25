@@ -64,7 +64,7 @@ jobs:
             CONNECTION_URL=/bcda/test/api/DATABASE_URL
       - name: Install psql
         run: |
-            sudo yum -y install postgresql15
+            sudo amazon-linux-extras install postgresql14
       - name: Verify suppression file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
