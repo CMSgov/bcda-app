@@ -327,9 +327,29 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertColumnExists(t, false, db, "acos", "public_key")
 			},
 		},
+		{
+			"Adding que_job_id to job_keys table",
+			func(t *testing.T) {
+				assertColumnExists(t, false, db, "job_keys", "que_job_id")
+				assertIndexExists(t, false, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+				migrator.runMigration(t, 15)
+				assertColumnExists(t, true, db, "job_keys", "que_job_id")
+				assertIndexExists(t, true, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+			},
+		},
 		// **********************************************************
 		// * down migrations tests begin here with test number - 1  *
 		// **********************************************************
+		{
+			"Removing que_job_id from job_keys table",
+			func(t *testing.T) {
+				assertColumnExists(t, true, db, "job_keys", "que_job_id")
+				assertIndexExists(t, true, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+				migrator.runMigration(t, 14)
+				assertColumnExists(t, false, db, "job_keys", "que_job_id")
+				assertIndexExists(t, false, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+			},
+		},
 		{
 			"Restore alpha_secret for acos table",
 			func(t *testing.T) {
