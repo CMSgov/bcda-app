@@ -254,9 +254,9 @@ func (_m *MockRepository) UpdateJobStatusCheckStatus(ctx context.Context, jobID 
 	return r0
 }
 
-// NewRepository creates a new instance of MockRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// NewMockRepository creates a new instance of MockRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
-func NewRepository(t interface {
+func NewMockRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockRepository {
