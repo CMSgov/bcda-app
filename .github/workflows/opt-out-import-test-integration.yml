@@ -65,7 +65,7 @@ jobs:
       - name: Install psql
         run: |
             sudo yum update
-            sudo yum install postgresql-client
+            sudo yum -y install postgresql-client
       - name: Verify suppression file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
