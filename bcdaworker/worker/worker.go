@@ -558,7 +558,7 @@ func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []model
 
 	_, err := CheckJobCompleteAndCleanup(ctx, r, id)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %s", id))
+		err = errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", id))
 		return err
 	}
 

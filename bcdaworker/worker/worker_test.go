@@ -159,7 +159,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 
 	for _, tt := range tests {
 		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
+		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
 		if tt.err == nil {
 			assert.NoError(s.T(), err)
 		} else {
@@ -262,7 +262,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
 	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
@@ -293,7 +293,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Len(s.T(), jobKeys, 2)
@@ -347,7 +347,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err = createDir(s.tempDir)
 	assert.NoError(s.T(), err)
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
@@ -390,7 +390,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
@@ -484,7 +484,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := checkJobCompleteAndCleanup(s.logctx, s.r, j.ID)
+	complete, err := CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -501,7 +501,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
-	err = s.w.ProcessJob(ctx, j, jobArgs)
+	err = s.w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
 
 	entries := logHook.AllEntries()
 	assert.Nil(s.T(), err)
@@ -509,7 +509,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.Contains(s.T(), entries[0].Data, "job_id")
 	assert.Contains(s.T(), entries[0].Data, "transaction_id")
 
-	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
+	_, err = CheckJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
 	fmt.Printf("%+v", completedJob)
@@ -540,7 +540,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(s.testACO, nil)
 	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, uint(jobArgs.ID), models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
-	err := w.ProcessJob(ctx, j, jobArgs)
+	err := w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -566,7 +566,7 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
 	w := &worker{r}
-	err := w.ProcessJob(ctx, j, jobArgs)
+	err := w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -658,7 +658,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, j, jobArgs).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, rand.Int63(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
@@ -679,7 +679,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 		BBBasePath:     constants.TestFHIRPath,
 	}
 
-	processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
+	processJobErr := s.w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
 	completedJob, _ := s.r.GetJobByID(ctx, j.ID)
 
 	// cancelled parent job status should not update after failed queuejob
@@ -744,7 +744,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 				BBBasePath:     constants.TestFHIRPath,
 			}
 
-			processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
+			processJobErr := s.w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
 
 			// cancelled parent job status should not update after failed queuejob
 			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {
@@ -812,7 +812,7 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 				}
 			}
 
-			completed, err := checkJobCompleteAndCleanup(s.logctx, repository, jobID)
+			completed, err := CheckJobCompleteAndCleanup(s.logctx, repository, jobID)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.completed, completed)
 
@@ -852,8 +852,10 @@ func (s *WorkerTestSuite) TestValidateJob() {
 		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusCancelled}, nil)
 	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobFailed.ID)).
 		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusFailed}, nil)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(validJob.ID)).
-		Return(&models.Job{ID: uint(validJob.ID), Status: models.JobStatusPending}, nil)
+	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), 1).
+		Return(&models.JobKey{ID: uint(validJob.ID)}, nil)
+	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), 2).
+		Return(nil, fmt.Errorf("some db error"))
 
 	defer func() {
 		r.AssertExpectations(s.T())
@@ -861,29 +863,37 @@ func (s *WorkerTestSuite) TestValidateJob() {
 		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, uint(noBasePath.ID))
 	}()
 
-	j, err := w.ValidateJob(ctx, noBasePath)
+	j, err := w.ValidateJob(ctx, 0, noBasePath)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), ErrNoBasePathSet.Error())
 
-	j, err = w.ValidateJob(ctx, jobNotFound)
+	j, err = w.ValidateJob(ctx, 0, jobNotFound)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), ErrParentJobNotFound.Error())
 
-	j, err = w.ValidateJob(ctx, dbErr)
+	j, err = w.ValidateJob(ctx, 0, dbErr)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), "some db error")
 
-	j, err = w.ValidateJob(ctx, jobCancelled)
+	j, err = w.ValidateJob(ctx, 0, jobCancelled)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), ErrParentJobCancelled.Error())
 
-	j, err = w.ValidateJob(ctx, jobFailed)
+	j, err = w.ValidateJob(ctx, 0, jobFailed)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), ErrParentJobFailed.Error())
 
-	j, err = w.ValidateJob(ctx, validJob)
+	j, err = w.ValidateJob(ctx, 0, validJob)
 	assert.NoError(s.T(), err)
 	assert.EqualValues(s.T(), validJob.ID, j.ID)
+
+	j, err = w.ValidateJob(ctx, 1, validJob)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrQueJobProcessed.Error())
+
+	j, err = w.ValidateJob(ctx, 2, validJob)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), dbErr)
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {
@@ -895,7 +905,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := checkJobCompleteAndCleanup(s.logctx, s.r, j.ID)
+	complete, err := CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -909,6 +919,36 @@ func (s *WorkerTestSuite) TestCreateJobKeys() {
 		job, _ := postgrestest.GetJobKey(s.db, int(keys[i].JobID))
 		assert.NotEmpty(s.T(), job)
 	}
+}
+
+func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
+	r := &repository.MockRepository{}
+
+	keys := []models.JobKey{
+		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
+		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
+	}
+
+	r.On("CreateJobKeys", testUtils.CtxMatcher, keys).Return(nil, "some db error")
+	err := createJobKeys(s.logctx, r, keys, 1234)
+	assert.ErrorContains(s.T(), err, "Error creating job key record for filenames")
+	assert.ErrorContains(s.T(), err, keys[0].FileName)
+	assert.ErrorContains(s.T(), err, keys[1].FileName)
+	assert.EqualError(s.T(), err, "some db error")
+}
+
+func (s *WorkerTestSuite) TestCreateJobKeys_JobCompleteError() {
+	r := &repository.MockRepository{}
+
+	keys := []models.JobKey{
+		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
+		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
+	}
+
+	r.On("GetJobByID", testUtils.CtxMatcher, 1).Return(nil, "some db error")
+	err := createJobKeys(s.logctx, r, keys, 1234)
+	assert.ErrorContains(s.T(), err, "Failed retrieve job by id (Job 1)")
+	assert.ErrorContains(s.T(), err, "some db error")
 }
 
 func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {

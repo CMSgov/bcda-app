@@ -15,7 +15,7 @@ type MockWorker struct {
 }
 
 // ProcessJob provides a mock function with given fields: ctx, job, jobArgs
-func (_m *MockWorker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
+func (_m *MockWorker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs models.JobEnqueueArgs) error {
 	ret := _m.Called(ctx, job, jobArgs)
 
 	var r0 error
@@ -29,7 +29,7 @@ func (_m *MockWorker) ProcessJob(ctx context.Context, job models.Job, jobArgs mo
 }
 
 // ValidateJob provides a mock function with given fields: ctx, jobArgs
-func (_m *MockWorker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
+func (_m *MockWorker) ValidateJob(ctx context.Context, queJobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
 	ret := _m.Called(ctx, jobArgs)
 
 	var r0 *models.Job
