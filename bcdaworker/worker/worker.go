@@ -154,7 +154,6 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 			return err
 		} else {
 			logger.Error("Job failed. Job ID: ", job.ID)
-			return err
 		}
 	}
 	//move the files over
