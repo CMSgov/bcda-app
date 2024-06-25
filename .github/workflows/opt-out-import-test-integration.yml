@@ -64,8 +64,8 @@ jobs:
             CONNECTION_URL=/bcda/test/api/DATABASE_URL
       - name: Install psql
         run: |
-            sudo apt-get update
-            sudo apt-get install postgresql-client
+            sudo yum update
+            sudo yum install postgresql-client
       - name: Verify suppression file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
