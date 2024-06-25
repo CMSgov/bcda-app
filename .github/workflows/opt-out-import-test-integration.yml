@@ -57,6 +57,8 @@ jobs:
     steps:
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
             CONNECTION_URL=/bcda/test/api/DATABASE_URL
