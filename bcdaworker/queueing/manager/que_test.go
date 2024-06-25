@@ -154,7 +154,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			job := models.Job{ID: uint(rand.Int31())}
 			jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: uuid.New()}
 
-			var queJob que.Job
+			queJob := que.Job{ID: 1}
 			queJob.Args, err = json.Marshal(jobArgs)
 			assert.NoError(t, err)
 

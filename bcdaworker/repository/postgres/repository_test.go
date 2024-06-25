@@ -11,8 +11,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -183,7 +183,7 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	assert.NoError(err)
 
 	_, err = r.repository.GetJobKey(ctx, jobID, -1)
-	assert.EqualError(err, worker.ErrQueJobProcessed.Error())
+	assert.EqualError(err, repository.ErrJobKeyNotFound.Error())
 }
 
 func assertJobsEqual(assert *assert.Assertions, expected, actual models.Job) {

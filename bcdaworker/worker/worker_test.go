@@ -852,8 +852,13 @@ func (s *WorkerTestSuite) TestValidateJob() {
 		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusCancelled}, nil)
 	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobFailed.ID)).
 		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusFailed}, nil)
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(validJob.ID)).
+		Return(&models.Job{ID: uint(validJob.ID), Status: models.JobStatusPending}, nil)
+
+	// Return existing job key, indicating que job was already processed.
 	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), 1).
 		Return(&models.JobKey{ID: uint(validJob.ID)}, nil)
+
 	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), 2).
 		Return(nil, fmt.Errorf("some db error"))
 
@@ -929,7 +934,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
 		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
 	}
 
-	r.On("CreateJobKeys", testUtils.CtxMatcher, keys).Return(nil, "some db error")
+	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return("some db error")
 	err := createJobKeys(s.logctx, r, keys, 1234)
 	assert.ErrorContains(s.T(), err, "Error creating job key record for filenames")
 	assert.ErrorContains(s.T(), err, keys[0].FileName)
@@ -944,7 +949,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys_JobCompleteError() {
 		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
 		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
 	}
-
+	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
 	r.On("GetJobByID", testUtils.CtxMatcher, 1).Return(nil, "some db error")
 	err := createJobKeys(s.logctx, r, keys, 1234)
 	assert.ErrorContains(s.T(), err, "Failed retrieve job by id (Job 1)")
