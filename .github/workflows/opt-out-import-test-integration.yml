@@ -12,8 +12,6 @@ on:
 concurrency:
   group: opt-out-import-test-integration
 
-env:
-  FILENAME: T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1.IN 
 jobs:
 
   # Deploy first if triggered by pull_request
@@ -32,6 +30,8 @@ jobs:
     defaults:
       run:
         working-directory: ./optout
+    outputs:
+      filename: ${{ steps.createfile.outputs.FILENAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -46,7 +46,10 @@ jobs:
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
+        id: createfile
         run: |
+          FILENAME=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1.IN
+          echo $FILENAME >> "$GITHUB_OUTPUT"
           aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
             s3://bfd-test-eft/bfdeft01/bcda/in/$FILENAME
   verify:
@@ -59,6 +62,8 @@ jobs:
           params: |
             CONNECTION_URL=/bcda/test/api/DATABASE_URL
       - name: Verify suppression file was ingested
+        env:
+          FILENAME: ${{needs.trigger.outputs.filename}}
         run: |
           SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = $FILENAME LIMIT 1"`
           if [[ -z $SUPPRESSION_FILE ]]; then                       
