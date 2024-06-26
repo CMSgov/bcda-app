@@ -14,8 +14,9 @@ import (
 
 type MockBlueButtonClient struct {
 	mock.Mock
-	HICN *string
-	MBI  *string
+	HICN             *string
+	MBI              *string
+	AlwaysReplaceMBI bool
 }
 
 func (bbc *MockBlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, serviceDate ClaimsWindow) (*fhirModels.Bundle, error) {
@@ -66,6 +67,8 @@ func (bbc *MockBlueButtonClient) GetData(endpoint, patientID string) (string, er
 	if bbc.MBI != nil {
 		// no longer hashed, but this is only a test file with synthetic test data
 		cleanData = strings.Replace(cleanData, "-1Q03Z002871", *bbc.MBI, -1)
+	} else if bbc.AlwaysReplaceMBI {
+		cleanData = strings.Replace(cleanData, "-1Q03Z002871", patientID, -1)
 	}
 	return cleanData, err
 }

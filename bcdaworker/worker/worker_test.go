@@ -54,6 +54,7 @@ type WorkerTestSuite struct {
 	db *sql.DB
 	r  repository.Repository
 	w  Worker
+	bb *client.MockBlueButtonClient
 
 	logctx context.Context
 }
@@ -94,6 +95,7 @@ func (s *WorkerTestSuite) SetupSuite() {
 }
 
 func (s *WorkerTestSuite) SetupTest() {
+	s.bb = &client.MockBlueButtonClient{AlwaysReplaceMBI: true}
 	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
@@ -484,6 +486,19 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
+	bene1 := models.CCLFBeneficiary{
+		FileID:       s.cclfFile.ID,
+		MBI:          "something1",
+		BlueButtonID: "10000",
+	}
+	bene2 := models.CCLFBeneficiary{
+		FileID:       s.cclfFile.ID,
+		MBI:          "something2",
+		BlueButtonID: "11000",
+	}
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &bene1)
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &bene2)
+
 	complete, err := checkJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
@@ -491,7 +506,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	jobArgs := models.JobEnqueueArgs{
 		ID:             int(j.ID),
 		ACOID:          j.ACOID.String(),
-		BeneficiaryIDs: []string{"10000", "11000"},
+		BeneficiaryIDs: []string{fmt.Sprint(bene1.ID), fmt.Sprint(bene2.ID)},
 		ResourceType:   "ExplanationOfBenefit",
 		BBBasePath:     constants.TestFHIRPath,
 		TransactionID:  uuid.New(),
@@ -501,7 +516,22 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
-	err = s.w.ProcessJob(ctx, j, jobArgs)
+	dbBene1, err := s.r.GetCCLFBeneficiaryByID(ctx, bene1.ID)
+	assert.Nil(s.T(), err)
+	dbBene2, err := s.r.GetCCLFBeneficiaryByID(ctx, bene2.ID)
+	assert.Nil(s.T(), err)
+
+	id1, err := client.HashIdentifier(dbBene1.MBI)
+	assert.Nil(s.T(), err)
+
+	id2, err := client.HashIdentifier(dbBene2.MBI)
+	assert.Nil(s.T(), err)
+
+	s.bb.On("GetExplanationOfBenefit", jobArgs, dbBene1.MBI, mock.Anything).Return(s.bb.GetBundleData("ExplanationOfBenefit", dbBene1.MBI))
+	s.bb.On("GetPatientByIdentifierHash", id1).Return(s.bb.GetData("Patient", dbBene1.MBI))
+	s.bb.On("GetExplanationOfBenefit", jobArgs, dbBene2.MBI, mock.Anything).Return(s.bb.GetBundleData("ExplanationOfBenefit", dbBene2.MBI))
+	s.bb.On("GetPatientByIdentifierHash", id2).Return(s.bb.GetData("Patient", dbBene2.MBI))
+	err = s.w.ProcessJob(ctx, s.bb, j, jobArgs)
 
 	entries := logHook.AllEntries()
 	assert.Nil(s.T(), err)
@@ -514,9 +544,66 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
 	fmt.Printf("%+v", completedJob)
 	assert.Nil(s.T(), err)
-	// As this test actually connects to BB, we can't be sure it will succeed
-	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
+	assert.Equal(s.T(), models.JobStatusCompleted, completedJob.Status)
 	assert.Equal(s.T(), 1, completedJob.CompletedJobCount)
+}
+
+func (s *WorkerTestSuite) TestProcessJobEOB_BBError() {
+	j := models.Job{
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     models.JobStatusPending,
+		JobCount:   1,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+
+	bene1 := models.CCLFBeneficiary{
+		FileID:       s.cclfFile.ID,
+		MBI:          "something1",
+		BlueButtonID: "10000",
+	}
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &bene1)
+
+	complete, err := checkJobCompleteAndCleanup(s.logctx, s.r, j.ID)
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), complete)
+
+	jobArgs := models.JobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		BeneficiaryIDs: []string{fmt.Sprint(bene1.ID)},
+		ResourceType:   "ExplanationOfBenefit",
+		BBBasePath:     constants.TestFHIRPath,
+		TransactionID:  uuid.New(),
+	}
+
+	ctx, _ := log.SetCtxLogger(s.logctx, "job_id", j.ID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
+	logHook = test.NewLocal(testUtils.GetLogger(logger))
+
+	dbBene1, err := s.r.GetCCLFBeneficiaryByID(ctx, bene1.ID)
+	assert.Nil(s.T(), err)
+
+	id1, err := client.HashIdentifier(dbBene1.MBI)
+	assert.Nil(s.T(), err)
+
+	s.bb.On("GetExplanationOfBenefit", jobArgs, dbBene1.MBI, mock.Anything).Return(s.bb.GetBundleData("ExplanationOfBenefit", dbBene1.MBI))
+	s.bb.On("GetPatientByIdentifierHash", id1).Return("", fmt.Errorf("some error"))
+	err = s.w.ProcessJob(ctx, s.bb, j, jobArgs)
+
+	entries := logHook.AllEntries()
+	assert.Nil(s.T(), err)
+	assert.Contains(s.T(), entries[0].Data, "cms_id")
+	assert.Contains(s.T(), entries[0].Data, "job_id")
+	assert.Contains(s.T(), entries[0].Data, "transaction_id")
+
+	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
+	assert.Nil(s.T(), err)
+	failedJob, err := s.r.GetJobByID(context.Background(), j.ID)
+	fmt.Printf("%+v", failedJob)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), models.JobStatusFailed, failedJob.Status)
+	assert.Equal(s.T(), 0, failedJob.CompletedJobCount)
 }
 
 func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
@@ -540,7 +627,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(s.testACO, nil)
 	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, uint(jobArgs.ID), models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
-	err := w.ProcessJob(ctx, j, jobArgs)
+	err := w.ProcessJob(ctx, s.bb, j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -566,7 +653,7 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
 	w := &worker{r}
-	err := w.ProcessJob(ctx, j, jobArgs)
+	err := w.ProcessJob(ctx, s.bb, j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -658,7 +745,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, j, jobArgs).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, s.bb, j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
@@ -679,7 +766,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 		BBBasePath:     constants.TestFHIRPath,
 	}
 
-	processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
+	processJobErr := s.w.ProcessJob(ctx, s.bb, j, jobArgs)
 	completedJob, _ := s.r.GetJobByID(ctx, j.ID)
 
 	// cancelled parent job status should not update after failed queuejob
@@ -744,7 +831,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 				BBBasePath:     constants.TestFHIRPath,
 			}
 
-			processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
+			processJobErr := s.w.ProcessJob(ctx, s.bb, j, jobArgs)
 
 			// cancelled parent job status should not update after failed queuejob
 			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {

@@ -33,7 +33,7 @@ import (
 
 type Worker interface {
 	ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) (*models.Job, error)
-	ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error
+	ProcessJob(ctx context.Context, bb client.APIClient, job models.Job, jobArgs models.JobEnqueueArgs) error
 }
 
 type worker struct {
@@ -66,8 +66,7 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 	return exportJob, nil
 }
 
-func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
-
+func (w *worker) ProcessJob(ctx context.Context, bb client.APIClient, job models.Job, jobArgs models.JobEnqueueArgs) error {
 	t := metrics.GetTimer()
 	defer t.Close()
 	ctx = metrics.NewContext(ctx, t)
@@ -88,13 +87,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		logger.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		err = errors.Wrap(err, "ProcessJob: could not update job status in database")
-		logger.Error(err)
-		return err
-	}
-
-	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
-	if err != nil {
-		err = errors.Wrap(err, "ProcessJob: could not create Blue Button client")
 		logger.Error(err)
 		return err
 	}
@@ -145,6 +137,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 			return err
 		} else {
 			logger.Error("Job failed. Job ID: ", job.ID)
+			// Job has been marked as failed, don't bother compressing/moving files and
+			// creating job keys since the files will never be served.
+			return nil
 		}
 	}
 	//move the files over

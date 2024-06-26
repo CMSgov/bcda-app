@@ -6,6 +6,7 @@ import (
 	goerrors "errors"
 	"fmt"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -154,7 +155,14 @@ func (q *queue) processJob(job *que.Job) error {
 	// start a goroutine that will periodically check the status of the parent job
 	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 15)
 
-	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
+	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
+	if err != nil {
+		err = errors.Wrap(err, "Could not create Blue Button client")
+		logger.Error(err)
+		return err
+	}
+
+	if err := q.worker.ProcessJob(ctx, bb, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")
 		logger.Error(err)
 		return err
