@@ -139,6 +139,7 @@ func (w *worker) ProcessJob(ctx context.Context, bb client.APIClient, job models
 			logger.Error("Job failed. Job ID: ", job.ID)
 			// Job has been marked as failed, don't bother compressing/moving files and
 			// creating job keys since the files will never be served.
+			// TODO: clean up files to avoid storage issues?
 			return nil
 		}
 	}
