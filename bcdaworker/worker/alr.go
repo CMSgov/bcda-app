@@ -105,13 +105,16 @@ func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 	}
 
 	// update the jobs keys
+	var jobKeys []models.JobKey
 	for resource, path := range fileMap {
 		filename := filepath.Base(path.Name())
 		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
-		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
-			return
-		}
+		jobKeys = append(jobKeys, jk)
+	}
+
+	if err := a.Repository.CreateJobKeys(ctx, jobKeys); err != nil {
+		result <- fmt.Errorf(constants.JobKeyCreateErr, err)
+		return
 	}
 
 	result <- nil
@@ -164,13 +167,16 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 	}
 
 	// update the jobs keys
+	var jobKeys []models.JobKey
 	for resource, path := range fileMap {
 		filename := filepath.Base(path.Name())
 		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
-		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
-			return
-		}
+		jobKeys = append(jobKeys, jk)
+	}
+
+	if err := a.Repository.CreateJobKeys(ctx, jobKeys); err != nil {
+		result <- fmt.Errorf(constants.JobKeyCreateErr, err)
+		return
 	}
 
 	result <- nil
@@ -200,7 +206,7 @@ func (a *AlrWorker) ProcessAlrJob(
 		return err
 	}
 
-	// If we did not have an ALR data to write, we'll write a specific file name that indicates that the
+	// If we did not have any ALR data to write, we'll write a specific file name that indicates that
 	// there is no data associated with this job.
 	if len(alrModels) == 0 {
 		jk := models.JobKey{JobID: id, FileName: models.BlankFileName, ResourceType: "ALR"}
@@ -216,7 +222,7 @@ func (a *AlrWorker) ProcessAlrJob(
 		return err
 	}
 
-	// Get the number FHIR resource types we are using for ALR
+	// Get the number of FHIR resource types we are using for ALR
 	// This is temporary until the resource types become more permanent
 	fieldNum := len(resources)
 	fileMap := make(map[string]*os.File, fieldNum)
