@@ -116,11 +116,9 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	failed.UpdatedAt = afterUpdate.UpdatedAt
 	assertJobsEqual(assert, failed, *afterUpdate)
 
-	assert.NoError(r.repository.IncrementCompletedJobCount(ctx, failed.ID))
 	afterUpdate, err = r.repository.GetJobByID(ctx, failed.ID)
 	assert.NoError(err)
 	assert.True(afterUpdate.UpdatedAt.After(failed.UpdatedAt))
-	assert.Equal(afterUpdate.CompletedJobCount, failed.CompletedJobCount+1)
 
 	// After all of these updates, the completed job should remain untouched
 	completed1, err := r.repository.GetJobByID(ctx, completed.ID)
@@ -140,10 +138,6 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 
 	err = r.repository.UpdateJobStatusCheckStatus(ctx, 0, models.JobStatusFailed, models.JobStatusArchived)
 	assert.EqualError(err, "job was not updated, no match found")
-
-	err = r.repository.IncrementCompletedJobCount(ctx, 0)
-	assert.EqualError(err, "job 0 not updated, no job found")
-
 }
 
 // TestJobKeysMethods validates the CRUD operations associated with the job_keys table

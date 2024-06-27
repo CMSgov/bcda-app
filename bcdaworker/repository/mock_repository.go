@@ -120,20 +120,6 @@ func (_m *MockRepository) GetJobKeyCount(ctx context.Context, jobID uint) (int, 
 	return r0, r1
 }
 
-// IncrementCompletedJobCount provides a mock function with given fields: ctx, jobID
-func (_m *MockRepository) IncrementCompletedJobCount(ctx context.Context, jobID uint) error {
-	ret := _m.Called(ctx, jobID)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uint) error); ok {
-		r0 = rf(ctx, jobID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // UpdateJobStatus provides a mock function with given fields: ctx, jobID, new
 func (_m *MockRepository) UpdateJobStatus(ctx context.Context, jobID uint, new models.JobStatus) error {
 	ret := _m.Called(ctx, jobID, new)
