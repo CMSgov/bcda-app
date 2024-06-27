@@ -158,13 +158,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		logger.Error(err)
 	}
 
-	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
-	// CompletedJobCount is purely information and can be off.
-	if err := w.r.IncrementCompletedJobCount(ctx, job.ID); err != nil {
-		err = errors.Wrap(err, "ProcessJob: Failed to update completed job count. Will continue.")
-		logger.Warn(err)
-	}
-
 	return nil
 }
 

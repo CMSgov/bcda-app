@@ -757,15 +757,14 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 
 				mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
 					&models.Job{
-						ID:                1,
-						ACOID:             uuid.NewRandom(),
-						RequestURL:        requestUrl,
-						Status:            tt.status,
-						TransactionTime:   timestp,
-						JobCount:          100,
-						CompletedJobCount: 100,
-						CreatedAt:         timestp,
-						UpdatedAt:         timestp.Add(time.Duration(tt.timestampOffset)),
+						ID:              1,
+						ACOID:           uuid.NewRandom(),
+						RequestURL:      requestUrl,
+						Status:          tt.status,
+						TransactionTime: timestp,
+						JobCount:        100,
+						CreatedAt:       timestp,
+						UpdatedAt:       timestp.Add(time.Duration(tt.timestampOffset)),
 					},
 					[]*models.JobKey{{
 						ID:           1,
@@ -890,15 +889,14 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			timestp := time.Now()
 			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
 				&models.Job{
-					ID:                1,
-					ACOID:             uuid.NewRandom(),
-					RequestURL:        tt.requestUrl,
-					Status:            tt.status,
-					TransactionTime:   timestp,
-					JobCount:          100,
-					CompletedJobCount: 100,
-					CreatedAt:         timestp,
-					UpdatedAt:         timestp,
+					ID:              1,
+					ACOID:           uuid.NewRandom(),
+					RequestURL:      tt.requestUrl,
+					Status:          tt.status,
+					TransactionTime: timestp,
+					JobCount:        100,
+					CreatedAt:       timestp,
+					UpdatedAt:       timestp,
 				},
 				[]*models.JobKey{{
 					ID:           1,

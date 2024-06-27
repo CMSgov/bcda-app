@@ -89,8 +89,8 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	postgrestest.CreateACO(r.T(), r.db, aco)
 	defer postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
 
-	failed := models.Job{ACOID: aco.UUID, Status: models.JobStatusFailed, CompletedJobCount: 1, TransactionTime: now}
-	completed := models.Job{ACOID: aco.UUID, Status: models.JobStatusCompleted, CompletedJobCount: 2, TransactionTime: now}
+	failed := models.Job{ACOID: aco.UUID, Status: models.JobStatusFailed, TransactionTime: now}
+	completed := models.Job{ACOID: aco.UUID, Status: models.JobStatusCompleted, TransactionTime: now}
 	postgrestest.CreateJobs(r.T(), r.db, &failed, &completed)
 
 	failed1, err := r.repository.GetJobByID(ctx, failed.ID)

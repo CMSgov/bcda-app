@@ -206,8 +206,7 @@ func TestStartAlrJob(t *testing.T) {
 		Status:          models.JobStatusPending,
 		TransactionTime: time.Now(),
 		// JobCount is partitioned automatically, but it is done manually here
-		JobCount:          2,
-		CompletedJobCount: 0,
+		JobCount: 2,
 	}
 	id, err := r.CreateJob(ctx, job)
 	assert.NoError(t, err)

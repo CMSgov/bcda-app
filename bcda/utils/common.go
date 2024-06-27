@@ -115,3 +115,13 @@ func Dedup(slice []string) []string {
 
 	return newSlice
 }
+
+func SliceCount[S []E, E any](arr S, f func(E) bool) int {
+	var n int
+	for _, val := range arr {
+		if f(val) {
+			n++
+		}
+	}
+	return n
+}
