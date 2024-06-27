@@ -683,9 +683,9 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 
 	defer postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
 
-	failed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusFailed, JobCount: 10, CompletedJobCount: 20}
-	pending := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusPending, JobCount: 30, CompletedJobCount: 40}
-	completed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted, JobCount: 40, CompletedJobCount: 60}
+	failed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusFailed, JobCount: 10}
+	pending := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusPending, JobCount: 30}
+	completed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted, JobCount: 40}
 
 	failed.ID, err = r.repository.CreateJob(ctx, failed)
 	assert.NoError(err)
@@ -755,7 +755,6 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	// Account for time precision in postgres
 	failed.TransactionTime = time.Now().Round(time.Millisecond)
 	failed.JobCount = failed.JobCount + 1
-	failed.CompletedJobCount = failed.CompletedJobCount + 1
 	failed.Status = models.JobStatusArchived
 	assert.NoError(r.repository.UpdateJob(ctx, failed))
 
@@ -765,7 +764,6 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	assert.Equal(failed.TransactionTime.UTC(), newFailed.TransactionTime.UTC())
 	assert.Equal(failed.Status, newFailed.Status)
 	assert.Equal(failed.JobCount, newFailed.JobCount)
-	assert.Equal(failed.CompletedJobCount, newFailed.CompletedJobCount)
 
 	// Verify that we did not modify other job
 	newCompleted, err := r.repository.GetJobByID(ctx, completed.ID)
