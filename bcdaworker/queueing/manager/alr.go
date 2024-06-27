@@ -197,5 +197,18 @@ func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, erro
 		return false, nil
 	}
 
+	completedCount, err := q.repository.GetJobKeyCount(ctx, jobID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get job key count: %w", err)
+	}
+
+	if completedCount >= j.JobCount {
+		q.alrLog.WithFields(logrus.Fields{
+			"jobID":    j.ID,
+			"jobCount": j.JobCount, "completedJobCount": completedCount}).
+			Println("Excess number of jobs completed.")
+		return true, nil
+	}
+
 	return false, nil
 }
