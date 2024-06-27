@@ -171,9 +171,6 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
 	// CompletedJobCount is purely information and can be off.
-	// TODO: Where does this make sense to live?
-	//       Should this just sync the # of job keys into the field since it's the authoritative source?
-	//       Should we remove this field since it's misleading? Is it used anywhere (and is that a problem?)
 	if err := w.r.IncrementCompletedJobCount(ctx, job.ID); err != nil {
 		err = errors.Wrap(err, "ProcessJob: Failed to update completed job count. Will continue.")
 		logger.Warn(err)
