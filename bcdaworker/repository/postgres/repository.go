@@ -96,7 +96,7 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 	)
 
 	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-		&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt)
+		&j.JobCount, &createdAt, &updatedAt)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {

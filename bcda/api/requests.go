@@ -258,7 +258,8 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		logger.Error(job.Status)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
-		w.Header().Set("X-Progress", job.StatusMessage())
+		completedJobKeyCount := utils.SliceCount(jobKeys, func(jobKey *models.JobKey) bool { return jobKey.IsError() })
+		w.Header().Set("X-Progress", job.StatusMessage(completedJobKeyCount))
 		w.WriteHeader(http.StatusAccepted)
 		return
 	case models.JobStatusCompleted:

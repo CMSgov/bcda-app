@@ -516,7 +516,6 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.Nil(s.T(), err)
 	// As this test actually connects to BB, we can't be sure it will succeed
 	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
-	assert.Equal(s.T(), 1, completedJob.CompletedJobCount)
 }
 
 func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
