@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"database/sql"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -65,10 +66,10 @@ func (s *AlrWorkerTestSuite) TestNewAlrWorker() {
 // Test ProcessAlrJob
 func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 	ctx := context.Background()
-	err := s.alrWorker.ProcessAlrJob(ctx, s.jobArgs[0])
+	err := s.alrWorker.ProcessAlrJob(ctx, rand.Int63(), s.jobArgs[0])
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
-	err = s.alrWorker.ProcessAlrJob(ctx, s.jobArgs[1])
+	err = s.alrWorker.ProcessAlrJob(ctx, rand.Int63(), s.jobArgs[1])
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
 }
