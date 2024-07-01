@@ -37,11 +37,13 @@ type jobRepository interface {
 
 type jobKeyRepository interface {
 	CreateJobKey(ctx context.Context, jobKey models.JobKey) error
-
+	CreateJobKeys(ctx context.Context, jobKeys []models.JobKey) error
 	GetJobKeyCount(ctx context.Context, jobID uint) (int, error)
+	GetJobKey(ctx context.Context, jobID uint, queJobID int64) (*models.JobKey, error)
 }
 
 var (
-	ErrJobNotUpdated = errors.New("job was not updated, no match found")
-	ErrJobNotFound   = errors.New("no job found for given id")
+	ErrJobNotUpdated  = errors.New("job was not updated, no match found")
+	ErrJobNotFound    = errors.New("no job found for given id")
+	ErrJobKeyNotFound = errors.New("no job key found for given IDs")
 )
