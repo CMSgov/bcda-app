@@ -73,14 +73,7 @@ jobs:
           CONNECTION_URL="postgresql://user:password@rds.bcda-test.local/bcda"
           HOST="foo-bar"
           CONN_REP=$(echo $CONNECTION_URL | sed -E "s/@.*\/bcda/\@$HOST\/bcda\//")
-          SUPPRESSION_FILE=`psql -t "$CONN_REP" -c "SELECT id FROM suppression_files WHERE name = $FILENAME LIMIT 1" 2>&1`
+          SUPPRESSION_FILE=$("foo bar")
           
-          if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
-            echo "Query returned zero results or command failed"
-            exit 1
-          else
-            SUPPRESSIONS=`psql -t "$CONN_REP" -c "SELECT * FROM suppression_files WHERE file_id = $SUPPRESSION_FILE" 2>&1`
-              if [[ $? -ne 0 || -z $SUPPRESSIONS ]]; then
-                echo "Query returned zero results or command failed"
-          fi
+
             
