@@ -146,7 +146,7 @@ func (q *queue) processJob(queJob *que.Job) error {
 		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
 		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
 	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
-		logger.Warnf("Queue job (que_jobs.job_id) %d already processed for job.id %d. Checking completion status and removing queuejob from que.", queJob.ID, jobArgs.ID)
+		logger.Warnf("Queue job (que_jobs.id) %d already processed for job.id %d. Checking completion status and removing queuejob from que.", queJob.ID, jobArgs.ID)
 		_, err := worker.CheckJobCompleteAndCleanup(ctx, q.repository, uint(jobArgs.ID))
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", jobArgs.ID))
