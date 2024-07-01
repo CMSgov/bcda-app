@@ -47,3 +47,9 @@ func TestParseSQSEvent(t *testing.T) {
 	assert.NotNil(t, s3Event)
 	assert.Equal(t, "demo-bucket", s3Event.Records[0].S3.Bucket.Name)
 }
+
+func TestParseS3Directory(t *testing.T) {
+	assert.Equal(t, "my-bucket", ParseS3Directory("my-bucket", "some-file"))
+	assert.Equal(t, "my-bucket/my-dir", ParseS3Directory("my-bucket", "my-dir/some-file"))
+	assert.Equal(t, "my-bucket/my-dir/nested", ParseS3Directory("my-bucket", "my-dir/nested/some-file"))
+}

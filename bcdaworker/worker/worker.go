@@ -32,8 +32,8 @@ import (
 )
 
 type Worker interface {
-	ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) (*models.Job, error)
-	ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error
+	ValidateJob(ctx context.Context, queJobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error)
+	ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs models.JobEnqueueArgs) error
 }
 
 type worker struct {
@@ -44,7 +44,7 @@ func NewWorker(db *sql.DB) Worker {
 	return &worker{postgres.NewRepository(db)}
 }
 
-func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
+func (w *worker) ValidateJob(ctx context.Context, queJobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
@@ -63,10 +63,19 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 		return nil, ErrParentJobFailed
 	}
 
-	return exportJob, nil
+	_, err = w.r.GetJobKey(ctx, uint(jobArgs.ID), queJobID)
+	if goerrors.Is(err, repository.ErrJobKeyNotFound) {
+		// No job key exists, which means this queue job needs to be processed.
+		return exportJob, nil
+	} else if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve job key from database")
+	} else {
+		// If there was no error, we found a job key and can avoid re-processing the job.
+		return nil, ErrQueJobProcessed
+	}
 }
 
-func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
+func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs models.JobEnqueueArgs) error {
 
 	t := metrics.GetTimer()
 	defer t.Close()
@@ -127,7 +136,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return err
 	}
 
-	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, jobArgs, tempJobPath)
+	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath)
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
@@ -151,11 +160,13 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	err = compressFiles(ctx, tempJobPath, stagingPath)
 	if err != nil {
 		logger.Error(err)
+		return err
 	}
 
 	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
 	if err != nil {
 		logger.Error(err)
+		return err
 	}
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
@@ -231,9 +242,9 @@ func CloseOrLogError(logger logrus.FieldLogger, f *os.File) {
 // A list of JobKeys are returned, containing the names of files that were created.
 // Filesnames can be "blank.ndjson", "<uuid>.ndjson", or "<uuid>-error.ndjson".
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, jobArgs models.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
+	cmsID string, queJobID int64, jobArgs models.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
 
-	jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
+	jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), QueJobID: &queJobID, FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
 
 	logger := log.GetCtxLogger(ctx)
 	close := metrics.NewChild(ctx, "writeBBDataToFile")
@@ -366,7 +377,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if errorCount > 0 {
-		jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
+		jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
 	}
 	return jobKeys, nil
 }
@@ -468,7 +479,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 	}
 }
 
-func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
+func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
 	logger := log.GetCtxLogger(ctx)
 	j, err := r.GetJobByID(ctx, jobID)
 	if err != nil {
@@ -532,17 +543,21 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 }
 
 func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []models.JobKey, id uint) error {
-	for i := 0; i < len(jobKeys); i++ {
-		if err := r.CreateJobKey(ctx, jobKeys[i]); err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error creating job key record for filename %s", jobKeys[i].FileName))
-			return err
+	if err := r.CreateJobKeys(ctx, jobKeys); err != nil {
+		filenames := ""
+		for _, jobKey := range jobKeys {
+			filenames += " " + jobKey.FileName
 		}
-		_, err := checkJobCompleteAndCleanup(ctx, r, id)
-		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for filename %s", jobKeys[i].FileName))
-			return err
-		}
+		err = errors.Wrap(err, fmt.Sprintf("Error creating job key records for filenames%s", filenames))
+		return err
 	}
+
+	_, err := CheckJobCompleteAndCleanup(ctx, r, id)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", id))
+		return err
+	}
+
 	return nil
 }
 
@@ -571,4 +586,5 @@ var (
 	ErrParentJobNotFound  = JobError{"parent job not found"}
 	ErrParentJobCancelled = JobError{"parent job cancelled"}
 	ErrParentJobFailed    = JobError{"parent job failed"}
+	ErrQueJobProcessed    = JobError{"que job already processed"}
 )
