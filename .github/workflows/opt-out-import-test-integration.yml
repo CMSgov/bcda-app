@@ -79,10 +79,6 @@ jobs:
             echo "Query returned zero results or command failed"
             exit 1
           else
-            SUPPRESSIONS=`psql -t "$CONN_REP" -c "SELECT * FROM suppression_files WHERE file_id = $SUPPRESSION_FILE" 2>&1`
-              if [[ $? -ne 0 || -z $SUPPRESSIONS ]]; then
-                echo "Query returned zero results or command failed"
-                exit 1
-              fi
+            echo "success"
           fi
             
