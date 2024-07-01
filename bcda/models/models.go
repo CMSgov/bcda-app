@@ -48,8 +48,11 @@ func (j *Job) StatusMessage(numCompletedJobKeys int) string {
 const BlankFileName string = "blank.ndjson"
 
 type JobKey struct {
-	ID           uint
-	JobID        uint `json:"job_id"`
+	ID    uint
+	JobID uint `json:"job_id"`
+	// Although que_job records are temporary, we store the ID to ensure
+	// that workers are never duplicating job keys.
+	QueJobID     *int64
 	FileName     string
 	ResourceType string
 }
