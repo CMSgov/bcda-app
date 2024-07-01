@@ -72,7 +72,7 @@ jobs:
         run: |
           CONNECTION_URL="postgresql://user:password@rds.bcda-test.local/bcda"
           HOST="foo-bar"
-          CONN_REP=$(echo $CONNECTION_URL | sed -E "s/@.*\/bcda/\@$HOST\/bcda\/")
+          CONN_REP=$(echo $CONNECTION_URL | sed -E "s/@.*\/bcda/\@$HOST\/bcda\//")
           SUPPRESSION_FILE=`psql -t "$CONN_REP" -c "SELECT id FROM suppression_files WHERE name = $FILENAME LIMIT 1" 2>&1`
           
           if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
