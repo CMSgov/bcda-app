@@ -139,7 +139,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job \d+ does not contain valid base path`},
 		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found for ID: \d+ acoID.*Will retry`},
 		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
-		{"QueJobAlreadyProcessed", worker.ErrQueJobProcessed, nil, `^Queue job (que_jobs.id) \d+ already processed for job.id \d+`},
+		{"QueJobAlreadyProcessed", worker.ErrQueJobProcessed, nil, `^Queue job \(que_jobs.id\) \d+ already processed for job.id \d+`},
 		{"OtherError", fmt.Errorf(constants.DefaultError), fmt.Errorf(constants.DefaultError), ""},
 	}
 	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
