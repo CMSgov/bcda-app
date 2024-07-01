@@ -55,33 +55,32 @@ jobs:
     needs: trigger
     runs-on: self-hosted
     steps:
-      - name: Get database credentials
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            CONNECTION_URL=/bcda/test/api/DATABASE_URL
+      # - name: Get database credentials
+      #   uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+      #   env:
+      #     AWS_REGION: ${{ vars.AWS_REGION }}
+      #   with:
+      #     params: |
+      #       CONNECTION_URL=/bcda/test/api/DATABASE_URL
       - name: Install psql
         run: |
             sudo amazon-linux-extras install postgresql14
       - name: Verify suppression file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
+        # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = $FILENAME LIMIT 1"`
-          if [[ -z $SUPPRESSION_FILE ]]; then                       
-            echo "Suppression file not found."
+          CONNECTION_URL="postgresql://user:password@rds.bcda-test.local/bcda"
+          HOST="foo-bar"
+          CONN_REP=$(echo $CONNECTION_URL | sed -E "s/@.*\/bcda/\@$HOST\/bcda\/")
+          SUPPRESSION_FILE=`psql -t "$CONN_REP" -c "SELECT id FROM suppression_files WHERE name = $FILENAME LIMIT 1" 2>&1`
+          
+          if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
+            echo "Query returned zero results or command failed"
             exit 1
+          else
+            SUPPRESSIONS=`psql -t "$CONN_REP" -c "SELECT * FROM suppression_files WHERE file_id = $SUPPRESSION_FILE" 2>&1`
+              if [[ $? -ne 0 || -z $SUPPRESSIONS ]]; then
+                echo "Query returned zero results or command failed"
           fi
-          SUPPRESSIONS=`psql -t "$CONNECTION_URL" -c "SELECT * FROM suppression_files WHERE file_id = $SUPPRESSION_FILE"`
-          if [[ -z $SUPPRESSIONS ]]; then                       
-            echo "Suppression entries for test file not found."
-            exit 1
-          fi
-  # TODO verify count of suppression entries     
-
-  # TODO: database cleanup
-
-
-
+            
