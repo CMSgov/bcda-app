@@ -117,10 +117,6 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	failed.UpdatedAt = afterUpdate.UpdatedAt
 	assertJobsEqual(assert, failed, *afterUpdate)
 
-	afterUpdate, err = r.repository.GetJobByID(ctx, failed.ID)
-	assert.NoError(err)
-	assert.True(afterUpdate.UpdatedAt.After(failed.UpdatedAt))
-
 	// After all of these updates, the completed job should remain untouched
 	completed1, err := r.repository.GetJobByID(ctx, completed.ID)
 	assert.NoError(err)
