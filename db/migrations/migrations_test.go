@@ -327,9 +327,48 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertColumnExists(t, false, db, "acos", "public_key")
 			},
 		},
+		{
+			"Increasing cmsid size",
+			func(t *testing.T) {
+				migrator.runMigration(t, 15)
+				assertColumnCharacterMaxLength(t, 8, db, "acos", "cms_id")
+				assertColumnCharacterMaxLength(t, 8, db, "cclf_files", "aco_cms_id")
+				assertColumnCharacterMaxLength(t, 8, db, "suppressions", "aco_cms_id")
+			},
+		},
+		{
+			"Adding que_job_id to job_keys table",
+			func(t *testing.T) {
+				assertColumnExists(t, false, db, "job_keys", "que_job_id")
+				assertIndexExists(t, false, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+				migrator.runMigration(t, 16)
+				assertColumnExists(t, true, db, "job_keys", "que_job_id")
+				assertColumnDefaultValue(t, db, "que_job_id", nullValue, []interface{}{"job_keys"})
+				assertIndexExists(t, true, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+			},
+		},
 		// **********************************************************
 		// * down migrations tests begin here with test number - 1  *
 		// **********************************************************
+		{
+			"Removing que_job_id from job_keys table",
+			func(t *testing.T) {
+				assertColumnExists(t, true, db, "job_keys", "que_job_id")
+				assertIndexExists(t, true, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+				migrator.runMigration(t, 15)
+				assertColumnExists(t, false, db, "job_keys", "que_job_id")
+				assertIndexExists(t, false, db, "job_keys", "idx_job_keys_job_id_que_job_id")
+			},
+		},
+		{
+			"Reverting cmsid size",
+			func(t *testing.T) {
+				migrator.runMigration(t, 14)
+				assertColumnCharacterMaxLength(t, 5, db, "acos", "cms_id")
+				assertColumnCharacterMaxLength(t, 5, db, "cclf_files", "aco_cms_id")
+				assertColumnCharacterMaxLength(t, 5, db, "suppressions", "aco_cms_id")
+			},
+		},
 		{
 			"Restore alpha_secret for acos table",
 			func(t *testing.T) {
@@ -591,6 +630,15 @@ func assertTableExists(t *testing.T, shouldExist bool, db *sql.DB, tableName str
 		expected = 1
 	}
 	assert.Equal(t, expected, count)
+}
+
+func assertColumnCharacterMaxLength(t *testing.T, expectedLength int, db *sql.DB, tableName, columnName string) {
+	sb := sqlFlavor.NewSelectBuilder().Select("character_maximum_length").From("information_schema.columns ")
+	sb.Where(sb.Equal("table_name", tableName), sb.Equal("column_name", columnName))
+	query, args := sb.Build()
+	var maxLength int
+	assert.NoError(t, db.QueryRow(query, args...).Scan(&maxLength))
+	assert.Equal(t, expectedLength, maxLength)
 }
 
 func assertColumnDefaultValue(t *testing.T, db *sql.DB, columnName, expectedDefault string, tables []interface{}) {
