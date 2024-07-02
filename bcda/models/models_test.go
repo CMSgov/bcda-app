@@ -20,14 +20,14 @@ func TestModelsTestSuite(t *testing.T) {
 }
 
 func (s *ModelsTestSuite) TestJobStatusMessage() {
-	j := Job{Status: constants.InProgress, JobCount: 25, CompletedJobCount: 6}
-	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage())
+	j := Job{Status: constants.InProgress, JobCount: 25}
+	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage(6))
 
-	j = Job{Status: constants.InProgress, JobCount: 0, CompletedJobCount: 0}
-	assert.Equal(s.T(), constants.InProgress, j.StatusMessage())
+	j = Job{Status: constants.InProgress, JobCount: 0}
+	assert.Equal(s.T(), constants.InProgress, j.StatusMessage(0))
 
-	j = Job{Status: JobStatusCompleted, JobCount: 25, CompletedJobCount: 25}
-	assert.Equal(s.T(), string(JobStatusCompleted), j.StatusMessage())
+	j = Job{Status: JobStatusCompleted, JobCount: 25}
+	assert.Equal(s.T(), string(JobStatusCompleted), j.StatusMessage(25))
 }
 
 func (s *ModelsTestSuite) TestACOBlacklist() {

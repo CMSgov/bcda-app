@@ -85,7 +85,7 @@ func (r *Repository) GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*mode
 
 func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
 	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at")
+	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at")
 	sb.From("jobs").Where(sb.Equal("id", jobID))
 
 	query, args := sb.Build()
@@ -96,7 +96,7 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 	)
 
 	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-		&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt)
+		&j.JobCount, &createdAt, &updatedAt)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {
@@ -119,27 +119,6 @@ func (r *Repository) UpdateJobStatusCheckStatus(ctx context.Context, jobID uint,
 	return r.updateJob(ctx,
 		map[string]interface{}{"id": jobID, "status": current},
 		map[string]interface{}{"status": new})
-}
-
-func (r *Repository) IncrementCompletedJobCount(ctx context.Context, jobID uint) error {
-	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
-	ub.Set(ub.Incr("completed_job_count"), ub.Assign("updated_at", sqlbuilder.Raw("NOW()"))).
-		Where(ub.Equal("id", jobID))
-
-	query, args := ub.Build()
-	res, err := r.ExecContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	count, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return fmt.Errorf("job %d not updated, no job found", jobID)
-	}
-
-	return nil
 }
 
 func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) error {
