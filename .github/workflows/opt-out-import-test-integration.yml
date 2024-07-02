@@ -53,10 +53,10 @@ jobs:
             s3://bfd-test-eft/bfdeft01/bcda/in/$FILENAME
   verify:
     needs: trigger
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: aws-actions/configure-aws-credentials@v2
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-opt-out-import-function
