@@ -55,17 +55,17 @@ jobs:
     needs: trigger
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
+      # - uses: actions/checkout@v4
+      # - uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-region: ${{ vars.AWS_REGION }}
       - name: Install psql
         run: |
             sudo amazon-linux-extras install postgresql14
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
         with:
           params: |
             CONNECTION_INFO=/bcda/test/api/DATABASE_URL
