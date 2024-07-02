@@ -27,12 +27,11 @@ func (s *CommonTestSuite) TestDedup() {
 	assert.Len(s.T(), result, 3)
 }
 
-func (s *CommonTestSuite) TestSliceCount() {
-	isEven := func(n int) bool { return n%2 == 0 }
-	assert.Equal(s.T(), 0, SliceCount([]int{}, isEven))
-	assert.Equal(s.T(), 0, SliceCount([]int{1, 3}, isEven))
-	assert.Equal(s.T(), 1, SliceCount([]int{1, 2, 3}, isEven))
-	assert.Equal(s.T(), 2, SliceCount([]int{2, 1, 3, 4}, isEven))
+func (s *CommonTestSuite) TestCountUniq() {
+	firstLetter := func(s string) string { return string(s[0]) }
+	assert.Equal(s.T(), 0, CountUniq([]string{}, firstLetter))
+	assert.Equal(s.T(), 1, CountUniq([]string{"abc", "ab"}, firstLetter))
+	assert.Equal(s.T(), 2, CountUniq([]string{"abc", "bcd", "ab"}, firstLetter))
 }
 
 func TestCommonTestSuite(t *testing.T) {
