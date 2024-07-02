@@ -59,7 +59,7 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 }
 
 func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
-	result chan error, resourceTypes []string, id uint) {
+	result chan error, resourceTypes []string, id uint, queJobID int64) {
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
 
@@ -105,20 +105,23 @@ func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 	}
 
 	// update the jobs keys
+	var jobKeys []models.JobKey
 	for resource, path := range fileMap {
 		filename := filepath.Base(path.Name())
-		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
-		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
-			return
-		}
+		jk := models.JobKey{JobID: id, QueJobID: &queJobID, FileName: filename, ResourceType: resource}
+		jobKeys = append(jobKeys, jk)
+	}
+
+	if err := a.Repository.CreateJobKeys(ctx, jobKeys); err != nil {
+		result <- fmt.Errorf(constants.JobKeyCreateErr, err)
+		return
 	}
 
 	result <- nil
 }
 
 func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
-	result chan error, resourceTypes []string, id uint) {
+	result chan error, resourceTypes []string, id uint, queJobID int64) {
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
 
@@ -164,13 +167,16 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 	}
 
 	// update the jobs keys
+	var jobKeys []models.JobKey
 	for resource, path := range fileMap {
 		filename := filepath.Base(path.Name())
-		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
-		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			result <- fmt.Errorf(constants.JobKeyCreateErr, err)
-			return
-		}
+		jk := models.JobKey{JobID: id, QueJobID: &queJobID, FileName: filename, ResourceType: resource}
+		jobKeys = append(jobKeys, jk)
+	}
+
+	if err := a.Repository.CreateJobKeys(ctx, jobKeys); err != nil {
+		result <- fmt.Errorf(constants.JobKeyCreateErr, err)
+		return
 	}
 
 	result <- nil
@@ -184,6 +190,7 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 // ProcessAlrJob is a function called by the Worker to serve ALR data to users
 func (a *AlrWorker) ProcessAlrJob(
 	ctx context.Context,
+	queJobID int64,
 	jobArgs models.JobAlrEnqueueArgs,
 ) error {
 
@@ -200,10 +207,10 @@ func (a *AlrWorker) ProcessAlrJob(
 		return err
 	}
 
-	// If we did not have an ALR data to write, we'll write a specific file name that indicates that the
+	// If we did not have any ALR data to write, we'll write a specific file name that indicates that
 	// there is no data associated with this job.
 	if len(alrModels) == 0 {
-		jk := models.JobKey{JobID: id, FileName: models.BlankFileName, ResourceType: "ALR"}
+		jk := models.JobKey{JobID: id, QueJobID: &queJobID, FileName: models.BlankFileName, ResourceType: "ALR"}
 		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
 			return fmt.Errorf(constants.JobKeyCreateErr, err)
 		}
@@ -245,9 +252,9 @@ func (a *AlrWorker) ProcessAlrJob(
 	// Reason for a go routine is to not block when writing, since disk writing is
 	// generally slower than memory access. We are streaming to keep mem lower.
 	if jobArgs.BBBasePath == "/v1/fhir" {
-		go goWriterV1(ctx, a, c, fileMap, result, resources[:], id)
+		go goWriterV1(ctx, a, c, fileMap, result, resources[:], id, queJobID)
 	} else {
-		go goWriterV2(ctx, a, c, fileMap, result, resources[:], id)
+		go goWriterV2(ctx, a, c, fileMap, result, resources[:], id, queJobID)
 	}
 
 	// Marshall into JSON and send it over the channel
