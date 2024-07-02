@@ -261,16 +261,24 @@ func TestStartAlrJob(t *testing.T) {
 	// Since the worker is tested by BFD, it is not tested here
 	// and we jump straight to the work
 	err = master.startAlrJob(&que.Job{
+		ID:   rand.Int63(),
 		Args: jobArgsJson,
 	})
 	assert.NoError(t, err)
+
+	// Check job is in progress
+	alrJob, err := r.GetJobByID(ctx, id)
+	assert.NoError(t, err)
+	assert.Equal(t, models.JobStatusInProgress, alrJob.Status)
+
 	err = master.startAlrJob(&que.Job{
+		ID:   rand.Int63(),
 		Args: jobArgsJson2,
 	})
 	assert.NoError(t, err)
 
 	// Check job is complete
-	alrJob, err := r.GetJobByID(ctx, id)
+	alrJob, err = r.GetJobByID(ctx, id)
 	assert.NoError(t, err)
 	assert.Equal(t, models.JobStatusCompleted, alrJob.Status)
 }

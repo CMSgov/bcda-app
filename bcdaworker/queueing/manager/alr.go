@@ -64,7 +64,7 @@ func checkIfCancelled(ctx context.Context, r repository.Repository,
 // startALRJob is the Job that the worker will run from the pool. This function
 // has been written here (alr.go) to separate from beneficiary FHIR workflow.
 // This job is handled by the same worker pool that works on beneficiary.
-func (q *masterQueue) startAlrJob(job *que.Job) error {
+func (q *masterQueue) startAlrJob(queJob *que.Job) error {
 
 	// Creating Context for possible cancellation; used by checkIfCancelled fn
 	ctx := context.Background()
@@ -73,13 +73,13 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// Unmarshall JSON that contains the job details
 	var jobArgs models.JobAlrEnqueueArgs
-	err := json.Unmarshal(job.Args, &jobArgs)
+	err := json.Unmarshal(queJob.Args, &jobArgs)
 	// If we cannot unmarshall this, it would be very problematic.
 	if err != nil {
 		// TODO: perhaps just fail the job?
 		// Currently, we retry it
 		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
-			job.Args, err)
+			queJob.Args, err)
 	}
 
 	// Validate the job like bcdaworker/worker/worker.go#L43
@@ -90,7 +90,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		if errors.Is(err, repository.ErrJobNotFound) {
 			// Parent job is not found
 			// If parent job is not found reach maxretry, fail the job
-			if job.ErrorCount >= q.MaxRetry {
+			if queJob.ErrorCount >= q.MaxRetry {
 				q.alrLog.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
 					jobArgs.CMSID)
 				// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
@@ -100,19 +100,29 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			return fmt.Errorf("could not retrieve job from database")
 		}
 		// Else that job just doesn't exist
-		return fmt.Errorf("failed to valiate job: %w", err)
+		return fmt.Errorf("failed to validate job: %w", err)
 	}
 	// If the job was cancelled...
 	if alrJobs.Status == models.JobStatusCancelled {
 		q.alrLog.Warnf("ALR big job has been cancelled, worker will not be tasked for %s",
-			job.Args)
+			queJob.Args)
 		return nil
 	}
 	// If the job has been failed by a previous worker...
 	if alrJobs.Status == models.JobStatusFailed {
 		q.alrLog.Warnf("ALR big job has been failed, worker will not be tasked for %s",
-			job.Args)
+			queJob.Args)
 		return nil
+	}
+	// if the que job was already processed...
+	_, err = q.repository.GetJobKey(ctx, uint(jobArgs.ID), queJob.ID)
+	if err == nil {
+		// If there was no error, we found a job key and can avoid re-processing the job.
+		q.alrLog.Warnf("ALR que job (que_jobs.id) %d has already been processed, worker will not be tasked for %s", queJob.ID, queJob.Args)
+		return nil
+	}
+	if !errors.Is(err, repository.ErrJobKeyNotFound) {
+		return fmt.Errorf("Failed to search for job keys in database: %w", err)
 	}
 	// End of validation
 
@@ -121,7 +131,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// Before moving forward, check if this job has failed before
 	// If it has reached the maxRetry, stop the parent job
-	if job.ErrorCount > q.MaxRetry {
+	if queJob.ErrorCount > q.MaxRetry {
 		// Fail the job - ALL OR NOTHING
 		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
 		if err != nil {
@@ -142,16 +152,16 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		// don't fail the job.
 		if !errors.Is(err, repository.ErrJobNotUpdated) {
 			q.alrLog.Warnf("Failed to update job status '%s' %s.",
-				job.Args, err)
+				queJob.Args, err)
 			return err
 		}
 	}
 
 	// Run ProcessAlrJob, which is the meat of the whole operation
-	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs)
+	err = q.alrWorker.ProcessAlrJob(ctx, queJob.ID, jobArgs)
 	if err != nil {
 		// This means the job did not finish
-		q.alrLog.Warnf("Failed to complete job.Args '%s' %s", job.Args, err)
+		q.alrLog.Warnf("Failed to complete job.Args '%s' %s", queJob.Args, err)
 		// Re-enqueue the job
 		return err
 	}
@@ -173,7 +183,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
 		if err != nil {
 			// This means the job did not finish for various reason
-			q.alrLog.Warnf("Failed to update job to complete for '%s' %s", job.Args, err)
+			q.alrLog.Warnf("Failed to update job to complete for '%s' %s", queJob.Args, err)
 			// Re-enqueue the job
 			return err
 		}
@@ -197,7 +207,7 @@ func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, erro
 		return false, nil
 	}
 
-	completedCount, err := q.repository.GetJobKeyCount(ctx, jobID)
+	completedCount, err := q.repository.GetUniqueJobKeyCount(ctx, jobID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get job key count: %w", err)
 	}

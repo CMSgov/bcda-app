@@ -157,6 +157,18 @@ func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error
 	return count, nil
 }
 
+func (r *Repository) GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(DISTINCT que_job_id)").From("job_keys")
+	sb.Where(sb.Equal("job_id", jobID))
+
+	query, args := sb.Build()
+	var count int
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return -1, err
+	}
+	return count, nil
+}
+
 func (r *Repository) GetJobKey(ctx context.Context, jobID uint, queJobID int64) (*models.JobKey, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id").From("job_keys")
 	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("que_job_id", queJobID)))

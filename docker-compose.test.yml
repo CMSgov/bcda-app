@@ -28,7 +28,7 @@ services:
       - ${HOME}/.cache/go-build:/root/.cache/go-build
       - ${GOPATH}/pkg/mod:/go/pkg/mod
   db-unit-test:
-    image: postgres:13
+    image: postgres:15
     environment:
       - POSTGRES_PASSWORD=toor
       - POSTGRES_DB=bcda_test
@@ -37,7 +37,7 @@ services:
     volumes:
       - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
     # Pass a flag so we'll log all queries executed on the test db.
-    command: [ "postgres", "-c", "log_statement=all" ]
+    command: ["postgres", "-c", "log_statement=all"]
   # Spin up a local S3 server for CCLF and Opt Out File import testing
   localstack:
     image: localstack/localstack:latest
@@ -47,12 +47,12 @@ services:
       - SERVICES=s3,ssm,sts,iam
       - DEBUG=1
     ports:
-      - '4566-4583:4566-4583'
+      - "4566-4583:4566-4583"
     volumes:
       - "./.localstack_volume:/var/lib/localstack"
-      - '/var/run/docker.sock:/var/run/docker.sock'
+      - "/var/run/docker.sock:/var/run/docker.sock"
     healthcheck:
-      test: "curl --silent --fail localstack:4566/_localstack/health | grep -E '\"s3\": \"(available|running)\"'"
+      test: 'curl --silent --fail localstack:4566/_localstack/health | grep -E ''"s3": "(available|running)"'''
       interval: 10s
       retries: 12
       start_period: 30s
