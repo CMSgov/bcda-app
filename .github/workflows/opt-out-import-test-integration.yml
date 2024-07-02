@@ -53,15 +53,11 @@ jobs:
             s3://bfd-test-eft/bfdeft01/bcda/in/$FILENAME
   verify:
     needs: trigger
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      # - uses: actions/checkout@v4
-      # - uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-region: ${{ vars.AWS_REGION }}
       - name: Install psql
         run: |
-            sudo apt install postgresql
+            sudo amazon-linux-extras install postgresql14
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
