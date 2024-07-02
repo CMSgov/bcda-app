@@ -3,14 +3,14 @@ version: "3"
 
 services:
   queue:
-    image: postgres:11
+    image: postgres:15
     environment:
       - POSTGRES_DB=bcda_queue
       - POSTGRES_PASSWORD=toor
     ports:
       - "5433:5432"
   db:
-    image: postgres:11
+    image: postgres:15
     environment:
       - POSTGRES_DB=bcda
       - POSTGRES_PASSWORD=toor
@@ -25,7 +25,7 @@ services:
       args:
         ENVIRONMENT: development
     entrypoint: ""
-    command: [ "../scripts/watch.sh", "api", "bcda", "start-api" ]
+    command: ["../scripts/watch.sh", "api", "bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -48,7 +48,7 @@ services:
       args:
         ENVIRONMENT: development
     entrypoint: ""
-    command: [ "../scripts/watch.sh", "worker", "bcdaworker" ]
+    command: ["../scripts/watch.sh", "worker", "bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
