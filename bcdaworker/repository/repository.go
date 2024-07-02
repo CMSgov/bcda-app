@@ -39,6 +39,7 @@ type jobKeyRepository interface {
 	CreateJobKey(ctx context.Context, jobKey models.JobKey) error
 	CreateJobKeys(ctx context.Context, jobKeys []models.JobKey) error
 	GetJobKeyCount(ctx context.Context, jobID uint) (int, error)
+	GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int, error)
 	GetJobKey(ctx context.Context, jobID uint, queJobID int64) (*models.JobKey, error)
 }
 
