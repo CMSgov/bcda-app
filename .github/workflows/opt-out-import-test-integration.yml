@@ -51,8 +51,6 @@ jobs:
           echo "FILENAME=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')" >> "$GITHUB_OUTPUT"
           aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
             s3://bfd-test-eft/bfdeft01/bcda/in/$FILENAME
-          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test-rds | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
-
   verify:
     needs: trigger
     runs-on: self-hosted
@@ -71,14 +69,14 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CONNECTION_INFO=/bcda/test/api/DATABASE_URL
+            CONNECTION_URL=/bcda/test/api/DATABASE_URL
       - name: Verify suppression file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test-rds | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
-          CONNECTION_URL=$(echo $CONNECTION_INFO | sed -E "s/@.*\/bcda/\@$HOST\/bcda/")
+          
+          
           SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
             echo "suppression_file query returned zero results or command failed"
