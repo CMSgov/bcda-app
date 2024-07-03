@@ -55,10 +55,10 @@ jobs:
     needs: trigger
     runs-on: self-hosted
     steps:
-      # - uses: actions/checkout@v3
-      # - uses: aws-actions/configure-aws-credentials@v3
-      #   with:
-      #     aws-region: ${{ vars.AWS_REGION }}
+      - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
           #role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-opt-out-import-function
       - name: Install psql
         run: |
@@ -69,14 +69,14 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CONNECTION_URL=/bcda/test/api/DATABASE_URL
+            CONNECTION_INFO=/bcda/test/api/DATABASE_URL
       - name: Verify suppression file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          
-          
+          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test-rds | jq -r '.DBInstances[0].Endpoint.Address')
+          CONNECTION_URL=$(echo $CONNECTION_INFO | sed -E "s/@.*\/bcda/\@$HOST\/bcda/")
           SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
             echo "suppression_file query returned zero results or command failed"
