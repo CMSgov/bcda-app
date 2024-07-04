@@ -55,8 +55,10 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 				return "", err
 			}
 
-			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
-			return handleCclfImport(s3AssumeRoleArn, dir)
+			// Send the entire filepath into the CCLF Importer so we are only
+			// importing the one file that was sent in the trigger.
+			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
+			return handleCclfImport(s3AssumeRoleArn, filepath)
 		}
 	}
 
