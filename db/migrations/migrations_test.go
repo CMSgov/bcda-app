@@ -347,9 +347,25 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertIndexExists(t, true, db, "job_keys", "idx_job_keys_job_id_que_job_id")
 			},
 		},
+		{
+			"Removing completed_job_count from jobs table",
+			func(t *testing.T) {
+				assertColumnExists(t, true, db, "jobs", "completed_job_count")
+				migrator.runMigration(t, 17)
+				assertColumnExists(t, false, db, "jobs", "completed_job_count")
+			},
+		},
 		// **********************************************************
 		// * down migrations tests begin here with test number - 1  *
 		// **********************************************************
+		{
+			"Removing completed_job_count from jobs table",
+			func(t *testing.T) {
+				assertColumnExists(t, false, db, "jobs", "completed_job_count")
+				migrator.runMigration(t, 16)
+				assertColumnExists(t, true, db, "jobs", "completed_job_count")
+			},
+		},
 		{
 			"Removing que_job_id from job_keys table",
 			func(t *testing.T) {
