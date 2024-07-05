@@ -12,6 +12,7 @@ import (
 )
 
 // LocalFileHandler manages files from local directories.
+// This handler should only be used for local dev/testing now.
 type LocalFileHandler struct {
 	Logger                 logrus.FieldLogger
 	PendingDeletionDir     string
