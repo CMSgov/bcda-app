@@ -23,7 +23,7 @@ func TestCclfImportMainSuite(t *testing.T) {
 }
 
 func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
-	targetACO := "A0002"
+	targetACO := "A0001"
 	assert := assert.New(s.T())
 
 	env := uuid.NewUUID()
@@ -42,14 +42,15 @@ func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
 
 	type test struct {
 		path         string
+		filename     string
 		err          error
 		expectedLogs []string
 	}
 
 	tests := []test{
-		{path: "../../../shared_files/cclf/archives/valid2/", expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 0 files."}},
-		{path: "../../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("one or more files failed to import correctly"), expectedLogs: []string{}},
-		{path: "../../../shared_files/cclf/archives/skip/", expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."}},
+		{path: "../../../shared_files/cclf/archives/valid2/", filename: "cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000", expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 0 files."}},
+		{path: "../../../shared_files/cclf/archives/invalid_bcd/", filename: "cclf/archives/invalid_bcd/P.BCD.A0009.ZCY18.D181120.T0001000", err: errors.New("one or more files failed to import correctly"), expectedLogs: []string{}},
+		{path: "../../../shared_files/cclf/archives/skip/", filename: "cclf/archives/skip/T.BCD.ACOB.ZC0Y18.D181120.T0001000", expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."}},
 	}
 
 	for _, tc := range tests {
@@ -59,7 +60,7 @@ func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
 		path, cleanup := testUtils.CopyToS3(s.T(), tc.path)
 		defer cleanup()
 
-		res, err := cclfImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), path, "fake_filename"))
+		res, err := cclfImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), path, tc.filename))
 
 		if tc.err == nil {
 			assert.Nil(err)
