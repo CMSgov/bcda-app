@@ -115,3 +115,19 @@ func Dedup(slice []string) []string {
 
 	return newSlice
 }
+
+// Count the number of unique values in the slice based on given function
+func CountUniq[S []E, E any, F comparable](arr S, f func(E) F) int {
+	var n int
+	var dupcheck = make(map[F]bool, n)
+
+	for _, val := range arr {
+		comparableVal := f(val)
+		if !dupcheck[comparableVal] {
+			dupcheck[comparableVal] = true
+			n++
+		}
+	}
+
+	return n
+}
