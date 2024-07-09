@@ -564,32 +564,6 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "delete-dir-contents",
-			Category: "Cleanup",
-			Usage:    "Delete all of the files in a directory",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "dirToDelete",
-					Usage:       "Name of the directory to delete the files from",
-					Destination: &dirToDelete,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				fi, err := os.Stat(dirToDelete)
-				if err != nil {
-					return err
-				}
-				if !fi.IsDir() {
-					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
-				}
-				filesDeleted, err := utils.DeleteDirectoryContents(dirToDelete)
-				if filesDeleted > 0 {
-					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
-				}
-				return err
-			},
-		},
-		{
 			Name:     "import-synthetic-cclf-package",
 			Category: constants.CliDataImpCategory,
 			Usage:    "Import a package of synthetic CCLF files",
