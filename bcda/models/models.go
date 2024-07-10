@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -24,20 +25,19 @@ var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgre
 
 type JobStatus string
 type Job struct {
-	ID                uint
-	ACOID             uuid.UUID `json:"aco_id"`
-	RequestURL        string    `json:"request_url"` // request_url
-	Status            JobStatus `json:"status"`      // status
-	TransactionTime   time.Time // most recent data load transaction time from BFD
-	JobCount          int
-	CompletedJobCount int
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID              uint
+	ACOID           uuid.UUID `json:"aco_id"`
+	RequestURL      string    `json:"request_url"` // request_url
+	Status          JobStatus `json:"status"`      // status
+	TransactionTime time.Time // most recent data load transaction time from BFD
+	JobCount        int
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
-func (j *Job) StatusMessage() string {
+func (j *Job) StatusMessage(numCompletedJobKeys int) string {
 	if j.Status == JobStatusInProgress && j.JobCount > 0 {
-		pct := float64(j.CompletedJobCount) / float64(j.JobCount) * 100
+		pct := float64(numCompletedJobKeys) / float64(j.JobCount) * 100
 		return fmt.Sprintf("%s (%d%%)", j.Status, int(pct))
 	}
 
@@ -48,10 +48,17 @@ func (j *Job) StatusMessage() string {
 const BlankFileName string = "blank.ndjson"
 
 type JobKey struct {
-	ID           uint
-	JobID        uint `json:"job_id"`
+	ID    uint
+	JobID uint `json:"job_id"`
+	// Although que_job records are temporary, we store the ID to ensure
+	// that workers are never duplicating job keys.
+	QueJobID     *int64
 	FileName     string
 	ResourceType string
+}
+
+func (j *JobKey) IsError() bool {
+	return strings.Contains(j.FileName, "-error.ndjson")
 }
 
 // ACO represents an Accountable Care Organization.

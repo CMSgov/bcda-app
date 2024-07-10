@@ -139,6 +139,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job \d+ does not contain valid base path`},
 		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found for ID: \d+ acoID.*Will retry`},
 		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
+		{"QueJobAlreadyProcessed", worker.ErrQueJobProcessed, nil, `^Queue job \(que_jobs.id\) \d+ already processed for job.id \d+`},
 		{"OtherError", fmt.Errorf(constants.DefaultError), fmt.Errorf(constants.DefaultError), ""},
 	}
 	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
@@ -148,12 +149,13 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			worker := &worker.MockWorker{}
 			defer worker.AssertExpectations(t)
 
-			queue := &queue{worker: worker, log: logger}
+			repo := repository.NewMockRepository(t)
+			queue := &queue{worker: worker, repository: repo, log: logger}
 
 			job := models.Job{ID: uint(rand.Int31())}
 			jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: uuid.New()}
 
-			var queJob que.Job
+			queJob := que.Job{ID: 1}
 			queJob.Args, err = json.Marshal(jobArgs)
 			assert.NoError(t, err)
 
@@ -162,7 +164,12 @@ func TestProcessJobFailedValidation(t *testing.T) {
 				queJob.ErrorCount = rand.Int31()
 			}
 
-			worker.On("ValidateJob", testUtils.CtxMatcher, jobArgs).Return(nil, tt.validateErr)
+			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
+
+			if tt.name == "QueJobAlreadyProcessed" {
+				job.Status = models.JobStatusCompleted
+				repo.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
+			}
 
 			err = queue.processJob(&queJob)
 			if tt.expectedErr == nil {
@@ -206,8 +213,7 @@ func TestStartAlrJob(t *testing.T) {
 		Status:          models.JobStatusPending,
 		TransactionTime: time.Now(),
 		// JobCount is partitioned automatically, but it is done manually here
-		JobCount:          2,
-		CompletedJobCount: 0,
+		JobCount: 2,
 	}
 	id, err := r.CreateJob(ctx, job)
 	assert.NoError(t, err)
@@ -255,16 +261,24 @@ func TestStartAlrJob(t *testing.T) {
 	// Since the worker is tested by BFD, it is not tested here
 	// and we jump straight to the work
 	err = master.startAlrJob(&que.Job{
+		ID:   rand.Int63(),
 		Args: jobArgsJson,
 	})
 	assert.NoError(t, err)
+
+	// Check job is in progress
+	alrJob, err := r.GetJobByID(ctx, id)
+	assert.NoError(t, err)
+	assert.Equal(t, models.JobStatusInProgress, alrJob.Status)
+
 	err = master.startAlrJob(&que.Job{
+		ID:   rand.Int63(),
 		Args: jobArgsJson2,
 	})
 	assert.NoError(t, err)
 
 	// Check job is complete
-	alrJob, err := r.GetJobByID(ctx, id)
+	alrJob, err = r.GetJobByID(ctx, id)
 	assert.NoError(t, err)
 	assert.Equal(t, models.JobStatusCompleted, alrJob.Status)
 }

@@ -85,7 +85,7 @@ func (r *Repository) GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*mode
 
 func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
 	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at")
+	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at")
 	sb.From("jobs").Where(sb.Equal("id", jobID))
 
 	query, args := sb.Build()
@@ -96,7 +96,7 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 	)
 
 	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-		&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt)
+		&j.JobCount, &createdAt, &updatedAt)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {
@@ -121,31 +121,23 @@ func (r *Repository) UpdateJobStatusCheckStatus(ctx context.Context, jobID uint,
 		map[string]interface{}{"status": new})
 }
 
-func (r *Repository) IncrementCompletedJobCount(ctx context.Context, jobID uint) error {
-	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
-	ub.Set(ub.Incr("completed_job_count"), ub.Assign("updated_at", sqlbuilder.Raw("NOW()"))).
-		Where(ub.Equal("id", jobID))
-
-	query, args := ub.Build()
-	res, err := r.ExecContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	count, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return fmt.Errorf("job %d not updated, no job found", jobID)
-	}
-
-	return nil
-}
-
 func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
-	ib.Cols("job_id", "file_name", "resource_type").
-		Values(jobKey.JobID, jobKey.FileName, jobKey.ResourceType)
+	ib.Cols("job_id", "que_job_id", "file_name", "resource_type").
+		Values(jobKey.JobID, jobKey.QueJobID, jobKey.FileName, jobKey.ResourceType)
+
+	query, args := ib.Build()
+	_, err := r.ExecContext(ctx, query, args...)
+	return err
+}
+
+func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys []models.JobKey) error {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
+	ib.Cols("job_id", "que_job_id", "file_name", "resource_type")
+
+	for _, jobKey := range jobKeys {
+		ib.Values(jobKey.JobID, jobKey.QueJobID, jobKey.FileName, jobKey.ResourceType)
+	}
 
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
@@ -155,7 +147,7 @@ func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) err
 func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
-	sb.Where(sb.NotLike("file_name", "%-error.ndjson%")) //Ignore error files from completed count.
+	sb.Where(sb.NotLike("file_name", "%-error.ndjson%")) // Ignore error files from completed count.
 
 	query, args := sb.Build()
 	var count int
@@ -163,6 +155,37 @@ func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error
 		return -1, err
 	}
 	return count, nil
+}
+
+func (r *Repository) GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(DISTINCT que_job_id)").From("job_keys")
+	sb.Where(sb.Equal("job_id", jobID))
+
+	query, args := sb.Build()
+	var count int
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return -1, err
+	}
+	return count, nil
+}
+
+func (r *Repository) GetJobKey(ctx context.Context, jobID uint, queJobID int64) (*models.JobKey, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("id").From("job_keys")
+	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("que_job_id", queJobID)))
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+
+	jk := &models.JobKey{JobID: jobID, QueJobID: &queJobID}
+
+	if err := row.Scan(&jk.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrJobKeyNotFound
+		}
+		return nil, err
+	}
+
+	return jk, nil
 }
 
 func (r *Repository) updateJob(ctx context.Context, clauses map[string]interface{}, fieldAndValues map[string]interface{}) error {

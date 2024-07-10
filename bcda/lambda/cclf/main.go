@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -56,14 +55,10 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 				return "", err
 			}
 
-			parts := strings.Split(e.S3.Object.Key, "/")
-
-			if len(parts) == 1 {
-				return handleCclfImport(s3AssumeRoleArn, e.S3.Bucket.Name)
-			} else {
-				directory := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, parts[0])
-				return handleCclfImport(s3AssumeRoleArn, directory)
-			}
+			// Send the entire filepath into the CCLF Importer so we are only
+			// importing the one file that was sent in the trigger.
+			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
+			return handleCclfImport(s3AssumeRoleArn, filepath)
 		}
 	}
 

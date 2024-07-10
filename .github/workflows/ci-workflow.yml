@@ -4,7 +4,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - .github/workflows/opt-out-import-*
+      - optout/**
   pull_request:
+    paths-ignore:
+      - .github/workflows/opt-out-import-*
+      - optout/**
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
@@ -59,6 +65,9 @@ jobs:
     name: Sonarqube Quality Gate
     needs: build
     runs-on: self-hosted
+    env:
+      # Workaround until https://jira.cms.gov/browse/PLT-338 is implemented.
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
       - name: Download code coverage
         uses: actions/download-artifact@v2

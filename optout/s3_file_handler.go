@@ -30,17 +30,14 @@ type S3FileHandler struct {
 // 2. stdout (Jenkins)
 
 func (handler *S3FileHandler) Infof(format string, rest ...interface{}) {
-	fmt.Printf(format, rest...)
 	handler.Logger.Infof(format, rest...)
 }
 
 func (handler *S3FileHandler) Warningf(format string, rest ...interface{}) {
-	fmt.Printf(format, rest...)
 	handler.Logger.Warningf(format, rest...)
 }
 
 func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
-	fmt.Printf(format, rest...)
 	handler.Logger.Errorf(format, rest...)
 }
 

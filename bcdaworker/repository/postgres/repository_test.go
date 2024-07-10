@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -89,8 +90,8 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	postgrestest.CreateACO(r.T(), r.db, aco)
 	defer postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
 
-	failed := models.Job{ACOID: aco.UUID, Status: models.JobStatusFailed, CompletedJobCount: 1, TransactionTime: now}
-	completed := models.Job{ACOID: aco.UUID, Status: models.JobStatusCompleted, CompletedJobCount: 2, TransactionTime: now}
+	failed := models.Job{ACOID: aco.UUID, Status: models.JobStatusFailed, TransactionTime: now}
+	completed := models.Job{ACOID: aco.UUID, Status: models.JobStatusCompleted, TransactionTime: now}
 	postgrestest.CreateJobs(r.T(), r.db, &failed, &completed)
 
 	failed1, err := r.repository.GetJobByID(ctx, failed.ID)
@@ -116,12 +117,6 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	failed.UpdatedAt = afterUpdate.UpdatedAt
 	assertJobsEqual(assert, failed, *afterUpdate)
 
-	assert.NoError(r.repository.IncrementCompletedJobCount(ctx, failed.ID))
-	afterUpdate, err = r.repository.GetJobByID(ctx, failed.ID)
-	assert.NoError(err)
-	assert.True(afterUpdate.UpdatedAt.After(failed.UpdatedAt))
-	assert.Equal(afterUpdate.CompletedJobCount, failed.CompletedJobCount+1)
-
 	// After all of these updates, the completed job should remain untouched
 	completed1, err := r.repository.GetJobByID(ctx, completed.ID)
 	assert.NoError(err)
@@ -140,10 +135,6 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 
 	err = r.repository.UpdateJobStatusCheckStatus(ctx, 0, models.JobStatusFailed, models.JobStatusArchived)
 	assert.EqualError(err, "job was not updated, no match found")
-
-	err = r.repository.IncrementCompletedJobCount(ctx, 0)
-	assert.EqualError(err, "job 0 not updated, no job found")
-
 }
 
 // TestJobKeysMethods validates the CRUD operations associated with the job_keys table
@@ -152,16 +143,18 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	ctx := context.Background()
 
 	jobID := uint(rand.Int31())
-	jk := models.JobKey{JobID: jobID}
-	jk1 := models.JobKey{JobID: jobID}
+	queJobID := rand.Int63()
+	queJobID1 := rand.Int63()
+
+	jk := models.JobKey{JobID: jobID, QueJobID: &queJobID}
+	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID1}
 	jk2 := models.JobKey{JobID: jobID}
 
 	otherJobID := models.JobKey{JobID: uint(rand.Int31())}
 	defer postgrestest.DeleteJobKeysByJobIDs(r.T(), r.db, jobID, otherJobID.JobID)
 
 	assert.NoError(r.repository.CreateJobKey(ctx, jk))
-	assert.NoError(r.repository.CreateJobKey(ctx, jk1))
-	assert.NoError(r.repository.CreateJobKey(ctx, jk2))
+	assert.NoError(r.repository.CreateJobKeys(ctx, []models.JobKey{jk1, jk2}))
 	assert.NoError(r.repository.CreateJobKey(ctx, otherJobID))
 
 	count, err := r.repository.GetJobKeyCount(ctx, jobID)
@@ -175,6 +168,12 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	count, err = r.repository.GetJobKeyCount(ctx, 0)
 	assert.NoError(err)
 	assert.Equal(0, count)
+
+	_, err = r.repository.GetJobKey(ctx, jobID, queJobID)
+	assert.NoError(err)
+
+	_, err = r.repository.GetJobKey(ctx, jobID, -1)
+	assert.EqualError(err, repository.ErrJobKeyNotFound.Error())
 }
 
 func assertJobsEqual(assert *assert.Assertions, expected, actual models.Job) {
