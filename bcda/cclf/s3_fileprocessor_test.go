@@ -89,6 +89,47 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 	}
 }
 
+func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SingleFile() {
+	cmsID, key := "A0001", metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
+	tests := []struct {
+		path         string
+		filename     string
+		numCCLFFiles int // Expected count for the cmsID, perfYear above
+		skipped      int
+		failure      int
+		numCCLF0     int // Expected count for the cmsID, perfYear above
+		numCCLF8     int // Expected count for the cmsID, perfYear above
+	}{
+		{"cclf/archives/valid2/", "T.BCD.A0001.ZCY18.D181120.T1000000", 2, 0, 0, 1, 1},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.path, func(t *testing.T) {
+			bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
+			defer cleanup()
+
+			cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(filepath.Join(bucketName, tt.path, tt.filename))
+			cclfFiles := cclfMap[cmsID][key]
+			assert.NoError(t, err)
+			assert.Equal(t, tt.skipped, skipped)
+			assert.Equal(t, tt.failure, failure)
+			assert.Equal(t, tt.numCCLFFiles, len(cclfFiles))
+			var numCCLF0, numCCLF8 int
+			for _, cclfFile := range cclfFiles {
+				if cclfFile.cclfNum == 0 {
+					numCCLF0++
+				} else if cclfFile.cclfNum == 8 {
+					numCCLF8++
+				} else {
+					assert.Fail(t, "Unexpected CCLF num received %d", cclfFile.cclfNum)
+				}
+			}
+			assert.Equal(t, tt.numCCLF0, numCCLF0)
+			assert.Equal(t, tt.numCCLF8, numCCLF8)
+		})
+	}
+}
+
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_InvalidPath() {
 	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles("foo")
 	assert.ErrorContains(s.T(), err, "NoSuchBucket: The specified bucket does not exist")

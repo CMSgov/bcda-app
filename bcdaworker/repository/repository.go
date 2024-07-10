@@ -31,14 +31,13 @@ type jobRepository interface {
 	// UpdateJobStatusCheckStatus updates the particular job indicated by the jobID
 	// iff the Job's status field matches current.
 	UpdateJobStatusCheckStatus(ctx context.Context, jobID uint, current, new models.JobStatus) error
-
-	IncrementCompletedJobCount(ctx context.Context, jobID uint) error
 }
 
 type jobKeyRepository interface {
 	CreateJobKey(ctx context.Context, jobKey models.JobKey) error
 	CreateJobKeys(ctx context.Context, jobKeys []models.JobKey) error
 	GetJobKeyCount(ctx context.Context, jobID uint) (int, error)
+	GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int, error)
 	GetJobKey(ctx context.Context, jobID uint, queJobID int64) (*models.JobKey, error)
 }
 

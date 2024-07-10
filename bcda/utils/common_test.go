@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type CommonTestSuite struct {
@@ -24,6 +25,13 @@ func (s *CommonTestSuite) TestDedup() {
 	assert.Contains(s.T(), result, "three")
 	// Ensure no additional string was added to the slice
 	assert.Len(s.T(), result, 3)
+}
+
+func (s *CommonTestSuite) TestCountUniq() {
+	firstLetter := func(s string) string { return string(s[0]) }
+	assert.Equal(s.T(), 0, CountUniq([]string{}, firstLetter))
+	assert.Equal(s.T(), 1, CountUniq([]string{"abc", "ab"}, firstLetter))
+	assert.Equal(s.T(), 2, CountUniq([]string{"abc", "bcd", "ab"}, firstLetter))
 }
 
 func TestCommonTestSuite(t *testing.T) {

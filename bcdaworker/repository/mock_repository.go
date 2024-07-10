@@ -200,22 +200,32 @@ func (_m *MockRepository) GetJobKeyCount(ctx context.Context, jobID uint) (int, 
 	return r0, r1
 }
 
-// IncrementCompletedJobCount provides a mock function with given fields: ctx, jobID
-func (_m *MockRepository) IncrementCompletedJobCount(ctx context.Context, jobID uint) error {
+// GetUniqueJobKeyCount provides a mock function with given fields: ctx, jobID
+func (_m *MockRepository) GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int, error) {
 	ret := _m.Called(ctx, jobID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IncrementCompletedJobCount")
+		panic("no return value specified for GetUniqueJobKeyCount")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uint) error); ok {
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint) (int, error)); ok {
+		return rf(ctx, jobID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint) int); ok {
 		r0 = rf(ctx, jobID)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(ctx, jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // UpdateJobStatus provides a mock function with given fields: ctx, jobID, new
