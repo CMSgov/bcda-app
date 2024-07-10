@@ -156,7 +156,7 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 		return ad, entityNotFoundError
 	}
 	ad.ACOID = aco.UUID.String()
-	ad.Blacklisted = aco.Blacklisted()
+	ad.Blacklisted = aco.Denylisted()
 
 	return ad, nil
 }

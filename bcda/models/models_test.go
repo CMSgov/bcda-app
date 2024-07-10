@@ -30,23 +30,23 @@ func (s *ModelsTestSuite) TestJobStatusMessage() {
 	assert.Equal(s.T(), string(JobStatusCompleted), j.StatusMessage())
 }
 
-func (s *ModelsTestSuite) TestACOBlacklist() {
-	blackListDate := time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local)
-	blackListValues := []Termination{
+func (s *ModelsTestSuite) TestACODenylist() {
+	denyListDate := time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local)
+	denyListValues := []Termination{
 		{
-			TerminationDate: blackListDate,
-			CutoffDate:      blackListDate,
-			BlacklistType:   Involuntary,
+			TerminationDate: denyListDate,
+			CutoffDate:      denyListDate,
+			DenylistType:    Involuntary,
 		},
 		{
-			TerminationDate: blackListDate,
-			CutoffDate:      blackListDate,
-			BlacklistType:   Voluntary,
+			TerminationDate: denyListDate,
+			CutoffDate:      denyListDate,
+			DenylistType:    Voluntary,
 		},
 		{
-			TerminationDate: blackListDate,
-			CutoffDate:      blackListDate,
-			BlacklistType:   Limited,
+			TerminationDate: denyListDate,
+			CutoffDate:      denyListDate,
+			DenylistType:    Limited,
 		},
 	}
 	tests := []struct {
@@ -54,9 +54,9 @@ func (s *ModelsTestSuite) TestACOBlacklist() {
 		td             *Termination
 		expectedResult bool
 	}{
-		{"Details Involuntary", &blackListValues[0], true},
-		{"Details Voluntary", &blackListValues[1], true},
-		{"Details Limited", &blackListValues[2], false},
+		{"Details Involuntary", &denyListValues[0], true},
+		{"Details Voluntary", &denyListValues[1], true},
+		{"Details Limited", &denyListValues[2], false},
 		{"Details Missing", &Termination{}, true},
 		{"Null", nil, false},
 	}
@@ -67,10 +67,10 @@ func (s *ModelsTestSuite) TestACOBlacklist() {
 			aco := ACO{
 				UUID:               uuid.NewUUID(),
 				CMSID:              &cmsID,
-				Name:               "Blacklisted ACO",
+				Name:               "Denylisted ACO",
 				TerminationDetails: tt.td,
 			}
-			assert.Equal(s.T(), aco.Blacklisted(), tt.expectedResult)
+			assert.Equal(s.T(), aco.Denylisted(), tt.expectedResult)
 		})
 	}
 }
