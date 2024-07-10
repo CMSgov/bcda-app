@@ -67,7 +67,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType, alrFile string
 	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
