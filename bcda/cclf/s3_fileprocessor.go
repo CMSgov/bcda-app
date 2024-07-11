@@ -33,6 +33,12 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			continue
 		}
 
+		// ignore files for different environments, and don't add it to the skipped count
+		if !optout.IsForCurrentEnv(*obj.Key) {
+			processor.Handler.Infof("Skipping file for different environment: %s/%s", bucket, *obj.Key)
+			continue
+		}
+
 		// validate the top level zipped folder
 		cmsID, err := getCMSID(*obj.Key)
 		if err != nil {
