@@ -872,39 +872,39 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	assert.Contains(buf.String(), "Files skipped: 0")
 }
 
-func (s *CLITestSuite) TestBlacklistACO() {
-	blacklistedCMSID := testUtils.RandomHexID()[0:4]
-	notBlacklistedCMSID := testUtils.RandomHexID()[0:4]
+func (s *CLITestSuite) TestDenylistACO() {
+	denylistedCMSID := testUtils.RandomHexID()[0:4]
+	notDenylistedCMSID := testUtils.RandomHexID()[0:4]
 	notFoundCMSID := testUtils.RandomHexID()[0:4]
 
-	blacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &blacklistedCMSID,
+	denylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &denylistedCMSID,
 		TerminationDetails: &models.Termination{
 			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			BlacklistType:   models.Involuntary,
+			DenylistType:    models.Involuntary,
 		}}
-	notBlacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notBlacklistedCMSID,
+	notDenylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notDenylistedCMSID,
 		TerminationDetails: nil}
 
 	defer func() {
-		postgrestest.DeleteACO(s.T(), s.db, blacklistedACO.UUID)
-		postgrestest.DeleteACO(s.T(), s.db, notBlacklistedACO.UUID)
+		postgrestest.DeleteACO(s.T(), s.db, denylistedACO.UUID)
+		postgrestest.DeleteACO(s.T(), s.db, notDenylistedACO.UUID)
 	}()
 
-	postgrestest.CreateACO(s.T(), s.db, blacklistedACO)
-	postgrestest.CreateACO(s.T(), s.db, notBlacklistedACO)
+	postgrestest.CreateACO(s.T(), s.db, denylistedACO)
+	postgrestest.CreateACO(s.T(), s.db, notDenylistedACO)
 
-	s.NoError(s.testApp.Run([]string{"bcda", "unblacklist-aco", constants.CMSIDArg, blacklistedCMSID}))
-	s.NoError(s.testApp.Run([]string{"bcda", "blacklist-aco", constants.CMSIDArg, notBlacklistedCMSID}))
+	s.NoError(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, denylistedCMSID}))
+	s.NoError(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notDenylistedCMSID}))
 
-	s.Error(s.testApp.Run([]string{"bcda", "unblacklist-aco", constants.CMSIDArg, notFoundCMSID}))
-	s.Error(s.testApp.Run([]string{"bcda", "blacklist-aco", constants.CMSIDArg, notFoundCMSID}))
+	s.Error(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, notFoundCMSID}))
+	s.Error(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notFoundCMSID}))
 
-	newlyUnblacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID)
-	s.False(newlyUnblacklistedACO.Blacklisted())
+	newlyUndenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, denylistedACO.UUID)
+	s.False(newlyUndenylistedACO.Denylisted())
 
-	newlyBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID)
-	s.True(newlyBlacklistedACO.Blacklisted())
+	newlyDenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notDenylistedACO.UUID)
+	s.True(newlyDenylistedACO.Denylisted())
 }
 
 func getRandomPort(t *testing.T) int {

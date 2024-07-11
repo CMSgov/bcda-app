@@ -408,7 +408,7 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	termination := &models.Termination{
 		TerminationDate:     now,
 		CutoffDate:          now.Add(time.Hour).Round(time.Millisecond),
-		BlacklistType:       models.Voluntary,
+		DenylistType:        models.Voluntary,
 		AttributionStrategy: models.AttributionHistorical,
 		OptOutStrategy:      models.OptOutLatest,
 		ClaimsStrategy:      models.ClaimsHistorical,

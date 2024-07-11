@@ -415,7 +415,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					TerminationDetails: &models.Termination{
 						TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 						CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-						BlacklistType:   models.Involuntary,
+						DenylistType:    models.Involuntary,
 					}}
 
 				defer postgrestest.DeleteACO(t, db, aco.UUID)

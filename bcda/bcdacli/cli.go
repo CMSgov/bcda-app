@@ -625,9 +625,9 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "blacklist-aco",
+			Name:     "denylist-aco",
 			Category: constants.CliAuthToolsCategory,
-			Usage:    "Blacklists an ACO by their CMS ID",
+			Usage:    "Denylists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        constants.CliCMSIDArg,
@@ -639,15 +639,15 @@ func setUpApp() *cli.App {
 				td := &models.Termination{
 					TerminationDate: time.Now(),
 					CutoffDate:      time.Now(),
-					BlacklistType:   models.Involuntary,
+					DenylistType:    models.Involuntary,
 				}
-				return setBlacklistState(acoCMSID, td)
+				return setDenylistState(acoCMSID, td)
 			},
 		},
 		{
-			Name:     "unblacklist-aco",
+			Name:     "undenylist-aco",
 			Category: constants.CliAuthToolsCategory,
-			Usage:    "Unblacklists an ACO by their CMS ID",
+			Usage:    "Undenylists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        constants.CliCMSIDArg,
@@ -656,7 +656,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return setBlacklistState(acoCMSID, nil)
+				return setDenylistState(acoCMSID, nil)
 			},
 		},
 	}
@@ -851,7 +851,7 @@ func cleanupJobData(jobID uint, rootDirs ...string) error {
 	return nil
 }
 
-func setBlacklistState(cmsID string, td *models.Termination) error {
+func setDenylistState(cmsID string, td *models.Termination) error {
 	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
 	if err != nil {
 		return err

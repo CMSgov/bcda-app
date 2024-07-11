@@ -73,10 +73,10 @@ type ACO struct {
 	TerminationDetails *Termination `json:"termination"`
 }
 
-// Blacklisted returns bool based on TerminationDetails.
-func (aco *ACO) Blacklisted() bool {
+// Denylisted returns bool based on TerminationDetails.
+func (aco *ACO) Denylisted() bool {
 	if aco.TerminationDetails != nil {
-		if aco.TerminationDetails.BlacklistType == Involuntary || aco.TerminationDetails.BlacklistType == Voluntary {
+		if aco.TerminationDetails.DenylistType == Involuntary || aco.TerminationDetails.DenylistType == Voluntary {
 			return true
 		} else {
 			return false
