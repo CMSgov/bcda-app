@@ -120,7 +120,7 @@ func IsForCurrentEnv(filePath string) bool {
 	env := conf.GetEnv("ENV")
 
 	// We do not expect or require subdirectories for local dev or production; always return true.
-	if env == "" || env == "local" || env == "prod" {
+	if env != "dev" && env != "test" {
 		return true
 	}
 
