@@ -58,8 +58,8 @@ func (s *OptOutTestSuite) TestParseMetadata_DifferentEnv() {
 	assert := assert.New(s.T())
 
 	originalValue := conf.GetEnv("ENV")
-	if err := conf.SetEnv(s.T(), "ENV", "someenv"); err != nil {
-		assert.Failf("Error %s env value %s to %s\n", err.Error(), "ENV", "someenv")
+	if err := conf.SetEnv(s.T(), "ENV", "dev"); err != nil {
+		assert.Failf("Error %s env value %s to %s\n", err.Error(), "ENV", "dev")
 	}
 	defer func() {
 		conf.SetEnv(s.T(), "ENV", originalValue)
