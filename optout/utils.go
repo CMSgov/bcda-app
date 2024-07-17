@@ -28,24 +28,18 @@ func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 	var metadata OptOutFilenameMetadata
 	isOptOut, matches := IsOptOut(filename)
 	if !isOptOut {
-		fmt.Printf("Invalid filename for file: %s.\n", filename)
-		err := fmt.Errorf("invalid filename for file: %s", filename)
-		return metadata, err
+		return metadata, fmt.Errorf("invalid filename for file: %s", filename)
 	}
 
 	// ignore files for different environments
 	if !IsForCurrentEnv(filename) {
-		fmt.Printf("Skipping file for different environment: %s.\n", filename)
-		err := fmt.Errorf("Skipping file for different environment: %s", filename)
-		return metadata, err
+		return metadata, fmt.Errorf("Skipping file for different environment: %s", filename)
 	}
 
 	filenameDate := matches[3]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filename)
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
-		return metadata, err
+		return metadata, errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
 	}
 
 	metadata.Timestamp = t
@@ -67,16 +61,12 @@ func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, err
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 	dt, err := ConvertDt(ds)
 	if err != nil {
-		fmt.Printf("Failed to parse the effective date '%s' from file: %s.\n", ds, metadata.FilePath)
-		err = errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.FilePath)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.FilePath)
 	}
 	ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
 	samhsaDt, err := ConvertDt(ds)
 	if err != nil {
-		fmt.Printf("Failed to parse the samhsa effective date '%s' from file: %s.\n", ds, metadata.FilePath)
-		err = errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.FilePath)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.FilePath)
 	}
 	keyval := string(bytes.TrimSpace(b[lKeyStart:lKeyEnd]))
 	if keyval == "" {
@@ -84,9 +74,7 @@ func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, err
 	}
 	lk, err := strconv.Atoi(keyval)
 	if err != nil {
-		fmt.Printf("Failed to parse beneficiary link key from file: %s.\n", metadata.FilePath)
-		err = errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.FilePath)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.FilePath)
 	}
 
 	return &OptOutRecord{
