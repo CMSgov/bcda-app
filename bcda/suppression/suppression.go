@@ -42,12 +42,10 @@ func (importer OptOutImporter) ImportSuppressionDirectory(path string) (success,
 	for _, metadata := range *suppresslist {
 		err = importer.validate(metadata)
 		if err != nil {
-			fmt.Printf("Failed to validate suppression file: %s.\n", metadata)
 			importer.Logger.Errorf("Failed to validate suppression file: %s", metadata)
 			failure++
 		} else {
 			if err = importer.ImportSuppressionData(metadata); err != nil {
-				fmt.Printf("Failed to import suppression file: %s.\n", metadata)
 				importer.Logger.Errorf("Failed to import suppression file: %s ", metadata)
 				failure++
 			} else {
@@ -71,13 +69,11 @@ func (importer OptOutImporter) ImportSuppressionDirectory(path string) (success,
 }
 
 func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata) error {
-	fmt.Printf("Validating suppression file %s...\n", metadata)
 	importer.Logger.Infof("Validating suppression file %s...", metadata)
 
 	count := 0
 	sc, close, err := importer.FileHandler.OpenFile(metadata)
 	if err != nil {
-		fmt.Printf("Could not read file %s.\n", metadata)
 		err = errors.Wrapf(err, "could not read file %s", metadata)
 		importer.Logger.Error(err)
 		return err
@@ -91,7 +87,6 @@ func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata)
 		if count == 0 {
 			if metaInfo != headerCode {
 				// invalid file header found
-				fmt.Printf("Invalid file header for file: %s.\n", metadata.FilePath)
 				err := fmt.Errorf("invalid file header for file: %s", metadata.FilePath)
 				importer.Logger.Error(err)
 				return err
@@ -106,7 +101,6 @@ func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata)
 			// trailer info
 			expectedCount, err := strconv.Atoi(string(bytes.TrimSpace(b[recCountStart:recCountEnd])))
 			if err != nil {
-				fmt.Printf("Failed to parse record count from file: %s.\n", metadata.FilePath)
 				err = fmt.Errorf("failed to parse record count from file: %s", metadata.FilePath)
 				importer.Logger.Error(err)
 				return err
@@ -114,7 +108,6 @@ func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata)
 			// subtract the single count from the header
 			count--
 			if count != expectedCount {
-				fmt.Printf("Incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d.\n", metadata.FilePath, expectedCount, count)
 				err = fmt.Errorf("incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d", metadata.FilePath, expectedCount, count)
 				importer.Logger.Error(err)
 				return err
@@ -122,7 +115,6 @@ func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata)
 		}
 	}
 
-	fmt.Printf("Successfully validated suppression file %s.\n", metadata)
 	importer.Logger.Infof("Successfully validated suppression file %s.", metadata)
 	return nil
 }
@@ -137,7 +129,6 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFile
 		}
 
 		if err = importer.Saver.SaveOptOutRecord(*suppression); err != nil {
-			fmt.Println("Could not create suppression record.")
 			err = errors.Wrap(err, "could not create suppression record")
 			importer.Logger.Error(err)
 			return err
@@ -154,7 +145,6 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFile
 }
 
 func (importer OptOutImporter) importSuppressionMetadata(metadata *optout.OptOutFilenameMetadata, importFunc func(uint, []byte) error) error {
-	fmt.Printf("Importing suppression file %s...\n", metadata)
 	importer.Logger.Infof("Importing suppression file %s...", metadata)
 
 	var (
@@ -168,7 +158,6 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *optout.OptOut
 	}
 
 	if suppressionMetaFile.ID, err = importer.Saver.SaveFile(suppressionMetaFile); err != nil {
-		fmt.Printf("Could not create suppression file record for file: %s. \n", metadata)
 		err = errors.Wrapf(err, "could not create suppression file record for file: %s.", metadata)
 		importer.Logger.Error(err)
 		return err
@@ -180,7 +169,6 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *optout.OptOut
 
 	sc, close, err := importer.FileHandler.OpenFile(metadata)
 	if err != nil {
-		fmt.Printf("Could not read file %s.\n", metadata)
 		err = errors.Wrapf(err, "could not read file %s", metadata)
 		importer.Logger.Error(err)
 		return err
@@ -202,21 +190,17 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *optout.OptOut
 			}
 			importedCount++
 			if importedCount%importer.ImportStatusInterval == 0 {
-				fmt.Printf("Suppression records imported: %d\n", importedCount)
+				importer.Logger.Infof("Suppression records imported: %d\n", importedCount)
 			}
 		}
 	}
 
-	successMsg := fmt.Sprintf("Successfully imported %d records from suppression file %s.", importedCount, metadata)
-	fmt.Println(successMsg)
-	importer.Logger.Infof(successMsg)
+	importer.Logger.Infof("Successfully imported %d records from suppression file %s.", importedCount, metadata)
 	return nil
 }
 
 func (importer OptOutImporter) updateImportStatus(metadata *optout.OptOutFilenameMetadata, status string) {
 	if err := importer.Saver.UpdateImportStatus(*metadata, status); err != nil {
-		fmt.Printf("Could not update suppression file record for file_id: %s. \n", metadata.String())
-		err = errors.Wrapf(err, "could not update suppression file record for file_id: %s.", metadata.String())
-		importer.Logger.Error(err)
+		importer.Logger.Error(errors.Wrapf(err, "could not update suppression file record for file_id: %s.", metadata.String()))
 	}
 }
