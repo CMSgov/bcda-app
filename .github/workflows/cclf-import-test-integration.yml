@@ -61,9 +61,9 @@ jobs:
           mv T.BCD.A0001.ZC8Y18.D181120.T1000009 $new_dir/T.BCD.A0001.ZC8Y${year}.D${date}.T${time}
           mv T.BCD.A0001.ZC9Y18.D181120.T1000010 $new_dir/T.BCD.A0001.ZC9Y${year}.D${date}.T${time}
           mv T.BCD.A0001.ZC0Y18.D181120.T1000011 $new_dir/T.BCD.A0001.ZC0Y${year}.D${date}.T${time}
-          zip -jr $fname $newdir
+          zip -jr $fname $new_dir
 
-          aws s3 cp --no-progress ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000 \
+          aws s3 cp --no-progress $fname \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/$fname
 
   verify:
