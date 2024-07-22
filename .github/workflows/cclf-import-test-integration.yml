@@ -73,7 +73,7 @@ jobs:
         with:
           params: |
             CONNECTION_INFO=/bcda/test/api/DATABASE_URL
-      - name: Verify suppression file was ingested
+      - name: Verify CCLF file was ingested
         env:
           FILENAME: ${{needs.trigger.outputs.filename}}
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
@@ -87,7 +87,7 @@ jobs:
           else
             CCLF_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
               if [[ $? -ne 0 || -z $CCLF_BENES ]]; then
-                echo "suppressions query returned zero results or command failed"
+                echo "CCLF beneficiaries query returned zero results or command failed"
                 exit 1
               fi
               if [[ "$CCLF_BENES" != "6" ]]; then
