@@ -56,11 +56,11 @@ jobs:
           unzip ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000
 
           # Clone the synthetic zip file with updated years
-          new_dir="${year}.D${date}.T${time}"
+          new_dir="D${date}.T${time}"
           mkdir $new_dir
-          mv T.BCD.A0001.ZC8Y18.D181120.T1000009 $newdir/T.BCD.A0001.ZC8Y${year}.D${date}.T${time}
-          mv T.BCD.A0001.ZC9Y18.D181120.T1000010 $newdir/T.BCD.A0001.ZC9Y${year}.D${date}.T${time}
-          mv T.BCD.A0001.ZC0Y18.D181120.T1000011 $newdir/T.BCD.A0001.ZC0Y${year}.D${date}.T${time}
+          mv T.BCD.A0001.ZC8Y18.D181120.T1000009 $new_dir/T.BCD.A0001.ZC8Y${year}.D${date}.T${time}
+          mv T.BCD.A0001.ZC9Y18.D181120.T1000010 $new_dir/T.BCD.A0001.ZC9Y${year}.D${date}.T${time}
+          mv T.BCD.A0001.ZC0Y18.D181120.T1000011 $new_dir/T.BCD.A0001.ZC0Y${year}.D${date}.T${time}
           zip -jr $fname $newdir
 
           aws s3 cp --no-progress ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000 \
