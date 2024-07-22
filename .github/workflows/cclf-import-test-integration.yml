@@ -47,8 +47,21 @@ jobs:
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
         id: createfile
         run: |
-          fname=T.BCD.A0001.ZCY24.D$(date +'%y%m%d').T$(date +'%H%M%S')1
+          year=$(date +'%y')
+          date=$(date +'%y%m%d')
+          time=$(date +'%H%M%S')
+          fname=T.BCD.A0001.ZCY24.D${date}.T${time}1
           echo "FILENAME=$fname" >> "$GITHUB_OUTPUT"
+
+          unzip ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY${year}.D${date}.T${time}
+
+          new_dir='${year}.D${date}.T${time}'
+          mkdir $new_dir
+          mv T.BCD.A0001.ZC8Y18.D181120.T1000009 $newdir/T.BCD.A0001.ZC8Y${year}.D${date}.T${time}
+          mv T.BCD.A0001.ZC9Y18.D181120.T1000010 $newdir/T.BCD.A0001.ZC9Y${year}.D${date}.T${time}
+          mv T.BCD.A0001.ZC0Y18.D181120.T1000011 $newdir/T.BCD.A0001.ZC0Y${year}.D${date}.T${time}
+          zip -jr $fname $newdir
+
           aws s3 cp --no-progress ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000 \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/$fname
 
