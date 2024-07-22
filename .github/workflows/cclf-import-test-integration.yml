@@ -51,7 +51,8 @@ jobs:
           date=$(date +'%y%m%d')
           time=$(date +'%H%M%S')
           fname=T.BCD.A0001.ZCY24.D${date}.T${time}1
-          echo "FILENAME=$fname" >> "$GITHUB_OUTPUT"
+          cclf8_fname=T.BCD.A0001.ZC8Y24.D${date}.T${time}1
+          echo "FILENAME=$cclf8_fname" >> "$GITHUB_OUTPUT"
 
           unzip ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000
 
@@ -104,7 +105,7 @@ jobs:
                 echo "CCLF beneficiaries query returned zero results or command failed"
                 exit 1
               fi
-              if [[ "$CCLF_BENES" != "6" ]]; then
+              if [[ $(echo $CCLF_BENES | xargs) != "6" ]]; then
                 echo "expected 6 beneficiaries imported from file, received $CCLF_BENES".
                 exit 1
               fi
