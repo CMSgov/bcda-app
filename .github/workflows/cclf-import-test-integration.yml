@@ -53,7 +53,7 @@ jobs:
           fname=T.BCD.A0001.ZCY24.D${date}.T${time}1
           echo "FILENAME=$fname" >> "$GITHUB_OUTPUT"
 
-          unzip ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY${year}.D${date}.T${time}
+          unzip ../shared_files/cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000
 
           new_dir='${year}.D${date}.T${time}'
           mkdir $new_dir
