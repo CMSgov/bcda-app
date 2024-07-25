@@ -1,8 +1,8 @@
-FROM node:current-slim
+FROM node:lts-alpine3.20
 
 WORKDIR /
 
-RUN apt update -y && apt install git -y
+RUN apk update && apk add git && apk add bash
 
 RUN git clone https://github.com/smart-on-fhir/bdt.git
 WORKDIR '/bdt'

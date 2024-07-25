@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine3.15
+FROM golang:1.21.12-alpine3.20
 
 ENV CGO_ENABLED=0
 
