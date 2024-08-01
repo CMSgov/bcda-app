@@ -216,19 +216,25 @@ package-cclf-import:
 
 # Build and publish images to ECR
 build-api:
-	docker build -t bcda-api:latest -f Dockerfiles/Dockerfile.bcda_prod .
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
+	docker build -t ${DOCKER_REGISTRY_URL}:latest-test -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcda_prod .
 
-publish-api:
-	$(eval ECR_URL=$(shell aws ecr describe-repositories --repository-names bcda-api | jq -r '.repositories[0].repositoryUri')) 
-	docker tag bcda-api:latest '${ECR_URL}:latest'
-	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${ECR_URL}'
-	docker push '${ECR_URL}:latest'
+publish-api:	
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${DOCKER_REGISTRY_URL}'
+	docker image push '${DOCKER_REGISTRY_URL}' -a
 
 build-worker:
-	docker build -t bcda-worker:latest -f Dockerfiles/Dockerfile.bcdaworker_prod .
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker)
+	docker build -t ${DOCKER_REGISTRY_URL}:latest-test -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcdaworker_prod .
 
 publish-worker:
-	$(eval ECR_URL=$(shell aws ecr describe-repositories --repository-names bcda-worker | jq -r '.repositories[0].repositoryUri')) 
-	docker tag bcda-worker:latest '${ECR_URL}:latest'
-	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${ECR_URL}'
-	docker push '${ECR_URL}:latest'
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker)
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${DOCKER_REGISTRY_URL}'
+	docker image push '${DOCKER_REGISTRY_URL}' -a
