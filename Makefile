@@ -219,7 +219,7 @@ build-api:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
 	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
 	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
-	docker build -t ${DOCKER_REGISTRY_URL}:latest-test -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcda_prod .
+	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcda_prod .
 
 publish-api:	
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
@@ -231,7 +231,7 @@ build-worker:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
 	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
 	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker)
-	docker build -t ${DOCKER_REGISTRY_URL}:latest-test -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcdaworker_prod .
+	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcdaworker_prod .
 
 publish-worker:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
