@@ -213,3 +213,22 @@ package-cclf-import: export GOOS=linux
 package-cclf-import: export GOARCH=amd64
 package-cclf-import:
 	cd bcda && go build -o bin/cclf-import ./lambda/cclf/main.go
+
+# Build and publish images to ECR
+build-api:
+	docker build -t bcda-api:latest -f Dockerfiles/Dockerfile.bcda_prod .
+
+publish-api:
+	$(eval ECR_URL=$(shell aws ecr describe-repositories --repository-names bcda-api | jq -r '.repositories[0].repositoryUri')) 
+	docker tag bcda-api:latest '${ECR_URL}:latest'
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${ECR_URL}'
+	docker push '${ECR_URL}:latest'
+
+build-worker:
+	docker build -t bcda-worker:latest -f Dockerfiles/Dockerfile.worker_prod .
+
+publish-worker:
+	$(eval ECR_URL=$(shell aws ecr describe-repositories --repository-names bcda-worker | jq -r '.repositories[0].repositoryUri')) 
+	docker tag bcda-worker:latest '${ECR_URL}:latest'
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${ECR_URL}'
+	docker push '${ECR_URL}:latest'
