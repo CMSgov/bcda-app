@@ -225,7 +225,7 @@ publish-api:
 	docker push '${ECR_URL}:latest'
 
 build-worker:
-	docker build -t bcda-worker:latest -f Dockerfiles/Dockerfile.worker_prod .
+	docker build -t bcda-worker:latest -f Dockerfiles/Dockerfile.bcdaworker_prod .
 
 publish-worker:
 	$(eval ECR_URL=$(shell aws ecr describe-repositories --repository-names bcda-worker | jq -r '.repositories[0].repositoryUri')) 
