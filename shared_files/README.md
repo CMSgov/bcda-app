@@ -10,7 +10,7 @@ What's in here and why?
   - sensitive configuration values that should be encrypted in the repository
     - `bfd-dev-test-cert.pem`: a certificate identifying and authorizing this application to retrieve claims data; encrypted
     - `bfd-dev-test-key.pem`: the private key for the above certificate; encrypted
-    - `local.env`: a .env file with sensitive environmental variables used by Docker (see `docker compose.yml` and `docker compose.test.yml`); encrypted
+    - `local.env`: a .env file with sensitive environmental variables used by Docker (see `docker-compose.yml` and `docker-compose.test.yml`); encrypted
 - synthetic_beneficiary_data
   - see README.md in this directory
 - localhost.crt

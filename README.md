@@ -299,7 +299,7 @@ You can use docker to run commands against the running containers.
 docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
 ```
 
-**Example:** See docker compose.yml for the password.
+**Example:** See docker-compose.yml for the password.
 
 Use docker to run the CLI against an API instance
 

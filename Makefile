@@ -15,13 +15,13 @@ package:
 
 LINT_TIMEOUT ?= 3m
 lint:
-	docker compose -f docker compose.test.yml build tests
-	docker compose -f docker compose.test.yml run \
+	docker compose -f docker-compose.test.yml build tests
+	docker compose -f docker-compose.test.yml run \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
-	docker compose -f docker compose.test.yml run --rm tests gosec ./... ./optout
+	docker compose -f docker-compose.test.yml run --rm tests gosec ./... ./optout
 
 smoke-test:
-	docker compose -f docker compose.test.yml build tests
+	docker compose -f docker-compose.test.yml build tests
 	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
 
 postman:
@@ -39,16 +39,16 @@ postman:
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
 	# to test alrEnabled, include --global-var alrEnabled=true below
-	docker compose -f docker compose.test.yml build postman_test
-	@docker compose -f docker compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+	docker compose -f docker-compose.test.yml build postman_test
+	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
 	--global-var v2Disabled=false \
 	--global-var maintenanceMode=$(maintenanceMode)
 
 unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas
-	docker compose -f docker compose.test.yml build tests
-	@docker compose -f docker compose.test.yml run --rm tests bash scripts/unit_test.sh
+	docker compose -f docker-compose.test.yml build tests
+	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-ssas:
 	docker compose up -d ssas
@@ -57,8 +57,8 @@ unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
 
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker compose -f docker compose.test.yml rm -fsv db-unit-test
-	docker compose -f docker compose.test.yml up -d db-unit-test
+	docker compose -f docker-compose.test.yml rm -fsv db-unit-test
+	docker compose -f docker-compose.test.yml up -d db-unit-test
 	
 	# Wait for the database to be ready
 	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
@@ -76,16 +76,16 @@ unit-test-db:
 
 unit-test-localstack:
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker compose -f docker compose.test.yml rm -fsv localstack
-	docker compose -f docker compose.test.yml up -d localstack
+	docker compose -f docker-compose.test.yml rm -fsv localstack
+	docker compose -f docker-compose.test.yml up -d localstack
 	
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
-	docker compose -f docker compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
+	docker compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
 performance-test:
-	docker compose -f docker compose.test.yml build tests
-	docker compose -f docker compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
+	docker compose -f docker-compose.test.yml build tests
+	docker compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
 	$(MAKE) lint
@@ -95,7 +95,7 @@ test:
 
 load-fixtures:
 	# Rebuild the databases to ensure that we're starting in a fresh state
-	docker compose -f docker compose.yml rm -fsv db queue
+	docker compose -f docker-compose.yml rm -fsv db queue
 
 	docker compose up -d db queue
 	echo "Wait for databases to be ready..."
@@ -153,7 +153,7 @@ load-fixtures-ssas:
 
 docker-build:
 	docker compose build --force-rm
-	docker compose -f docker compose.test.yml build --force-rm
+	docker compose -f docker-compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build documentation load-fixtures
 
@@ -167,13 +167,13 @@ debug-api:
 	docker compose start db queue worker
 	@echo "Starting debugger. This may take a while..."
 	@-bash -c "trap 'docker compose stop' EXIT; \
-		docker compose -f docker compose.yml -f docker compose.debug.yml run --no-deps -T --rm -p 3000:3000 -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app api dlv debug -- start-api"
+		docker compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -p 3000:3000 -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app api dlv debug -- start-api"
 
 debug-worker:
 	docker compose start db queue api
 	@echo "Starting debugger. This may take a while..."
 	@-bash -c "trap 'docker compose stop' EXIT; \
-		docker compose -f docker compose.yml -f docker compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
+		docker compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
 bdt:
 	# Set up valid client credentials
