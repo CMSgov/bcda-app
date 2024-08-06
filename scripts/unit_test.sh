@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This script is intended to be run from within the Docker "unit_test" container
-# The docker-compose file brings forward the env vars: DB
+# The docker compose file brings forward the env vars: DB
 #
 set -e
 set -o pipefail

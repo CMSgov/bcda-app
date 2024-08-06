@@ -121,7 +121,7 @@ make docker-bootstrap
 After that has completed successfully, we can start the containers:
 
 ```sh
-docker-compose up
+docker compose up
 ```
 
 ### **2. Get a token**
