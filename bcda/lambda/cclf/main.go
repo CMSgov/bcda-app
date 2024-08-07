@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -49,8 +50,7 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 	}
 
 	for _, e := range s3Event.Records {
-		logger.Info(e.EventName)
-		if e.EventName == "ObjectCreated:Put" {
+		if strings.Contains(e.EventName, "ObjectCreated") {
 			s3AssumeRoleArn, err := loadBfdS3Params()
 			if err != nil {
 				return "", err
@@ -59,11 +59,12 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 			// Send the entire filepath into the CCLF Importer so we are only
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
+			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 			return handleCclfImport(s3AssumeRoleArn, filepath)
 		}
 	}
 
-	logger.Info("No ObjectCreated:Put events found, skipping safely.")
+	logger.Info("No ObjectCreated events found, skipping safely.")
 	return "", nil
 }
 
