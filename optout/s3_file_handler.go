@@ -125,7 +125,7 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 		return nil, err
 	}
 
-	handler.Infof("file downloaded: size=%d\n", numBytes)
+	handler.Logger.WithField("file_size_bytes", numBytes).Infof("file downloaded: size=%d\n", numBytes)
 	byte_arr := buff.Bytes()
 	return byte_arr, err
 }
