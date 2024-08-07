@@ -138,6 +138,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	}
 
 	importer := cclf.CclfImporter{
+		Logger:        log.API,
 		FileProcessor: file_processor,
 	}
 
