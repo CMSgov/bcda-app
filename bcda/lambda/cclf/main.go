@@ -87,7 +87,8 @@ func loadBfdS3Params() (string, error) {
 func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
-	logger := configureLogger(env, appName, s3ImportPath)
+	logger := configureLogger(env, appName)
+	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	importer := cclf.CclfImporter{
 		Logger: logger,
@@ -121,7 +122,7 @@ func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	return result, nil
 }
 
-func configureLogger(env, appName, s3ImportPath string) *logrus.Entry {
+func configureLogger(env, appName string) *logrus.Entry {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{
 		DisableHTMLEscape: true,
@@ -131,8 +132,7 @@ func configureLogger(env, appName, s3ImportPath string) *logrus.Entry {
 	log.SetReportCaller(true)
 
 	return log.WithFields(logrus.Fields{
-		"import_filename": s3ImportPath,
-		"application":     appName,
-		"environment":     env,
+		"application": appName,
+		"environment": env,
 	})
 }
