@@ -49,6 +49,7 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 	}
 
 	for _, e := range s3Event.Records {
+		logger.Info(e.EventName)
 		if e.EventName == "ObjectCreated:Put" {
 			s3AssumeRoleArn, err := loadBfdS3Params()
 			if err != nil {
