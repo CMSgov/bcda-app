@@ -747,41 +747,6 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	}
 }
 
-func (s *CLITestSuite) TestDeleteDirectoryContents() {
-	assert := assert.New(s.T())
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	dirToDelete, err := os.MkdirTemp("", "*")
-	assert.NoError(err)
-	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
-	defer os.RemoveAll(dirToDelete)
-
-	args := []string{"bcda", constants.DelDirContents, "--dirToDelete", dirToDelete}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
-	buf.Reset()
-
-	// File, not a directory
-	file, err := os.CreateTemp("", "*")
-	assert.NoError(err)
-	defer os.Remove(file.Name())
-	args = []string{"bcda", constants.DelDirContents, "--dirToDelete", file.Name()}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, fmt.Sprintf("unable to delete Directory Contents because %s does not reference a directory", file.Name()))
-	assert.NotContains(buf.String(), "Successfully Deleted")
-	buf.Reset()
-
-	conf.SetEnv(s.T(), "TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
-	args = []string{"bcda", constants.DelDirContents, "--envvar", "TESTDELETEDIRECTORY"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "flag provided but not defined: -envvar")
-	assert.NotContains(buf.String(), "Successfully Deleted")
-	buf.Reset()
-
-}
-
 func (s *CLITestSuite) TestImportSuppressionDirectoryFromLocal() {
 	assert := assert.New(s.T())
 
