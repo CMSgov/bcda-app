@@ -26,9 +26,9 @@ func (bbc *MockBlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnque
 	return args.Get(0).(*fhirModels.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
+func (bbc *MockBlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (*models.Patient, error) {
 	args := bbc.Called(mbi)
-	return args.String(0), args.Error(1)
+	return args.Get(0).(*models.Patient), args.Error(1)
 }
 
 func (bbc *MockBlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {

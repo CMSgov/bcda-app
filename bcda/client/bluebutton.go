@@ -65,7 +65,7 @@ type APIClient interface {
 	GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
 	GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error)
 	GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error)
-	GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (*models.Patient, error)
+	GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error)
 	GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
 	GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
 }
@@ -153,7 +153,7 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 	params.Set("_id", patientID)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("Patient", params)
+	u, err := bbc.getURL("Patient/", params)
 	if err != nil {
 		return nil, err
 	}
@@ -161,32 +161,16 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 	return bbc.getBundleData(u, jobData, header)
 }
 
-func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (*models.Patient, error) {
+func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
 	params := url.Values{}
 
 	u, err := bbc.getURL("Patient/_search", params)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	b, err := bbc.postBundleData(u, jobData, nil, strings.NewReader(body))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if b.Total == 0 {
-		return nil, errors.New("patient identifier not found at Blue Button for CCLF")
-
-	}
-
-	if b.Total > 1 {
-		return nil, errors.New("More than one patient found for given MBI")
-	}
-
-	patient := b.Entries[0]["resource"].(*models.Patient)
-	return patient, nil
+	return bbc.getRawData(jobData, "GET", u, strings.NewReader(body))
 }
 
 func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
