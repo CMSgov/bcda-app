@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/jackc/pgx"
@@ -20,9 +21,11 @@ type cclf8Importer struct {
 	reportInterval int
 	cclfFileID     uint // CCLFFile ID that will be associated with all created benes
 
-	importCount   int
-	processedMBIs map[string]struct{}
-	logger        logrus.FieldLogger
+	recordCount          int
+	importCount          int
+	processedMBIs        map[string]struct{}
+	logger               logrus.FieldLogger
+	expectedRecordLength int
 }
 
 func (importer *cclf8Importer) Next() bool {
@@ -44,6 +47,7 @@ func (importer *cclf8Importer) Next() bool {
 			return hasNext
 		}
 
+		importer.recordCount++
 		mbi := importer.getMBI()
 		// We've already processed this MBI before
 		if _, found := importer.processedMBIs[mbi]; found {
@@ -57,9 +61,17 @@ func (importer *cclf8Importer) Next() bool {
 }
 
 func (importer *cclf8Importer) Values() ([]interface{}, error) {
-
 	close := metrics.NewChild(importer.ctx, "importCCLF8-benecreate")
 	defer close()
+
+	// Verify record length
+	b := importer.scanner.Bytes()
+	trimmed := bytes.TrimSpace(b)
+	if len(trimmed) > 0 && len(trimmed) <= importer.expectedRecordLength {
+		err := fmt.Errorf("incorrect record length for file (expected: %d, actual: %d)", importer.expectedRecordLength, len(trimmed))
+		importer.logger.Error(err)
+		return nil, err
+	}
 
 	// Use Int4 because we store file_id as an integer
 	fileID := &pgtype.Int4{}
@@ -100,16 +112,18 @@ func (importer *cclf8Importer) getMBI() string {
 
 // CopyFrom writes all of the beneficiary data captured in the scanner to the beneficiaries table.
 // It returns the number of rows written along with any error that occurred.
-func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int, logger logrus.FieldLogger) (int, error) {
+func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int, logger logrus.FieldLogger, expectedRecordLength int) (int, int, error) {
 	importer := &cclf8Importer{
 		scanner:    scanner,
 		ctx:        ctx,
 		cclfFileID: fileID,
 
-		reportInterval: reportInterval,
-		processedMBIs:  make(map[string]struct{}),
-		logger:         logger,
+		reportInterval:       reportInterval,
+		processedMBIs:        make(map[string]struct{}),
+		logger:               logger,
+		expectedRecordLength: expectedRecordLength,
 	}
 	tableName := pgx.Identifier([]string{"cclf_beneficiaries"})
-	return tx.CopyFrom(tableName, []string{"file_id", "mbi"}, importer)
+	importedCount, err := tx.CopyFrom(tableName, []string{"file_id", "mbi"}, importer)
+	return importedCount, importer.recordCount, err
 }

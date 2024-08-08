@@ -16,8 +16,8 @@ type S3FileProcessor struct {
 	Handler optout.S3FileHandler
 }
 
-func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error) {
-	cclfMap = make(map[string]map[metadataKey][]*cclfFileMetadata)
+func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string]*cclfZipMetadata, skipped int, failed int, err error) {
+	cclfMap = make(map[string]*cclfZipMetadata)
 	bucket, prefix := optout.ParseS3Uri(path)
 	s3Objects, err := processor.Handler.ListFiles(bucket, prefix)
 
@@ -71,13 +71,30 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 				continue
 			}
 
-			key := metadataKey{perfYear: metadata.perfYear, fileType: metadata.fileType}
 			sub := cclfMap[metadata.acoID]
 			if sub == nil {
-				sub = make(map[metadataKey][]*cclfFileMetadata)
+				sub := &cclfZipMetadata{
+					acoID:     metadata.acoID,
+					zipReader: zipReader,
+				}
 				cclfMap[metadata.acoID] = sub
 			}
-			sub[key] = append(sub[key], &metadata)
+
+			if metadata.cclfNum == 0 {
+				if sub.cclf0Metadata != nil {
+					// error
+				}
+				sub.cclf0Metadata = &metadata
+				sub.cclf0File = f
+			} else if metadata.cclfNum == 8 {
+				if sub.cclf8Metadata != nil {
+					// error
+				}
+				sub.cclf8Metadata = &metadata
+				sub.cclf8File = f
+			} else {
+				// error
+			}
 		}
 	}
 

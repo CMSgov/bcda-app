@@ -21,6 +21,15 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
+type cclfZipMetadata struct {
+	acoID         string
+	cclf0Metadata *cclfFileMetadata
+	cclf8Metadata *cclfFileMetadata
+	cclf0File     *zip.File
+	cclf8File     *zip.File
+	zipReader     *zip.Reader
+}
+
 type cclfFileMetadata struct {
 	name         string
 	env          string
@@ -43,9 +52,9 @@ type cclfFileValidator struct {
 // Manages the interaction of CCLF files from a given source
 type CclfFileProcessor interface {
 	// Load a list of valid CCLF files to be imported
-	LoadCclfFiles(path string) (cclfList map[string]map[metadataKey][]*cclfFileMetadata, skipped int, failed int, err error)
+	LoadCclfFiles(path string) (cclfList map[string]*cclfZipMetadata, skipped int, failed int, err error)
 	// Clean up CCLF files after failed or successful import runs
-	CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error
+	CleanUpCCLF(ctx context.Context, cclfMap map[string]*cclfZipMetadata) error
 	// Open a zip archive
 	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
@@ -56,22 +65,22 @@ type CclfImporter struct {
 	FileProcessor CclfFileProcessor
 }
 
-func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
-	if fileMetadata == nil {
-		err := errors.New("file CCLF0 not found")
+func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
+	if zipMetadata == nil {
+		err := errors.New("Zip file not found")
+		importer.Logger.Error(err)
+		return nil, err
+	}
+
+	fileMetadata := zipMetadata.cclf0Metadata
+
+	if zipMetadata.cclf0File == nil {
+		err := fmt.Errorf(constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
 		importer.Logger.Error(err)
 		return nil, err
 	}
 
 	importer.Logger.Infof("Importing CCLF0 file %s...", fileMetadata)
-
-	r, closeReader, err := importer.FileProcessor.OpenZipArchive(fileMetadata.filePath)
-	if err != nil {
-		err := errors.Wrapf(err, "could not read CCLF0 archive %s", fileMetadata)
-		importer.Logger.Error(err)
-		return nil, err
-	}
-	defer closeReader()
 
 	const (
 		fileNumStart, fileNumEnd           = 0, 7
@@ -83,23 +92,8 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclf
 	defer close()
 
 	var validator map[string]cclfFileValidator
-	var rawFile *zip.File
 
-	for _, f := range r.File {
-		// iterate in this zipped folder until we find our cclf0 file
-		if f.Name == fileMetadata.name {
-			rawFile = f
-			importer.Logger.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
-		}
-	}
-
-	if rawFile == nil {
-		err = errors.Wrapf(err, constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return nil, err
-	}
-
-	rc, err := rawFile.Open()
+	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, fileMetadata.filePath)
 		importer.Logger.Error(err)
@@ -135,22 +129,21 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, fileMetadata *cclf
 					importer.Logger.Error(err)
 					return nil, err
 				}
-				validator[filetype] = cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
+
+				importer.Logger.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
+				return &cclfFileValidator{totalRecordCount: count, maxRecordLength: length}, nil
 			}
 		}
 	}
 
-	if _, ok := validator["CCLF8"]; !ok {
-		err := fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata)
-		importer.Logger.Error(err)
-		return nil, err
-	}
-	importer.Logger.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
-
-	return validator, nil
+	err = fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata)
+	importer.Logger.Error(err)
+	return nil, err
 }
 
-func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
+func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
+	fileMetadata := zipMetadata.cclf8Metadata
+
 	db := database.Connection
 	repository := postgres.NewRepository(db)
 	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
@@ -189,20 +182,6 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclf
 		}
 	}()
 
-	r, closeReader, err := importer.FileProcessor.OpenZipArchive(fileMetadata.filePath)
-	if err != nil {
-		err = errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return err
-	}
-	defer closeReader()
-
-	if len(r.File) < 1 {
-		err = fmt.Errorf("no files found in CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return err
-	}
-
 	close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
 	defer close()
 
@@ -224,22 +203,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclf
 
 	fileMetadata.fileID = cclfFile.ID
 
-	var rawFile *zip.File
-
-	for _, f := range r.File {
-		if f.Name == fileMetadata.name {
-			rawFile = f
-			importer.Logger.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
-		}
-	}
-
-	if rawFile == nil {
-		err = fmt.Errorf(constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return err
-	}
-
-	rc, err := rawFile.Open()
+	rc, err := zipMetadata.cclf8File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
 		importer.Logger.Error(err)
@@ -248,10 +212,17 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, fileMetadata *cclf
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
 
-	importedCount, err := CopyFrom(ctx, tx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.Logger)
+	importedCount, recordCount, err := CopyFrom(ctx, tx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.Logger, validator.maxRecordLength)
 	if err != nil {
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
+
+	if recordCount > validator.totalRecordCount {
+		err := fmt.Errorf("Unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
+		importer.Logger.Error(err)
+		return err
+	}
+
 	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata)
@@ -294,38 +265,29 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 		func() {
 			ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
 			defer c()
-			for _, cclfFiles := range cclfMap[acoID] {
-				var cclf0, cclf8 *cclfFileMetadata
-				for _, cclf := range cclfFiles {
-					if cclf.cclfNum == 0 {
-						cclf0 = cclf
-					} else if cclf.cclfNum == 8 {
-						cclf8 = cclf
-					}
-				}
-				cclfvalidator, err := importer.importCCLF0(ctx, cclf0)
-				if err != nil {
-					importer.Logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
-					failure++
-					skipped += 2
-					continue
-				} else {
-					success++
-				}
-				err = importer.validate(ctx, cclf8, cclfvalidator)
-				if err != nil {
-					importer.Logger.Errorf("Failed to validate CCLF8 file: %s", cclf8)
-					failure++
-				} else {
-					if err = importer.importCCLF8(ctx, cclf8); err != nil {
-						importer.Logger.Errorf("Failed to import CCLF8 file: %s %s", cclf8, err)
-						failure++
-					} else {
-						cclf8.imported = true
-						success++
-					}
-				}
-				cclf0.imported = cclf8 != nil && cclf8.imported
+
+			zipMetadata := cclfMap[acoID]
+			if zipMetadata.cclf0Metadata == nil || zipMetadata.cclf8Metadata == nil {
+				// error
+			}
+
+			cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
+			if err != nil {
+				importer.Logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata)
+				failure++
+				skipped += 2
+			} else {
+				success++
+			}
+
+			if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
+				importer.Logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
+				failure++
+			} else {
+				// Should this be consolidated under zipMetadata?
+				zipMetadata.cclf0Metadata.imported = true
+				zipMetadata.cclf8Metadata.imported = true
+				success++
 			}
 		}()
 	}
@@ -346,82 +308,6 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	return success, failure, skipped, err
-}
-
-func (importer CclfImporter) validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
-	if fileMetadata == nil {
-		err := errors.New("file not found")
-		importer.Logger.Error(err)
-		return err
-	}
-
-	importer.Logger.Infof("Validating CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
-
-	var key string
-	if fileMetadata.cclfNum == 8 {
-		key = "CCLF8"
-	} else {
-		err := fmt.Errorf("unknown file type when validating file: %s", fileMetadata)
-		importer.Logger.Error(err)
-		return err
-	}
-
-	r, closeReader, err := importer.FileProcessor.OpenZipArchive(fileMetadata.filePath)
-	if err != nil {
-		err := errors.Wrapf(err, "could not read archive %s", fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return err
-	}
-	defer closeReader()
-
-	close := metrics.NewChild(ctx, "validate")
-	defer close()
-
-	count := 0
-	validator := cclfFileValidator[key]
-	var rawFile *zip.File
-
-	for _, f := range r.File {
-		if f.Name == fileMetadata.name {
-			rawFile = f
-			importer.Logger.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
-		}
-	}
-
-	if rawFile == nil {
-		err = errors.Wrapf(err, constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return err
-	}
-
-	rc, err := rawFile.Open()
-	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s in archive %s", fileMetadata.name, fileMetadata.filePath)
-		importer.Logger.Error(err)
-		return err
-	}
-	defer rc.Close()
-	sc := bufio.NewScanner(rc)
-	for sc.Scan() {
-		b := sc.Bytes()
-		bytelength := len(bytes.TrimSpace(b))
-		if bytelength > 0 && bytelength <= validator.maxRecordLength {
-			count++
-
-			// currently only errors if there are more records than we expect.
-			if count > validator.totalRecordCount {
-				err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d)", key, validator.totalRecordCount, count)
-				importer.Logger.Error(err)
-				return err
-			}
-		} else {
-			err := fmt.Errorf("incorrect record length for file %s (expected: %d, actual: %d)", key, validator.maxRecordLength, bytelength)
-			importer.Logger.Error(err)
-			return err
-		}
-	}
-	importer.Logger.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
-	return nil
 }
 
 func (m cclfFileMetadata) String() string {
