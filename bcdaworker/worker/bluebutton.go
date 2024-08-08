@@ -12,12 +12,7 @@ import (
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func getBlueButtonID(bb client.APIClient, mbi string, jobData models.JobEnqueueArgs) (blueButtonID string, err error) {
-	hashedIdentifier, err := client.HashIdentifier(mbi)
-	if err != nil {
-		return "", err
-	}
-
-	jsonData, err := bb.GetPatientByIdentifierHash(jobData, hashedIdentifier)
+	jsonData, err := bb.GetPatientByMbi(jobData, mbi)
 	if err != nil {
 		return "", err
 	}

@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	github.com/urfave/cli v1.22.9
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/text v0.14.0
 	gotest.tools/gotestsum v1.6.2
 )
