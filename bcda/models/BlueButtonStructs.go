@@ -5,23 +5,10 @@
 
 package models
 
-import (
-	"time"
-)
-
 type Patient struct {
-	// uuid identifier of this request
-	ID   string `json:"id"`
-	Meta struct {
-		LastUpdated time.Time
-	}
-	Entry []struct {
-		Resource struct {
-			Identifier []struct {
-				System string `json:"system"`
-				Value  string `json:"value"`
-			} `json:"identifier"`
-			ID string `json:"id"`
-		} `json:"resource"`
-	} `json:"entry"`
+	Identifier []struct {
+		System string `json:"system"`
+		Value  string `json:"value"`
+	} `json:"identifier"`
+	ID string `json:"id"`
 }

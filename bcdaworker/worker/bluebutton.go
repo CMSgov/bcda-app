@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -12,26 +11,15 @@ import (
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func getBlueButtonID(bb client.APIClient, mbi string, jobData models.JobEnqueueArgs) (blueButtonID string, err error) {
-	jsonData, err := bb.GetPatientByMbi(jobData, mbi)
+	patient, err := bb.GetPatientByMbi(jobData, mbi)
 	if err != nil {
-		return "", err
-	}
-
-	var patient models.Patient
-	err = json.Unmarshal([]byte(jsonData), &patient)
-	if err != nil {
-		return "", err
-	}
-
-	if len(patient.Entry) == 0 {
-		err = errors.New("patient identifier not found at Blue Button for CCLF")
 		return "", err
 	}
 
 	var foundIdentifier = false
 	var foundBlueButtonID = false
-	blueButtonID = patient.Entry[0].Resource.ID
-	for _, identifier := range patient.Entry[0].Resource.Identifier {
+	blueButtonID = patient.ID
+	for _, identifier := range patient.Identifier {
 		if strings.Contains(identifier.System, "us-mbi") {
 			if identifier.Value == mbi {
 				foundIdentifier = true
