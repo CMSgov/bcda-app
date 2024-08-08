@@ -28,6 +28,9 @@ type cclfZipMetadata struct {
 	cclf0File     *zip.File
 	cclf8File     *zip.File
 	zipReader     *zip.Reader
+	zipCloser     func()
+	filePath      string
+	imported      bool
 }
 
 type cclfFileMetadata struct {
@@ -37,8 +40,6 @@ type cclfFileMetadata struct {
 	cclfNum      int
 	perfYear     int
 	timestamp    time.Time
-	filePath     string
-	imported     bool
 	deliveryDate time.Time
 	fileID       uint
 	fileType     models.CCLFFileType
@@ -75,7 +76,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 	fileMetadata := zipMetadata.cclf0Metadata
 
 	if zipMetadata.cclf0File == nil {
-		err := fmt.Errorf(constants.FileNotFound, fileMetadata.name, fileMetadata.filePath)
+		err := fmt.Errorf(constants.FileNotFound, fileMetadata.name, zipMetadata.filePath)
 		importer.Logger.Error(err)
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 
 	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, fileMetadata.filePath)
+		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, zipMetadata.filePath)
 		importer.Logger.Error(err)
 		return nil, err
 	}
@@ -205,7 +206,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	rc, err := zipMetadata.cclf8File.Open()
 	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
+		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, zipMetadata.filePath)
 		importer.Logger.Error(err)
 		return err
 	}
@@ -267,6 +268,8 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 			defer c()
 
 			zipMetadata := cclfMap[acoID]
+			defer zipMetadata.zipCloser()
+
 			if zipMetadata.cclf0Metadata == nil || zipMetadata.cclf8Metadata == nil {
 				// error
 			}
@@ -284,9 +287,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 				importer.Logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
 				failure++
 			} else {
-				// Should this be consolidated under zipMetadata?
-				zipMetadata.cclf0Metadata.imported = true
-				zipMetadata.cclf8Metadata.imported = true
+				zipMetadata.imported = true
 				success++
 			}
 		}()
@@ -311,8 +312,5 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 }
 
 func (m cclfFileMetadata) String() string {
-	if m.name != "" {
-		return m.name
-	}
-	return m.filePath
+	return m.name
 }

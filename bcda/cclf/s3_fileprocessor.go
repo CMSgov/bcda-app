@@ -52,17 +52,16 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			continue
 		}
 
-		zipReader, _, err := processor.OpenZipArchive(filepath.Join(bucket, *obj.Key))
+		zipReader, zipCloser, err := processor.OpenZipArchive(filepath.Join(bucket, *obj.Key))
 
 		if err != nil {
 			failed++
-			processor.Handler.Warningf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
+			processor.Handler.Errorf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
 			continue
 		}
 
 		for _, f := range zipReader.File {
 			metadata, err := getCCLFFileMetadata(cmsID, f.Name)
-			metadata.filePath = filepath.Join(bucket, *obj.Key)
 			metadata.deliveryDate = *obj.LastModified
 
 			if err != nil {
@@ -76,24 +75,38 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 				sub := &cclfZipMetadata{
 					acoID:     metadata.acoID,
 					zipReader: zipReader,
+					zipCloser: zipCloser,
+					filePath:  filepath.Join(bucket, *obj.Key),
 				}
 				cclfMap[metadata.acoID] = sub
 			}
 
 			if metadata.cclfNum == 0 {
 				if sub.cclf0Metadata != nil {
-					// error
+					failed++
+					processor.Handler.Errorf("Multiple CCLF0 files found in zip (%s/%s)", bucket, *obj.Key)
+					delete(cclfMap, metadata.acoID)
+					zipCloser()
+					break
 				}
 				sub.cclf0Metadata = &metadata
 				sub.cclf0File = f
 			} else if metadata.cclfNum == 8 {
-				if sub.cclf8Metadata != nil {
-					// error
+				if sub.cclf0Metadata != nil {
+					failed++
+					processor.Handler.Errorf("Multiple CCLF8 files found in zip (%s/%s)", bucket, *obj.Key)
+					delete(cclfMap, metadata.acoID)
+					zipCloser()
+					break
 				}
 				sub.cclf8Metadata = &metadata
 				sub.cclf8File = f
 			} else {
-				// error
+				failed++
+				processor.Handler.Errorf("Unexpected CCLF num %d processed (%s/%s)", metadata.cclfNum, bucket, *obj.Key)
+				delete(cclfMap, metadata.acoID)
+				zipCloser()
+				break
 			}
 		}
 	}
@@ -101,33 +114,29 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 	return cclfMap, skipped, failed, err
 }
 
-func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
+func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string]*cclfZipMetadata) error {
 	errCount := 0
 
-	for _, cclfFileMap := range cclfMap {
-		for _, cclfFileList := range cclfFileMap {
-			for _, cclf := range cclfFileList {
-				close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
-				defer close()
+	for _, cclfZipMetadata := range cclfMap {
+		close := metrics.NewChild(ctx, "cleanUpCCLFZip")
+		defer close()
 
-				if !cclf.imported {
-					// Don't do anything. The S3 bucket should have a retention policy that
-					// automatically cleans up files after a specified period of time,
-					processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", cclf.filePath)
-					continue
-				}
-
-				processor.Handler.Infof("Cleaning up file %s\n", cclf.filePath)
-				err := processor.Handler.Delete(cclf.filePath)
-
-				if err != nil {
-					errCount++
-					continue
-				}
-
-				processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", cclf.filePath)
-			}
+		if !cclfZipMetadata.imported {
+			// Don't do anything. The S3 bucket should have a retention policy that
+			// automatically cleans up files after a specified period of time.
+			processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", cclfZipMetadata.filePath)
+			continue
 		}
+
+		processor.Handler.Infof("Cleaning up file %s\n", cclfZipMetadata.filePath)
+		err := processor.Handler.Delete(cclfZipMetadata.filePath)
+
+		if err != nil {
+			errCount++
+			continue
+		}
+
+		processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", cclfZipMetadata.filePath)
 	}
 
 	if errCount > 0 {
