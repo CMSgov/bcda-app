@@ -9,6 +9,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jackc/pgx/pgtype"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,7 +34,7 @@ func TestValues(t *testing.T) {
 
 	importer := &cclf8Importer{ctx: context.Background(), cclfFileID: uint(rand.Int31()),
 		scanner: scanner, processedMBIs: make(map[string]struct{}),
-		reportInterval: 1}
+		reportInterval: 1, logger: logrus.StandardLogger()}
 	assert.True(t, importer.Next())
 
 	values, err := importer.Values()

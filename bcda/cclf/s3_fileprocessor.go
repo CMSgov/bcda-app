@@ -67,7 +67,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 
 			if err != nil {
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-				processor.Handler.Errorf("Unknown file found: %s.", f.Name)
+				processor.Handler.Warningf("Unknown file found: %s.", f.Name)
 				continue
 			}
 

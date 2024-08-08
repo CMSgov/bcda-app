@@ -54,6 +54,7 @@ func (s *CCLFTestSuite) SetupTest() {
 	}
 
 	s.importer = CclfImporter{
+		Logger:        log.API,
 		FileProcessor: file_processor,
 	}
 }

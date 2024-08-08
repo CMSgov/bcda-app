@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/pgtype"
+	"github.com/sirupsen/logrus"
 )
 
 // A cclf8Importer is not safe for concurrent use by multiple goroutines.
@@ -22,6 +22,7 @@ type cclf8Importer struct {
 
 	importCount   int
 	processedMBIs map[string]struct{}
+	logger        logrus.FieldLogger
 }
 
 func (importer *cclf8Importer) Next() bool {
@@ -73,7 +74,7 @@ func (importer *cclf8Importer) Values() ([]interface{}, error) {
 
 	importer.importCount++
 	if importer.importCount%importer.reportInterval == 0 {
-		fmt.Printf("CCLF8 records imported: %d\n", importer.importCount)
+		importer.logger.Infof("CCLF8 records imported: %d\n", importer.importCount)
 	}
 
 	return []interface{}{fileID, mbi}, nil
@@ -99,7 +100,7 @@ func (importer *cclf8Importer) getMBI() string {
 
 // CopyFrom writes all of the beneficiary data captured in the scanner to the beneficiaries table.
 // It returns the number of rows written along with any error that occurred.
-func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int) (int, error) {
+func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int, logger logrus.FieldLogger) (int, error) {
 	importer := &cclf8Importer{
 		scanner:    scanner,
 		ctx:        ctx,
@@ -107,6 +108,7 @@ func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID ui
 
 		reportInterval: reportInterval,
 		processedMBIs:  make(map[string]struct{}),
+		logger:         logger,
 	}
 	tableName := pgx.Identifier([]string{"cclf_beneficiaries"})
 	return tx.CopyFrom(tableName, []string{"file_id", "mbi"}, importer)

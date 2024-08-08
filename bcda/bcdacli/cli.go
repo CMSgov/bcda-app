@@ -398,6 +398,7 @@ func setUpApp() *cli.App {
 				}
 
 				importer := cclf.CclfImporter{
+					Logger:        log.API,
 					FileProcessor: file_processor,
 				}
 

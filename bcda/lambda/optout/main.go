@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -51,18 +52,19 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	}
 
 	for _, e := range s3Event.Records {
-		if e.EventName == "ObjectCreated:Put" {
+		if strings.Contains(e.EventName, "ObjectCreated") {
 			s3AssumeRoleArn, err := loadBfdS3Params()
 			if err != nil {
 				return "", err
 			}
 
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
+			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
 			return handleOptOutImport(s3AssumeRoleArn, dir)
 		}
 	}
 
-	logger.Info("No ObjectCreated:Put events found, skipping safely.")
+	logger.Info("No ObjectCreated events found, skipping safely.")
 	return "", nil
 }
 

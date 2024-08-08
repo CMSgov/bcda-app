@@ -1,4 +1,4 @@
-# Integration test that triggers a CCLF import in the test environment and 
+# Integration test that triggers a CCLF import in the test environment and
 # verifies the imported data in the test database for ACO A0001.
 name: cclf-import test integration
 
@@ -7,7 +7,8 @@ on:
     paths:
       - .github/workflows/cclf-import-test-integration.yml
       - .github/workflows/cclf-import-test-deploy.yml
-      - cclf/**
+      - bcda/cclf/**
+      - bcda/lambda/cclf/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
@@ -72,7 +73,7 @@ jobs:
   verify:
     needs: trigger
     runs-on: self-hosted
-    env: 
+    env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
       - uses: actions/checkout@v3
@@ -82,7 +83,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
       - name: Install psql
         run: |
-            sudo amazon-linux-extras install postgresql14
+          sudo amazon-linux-extras install postgresql14
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -116,4 +117,3 @@ jobs:
                 exit 1
               fi
           fi
-            
