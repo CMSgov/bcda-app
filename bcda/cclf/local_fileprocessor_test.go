@@ -66,7 +66,7 @@ func (s *LocalFileProcessorTestSuite) TearDownSuite() {
 }
 
 func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives() {
-	cmsID, key := "A0001", metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
+	cmsID := "A0001"
 	tests := []struct {
 		path         string
 		numCCLFFiles int // Expected count for the cmsID, perfYear above
@@ -77,7 +77,7 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives() {
 	}{
 		{filepath.Join(s.basePath, "cclf/archives/valid/"), 2, 0, 0, 1, 1},
 		{filepath.Join(s.basePath, "cclf/archives/bcd/"), 2, 0, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 2, 0, 0, 1, 1},
+		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 1, 0, 0, 1, 1},
 		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 3, 0, 0, 3, 0},
 		{filepath.Join(s.basePath, "cclf/archives/8/valid/"), 5, 0, 0, 0, 5},
 		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 0, 0, 0, 0},
@@ -87,11 +87,11 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives() {
 	for _, tt := range tests {
 		s.T().Run(tt.path, func(t *testing.T) {
 			cclfMap, skipped, failure, err := processCCLFArchives(tt.path)
-			cclfFiles := cclfMap[cmsID][key]
+			cclfZipFiles := cclfMap[cmsID]
 			assert.NoError(t, err)
 			assert.Equal(t, tt.skipped, skipped)
 			assert.Equal(t, tt.failure, failure)
-			assert.Equal(t, tt.numCCLFFiles, len(cclfFiles))
+			assert.Equal(t, tt.numCCLFFiles, len(cclfZipFiles))
 			var numCCLF0, numCCLF8 int
 			for _, cclfFile := range cclfFiles {
 				if cclfFile.cclfNum == 0 {

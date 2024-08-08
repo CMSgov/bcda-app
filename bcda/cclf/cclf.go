@@ -23,10 +23,10 @@ import (
 
 type cclfZipMetadata struct {
 	acoID         string
-	cclf0Metadata *cclfFileMetadata
-	cclf8Metadata *cclfFileMetadata
-	cclf0File     *zip.File
-	cclf8File     *zip.File
+	cclf0Metadata cclfFileMetadata
+	cclf8Metadata cclfFileMetadata
+	cclf0File     zip.File
+	cclf8File     zip.File
 	zipReader     *zip.Reader
 	zipCloser     func()
 	filePath      string
@@ -53,9 +53,9 @@ type cclfFileValidator struct {
 // Manages the interaction of CCLF files from a given source
 type CclfFileProcessor interface {
 	// Load a list of valid CCLF files to be imported
-	LoadCclfFiles(path string) (cclfList map[string]*cclfZipMetadata, skipped int, failed int, err error)
+	LoadCclfFiles(path string) (cclfList map[string][]cclfZipMetadata, skipped int, failed int, err error)
 	// Clean up CCLF files after failed or successful import runs
-	CleanUpCCLF(ctx context.Context, cclfMap map[string]*cclfZipMetadata) error
+	CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) error
 	// Open a zip archive
 	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
@@ -66,21 +66,8 @@ type CclfImporter struct {
 	FileProcessor CclfFileProcessor
 }
 
-func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
-	if zipMetadata == nil {
-		err := errors.New("Zip file not found")
-		importer.Logger.Error(err)
-		return nil, err
-	}
-
+func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata cclfZipMetadata) (*cclfFileValidator, error) {
 	fileMetadata := zipMetadata.cclf0Metadata
-
-	if zipMetadata.cclf0File == nil {
-		err := fmt.Errorf(constants.FileNotFound, fileMetadata.name, zipMetadata.filePath)
-		importer.Logger.Error(err)
-		return nil, err
-	}
-
 	importer.Logger.Infof("Importing CCLF0 file %s...", fileMetadata)
 
 	const (
@@ -142,7 +129,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 	return nil, err
 }
 
-func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
+func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata cclfZipMetadata, validator cclfFileValidator) (err error) {
 	fileMetadata := zipMetadata.cclf8Metadata
 
 	db := database.Connection
@@ -263,34 +250,30 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	for acoID := range cclfMap {
-		func() {
-			ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
-			defer c()
+		for _, zipMetadata := range cclfMap[acoID] {
+			func() {
+				ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
+				defer c()
+				defer zipMetadata.zipCloser()
 
-			zipMetadata := cclfMap[acoID]
-			defer zipMetadata.zipCloser()
+				cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
+				if err != nil {
+					importer.Logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata)
+					failure++
+					skipped += 2
+				} else {
+					success++
+				}
 
-			if zipMetadata.cclf0Metadata == nil || zipMetadata.cclf8Metadata == nil {
-				// error
-			}
-
-			cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
-			if err != nil {
-				importer.Logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata)
-				failure++
-				skipped += 2
-			} else {
-				success++
-			}
-
-			if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
-				importer.Logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
-				failure++
-			} else {
-				zipMetadata.imported = true
-				success++
-			}
-		}()
+				if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
+					importer.Logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
+					failure++
+				} else {
+					zipMetadata.imported = true
+					success++
+				}
+			}()
+		}
 	}
 
 	if err = func() error {
