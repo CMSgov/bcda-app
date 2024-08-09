@@ -93,6 +93,28 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 	assert.Empty(s.T(), cclfMap)
 }
 
+func (s *S3ProcessorTestSuite) TestLoadCclfFiles_DuplicateCCLFs() {
+	bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(),
+		// Multiple CCLF0s
+		testUtils.ZipInput{
+			ZipName:   "T.BCD.A9990.ZCY20.D201113.T0000000",
+			CclfNames: []string{"T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC0Y20.D201113.T0000011", "T.BCD.A9990.ZC8Y20.D201113.T0000010"},
+		},
+		// Multiple CCLF8s
+		testUtils.ZipInput{
+			ZipName:   "T.BCD.A9990.ZCY19.D201113.T0000000",
+			CclfNames: []string{"T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000011"},
+		},
+	)
+	defer cleanupS3()
+
+	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(bucketName)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 0, skipped)
+	assert.Equal(s.T(), 2, failure)
+	assert.Empty(s.T(), cclfMap)
+}
+
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SingleFile() {
 	cmsID := "A0001"
 	tests := []struct {
