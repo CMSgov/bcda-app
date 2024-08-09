@@ -82,7 +82,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 				cclf0Metadata = &metadata
 				cclf0File = f
 			} else if metadata.cclfNum == 8 {
-				if cclf0Metadata != nil {
+				if cclf8Metadata != nil {
 					readError = fmt.Errorf("Multiple CCLF8 files found in zip (%s/%s)", bucket, *obj.Key)
 					break
 				}
