@@ -162,51 +162,6 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 
 }
 
-// func (s *CCLFTestSuite) TestValidate() {
-// 	ctx := context.Background()
-// 	assert := assert.New(s.T())
-
-// 	cclf8filePath := filepath.Join(s.basePath, constants.CCLF8CompPath)
-// 	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
-
-// 	// missing metadata
-// 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
-// 	err := s.importer.validate(ctx, nil, cclfvalidator)
-// 	assert.EqualError(err, "file not found")
-
-// 	// positive
-// 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
-// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-// 	assert.Nil(err)
-
-// 	// negative
-// 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 2, maxRecordLength: 549}}
-// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-// 	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
-
-// 	//invalid cclfNum
-// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 9, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
-// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-// 	assert.EqualError(err, "unknown file type when validating file: T.BCD.A0001.ZC8Y18.D181120.T1000009")
-
-// 	//invalid file path
-// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: "/", perfYear: 18, name: constants.CCLF8Name}
-// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-// 	assert.EqualError(err, "could not read archive /: read /: is a directory")
-
-// 	//non-existant file
-// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "InvalidName"}
-// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-// 	assert.Nil(err)
-
-// 	//more records than expected
-// 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 0}}
-// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
-// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-// 	assert.EqualError(err, "incorrect record length for file CCLF8 (expected: 0, actual: 549)")
-
-// }
-
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 
