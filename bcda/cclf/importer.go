@@ -67,7 +67,9 @@ func (importer *cclf8Importer) Values() ([]interface{}, error) {
 	// Verify record length
 	b := importer.scanner.Bytes()
 	trimmed := bytes.TrimSpace(b)
-	if len(trimmed) > 0 && len(trimmed) <= importer.expectedRecordLength {
+
+	// Currently only errors if record is longer than expected
+	if len(trimmed) == 0 || len(trimmed) > importer.expectedRecordLength {
 		err := fmt.Errorf("incorrect record length for file (expected: %d, actual: %d)", importer.expectedRecordLength, len(trimmed))
 		importer.logger.Error(err)
 		return nil, err

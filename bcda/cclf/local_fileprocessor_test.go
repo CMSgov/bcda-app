@@ -68,20 +68,17 @@ func (s *LocalFileProcessorTestSuite) TearDownSuite() {
 func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives() {
 	cmsID := "A0001"
 	tests := []struct {
-		path         string
-		numCCLFFiles int // Expected count for the cmsID, perfYear above
-		skipped      int
-		failure      int
-		numCCLF0     int // Expected count for the cmsID, perfYear above
-		numCCLF8     int // Expected count for the cmsID, perfYear above
+		path            string
+		numCCLFZipFiles int // Expected count for the cmsID, perfYear above
+		skipped         int
+		failure         int
 	}{
-		{filepath.Join(s.basePath, "cclf/archives/valid/"), 2, 0, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/archives/bcd/"), 2, 0, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 1, 0, 0, 1, 1},
-		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 3, 0, 0, 3, 0},
-		{filepath.Join(s.basePath, "cclf/archives/8/valid/"), 5, 0, 0, 0, 5},
-		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 0, 0, 0, 0},
-		{filepath.Join(s.basePath, "cclf/mixed/with_folders/"), 2, 0, 0, 1, 1},
+		{filepath.Join(s.basePath, "cclf/archives/valid/"), 1, 0, 0},
+		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 1, 0, 0},
+		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 0, 0, 3}, // properly named archives with only CCLF0 files
+		{filepath.Join(s.basePath, "cclf/archives/8/valid/"), 0, 0, 5},    // properly named archives with only CCLF8 files
+		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 0, 0},
+		{filepath.Join(s.basePath, "cclf/mixed/with_folders/"), 1, 0, 0},
 	}
 
 	for _, tt := range tests {
@@ -91,29 +88,25 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives() {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.skipped, skipped)
 			assert.Equal(t, tt.failure, failure)
-			assert.Equal(t, tt.numCCLFFiles, len(cclfZipFiles))
-			var numCCLF0, numCCLF8 int
-			for _, cclfFile := range cclfFiles {
-				if cclfFile.cclfNum == 0 {
-					numCCLF0++
-				} else if cclfFile.cclfNum == 8 {
-					numCCLF8++
-				} else {
-					assert.Fail(t, "Unexpected CCLF num received %d", cclfFile.cclfNum)
-				}
+			assert.Equal(t, tt.numCCLFZipFiles, len(cclfZipFiles))
+			for _, cclfZipFile := range cclfZipFiles {
+				assert.Equal(t, 18, cclfZipFile.cclf0Metadata.perfYear)
+				assert.Equal(t, 18, cclfZipFile.cclf8Metadata.perfYear)
+				assert.Equal(t, models.FileTypeDefault, cclfZipFile.cclf0Metadata.fileType)
+				assert.Equal(t, models.FileTypeDefault, cclfZipFile.cclf8Metadata.fileType)
 			}
-			assert.Equal(t, tt.numCCLF0, numCCLF0)
-			assert.Equal(t, tt.numCCLF8, numCCLF8)
 		})
 	}
 }
 
 func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
+	cmsID := "A0001"
+
 	assert := assert.New(s.T())
-	key := metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
 	folderPath := filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/")
 	filePath := filepath.Join(folderPath, "T.BCDE.ACO.ZC0Y18.D181120.T0001000")
 
+	// Update file timestamp to now
 	origTime := time.Now().Truncate(time.Second)
 	err := os.Chtimes(filePath, origTime, origTime)
 	if err != nil {
@@ -122,14 +115,17 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 
 	cclfMap, skipped, failure, err := processCCLFArchives(folderPath)
 	assert.Nil(err)
-	cclfList := cclfMap["A0001"][key]
-	assert.Equal(2, len(cclfList))
+
+	cclfList := cclfMap[cmsID]
+	assert.Equal(1, len(cclfList))
 	assert.Equal(0, skipped)
 	assert.Equal(0, failure)
+
 	// assert that this file is still here.
 	_, err = os.Open(filePath)
 	assert.Nil(err)
 
+	// Update file timestamp to 73 hours ago
 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
 	if err != nil {
@@ -138,8 +134,9 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 
 	cclfMap, skipped, failure, err = processCCLFArchives(folderPath)
 	assert.Nil(err)
-	cclfList = cclfMap["A0001"][key]
-	assert.Equal(2, len(cclfList))
+
+	cclfList = cclfMap[cmsID]
+	assert.Equal(1, len(cclfList))
 	assert.Equal(0, skipped)
 	assert.Equal(0, failure)
 
@@ -225,12 +222,9 @@ func (s *LocalFileProcessorTestSuite) TestMultipleFileTypes() {
 	assert.Equal(s.T(), 0, f)
 	assert.Equal(s.T(), 1, len(m)) // Only one ACO present
 
-	for _, fileMap := range m {
+	for _, zipFiles := range m {
 		// We should contain 4 unique entries, one for each unique perfYear:fileType tuple
-		assert.Equal(s.T(), 4, len(fileMap))
-		for _, files := range fileMap {
-			assert.Equal(s.T(), 2, len(files)) // each tuple contains two files
-		}
+		assert.Equal(s.T(), 4, len(zipFiles))
 	}
 }
 
@@ -251,10 +245,10 @@ func createZip(t *testing.T, dir, zipName string, cclfNames ...string) {
 
 func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
-	cclfmap := make(map[string]map[metadataKey][]*cclfFileMetadata)
-
-	// failed import: file that's within the threshold - stay put
+	cclfmap := make(map[string][]cclfZipMetadata)
 	acoID := "A0001"
+
+	// failed import: file delivered recently -- stay put
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 	cclf0metadata := &cclfFileMetadata{
 		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
@@ -263,12 +257,9 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, "cclf/T.BCD.ACO.ZC0Y18.D181120.T0001000"),
-		imported:     false,
 		deliveryDate: time.Now(),
 	}
 
-	// failed import: file that's over the threshold - should move
 	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
 	cclf8metadata := &cclfFileMetadata{
 		name:         constants.CCLF8Name,
@@ -277,60 +268,46 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     filepath.Join(s.basePath, constants.CCLF8CompPath),
-		imported:     false,
-		deliveryDate: fileTime,
+		deliveryDate: time.Now(),
 	}
 
-	// successfully imported file - should move
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf9metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   9,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.T1000000"),
-		imported:  true,
+	cclfmap[acoID] = []cclfZipMetadata{
+		{
+			cclf0Metadata: *cclf0metadata,
+			cclf8Metadata: *cclf8metadata,
+			filePath:      filepath.Join(s.basePath, constants.CCLF8CompPath),
+			imported:      false,
+		},
 	}
 
-	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
-		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf0metadata, cclf8metadata, cclf9metadata},
-	}
-	err := s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err := s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(0, deletedCount)
+	assert.Nil(err)
+
+	// failed import: file delivery expired - should move
+	cclfmap[acoID][0].cclf0Metadata.deliveryDate = fileTime
+	cclfmap[acoID][0].cclf8Metadata.deliveryDate = fileTime
+
+	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(1, deletedCount)
 	assert.Nil(err)
 
 	//negative cases
-	//File unable to be renamed
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf10metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   10,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.Z1000000"),
-		imported:  true,
-	}
-	//unsuccessful, not imported
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf11metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   10,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.Z1000000"),
-		imported:  false,
-	}
-	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
-		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf10metadata, cclf11metadata},
-	}
-	err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
-	assert.EqualError(err, "2 files could not be cleaned up")
+
+	// File unable to be renamed after import (file does not exist)
+	cclfmap[acoID][0].filePath = filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.Z1000000")
+	cclfmap[acoID][0].imported = true
+
+	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(0, deletedCount)
+	assert.EqualError(err, "1 files could not be cleaned up")
+
+	// File unable to be renamed after failed import (file does not exist)
+	cclfmap[acoID][0].imported = false
+
+	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(0, deletedCount)
+	assert.EqualError(err, "1 files could not be cleaned up")
 
 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
 	if err != nil {

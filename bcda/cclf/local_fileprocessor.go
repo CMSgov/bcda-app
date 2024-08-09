@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
@@ -71,16 +72,18 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	zipFile := filepath.Clean(path)
 	zipReader, err := zip.OpenReader(zipFile)
 	zipCloser := func() {
-		err := zipReader.Close()
-		if err != nil {
-			log.API.Warningf("Could not close zip archive %s", path)
+		if zipReader != nil {
+			err := zipReader.Close()
+			if err != nil {
+				log.API.Warningf("Could not close zip archive %s", path)
+			}
 		}
 	}
 
 	if err != nil {
 		modTime := info.ModTime()
 		if stillDownloading(modTime) {
-			// ignore downlading file, and don't add it to the skipped count
+			// ignore downloading file, and don't add it to the skipped count
 			msg := fmt.Sprintf("Skipping %s: file was last modified on: %s and is still downloading. err: %s", path, modTime, err.Error())
 			fmt.Println(msg)
 			log.API.Warn(msg)
@@ -133,7 +136,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 			cclf0Metadata = &metadata
 			cclf0File = f
 		} else if metadata.cclfNum == 8 {
-			if cclf0Metadata != nil {
+			if cclf8Metadata != nil {
 				readError = fmt.Errorf("Multiple CCLF8 files found in zip (%s)", path)
 				break
 			}
@@ -145,15 +148,18 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		}
 	}
 
-	if cclf0Metadata == nil || cclf8Metadata == nil {
-		p.failure++
-		println("Missing CCLF0 or CCLF8 file in zip (%s)", path)
-		log.API.Errorf("Missing CCLF0 or CCLF8 file in zip (%s)", path)
-		zipCloser()
-	} else if readError != nil {
+	if readError != nil {
 		p.failure++
 		println(readError.Error())
 		log.API.Errorf(readError.Error())
+		zipCloser()
+	} else if cclf0Metadata == nil || cclf8Metadata == nil {
+		p.failure++
+		fmt.Printf("Missing CCLF0 or CCLF8 file in zip (%s)\n", path)
+		log.API.WithFields(logrus.Fields{
+			"missingCCLF0": cclf0Metadata == nil,
+			"missingCCLF8": cclf8Metadata == nil,
+		}).Errorf("Missing CCLF0 or CCLF8 file in zip (%s)", path)
 		zipCloser()
 	} else {
 		zipMetadata := cclfZipMetadata{
@@ -208,7 +214,7 @@ func stillDownloading(modTime time.Time) bool {
 	return modTime.After(oneMinuteAgo)
 }
 
-func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) error {
+func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) (deletedCount int, err error) {
 	errCount := 0
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
@@ -231,8 +237,9 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 						err := os.Rename(cclfZipMetadata.filePath, newpath)
 						if err != nil {
 							errCount++
-							processor.Handler.Logger.Error("File %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+							processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 						} else {
+							deletedCount++
 							processor.Handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 						}
 					}
@@ -244,8 +251,9 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 					err := os.Rename(cclfZipMetadata.filePath, newpath)
 					if err != nil {
 						errCount++
-						processor.Handler.Logger.Error("File %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+						processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 					} else {
+						deletedCount++
 						processor.Handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 					}
 				}
@@ -254,9 +262,9 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 	}
 
 	if errCount > 0 {
-		return fmt.Errorf("%d files could not be cleaned up", errCount)
+		return deletedCount, fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
-	return nil
+	return deletedCount, nil
 }
 
 func (processor *LocalFileProcessor) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {

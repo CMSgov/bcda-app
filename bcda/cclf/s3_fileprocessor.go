@@ -121,7 +121,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 	return cclfMap, skipped, failed, err
 }
 
-func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) error {
+func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) (deletedCount int, err error) {
 	errCount := 0
 
 	for acoID := range cclfMap {
@@ -144,15 +144,16 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 				continue
 			}
 
+			deletedCount++
 			processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", cclfZipMetadata.filePath)
 		}
 	}
 
 	if errCount > 0 {
-		return fmt.Errorf("%d files could not be cleaned up", errCount)
+		return deletedCount, fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 
-	return nil
+	return deletedCount, nil
 }
 
 func (processor *S3FileProcessor) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {

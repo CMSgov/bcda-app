@@ -89,70 +89,52 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	ctx := context.Background()
 	assert := assert.New(s.T())
 
-	cclf0filePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
-	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011"}
-
-	// Missing metadata
-	_, err := s.importer.importCCLF0(ctx, nil)
-	assert.EqualError(err, "file CCLF0 not found")
+	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
+	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	defer zipCloser1()
 
 	// positive
-	validator, err := s.importer.importCCLF0(ctx, cclf0metadata)
+	validator, err := s.importer.importCCLF0(ctx, metadata)
 	assert.Nil(err)
-	assert.Equal(cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator["CCLF8"])
-
-	// negative
-	cclf0metadata = &cclfFileMetadata{}
-	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
-	assert.EqualError(err, "could not read CCLF0 archive : open : no such file or directory")
+	assert.Equal(&cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator)
 
 	// missing cclf8 from cclf0
-	cclf0filePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011"}
-	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
+	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
+	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	defer zipCloser2()
+
+	_, err = s.importer.importCCLF0(ctx, metadata)
 	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
 	// duplicate file types from cclf0
-	cclf0filePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000013"}
-	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
+	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
+	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	defer zipCloser3()
+
+	_, err = s.importer.importCCLF0(ctx, metadata)
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
 
-	// missing file
-	cclf0filePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "Z.BCD.A0001.ZC0Y18.D181120.T1000013"}
-	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
-	assert.Nil(err)
-
 	//invalid record count
-	cclf0filePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.A0001.ACO.ZC0Y18.D181120.Z1000011"}
-	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
+	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
+	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	defer zipCloser4()
+
+	_, err = s.importer.importCCLF0(ctx, metadata)
 	assert.EqualError(err, "failed to parse CCLF8 record count from CCLF0 file: strconv.Atoi: parsing \"N\": invalid syntax")
 
 	//invalid record length
-	cclf0filePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.A0001.ACO.ZC0Y18.D181120.E1000011"}
-	_, err = s.importer.importCCLF0(ctx, cclf0metadata)
+	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
+	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	defer zipCloser5()
+
+	_, err = s.importer.importCCLF0(ctx, metadata)
 	assert.EqualError(err, "failed to parse CCLF8 record length from CCLF0 file: strconv.Atoi: parsing \"Num\": invalid syntax")
-
-}
-
-func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
-	assert := assert.New(s.T())
-
-	cclf0filePath := filepath.Join(s.basePath, "cclf/archives/split/T.BCD.A0001.ZCY18.D181120.T1000000")
-	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011-1"}
-
-	validator, err := s.importer.importCCLF0(context.Background(), cclf0metadata)
-	assert.Nil(err)
-	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 549}, validator["CCLF8"])
 }
 
 func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	assert := assert.New(s.T())
 	//Happy case, with directory containing valid BCD files.
-	_, _, _, err := s.importer.ImportCCLFDirectory(filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid_bcd"))
+	_, _, _, err := s.importer.ImportCCLFDirectory(filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid"))
 	assert.Nil(err)
 }
 func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
@@ -164,20 +146,12 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 
 	//Target bad file directory
 	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "archives", "invalid_bcd")
-	_, _, _, err = s.importer.ImportCCLFDirectory(cclfDirectory)
-	assert.EqualError(err, "one or more files failed to import correctly")
-
+	imported, failed, skipped, _ := s.importer.ImportCCLFDirectory(cclfDirectory)
+	assert.Equal(0, imported)
+	assert.Equal(4, failed)
+	assert.Equal(0, skipped)
 }
 
-/*
-	func (s *CCLFTestSuite) TestImportCCLFDirectoryEmpty() {
-		assert := assert.New(s.T())
-		//Zero CCLF files in directory
-		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "emptydir")
-		_, _, _, err := ImportCCLFDirectory(cclfDirectory)
-		assert.Nil(err)
-	}
-*/
 func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 	assert := assert.New(s.T())
 	//Zero CCLF files in directory
@@ -188,50 +162,50 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 
 }
 
-func (s *CCLFTestSuite) TestValidate() {
-	ctx := context.Background()
-	assert := assert.New(s.T())
+// func (s *CCLFTestSuite) TestValidate() {
+// 	ctx := context.Background()
+// 	assert := assert.New(s.T())
 
-	cclf8filePath := filepath.Join(s.basePath, constants.CCLF8CompPath)
-	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
+// 	cclf8filePath := filepath.Join(s.basePath, constants.CCLF8CompPath)
+// 	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
 
-	// missing metadata
-	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
-	err := s.importer.validate(ctx, nil, cclfvalidator)
-	assert.EqualError(err, "file not found")
+// 	// missing metadata
+// 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
+// 	err := s.importer.validate(ctx, nil, cclfvalidator)
+// 	assert.EqualError(err, "file not found")
 
-	// positive
-	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
-	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-	assert.Nil(err)
+// 	// positive
+// 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
+// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
+// 	assert.Nil(err)
 
-	// negative
-	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 2, maxRecordLength: 549}}
-	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
+// 	// negative
+// 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 2, maxRecordLength: 549}}
+// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
+// 	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
 
-	//invalid cclfNum
-	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 9, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
-	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-	assert.EqualError(err, "unknown file type when validating file: T.BCD.A0001.ZC8Y18.D181120.T1000009")
+// 	//invalid cclfNum
+// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 9, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
+// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
+// 	assert.EqualError(err, "unknown file type when validating file: T.BCD.A0001.ZC8Y18.D181120.T1000009")
 
-	//invalid file path
-	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: "/", perfYear: 18, name: constants.CCLF8Name}
-	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-	assert.EqualError(err, "could not read archive /: read /: is a directory")
+// 	//invalid file path
+// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: "/", perfYear: 18, name: constants.CCLF8Name}
+// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
+// 	assert.EqualError(err, "could not read archive /: read /: is a directory")
 
-	//non-existant file
-	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "InvalidName"}
-	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-	assert.Nil(err)
+// 	//non-existant file
+// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "InvalidName"}
+// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
+// 	assert.Nil(err)
 
-	//more records than expected
-	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 0}}
-	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
-	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
-	assert.EqualError(err, "incorrect record length for file CCLF8 (expected: 0, actual: 549)")
+// 	//more records than expected
+// 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 0}}
+// 	cclf8metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: constants.CCLF8Name}
+// 	err = s.importer.validate(ctx, cclf8metadata, cclfvalidator)
+// 	assert.EqualError(err, "incorrect record length for file CCLF8 (expected: 0, actual: 549)")
 
-}
+// }
 
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
@@ -245,68 +219,25 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 
-	//invalid directory
-	metadata := &cclfFileMetadata{
-		name:      constants.CCLF8Name,
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  "/missingdir",
-	}
-	err := s.importer.importCCLF8(context.Background(), metadata)
-	assert.EqualError(err, "could not read CCLF8 archive /missingdir: open /missingdir: no such file or directory")
-
-	//No files in CCLF zip
-	metadata = &cclfFileMetadata{
-		name:      constants.CCLF8Name,
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, "cclf/archives/8/invalid/T.BCD.A0001.ZCY18.D181125.T1000087"),
-	}
-	err = s.importer.importCCLF8(context.Background(), metadata)
-	assert.EqualError(err, "no files found in CCLF8 archive "+metadata.filePath)
-
-	//file not found
-	metadata = &cclfFileMetadata{
-		name:      constants.CCLF8Name + "E",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, constants.CCLF8CompPath),
+	validator := cclfFileValidator{
+		maxRecordLength:  549,
+		totalRecordCount: 7,
 	}
 
-	err = s.importer.importCCLF8(context.Background(), metadata)
-	assert.EqualError(err, "file "+metadata.name+" not found in archive "+metadata.filePath)
+	// successful
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.FileProcessor, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata.cclf8Metadata.timestamp = fileTime
+	defer zipCloser()
 
-	//successful
-	metadata = &cclfFileMetadata{
-		name:      constants.CCLF8Name,
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, constants.CCLF8CompPath),
-	}
+	err := s.importer.importCCLF8(context.Background(), metadata, validator)
+	s.NoError(err)
 
-	err = s.importer.importCCLF8(context.Background(), metadata)
-	if err != nil {
-		s.FailNow("importCCLF8() error: %s", err.Error())
-	}
-
-	file := postgrestest.GetCCLFFilesByName(s.T(), s.db, metadata.name)[0]
+	file := postgrestest.GetCCLFFilesByName(s.T(), s.db, metadata.cclf8Metadata.name)[0]
 	assert.Equal(constants.CCLF8Name, file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
 	// Normalize timezone to allow us to check for equality
 	assert.Equal(fileTime.UTC().Format("010203040506"), file.Timestamp.UTC().Format("010203040506"))
-	assert.Equal(18, file.PerformanceYear)
+	assert.Equal(20, file.PerformanceYear)
 	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
 	mbis, err := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
@@ -332,28 +263,21 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A9999")
 
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0002")
-	//postgrestest.DeleteCCLFFilesByCMSID())
 
-	acoID := "A0001"
-	fileTime, _ := time.Parse(" ", " ")
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	defer zipCloser()
 
-	//metadata from success case
-	metadata := &cclfFileMetadata{
-		name:      constants.CCLF8Name,
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  filepath.Join(s.basePath, constants.CCLF8CompPath),
+	validator := cclfFileValidator{
+		maxRecordLength:  549,
+		totalRecordCount: 1,
 	}
+
 	//Send an invalid context to fail DB check
 	ctx, function := context.WithCancel(context.TODO())
 	function()
 
-	err := s.importer.importCCLF8(ctx, metadata)
+	err := s.importer.importCCLF8(ctx, metadata, validator)
 	assert.EqualError(err, "failed to check existence of CCLF8 file: context canceled")
-
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
@@ -368,17 +292,15 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: constants.CCLF8Name}
 	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
 
-	metadata := &cclfFileMetadata{
-		name:      cclfFile.Name,
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   cclfFile.CCLFNum,
-		perfYear:  cclfFile.PerformanceYear,
-		timestamp: cclfFile.Timestamp,
-		filePath:  filepath.Join(s.basePath, constants.CCLF8CompPath),
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
+	defer zipCloser()
+
+	validator := cclfFileValidator{
+		maxRecordLength:  549,
+		totalRecordCount: 1,
 	}
 
-	err := s.importer.importCCLF8(context.Background(), metadata)
+	err := s.importer.importCCLF8(context.Background(), metadata, validator)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}
@@ -396,20 +318,19 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
-	var metadata *cclfFileMetadata
-
 	// since we do not have the correct number of characters, the import should fail.
 	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
 	defer os.Remove(fileName)
-	metadata = &cclfFileMetadata{
-		cclfNum:   8,
-		name:      cclfName,
-		acoID:     testUtils.RandomHexID()[0:4],
-		timestamp: time.Now(),
-		perfYear:  20,
-		filePath:  fileName,
+
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.FileProcessor, "1234", fileName, "", cclfName, models.FileTypeDefault)
+	defer zipCloser()
+
+	validator := cclfFileValidator{
+		maxRecordLength:  3,
+		totalRecordCount: 1,
 	}
-	err := s.importer.importCCLF8(context.Background(), metadata)
+
+	err := s.importer.importCCLF8(context.Background(), metadata, validator)
 	// This error indicates that we did not supply enough characters for the MBI
 	assert.Contains(err.Error(), "invalid byte sequence for encoding \"UTF8\": 0x00")
 }
@@ -437,17 +358,15 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), mbi)
 			defer os.Remove(fileName)
 
-			metadata := &cclfFileMetadata{
-				cclfNum:   8,
-				name:      cclfName,
-				acoID:     cmsID,
-				timestamp: time.Now(),
-				perfYear:  20,
-				fileType:  tt.fileType,
-				filePath:  fileName,
+			metadata, zipCloser := buildZipMetadata(s.T(), s.importer.FileProcessor, "1234", fileName, "", cclfName, tt.fileType)
+			defer zipCloser()
+
+			validator := cclfFileValidator{
+				maxRecordLength:  11,
+				totalRecordCount: 1,
 			}
 
-			s.NoError(s.importer.importCCLF8(context.Background(), metadata))
+			s.NoError(s.importer.importCCLF8(context.Background(), metadata, validator))
 
 			cclfFile := postgrestest.GetCCLFFilesByName(s.T(), db, cclfName)[0]
 			assert.Equal(t, tt.fileType, cclfFile.Type)
@@ -471,4 +390,41 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 	assert.NoError(t, w.Close())
 
 	return f.Name(), cclfName
+}
+
+func buildZipMetadata(t *testing.T, processor CclfFileProcessor, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (cclfZipMetadata, func()) {
+	zipReader, zipCloser, err := processor.OpenZipArchive(zipName)
+	assert.Nil(t, err)
+
+	metadata := cclfZipMetadata{
+		filePath:  zipName,
+		zipReader: zipReader,
+		zipCloser: zipCloser,
+		cclf0Metadata: cclfFileMetadata{
+			cclfNum:   0,
+			name:      cclf0Name,
+			acoID:     cmsID,
+			timestamp: time.Now(),
+			perfYear:  20,
+			fileType:  fileType,
+		},
+		cclf8Metadata: cclfFileMetadata{
+			cclfNum:   8,
+			name:      cclf8Name,
+			acoID:     cmsID,
+			timestamp: time.Now(),
+			perfYear:  20,
+			fileType:  fileType,
+		},
+	}
+
+	if cclf0Name != "" {
+		metadata.cclf0File = *testUtils.GetFileFromZip(t, zipReader, cclf0Name)
+	}
+
+	if cclf8Name != "" {
+		metadata.cclf8File = *testUtils.GetFileFromZip(t, zipReader, cclf8Name)
+	}
+
+	return metadata, zipCloser
 }

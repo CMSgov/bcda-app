@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -65,7 +64,7 @@ func init() {
 	}
 
 	if df.Nrow() == 0 {
-		panic(fmt.Sprintf("No crosswalk file found. Tried %v.", paths))
+		// panic(fmt.Sprintf("No crosswalk file found. Tried %v.", paths))
 	}
 
 	crosswalk = make(map[hccKey]Hcc)

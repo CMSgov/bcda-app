@@ -55,7 +55,7 @@ type CclfFileProcessor interface {
 	// Load a list of valid CCLF files to be imported
 	LoadCclfFiles(path string) (cclfList map[string][]cclfZipMetadata, skipped int, failed int, err error)
 	// Clean up CCLF files after failed or successful import runs
-	CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) error
+	CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) (deletedCount int, err error)
 	// Open a zip archive
 	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
@@ -245,8 +245,8 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	if len(cclfMap) == 0 {
-		importer.Logger.Info("Failed to find any CCLF files in directory")
-		return 0, 0, skipped, nil
+		importer.Logger.Info("Failed to find any valid CCLF files in directory")
+		return 0, failure, skipped, err
 	}
 
 	for acoID := range cclfMap {
@@ -279,7 +279,8 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	if err = func() error {
 		ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
 		defer c()
-		return importer.FileProcessor.CleanUpCCLF(ctx, cclfMap)
+		_, err := importer.FileProcessor.CleanUpCCLF(ctx, cclfMap)
+		return err
 	}(); err != nil {
 		importer.Logger.Error(err)
 	}
