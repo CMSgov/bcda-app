@@ -94,13 +94,13 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			}
 		}
 
-		if cclf0Metadata == nil || cclf8Metadata == nil {
-			failed++
-			processor.Handler.Errorf("Missing CCLF0 or CCLF8 file in zip (%s/%s)", bucket, *obj.Key)
-			zipCloser()
-		} else if readError != nil {
+		if readError != nil {
 			failed++
 			processor.Handler.Errorf(readError.Error())
+			zipCloser()
+		} else if cclf0Metadata == nil || cclf8Metadata == nil {
+			failed++
+			processor.Handler.Errorf("Missing CCLF0 or CCLF8 file in zip (%s/%s)", bucket, *obj.Key)
 			zipCloser()
 		} else {
 			zipMetadata := cclfZipMetadata{
