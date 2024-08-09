@@ -80,10 +80,10 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 }
 
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
-	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "someenv"}})
+	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "dev"}})
 	defer cleanupEnvVars()
 
-	s3Bucket, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-someenv/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"test", "zip"}})
+	s3Bucket, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
 	defer cleanupS3()
 
 	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(s3Bucket)
