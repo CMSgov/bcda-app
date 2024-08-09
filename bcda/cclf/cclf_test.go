@@ -108,7 +108,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	// duplicate file types from cclf0
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
-	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
 	defer zipCloser3()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -116,7 +116,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	//invalid record count
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
-	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
 	defer zipCloser4()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -124,7 +124,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	//invalid record length
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
-	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer.FileProcessor, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
 	defer zipCloser5()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)

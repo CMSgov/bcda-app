@@ -79,8 +79,6 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 	close := metrics.NewChild(ctx, "importCCLF0")
 	defer close()
 
-	var validator map[string]cclfFileValidator
-
 	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, zipMetadata.filePath)
@@ -89,17 +87,16 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 	}
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
+
+	var validator *cclfFileValidator
+
 	for sc.Scan() {
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
 			filetype := string(bytes.TrimSpace(b[fileNumStart:fileNumEnd]))
 
 			if filetype == "CCLF8" {
-				if validator == nil {
-					validator = make(map[string]cclfFileValidator)
-				}
-
-				if _, ok := validator[filetype]; ok {
+				if validator != nil {
 					err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
 					importer.Logger.Error(err)
 					return nil, err
@@ -118,10 +115,14 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 					return nil, err
 				}
 
-				importer.Logger.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
-				return &cclfFileValidator{totalRecordCount: count, maxRecordLength: length}, nil
+				validator = &cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
 			}
 		}
+	}
+
+	if validator != nil {
+		importer.Logger.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
+		return validator, nil
 	}
 
 	err = fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata)
