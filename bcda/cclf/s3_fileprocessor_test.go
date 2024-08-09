@@ -102,7 +102,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SingleFile() {
 		skipped         int
 		failure         int
 	}{
-		{"cclf/archives/valid2/", "T.BCD.A0001.ZCY18.D181120.T1000000", 1, 0, 0},
+		{"cclf/archives/valid/", "T.BCD.A0001.ZCY18.D181120.T1000000", 1, 0, 0},
 	}
 
 	for _, tt := range tests {
