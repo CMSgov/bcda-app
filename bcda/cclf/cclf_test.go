@@ -219,17 +219,31 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 
-	validator := cclfFileValidator{
-		maxRecordLength:  549,
-		totalRecordCount: 7,
-	}
-
-	// successful
 	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.FileProcessor, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
 	metadata.cclf8Metadata.timestamp = fileTime
 	defer zipCloser()
 
+	// validation error -- records too long
+	validator := cclfFileValidator{
+		maxRecordLength:  2,
+		totalRecordCount: 7,
+	}
+
 	err := s.importer.importCCLF8(context.Background(), metadata, validator)
+	s.ErrorContains(err, "incorrect record length for file (expected: 2, actual: 549)")
+
+	// validation error -- records too long
+	validator.maxRecordLength = 549
+	validator.totalRecordCount = 2
+
+	err = s.importer.importCCLF8(context.Background(), metadata, validator)
+	s.ErrorContains(err, "Unexpected number of records imported for file T.BCD.A0001.ZC8Y18.D181120.T1000009 (expected: 2, actual: 7)")
+
+	// successful
+	validator.maxRecordLength = 549
+	validator.totalRecordCount = 7
+
+	err = s.importer.importCCLF8(context.Background(), metadata, validator)
 	s.NoError(err)
 
 	file := postgrestest.GetCCLFFilesByName(s.T(), s.db, metadata.cclf8Metadata.name)[0]
