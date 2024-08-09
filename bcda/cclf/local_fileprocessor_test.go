@@ -186,6 +186,29 @@ func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_CorruptedFile() {
 	}
 }
 
+func (s *LocalFileProcessorTestSuite) TestProcessCCLFArchives_DuplicateCCLFs() {
+	dir, err := os.MkdirTemp("", "*")
+	assert.NoError(s.T(), err)
+
+	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
+	cclfRefDate := conf.GetEnv("CCLF_REF_DATE")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "201201")
+	defer conf.SetEnv(s.T(), "CCLF_REF_DATE", cclfRefDate)
+	defer os.RemoveAll(dir)
+
+	// Multiple CCLF0s
+	createZip(s.T(), dir, "T.BCD.A9990.ZCY20.D201113.T0000000", "T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC0Y20.D201113.T0000011", "T.BCD.A9990.ZC8Y20.D201113.T0000010")
+
+	// Multiple CCLF8s
+	createZip(s.T(), dir, "T.BCD.A9990.ZCY20.D201114.T0000000", "T.BCD.A9990.ZC0Y20.D201114.T0000010", "T.BCD.A9990.ZC8Y20.D201114.T0000010", "T.BCD.A9990.ZC8Y20.D201114.T0000011")
+
+	m, skipped, f, err := processCCLFArchives(dir)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 0, skipped)
+	assert.Equal(s.T(), 2, f)
+	assert.Empty(s.T(), m)
+}
+
 func TestLocalFileProcessorTestSuite(t *testing.T) {
 	suite.Run(t, new(LocalFileProcessorTestSuite))
 }
