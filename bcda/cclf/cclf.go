@@ -53,9 +53,9 @@ type cclfFileValidator struct {
 // Manages the interaction of CCLF files from a given source
 type CclfFileProcessor interface {
 	// Load a list of valid CCLF files to be imported
-	LoadCclfFiles(path string) (cclfList map[string][]cclfZipMetadata, skipped int, failed int, err error)
+	LoadCclfFiles(path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error)
 	// Clean up CCLF files after failed or successful import runs
-	CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) (deletedCount int, err error)
+	CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error)
 	// Open a zip archive
 	OpenZipArchive(name string) (*zip.Reader, func(), error)
 }
@@ -66,7 +66,7 @@ type CclfImporter struct {
 	FileProcessor CclfFileProcessor
 }
 
-func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata cclfZipMetadata) (*cclfFileValidator, error) {
+func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
 	fileMetadata := zipMetadata.cclf0Metadata
 	importer.Logger.Infof("Importing CCLF0 file %s...", fileMetadata)
 
@@ -129,7 +129,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata cclfZi
 	return nil, err
 }
 
-func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata cclfZipMetadata, validator cclfFileValidator) (err error) {
+func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
 	fileMetadata := zipMetadata.cclf8Metadata
 
 	db := database.Connection

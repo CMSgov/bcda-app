@@ -245,7 +245,7 @@ func createZip(t *testing.T, dir, zipName string, cclfNames ...string) {
 
 func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
-	cclfmap := make(map[string][]cclfZipMetadata)
+	cclfmap := make(map[string][]*cclfZipMetadata)
 	acoID := "A0001"
 
 	// failed import: file delivered recently -- stay put
@@ -271,7 +271,7 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 		deliveryDate: time.Now(),
 	}
 
-	cclfmap[acoID] = []cclfZipMetadata{
+	cclfmap[acoID] = []*cclfZipMetadata{
 		{
 			cclf0Metadata: *cclf0metadata,
 			cclf8Metadata: *cclf8metadata,

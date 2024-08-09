@@ -392,7 +392,7 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 	return f.Name(), cclfName
 }
 
-func buildZipMetadata(t *testing.T, processor CclfFileProcessor, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (cclfZipMetadata, func()) {
+func buildZipMetadata(t *testing.T, processor CclfFileProcessor, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
 	zipReader, zipCloser, err := processor.OpenZipArchive(zipName)
 	assert.Nil(t, err)
 
@@ -426,5 +426,5 @@ func buildZipMetadata(t *testing.T, processor CclfFileProcessor, cmsID, zipName,
 		metadata.cclf8File = *testUtils.GetFileFromZip(t, zipReader, cclf8Name)
 	}
 
-	return metadata, zipCloser
+	return &metadata, zipCloser
 }

@@ -184,7 +184,7 @@ func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
 
 func (s *S3ProcessorTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
-	cclfmap := make(map[string][]cclfZipMetadata)
+	cclfmap := make(map[string][]*cclfZipMetadata)
 	acoID := "A0001"
 
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, constants.CCLF8CompPath))
@@ -213,7 +213,7 @@ func (s *S3ProcessorTestSuite) TestCleanupCCLF() {
 		deliveryDate: time.Now(),
 	}
 
-	cclfmap[acoID] = []cclfZipMetadata{
+	cclfmap[acoID] = []*cclfZipMetadata{
 		{
 			cclf0Metadata: *cclf0metadata,
 			cclf8Metadata: *cclf8metadata,

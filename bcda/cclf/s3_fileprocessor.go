@@ -16,8 +16,8 @@ type S3FileProcessor struct {
 	Handler optout.S3FileHandler
 }
 
-func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string][]cclfZipMetadata, skipped int, failed int, err error) {
-	cclfMap = make(map[string][]cclfZipMetadata)
+func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
+	cclfMap = make(map[string][]*cclfZipMetadata)
 	bucket, prefix := optout.ParseS3Uri(path)
 	s3Objects, err := processor.Handler.ListFiles(bucket, prefix)
 
@@ -114,14 +114,14 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 				filePath:      filepath.Join(bucket, *obj.Key),
 			}
 
-			cclfMap[cmsID] = append(cclfMap[cmsID], zipMetadata)
+			cclfMap[cmsID] = append(cclfMap[cmsID], &zipMetadata)
 		}
 	}
 
 	return cclfMap, skipped, failed, err
 }
 
-func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) (deletedCount int, err error) {
+func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error) {
 	errCount := 0
 
 	for acoID := range cclfMap {

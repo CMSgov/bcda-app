@@ -23,14 +23,14 @@ type LocalFileProcessor struct {
 	Handler optout.LocalFileHandler
 }
 
-func (processor *LocalFileProcessor) LoadCclfFiles(path string) (cclfList map[string][]cclfZipMetadata, skipped int, failed int, err error) {
+func (processor *LocalFileProcessor) LoadCclfFiles(path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	return processCCLFArchives(path)
 }
 
 // processCCLFArchives walks through all of the CCLF files captured in the root path and generates
 // a mapping between CMS_ID + perf year and associated CCLF Metadata
-func processCCLFArchives(rootPath string) (map[string][]cclfZipMetadata, int, int, error) {
-	p := &processor{0, 0, make(map[string][]cclfZipMetadata)}
+func processCCLFArchives(rootPath string) (map[string][]*cclfZipMetadata, int, int, error) {
+	p := &processor{0, 0, make(map[string][]*cclfZipMetadata)}
 	if err := filepath.Walk(rootPath, p.walk); err != nil {
 		return nil, 0, 0, err
 	}
@@ -40,7 +40,7 @@ func processCCLFArchives(rootPath string) (map[string][]cclfZipMetadata, int, in
 type processor struct {
 	skipped int
 	failure int
-	cclfMap map[string][]cclfZipMetadata
+	cclfMap map[string][]*cclfZipMetadata
 }
 
 func (p *processor) walk(path string, info os.FileInfo, err error) error {
@@ -173,7 +173,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 			filePath:      path,
 		}
 
-		p.cclfMap[cmsID] = append(p.cclfMap[cmsID], zipMetadata)
+		p.cclfMap[cmsID] = append(p.cclfMap[cmsID], &zipMetadata)
 	}
 
 	return nil
@@ -214,7 +214,7 @@ func stillDownloading(modTime time.Time) bool {
 	return modTime.After(oneMinuteAgo)
 }
 
-func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]cclfZipMetadata) (deletedCount int, err error) {
+func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error) {
 	errCount := 0
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
