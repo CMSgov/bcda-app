@@ -206,6 +206,7 @@ func (importer OptOutImporter) importSuppressionMetadata(metadata *optout.OptOut
 	}
 
 	importer.Logger.Infof("Successfully imported %d records from suppression file %s.", importedCount, metadata)
+	importer.Logger.Infof("foo bar")
 	return nil
 }
 
