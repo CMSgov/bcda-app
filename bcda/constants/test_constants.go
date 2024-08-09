@@ -9,10 +9,6 @@ const TestChangeTimeErr = "Failed to change modified time for file"
 
 // Messages Constants
 const CompleteMedSupDataImp = "Completed 1-800-MEDICARE suppression data import."
-const ReadingFileN = "Reading file %s from archive %s.\n"
-const ReadingFile = "Reading file %s from archive %s"
-const FileNotFoundN = "File %s not found in archive %s.\n"
-const FileNotFound = "file %s not found in archive %s"
 const TestACOName = "ACO name (--name) must be provided"
 const TestReqErr = "Request error"
 const InProgress = "In Progress"
