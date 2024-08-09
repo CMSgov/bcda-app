@@ -700,3 +700,13 @@ func GetSQSEvent(t *testing.T, bucketName string, fileName string) events.SQSEve
 	}
 	return event
 }
+
+func GetFileFromZip(t *testing.T, zipReader *zip.Reader, filename string) *zip.File {
+	for _, f := range zipReader.File {
+		if f.Name == filename {
+			return f
+		}
+	}
+
+	return nil
+}

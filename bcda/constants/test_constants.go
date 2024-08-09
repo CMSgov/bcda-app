@@ -81,7 +81,7 @@ const TestSelectNowSQL = "SELECT NOW()"
 const TestCountSQL = "COUNT(1)"
 
 // Named Constants
-const CCLF8CompPath = "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
+const CCLF8CompPath = "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
 const CCLF8Name = "T.BCD.A0001.ZC8Y18.D181120.T1000009"
 const CCLFDIR = "cclf"
 const TestFileTime = "2018-11-20T10:00:00Z"
