@@ -105,7 +105,7 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	return sc, func() {}, err
 }
 
-func getHeadObject(bucket string, key string, sess *session.Session) (*s3.HeadObjectOutput, err) {
+func getHeadObject(bucket string, key string, sess *session.Session) (*s3.HeadObjectOutput, error) {
 	svc := s3.New(sess)
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
