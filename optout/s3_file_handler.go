@@ -105,6 +105,24 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	return sc, func() {}, err
 }
 
+func getHeadObject(bucket string, key string, sess *session.Session) (*s3.HeadObjectOutput, err) {
+	svc := s3.New(sess)
+	input := &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	output, err := svc.HeadObject(input)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("Downloaded HeadObject: %v\n", output)
+
+	return output, nil
+}
+
 func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 	handler.Infof("Opening file %s\n", filePath)
 	bucket, file := ParseS3Uri(filePath)
@@ -115,7 +133,15 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 	}
 
 	downloader := s3manager.NewDownloader(sess)
-	buff := &aws.WriteAtBuffer{}
+
+	headObj, err := getHeadObject(bucket, file, sess)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := make([]byte, int(*headObj.ContentLength))
+	buff := aws.NewWriteAtBuffer(buf)
+
 	numBytes, err := downloader.Download(buff, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(file),
