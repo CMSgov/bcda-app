@@ -118,8 +118,6 @@ func getHeadObject(bucket string, key string, sess *session.Session) (*s3.HeadOb
 		return nil, err
 	}
 
-	fmt.Printf("Downloaded HeadObject: %v\n", output)
-
 	return output, nil
 }
 
