@@ -213,3 +213,28 @@ package-cclf-import: export GOOS=linux
 package-cclf-import: export GOARCH=amd64
 package-cclf-import:
 	cd bcda && go build -o bin/cclf-import ./lambda/cclf/main.go
+
+# Build and publish images to ECR
+build-api:
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
+	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcda_prod .
+
+publish-api:	
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${DOCKER_REGISTRY_URL}'
+	docker image push '${DOCKER_REGISTRY_URL}' -a
+
+build-worker:
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker)
+	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcdaworker_prod .
+
+publish-worker:
+	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
+	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker)
+	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${DOCKER_REGISTRY_URL}'
+	docker image push '${DOCKER_REGISTRY_URL}' -a

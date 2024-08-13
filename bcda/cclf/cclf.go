@@ -246,7 +246,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	if len(cclfMap) == 0 {
-		importer.Logger.Info("Failed to find any valid CCLF files in directory")
+		importer.Logger.Info("Did not find any CCLF files in directory -- returning safely.")
 		return 0, failure, skipped, err
 	}
 
@@ -287,7 +287,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	if failure > 0 {
-		err = errors.New("one or more files failed to import correctly")
+		err = errors.New(fmt.Sprintf("Failed to import %d files", failure))
 		importer.Logger.Error(err)
 	} else {
 		err = nil
