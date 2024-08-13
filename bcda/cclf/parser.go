@@ -19,7 +19,6 @@ func getCMSID(name string) (string, error) {
 	parts := exp.FindStringSubmatch(name)
 	if len(parts) != 2 {
 		err := fmt.Errorf("invalid name ('%s') for CCLF archive, parts: %v", name, parts)
-		fmt.Println(err.Error())
 		log.API.Error(err.Error())
 		return "", err
 	}
@@ -62,15 +61,13 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 
 	if len(parts) != 7 {
 		err := fmt.Errorf("invalid filename ('%s') for CCLF file, parts: %v", fileName, parts)
-		fmt.Println(err.Error())
-		log.API.Error(err)
+		log.API.Warning(err)
 		return metadata, err
 	}
 
 	cclfNum, err := strconv.Atoi(parts[3])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", fileName)
-		fmt.Println(err.Error())
 		log.API.Error(err)
 		return metadata, err
 	}
@@ -78,7 +75,6 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	perfYear, err := strconv.Atoi(parts[5])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
-		fmt.Println(err.Error())
 		log.API.Error(err)
 		return metadata, err
 	}
@@ -87,7 +83,6 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
-		fmt.Println(err.Error())
 		log.API.Error(err)
 		return metadata, err
 	}
@@ -104,7 +99,6 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	filesNotAfter := refDate
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
 		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", filenameDate, fileName, refDate.Format("060102")))
-		fmt.Println(err.Error())
 		log.API.Error(err)
 		return metadata, err
 	}

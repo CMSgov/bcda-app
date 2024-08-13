@@ -1,4 +1,4 @@
-# Integration test that triggers an Opt Out import in the test environment and 
+# Integration test that triggers an Opt Out import in the test environment and
 # verifies the imported data in the test database.
 name: opt-out-import test integration
 
@@ -8,6 +8,8 @@ on:
       - .github/workflows/opt-out-import-test-integration.yml
       - .github/workflows/opt-out-import-test-deploy.yml
       - optout/**
+      - bcda/suppression/**
+      - bcda/lambda/optout/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
@@ -15,7 +17,6 @@ concurrency:
   group: opt-out-import-test-integration
 
 jobs:
-
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
@@ -54,11 +55,11 @@ jobs:
           echo "FILENAME=$fname" >> "$GITHUB_OUTPUT"
           aws s3 cp ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/$fname
-            
+
   verify:
     needs: trigger
     runs-on: self-hosted
-    env: 
+    env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
       - uses: actions/checkout@v3
@@ -68,7 +69,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
       - name: Install psql
         run: |
-            sudo amazon-linux-extras install postgresql14
+          sudo amazon-linux-extras install postgresql14
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -94,4 +95,4 @@ jobs:
                 exit 1
               fi
           fi
-            
+

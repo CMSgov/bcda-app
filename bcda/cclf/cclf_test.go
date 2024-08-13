@@ -54,6 +54,7 @@ func (s *CCLFTestSuite) SetupTest() {
 	}
 
 	s.importer = CclfImporter{
+		Logger:        log.API,
 		FileProcessor: file_processor,
 	}
 }
@@ -159,24 +160,14 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	//Directory with mixed file types + at least one bad file.
 	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
 	_, _, _, err := s.importer.ImportCCLFDirectory(cclfDirectory)
-	assert.EqualError(err, "one or more files failed to import correctly")
+	assert.EqualError(err, "Failed to import 1 files")
 
 	//Target bad file directory
 	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "archives", "invalid_bcd")
 	_, _, _, err = s.importer.ImportCCLFDirectory(cclfDirectory)
-	assert.EqualError(err, "one or more files failed to import correctly")
-
+	assert.EqualError(err, "Failed to import 3 files")
 }
 
-/*
-	func (s *CCLFTestSuite) TestImportCCLFDirectoryEmpty() {
-		assert := assert.New(s.T())
-		//Zero CCLF files in directory
-		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "emptydir")
-		_, _, _, err := ImportCCLFDirectory(cclfDirectory)
-		assert.Nil(err)
-	}
-*/
 func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 	assert := assert.New(s.T())
 	//Zero CCLF files in directory
