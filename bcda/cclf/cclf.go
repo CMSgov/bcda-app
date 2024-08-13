@@ -339,7 +339,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	if failure > 0 {
-		err = errors.New(fmt.Sprintf("Failed to import %s files", failure))
+		err = errors.New(fmt.Sprintf("Failed to import %d files", failure))
 		importer.Logger.Error(err)
 	} else {
 		err = nil
