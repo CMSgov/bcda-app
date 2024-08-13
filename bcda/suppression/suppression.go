@@ -140,7 +140,6 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFile
 			optInCount++
 		case "N":
 			optOutCount++
-			return nil
 		}
 		return nil
 	})
@@ -149,7 +148,7 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFile
 		importer.updateImportStatus(metadata, optout.ImportFail)
 		return err
 	}
-	importer.Logger.WithFields(logrus.Fields{"created_opt_outs_count": optOutCount, "created_opt_ins_count": optInCount}).Info()
+	importer.Logger.WithFields(logrus.Fields{"created_opt_outs_count": optOutCount, "created_opt_ins_count": optInCount}).Infof("Successfully imported file: %s", metadata.Name)
 	importer.updateImportStatus(metadata, optout.ImportComplete)
 	return nil
 }
