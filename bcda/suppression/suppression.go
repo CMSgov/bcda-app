@@ -120,6 +120,8 @@ func (importer OptOutImporter) validate(metadata *optout.OptOutFilenameMetadata)
 }
 
 func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFilenameMetadata) error {
+	optOutCount := 0
+	optInCount := 0
 	err := importer.importSuppressionMetadata(metadata, func(fileID uint, b []byte) error {
 		suppression, err := optout.ParseRecord(metadata, b)
 
@@ -133,6 +135,12 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFile
 			importer.Logger.Error(err)
 			return err
 		}
+		switch suppression.PrefIndicator {
+		case "Y":
+			optInCount++
+		case "N":
+			optOutCount++
+		}
 		return nil
 	})
 
@@ -140,6 +148,7 @@ func (importer OptOutImporter) ImportSuppressionData(metadata *optout.OptOutFile
 		importer.updateImportStatus(metadata, optout.ImportFail)
 		return err
 	}
+	importer.Logger.WithFields(logrus.Fields{"created_opt_outs_count": optOutCount, "created_opt_ins_count": optInCount}).Infof("Successfully imported file: %s", metadata.Name)
 	importer.updateImportStatus(metadata, optout.ImportComplete)
 	return nil
 }
