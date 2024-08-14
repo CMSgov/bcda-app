@@ -142,7 +142,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	//Directory with mixed file types + at least one bad file.
 	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
 	_, _, _, err := s.importer.ImportCCLFDirectory(cclfDirectory)
-	assert.EqualError(err, "Failed to import 1 files")
+	assert.EqualError(err, "Failed to import 15 files")
 
 	//Target bad file directory
 	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "archives", "invalid_bcd")
