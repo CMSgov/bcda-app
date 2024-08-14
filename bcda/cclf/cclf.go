@@ -225,7 +225,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	}
 
 	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
-	importer.Logger.WithFields(logrus.Fields{"imported_count": importedCount}).Infof(successMsg)
+	importer.Logger.WithFields(logrus.Fields{"imported_count": importedCount}).Info(successMsg)
 
 	return nil
 }
