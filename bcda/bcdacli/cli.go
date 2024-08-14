@@ -67,7 +67,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType, alrFile string
 	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -561,32 +561,6 @@ func setUpApp() *cli.App {
 				}
 				s, f, sk, err := importer.ImportSuppressionDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
-				return err
-			},
-		},
-		{
-			Name:     "delete-dir-contents",
-			Category: "Cleanup",
-			Usage:    "Delete all of the files in a directory",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "dirToDelete",
-					Usage:       "Name of the directory to delete the files from",
-					Destination: &dirToDelete,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				fi, err := os.Stat(dirToDelete)
-				if err != nil {
-					return err
-				}
-				if !fi.IsDir() {
-					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
-				}
-				filesDeleted, err := utils.DeleteDirectoryContents(dirToDelete)
-				if filesDeleted > 0 {
-					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
-				}
 				return err
 			},
 		},
