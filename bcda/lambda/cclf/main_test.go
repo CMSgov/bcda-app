@@ -48,8 +48,8 @@ func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
 	}
 
 	tests := []test{
-		{path: "../../../shared_files/cclf/archives/valid2/", filename: "cclf/archives/valid2/T.BCD.A0001.ZCY18.D181120.T1000000", expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 0 files."}},
-		{path: "../../../shared_files/cclf/archives/invalid_bcd/", filename: "cclf/archives/invalid_bcd/P.BCD.A0009.ZCY18.D181120.T0001000", err: errors.New("Failed to import 1 files"), expectedLogs: []string{}},
+		{path: "../../../shared_files/cclf/archives/valid/", filename: "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000", expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 0 files."}},
+		{path: "../../../shared_files/cclf/archives/invalid_bcd/", filename: "cclf/archives/invalid_bcd/P.BCD.A0009.ZCY18.D181120.T0001000", err: errors.New("Files skipped or failed import. See logs for more details."), expectedLogs: []string{}},
 		{path: "../../../shared_files/cclf/archives/skip/", filename: "cclf/archives/skip/T.BCD.ACOB.ZC0Y18.D181120.T0001000", expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."}},
 	}
 

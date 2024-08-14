@@ -41,7 +41,7 @@ func CreateDatabase(t *testing.T, migrationPath string, cleanup bool) (*sql.DB, 
 	if cleanup {
 		t.Cleanup(func() {
 			assert.NoError(t, newDB.Close())
-			_, err = db.Exec(fmt.Sprintf("DROP DATABASE " + newDBName))
+			_, err = db.Exec(fmt.Sprint("DROP DATABASE " + newDBName))
 			assert.NoError(t, err)
 		})
 	}
