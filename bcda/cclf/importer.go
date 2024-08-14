@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/jackc/pgx"
