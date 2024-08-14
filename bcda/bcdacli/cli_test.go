@@ -718,7 +718,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	tests := []test{
 		{path: "../../shared_files/cclf/archives/valid/", err: errors.New("Files skipped or failed import. See logs for more details."), expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."}},
-		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("one or more files failed to import correctly"), expectedLogs: []string{"Missing CCLF0 or CCLF8 file in zip", "", ""}},
+		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("Failed to import 1 files"), expectedLogs: []string{"Missing CCLF0 or CCLF8 file in zip", "", ""}},
 		{path: "../../shared_files/cclf/archives/skip/", err: errors.New("Files failed to import or no files were imported. See logs for more details."), expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 1 files."}},
 	}
 

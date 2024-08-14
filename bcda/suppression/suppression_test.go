@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -74,6 +76,7 @@ func TestSuppressionTestSuite(t *testing.T) {
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
 
+	hook := test.NewLocal(logrus.StandardLogger())
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := &optout.OptOutFilenameMetadata{
@@ -134,6 +137,21 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("N", suppressions[200].PrefIndicator)
 	assert.Equal("1000098787", suppressions[249].MBI)
 	assert.Equal("", suppressions[249].PrefIndicator)
+
+	var optOut, optIn bool
+	entry := hook.LastEntry()
+	if _, ok := entry.Data["created_opt_outs_count"]; ok {
+		optOut = true
+		assert.Equal(entry.Data["created_opt_outs_count"], 86)
+	}
+	if _, ok := entry.Data["created_opt_ins_count"]; ok {
+		optIn = true
+		assert.Equal(entry.Data["created_opt_ins_count"], 71)
+	}
+
+	assert.True(optOut)
+	assert.True(optIn)
+
 }
 
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
