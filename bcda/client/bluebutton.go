@@ -153,7 +153,7 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 	params.Set("_id", patientID)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("Patient/", params)
+	u, err := bbc.getURL("Patient", params)
 	if err != nil {
 		return nil, err
 	}
