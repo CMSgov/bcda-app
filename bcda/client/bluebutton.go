@@ -196,7 +196,7 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("Claim", params)
+	u, err := bbc.getURL("Claim/_search", params)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("ClaimResponse", params)
+	u, err := bbc.getURL("ClaimResponse/_search", params)
 	if err != nil {
 		return nil, err
 	}
