@@ -170,7 +170,7 @@ func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi 
 	}
 
 	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.getRawData(jobData, "GET", u, strings.NewReader(body))
+	return bbc.getRawData(jobData, "POST", u, strings.NewReader(body))
 }
 
 func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
