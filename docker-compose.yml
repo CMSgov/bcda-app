@@ -32,8 +32,6 @@ services:
       - CI=${CI} # Used to determine if the API is running on a CI process
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -55,8 +53,6 @@ services:
       - CI=${CI} # Used to determine if the API is running on a CI process
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
     depends_on:
       - db
       - queue
@@ -108,8 +104,6 @@ services:
       - SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES=5
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
     ports:
       - "3003:3003"
       - "3004:3004"
