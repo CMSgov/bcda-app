@@ -47,3 +47,8 @@ aco_config:
       data:
         - "adjudicated"
         - "partially-adjudicated"
+    - model: "TCOCMD"
+      name_pattern: "MD\\d{3}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"

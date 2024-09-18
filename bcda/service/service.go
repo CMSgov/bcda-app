@@ -496,10 +496,15 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 			upperBound = time.Now()
 		}
 
-		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
+		if cfg, ok := s.GetACOConfigForID(conditions.CMSID); ok {
+			if cfg.Model != "TCOCMD" {
+				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
+				}
+			}
 		}
+
 	}
 
 	benes, err := s.repository.GetCCLFBeneficiaries(ctx, cclfFileID, ignoredMBIs)
