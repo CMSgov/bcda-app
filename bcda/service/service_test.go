@@ -1214,7 +1214,7 @@ func (s *ServiceTestSuiteWithDatabase) TearDownTest() {
 func (s *ServiceTestSuiteWithDatabase) TestGetBenesByIDIntegration() {
 	cfg, err := LoadConfig()
 	if err != nil {
-		s.T().Fatalf(fmt.Sprint(err))
+		s.T().Fatal(err)
 	}
 
 	service := service{
@@ -1253,7 +1253,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByIDIntegration() {
 			}
 			actualBeneCount, err := service.getBenesByFileID(context.Background(), 1, rc)
 			if err != nil {
-				s.T().Fatalf(fmt.Sprint(err))
+				s.T().Fatal(err)
 			}
 			assert.Equal(t, test.beneCount, len(actualBeneCount))
 			for i := 0; i < len(actualBeneCount); i++ {
@@ -1264,9 +1264,8 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByIDIntegration() {
 
 }
 
-func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_RecentSinceParameterIntegration() {
+func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_RecentSinceParameterDatabaseIntegration() {
 	db := database.Connection
-	fmt.Print("foo bar")
 	acoID := "A0005"
 
 	// Test Setup
