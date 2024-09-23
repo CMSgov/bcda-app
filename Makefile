@@ -93,7 +93,7 @@ test:
 	$(MAKE) postman env=local maintenanceMode=""
 	$(MAKE) smoke-test env=local maintenanceMode=""
 
-load-fixtures:
+start-db:
 	# Rebuild the databases to ensure that we're starting in a fresh state
 	docker compose -f docker-compose.yml rm -fsv db queue
 
@@ -106,6 +106,7 @@ load-fixtures:
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
 
+load-fixtures: start-db
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data

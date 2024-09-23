@@ -15,8 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Start DB
+        run: make start-db
+
       - name: Generate docs
-        run: docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc "postgres://postgres:toor@db:5432/bcda?sslmode=disable
+        run: docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --rm-dist "postgres://postgres:toor@db:5432/bcda?sslmode=disable dbdocs/bcda
+
+      - name: Generate docs
+        run: docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable dbdocs/bcda_queue
 
       - uses: EndBug/add-and-commit@v9
         with:
