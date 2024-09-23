@@ -1,0 +1,24 @@
+# This workflow generates database documentation and ERD files.
+#
+name: Generate dbdocs
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/dbdocs.yml
+      - db/migrations/bcda
+      - db/migrations/bcda_queue
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate docs
+        run: docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc "postgres://postgres:toor@db:5432/bcda?sslmode=disable
+
+      - uses: EndBug/add-and-commit@v9
+        with:
+          message: "Generate dbdocs"
+          default_author: github_actions
