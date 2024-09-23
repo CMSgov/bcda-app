@@ -9,11 +9,19 @@ on:
       - db/migrations/bcda
       - db/migrations/bcda_queue
 
+env:
+  VAULT_PW: ${{ secrets.VAULT_PW }}
+
 jobs:
   generate-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
 
       - name: Start DB
         run: make start-db
