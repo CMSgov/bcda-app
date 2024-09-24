@@ -33,7 +33,7 @@ jobs:
       - name: Generate DB docs
         run: make dbdocs
 
-      - uses: EndBug/add-and-commit@v9
+      - uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9.1.4
         with:
           add: dbdocs
           message: "Generate dbdocs"
