@@ -35,9 +35,10 @@ jobs:
 
       - uses: EndBug/add-and-commit@v9
         with:
+          add: dbdocs
           message: "Generate dbdocs"
           default_author: github_actions
-      
+
       - name: Cleanup secrets
         if: always()
         run: rm -r shared_files/decrypted
