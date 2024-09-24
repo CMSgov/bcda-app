@@ -28,15 +28,16 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
 
       - name: Start DB
-        run: make start-db
+        run: make reset-db
 
-      - name: Generate docs
-        run: docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --rm-dist "postgres://postgres:toor@db:5432/bcda?sslmode=disable" dbdocs/bcda
-
-      - name: Generate docs
-        run: docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable" dbdocs/bcda_queue
+      - name: Generate DB docs
+        run: make dbdocs
 
       - uses: EndBug/add-and-commit@v9
         with:
           message: "Generate dbdocs"
           default_author: github_actions
+      
+      - name: Cleanup secrets
+        if: always()
+        run: rm -r shared_files/decrypted
