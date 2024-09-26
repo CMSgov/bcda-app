@@ -93,7 +93,7 @@ test:
 	$(MAKE) postman env=local maintenanceMode=""
 	$(MAKE) smoke-test env=local maintenanceMode=""
 
-load-fixtures:
+reset-db:
 	# Rebuild the databases to ensure that we're starting in a fresh state
 	docker compose -f docker-compose.yml rm -fsv db queue
 
@@ -106,6 +106,7 @@ load-fixtures:
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
 
+load-fixtures: reset-db
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
@@ -189,7 +190,7 @@ bdt:
 	-e SECRET='${CLIENT_SECRET}' \
 	bdt
 
-.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 documentation:
 	docker compose up --build documentation
@@ -201,6 +202,9 @@ credentials:
 	# For example: ACO_CMS_ID=A9993 make credentials 
 	@docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
 
+dbdocs:
+	docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --rm-dist "postgres://postgres:toor@db:5432/bcda?sslmode=disable" dbdocs/bcda
+	docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --force "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable" dbdocs/bcda_queue
 
 # ==== Lambda ====
 
