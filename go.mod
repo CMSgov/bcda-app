@@ -20,7 +20,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/fhir/go v0.0.0-20220518004845-30f5cde7c5cd
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.6.8
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/howeyc/fsnotify v0.9.0
 	github.com/huandu/go-sqlbuilder v1.14.1
 	github.com/jackc/pgx v3.6.2+incompatible
@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	github.com/urfave/cli v1.22.9
-	golang.org/x/crypto v0.21.0
+	golang.org/x/crypto v0.23.0
 	golang.org/x/text v0.14.0
 	gotest.tools/gotestsum v1.6.2
 )
