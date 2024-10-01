@@ -93,8 +93,8 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	var archiveName string
 
 	now := time.Now()
-	rand.Seed(now.UnixNano())
-	jitter := rand.Intn(100) // #nosec G404 Need seed for random generator
+	r := rand.New(rand.NewSource(now.UnixNano()))
+	jitter := r.Intn(100) // #nosec G404 Need seed for random generator
 	dateStr := fmt.Sprintf("%02d.D%s.T%s0", jitter, now.Format("060102"), now.Format("150405"))
 	suffix := fmt.Sprintf("%s%s", fileType, dateStr)
 	for _, file := range files {
