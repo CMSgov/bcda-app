@@ -1,6 +1,8 @@
 module github.com/CMSgov/bcda-app
 
-go 1.19
+go 1.22
+
+toolchain go1.23.0
 
 require (
 	github.com/BurntSushi/toml v0.4.1
@@ -34,7 +36,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/viper v1.9.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.9.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	github.com/urfave/cli v1.22.9
 	golang.org/x/crypto v0.27.0
@@ -42,7 +44,10 @@ require (
 	gotest.tools/gotestsum v1.6.2
 )
 
-require github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
+require (
+	github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
+	github.com/jackc/pgx v3.6.2+incompatible
+)
 
 require (
 	bitbucket.org/creachadair/stringset v0.0.10 // indirect
@@ -54,6 +59,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
+	github.com/distribution/reference v0.6.0 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/docker/docker v25.0.6+incompatible // indirect
 	github.com/fatih/color v1.16.0 // indirect
@@ -91,9 +97,11 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.3.0 // indirect
 	github.com/tsenart/go-tsz v0.0.0-20180814235614-0bd30b3df1c3 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0 // indirect
+	go.opentelemetry.io/otel/trace v1.30.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
