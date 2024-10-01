@@ -24,7 +24,7 @@ require (
 	github.com/howeyc/fsnotify v0.9.0
 	github.com/huandu/go-sqlbuilder v1.14.1
 	github.com/jackc/pgx v3.6.2+incompatible
-	github.com/mattn/go-colorable v0.1.12
+	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/newrelic/go-agent/v3 v3.18.1
 	github.com/newrelic/go-agent/v3/integrations/nrlogrus v1.0.0
@@ -39,7 +39,7 @@ require (
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	github.com/urfave/cli v1.22.9
 	golang.org/x/crypto v0.23.0
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.15.0
 	gotest.tools/gotestsum v1.6.2
 )
 
@@ -56,8 +56,8 @@ require (
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
-	github.com/docker/docker v24.0.9+incompatible // indirect
-	github.com/fatih/color v1.10.0 // indirect
+	github.com/docker/docker v27.3.1+incompatible // indirect
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -76,7 +76,7 @@ require (
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/moby/term v0.0.0-20200915141129-7f0af18e79f2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -98,8 +98,8 @@ require (
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.18.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
