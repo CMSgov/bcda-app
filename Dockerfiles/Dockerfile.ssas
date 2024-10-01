@@ -10,8 +10,8 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 # By pulling this step out, we can leverage Docker caching
 # since our tooling/dependencies do not frequently change.
 COPY go.mod go.sum tools.go ./
-RUN --mount=type=cache,target=/go/pkg/mod \ 
-    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get % 
+RUN --mount=type=cache,target=/go/pkg/mod \
+    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %
 
 COPY . .
 WORKDIR /go
@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go install -v ./ssas/service/main
 
-FROM golang:1.21-alpine3.20 AS prod
+FROM golang:1.23.1-alpine3.20 AS prod
 
 RUN apk update upgrade
 RUN apk add openssl
