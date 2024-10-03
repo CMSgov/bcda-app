@@ -6,14 +6,14 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-// Get the MBIs and put them into jobs
+// GetAlrJobs Get the MBIs and put them into jobs
 func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
 
 	partition := int(s.alrMBIsPerJob)
 
 	loop := len(alrMBI.MBIS) / partition
 
-	bigJob := []*models.JobAlrEnqueueArgs{}
+	var bigJob []*models.JobAlrEnqueueArgs
 
 	for i := 0; i < loop; i++ {
 		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
