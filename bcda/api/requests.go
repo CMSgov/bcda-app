@@ -187,7 +187,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ad, err = readAuthData(r); err != nil {
+	if ad, err = GetCtxAuthData(r); err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
@@ -388,7 +388,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		resp AttributionFileStatusResponse
 	)
 
-	if ad, err = readAuthData(r); err != nil {
+	if ad, err = GetCtxAuthData(r); err != nil {
 		logger.Error(err)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -470,13 +470,17 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		err error
 	)
 
-	if ad, err = readAuthData(r); err != nil {
+	if ad, err = GetCtxAuthData(r); err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
-	rp, ok := middleware.RequestParametersFromContext(ctx)
+	if cfg, ok := h.Svc.GetACOConfigForID(ad.CMSID); ok {
+		ctx = service.NewCtxACOCfg(ctx, cfg)
+	}
+
+	rp, ok := middleware.GetCtxRequestParams(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
 	}
@@ -680,7 +684,7 @@ func (h *Handler) authorizedResourceAccess(dataType service.DataType, cmsID stri
 	return false
 }
 
-func readAuthData(r *http.Request) (data auth.AuthData, err error) {
+func GetCtxAuthData(r *http.Request) (data auth.AuthData, err error) {
 	var ok bool
 	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 	if !ok {

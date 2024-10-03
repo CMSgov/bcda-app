@@ -38,7 +38,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 			panic("AuthData should be set before calling this handler")
 		}
 
-		rp, ok := RequestParametersFromContext(r.Context())
+		rp, ok := GetCtxRequestParams(r.Context())
 		if !ok {
 			panic("RequestParameters should be set before calling this handler")
 		}

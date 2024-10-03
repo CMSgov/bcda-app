@@ -496,8 +496,8 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 			upperBound = time.Now()
 		}
 
-		if cfg, ok := s.GetACOConfigForID(conditions.CMSID); ok {
-			if cfg.Model != "TCOCMD" {
+		if cfg, ok := GetCtxACOCfg(ctx); ok {
+			if cfg.IgnoreSuppressions == false {
 				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
 				if err != nil {
 					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
@@ -678,3 +678,17 @@ var (
 	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
 	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
 )
+
+type CtxACOCfgType string
+
+const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
+
+func NewCtxACOCfg(ctx context.Context, cfg *ACOConfig) context.Context {
+	newctx := context.WithValue(ctx, CtxACOCfg, cfg)
+	return newctx
+}
+
+func GetCtxACOCfg(ctx context.Context) (*ACOConfig, bool) {
+	cfg, ok := ctx.Value(CtxACOCfg).(*ACOConfig)
+	return cfg, ok
+}

@@ -105,7 +105,7 @@ func TestFailedToGetJobs(t *testing.T) {
 
 func getRequest(rp RequestParameters) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{ACOID: uuid.New()})
-	ctx = NewRequestParametersContext(ctx, rp)
+	ctx = NewCtxRequestParams(ctx, rp)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	// Since we're supplying the request parameters in the context, the actual req URL does not matter
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)

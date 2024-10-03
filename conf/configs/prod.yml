@@ -36,8 +36,9 @@ aco_config:
         - "adjudicated"
         - "partially-adjudicated"
     - model: "TCOCMD"
-      name_pattern: "MD\\d{3}"
+      name_pattern: "CT\\d{6}"
       data:
         - "adjudicated"
         - "partially-adjudicated"
+      ignore_suppressions: true 
     
