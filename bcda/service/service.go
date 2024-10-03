@@ -496,7 +496,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 			upperBound = time.Now()
 		}
 
-		if cfg, ok := GetCtxACOCfg(ctx); ok {
+		if cfg, ok := SetACOCfgFromCtx(ctx); ok {
 			if !cfg.IgnoreSuppressions {
 				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
 				if err != nil {
@@ -683,12 +683,15 @@ type CtxACOCfgType string
 
 const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
 
-func NewCtxACOCfg(ctx context.Context, cfg *ACOConfig) context.Context {
+// TODO: this should live within middleware, models, or another common package.
+//
+//	We should move this when we do package cleanup.
+func NewACOCfgCtx(ctx context.Context, cfg *ACOConfig) context.Context {
 	newctx := context.WithValue(ctx, CtxACOCfg, cfg)
 	return newctx
 }
 
-func GetCtxACOCfg(ctx context.Context) (*ACOConfig, bool) {
+func SetACOCfgFromCtx(ctx context.Context) (*ACOConfig, bool) {
 	cfg, ok := ctx.Value(CtxACOCfg).(*ACOConfig)
 	return cfg, ok
 }

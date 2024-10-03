@@ -365,7 +365,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			}
 			serviceInstance := NewService(repository, cfg, "").(*service)
 			acoConfig, _ := serviceInstance.GetACOConfigForID(cmsID)
-			ctxACOCfg := NewCtxACOCfg(context.Background(), acoConfig)
+			ctxACOCfg := NewACOCfgCtx(context.Background(), acoConfig)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(ctxACOCfg,
 				RequestConditions{CMSID: "A0000", Since: since, fileType: models.FileTypeDefault})
 
@@ -616,7 +616,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			}
 			serviceInstance := NewService(repository, cfg, "").(*service)
 			acoConfig, _ := serviceInstance.GetACOConfigForID(cmsID)
-			ctxACOCfg := NewCtxACOCfg(context.Background(), acoConfig)
+			ctxACOCfg := NewACOCfgCtx(context.Background(), acoConfig)
 			benes, err := serviceInstance.getBeneficiaries(ctxACOCfg,
 				RequestConditions{CMSID: "A0000", fileType: tt.fileType})
 
@@ -1244,7 +1244,8 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 		mbis      []string
 	}{
 		{"ACO config ignore suppressions is true", "CT000001", 7, []string{"MBI00000001", "MBI00000002", "MBI00000003", "MBI00000004", "MBI00000005", "MBI00000006", "MBI00000007"}},
-		{"ACO config ignore suppressions is false", "A0001", 4, []string{"MBI00000004", "MBI00000005", "MBI00000006", "MBI00000007"}},
+		{"ACO config ignore suppressions is false implicit", "A0001", 4, []string{"MBI00000004", "MBI00000005", "MBI00000006", "MBI00000007"}},
+		{"ACO config ignore suppressions is false explicit", "TEST001", 4, []string{"MBI00000004", "MBI00000005", "MBI00000006", "MBI00000007"}},
 	}
 
 	for _, test := range test_cases {
@@ -1260,7 +1261,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 				assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 			}
 			acoConfig, _ := service.GetACOConfigForID(test.cmsID)
-			newCtx := NewCtxACOCfg(context.Background(), acoConfig)
+			newCtx := NewACOCfgCtx(context.Background(), acoConfig)
 			rc := RequestConditions{
 				CMSID: test.cmsID,
 			}

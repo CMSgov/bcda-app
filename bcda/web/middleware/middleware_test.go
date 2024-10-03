@@ -157,7 +157,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 }
 
 func (s *MiddlewareTestSuite) TestACOEnabled_NoContextKey() {
-	ctx := NewCtxRequestParams(context.Background(), RequestParameters{})
+	ctx := SetRequestParamsCtx(context.Background(), RequestParameters{})
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
 	assert.NoError(s.T(), cfg.ComputeFields())
@@ -183,7 +183,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 
 	for _, tt := range tests {
 		ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "A1234"})
-		ctx = NewCtxRequestParams(ctx, RequestParameters{})
+		ctx = SetRequestParamsCtx(ctx, RequestParameters{})
 		ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 
 		cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
@@ -203,7 +203,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
-	ctx = NewCtxRequestParams(ctx, rp)
+	ctx = SetRequestParamsCtx(ctx, rp)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
 }

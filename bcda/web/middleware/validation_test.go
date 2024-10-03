@@ -36,7 +36,7 @@ func TestValidRequestURL(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Verify we have the context as expected
-	rp, ok := GetCtxRequestParams(ctx)
+	rp, ok := GetRequestParamsFromCtx(ctx)
 	assert.True(t, ok)
 	// assert.True(t, now.Equal(rp.Since), "Since parameter does not match")
 	assert.Equal(t, rp.ResourceTypes, []string{"Patient"})

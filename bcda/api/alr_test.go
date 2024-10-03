@@ -57,7 +57,7 @@ func (s *AlrTestSuite) TestAlrRequest() {
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
-	ctx = middleware.NewCtxRequestParams(ctx, middleware.RequestParameters{ResourceTypes: []string{"Patient", "Observation"}})
+	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{ResourceTypes: []string{"Patient", "Observation"}})
 	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()

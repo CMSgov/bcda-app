@@ -30,11 +30,11 @@ type requestkey int
 
 const rk requestkey = 0
 
-func NewCtxRequestParams(ctx context.Context, rp RequestParameters) context.Context {
+func SetRequestParamsCtx(ctx context.Context, rp RequestParameters) context.Context {
 	return context.WithValue(ctx, rk, rp)
 }
 
-func GetCtxRequestParams(ctx context.Context) (RequestParameters, bool) {
+func GetRequestParamsFromCtx(ctx context.Context) (RequestParameters, bool) {
 	rp, ok := ctx.Value(rk).(RequestParameters)
 	return rp, ok
 }
@@ -121,7 +121,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			rp.ResourceTypes = resourceTypes
 		}
 
-		ctx := NewCtxRequestParams(r.Context(), rp)
+		ctx := SetRequestParamsCtx(r.Context(), rp)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
