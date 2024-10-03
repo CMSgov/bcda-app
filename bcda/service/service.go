@@ -497,7 +497,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 		}
 
 		if cfg, ok := GetCtxACOCfg(ctx); ok {
-			if cfg.IgnoreSuppressions == false {
+			if !cfg.IgnoreSuppressions {
 				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
 				if err != nil {
 					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
