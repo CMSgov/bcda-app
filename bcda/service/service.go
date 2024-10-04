@@ -687,8 +687,7 @@ const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
 //
 //	We should move this when we do package cleanup.
 func NewACOCfgCtx(ctx context.Context, cfg *ACOConfig) context.Context {
-	newctx := context.WithValue(ctx, CtxACOCfg, cfg)
-	return newctx
+	return context.WithValue(ctx, CtxACOCfg, cfg)
 }
 
 func SetACOCfgFromCtx(ctx context.Context) (*ACOConfig, bool) {

@@ -30,6 +30,7 @@ type requestkey int
 
 const rk requestkey = 0
 
+// TODO: replace this function else where with line 35
 func SetRequestParamsCtx(ctx context.Context, rp RequestParameters) context.Context {
 	return context.WithValue(ctx, rk, rp)
 }
