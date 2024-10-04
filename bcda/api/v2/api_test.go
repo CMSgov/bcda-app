@@ -580,7 +580,7 @@ func (s *APITestSuite) TestResourceTypes() {
 
 				ad := s.getAuthData()
 				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-				req = req.WithContext(middleware.NewRequestParametersContext(req.Context(), rp))
+				req = req.WithContext(middleware.SetRequestParamsCtx(req.Context(), rp))
 				newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 				req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 

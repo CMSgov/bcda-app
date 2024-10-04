@@ -501,10 +501,15 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 			upperBound = time.Now()
 		}
 
-		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
+		if cfg, ok := SetACOCfgFromCtx(ctx); ok {
+			if !cfg.IgnoreSuppressions {
+				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
+				}
+			}
 		}
+
 	}
 
 	benes, err := s.repository.GetCCLFBeneficiaries(ctx, cclfFileID, ignoredMBIs)
@@ -678,3 +683,19 @@ var (
 	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
 	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
 )
+
+type CtxACOCfgType string
+
+const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
+
+// TODO: this should live within middleware, models, or another common package.
+//
+//	We should move this when we do package cleanup.
+func NewACOCfgCtx(ctx context.Context, cfg *ACOConfig) context.Context {
+	return context.WithValue(ctx, CtxACOCfg, cfg)
+}
+
+func SetACOCfgFromCtx(ctx context.Context) (*ACOConfig, bool) {
+	cfg, ok := ctx.Value(CtxACOCfg).(*ACOConfig)
+	return cfg, ok
+}
