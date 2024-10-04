@@ -141,11 +141,16 @@ func (q *queue) processJob(queJob *que.Job) error {
 	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
-		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
+		maxNotFoundRetries, err := safecast.ToInt32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
+		if err != nil {
+			logger.Errorf("Failed to convert BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES to int32. Defaulting to 3. Error: %s", err)
+			return nil
+		}
+
 		if queJob.ErrorCount >= maxNotFoundRetries {
 			logger.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
 				jobArgs.ACOID)
-			// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
+			// By returning a nil error response, we're signaling to que-go to remove this job from the job queue.
 			return nil
 		}
 

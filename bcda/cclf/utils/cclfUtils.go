@@ -2,10 +2,10 @@ package testutils
 
 import (
 	"archive/zip"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -94,8 +94,12 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	var archiveName string
 
 	now := time.Now()
-	r := rand.New(rand.NewSource(now.UnixNano()))
-	jitter := r.Intn(100) // #nosec G404 Need seed for random generator
+	jitterBytes := make([]byte, 1)
+	_, err = rand.Read(jitterBytes)
+	if err != nil {
+		return err
+	}
+	jitter := int(jitterBytes[0]) % 100
 	dateStr := fmt.Sprintf("%02d.D%s.T%s0", jitter, now.Format("060102"), now.Format("150405"))
 	suffix := fmt.Sprintf("%s%s", fileType, dateStr)
 	for _, file := range files {
@@ -130,7 +134,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 
 	_ = zipWriter.Close()
 
-	hours, err:= safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 
 	if err != nil {
 		return err

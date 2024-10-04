@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/ccoveille/go-safecast"
 	"io"
 	"net/http"
 	"os"
@@ -66,6 +67,10 @@ func setUpApp() *cli.App {
 		db = database.Connection
 		r = postgres.NewRepository(db)
 		return nil
+	}
+	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	if err != nil {
+		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
 	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType, alrFile string
 	var thresholdHr int
@@ -392,7 +397,7 @@ func setUpApp() *cli.App {
 						Handler: optout.LocalFileHandler{
 							Logger:                 log.API,
 							PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-							FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+							FileArchiveThresholdHr: hours,
 						},
 					}
 				}
@@ -547,7 +552,7 @@ func setUpApp() *cli.App {
 					file_handler = &optout.LocalFileHandler{
 						Logger:                 log.API,
 						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-						FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+						FileArchiveThresholdHr: hours,
 					}
 				}
 
