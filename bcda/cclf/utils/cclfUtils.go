@@ -18,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
+	"github.com/ccoveille/go-safecast"
 )
 
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
@@ -129,11 +130,17 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 
 	_ = zipWriter.Close()
 
+	hours, err:= safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+
+	if err != nil {
+		return err
+	}
+
 	file_processor := &cclf.LocalFileProcessor{
 		Handler: optout.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+			FileArchiveThresholdHr: hours,
 		},
 	}
 

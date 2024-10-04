@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -293,8 +294,12 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 						}
 						if resource, ok := GetDataType(rt); ok {
 							if resource.SupportsDataType(dataType) {
+								jobId, err := safecast.ToInt(conditions.JobID)
+								if err != nil {
+									log.API.Errorln(err)
+								}
 								enqueueArgs := models.JobEnqueueArgs{
-									ID:              int(conditions.JobID),
+									ID:              jobId,
 									ACOID:           conditions.ACOID.String(),
 									CMSID:           conditions.CMSID,
 									BeneficiaryIDs:  jobIDs,

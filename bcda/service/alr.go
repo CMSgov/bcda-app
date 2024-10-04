@@ -4,12 +4,18 @@ import (
 	"context"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 )
 
 // GetAlrJobs Get the MBIs and put them into jobs
 func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
 
-	partition := int(s.alrMBIsPerJob)
+	partition, err := safecast.ToInt(s.alrMBIsPerJob)
+
+	if err != nil {
+		log.API.Errorln(err)
+	}
 
 	loop := len(alrMBI.MBIS) / partition
 
