@@ -40,7 +40,7 @@ func init() {
 
 	// create folder if doesn't exist for storing the results
 	if _, err := os.Stat(reportFilePath); os.IsNotExist(err) {
-		err := os.MkdirAll(reportFilePath, os.ModePerm)
+		err := os.MkdirAll(reportFilePath, 0750)
 		if err != nil {
 			panic(err)
 		}
