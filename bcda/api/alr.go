@@ -19,13 +19,13 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// retrieve ACO & cms_id data from the context through value
-	ad, err := readAuthData(r)
+	ad, err := GetAuthDataFromCtx(r)
 	if err != nil {
 		panic("Auth data must be set prior to calling this handler.")
 	}
 
 	// retrieve resourceType requested from context
-	rp, ok := middleware.RequestParametersFromContext(ctx)
+	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
 	}
