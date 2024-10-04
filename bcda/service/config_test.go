@@ -18,7 +18,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Len(t, cfg.ACOConfigs, 10)
+	assert.Len(t, cfg.ACOConfigs, 11)
 	for _, acoCfg := range cfg.ACOConfigs {
 		assert.NotNil(t, acoCfg.patternExp)
 		if acoCfg.PerfYearTransition != "" {

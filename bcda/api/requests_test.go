@@ -595,7 +595,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
-			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
@@ -964,7 +964,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
 	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
-	ctx = middleware.NewRequestParametersContext(ctx, rp)
+	ctx = middleware.SetRequestParamsCtx(ctx, rp)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 	req = req.WithContext(ctx)
@@ -977,7 +977,7 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
-	ctx = middleware.NewRequestParametersContext(ctx, rp)
+	ctx = middleware.SetRequestParamsCtx(ctx, rp)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)

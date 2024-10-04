@@ -1,0 +1,154 @@
+---
+  - id: 1
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '1 DAY'
+    preference_indicator: "N"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000001"
+  - id: 2
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '10 DAY'
+    preference_indicator: ""
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000001"
+  - id: 3
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '30 DAYS'
+    preference_indicator: "Y"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000002"
+  - id: 4
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '10 DAY'
+    preference_indicator: "N"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000002"
+  - id: 5
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '1 DAY'
+    preference_indicator: "N"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000003"
+  - id: 6
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '1 DAY'
+    preference_indicator: ""
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000004"
+  - id: 7
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '1 DAY'
+    preference_indicator: "Y"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000005"
+  - id: 8
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '18 DAYS'
+    preference_indicator: "N"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000006"
+  - id: 9
+    created_at: RAW=NOW() - INTERVAL '1 DAY'
+    source_code: 1-800
+    effective_dt: NULL
+    pref_indicator: NULL
+    samhsa_source_code: 1-800
+    samhsa_effective_dt: NULL
+    samhsa_pref_indicator: NULL
+    aco_cms_id: K0001
+    beneficiary_link_key: NULL
+    effective_date: RAW=NOW() - INTERVAL '3 DAYS'
+    preference_indicator: "Y"
+    samhsa_effective_date: NULL
+    samhsa_preference_indicator: NULL
+    file_id: 1000
+    blue_button_id: NULL
+    mbi: "MBI00000006"

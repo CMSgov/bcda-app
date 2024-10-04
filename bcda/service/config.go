@@ -59,6 +59,7 @@ type ACOConfig struct {
 	LookbackYears      int      `conf:"lookback_period"`
 	Disabled           bool     `conf:"disabled" conf_default:"false"`
 	Data               []string `conf:"data"`
+	IgnoreSuppressions bool     `conf:"ignore_suppressions" conf_default:"false"`
 
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp

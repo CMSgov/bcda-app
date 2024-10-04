@@ -10,9 +10,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
-	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -57,7 +57,7 @@ func (s *AlrTestSuite) TestAlrRequest() {
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
-	ctx = middleware.NewRequestParametersContext(ctx, middleware.RequestParameters{ResourceTypes: []string{"Patient", "Observation"}})
+	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{ResourceTypes: []string{"Patient", "Observation"}})
 	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
