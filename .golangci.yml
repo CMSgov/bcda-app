@@ -10,6 +10,7 @@ linters:
     - goimports
     - ineffassign
     - unused
+# TODO: Enable the following linters
 #    - godox
 #    - gosec
 #    - govet

@@ -43,7 +43,10 @@ require (
 	gotest.tools/gotestsum v1.6.2
 )
 
-require github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
+require (
+	github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
+	github.com/ccoveille/go-safecast v1.1.0
+)
 
 require (
 	bitbucket.org/creachadair/stringset v0.0.10 // indirect
