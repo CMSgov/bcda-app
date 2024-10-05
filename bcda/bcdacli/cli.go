@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ccoveille/go-safecast"
 	"io"
 	"net/http"
 	"os"
@@ -18,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ccoveille/go-safecast"
 
 	"github.com/CMSgov/bcda-app/bcda/alr/csv"
 	"github.com/CMSgov/bcda-app/bcda/alr/gen"

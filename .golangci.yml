@@ -1,8 +1,4 @@
 run:
-  go: '1.19'
-  # Show statistics per linter.
-  # Default: false
-  show-stats: true
 linters:
   # Disable all linters.
   # Default: false
@@ -12,14 +8,16 @@ linters:
   enable:
     - gofmt
     - goimports
-    - govet
     - ineffassign
     - unused
     - godox
     - gosec
+    - govet
     - gosimple
 issues:
   exclude-rules:
   - path: /
     linters:
     - typecheck
+output:
+  show-stats: true

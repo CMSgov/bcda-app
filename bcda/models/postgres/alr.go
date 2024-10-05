@@ -223,7 +223,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 		}
 		alr.KeyValue = keyValue
 
-		key, err:= safecast.ToUint(metakey)
+		key, err := safecast.ToUint(metakey)
 
 		if err != nil {
 			return nil, err

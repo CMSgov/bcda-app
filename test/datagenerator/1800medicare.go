@@ -4,11 +4,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"golang.org/x/text/language"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
+
+	"golang.org/x/text/language"
 
 	"golang.org/x/text/cases"
 )
