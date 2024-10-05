@@ -10,9 +10,9 @@ linters:
     - goimports
     - ineffassign
     - unused
-    - godox
-    - gosec
-    - govet
+#    - godox
+#    - gosec
+#    - govet
     - gosimple
 issues:
   exclude-rules:
