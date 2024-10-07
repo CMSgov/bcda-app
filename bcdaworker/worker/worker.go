@@ -565,7 +565,7 @@ func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []model
 
 func createDir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.MkdirAll(path, 0750); err != nil {
+		if err = os.MkdirAll(path, 0744); err != nil {
 			return err
 		}
 		return err

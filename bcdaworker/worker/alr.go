@@ -218,7 +218,7 @@ func (a *AlrWorker) ProcessAlrJob(
 
 	// Set up IO operation to dump ndjson
 	// Created necessary directory
-	err = os.MkdirAll(fmt.Sprintf("%s/%d", a.StagingDir, id), 0750)
+	err = os.MkdirAll(fmt.Sprintf("%s/%d", a.StagingDir, id), 0744)
 	if err != nil {
 		return err
 	}

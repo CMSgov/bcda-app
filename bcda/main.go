@@ -70,7 +70,7 @@ func init() {
 
 func createAPIDirs() {
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
-	err := os.MkdirAll(archive, 0750)
+	err := os.MkdirAll(archive, 0744)
 	if err != nil {
 		log.API.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func createAPIDirs() {
 
 func createETLDirs() {
 	pendingDeletionPath := conf.GetEnv("PENDING_DELETION_DIR")
-	err := os.MkdirAll(pendingDeletionPath, 0750)
+	err := os.MkdirAll(pendingDeletionPath, 0744)
 	if err != nil {
 		log.API.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))
 	}

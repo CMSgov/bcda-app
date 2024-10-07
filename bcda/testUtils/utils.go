@@ -116,7 +116,7 @@ func SetPendingDeletionDir(s suite.Suite, path string) {
 		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
 	}
 	cclfDeletion := conf.GetEnv("PENDING_DELETION_DIR")
-	err = os.MkdirAll(cclfDeletion, 0750)
+	err = os.MkdirAll(cclfDeletion, 0744)
 	if err != nil {
 		s.FailNow("failed to create the pending deletion directory, %s", err.Error())
 	}
