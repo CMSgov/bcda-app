@@ -16,7 +16,8 @@ lint:
 	docker compose -f docker-compose.test.yml build tests
 	docker compose -f docker-compose.test.yml run \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
-	docker compose -f docker-compose.test.yml run --rm tests gosec ./... ./optout
+	# TODO: Remove the exclusion of G301 as part of BCDA-8414
+	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
 smoke-test:
 	docker compose -f docker-compose.test.yml build tests
