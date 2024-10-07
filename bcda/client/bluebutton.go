@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/ccoveille/go-safecast"
-	"github.com/cenkalti/backoff/v4"
+	backoff "github.com/cenkalti/backoff/v4"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"

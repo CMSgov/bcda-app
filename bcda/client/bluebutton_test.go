@@ -577,7 +577,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				noBulkRequestHeaders,
-				hasDefaultRequestHeaders,
+				hasDefaultRequestHeadersNoQuery,
 			},
 		},
 		{
@@ -947,6 +947,13 @@ func hasDefaultRequestHeaders(t *testing.T, req *http.Request) {
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginURL))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQID))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQ))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
+}
+func hasDefaultRequestHeadersNoQuery(t *testing.T, req *http.Request) {
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderTS))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginURL))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQID))
+	assert.Empty(t, req.Header.Get(constants.BBHeaderOriginQ))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
 }
 func hasBulkRequestHeaders(t *testing.T, req *http.Request) {

@@ -11,6 +11,7 @@ bcda/swaggerui
 bcdaworker/data/*
 bcdaworker/archive/*
 bcdaworker/tmpdata/*
+bcdaworker/TEMP/*
 .env.sh
 .envrc
 bcda/pending_delete_dir/*
