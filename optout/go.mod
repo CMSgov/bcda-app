@@ -1,6 +1,6 @@
 module github.com/CMSgov/bcda-app/optout
 
-go 1.23.1
+go 1.19
 
 require (
 	github.com/ccoveille/go-safecast v1.1.0
