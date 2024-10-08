@@ -5,7 +5,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/log"
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5"
 )
 
 func IsDatabaseOK() (result string, ok bool) {

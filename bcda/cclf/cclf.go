@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 

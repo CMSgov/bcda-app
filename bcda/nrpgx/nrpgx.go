@@ -1,9 +1,10 @@
-// This file was cloned from the New Relic go agent on May 24, 2023.
+// Package nrpgx This file was cloned from the New Relic go agent on May 24, 2023.
 // Edits were required to enable this in our repo:
 //  1. Switch from pgx/v4/stdlib to pgx/stdlib to align with our current version of pgx (v3)
 //     and avoid "Register called twice for driver pgx" errors.
 //  2. To enable a custom connection and logging configuration, use stdlib.getDefaultDriver().
 //     See: https://github.com/newrelic/go-agent/issues/435
+//  3. Updated pgx to v5
 //
 // Copyright 2021 New Relic Corporation. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
@@ -70,8 +71,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/go-agent/v3/newrelic/sqlparse"
 )
@@ -216,14 +217,14 @@ var fullParamPattern = regexp.MustCompile(
 func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, string) {
 	return func(s *newrelic.DatastoreSegment, dsn string) {
 
-		cc, err := pgx.ParseConnectionString(dsn)
+		cc, err := pgx.ParseConfig(dsn)
 		if err != nil {
 			// the connection string is invalid
 
 			// Sometimes we've found that pgx.ParseConnectionString doesn't recognize
 			// all patterns so if that call failed, we'll do a little pattern matching
 			// of our own and see if we can figure it out.
-			cc = pgx.ConnConfig{}
+			cc = &pgx.ConnConfig{}
 			conn := fullIp6ConnectPattern.FindStringSubmatch(dsn)
 			if conn == nil {
 				conn = fullConnectPattern.FindStringSubmatch(dsn)

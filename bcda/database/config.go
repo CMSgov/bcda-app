@@ -22,7 +22,7 @@ type Config struct {
 	HealthCheckSec int `conf:"DB_HEALTH_CHECK_INTERVAL" conf_default:"5"`
 }
 
-// Loads database URLs from environment variables.
+// LoadConfig Loads database URLs from environment variables.
 func LoadConfig() (cfg *Config, err error) {
 	cfg = &Config{}
 	if err := conf.Checkout(cfg); err != nil {
@@ -56,7 +56,7 @@ func LoadConfig() (cfg *Config, err error) {
 	return cfg, nil
 }
 
-// Loads database URLs from parameter store instead of from environment variables.
+// LoadConfigFromParameterStore Loads database URLs from parameter store instead of from environment variables.
 func LoadConfigFromParameterStore(dbUrlKey string, queueUrlKey string) (cfg *Config, err error) {
 	cfg = &Config{}
 	if err := conf.Checkout(cfg); err != nil {

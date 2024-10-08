@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/log/logrusadapter"
-	"github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	"github.com/sirupsen/logrus"

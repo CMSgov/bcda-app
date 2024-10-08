@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jackc/pgx/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )

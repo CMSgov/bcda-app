@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/jackc/pgx/pgtype"
-	"github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 )
 

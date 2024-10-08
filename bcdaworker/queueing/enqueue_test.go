@@ -9,7 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/huandu/go-sqlbuilder"
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )

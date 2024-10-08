@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -211,7 +211,12 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows database.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.API.Errorf("failed to close rows: %s", err)
+		}
+	}(rows)
 
 	for rows.Next() {
 		var mbi string
@@ -257,7 +262,12 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows database.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.API.Errorf("failed to close rows: %s", err)
+		}
+	}(rows)
 
 	for rows.Next() {
 		var (
@@ -313,7 +323,12 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, up
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows database.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.API.Errorf("failed to close rows: %s", err)
+		}
+	}(rows)
 
 	for rows.Next() {
 		var mbi string
@@ -496,7 +511,12 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows database.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.API.Errorf("failed to close rows: %s", err)
+		}
+	}(rows)
 
 	var keys []*models.JobKey
 	for rows.Next() {
@@ -535,7 +555,12 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows database.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.API.Errorf("failed to close rows: %s", err)
+		}
+	}(rows)
 
 	var (
 		jobs                                  []*models.Job

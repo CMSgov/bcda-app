@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 )
 

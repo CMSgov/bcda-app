@@ -18,7 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
