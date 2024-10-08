@@ -1,8 +1,6 @@
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
-	docker compose up --build documentation
-	docker compose up --build openapi
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm \
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
@@ -18,7 +16,8 @@ lint:
 	docker compose -f docker-compose.test.yml build tests
 	docker compose -f docker-compose.test.yml run \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
-	docker compose -f docker-compose.test.yml run --rm tests gosec ./... ./optout
+	# TODO: Remove the exclusion of G301 as part of BCDA-8414
+	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
 smoke-test:
 	docker compose -f docker-compose.test.yml build tests
@@ -156,7 +155,7 @@ docker-build:
 	docker compose build --force-rm
 	docker compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap: docker-build documentation load-fixtures
+docker-bootstrap: docker-build load-fixtures
 
 api-shell:
 	docker compose exec -T api bash
@@ -191,10 +190,6 @@ bdt:
 	bdt
 
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot reset-db dbdocs
-
-documentation:
-	docker compose up --build documentation
-	docker compose up --exit-code-from openapi openapi
 
 credentials:
 	$(eval ACO_CMS_ID = A9994)

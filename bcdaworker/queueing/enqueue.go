@@ -6,6 +6,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
+	"github.com/ccoveille/go-safecast"
 )
 
 const (
@@ -32,10 +33,16 @@ func (q queEnqueuer) AddJob(job models.JobEnqueueArgs, priority int) error {
 		return err
 	}
 
+	p, e := safecast.ToInt16(priority)
+
+	if e != nil {
+		return e
+	}
+
 	j := &que.Job{
 		Type:     QUE_PROCESS_JOB,
 		Args:     args,
-		Priority: int16(priority),
+		Priority: int16(p),
 	}
 
 	return q.Enqueue(j)
@@ -48,10 +55,16 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 		return err
 	}
 
+	p, e := safecast.ToInt16(priority)
+
+	if e != nil {
+		return e
+	}
+
 	j := &que.Job{
 		Type:     ALR_JOB,
 		Args:     args,
-		Priority: int16(priority),
+		Priority: int16(p),
 	}
 
 	return q.Enqueue(j)

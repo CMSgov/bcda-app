@@ -39,8 +39,8 @@ func createWorkerDirs() {
 	if err != nil {
 		log.Worker.Fatal(err)
 	}
-
 }
+
 func clearTempDirectory(tempDir string) error {
 	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

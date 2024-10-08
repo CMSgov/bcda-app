@@ -258,8 +258,6 @@ Example:
 mockery --name Repository --inpackage --case snake
 ```
 
-#
-
 ## **Environment variables**
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
