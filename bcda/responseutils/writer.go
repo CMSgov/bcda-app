@@ -13,6 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	logAPI "github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
@@ -64,9 +65,15 @@ func CreateJobsBundle(jobs []*models.Job, host string) *fhirmodels.Bundle {
 		entries = append(entries, entry)
 	}
 
+	jobLength, err := safecast.ToUint32(len(jobs))
+
+	if err != nil {
+		log.API.Errorln(err)
+	}
+
 	return &fhirmodels.Bundle{
 		Type:  &fhircodes.BundleTypeCode{Value: fhircodes.BundleTypeCode_SEARCHSET},
-		Total: &fhirdatatypes.UnsignedInt{Value: uint32(len(jobs))},
+		Total: &fhirdatatypes.UnsignedInt{Value: jobLength},
 		Entry: entries,
 	}
 }

@@ -3,6 +3,7 @@ package optout
 import (
 	"bufio"
 	"fmt"
+	"github.com/ccoveille/go-safecast"
 	"os"
 	"path/filepath"
 	"time"
@@ -53,7 +54,11 @@ func (handler *LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFi
 			handler.Logger.Errorf("Unknown file found: %s", metadata)
 			*skipped = *skipped + 1
 
-			deleteThreshold := time.Hour * time.Duration(handler.FileArchiveThresholdHr)
+			f, e, done := convertFileArchiveThreshold(handler)
+			if done {
+				return e
+			}
+			deleteThreshold := time.Hour * time.Duration(f)
 			if metadata.DeliveryDate.Add(deleteThreshold).Before(time.Now()) {
 				newpath := fmt.Sprintf("%s/%s", handler.PendingDeletionDir, info.Name())
 				err = os.Rename(metadata.FilePath, newpath)
@@ -100,7 +105,12 @@ func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilena
 			// check the timestamp on the failed files
 			elapsed := time.Since(suppressionFile.DeliveryDate).Hours()
 
-			if int(elapsed) > int(handler.FileArchiveThresholdHr) {
+			f, err, done := convertFileArchiveThreshold(handler)
+			if done {
+				return err
+			}
+
+			if int(elapsed) > int(f) {
 				err := os.Rename(suppressionFile.FilePath, newpath)
 				if err != nil {
 					errCount++
@@ -130,4 +140,16 @@ func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilena
 		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 	return nil
+}
+
+func convertFileArchiveThreshold(handler *LocalFileHandler) (int64, error, bool) {
+	f, err := safecast.ToInt64(handler.FileArchiveThresholdHr)
+	if err != nil {
+		errmsg := fmt.Sprintf("error converting FileArchiveThresholdHr to int64: %v", handler.FileArchiveThresholdHr)
+		err = errors.Wrap(err, errmsg)
+		fmt.Println(errmsg)
+		handler.Logger.Error(err)
+		return 0, err, true
+	}
+	return f, nil, false
 }

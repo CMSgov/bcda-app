@@ -4,11 +4,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"golang.org/x/text/language"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
+
+	"golang.org/x/text/language"
 
 	"golang.org/x/text/cases"
 )
@@ -31,7 +32,7 @@ type record struct {
 }
 
 func main() {
-	rand.Seed(time.Now().UTC().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 	now := time.Now()
 
 	// 1-800-MEDICARE filename format: (T|P)#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
@@ -58,7 +59,7 @@ func main() {
 
 		for s.Scan() {
 			// Randomly select HICNs from ACO for suppression records
-			if rand.Intn(2) == 0 {
+			if r.Intn(2) == 0 {
 				continue
 			}
 
@@ -128,8 +129,7 @@ func records(profile record) []record {
 	ct := rand.Intn(4)
 	encDtMin, encDtMax := time.Now().Add(-7*24*time.Hour), time.Now()
 	effDtMin, effDtMax := time.Now().Add(-7*24*time.Hour), time.Now().Add(3*24*time.Hour)
-	records := []record{}
-
+	var records []record
 	for i := 0; i < ct; i++ {
 		r := profile
 

@@ -1,10 +1,11 @@
 package service
 
 import (
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type ResourcesTestSuite struct {

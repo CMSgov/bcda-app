@@ -98,9 +98,9 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), oo.Issue[0].Severity, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), oo.Issue[0].Severity.Value, respOO.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), oo.Issue[0].Code, respOO.Issue[0].Code)
+	assert.Equal(s.T(), oo.Issue[0].Code.Value, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Diagnostics.Value)
 }
 
@@ -129,13 +129,13 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), relversion, respCS.Software.Version.Value)
-	assert.Equal(s.T(), cs.Software.Version, respCS.Software.Version)
+	assert.Equal(s.T(), cs.Software.Version.Value, respCS.Software.Version.Value)
 	assert.Equal(s.T(), "Beneficiary Claims Data API", respCS.Software.Name.Value)
-	assert.Equal(s.T(), cs.Software.Name, respCS.Software.Name)
+	assert.Equal(s.T(), cs.Software.Name.Value, respCS.Software.Name.Value)
 	assert.Equal(s.T(), baseurl, respCS.Implementation.Url.Value)
-	assert.Equal(s.T(), cs.Implementation.Url, respCS.Implementation.Url)
+	assert.Equal(s.T(), cs.Implementation.Url.Value, respCS.Implementation.Url.Value)
 	assert.Equal(s.T(), fhircodes.FHIRVersionCode_V_3_0_1, respCS.FhirVersion.Value)
-	assert.Equal(s.T(), cs.FhirVersion, respCS.FhirVersion)
+	assert.Equal(s.T(), cs.FhirVersion.Value, respCS.FhirVersion.Value)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {

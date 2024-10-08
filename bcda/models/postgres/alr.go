@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/stdlib"
@@ -221,7 +222,14 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 			return nil, err
 		}
 		alr.KeyValue = keyValue
-		alr.MetaKey = uint(metakey)
+
+		key, err := safecast.ToUint(metakey)
+
+		if err != nil {
+			return nil, err
+		}
+
+		alr.MetaKey = key
 		alrs = append(alrs, &alr)
 	}
 

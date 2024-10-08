@@ -8,9 +8,10 @@ import (
 
 	"github.com/CMSgov/bcda-app/conf"
 
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type AuthRouterTestSuite struct {

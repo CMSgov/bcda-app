@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
@@ -132,7 +133,10 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	hl := &httpLogger{transport, logger}
 	httpClient := &http.Client{Transport: hl, Timeout: time.Duration(timeout) * time.Millisecond}
 	client := fhir.NewClient(httpClient, pageSize)
-	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
+	maxTries, err := safecast.ToUint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
+	if err != nil {
+		logger.Warn(errors.Wrap(err, "Could not convert Blue Button max retries from environment variable"))
+	}
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
 	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer, config.BBBasePath}, nil
 }
