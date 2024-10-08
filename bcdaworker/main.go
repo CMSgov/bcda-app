@@ -26,12 +26,12 @@ func init() {
 
 func createWorkerDirs() {
 	staging := conf.GetEnv("FHIR_STAGING_DIR")
-	err := os.MkdirAll(staging, 0744)
+	err := os.MkdirAll(staging, 0766)
 	if err != nil {
 		log.Worker.Fatal(err)
 	}
 	localTemp := conf.GetEnv("FHIR_TEMP_DIR")
-	err = os.MkdirAll(localTemp, 0744)
+	err = os.MkdirAll(localTemp, 0766)
 	if err != nil {
 		log.Worker.Fatal(err)
 	}
