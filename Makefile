@@ -13,7 +13,7 @@ package:
 setup-tests:
 	# Clean up any existing data to ensure we spin up container in a known state.
 	docker compose -f docker-compose.test.yml rm -fsv tests
-	docker compose -f docker-compose.test.yml build tests
+	docker compose -f docker-compose.test.yml build --no-cache tests
 
 LINT_TIMEOUT ?= 3m
 lint:
