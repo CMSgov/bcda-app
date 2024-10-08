@@ -10,17 +10,21 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+setup-tests:
+	# Clean up any existing data to ensure we spin up container in a known state.
+	docker compose -f docker-compose.test.yml rm -fsv tests
+	docker compose -f docker-compose.test.yml build tests
 
 LINT_TIMEOUT ?= 3m
 lint:
-	docker compose -f docker-compose.test.yml build tests
+	$(MAKE) setup-tests
 	docker compose -f docker-compose.test.yml run \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
 smoke-test:
-	docker compose -f docker-compose.test.yml build tests
+	$(MAKE) setup-tests
 	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
 
 postman:
@@ -46,7 +50,7 @@ postman:
 	--global-var maintenanceMode=$(maintenanceMode)
 
 unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas
-	docker compose -f docker-compose.test.yml build tests
+	$(MAKE) setup-tests
 	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-ssas:
@@ -83,7 +87,7 @@ unit-test-db-snapshot:
 	docker compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
 performance-test:
-	docker compose -f docker-compose.test.yml build tests
+	$(MAKE) setup-tests
 	docker compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
