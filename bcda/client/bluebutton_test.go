@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -577,7 +578,9 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				noBulkRequestHeaders,
-				hasDefaultRequestHeadersNoQuery,
+				hasDefaultRequestHeaders,
+				hasContentTypeURLEncodedHeader,
+				hasURLEncodedBodyWithIdentifier,
 			},
 		},
 		{
@@ -949,12 +952,16 @@ func hasDefaultRequestHeaders(t *testing.T, req *http.Request) {
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQ))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
 }
-func hasDefaultRequestHeadersNoQuery(t *testing.T, req *http.Request) {
-	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderTS))
-	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginURL))
-	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQID))
-	assert.Empty(t, req.Header.Get(constants.BBHeaderOriginQ))
-	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
+func hasContentTypeURLEncodedHeader(t *testing.T, req *http.Request) {
+	assert.Equal(t, "application/x-www-form-urlencoded", req.Header.Get("Content-Type"))
+}
+func hasURLEncodedBodyWithIdentifier(t *testing.T, req *http.Request) {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(req.Body)
+	respBytes := buf.String()
+	body := string(respBytes)
+
+	assert.Contains(t, body, fmt.Sprintf("identifier=%s", url.QueryEscape("http://hl7.org/fhir/sid/us-mbi|")))
 }
 func hasBulkRequestHeaders(t *testing.T, req *http.Request) {
 	assert.NotEmpty(t, req.Header.Get(jobIDHeader))
