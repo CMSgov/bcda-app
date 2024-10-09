@@ -158,7 +158,7 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobData, header)
+	return bbc.makeBundleDataRequest("GET", u, jobData, header, nil)
 }
 
 func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
@@ -183,7 +183,7 @@ func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, benefici
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobData, nil)
+	return bbc.makeBundleDataRequest("GET", u, jobData, nil, nil)
 }
 
 func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
@@ -202,7 +202,7 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 	}
 
 	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.postBundleData(u, jobData, header, strings.NewReader(body))
+	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
 }
 
 func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
@@ -221,7 +221,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi
 	}
 
 	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.postBundleData(u, jobData, header, strings.NewReader(body))
+	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
@@ -239,7 +239,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueAr
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobData, header)
+	return bbc.makeBundleDataRequest("GET", u, jobData, header, nil)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
@@ -250,14 +250,6 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	jobData := models.JobEnqueueArgs{}
 
 	return bbc.getRawData(jobData, "GET", u, nil)
-}
-
-func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobData models.JobEnqueueArgs, headers http.Header) (*fhirModels.Bundle, error) {
-	return bbc.makeBundleDataRequest("GET", u, jobData, headers, nil)
-}
-
-func (bbc *BlueButtonClient) postBundleData(u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
-	return bbc.makeBundleDataRequest("POST", u, jobData, headers, body)
 }
 
 func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
