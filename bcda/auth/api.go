@@ -41,7 +41,7 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
+	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret}, r)
 	if err != nil {
 
 		switch err.(type) {
@@ -87,23 +87,25 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /auth/welcome auth welcome
+swagger:route GET /auth/welcome auth welcome
 
-	Test authentication
+# Test authentication
 
-	If a valid token is presented, show a welcome message.
+If a valid token is presented, show a welcome message.
 
-	Produces:
-	- application/json
+Produces:
+- application/json
 
-	Schemes: http, https
+Schemes: http, https
 
-	Security:
-		bearer_token:
+Security:
 
-	Responses:
-		200: welcome
-		401: invalidCredentials
+	bearer_token:
+
+Responses:
+
+	200: welcome
+	401: invalidCredentials
 */
 func Welcome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

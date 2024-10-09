@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 type Client interface {
@@ -125,11 +125,17 @@ func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error
 }
 
 func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
+	txn := newrelic.FromContext(req.Context())
+	s := newrelic.StartExternalSegment(txn, req)
+
 	resp, err := c.Do(req)
+	s.Response = resp
+	s.End()
+
 	if resp != nil {
 		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
 		defer func() {
-			_, _ = io.Copy(ioutil.Discard, resp.Body)
+			_, _ = io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 		}()
 	}
@@ -139,11 +145,11 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		// Attempt to read the body in case it offers valuable troubleshooting info
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("received incorrect status code %d body %s",
 			resp.StatusCode, string(body))
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

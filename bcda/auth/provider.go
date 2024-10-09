@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -79,7 +80,7 @@ type Provider interface {
 	RevokeSystemCredentials(clientID string) error
 
 	// MakeAccessToken mints an access token for the given credentials
-	MakeAccessToken(credentials Credentials) (string, error)
+	MakeAccessToken(credentials Credentials, r *http.Request) (string, error)
 
 	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error

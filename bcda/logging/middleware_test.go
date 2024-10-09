@@ -25,6 +25,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 )
 
 type LoggingMiddlewareTestSuite struct {
@@ -33,7 +34,7 @@ type LoggingMiddlewareTestSuite struct {
 
 func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
+	r.Use(middleware.RequestID, appMiddleware.NewTransactionID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		// Base server route for logging tests to be checked, blank return for overrides
 	})
@@ -181,77 +182,84 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMiddlewareTestSuite))
 }
 
-type mockLogger struct {
-	Logger logrus.FieldLogger
-	entry  *log.StructuredLoggerEntry
-}
-
-func (l *mockLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	return l.entry
-}
-
 func TestResourceTypeLogging(t *testing.T) {
 	testCases := []struct {
 		jobID        string
 		ResourceType interface{}
+		httpStatus   int
 	}{
 		{
 			jobID:        "1234",
 			ResourceType: "Coverage",
+			httpStatus:   http.StatusOK,
 		},
 		{
 			jobID:        "bad",
 			ResourceType: nil,
+			httpStatus:   http.StatusNotFound,
 		},
 		{
 			jobID:        "4321",
 			ResourceType: nil,
+			httpStatus:   http.StatusNotFound,
 		},
 	}
 
 	for _, test := range testCases {
-		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/blob.ndjson", test.jobID), nil)
+		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/%s", test.jobID, "blob.ndjson"), nil)
 		repository := &models.MockRepository{}
 		if test.ResourceType != nil {
 			j := &models.JobKey{ID: 1, JobID: 1234, FileName: constants.TestBlobFileName, ResourceType: test.ResourceType.(string)}
 			repository.On("GetJobKey", testUtils.CtxMatcher, uint(1234), constants.TestBlobFileName).Return(j, nil)
 		} else {
-			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), constants.TestBlobFileName).Return(nil, errors.New("expected error"))
+			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), "blob.ndjson").Return(nil, errors.New("expected error"))
 		}
-
-		entry := &log.StructuredLoggerEntry{Logger: log.Request}
 
 		logger := logging.ResourceTypeLogger{
 			Repository: repository,
 		}
 
 		r := chi.NewRouter()
-		r.With(
-			middleware.RequestLogger(&mockLogger{Logger: log.Request, entry: entry}),
-			logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		newLogEntry := &log.StructuredLoggerEntry{Logger: logrus.New()}
+		req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+
+		r.With(logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// Test route handler method for retrieving resources
 		}))
 
 		rw := httptest.NewRecorder()
 		r.ServeHTTP(rw, req)
-		testEntry := entry.Logger.WithField("test", nil)
+		ctxEntry := log.GetCtxEntry(req.Context())
+		testEntry := ctxEntry.Logger.WithField("test", nil)
 		if respT := testEntry.Data["resource_type"]; respT != test.ResourceType {
 			t.Error("Failed to find resource_type in logs", respT, testEntry)
 		}
+		assert.Equal(t, test.httpStatus, rw.Result().StatusCode)
 	}
 }
 
 func TestMiddlewareLogCtx(t *testing.T) {
-
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		val := r.Context().Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
-		if val == nil {
+		entry := r.Context().Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
+		if entry == nil {
 			t.Error("no log context")
 		}
-
 	})
 
-	handlerToTest := contextToken(middleware.RequestID(logging.NewCtxLogger(nextHandler)))
+	handlerToTest := contextToken(middleware.RequestID(appMiddleware.NewTransactionID(logging.NewCtxLogger(nextHandler))))
+	req := httptest.NewRequest("GET", "http://testing", nil)
+	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+}
+
+func TestMiddlewareTransactionCtx(t *testing.T) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trans := r.Context().Value(appMiddleware.CtxTransactionKey).(string)
+		if trans == "" {
+			t.Error("no transaction id in context")
+		}
+	})
+
+	handlerToTest := appMiddleware.NewTransactionID(nextHandler)
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 

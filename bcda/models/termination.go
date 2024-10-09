@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-type Blacklist uint8
+type Denylist uint8
 
 const (
 	// Involuntary means the caller had access revoked immediately
-	Involuntary Blacklist = iota
+	Involuntary Denylist = iota
 	// Voluntary means the caller had limited access then had their access completely revoked
 	Voluntary
 	// Limited means the caller has limited access to the service
@@ -41,7 +41,7 @@ type Termination struct {
 	TerminationDate time.Time // When caller moved from full to limited access
 	CutoffDate      time.Time // When caller moved to no access
 
-	BlacklistType       Blacklist
+	DenylistType        Denylist
 	AttributionStrategy Attribution
 	OptOutStrategy      OptOut
 	ClaimsStrategy      Claims

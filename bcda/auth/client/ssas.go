@@ -18,9 +18,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/middleware"
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/pkg/errors"
+
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 // SSASClient is a client for interacting with the System-to-System Authentication Service.
@@ -56,8 +59,8 @@ func NewSSASClient() (*SSASClient, error) {
 
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("SSAS_TIMEOUT_MS")); err != nil {
-		log.SSAS.Info("Could not get SSAS timeout from environment variable; using default value of 500.")
-		timeout = 500
+		log.SSAS.Warn(errors.Wrap(err, "Could not get SSAS timeout from environment variable; using default value of 5000."))
+		timeout = 5000
 	}
 
 	ssasURL := conf.GetEnv("SSAS_URL")
@@ -294,16 +297,22 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 }
 
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
-func (c *SSASClient) GetToken(credentials Credentials) (string, error) {
+func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, error) {
 	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	tokenUrl := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", tokenUrl, nil)
 	if err != nil {
 		return "", &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
 	}
+
+	req.Header.Add("transaction-id", r.Context().Value(middleware.CtxTransactionKey).(string))
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
+	txn := newrelic.FromContext(r.Context())
+	s := newrelic.StartExternalSegment(txn, req)
 	resp, err := c.Do(req)
+	s.Response = resp
+	s.End()
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
 			return "", &customErrors.RequestTimeoutError{Err: err, Msg: constants.TokenRequestTimeoutErr}

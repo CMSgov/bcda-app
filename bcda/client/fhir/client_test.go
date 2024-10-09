@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -105,7 +104,7 @@ func TestRawRequest(t *testing.T) {
 }
 
 func assertEqualsBundle(t *testing.T, pathToExpected string, actual *models.Bundle) {
-	data, err := ioutil.ReadFile(pathToExpected)
+	data, err := os.ReadFile(pathToExpected)
 	assert.NoError(t, err)
 	var expected models.Bundle
 	err = json.Unmarshal([]byte(data), &expected)

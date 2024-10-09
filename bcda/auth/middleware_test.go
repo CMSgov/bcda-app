@@ -205,7 +205,7 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 		ResponseBodyString    string
 		HeaderRetryAfterValue string
 	}{
-		{"Requestor Data Error Return 400", &customErrors.RequestorDataError{Err: errors.New(errorHappened), Msg: errMsg}, 400, responseutils.InternalErr, constants.EmptyString},
+		{"Requestor Data Error Return 400", &customErrors.RequestorDataError{Err: errors.New(errorHappened), Msg: errMsg}, 400, responseutils.RequestErr, constants.EmptyString},
 		{"Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
 		{"Config Error Return 500", &customErrors.ConfigError{Err: errors.New(errorHappened), Msg: errMsg}, 500, responseutils.InternalErr, constants.EmptyString},
 		{"Request Timeout Error Return 503", &customErrors.RequestTimeoutError{Err: errors.New(errorHappened), Msg: errMsg}, 503, responseutils.InternalErr, "1"},
@@ -270,7 +270,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 
 	//Assert
 	assert.Equal(s.T(), 403, resp.StatusCode)
-	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnknownEntityErr)
+	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnauthorizedErr)
 
 	mock.AssertExpectations(s.T())
 }
@@ -342,13 +342,14 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 	jobID := strconv.Itoa(int(j.ID))
 
 	tests := []struct {
-		name  string
-		jobID string
-		ACOID string
+		name    string
+		jobID   string
+		ACOID   string
+		errCode int
 	}{
-		{"Invalid JobID", "someNonNumericInput", j.ACOID.String()},
-		{"Mismatching JobID", "0", j.ACOID.String()},
-		{"Mismatching ACOID", jobID, uuid.New()},
+		{"Invalid JobID", "someNonNumericInput", j.ACOID.String(), http.StatusBadRequest},
+		{"Mismatching JobID", "0", j.ACOID.String(), http.StatusNotFound},
+		{"Mismatching ACOID", jobID, uuid.New(), http.StatusUnauthorized},
 	}
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
@@ -371,7 +372,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 
 			req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 			handler.ServeHTTP(s.rr, req)
-			assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+			assert.Equal(s.T(), tt.errCode, s.rr.Code)
 		})
 	}
 }
@@ -433,7 +434,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
 
 // unit test

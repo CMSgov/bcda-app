@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -123,7 +123,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 		s.T().Fatal(err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -182,7 +182,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTP() {
 		s.T().Fatal(err)
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -220,7 +220,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 		s.T().Fatal(err)
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.T().Fatal(err)
 	}

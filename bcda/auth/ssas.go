@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/dgrijalva/jwt-go"
@@ -95,8 +96,8 @@ func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
 }
 
 // MakeAccessToken mints an access token for the given credentials.
-func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
-	tokenInfo, err := s.client.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret})
+func (s SSASPlugin) MakeAccessToken(credentials Credentials, r *http.Request) (string, error) {
+	tokenInfo, err := s.client.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret}, *r)
 	if err != nil {
 		log.SSAS.Errorf("Failed to get token; %s", err.Error())
 		return "", err
@@ -155,7 +156,7 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 		return ad, entityNotFoundError
 	}
 	ad.ACOID = aco.UUID.String()
-	ad.Blacklisted = aco.Blacklisted()
+	ad.Blacklisted = aco.Denylisted()
 
 	return ad, nil
 }

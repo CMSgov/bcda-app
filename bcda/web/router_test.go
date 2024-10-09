@@ -3,7 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -105,7 +105,7 @@ func (s *RouterTestSuite) TestMetadataRoute() {
 	res := s.getAPIRoute("/api/v1/metadata")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 
-	bytes, err := ioutil.ReadAll(res.Body)
+	bytes, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	assert.Nil(s.T(), err)
 	var obj map[string]interface{}
@@ -325,7 +325,7 @@ func createExpectedAuthData(cmsID string, aco models.ACO) auth.AuthData {
 		ACOID:       cmsID,
 		CMSID:       cmsID,
 		TokenID:     uuid.NewRandom().String(),
-		Blacklisted: aco.Blacklisted(),
+		Blacklisted: aco.Denylisted(),
 	}
 }
 
@@ -370,7 +370,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 
 		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-		BlacklistType:   models.Involuntary,
+		DenylistType:    models.Involuntary,
 	}
 
 	aco := createACO(cmsID, blackListValue)
@@ -391,7 +391,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 		for _, path := range config.paths {
 
 			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blackListValue, path), func(t *testing.T) {
-				fmt.Println(aco.Blacklisted())
+				fmt.Println(aco.Denylisted())
 				fmt.Println(aco.UUID.String())
 				postgrestest.UpdateACO(t, db, aco)
 				rr := httptest.NewRecorder()
@@ -436,7 +436,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 		for _, path := range config.paths {
 
 			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", nil, path), func(t *testing.T) {
-				fmt.Println(aco.Blacklisted())
+				fmt.Println(aco.Denylisted())
 				fmt.Println(aco.UUID.String())
 				postgrestest.UpdateACO(t, db, aco)
 				rr := httptest.NewRecorder()
@@ -466,6 +466,7 @@ func (s *RouterTestSuite) TestRateLimitRoutes() {
 		hasRateLimit bool
 	}{
 		{"dev", false},
+		{"test", true},
 		{"prod", true},
 	}
 

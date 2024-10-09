@@ -474,13 +474,43 @@ func (s *SSASClientTestSuite) TestGetToken() {
 				s.T().Fatal(err)
 			}
 
-			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret})
+			r := testUtils.ContextTransactionID()
+			tokenInfo, err := client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret}, *r)
 
 			assert.Contains(t, tokenInfo, string(tt.bytesToReturn))
 			assert.Contains(t, tokenInfo, string(tt.expiresIn))
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
 	}
+}
+
+func (s *SSASClientTestSuite) TestGetTokenHeaders() {
+	const clientId, clientSecret, token = "happy", "client", "goodToken"
+	router := chi.NewRouter()
+	router.Post(constants.TokenPath, func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "1200" }`))
+		if err != nil {
+			s.T().Fatal(err)
+		}
+		if r.Header.Get("transaction-id") == "" {
+			s.T().Errorf("Expected transaction-id header value, got empty string")
+		}
+	})
+	server := httptest.NewServer(router)
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_TIMEOUT_MS", "500")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.T().Fatal(err)
+	}
+
+	r := testUtils.ContextTransactionID()
+	_, err = client.GetToken(authclient.Credentials{ClientID: clientId, ClientSecret: clientSecret}, *r)
+
+	assert.IsType(s.T(), nil, err)
+
 }
 
 func TestSSASClientTestSuite(t *testing.T) {

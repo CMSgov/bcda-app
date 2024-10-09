@@ -1,16 +1,14 @@
 ---
-version: "3"
-
 services:
   queue:
-    image: postgres:11
+    image: postgres:15
     environment:
       - POSTGRES_DB=bcda_queue
       - POSTGRES_PASSWORD=toor
     ports:
       - "5433:5432"
   db:
-    image: postgres:11
+    image: postgres:15
     environment:
       - POSTGRES_DB=bcda
       - POSTGRES_PASSWORD=toor
@@ -32,8 +30,6 @@ services:
       - CI=${CI} # Used to determine if the API is running on a CI process
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -55,31 +51,16 @@ services:
       - CI=${CI} # Used to determine if the API is running on a CI process
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
     depends_on:
       - db
       - queue
-  documentation:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.documentation
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
-  openapi:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.openapi
-    volumes:
-      - ./bcda/swaggerui:/swagger-converter/swaggerui
-    depends_on:
-      - documentation
   ssas:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.ssas
     environment:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+      - DEPLOYMENT_TARGET=local
       - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
@@ -107,8 +88,6 @@ services:
       - SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES=5
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
     ports:
       - "3003:3003"
       - "3004:3004"

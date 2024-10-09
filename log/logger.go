@@ -78,7 +78,7 @@ func logger(logger *logrus.Logger, outputFile string,
 		"version":     constants.Version})
 }
 
-// type to create context.Contest key
+// type to create context.Context key
 type CtxLoggerKeyType string
 
 // context.Context key to set/get logrus.FieldLogger value within request context
@@ -94,7 +94,11 @@ func (l *StructuredLoggerEntry) Write(status int, bytes int, header http.Header,
 		"resp_elapsed_ms": float64(elapsed.Nanoseconds()) / 1000000.0,
 	})
 
-	l.Logger.Infoln("request complete")
+	if status >= 500 {
+		l.Logger.Errorln("request complete")
+	} else {
+		l.Logger.Infoln("request complete")
+	}
 }
 
 func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
@@ -108,6 +112,12 @@ func NewStructuredLoggerEntry(logger logrus.FieldLogger, ctx context.Context) co
 	newLogEntry := &StructuredLoggerEntry{Logger: logger.WithFields(logrus.Fields{})}
 	ctx = context.WithValue(ctx, CtxLoggerKey, newLogEntry)
 	return ctx
+}
+
+// Gets the logrus.StructuredLoggerEntry from a context
+func GetCtxEntry(ctx context.Context) *StructuredLoggerEntry {
+	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)
+	return entry
 }
 
 // Gets the logrus.FieldLogger from a context

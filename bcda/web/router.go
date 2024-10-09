@@ -17,7 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
-
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 	"github.com/go-chi/chi/v5"
 	gcmw "github.com/go-chi/chi/v5/middleware"
 )
@@ -30,7 +30,7 @@ var commonAuth = []func(http.Handler) http.Handler{
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(auth.ParseToken, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
@@ -43,12 +43,16 @@ func NewAPIRouter() http.Handler {
 	var requestValidators = []func(http.Handler) http.Handler{
 		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 	}
+	nonExportRequestValidators := []func(http.Handler) http.Handler{
+		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+	}
 
 	if conf.GetEnv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
-	} else {
-		// Apply rate limiting on production only
+	}
+	if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" || conf.GetEnv("DEPLOYMENT_TARGET") == "test" {
+		// Apply rate limiting on test +  production only
 		requestValidators = append(requestValidators, middleware.CheckConcurrentJobs)
 	}
 
@@ -59,7 +63,7 @@ func NewAPIRouter() http.Handler {
 		}
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v1.JobStatus))
-		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/jobs", v1.JobsStatus))
+		r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v1.JobsStatus))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler(constants.JOBIDPath, v1.DeleteJob))
 		r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v1.AttributionStatus))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
@@ -74,7 +78,7 @@ func NewAPIRouter() http.Handler {
 			}
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v2.JobStatus))
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/jobs", v2.JobsStatus))
+			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v2.JobsStatus))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler(constants.JOBIDPath, v2.DeleteJob))
 			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v2.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
@@ -88,7 +92,7 @@ func NewAPIRouter() http.Handler {
 }
 
 func NewAuthRouter() http.Handler {
-	return auth.NewAuthRouter(gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	return auth.NewAuthRouter(gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 }
 
 func NewDataRouter() http.Handler {
@@ -97,7 +101,7 @@ func NewDataRouter() http.Handler {
 	resourceTypeLogger := &logging.ResourceTypeLogger{
 		Repository: postgres.NewRepository(database.Connection),
 	}
-	r.Use(auth.ParseToken, gcmw.RequestID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(auth.ParseToken, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 	r.With(append(
 		commonAuth,
 		auth.RequireTokenJobMatch,
@@ -109,7 +113,7 @@ func NewDataRouter() http.Handler {
 func NewHTTPRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(gcmw.RequestID, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(gcmw.RequestID, middleware.ConnectionClose, appMiddleware.NewTransactionID, logging.NewCtxLogger)
 	r.With(logging.NewStructuredLogger()).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		url := "https://" + req.Host + req.URL.String()
 		http.Redirect(w, req, url, http.StatusMovedPermanently)

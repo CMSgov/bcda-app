@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -41,7 +40,7 @@ func init() {
 
 	// create folder if doesn't exist for storing the results
 	if _, err := os.Stat(reportFilePath); os.IsNotExist(err) {
-		err := os.MkdirAll(reportFilePath, os.ModePerm)
+		err := os.MkdirAll(reportFilePath, 0744)
 		if err != nil {
 			panic(err)
 		}
@@ -164,7 +163,7 @@ func writeResults(filename string, buf bytes.Buffer) {
 	if len(data) > 0 {
 		fn := fmt.Sprintf("%s/%s.html", reportFilePath, clean)
 		fmt.Printf("Writing results: %s\n", fn)
-		err := ioutil.WriteFile(fn, data, 0600)
+		err := os.WriteFile(fn, data, 0600)
 		if err != nil {
 			panic(err)
 		}

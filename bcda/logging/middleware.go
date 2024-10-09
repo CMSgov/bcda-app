@@ -15,12 +15,15 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
+
+	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go
-
 func NewStructuredLogger() func(next http.Handler) http.Handler {
 	return middleware.RequestLogger(&StructuredLogger{Logger: log.Request})
 }
@@ -60,6 +63,10 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 		logFields["cms_id"] = ad.CMSID
 	}
 
+	if tid, ok := r.Context().Value(appMiddleware.CtxTransactionKey).(string); ok {
+		logFields["transaction_id"] = tid
+	}
+
 	entry.Logger = entry.Logger.WithFields(logFields)
 
 	entry.Logger.Infoln("request started")
@@ -77,23 +84,17 @@ type ResourceTypeLogger struct {
 
 func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-
+		rw := getRespWriter(r.URL.Path)
 		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
-			log.API.Error(err)
-			return
-		}
-		// Note: could split this out into a function for adding to the context log
-		entry, ok := middleware.GetLogEntry(r).(*log.StructuredLoggerEntry)
-		if !ok {
-			log.API.Error("Incorrect type of logger used in request context")
+			logger := log.GetCtxLogger(r.Context())
+			logger.Error("job key not found: ", err)
+			rw.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
 			return
 		}
 
-		entry.Logger = entry.Logger.WithFields(logrus.Fields{
-			"resource_type": jobKey.ResourceType,
-		})
+		ctx, _ := log.SetCtxLogger(r.Context(), "resource_type", jobKey.ResourceType)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -130,8 +131,24 @@ func NewCtxLogger(next http.Handler) http.Handler {
 		if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
 			logFields["cms_id"] = ad.CMSID
 		}
+		logFields["transaction_id"] = r.Context().Value(appMiddleware.CtxTransactionKey).(string)
 		newLogEntry := &log.StructuredLoggerEntry{Logger: log.API.WithFields(logFields)}
 		r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 		next.ServeHTTP(w, r)
 	})
+}
+
+type fhirResponseWriter interface {
+	Exception(context.Context, http.ResponseWriter, int, string, string)
+	NotFound(context.Context, http.ResponseWriter, int, string, string)
+}
+
+func getRespWriter(path string) fhirResponseWriter {
+	if strings.Contains(path, "/v1/") {
+		return responseutils.NewResponseWriter()
+	} else if strings.Contains(path, "/v2/") {
+		return responseutilsv2.NewResponseWriter()
+	} else {
+		return responseutils.NewResponseWriter()
+	}
 }

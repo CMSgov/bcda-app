@@ -1,5 +1,7 @@
 {
     "go.testEnvVars": {
+        "ENV": "local",
+        "LOCAL_STACK_ENDPOINT": "http://localhost:4566",
         "DB": "postgresql://postgres:toor@localhost:15432",
         "DB_HOST_URL": "postgresql://postgres:toor@localhost:15432?sslmode=disable",
         "TEST_DB_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
@@ -14,6 +16,7 @@
         "BB_CLIENT_KEY_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-key.pem",
         "FHIR_PAYLOAD_DIR": "${workspaceFolder}/bcdaworker/data",
         "FHIR_STAGING_DIR": "${workspaceFolder}/bcdaworker/tmpdata",
+        "FHIR_TEMP_DIR": "${workspaceFolder}/bcdaworker/TEMP",
         "FHIR_ARCHIVE_DIR": "${workspaceFolder}/bcdaworker/archive",
     },
     "go.testEnvFile": "${workspaceFolder}/shared_files/decrypted/local.env",

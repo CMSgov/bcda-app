@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pkg/errors"
 )
 
@@ -24,44 +26,47 @@ const (
 
 func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 	var metadata OptOutFilenameMetadata
-	// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
-	// Prefix: T = test, P = prod;
-	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filename)
-	if len(filenameMatches) < 4 {
-		fmt.Printf("Invalid filename for file: %s.\n", filename)
-		err := fmt.Errorf("invalid filename for file: %s", filename)
-		return metadata, err
+	isOptOut, matches := IsOptOut(filename)
+	if !isOptOut {
+		return metadata, fmt.Errorf("invalid filename for file: %s", filename)
 	}
 
-	filenameDate := filenameMatches[3]
+	// ignore files for different environments
+	if !IsForCurrentEnv(filename) {
+		return metadata, fmt.Errorf("Skipping file for different environment: %s", filename)
+	}
+
+	filenameDate := matches[3]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filename)
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
-		return metadata, err
+		return metadata, errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
 	}
 
 	metadata.Timestamp = t
-	metadata.Name = filenameMatches[0]
+	metadata.Name = matches[0]
 
 	return metadata, nil
+}
+
+func IsOptOut(filename string) (isOptOut bool, matches []string) {
+	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
+	matches = filenameRegexp.FindStringSubmatch(filename)
+	if len(matches) > 3 {
+		isOptOut = true
+	}
+	return isOptOut, matches
 }
 
 func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 	dt, err := ConvertDt(ds)
 	if err != nil {
-		fmt.Printf("Failed to parse the effective date '%s' from file: %s.\n", ds, metadata.FilePath)
-		err = errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.FilePath)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.FilePath)
 	}
 	ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
 	samhsaDt, err := ConvertDt(ds)
 	if err != nil {
-		fmt.Printf("Failed to parse the samhsa effective date '%s' from file: %s.\n", ds, metadata.FilePath)
-		err = errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.FilePath)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.FilePath)
 	}
 	keyval := string(bytes.TrimSpace(b[lKeyStart:lKeyEnd]))
 	if keyval == "" {
@@ -69,9 +74,7 @@ func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, err
 	}
 	lk, err := strconv.Atoi(keyval)
 	if err != nil {
-		fmt.Printf("Failed to parse beneficiary link key from file: %s.\n", metadata.FilePath)
-		err = errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.FilePath)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.FilePath)
 	}
 
 	return &OptOutRecord{
@@ -97,4 +100,17 @@ func ConvertDt(s string) (time.Time, error) {
 		return t, err
 	}
 	return t, nil
+}
+
+// Checks if the given S3 filePath is for the current environment; this is necessary for lower environments
+// since they share a single BFD S3 bucket and will upload files under a subdirectory for the given env.
+func IsForCurrentEnv(filePath string) bool {
+	env := conf.GetEnv("ENV")
+
+	// We do not expect or require subdirectories for local dev or production; always return true.
+	if env != "dev" && env != "test" {
+		return true
+	}
+
+	return strings.Contains(filePath, fmt.Sprintf("/%s/", env))
 }

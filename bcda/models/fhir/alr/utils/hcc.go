@@ -36,7 +36,6 @@ func init() {
 		"/etc/sv/api/hcc_crosswalk.tsv",
 		os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils/hcc_crosswalk.tsv",
 		"/etc/sv/worker/hcc_crosswalk.tsv",
-		"/etc/sv/nfs/hcc_crosswalk.tsv",
 	}
 
 	var df dataframe.DataFrame

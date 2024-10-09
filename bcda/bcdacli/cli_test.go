@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -28,10 +27,13 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	logger "github.com/CMSgov/bcda-app/log"
+	"github.com/pkg/errors"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
@@ -60,7 +62,7 @@ func (s *CLITestSuite) SetupSuite() {
 	origDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181125")
 
-	dir, err := ioutil.TempDir("", "*")
+	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -257,7 +259,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivepath)
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
 
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	newpath := conf.GetEnv("FHIR_ARCHIVE_DIR")
@@ -290,7 +292,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 
 	// check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_ARCHIVE_DIR"), j.ID)
-	_, err = ioutil.ReadFile(expPath)
+	_, err = os.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -349,7 +351,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivepath)
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
 
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -372,7 +374,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 
 	// check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
-	_, err = ioutil.ReadFile(dataPath)
+	_, err = os.ReadFile(dataPath)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -398,7 +400,14 @@ func (s *CLITestSuite) TestCleanArchive() {
 	args := []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivepath)
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
+
+	// condition: FHIR_STAGING_DIR doesn't exist
+	conf.UnsetEnv(s.T(), "FHIR_STAGING_DIR")
+	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", constants.TestStagingPath)
 
 	// condition: no jobs exist
 	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
@@ -699,64 +708,46 @@ func (s *CLITestSuite) TestCreateACO() {
 func (s *CLITestSuite) TestImportCCLFDirectory() {
 	targetACO := "A0002"
 	assert := assert.New(s.T())
+	hook := test.NewLocal(testUtils.GetLogger(logger.API))
 
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
-	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+	type test struct {
+		path         string
+		err          error
+		expectedLogs []string
+	}
 
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
+	tests := []test{
+		{path: "../../shared_files/cclf/archives/valid/", err: errors.New("Files skipped or failed import. See logs for more details."), expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."}},
+		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("Failed to import 1 files"), expectedLogs: []string{"Missing CCLF0 or CCLF8 file in zip", "", ""}},
+		{path: "../../shared_files/cclf/archives/skip/", err: errors.New("Files failed to import or no files were imported. See logs for more details."), expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 1 files."}},
+	}
 
-	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/archives/valid2/")
-	defer cleanup()
+	for _, tc := range tests {
+		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+		path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tc.path)
+		defer cleanup()
+		args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
+		err := s.testApp.Run(args)
+		if tc.err == nil {
+			assert.Nil(err)
+		}
 
-	args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 1 files.")
-
-	buf.Reset()
+		var success, failed bool
+		for _, entry := range hook.AllEntries() {
+			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
+				success = true
+			}
+			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
+				failed = true
+			}
+		}
+		assert.True(success)
+		assert.True(failed)
+	}
 }
 
-func (s *CLITestSuite) TestDeleteDirectoryContents() {
-	assert := assert.New(s.T())
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	dirToDelete, err := ioutil.TempDir("", "*")
-	assert.NoError(err)
-	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
-	defer os.RemoveAll(dirToDelete)
-
-	args := []string{"bcda", constants.DelDirContents, "--dirToDelete", dirToDelete}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
-	buf.Reset()
-
-	// File, not a directory
-	file, err := ioutil.TempFile("", "*")
-	assert.NoError(err)
-	defer os.Remove(file.Name())
-	args = []string{"bcda", constants.DelDirContents, "--dirToDelete", file.Name()}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, fmt.Sprintf("unable to delete Directory Contents because %s does not reference a directory", file.Name()))
-	assert.NotContains(buf.String(), "Successfully Deleted")
-	buf.Reset()
-
-	conf.SetEnv(s.T(), "TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
-	args = []string{"bcda", constants.DelDirContents, "--envvar", "TESTDELETEDIRECTORY"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "flag provided but not defined: -envvar")
-	assert.NotContains(buf.String(), "Successfully Deleted")
-	buf.Reset()
-
-}
-
-func (s *CLITestSuite) TestImportSuppressionDirectory() {
+func (s *CLITestSuite) TestImportSuppressionDirectoryFromLocal() {
 	assert := assert.New(s.T())
 
 	buf := new(bytes.Buffer)
@@ -766,6 +757,33 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	defer cleanup()
 
 	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
+	assert.Contains(buf.String(), "Files imported: 2")
+	assert.Contains(buf.String(), "Files failed: 0")
+	assert.Contains(buf.String(), "Files skipped: 0")
+
+	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
+		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
+		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
+
+	assert.Len(fs, 2)
+	for _, f := range fs {
+		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
+	}
+}
+
+func (s *CLITestSuite) TestImportSuppressionDirectoryFromS3() {
+	assert := assert.New(s.T())
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	path, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test2/")
+	defer cleanup()
+
+	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path, constants.FileSourceArg, "s3", constants.S3EndpointArg, conf.GetEnv("BFD_S3_ENDPOINT")}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
@@ -819,39 +837,39 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	assert.Contains(buf.String(), "Files skipped: 0")
 }
 
-func (s *CLITestSuite) TestBlacklistACO() {
-	blacklistedCMSID := testUtils.RandomHexID()[0:4]
-	notBlacklistedCMSID := testUtils.RandomHexID()[0:4]
+func (s *CLITestSuite) TestDenylistACO() {
+	denylistedCMSID := testUtils.RandomHexID()[0:4]
+	notDenylistedCMSID := testUtils.RandomHexID()[0:4]
 	notFoundCMSID := testUtils.RandomHexID()[0:4]
 
-	blacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &blacklistedCMSID,
+	denylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &denylistedCMSID,
 		TerminationDetails: &models.Termination{
 			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			BlacklistType:   models.Involuntary,
+			DenylistType:    models.Involuntary,
 		}}
-	notBlacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notBlacklistedCMSID,
+	notDenylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notDenylistedCMSID,
 		TerminationDetails: nil}
 
 	defer func() {
-		postgrestest.DeleteACO(s.T(), s.db, blacklistedACO.UUID)
-		postgrestest.DeleteACO(s.T(), s.db, notBlacklistedACO.UUID)
+		postgrestest.DeleteACO(s.T(), s.db, denylistedACO.UUID)
+		postgrestest.DeleteACO(s.T(), s.db, notDenylistedACO.UUID)
 	}()
 
-	postgrestest.CreateACO(s.T(), s.db, blacklistedACO)
-	postgrestest.CreateACO(s.T(), s.db, notBlacklistedACO)
+	postgrestest.CreateACO(s.T(), s.db, denylistedACO)
+	postgrestest.CreateACO(s.T(), s.db, notDenylistedACO)
 
-	s.NoError(s.testApp.Run([]string{"bcda", "unblacklist-aco", constants.CMSIDArg, blacklistedCMSID}))
-	s.NoError(s.testApp.Run([]string{"bcda", "blacklist-aco", constants.CMSIDArg, notBlacklistedCMSID}))
+	s.NoError(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, denylistedCMSID}))
+	s.NoError(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notDenylistedCMSID}))
 
-	s.Error(s.testApp.Run([]string{"bcda", "unblacklist-aco", constants.CMSIDArg, notFoundCMSID}))
-	s.Error(s.testApp.Run([]string{"bcda", "blacklist-aco", constants.CMSIDArg, notFoundCMSID}))
+	s.Error(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, notFoundCMSID}))
+	s.Error(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notFoundCMSID}))
 
-	newlyUnblacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID)
-	s.False(newlyUnblacklistedACO.Blacklisted())
+	newlyUndenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, denylistedACO.UUID)
+	s.False(newlyUndenylistedACO.Denylisted())
 
-	newlyBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID)
-	s.True(newlyBlacklistedACO.Blacklisted())
+	newlyDenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notDenylistedACO.UUID)
+	s.True(newlyDenylistedACO.Denylisted())
 }
 
 func getRandomPort(t *testing.T) int {
@@ -876,7 +894,7 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	s.testApp.Writer = buf
 
 	// set up a test directory for cclf file generating and cloning
-	path, err := ioutil.TempDir(".", "clone_cclf")
+	path, err := os.MkdirTemp(".", "clone_cclf")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1020,7 +1038,7 @@ func createTestZipFile(zFile string, cclfFiles ...string) error {
 }
 
 func getFileCount(t *testing.T, path string) int {
-	f, err := ioutil.ReadDir(path)
+	f, err := os.ReadDir(path)
 	assert.NoError(t, err)
 	return len(f)
 }

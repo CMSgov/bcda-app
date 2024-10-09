@@ -18,7 +18,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Len(t, cfg.ACOConfigs, 10)
+	assert.Len(t, cfg.ACOConfigs, 11)
 	for _, acoCfg := range cfg.ACOConfigs {
 		assert.NotNil(t, acoCfg.patternExp)
 		if acoCfg.PerfYearTransition != "" {
@@ -53,11 +53,11 @@ func TestIsACODisabled(t *testing.T) {
 }
 
 func TestLookbackTime(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	now := time.Now()
 	perfYearPast, perfYearFuture := now.Add(-30*24*time.Hour), now.Add(30*24*time.Hour)
-	lookback := rand.Intn(4) + 1
+	lookback := r.Intn(4) + 1
 
 	tests := []struct {
 		name        string

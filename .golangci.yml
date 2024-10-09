@@ -1,0 +1,24 @@
+run:
+linters:
+  # Disable all linters.
+  # Default: false
+  disable-all: true
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable:
+    - gofmt
+    - goimports
+    - ineffassign
+    - unused
+# TODO: Enable the following linters BCDA-8414
+#    - godox
+#    - gosec
+#    - govet
+    - gosimple
+issues:
+  exclude-rules:
+  - path: /
+    linters:
+    - typecheck
+output:
+  show-stats: true

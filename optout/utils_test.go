@@ -5,12 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type OptOutTestSuite struct {
 	suite.Suite
+}
+
+func TestOptOutTestSuite(t *testing.T) {
+	suite.Run(t, new(OptOutTestSuite))
 }
 
 func (s *OptOutTestSuite) TestParseMetadata() {
@@ -29,6 +34,39 @@ func (s *OptOutTestSuite) TestParseMetadata() {
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420", metadata.Name)
 	assert.Equal(expTime.Format("010203040506"), metadata.Timestamp.Format("010203040506"))
 	assert.Nil(err)
+}
+
+func (s *OptOutTestSuite) TestParseMetadata_CorrectEnv() {
+	assert := assert.New(s.T())
+
+	originalValue := conf.GetEnv("ENV")
+	if err := conf.SetEnv(s.T(), "ENV", "someenv"); err != nil {
+		assert.Failf("Error %s env value %s to %s\n", err.Error(), "ENV", "someenv")
+	}
+	defer func() {
+		conf.SetEnv(s.T(), "ENV", originalValue)
+	}()
+
+	expTime, _ := time.Parse(time.RFC3339, "2019-12-20T21:09:42Z")
+	metadata, err := ParseMetadata("blah/someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
+	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420", metadata.Name)
+	assert.Equal(expTime.Format("010203040506"), metadata.Timestamp.Format("010203040506"))
+	assert.Nil(err)
+}
+
+func (s *OptOutTestSuite) TestParseMetadata_DifferentEnv() {
+	assert := assert.New(s.T())
+
+	originalValue := conf.GetEnv("ENV")
+	if err := conf.SetEnv(s.T(), "ENV", "dev"); err != nil {
+		assert.Failf("Error %s env value %s to %s\n", err.Error(), "ENV", "dev")
+	}
+	defer func() {
+		conf.SetEnv(s.T(), "ENV", originalValue)
+	}()
+
+	_, err := ParseMetadata("blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
+	assert.EqualError(err, "Skipping file for different environment: blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
 }
 
 func (s *OptOutTestSuite) TestParseMetadata_InvalidData() {

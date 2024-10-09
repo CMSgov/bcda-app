@@ -57,6 +57,7 @@ func URLPrefixMatcher(prefix string) cmux.Matcher {
 	return func(r io.Reader) bool {
 		req, err := http.ReadRequest(bufio.NewReader(r))
 		if err != nil {
+			log.API.Error(err)
 			return false
 		}
 		return strings.HasPrefix(req.URL.Path, prefix)

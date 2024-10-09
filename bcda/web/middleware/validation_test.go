@@ -9,13 +9,15 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 var noop http.HandlerFunc = func(rw http.ResponseWriter, r *http.Request) { rw.WriteHeader(http.StatusOK) }
 
 func TestValidRequestURL(t *testing.T) {
-	// Allow us to retrieve the RequestParameters by grabing the updated context.
+	// Allow us to retrieve the RequestParameters by grabbing the updated context.
 	// When we call *http.Request.WithContext(ctx), a new request is created.
 	// So we cannot leverage the context associated with the original request
 	var ctx context.Context
@@ -34,7 +36,7 @@ func TestValidRequestURL(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Verify we have the context as expected
-	rp, ok := RequestParametersFromContext(ctx)
+	rp, ok := GetRequestParamsFromCtx(ctx)
 	assert.True(t, ok)
 	// assert.True(t, now.Equal(rp.Since), "Since parameter does not match")
 	assert.Equal(t, rp.ResourceTypes, []string{"Patient"})
@@ -61,8 +63,13 @@ func TestInvalidRequestURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 			req, err := http.NewRequest("GET", tt.url, nil)
 			assert.NoError(t, err)
+
+			req = req.WithContext(ctx)
+
 			rr := httptest.NewRecorder()
 			ValidateRequestURL(noop).ServeHTTP(rr, req)
 			assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -72,8 +79,12 @@ func TestInvalidRequestURL(t *testing.T) {
 }
 
 func TestValidRequestHeaders(t *testing.T) {
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 	req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
 	assert.NoError(t, err)
+
+	req = req.WithContext(ctx)
 	req.Header.Set("Accept", "application/fhir+json")
 	req.Header.Set("Prefer", constants.TestRespondAsync)
 
@@ -96,8 +107,12 @@ func TestInvalidRequestHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 			req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
 			assert.NoError(t, err)
+
+			req = req.WithContext(ctx)
 			req.Header.Set("Accept", tt.acceptHeader)
 			req.Header.Set("Prefer", tt.preferHeader)
 

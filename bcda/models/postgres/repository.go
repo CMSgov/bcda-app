@@ -117,9 +117,9 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	return true, nil
 }
 
-func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("id", "name", "timestamp", "performance_year")
+	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
 	sb.From("cclf_files")
 	sb.Where(
 		sb.Equal("aco_cms_id", cmsID),
@@ -145,11 +145,12 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 			sb.LessEqualThan("timestamp", upperBound),
 		)
 	}
-	sb.OrderBy("timestamp").Desc().Limit(1)
+
+	sb.OrderBy("performance_year DESC, timestamp DESC").Limit(1)
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
-	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
+	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear, &cclfFile.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -366,7 +367,7 @@ func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, file
 	return nil
 }
 
-var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at"}
+var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at"}
 
 func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
@@ -424,7 +425,7 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 	)
 
 	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-		&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt)
+		&j.JobCount, &createdAt, &updatedAt)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {
@@ -438,10 +439,10 @@ func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) 
 	// User raw builder since we need to retrieve the associated ID
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("jobs")
 	ib.Cols("aco_id", "request_url", "status",
-		"transaction_time", "job_count", "completed_job_count",
+		"transaction_time", "job_count",
 		"created_at", "updated_at").
 		Values(j.ACOID, j.RequestURL, j.Status,
-			j.TransactionTime, j.JobCount, j.CompletedJobCount,
+			j.TransactionTime, j.JobCount,
 			sqlbuilder.Raw("NOW()"), sqlbuilder.Raw("NOW()"))
 
 	query, args := ib.Build()
@@ -464,7 +465,6 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 		ub.Assign("status", j.Status),
 		ub.Assign("transaction_time", j.TransactionTime),
 		ub.Assign("job_count", j.JobCount),
-		ub.Assign("completed_job_count", j.CompletedJobCount),
 		ub.Assign("updated_at", sqlbuilder.Raw("NOW()")),
 	)
 	ub.Where(ub.Equal("id", j.ID))
@@ -544,7 +544,7 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 	for rows.Next() {
 		var j models.Job
 		if err = rows.Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-			&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt); err != nil {
+			&j.JobCount, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
 		j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time

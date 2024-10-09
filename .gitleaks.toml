@@ -1,0 +1,9 @@
+title = "DASG Standard"
+
+[extend]
+  useDefault = true
+
+[[rules]]
+  id = "mbi-detection"
+  description = "Detects a potential MBI pattern based on https://www.cms.gov/medicare/new-medicare-card/understanding-the-mbi.pdf"
+  regex = '''\b((?i)[1-9][ACDEFGHJKMNPQRTUVWXY][ACDEFGHJKMNPQRTUVWXY\d]-?\d[ACDEFGHJKMNPQRTUVWXY][ACDEFGHJKMNPQRTUVWXY\d]\d-?[ACDEFGHJKMNPQRTUVWXY]{2}\d{2})\b'''

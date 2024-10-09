@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -21,7 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
@@ -95,8 +94,8 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 		expStatusCode int
 		expErrCode    string
 	}{
-		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
-		{"DoesNotExist", "0", 404, responseutils.DbErr},
+		{"InvalidJobID", "abcd", 400, "could not parse job id"},
+		{"DoesNotExist", "0", 404, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -118,7 +117,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -271,6 +270,9 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
 	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
+	for _, file := range rb.Files {
+		assert.NotContains(s.T(), file.URL, "-error.ndjson")
+	}
 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
 	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
@@ -397,8 +399,8 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 		expStatusCode int
 		expErrCode    string
 	}{
-		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
-		{"DoesNotExist", "0", 404, responseutils.DbErr},
+		{"InvalidJobID", "abcd", 400, "could not parse job id"},
+		{"DoesNotExist", "0", 404, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -419,7 +421,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -476,7 +478,7 @@ func (s *APITestSuite) TestMetadataResponse() {
 	assert.Equal(s.T(), "application/json", res.Header.Get(constants.ContentType))
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 
-	resp, err := ioutil.ReadAll(res.Body)
+	resp, err := io.ReadAll(res.Body)
 	assert.NoError(s.T(), err)
 
 	resource, err := unmarshaller.Unmarshal(resp)
@@ -578,7 +580,7 @@ func (s *APITestSuite) TestResourceTypes() {
 
 				ad := s.getAuthData()
 				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-				req = req.WithContext(middleware.NewRequestParametersContext(req.Context(), rp))
+				req = req.WithContext(middleware.SetRequestParamsCtx(req.Context(), rp))
 				newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 				req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 

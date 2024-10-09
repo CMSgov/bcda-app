@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -87,7 +86,7 @@ func TestGenerateAlr(t *testing.T) {
 func writeToFileV1(t *testing.T, fhirBulk chan *alr.AlrFhirBulk) string {
 	assert.NotNil(t, fhirBulk)
 
-	tempDir, err := ioutil.TempDir("", "alr_fhir")
+	tempDir, err := os.MkdirTemp("", "alr_fhir")
 	assert.NoError(t, err)
 
 	var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
@@ -135,7 +134,7 @@ func writeToFileV2(t *testing.T, fhirBulk chan *alr.AlrFhirBulk) string {
 
 	assert.NotNil(t, fhirBulk)
 
-	tempDir, err := ioutil.TempDir("", "alr_fhir")
+	tempDir, err := os.MkdirTemp("", "alr_fhir")
 	assert.NoError(t, err)
 
 	var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}

@@ -381,3 +381,28 @@ func getCCLFFiles(db *sql.DB, field, value string) ([]models.CCLFFile, error) {
 
 	return cclfFiles, nil
 }
+
+func GetJobKey(db *sql.DB, jobID int) ([]models.JobKey, error) {
+	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("id", "job_id", "file_name", "resource_type").From("job_keys")
+	sb.Where(sb.Equal("job_id", jobID))
+	query, args := sb.Build()
+	fmt.Println(query)
+	fmt.Println(args)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var jobKeys []models.JobKey
+	for rows.Next() {
+		var jobKey models.JobKey
+		if err := rows.Scan(&jobKey.ID, &jobKey.JobID, &jobKey.FileName,
+			&jobKey.ResourceType); err != nil {
+			return nil, err
+		}
+		jobKeys = append(jobKeys, jobKey)
+	}
+	return jobKeys, err
+}

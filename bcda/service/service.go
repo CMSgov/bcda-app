@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -17,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/middleware"
 )
 
 type RequestConditions struct {
@@ -162,7 +164,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 		}
 		// add new beneficiaries to the job queue; use a default time value to ensure
 		// that we retrieve the full history for these beneficiaries
-		jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
+		jobs, err = s.createQueueJobs(ctx, conditions, time.Time{}, newBeneficiaries)
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +174,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 	}
 
 	// add existiing beneficiaries to the job queue
-	jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
+	jobs, err = s.createQueueJobs(ctx, conditions, conditions.Since, beneficiaries)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +257,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
+func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
@@ -292,12 +294,18 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 						}
 						if resource, ok := GetDataType(rt); ok {
 							if resource.SupportsDataType(dataType) {
+								jobId, err := safecast.ToInt(conditions.JobID)
+								if err != nil {
+									log.API.Errorln(err)
+								}
 								enqueueArgs := models.JobEnqueueArgs{
-									ID:              int(conditions.JobID),
+									ID:              jobId,
 									ACOID:           conditions.ACOID.String(),
+									CMSID:           conditions.CMSID,
 									BeneficiaryIDs:  jobIDs,
 									ResourceType:    rt,
 									Since:           sinceArg,
+									TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
 									TransactionTime: transactionTime,
 									BBBasePath:      s.bbBasePath,
 									DataType:        dataType,
@@ -307,6 +315,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 
 								jobs = append(jobs, &enqueueArgs)
 							}
+
 						} else {
 							// This should never be possible, would have returned earlier
 							return nil, errors.New("Invalid resource type: " + rt)
@@ -325,6 +334,8 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 	return jobs, nil
 }
 
+// Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
+// split between existing beneficiaries and newly-attributed beneficiaries.
 func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
 
 	var (
@@ -336,18 +347,58 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
 
-	// will get all benes between cutoff time and now, or all benes up until the attribution date
+	// Retrieve beneficiaries from either:
+	// - The newest CCLF file in the last X days (where X is the environment's configured cutoff duration)
+	// - OR the newest CCLF file prior to the requested attributionDate
 	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
 		cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
-	if cclfFileNew == nil {
+	performanceYear := time.Now().Year() % 100
+	if conditions.fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+	//Note, we only compare performanceYear for the new CCLF file since the old file will only be used for identifying new ones.
+	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
+	// If the _since parameter is more recent than the latest CCLF file processing date,
+	// all beneficiaries should be considered pre-existing benes.
+	if !conditions.Since.IsZero() && cclfFileNew.CreatedAt.Sub(conditions.Since) < 0 {
+		// Retrieve all of the benes associated with this CCLF file.
+		benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if len(benes) == 0 {
+			return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+				conditions.CMSID, cclfFileNew.ID)
+		}
+
+		return newBeneficiaries, benes, nil
+	}
+
+	// Retrieve an older CCLF file for beneficiary comparison.
+	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
+	//
+	// e.g.
+	// - If it’s October 2023
+	// - and they request all beneficiary data “since January 1st, 2023"
+	// - any beneficiaries added in 2023 are considered "new."
+	//
+	oldFileUpperBound := conditions.Since
+
+	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
+	// for the older file to be prior to the newest file's timestamp.
+	if !conditions.Since.IsZero() && cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
+		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
+	}
+
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		time.Time{}, conditions.Since, models.FileTypeDefault)
+		time.Time{}, oldFileUpperBound, models.FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
@@ -355,6 +406,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	if cclfFileOld == nil {
 		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
 			conditions.CMSID, conditions.Since)
+
 		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
 		if err != nil {
 			return nil, nil, err
@@ -417,7 +469,12 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
 			conditions.CMSID, conditions.fileType, err.Error())
 	}
-	if cclfFile == nil {
+	performanceYear := time.Now().Year() % 100
+	if conditions.fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+
+	if cclfFile == nil || performanceYear != cclfFile.PerformanceYear {
 		return nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
@@ -444,10 +501,15 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 			upperBound = time.Now()
 		}
 
-		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
+		if cfg, ok := SetACOCfgFromCtx(ctx); ok {
+			if !cfg.IgnoreSuppressions {
+				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
+				}
+			}
 		}
+
 	}
 
 	benes, err := s.repository.GetCCLFBeneficiaries(ctx, cclfFileID, ignoredMBIs)
@@ -621,3 +683,19 @@ var (
 	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
 	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
 )
+
+type CtxACOCfgType string
+
+const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
+
+// TODO: this should live within middleware, models, or another common package.
+//
+//	We should move this when we do package cleanup.
+func NewACOCfgCtx(ctx context.Context, cfg *ACOConfig) context.Context {
+	return context.WithValue(ctx, CtxACOCfg, cfg)
+}
+
+func SetACOCfgFromCtx(ctx context.Context) (*ACOConfig, bool) {
+	cfg, ok := ctx.Value(CtxACOCfg).(*ACOConfig)
+	return cfg, ok
+}

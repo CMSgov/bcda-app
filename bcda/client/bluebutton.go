@@ -2,24 +2,26 @@ package client
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/ccoveille/go-safecast"
+	backoff "github.com/cenkalti/backoff/v4"
+	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -29,14 +31,14 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pborman/uuid"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 var logger logrus.FieldLogger
 
 const (
-	clientIDHeader = "BULK-CLIENTID"
-	jobIDHeader    = "BULK-JOBID"
+	clientIDHeader      = "BULK-CLIENTID"
+	jobIDHeader         = "BULK-JOBID"
+	transactionIDHeader = "TRANSACTIONID"
 )
 
 // BlueButtonConfig holds the configuration settings needed to create a BlueButtonClient
@@ -60,12 +62,12 @@ type ClaimsWindow struct {
 }
 
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error)
-	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
-	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
-	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
-	GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error)
-	GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error)
+	GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error)
+	GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error)
+	GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error)
+	GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
 }
 
 type BlueButtonClient struct {
@@ -97,7 +99,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 		caCertPool := x509.NewCertPool()
 
 		for _, caFile := range caFilePaths {
-			caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
+			caCert, err := os.ReadFile(filepath.Clean(caFile))
 			if err != nil {
 				return nil, errors.Wrap(err, "could not read CA file")
 			}
@@ -122,14 +124,17 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	}
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("BB_TIMEOUT_MS")); err != nil {
-		logger.Info("Could not get Blue Button timeout from environment variable; using default value of 500.")
-		timeout = 500
+		logger.Warn(errors.Wrap(err, "Could not get Blue Button timeout from environment variable; using default value of 10000."))
+		timeout = 10000
 	}
 
 	hl := &httpLogger{transport, logger}
 	httpClient := &http.Client{Transport: hl, Timeout: time.Duration(timeout) * time.Millisecond}
 	client := fhir.NewClient(httpClient, pageSize)
-	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
+	maxTries, err := safecast.ToUint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
+	if err != nil {
+		logger.Warn(errors.Wrap(err, "Could not convert Blue Button max retries from environment variable"))
+	}
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
 	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer, config.BBBasePath}, nil
 }
@@ -141,89 +146,85 @@ func SetLogger(log logrus.FieldLogger) {
 	logger = log
 }
 
-func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeAddressFields", "true")
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	updateParamWithLastUpdated(&params, since, transactionTime)
+	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
 	u, err := bbc.getURL("Patient", params)
 	if err != nil {
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobID, cmsID, header)
+	return bbc.makeBundleDataRequest("GET", u, jobData, header, nil)
 }
 
-func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
-	params := GetDefaultParams()
+func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
+	params := url.Values{}
 
-	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
-	params.Set("identifier", fmt.Sprintf("https://bluebutton.cms.gov/resources/identifier/%s|%v", "mbi-hash", hashedIdentifier))
-
-	u, err := bbc.getURL("Patient", params)
+	u, err := bbc.getURL("Patient/_search", params)
 	if err != nil {
 		return "", err
 	}
 
-	return bbc.getRawData(u)
+	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
+	return bbc.getRawData(jobData, "POST", u, strings.NewReader(body))
 }
 
-func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	updateParamWithLastUpdated(&params, since, transactionTime)
+	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
 	u, err := bbc.getURL("Coverage", params)
 	if err != nil {
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobID, cmsID, nil)
+	return bbc.makeBundleDataRequest("GET", u, jobData, nil, nil)
 }
 
-func (bbc *BlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 
-	mbiHash := HashIdentifier(mbi)
 	params := GetDefaultParams()
-	params.Set("mbi", mbiHash)
 	params.Set("excludeSAMHSA", "true")
 
 	updateParamWithServiceDate(&params, claimsWindow)
-	updateParamWithLastUpdated(&params, since, transactionTime)
+	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("Claim", params)
+	u, err := bbc.getURL("Claim/_search", params)
 	if err != nil {
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobID, cmsID, header)
+	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
+	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
 }
 
-func (bbc *BlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 
-	mbiHash := HashIdentifier(mbi)
 	params := GetDefaultParams()
-	params.Set("mbi", mbiHash)
 	params.Set("excludeSAMHSA", "true")
 
 	updateParamWithServiceDate(&params, claimsWindow)
-	updateParamWithLastUpdated(&params, since, transactionTime)
+	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("ClaimResponse", params)
+	u, err := bbc.getURL("ClaimResponse/_search", params)
 	if err != nil {
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobID, cmsID, header)
+	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
+	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
@@ -231,14 +232,14 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params.Set("excludeSAMHSA", "true")
 
 	updateParamWithServiceDate(&params, claimsWindow)
-	updateParamWithLastUpdated(&params, since, transactionTime)
+	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)
 	if err != nil {
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobID, cmsID, header)
+	return bbc.makeBundleDataRequest("GET", u, jobData, header, nil)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
@@ -246,14 +247,15 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	jobData := models.JobEnqueueArgs{}
 
-	return bbc.getRawData(u)
+	return bbc.getRawData(jobData, "GET", u, nil)
 }
 
-func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobID, cmsID string, headers http.Header) (*models.Bundle, error) {
-	var b *models.Bundle
+func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
+	var b *fhirModels.Bundle
 	for ok := true; ok; {
-		result, nextURL, err := bbc.tryBundleRequest(u, jobID, cmsID, headers)
+		result, nextURL, err := bbc.tryBundleRequest(method, u, jobData, headers, body)
 		if err != nil {
 			return nil, err
 		}
@@ -271,13 +273,13 @@ func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobID, cmsID string, head
 	return b, nil
 }
 
-func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, headers http.Header) (*models.Bundle, *url.URL, error) {
+func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, *url.URL, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
 
 	var (
-		result  *models.Bundle
+		result  *fhirModels.Bundle
 		nextURL *url.URL
 		err     error
 	)
@@ -287,12 +289,12 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, h
 	b := backoff.WithMaxRetries(eb, bbc.maxTries)
 
 	err = backoff.RetryNotify(func() error {
-		req, err := http.NewRequest("GET", u.String(), nil)
+		req, err := http.NewRequest(method, u.String(), body)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
-
+		req = newrelic.RequestWithTransactionContext(req, txn)
 		for key, values := range headers {
 			for _, value := range values {
 				req.Header.Add(key, value)
@@ -300,7 +302,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, h
 		}
 
 		queryID := uuid.NewRandom()
-		addBulkRequestHeaders(req, queryID, jobID, cmsID)
+		addDefaultRequestHeaders(req, queryID, jobData)
 
 		result, nextURL, err = bbc.client.DoBundleRequest(req)
 		if err != nil {
@@ -321,7 +323,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, h
 	return result, nextURL, nil
 }
 
-func (bbc *BlueButtonClient) getRawData(u *url.URL) (string, error) {
+func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, method string, u *url.URL, body io.Reader) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
@@ -333,13 +335,13 @@ func (bbc *BlueButtonClient) getRawData(u *url.URL) (string, error) {
 	var result string
 
 	err := backoff.RetryNotify(func() error {
-		req, err := http.NewRequest("GET", u.String(), nil)
+		req, err := http.NewRequest(method, u.String(), body)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
-		addNonBulkRequestHeaders(req, uuid.NewRandom())
-
+		req = newrelic.RequestWithTransactionContext(req, txn)
+		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
 			logger.Error(err)
@@ -369,7 +371,7 @@ func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, e
 	return u, nil
 }
 
-func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID) {
+func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData models.JobEnqueueArgs) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("keep-alive", "")
 	req.Header.Add(constants.BBHeaderTS, time.Now().String())
@@ -378,6 +380,9 @@ func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	req.Header.Add(constants.BBHeaderOriginURL, req.URL.String())
 	req.Header.Add(constants.BBHeaderOriginQ, req.URL.RawQuery)
 	req.Header.Add("IncludeIdentifiers", "mbi")
+	req.Header.Add(jobIDHeader, strconv.Itoa(jobData.ID))
+	req.Header.Add(clientIDHeader, jobData.CMSID)
+	req.Header.Add(transactionIDHeader, jobData.TransactionID)
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
 	// If we specify this header at the client level, then we must be responsible for decompressing the response.
@@ -392,37 +397,10 @@ func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	//req.Header.Add("BlueButton-BackendCall", "")
 }
 
-// function to add headers for bulk requests
-func addBulkRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
-	// Info: https://github.com/CMSgov/beneficiary-fhir-data/blob/master/docs/request-audit-headers.md
-	addDefaultRequestHeaders(req, reqID)
-
-	req.Header.Add(jobIDHeader, jobID)
-	req.Header.Add(clientIDHeader, cmsID)
-}
-
-// function to add headers for non-bulk requests
-func addNonBulkRequestHeaders(req *http.Request, reqID uuid.UUID) {
-	// Info: https://github.com/CMSgov/beneficiary-fhir-data/blob/master/docs/request-audit-headers.md
-	addDefaultRequestHeaders(req, reqID)
-}
-
 func GetDefaultParams() (params url.Values) {
 	params = url.Values{}
 	params.Set("_format", "application/fhir+json")
 	return params
-}
-
-func HashIdentifier(toHash string) (hashedValue string) {
-	blueButtonPepper := conf.GetEnv("BB_HASH_PEPPER")
-	blueButtonIter := utils.GetEnvInt("BB_HASH_ITER", 1000)
-
-	pepper, err := hex.DecodeString(blueButtonPepper)
-	// not sure how this can happen
-	if err != nil {
-		return ""
-	}
-	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New))
 }
 
 func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {
@@ -474,11 +452,12 @@ func (h *httpLogger) logRequest(req *http.Request) {
 
 func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
 	h.l.WithFields(logrus.Fields{
-		"resp_code":   resp.StatusCode,
-		"bb_query_id": req.Header.Get(constants.BBHeaderOriginQID),
-		"bb_query_ts": req.Header.Get(constants.BBHeaderTS),
-		"bb_uri":      req.URL.String(),
-		"job_id":      req.Header.Get(jobIDHeader),
-		"cms_id":      req.Header.Get(clientIDHeader),
+		"resp_code":      resp.StatusCode,
+		"bb_query_id":    req.Header.Get(constants.BBHeaderOriginQID),
+		"bb_query_ts":    req.Header.Get(constants.BBHeaderTS),
+		"bb_uri":         req.URL.String(),
+		"job_id":         req.Header.Get(jobIDHeader),
+		"cms_id":         req.Header.Get(clientIDHeader),
+		"transaction_id": req.Header.Get(transactionIDHeader),
 	}).Infoln("response")
 }

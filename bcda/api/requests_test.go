@@ -31,6 +31,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
@@ -594,7 +595,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
-			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
@@ -697,13 +698,14 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 	requestUrl := v2JobRequestUrl
 
 	tests := []struct {
-		testName        string
-		status          models.JobStatus
-		jobId           string
-		responseHeader  int
-		useMockService  bool
-		timestampOffset int
-		envVarOverride  string
+		testName           string
+		status             models.JobStatus
+		jobId              string
+		responseHeader     int
+		useMockService     bool
+		timestampOffset    int
+		envVarOverride     string
+		instigateDBFailure bool
 	}{
 		{testName: "Invalid jobID (Overflow)",
 			status:         models.JobStatusFailedExpired,
@@ -734,6 +736,10 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			status:         models.JobStatusCompleted,
 			jobId:          "1",
 			useMockService: true, responseHeader: http.StatusOK},
+		{testName: "Simulate unspecified DB Failure",
+			status: models.JobStatusFailedExpired,
+			jobId:  "1", responseHeader: http.StatusInternalServerError,
+			useMockService: true, instigateDBFailure: true},
 	}
 
 	resourceMap := s.resourceType
@@ -744,18 +750,21 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			if tt.useMockService {
 				mockSrv := service.MockService{}
 				timestp := time.Now()
+				var errResp error = nil
+				if tt.instigateDBFailure {
+					errResp = sql.ErrConnDone
+				}
 
 				mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
 					&models.Job{
-						ID:                1,
-						ACOID:             uuid.NewRandom(),
-						RequestURL:        requestUrl,
-						Status:            tt.status,
-						TransactionTime:   timestp,
-						JobCount:          100,
-						CompletedJobCount: 100,
-						CreatedAt:         timestp,
-						UpdatedAt:         timestp.Add(time.Duration(tt.timestampOffset)),
+						ID:              1,
+						ACOID:           uuid.NewRandom(),
+						RequestURL:      requestUrl,
+						Status:          tt.status,
+						TransactionTime: timestp,
+						JobCount:        100,
+						CreatedAt:       timestp,
+						UpdatedAt:       timestp.Add(time.Duration(tt.timestampOffset)),
 					},
 					[]*models.JobKey{{
 						ID:           1,
@@ -763,8 +772,9 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 						FileName:     "testingtesting",
 						ResourceType: "Patient",
 					}},
-					nil,
+					errResp,
 				)
+
 				h.Svc = &mockSrv
 
 			}
@@ -783,8 +793,12 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			h.JobStatus(w, req)
 			s.Equal(tt.responseHeader, w.Code)
 			switch tt.responseHeader {
-			case http.StatusOK, http.StatusBadRequest, http.StatusNotFound, http.StatusGone:
+			case http.StatusBadRequest, http.StatusNotFound, http.StatusGone:
+				s.Equal(constants.FHIRJsonContentType, w.Header().Get("Content-Type"))
+			case http.StatusOK:
 				s.Equal(constants.JsonContentType, w.Header().Get("Content-Type"))
+			case http.StatusAccepted:
+				s.Equal("", w.Header().Get("Content-Type"))
 			}
 
 		})
@@ -875,15 +889,14 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			timestp := time.Now()
 			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
 				&models.Job{
-					ID:                1,
-					ACOID:             uuid.NewRandom(),
-					RequestURL:        tt.requestUrl,
-					Status:            tt.status,
-					TransactionTime:   timestp,
-					JobCount:          100,
-					CompletedJobCount: 100,
-					CreatedAt:         timestp,
-					UpdatedAt:         timestp,
+					ID:              1,
+					ACOID:           uuid.NewRandom(),
+					RequestURL:      tt.requestUrl,
+					Status:          tt.status,
+					TransactionTime: timestp,
+					JobCount:        100,
+					CreatedAt:       timestp,
+					UpdatedAt:       timestp,
 				},
 				[]*models.JobKey{{
 					ID:           1,
@@ -901,14 +914,13 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 			rctx.URLParams.Add("jobID", "1")
 
 			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-			req = req.WithContext(ctx)
-			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+			ctx = context.WithValue(ctx, appMiddleware.CtxTransactionKey, uuid.New())
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{})
 			req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
 
 			w := httptest.NewRecorder()
 			h.JobStatus(w, req)
 			s.Equal(http.StatusInternalServerError, w.Code)
-			assert.Contains(s.T(), w.Body.String(), responseutils.JobFailed)
 			assert.Contains(s.T(), w.Body.String(), responseutils.DetailJobFailed)
 		})
 	}
@@ -952,7 +964,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
 	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
-	ctx = middleware.NewRequestParametersContext(ctx, rp)
+	ctx = middleware.SetRequestParamsCtx(ctx, rp)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 	req = req.WithContext(ctx)
@@ -965,7 +977,7 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
-	ctx = middleware.NewRequestParametersContext(ctx, rp)
+	ctx = middleware.SetRequestParamsCtx(ctx, rp)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 	return req.WithContext(ctx)

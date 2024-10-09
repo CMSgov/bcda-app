@@ -17,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -97,30 +98,41 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
 
 // StopQue cleans up any resources created
 func (q *masterQueue) StopQue() {
+	q.queDB.Close()
 	q.quePool.Shutdown()
 }
 
-func (q *queue) processJob(job *que.Job) error {
+func (q *queue) processJob(queJob *que.Job) error {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	defer q.updateJobQueueCountCloudwatchMetric()
 	defer cancel()
 
 	var jobArgs models.JobEnqueueArgs
-	err := json.Unmarshal(job.Args, &jobArgs)
+	err := json.Unmarshal(queJob.Args, &jobArgs)
 	if err != nil {
 		// ACK the job because retrying it won't help us be able to deserialize the data
-		q.log.Warnf("Failed to deserialize job.Args '%s' %s. Removing queuejob from que.", job.Args, err)
+		q.log.Warnf("Failed to deserialize job.Args '%s' %s. Removing queuejob from que.", queJob.Args, err)
 		return nil
 	}
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, logger := log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
+	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
+	id, e := safecast.ToUint(jobArgs.ID)
 
-	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
+	if e != nil {
+		return e
+	}
+
+	exportJob, err := q.worker.ValidateJob(ctx, queJob.ID, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
-		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", job.ID, jobArgs.ID)
+		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", queJob.ID, jobArgs.ID)
+		return nil
+	} else if goerrors.Is(err, worker.ErrParentJobFailed) {
+		// ACK the job because we do not need to work on queue jobs associated with a failed parent job
+		logger.Warnf("queJob %d associated with a failed parent Job %d. Removing queuejob from que.", queJob.ID, jobArgs.ID)
 		return nil
 	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
 		// Data is corrupted, we cannot work on this job.
@@ -129,16 +141,29 @@ func (q *queue) processJob(job *que.Job) error {
 	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
-		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
-		if job.ErrorCount >= maxNotFoundRetries {
+		maxNotFoundRetries, err := safecast.ToInt32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
+		if err != nil {
+			logger.Errorf("Failed to convert BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES to int32. Defaulting to 3. Error: %s", err)
+			return nil
+		}
+
+		if queJob.ErrorCount >= maxNotFoundRetries {
 			logger.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
 				jobArgs.ACOID)
-			// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
+			// By returning a nil error response, we're signaling to que-go to remove this job from the job queue.
 			return nil
 		}
 
 		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
 		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
+	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
+		logger.Warnf("Queue job (que_jobs.id) %d already processed for job.id %d. Checking completion status and removing queuejob from que.", queJob.ID, id)
+
+		_, err := worker.CheckJobCompleteAndCleanup(ctx, q.repository, id)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", id))
+		}
+		return nil
 	} else if err != nil {
 		err := errors.Wrap(err, "failed to validate job")
 		logger.Error(err)
@@ -146,9 +171,9 @@ func (q *queue) processJob(job *que.Job) error {
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
-	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 15)
+	go checkIfCancelled(ctx, q.repository, cancel, id, 15)
 
-	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
+	if err := q.worker.ProcessJob(ctx, queJob.ID, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")
 		logger.Error(err)
 		return err
