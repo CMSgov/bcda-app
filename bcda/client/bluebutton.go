@@ -162,15 +162,17 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 }
 
 func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/x-www-form-urlencoded")
 	params := url.Values{}
+	params.Set("identifier", fmt.Sprintf("http://hl7.org/fhir/sid/us-mbi|%s", mbi))
 
 	u, err := bbc.getURL("Patient/_search", params)
 	if err != nil {
 		return "", err
 	}
 
-	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.getRawData(jobData, "POST", u, strings.NewReader(body))
+	return bbc.getRawData("POST", jobData, u, headers, strings.NewReader(params.Encode()))
 }
 
 func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
@@ -249,7 +251,7 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	}
 	jobData := models.JobEnqueueArgs{}
 
-	return bbc.getRawData(jobData, "GET", u, nil)
+	return bbc.getRawData("GET", jobData, u, nil, nil)
 }
 
 func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
@@ -300,9 +302,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 				req.Header.Add(key, value)
 			}
 		}
-
-		queryID := uuid.NewRandom()
-		addDefaultRequestHeaders(req, queryID, jobData)
+		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
 
 		result, nextURL, err = bbc.client.DoBundleRequest(req)
 		if err != nil {
@@ -323,7 +323,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 	return result, nextURL, nil
 }
 
-func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, method string, u *url.URL, body io.Reader) (string, error) {
+func (bbc *BlueButtonClient) getRawData(method string, jobData models.JobEnqueueArgs, u *url.URL, headers http.Header, body io.Reader) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
@@ -340,8 +340,15 @@ func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, method st
 			logger.Error(err)
 			return err
 		}
+
 		req = newrelic.RequestWithTransactionContext(req, txn)
+		for key, values := range headers {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
 		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
+
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
 			logger.Error(err)
