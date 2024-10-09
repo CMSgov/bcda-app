@@ -28,19 +28,18 @@ The files committed in the `shared_files/encrypted` directory hold secret inform
 
 #### **Ansible Vault**
 
-- See a team member for the Ansible Vault password
-- Create a file named `.vault_password` in the root directory of the repository
-- Place the Ansible Vault password in this file
+- Create a file named `.vault_password` in the root directory of the repository.
+- You should have been given access to [Box](https://app.box.com).  In Box search for `vault_password.txt`, copy the text and paste it into your `.vault_password` file.
 
 #### **Decrypt/Encrypt Secrets**
 
-You can temporarily decrypt files by running the following command from the repository root directory:
+You can now decrypt the encrypted secret files (found at `shared_files/encrypted`) by running the following command from the repository root directory:
 
 ```
 ./ops/secrets --decrypt
 ```
 
-While files are decrypted, copy the files in this directory to the sibling directory `shared_files/decrypted`. Encrypt changed files with:
+Copy the decrypted files from `shared_files/encrypted` to the sibling directory `shared_files/decrypted`. After make sure to re-encrypt each secret file in the encrypted folder (as these files are committed):
 
 ```
 ./ops/secrets --encrypt <filename>
@@ -56,12 +55,13 @@ While files are decrypted, copy the files in this directory to the sibling direc
 $ touch .env.sh
 ```
 
-2. Edit `.env.sh` to include the bash shebang and any necessary environment variables like this"
+2. Edit `.env.sh` to include the bash shebang and any necessary environment variables (see `shared_files/decrypted/local.env` as well as section titled 'Environment variables').  It should look like this after:
 
 ```
 #!/bin/bash
 export BCDA_SSAS_CLIENT_ID="<clientID>"
 export BCDA_SSAS_SECRET="<clientSecret>"
+<other needed env vars>
 ```
 
 3. Source the file to add the variables to your local development environment:
@@ -258,8 +258,6 @@ Example:
 mockery --name Repository --inpackage --case snake
 ```
 
-#
-
 ## **Environment variables**
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
@@ -296,7 +294,7 @@ You can use docker to run commands against the running containers.
 **Example:** Use docker to look at the api database with psql.
 
 ```sh
-docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
+docker run --rm --network bcda-app-net -it postgres psql -h bcda-app-db-1 -U postgres bcda
 ```
 
 **Example:** See docker-compose.yml for the password.
@@ -304,7 +302,7 @@ docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U
 Use docker to run the CLI against an API instance
 
 ```
-docker exec -it bcda-app_api_1 sh -c 'bcda -h'
+docker exec -it bcda-app-api-1 sh -c 'bcda -h'
 ```
 
 # IDE Setup

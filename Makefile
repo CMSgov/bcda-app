@@ -1,8 +1,6 @@
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
-	docker compose up --build documentation
-	docker compose up --build openapi
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm \
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
@@ -12,16 +10,19 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+setup-tests:
+	# Clean up any existing data to ensure we spin up container in a known state.
+	docker compose -f docker-compose.test.yml rm -fsv tests
+	docker compose -f docker-compose.test.yml build tests
 
 LINT_TIMEOUT ?= 3m
-lint:
-	docker compose -f docker-compose.test.yml build tests
+lint: setup-tests
 	docker compose -f docker-compose.test.yml run \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
-	docker compose -f docker-compose.test.yml run --rm tests gosec ./... ./optout
+	# TODO: Remove the exclusion of G301 as part of BCDA-8414
+	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
-smoke-test:
-	docker compose -f docker-compose.test.yml build tests
+smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
 
 postman:
@@ -46,8 +47,7 @@ postman:
 	--global-var v2Disabled=false \
 	--global-var maintenanceMode=$(maintenanceMode)
 
-unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas
-	docker compose -f docker-compose.test.yml build tests
+unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas setup-tests
 	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-ssas:
@@ -83,8 +83,7 @@ unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
 	docker compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
-performance-test:
-	docker compose -f docker-compose.test.yml build tests
+performance-test: setup-tests
 	docker compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
@@ -93,7 +92,7 @@ test:
 	$(MAKE) postman env=local maintenanceMode=""
 	$(MAKE) smoke-test env=local maintenanceMode=""
 
-load-fixtures:
+reset-db:
 	# Rebuild the databases to ensure that we're starting in a fresh state
 	docker compose -f docker-compose.yml rm -fsv db queue
 
@@ -106,6 +105,7 @@ load-fixtures:
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
 
+load-fixtures: reset-db
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
@@ -155,7 +155,7 @@ docker-build:
 	docker compose build --force-rm
 	docker compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap: docker-build documentation load-fixtures
+docker-bootstrap: docker-build load-fixtures
 
 api-shell:
 	docker compose exec -T api bash
@@ -189,11 +189,7 @@ bdt:
 	-e SECRET='${CLIENT_SECRET}' \
 	bdt
 
-.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot
-
-documentation:
-	docker compose up --build documentation
-	docker compose up --exit-code-from openapi openapi
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 credentials:
 	$(eval ACO_CMS_ID = A9994)
@@ -201,6 +197,9 @@ credentials:
 	# For example: ACO_CMS_ID=A9993 make credentials 
 	@docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
 
+dbdocs:
+	docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --rm-dist "postgres://postgres:toor@db:5432/bcda?sslmode=disable" dbdocs/bcda
+	docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --force "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable" dbdocs/bcda_queue
 
 # ==== Lambda ====
 

@@ -23,18 +23,6 @@ fi
 [  -z "$BCDA_GPG_RPM_PASSPHRASE" ] && echo "Please select the Passphrase to sign the RPMs" && exit 1 || echo "GPG Passphrase provided"
 [  -z "$GPG_RPM_EMAIL" ] && echo "Please enter the email for the GPG Key Signature" && exit 1 || echo "GPG Key Email provided"
 
-if [ ! -f ../bcda/swaggerui/swagger.json ]
-then
-  echo "Swagger doc generation must be completed prior to creating package."
-  exit 1
-fi
-
-if [ ! -f ../bcda/swaggerui/openapi.json ]
-then
-  echo "OpenAPI doc generation must be completed prior to creating package."
-  exit 1
-fi
-
 #TODO: This file should live in worker S3 mount dir. Perhaps remove this.
 if [ ! -f ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv ]
 then
@@ -47,7 +35,7 @@ go clean
 echo "Building bcda binary..." 
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/api/hcc_crosswalk.tsv ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/configs
+fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/api/hcc_crosswalk.tsv ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/configs
 cd ../bcdaworker
 go clean
 echo "Building bcdaworker..."

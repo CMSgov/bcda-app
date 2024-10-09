@@ -13,7 +13,7 @@ import (
 
 func TestUpdateCSV(t *testing.T) {
 
-    isTesting = true
+	isTesting = true
 
 	mbiCount := rand.Intn(1000)
 	path, cleanup := testUtils.CopyToTemporaryDirectory(t, "testdata")

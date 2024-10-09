@@ -24,6 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 	"github.com/sirupsen/logrus"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
@@ -48,7 +49,11 @@ func (w *worker) ValidateJob(ctx context.Context, queJobID int64, jobArgs models
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
-	exportJob, err := w.r.GetJobByID(ctx, uint(jobArgs.ID))
+	id, err := safecast.ToUint(jobArgs.ID)
+	if err != nil {
+		return nil, err
+	}
+	exportJob, err := w.r.GetJobByID(ctx, id)
 	if goerrors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound
 	} else if err != nil {
@@ -63,7 +68,7 @@ func (w *worker) ValidateJob(ctx context.Context, queJobID int64, jobArgs models
 		return nil, ErrParentJobFailed
 	}
 
-	_, err = w.r.GetJobKey(ctx, uint(jobArgs.ID), queJobID)
+	_, err = w.r.GetJobKey(ctx, id, queJobID)
 	if goerrors.Is(err, repository.ErrJobKeyNotFound) {
 		// No job key exists, which means this queue job needs to be processed.
 		return exportJob, nil
@@ -237,7 +242,11 @@ func CloseOrLogError(logger logrus.FieldLogger, f *os.File) {
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, queJobID int64, jobArgs models.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
 
-	jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), QueJobID: &queJobID, FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
+	id, err := safecast.ToUint(jobArgs.ID)
+	if err != nil {
+		return nil, err
+	}
+	jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
 
 	logger := log.GetCtxLogger(ctx)
 	close := metrics.NewChild(ctx, "writeBBDataToFile")
@@ -370,7 +379,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if errorCount > 0 {
-		jobKeys = append(jobKeys, models.JobKey{JobID: uint(jobArgs.ID), QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
+		jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
 	}
 	return jobKeys, nil
 }
@@ -556,7 +565,7 @@ func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []model
 
 func createDir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.MkdirAll(path, os.ModePerm); err != nil {
+		if err = os.MkdirAll(path, 0744); err != nil {
 			return err
 		}
 		return err

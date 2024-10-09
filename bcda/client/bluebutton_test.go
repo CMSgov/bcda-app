@@ -296,20 +296,6 @@ func (s *BBRequestTestSuite) TestGetClaim() {
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
-func (s *BBRequestTestSuite) TestGetClaim_HashIdentifierError() {
-	existingPepper := conf.GetEnv("BB_HASH_PEPPER")
-
-	defer func() {
-		conf.SetEnv(s.T(), "BB_HASH_PEPPER", existingPepper)
-	}()
-
-	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
-
-	_, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
-	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "Failed to decode bluebutton hash pepper")
-}
-
 func (s *BBRequestTestSuite) TestGetClaim_500() {
 	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
@@ -320,20 +306,6 @@ func (s *BBRequestTestSuite) TestGetClaimResponse() {
 	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
-}
-
-func (s *BBRequestTestSuite) TestGetClaimResponse_HashIdentifierError() {
-	existingPepper := conf.GetEnv("BB_HASH_PEPPER")
-
-	defer func() {
-		conf.SetEnv(s.T(), "BB_HASH_PEPPER", existingPepper)
-	}()
-
-	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
-
-	_, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
-	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "Failed to decode bluebutton hash pepper")
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse_500() {
@@ -355,20 +327,20 @@ func (s *BBRequestTestSuite) TestGetMetadata_500() {
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash() {
-	p, err := s.bbClient.GetPatientByIdentifierHash(models.JobEnqueueArgs{}, "hashedIdentifier")
+func (s *BBRequestTestSuite) TestGetPatientByMbi() {
+	p, err := s.bbClient.GetPatientByMbi(models.JobEnqueueArgs{}, "mbi")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `"id": "20000000000001"`)
 }
 
-func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash_500() {
+func (s *BBRequestTestSuite) TestGetPatientByMbi_500() {
 	var cms_id, job_id bool
 	hook := test.NewLocal(logrus.StandardLogger())
 	jobData := models.JobEnqueueArgs{
 		ID:    1,
 		CMSID: "A0000",
 	}
-	p, err := s.bbClient.GetPatientByIdentifierHash(jobData, "hashedIdentifier")
+	p, err := s.bbClient.GetPatientByMbi(jobData, "mbi")
 	entry := hook.AllEntries()
 	for _, t := range entry {
 		s.T().Log(t.Data)
@@ -383,51 +355,6 @@ func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash_500() {
 	assert.True(s.T(), job_id, "Log entry should have a value for field `job_id`.")
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get response`, err.Error())
 	assert.Equal(s.T(), "", p)
-}
-
-// Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
-func (s *BBTestSuite) TestHashIdentifier() {
-	assert.NotZero(s.T(), conf.GetEnv("BB_HASH_PEPPER"))
-	HICN := "1000067585"
-	HICNHash, err := client.HashIdentifier(HICN)
-	assert.Nil(s.T(), err)
-
-	// This test will only be valid for this pepper.  If it is different in different environments we will need different checks
-	if conf.GetEnv("BB_HASH_PEPPER") == "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9" {
-		assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
-	}
-	HICN = "123456789"
-	HICNHash, err = client.HashIdentifier(HICN)
-	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
-
-	MBI := "1000067585"
-	MBIHash, err := client.HashIdentifier(MBI)
-	assert.Nil(s.T(), err)
-
-	if conf.GetEnv("BB_HASH_PEPPER") == "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9" {
-		assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", MBIHash)
-	}
-
-	MBI = "123456789"
-	MBIHash, err = client.HashIdentifier(MBI)
-	assert.Nil(s.T(), err)
-	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", MBIHash)
-}
-
-func (s *BBTestSuite) TestHashIdentifierFailure() {
-	assert.NotZero(s.T(), conf.GetEnv("BB_HASH_PEPPER"))
-	existingPepper := conf.GetEnv("BB_HASH_PEPPER")
-
-	defer func() {
-		conf.SetEnv(s.T(), "BB_HASH_PEPPER", existingPepper)
-	}()
-
-	conf.SetEnv(s.T(), "BB_HASH_PEPPER", "Ã«ÃÃ¬Ã¹Ã")
-
-	HICN := "1000067585"
-	_, err := client.HashIdentifier(HICN)
-	assert.NotNil(s.T(), err)
 }
 
 func (s *BBRequestTestSuite) TearDownAllSuite() {
@@ -636,9 +563,9 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetPatientByIdentifierHash",
+			"GetPatientByMbi",
 			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetPatientByIdentifierHash(models.JobEnqueueArgs{}, "hashedIdentifier")
+				return bbClient.GetPatientByMbi(models.JobEnqueueArgs{}, "mbi")
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(string)
@@ -650,7 +577,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				noBulkRequestHeaders,
-				hasDefaultRequestHeaders,
+				hasDefaultRequestHeadersNoQuery,
 			},
 		},
 		{
@@ -1020,6 +947,13 @@ func hasDefaultRequestHeaders(t *testing.T, req *http.Request) {
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginURL))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQID))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQ))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
+}
+func hasDefaultRequestHeadersNoQuery(t *testing.T, req *http.Request) {
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderTS))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginURL))
+	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQID))
+	assert.Empty(t, req.Header.Get(constants.BBHeaderOriginQ))
 	assert.NotEmpty(t, req.Header.Get(constants.BBHeaderOriginQC))
 }
 func hasBulkRequestHeaders(t *testing.T, req *http.Request) {

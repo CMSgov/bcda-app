@@ -2,7 +2,7 @@ package service
 
 import "github.com/CMSgov/bcda-app/bcda/constants"
 
-//DataType is used to identify the type of data returned by each resource
+// DataType is used to identify the type of data returned by each resource
 type DataType struct {
 	Adjudicated          bool
 	PartiallyAdjudicated bool
