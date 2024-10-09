@@ -3,6 +3,7 @@
 **/bcdaworker/data/*
 **/bcdaworker/tmp/*
 **/bcdaworker/tmpdata/*
+**/bcdaworker/TEMP
 **/bcdaworker/TEMP/*
 **/.git
 **/data

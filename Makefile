@@ -13,18 +13,16 @@ package:
 setup-tests:
 	# Clean up any existing data to ensure we spin up container in a known state.
 	docker compose -f docker-compose.test.yml rm -fsv tests
-	docker compose -f docker-compose.test.yml build --no-cache tests
+	docker compose -f docker-compose.test.yml build tests
 
 LINT_TIMEOUT ?= 3m
-lint:
-	$(MAKE) setup-tests
+lint: setup-tests
 	docker compose -f docker-compose.test.yml run \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
-smoke-test:
-	$(MAKE) setup-tests
+smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
 
 postman:
@@ -49,8 +47,7 @@ postman:
 	--global-var v2Disabled=false \
 	--global-var maintenanceMode=$(maintenanceMode)
 
-unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas
-	$(MAKE) setup-tests
+unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas setup-tests
 	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-ssas:
@@ -86,8 +83,7 @@ unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
 	docker compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
-performance-test:
-	$(MAKE) setup-tests
+performance-test: setup-tests
 	docker compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
