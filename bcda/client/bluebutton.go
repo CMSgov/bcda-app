@@ -164,7 +164,8 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
 	headers := make(http.Header)
 	headers.Add("Content-Type", "application/x-www-form-urlencoded")
-	params := url.Values{}
+
+	params := GetDefaultParams()
 	params.Set("identifier", fmt.Sprintf("http://hl7.org/fhir/sid/us-mbi|%s", mbi))
 
 	u, err := bbc.getURL("Patient/_search", params)
@@ -189,12 +190,14 @@ func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, benefici
 }
 
 func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
-	header := make(http.Header)
-	header.Add("IncludeTaxNumbers", "true")
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	params := GetDefaultParams()
 	params.Set("excludeSAMHSA", "true")
-
+	params.Set("includeTaxNumbers", "true")
+	params.Set("isHashed", "false")
+	params.Set("mbi", mbi)
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
@@ -203,17 +206,18 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 		return nil, err
 	}
 
-	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
+	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
 func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
-	header := make(http.Header)
-	header.Add("IncludeTaxNumbers", "true")
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	params := GetDefaultParams()
 	params.Set("excludeSAMHSA", "true")
-
+	params.Set("includeTaxNumbers", "true")
+	params.Set("isHashed", "false")
+	params.Set("mbi", mbi)
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
@@ -222,8 +226,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi
 		return nil, err
 	}
 
-	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
+	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
