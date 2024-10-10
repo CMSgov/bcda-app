@@ -598,10 +598,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noServiceDateChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -619,10 +619,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noServiceDateChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -641,10 +641,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				serviceDateLowerBoundChecker,
 				noServiceDateUpperBoundChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -663,10 +663,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noServiceDateLowerBoundChecker,
 				serviceDateUpperBoundChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -685,10 +685,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				serviceDateLowerBoundChecker,
 				serviceDateUpperBoundChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -706,10 +706,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noServiceDateChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -727,10 +727,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noServiceDateChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -749,10 +749,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				serviceDateLowerBoundChecker,
 				noServiceDateUpperBoundChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -771,10 +771,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noServiceDateLowerBoundChecker,
 				serviceDateUpperBoundChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 		{
@@ -793,10 +793,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				serviceDateLowerBoundChecker,
 				serviceDateUpperBoundChecker,
 				excludeSAMHSAChecker,
-				includeTaxNumbersChecker,
 				noIncludeAddressFieldsChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
+				hasClaimRequiredURLEncodedParams,
 			},
 		},
 	}
@@ -956,13 +956,17 @@ func hasContentTypeURLEncodedHeader(t *testing.T, req *http.Request) {
 	assert.Equal(t, "application/x-www-form-urlencoded", req.Header.Get("Content-Type"))
 }
 func hasURLEncodedBodyWithIdentifier(t *testing.T, req *http.Request) {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(req.Body)
-	respBytes := buf.String()
-	body := string(respBytes)
-
+	body := reqBodyToString(req)
 	assert.Contains(t, body, fmt.Sprintf("identifier=%s", url.QueryEscape("http://hl7.org/fhir/sid/us-mbi|")))
 }
+func hasClaimRequiredURLEncodedParams(t *testing.T, req *http.Request) {
+	body := reqBodyToString(req)
+	assert.Contains(t, body, "includeTaxNumbers=true")
+	assert.Contains(t, body, "mbi=beneID1")
+	assert.Contains(t, body, "excludeSAMHSA=true")
+	assert.Contains(t, body, "isHashed=false")
+}
+
 func hasBulkRequestHeaders(t *testing.T, req *http.Request) {
 	assert.NotEmpty(t, req.Header.Get(jobIDHeader))
 	assert.NotEmpty(t, req.Header.Get(clientIDHeader))
@@ -972,6 +976,13 @@ func noBulkRequestHeaders(t *testing.T, req *http.Request) {
 		assert.NotEqual(t, k, jobIDHeader)
 		assert.NotEqual(t, k, clientIDHeader)
 	}
+}
+
+func reqBodyToString(req *http.Request) string {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(req.Body)
+	respBytes := buf.String()
+	return string(respBytes)
 }
 
 func TestBBTestSuite(t *testing.T) {
