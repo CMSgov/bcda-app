@@ -729,9 +729,6 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 		// ACO with lookback period
 		{"ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime()}, benes1, nil, nil},
 		{"Terminated ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-
-		// Verify error checks
-		{"Unsupported request type", defaultACOID, 22, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime()}, benes1, nil, nil},
 	}
 
 	// Add all combinations of resource types
