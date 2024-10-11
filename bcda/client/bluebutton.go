@@ -162,9 +162,7 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 }
 
 func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
-	headers := make(http.Header)
-	headers.Add("Content-Type", "application/x-www-form-urlencoded")
-
+	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	params.Set("identifier", fmt.Sprintf("http://hl7.org/fhir/sid/us-mbi|%s", mbi))
 
@@ -190,14 +188,9 @@ func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, benefici
 }
 
 func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
-	headers := make(http.Header)
-	headers.Add("Content-Type", "application/x-www-form-urlencoded")
-
+	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
-	params.Set("excludeSAMHSA", "true")
-	params.Set("includeTaxNumbers", "true")
-	params.Set("isHashed", "false")
-	params.Set("mbi", mbi)
+	updateParamsWithClaimsDefaults(&params, mbi)
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
@@ -210,14 +203,9 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 }
 
 func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
-	headers := make(http.Header)
-	headers.Add("Content-Type", "application/x-www-form-urlencoded")
-
+	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
-	params.Set("excludeSAMHSA", "true")
-	params.Set("includeTaxNumbers", "true")
-	params.Set("isHashed", "false")
-	params.Set("mbi", mbi)
+	updateParamsWithClaimsDefaults(&params, mbi)
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
@@ -434,6 +422,20 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	if len(since) > 0 && strings.HasPrefix(since, "gt") {
 		params.Add("_lastUpdated", since)
 	}
+}
+
+func updateParamsWithClaimsDefaults(params *url.Values, mbi string) {
+	params.Set("excludeSAMHSA", "true")
+	params.Set("includeTaxNumbers", "true")
+	params.Set("isHashed", "false")
+	params.Set("mbi", mbi)
+}
+
+func createURLEncodedHeader() http.Header {
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	return headers
 }
 
 type httpLogger struct {
