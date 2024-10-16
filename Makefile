@@ -47,6 +47,10 @@ postman:
 	--global-var v2Disabled=false \
 	--global-var maintenanceMode=$(maintenanceMode)
 
+# make test-path TEST_PATH="bcdaworker/worker/*.go"
+test-path: setup-tests
+	@docker compose -f docker-compose.test.yml run --rm tests go test -v $(TEST_PATH)
+
 unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas setup-tests
 	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 

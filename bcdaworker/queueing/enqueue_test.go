@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestQueEnqueuer(t *testing.T) {
+func TestQueEnqueuer_Integration(t *testing.T) {
 	// Need access to the queue database to ensure we've enqueued the job successfully
 	db := database.QueueConnection
 

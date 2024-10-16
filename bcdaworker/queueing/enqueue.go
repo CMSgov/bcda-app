@@ -34,7 +34,6 @@ func (q queEnqueuer) AddJob(job models.JobEnqueueArgs, priority int) error {
 	}
 
 	p, e := safecast.ToInt16(priority)
-
 	if e != nil {
 		return e
 	}
@@ -56,7 +55,6 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 	}
 
 	p, e := safecast.ToInt16(priority)
-
 	if e != nil {
 		return e
 	}
