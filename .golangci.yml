@@ -21,3 +21,9 @@ issues:
     - typecheck
 output:
   show-stats: true
+severity:
+  default-severity: error
+  rules:
+    - linters:
+        - godox
+      severity: info
