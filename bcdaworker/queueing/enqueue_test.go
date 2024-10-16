@@ -8,6 +8,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
 	_ "github.com/jackc/pgx"
 	"github.com/pborman/uuid"
@@ -50,4 +51,31 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
+}
+
+func TestNewEnqueuer(t *testing.T) {
+	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
+
+	// Test que-go implementation
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que-go")
+	enq := NewEnqueuer()
+	var expectedEnq queEnqueuer
+	assert.IsType(t, expectedEnq, enq)
+
+	// Test river implementation
+	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
+	enq = NewEnqueuer()
+	var expectedRiverEnq riverEnqueuer
+	assert.IsType(t, expectedRiverEnq, enq)
+
+	// If unmatched name: panic
+	conf.SetEnv(t, "QUEUE_LIBRARY", "bad implementation name")
+	assert.Panics(t, func() { enq = NewEnqueuer() }, "NO QUEUE LIBRARY SET")
+
+	// If unset: panic
+	conf.UnsetEnv(t, "QUEUE_LIBRARY")
+	assert.Panics(t, func() { enq = NewEnqueuer() }, "NO QUEUE LIBRARY SET")
+
+	// Reset env var
+	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
 }
