@@ -10,10 +10,9 @@ linters:
     - goimports
     - ineffassign
     - unused
-# TODO: Enable the following linters BCDA-8414
-#    - godox
-#    - gosec
-#    - govet
+    - godox
+    - gosec
+    - govet
     - gosimple
 issues:
   exclude-rules:
