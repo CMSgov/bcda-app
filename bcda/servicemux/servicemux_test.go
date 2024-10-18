@@ -92,7 +92,7 @@ var testHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) 
 
 func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 	srv := &http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -137,7 +137,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 
 func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 	srv := &http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -159,7 +159,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 
 func (s *ServiceMuxTestSuite) TestServeHTTP() {
 	srv := http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -198,7 +198,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTP() {
 
 func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 	srv := http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
