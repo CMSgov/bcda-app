@@ -10,7 +10,6 @@ linters:
     - goimports
     - ineffassign
     - unused
-    - godox
     - gosec
     - govet
     - gosimple
@@ -21,9 +20,3 @@ issues:
     - typecheck
 output:
   show-stats: true
-severity:
-  default-severity: error
-  rules:
-    - linters:
-        - godox
-      severity: info
