@@ -1,8 +1,9 @@
 package queueing
 
 import (
+	"crypto/rand"
 	"math"
-	"math/rand"
+	"math/big"
 	"testing"
 	"time"
 
@@ -20,7 +21,11 @@ func TestQueEnqueuer(t *testing.T) {
 
 	priority := math.MaxInt16
 	enqueuer := NewEnqueuer()
-	jobArgs := models.JobEnqueueArgs{ID: int(rand.Int31()), ACOID: uuid.New()}
+	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
+	if e != nil {
+		t.Fatalf("failed to generate job ID: %v", e)
+	}
+	jobArgs := models.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 	alrJobArgs := models.JobAlrEnqueueArgs{
 		ID:         1,
 		CMSID:      "A1234",

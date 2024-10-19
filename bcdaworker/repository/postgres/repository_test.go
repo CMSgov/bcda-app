@@ -2,8 +2,10 @@ package postgres_test
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
-	"math/rand"
+	"math"
+	"math/big"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -71,7 +74,11 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 	assert.NoError(err)
 	assert.Equal(bene, *bene1)
 
-	_, err = r.repository.GetCCLFBeneficiaryByID(ctx, uint(rand.Int31()))
+	id, err := safecast.ToUint(cryptoRandInt31())
+	if err != nil {
+		panic(err)
+	}
+	_, err = r.repository.GetCCLFBeneficiaryByID(ctx, id)
 	assert.EqualError(err, "sql: no rows in result set")
 }
 
@@ -142,15 +149,17 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	assert := r.Assert()
 	ctx := context.Background()
 
-	jobID := uint(rand.Int31())
-	queJobID := rand.Int63()
-	queJobID1 := rand.Int63()
+	jobID := uint(cryptoRandInt31())
+	queJobID := cryptoRandInt63()
+	queJobID1 := cryptoRandInt63()
 
 	jk := models.JobKey{JobID: jobID, QueJobID: &queJobID}
 	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID1}
 	jk2 := models.JobKey{JobID: jobID}
+	j, e := safecast.ToUint(cryptoRandInt31())
+	assert.NoError(e)
 
-	otherJobID := models.JobKey{JobID: uint(rand.Int31())}
+	otherJobID := models.JobKey{JobID: j}
 	defer postgrestest.DeleteJobKeysByJobIDs(r.T(), r.db, jobID, otherJobID.JobID)
 
 	assert.NoError(r.repository.CreateJobKey(ctx, jk))
@@ -179,4 +188,22 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 func assertJobsEqual(assert *assert.Assertions, expected, actual models.Job) {
 	expected.TransactionTime, actual.TransactionTime = expected.TransactionTime.UTC(), actual.TransactionTime.UTC()
 	assert.Equal(expected, actual)
+}
+
+// cryptoRandInt31 generates a random int31 using crypto/rand
+func cryptoRandInt31() int32 {
+	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
+	if err != nil {
+		panic(err)
+	}
+	return int32(n.Int64())
+}
+
+// cryptoRandInt63 generates a random int63 using crypto/rand
+func cryptoRandInt63() int64 {
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err)
+	}
+	return n.Int64()
 }

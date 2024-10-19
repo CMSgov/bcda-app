@@ -118,7 +118,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 	// Allow certificate signed by unknown authority
 	http.DefaultClient.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402
 		},
 	}
 

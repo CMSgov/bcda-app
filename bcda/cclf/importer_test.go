@@ -3,7 +3,8 @@ package cclf
 import (
 	"bufio"
 	"context"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"strings"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestValues(t *testing.T) {
 	mbi := testUtils.RandomMBI(t)
 	scanner := bufio.NewScanner(strings.NewReader(mbi))
 
-	importer := &cclf8Importer{ctx: context.Background(), cclfFileID: uint(rand.Int31()),
+	importer := &cclf8Importer{ctx: context.Background(), cclfFileID: uint(cryptoRandInt31()),
 		scanner: scanner, processedMBIs: make(map[string]struct{}),
 		reportInterval: 1, logger: logrus.StandardLogger(), expectedRecordLength: 11}
 	assert.True(t, importer.Next())
@@ -54,4 +55,12 @@ func TestErr(t *testing.T) {
 
 	importer = &cclf8Importer{ctx: context.Background()}
 	assert.NoError(t, importer.Err())
+}
+
+func cryptoRandInt31() int32 {
+	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
+	if err != nil {
+		panic(err) // handle error appropriately
+	}
+	return int32(n.Int64())
 }

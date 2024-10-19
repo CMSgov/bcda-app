@@ -2,10 +2,12 @@ package postgres_test
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"math/rand"
+	"math"
+	"math/big"
 	"regexp"
 	"strings"
 	"testing"
@@ -20,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/optout"
+	"github.com/ccoveille/go-safecast"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 
@@ -168,7 +171,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			mbis := []string{"0", "1", "2"}
-			cclfFileID := uint(rand.Int63())
+			cclfFileID, _ := safecast.ToUint(cryptoRandInt63())
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
@@ -242,7 +245,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
-			cclfFileID := uint(rand.Int63())
+			cclfFileID := uint(cryptoRandInt31())
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
@@ -588,7 +591,7 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
-	fileID := uint(rand.Int31())
+	fileID := uint(cryptoRandInt31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
 	tooOld := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
@@ -781,10 +784,10 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
-	jobID := uint(rand.Int31())
+	jobID := uint(cryptoRandInt31())
 	jk1 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: uint(rand.Int31()), FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: uint(cryptoRandInt31()), FileName: uuid.New()}
 
 	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
 
@@ -806,11 +809,11 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	ctx := context.Background()
 
-	jobID := uint(rand.Int31())
+	jobID := uint(cryptoRandInt31())
 	fileName := uuid.New()
 	jk1 := models.JobKey{JobID: jobID, FileName: fileName}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: uint(rand.Int31()), FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: uint(cryptoRandInt31()), FileName: uuid.New()}
 
 	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
 
@@ -986,9 +989,9 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
 	return &models.CCLFFile{
-		ID:              uint(rand.Int63()),
+		ID:              uint(cryptoRandInt63()),
 		CCLFNum:         cclfNum,
-		Name:            fmt.Sprintf("CCLFFile%d", rand.Uint64()),
+		Name:            fmt.Sprintf("CCLFFile%d", cryptoRandInt63()),
 		ACOCMSID:        cmsID,
 		Timestamp:       createTime,
 		PerformanceYear: 2020,
@@ -999,10 +1002,10 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 
 func getCCLFBeneficiary() *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
-		ID:           uint(rand.Int63()),
-		FileID:       uint(rand.Uint32()),
-		MBI:          fmt.Sprintf("MBI%d", rand.Uint32()),
-		BlueButtonID: fmt.Sprintf("BlueButton%d", rand.Uint32()),
+		ID:           uint(cryptoRandInt63()),
+		FileID:       uint(cryptoRandInt31()),
+		MBI:          fmt.Sprintf("MBI%d", cryptoRandInt31()),
+		BlueButtonID: fmt.Sprintf("BlueButton%d", cryptoRandInt31()),
 	}
 }
 
@@ -1064,4 +1067,22 @@ func assertDoesNotContainsFile(assert *assert.Assertions, jobKeys []*models.JobK
 
 	_, contains := fileNames[fileName]
 	assert.False(contains, "File names %v should not include %d", fileNames, fileName)
+}
+
+// cryptoRandInt31 generates a random int31 using crypto/rand
+func cryptoRandInt31() int32 {
+	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
+	if err != nil {
+		panic(err)
+	}
+	return int32(n.Int64())
+}
+
+// cryptoRandInt63 generates a random int63 using crypto/rand
+func cryptoRandInt63() int64 {
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err)
+	}
+	return n.Int64()
 }
