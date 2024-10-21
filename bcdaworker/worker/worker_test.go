@@ -589,7 +589,10 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	r := &repository.MockRepository{}
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(s.testACO, nil)
-	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, id, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
+
+	rid, _ := safecast.ToUint(j.ID)
+
+	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, rid, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
 	err := w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
