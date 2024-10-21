@@ -161,7 +161,12 @@ func TestProcessJobFailedValidation(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := models.Job{ID: id}
-			jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: uuid.New()}
+
+			jobid, e := safecast.ToInt(cryptoRandInt31())
+			if e != nil {
+				t.Fatal(e)
+			}
+			jobArgs := models.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
 
 			queJob := que.Job{ID: 1}
 			queJob.Args, err = json.Marshal(jobArgs)

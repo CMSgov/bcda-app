@@ -845,23 +845,30 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	jobCancelled := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
 	jobFailed := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
 	validJob := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobNotFound.ID)).Return(nil, repository.ErrJobNotFound)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(dbErr.ID)).Return(nil, fmt.Errorf("some db error"))
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobCancelled.ID)).
-		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusCancelled}, nil)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobFailed.ID)).
-		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusFailed}, nil)
 
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(validJob.ID)).
-		Return(&models.Job{ID: uint(validJob.ID), Status: models.JobStatusPending}, nil)
-	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), int64(0)).
+	jobNotFoundId, _ := safecast.ToUint(jobNotFound.ID)
+	dbErrId, _ := safecast.ToUint(dbErr.ID)
+	jobCancelledId, _ := safecast.ToUint(jobCancelled.ID)
+	jobFailedId, _ := safecast.ToUint(jobFailed.ID)
+	validJobId, _ := safecast.ToUint(validJob.ID)
+
+	r.On("GetJobByID", testUtils.CtxMatcher, jobNotFoundId).Return(nil, repository.ErrJobNotFound)
+	r.On("GetJobByID", testUtils.CtxMatcher, dbErrId).Return(nil, fmt.Errorf("some db error"))
+	r.On("GetJobByID", testUtils.CtxMatcher, jobCancelledId).
+		Return(&models.Job{ID: jobCancelledId, Status: models.JobStatusCancelled}, nil)
+	r.On("GetJobByID", testUtils.CtxMatcher, jobFailedId).
+		Return(&models.Job{ID: jobCancelledId, Status: models.JobStatusFailed}, nil)
+
+	r.On("GetJobByID", testUtils.CtxMatcher, validJobId).
+		Return(&models.Job{ID: validJobId, Status: models.JobStatusPending}, nil)
+	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(0)).
 		Return(nil, repository.ErrJobKeyNotFound)
 
 	// Return existing job key, indicating que job was already processed.
-	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), int64(1)).
-		Return(&models.JobKey{ID: uint(validJob.ID)}, nil)
+	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(1)).
+		Return(&models.JobKey{ID: validJobId}, nil)
 
-	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), int64(2)).
+	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(2)).
 		Return(nil, fmt.Errorf("some db error"))
 
 	defer func() {
