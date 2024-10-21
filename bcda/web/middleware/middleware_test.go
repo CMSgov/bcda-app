@@ -122,6 +122,7 @@ func mockTLSServerContext() context.Context {
 		}),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
 		},
 		ReadHeaderTimeout: 10 * time.Second,
 	}

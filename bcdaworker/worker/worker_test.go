@@ -874,7 +874,8 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	defer func() {
 		r.AssertExpectations(s.T())
 		// Shouldn't be called because we already determined the job is invalid
-		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, uint(noBasePath.ID))
+		id, _ := safecast.ToUint(noBasePath.ID)
+		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, id)
 	}()
 
 	j, err := w.ValidateJob(ctx, 0, noBasePath)
