@@ -909,11 +909,16 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	jobFailed := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
 	validJob := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
 
-	jobNotFoundId, _ := safecast.ToUint(jobNotFound.ID)
-	dbErrId, _ := safecast.ToUint(dbErr.ID)
-	jobCancelledId, _ := safecast.ToUint(jobCancelled.ID)
-	jobFailedId, _ := safecast.ToUint(jobFailed.ID)
-	validJobId, _ := safecast.ToUint(validJob.ID)
+	jobNotFoundId, err := safecast.ToUint(jobNotFound.ID)
+	assert.NoError(s.T(), err)
+	dbErrId, err := safecast.ToUint(dbErr.ID)
+	assert.NoError(s.T(), err)
+	jobCancelledId, err := safecast.ToUint(jobCancelled.ID)
+	assert.NoError(s.T(), err)
+	jobFailedId, err := safecast.ToUint(jobFailed.ID)
+	assert.NoError(s.T(), err)
+	validJobId, err := safecast.ToUint(validJob.ID)
+	assert.NoError(s.T(), err)
 
 	r.On("GetJobByID", testUtils.CtxMatcher, jobNotFoundId).Return(nil, repository.ErrJobNotFound)
 	r.On("GetJobByID", testUtils.CtxMatcher, dbErrId).Return(nil, fmt.Errorf("some db error"))
