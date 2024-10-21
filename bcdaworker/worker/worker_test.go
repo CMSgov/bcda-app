@@ -478,8 +478,9 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -517,8 +518,9 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 		JobCount:   1,
 	}
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -527,7 +529,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	r := &repository.MockRepository{}
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(s.testACO, nil)
-	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, uint(jobArgs.ID), models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
+	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, id, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
 	err := w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
@@ -543,8 +545,9 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 		JobCount:   1,
 	}
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -635,8 +638,9 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
@@ -660,8 +664,9 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -725,8 +730,9 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 			}
 			postgrestest.CreateJobs(s.T(), s.db, &j)
 
+			id, _ := safecast.ToInt(j.ID)
 			jobArgs := models.JobEnqueueArgs{
-				ID:             int(j.ID),
+				ID:             id,
 				ACOID:          j.ACOID.String(),
 				BeneficiaryIDs: []string{"10000", "11000"},
 				ResourceType:   "ExplanationOfBenefit",
@@ -917,7 +923,8 @@ func (s *WorkerTestSuite) TestCreateJobKeys() {
 	err = createJobKeys(s.logctx, s.r, keys, j.ID)
 	assert.NoError(s.T(), err)
 	for i := 0; i < len(keys); i++ {
-		job, _ := postgrestest.GetJobKey(s.db, int(keys[i].JobID))
+		id, _ := safecast.ToInt(keys[i].JobID)
+		job, _ := postgrestest.GetJobKey(s.db, id)
 		assert.NotEmpty(s.T(), job)
 	}
 }
@@ -958,7 +965,8 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 		RequestURL: "/some/request/URL",
 	}
 	postgrestest.CreateJobs(t, db, &j)
-	return int(j.ID)
+	id, _ := safecast.ToInt(j.ID)
+	return id
 }
 
 // first argument is lowerBound, second argument is upperBound
@@ -1014,5 +1022,6 @@ func cryptoRandInt31() int32 {
 	if err != nil {
 		panic(err) // handle error appropriately
 	}
-	return int32(n.Int64())
+	o, _ := safecast.ToInt32(n.Int64())
+	return o
 }

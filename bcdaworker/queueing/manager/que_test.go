@@ -26,6 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -85,7 +86,8 @@ func TestProcessJob(t *testing.T) {
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 	// Since the jobArgs does not have any beneIDs, the job should complete almost immediately
-	jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: cmsID, BBBasePath: uuid.New()}
+	id, _ := safecast.ToInt(job.ID)
+	jobArgs := models.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
 	enqueuer := queueing.NewEnqueuer()
 	assert.NoError(t, enqueuer.AddJob(jobArgs, 1))
@@ -154,7 +156,11 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			repo := repository.NewMockRepository(t)
 			queue := &queue{worker: worker, repository: repo, log: logger}
 
-			job := models.Job{ID: uint(cryptoRandInt31())}
+			id, err := safecast.ToUint(cryptoRandInt31())
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := models.Job{ID: id}
 			jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: uuid.New()}
 
 			queJob := que.Job{ID: 1}
@@ -221,19 +227,22 @@ func TestStartAlrJob(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create JobArgs
+	k, _ := safecast.ToInt64(alr[0].MetaKey)
 	jobArgs := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
-		MetaKey:    int64(alr[0].MetaKey),
+		MetaKey:    k,
 		MBIs:       []string{alr[0].BeneMBI},
 		BBBasePath: "/v1/fhir",
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},
 	}
+
+	key, _ := safecast.ToInt64(alr[0].MetaKey)
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
-		MetaKey:    int64(alr[1].MetaKey),
+		MetaKey:    key,
 		BBBasePath: "/v1/fhir",
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
@@ -343,7 +352,8 @@ func cryptoRandInt31() int32 {
 	if err != nil {
 		panic(err) // handle error appropriately
 	}
-	return int32(n.Int64())
+	o, err := safecast.ToInt32(n.Int64())
+	return o
 }
 
 // cryptoRandInt63 generates a random int63 using crypto/rand
