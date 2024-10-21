@@ -34,6 +34,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 )
 
 type Handler struct {
@@ -568,8 +569,15 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		logger.Info("job id created")
 	}
 
+	id, err := safecast.ToInt(newJob.ID)
+	if err != nil {
+		logger.Error(err)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	}
+
 	jobData := models.JobEnqueueArgs{
-		ID:              int(newJob.ID),
+		ID:              id,
 		ACOID:           acoID.String(),
 		Since:           "",
 		TransactionTime: time.Now(),

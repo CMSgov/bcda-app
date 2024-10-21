@@ -149,7 +149,7 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	assert := r.Assert()
 	ctx := context.Background()
 
-	jobID := uint(cryptoRandInt31())
+	jobID, _ := safecast.ToUint(cryptoRandInt31())
 	queJobID := cryptoRandInt63()
 	queJobID1 := cryptoRandInt63()
 
@@ -196,7 +196,8 @@ func cryptoRandInt31() int32 {
 	if err != nil {
 		panic(err)
 	}
-	return int32(n.Int64())
+	o, err := safecast.ToInt32(n.Int64())
+	return o
 }
 
 // cryptoRandInt63 generates a random int63 using crypto/rand

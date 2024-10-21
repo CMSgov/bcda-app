@@ -28,6 +28,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/ccoveille/go-safecast"
 )
 
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
@@ -339,7 +340,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 	}
 
 	postgrestest.CreateJobs(s.T(), db, &j)
-	jobID := strconv.Itoa(int(j.ID))
+	id, err := safecast.ToInt(j.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jobID := strconv.Itoa(id)
 
 	tests := []struct {
 		name    string
@@ -387,7 +392,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), db, &j)
-	jobID := strconv.Itoa(int(j.ID))
+	id, err := safecast.ToInt(j.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jobID := strconv.Itoa(id)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
 	if err != nil {
@@ -421,7 +430,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	}
 
 	postgrestest.CreateJobs(s.T(), db, &j)
-	jobID := strconv.Itoa(int(j.ID))
+	id, err := safecast.ToInt(j.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jobID := strconv.Itoa(id)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)

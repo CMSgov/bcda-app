@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ccoveille/go-safecast"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -241,7 +242,9 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				bundle := resp.(*fhirmodelsv1.ContainedResource)
 				respB := bundle.GetBundle()
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
-				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+				val, err := safecast.ToUint32(len(respB.Entry))
+				assert.NoError(s.T(), err)
+				assert.Equal(s.T(), val, respB.Total.Value)
 
 				for k, entry := range respB.Entry {
 					respT := entry.GetResource().GetTask()

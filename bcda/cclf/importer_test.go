@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx/pgtype"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -32,8 +33,12 @@ func TestNext(t *testing.T) {
 func TestValues(t *testing.T) {
 	mbi := testUtils.RandomMBI(t)
 	scanner := bufio.NewScanner(strings.NewReader(mbi))
+	u, err := safecast.ToUint(cryptoRandInt31())
+	if err != nil {
+		t.Fatalf("failed to convert to uint: %v", err)
+	}
 
-	importer := &cclf8Importer{ctx: context.Background(), cclfFileID: uint(cryptoRandInt31()),
+	importer := &cclf8Importer{ctx: context.Background(), cclfFileID: u,
 		scanner: scanner, processedMBIs: make(map[string]struct{}),
 		reportInterval: 1, logger: logrus.StandardLogger(), expectedRecordLength: 11}
 	assert.True(t, importer.Next())
@@ -62,5 +67,7 @@ func cryptoRandInt31() int32 {
 	if err != nil {
 		panic(err) // handle error appropriately
 	}
-	return int32(n.Int64())
+
+	o, _ := safecast.ToInt32(n.Int64())
+	return o
 }

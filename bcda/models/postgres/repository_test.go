@@ -245,7 +245,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
-			cclfFileID := uint(cryptoRandInt31())
+			cclfFileID, _ := safecast.ToUint(cryptoRandInt31())
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
@@ -591,7 +591,7 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
-	fileID := uint(cryptoRandInt31())
+	fileID, _ := safecast.ToUint(cryptoRandInt31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
 	tooOld := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
@@ -784,10 +784,12 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
-	jobID := uint(cryptoRandInt31())
+	jk, _ := safecast.ToUint(cryptoRandInt31())
+
+	jobID, _ := safecast.ToUint(cryptoRandInt31())
 	jk1 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: uint(cryptoRandInt31()), FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
 
 	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
 
@@ -809,11 +811,11 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	ctx := context.Background()
 
-	jobID := uint(cryptoRandInt31())
+	jobID, _ := safecast.ToUint(cryptoRandInt31())
 	fileName := uuid.New()
 	jk1 := models.JobKey{JobID: jobID, FileName: fileName}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: uint(cryptoRandInt31()), FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 
 	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
 
@@ -989,7 +991,13 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
 	return &models.CCLFFile{
-		ID:              uint(cryptoRandInt63()),
+		ID: func() uint {
+			id, err := safecast.ToUint(cryptoRandInt63())
+			if err != nil {
+				panic(err)
+			}
+			return id
+		}(),
 		CCLFNum:         cclfNum,
 		Name:            fmt.Sprintf("CCLFFile%d", cryptoRandInt63()),
 		ACOCMSID:        cmsID,
@@ -1002,8 +1010,20 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 
 func getCCLFBeneficiary() *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
-		ID:           uint(cryptoRandInt63()),
-		FileID:       uint(cryptoRandInt31()),
+		ID: func() uint {
+			id, err := safecast.ToUint(cryptoRandInt63())
+			if err != nil {
+				panic(err)
+			}
+			return id
+		}(),
+		FileID: func() uint {
+			id, err := safecast.ToUint(cryptoRandInt31())
+			if err != nil {
+				panic(err)
+			}
+			return id
+		}(),
 		MBI:          fmt.Sprintf("MBI%d", cryptoRandInt31()),
 		BlueButtonID: fmt.Sprintf("BlueButton%d", cryptoRandInt31()),
 	}
@@ -1075,7 +1095,8 @@ func cryptoRandInt31() int32 {
 	if err != nil {
 		panic(err)
 	}
-	return int32(n.Int64())
+	o, _ := safecast.ToInt32(n.Int64())
+	return o
 }
 
 // cryptoRandInt63 generates a random int63 using crypto/rand
@@ -1084,5 +1105,6 @@ func cryptoRandInt63() int64 {
 	if err != nil {
 		panic(err)
 	}
-	return n.Int64()
+	o, _ := safecast.ToInt64(n.Int64())
+	return o
 }
