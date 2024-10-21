@@ -13,6 +13,7 @@ linters:
     - gosec
     - govet
     - gosimple
+    - errcheck
 issues:
   exclude-rules:
   - path: /
