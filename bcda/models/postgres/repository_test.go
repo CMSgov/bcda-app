@@ -171,7 +171,8 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			mbis := []string{"0", "1", "2"}
-			cclfFileID, _ := safecast.ToUint(cryptoRandInt63())
+			cclfFileID, err := safecast.ToUint(cryptoRandInt63())
+			assert.NoError(t, err)
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
