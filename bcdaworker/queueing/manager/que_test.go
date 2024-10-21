@@ -156,13 +156,13 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			repo := repository.NewMockRepository(t)
 			queue := &queue{worker: worker, repository: repo, log: logger}
 
-			id, err := safecast.ToUint(cryptoRandInt31())
+			id, err := safecast.ToUint(1)
 			if err != nil {
 				t.Fatal(err)
 			}
 			job := models.Job{ID: id}
 
-			jobid, e := safecast.ToInt(cryptoRandInt31())
+			jobid, e := safecast.ToInt(1)
 			if e != nil {
 				t.Fatal(e)
 			}
