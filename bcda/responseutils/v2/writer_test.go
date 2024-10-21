@@ -159,7 +159,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 	bundle := cr.GetBundle()
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	u, err := safecast.ToUint(len(bundle.Entry))
+	u, err := safecast.ToUint32(len(bundle.Entry))
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), u, bundle.Total.Value)
 	assert.Equal(s.T(), fhircodes.BundleTypeCode_SEARCHSET, bundle.Type.Value)

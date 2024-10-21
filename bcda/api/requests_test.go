@@ -366,7 +366,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 				bundle := resp.(*fhirmodelv2CR.ContainedResource)
 				respB := bundle.GetBundle()
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
-				val, err := safecast.ToUint(len(respB.Entry))
+				val, err := safecast.ToUint32(len(respB.Entry))
 				assert.NoError(s.T(), err)
 				assert.Equal(s.T(), val, respB.Total.Value)
 
