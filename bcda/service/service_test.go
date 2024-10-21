@@ -717,7 +717,8 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, append(benes1, benes2...), nil, terminationHistorical},
-		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, terminationHistorical}, // Runout cutoff takes precedence over termination cutoff
+		// Runout cutoff takes precedence over termination cutoff
+		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, terminationHistorical},
 
 		// Terminated ACOs: latest
 		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, claimsWindow{}, benes1, nil, terminationLatest},
@@ -831,6 +832,96 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			}
 		})
 	}
+}
+
+func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
+	defaultACOID := "SOME_ACO_ID"
+
+	defaultACO := ACOConfig{
+		patternExp: regexp.MustCompile(defaultACOID),
+		Data:       []string{constants.Adjudicated, constants.PartiallyAdjudicated},
+	}
+
+	acoCfgs := []ACOConfig{
+		defaultACO,
+	}
+
+	cfg := &Config{
+		cutoffDuration:          time.Hour,
+		SuppressionLookbackDays: 0,
+		RunoutConfig: RunoutConfig{
+			cutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+	}
+
+	ctx := context.Background()
+	basePath := "/v2/fhir"
+
+	s.T().Run("Unexpected request type", func(t *testing.T) {
+		conditions := RequestConditions{
+			CMSID:   defaultACOID,
+			ACOID:   uuid.NewUUID(),
+			ReqType: 22,
+		}
+		repository := &models.MockRepository{}
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		serviceInstance := NewService(repository, cfg, basePath)
+		serviceInstance.(*service).acoConfigs = acoCfgs
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+
+		assert.Error(t, err, errors.New("Unsupported RequestType 22"))
+	})
+
+	s.T().Run("s.getBeneficiaries failure", func(t *testing.T) {
+		conditions := RequestConditions{
+			CMSID:   defaultACOID,
+			ACOID:   uuid.NewUUID(),
+			ReqType: DefaultRequest,
+		}
+		repository := &models.MockRepository{}
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("forced failure"))
+		serviceInstance := NewService(repository, cfg, basePath)
+		serviceInstance.(*service).acoConfigs = acoCfgs
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+
+		assert.Error(t, err, errors.New("forced failure"))
+	})
+
+	s.T().Run("s.getNewAndExistingBeneficiaries failure", func(t *testing.T) {
+		conditions := RequestConditions{
+			CMSID:   defaultACOID,
+			ACOID:   uuid.NewUUID(),
+			ReqType: RetrieveNewBeneHistData,
+		}
+		repository := &models.MockRepository{}
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("forced failure"))
+		serviceInstance := NewService(repository, cfg, basePath)
+		serviceInstance.(*service).acoConfigs = acoCfgs
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+
+		assert.Error(t, err, errors.New("forced failure"))
+	})
+
+	s.T().Run("s.createQueueJobs failure", func(t *testing.T) {
+		conditions := RequestConditions{
+			CMSID:   defaultACOID,
+			ACOID:   uuid.NewUUID(),
+			ReqType: RetrieveNewBeneHistData,
+		}
+		repository := &models.MockRepository{}
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
+		repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
+		repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return([]string{"old"}, nil)
+		serviceInstance := NewService(repository, cfg, basePath)
+		serviceInstance.(*service).acoConfigs = acoCfgs
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+
+		assert.Error(t, err, errors.New("forced failure"))
+	})
 }
 
 func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {

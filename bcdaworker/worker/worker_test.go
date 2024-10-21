@@ -144,6 +144,66 @@ func TestWorkerTestSuite(t *testing.T) {
 	suite.Run(t, new(WorkerTestSuite))
 }
 
+func (s *WorkerTestSuite) TestGetBlueButtonID_NonHappyPaths() {
+	transactionTime := time.Now()
+	bbc := &client.MockBlueButtonClient{}
+	beneficiaryID := "abcdef12000"
+	var cclfBeneficiaryIDs []string
+	jobArgs := models.JobEnqueueArgs{
+		ID:              s.jobID,
+		ResourceType:    "ExplanationOfBenefit",
+		BeneficiaryIDs:  cclfBeneficiaryIDs,
+		TransactionTime: transactionTime,
+		ACOID:           s.testACO.UUID.String(),
+	}
+	bbc.MBI = &beneficiaryID
+	cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
+	cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
+
+	tests := []struct {
+		name        string
+		patientJSON string
+		expectedID  string
+		err         error
+	}{
+		{"Hotfix success path", `
+			{
+				"id": "abcdef12000",
+				"entry": [
+					{
+						"resource": {
+							"identifier": [
+								{
+									"system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+									"value": "abcdef12000"
+								}
+							],
+							"id": "abcdef12000"
+						}
+					}
+				]
+			}
+		`, "abcdef12000", nil},
+		{"Error handling for missing identifier", `{"id":"badID","entry":[]}`, "", errors.New("patient identifier not found at Blue Button for CCLF")},
+		{"Error handling for not found identifier", `{"id":"abcdef12000","entry":[{}]}`, "", errors.New("Identifier not found")},
+		{"Error handling for not found Blue Button identifier", `{"id":"abcdef12000","entry":[{"resource":{"identifier":[{"system":"us-mbi","value":"abcdef12000"}]}}]}`, "", errors.New("Blue Button identifier not found in the identifiers")},
+	}
+
+	for _, tt := range tests {
+		mockCall := bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(tt.patientJSON, nil)
+		bbID, err := getBlueButtonID(bbc, beneficiaryID, jobArgs)
+		if tt.err != nil {
+			assert.Error(s.T(), err)
+			assert.Equal(s.T(), fmt.Sprint(tt.err), fmt.Sprint(err))
+		} else {
+			assert.Equal(s.T(), tt.expectedID, bbID)
+		}
+		mockCall.Unset()
+	}
+}
+
 func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 	tests := []struct {
 		resource      string
