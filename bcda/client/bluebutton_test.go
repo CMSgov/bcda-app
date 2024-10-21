@@ -980,7 +980,9 @@ func noBulkRequestHeaders(t *testing.T, req *http.Request) {
 
 func reqBodyToString(req *http.Request) string {
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(req.Body)
+	if _, err := buf.ReadFrom(req.Body); err != nil {
+		return ""
+	}
 	respBytes := buf.String()
 	return string(respBytes)
 }

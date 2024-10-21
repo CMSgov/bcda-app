@@ -206,10 +206,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 					for k := range tt.statuses {
 						mockArgs = append(mockArgs, mock.Anything)
 						u, err := safecast.ToUint(k)
-						if err != nil {
-							// handle the error appropriately, e.g., log it or return it
-							t.Fatalf("Failed to convert key to uint: %v", err)
-						}
+						assert.NoError(t, err)
 						jobs = s.addNewJob(jobs, u, tt.statuses[k], apiVersion)
 					}
 				}
