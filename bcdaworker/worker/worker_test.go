@@ -902,12 +902,12 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	r := &repository.MockRepository{}
 	w := &worker{r}
 
-	noBasePath := models.JobEnqueueArgs{ID: int(cryptoRandInt31())}
-	jobNotFound := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
-	dbErr := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
-	jobCancelled := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
-	jobFailed := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
-	validJob := models.JobEnqueueArgs{ID: int(cryptoRandInt31()), BBBasePath: uuid.New()}
+	noBasePath := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31())}
+	jobNotFound := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	dbErr := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	jobCancelled := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	jobFailed := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	validJob := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
 
 	jobNotFoundId, _ := safecast.ToUint(jobNotFound.ID)
 	dbErrId, _ := safecast.ToUint(dbErr.ID)
@@ -1086,13 +1086,4 @@ func cryptoRandInt64() (int64, error) {
 		return 0, err
 	}
 	return n.Int64(), nil
-}
-
-func cryptoRandInt31() int32 {
-	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
-	if err != nil {
-		panic(err) // handle error appropriately
-	}
-	o, _ := safecast.ToInt32(n.Int64())
-	return o
 }

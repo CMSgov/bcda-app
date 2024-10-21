@@ -2,12 +2,9 @@ package postgres_test
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"math"
-	"math/big"
 	"regexp"
 	"strings"
 	"testing"
@@ -171,7 +168,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			mbis := []string{"0", "1", "2"}
-			cclfFileID, err := safecast.ToUint(cryptoRandInt63())
+			cclfFileID, err := safecast.ToUint(testUtils.CryptoRandInt63())
 			assert.NoError(t, err)
 
 			db, mock, err := sqlmock.New()
@@ -246,7 +243,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
-			cclfFileID, _ := safecast.ToUint(cryptoRandInt31())
+			cclfFileID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
@@ -592,7 +589,7 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
-	fileID, _ := safecast.ToUint(cryptoRandInt31())
+	fileID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
 	tooOld := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
@@ -785,9 +782,9 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
-	jk, _ := safecast.ToUint(cryptoRandInt31())
+	jk, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 
-	jobID, _ := safecast.ToUint(cryptoRandInt31())
+	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	jk1 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
@@ -812,7 +809,7 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	ctx := context.Background()
 
-	jobID, _ := safecast.ToUint(cryptoRandInt31())
+	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	fileName := uuid.New()
 	jk1 := models.JobKey{JobID: jobID, FileName: fileName}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
@@ -993,14 +990,14 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 	createTime := time.Now().Round(time.Millisecond)
 	return &models.CCLFFile{
 		ID: func() uint {
-			id, err := safecast.ToUint(cryptoRandInt63())
+			id, err := safecast.ToUint(testUtils.CryptoRandInt63())
 			if err != nil {
 				panic(err)
 			}
 			return id
 		}(),
 		CCLFNum:         cclfNum,
-		Name:            fmt.Sprintf("CCLFFile%d", cryptoRandInt63()),
+		Name:            fmt.Sprintf("CCLFFile%d", testUtils.CryptoRandInt63()),
 		ACOCMSID:        cmsID,
 		Timestamp:       createTime,
 		PerformanceYear: 2020,
@@ -1012,21 +1009,21 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 func getCCLFBeneficiary() *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
 		ID: func() uint {
-			id, err := safecast.ToUint(cryptoRandInt63())
+			id, err := safecast.ToUint(testUtils.CryptoRandInt63())
 			if err != nil {
 				panic(err)
 			}
 			return id
 		}(),
 		FileID: func() uint {
-			id, err := safecast.ToUint(cryptoRandInt31())
+			id, err := safecast.ToUint(testUtils.CryptoRandInt31())
 			if err != nil {
 				panic(err)
 			}
 			return id
 		}(),
-		MBI:          fmt.Sprintf("MBI%d", cryptoRandInt31()),
-		BlueButtonID: fmt.Sprintf("BlueButton%d", cryptoRandInt31()),
+		MBI:          fmt.Sprintf("MBI%d", testUtils.CryptoRandInt31()),
+		BlueButtonID: fmt.Sprintf("BlueButton%d", testUtils.CryptoRandInt31()),
 	}
 }
 
@@ -1088,24 +1085,4 @@ func assertDoesNotContainsFile(assert *assert.Assertions, jobKeys []*models.JobK
 
 	_, contains := fileNames[fileName]
 	assert.False(contains, "File names %v should not include %d", fileNames, fileName)
-}
-
-// cryptoRandInt31 generates a random int31 using crypto/rand
-func cryptoRandInt31() int32 {
-	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
-	if err != nil {
-		panic(err)
-	}
-	o, _ := safecast.ToInt32(n.Int64())
-	return o
-}
-
-// cryptoRandInt63 generates a random int63 using crypto/rand
-func cryptoRandInt63() int64 {
-	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-	if err != nil {
-		panic(err)
-	}
-	o, _ := safecast.ToInt64(n.Int64())
-	return o
 }

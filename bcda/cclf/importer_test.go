@@ -3,8 +3,6 @@ package cclf
 import (
 	"bufio"
 	"context"
-	"crypto/rand"
-	"math/big"
 	"strings"
 	"testing"
 
@@ -33,7 +31,7 @@ func TestNext(t *testing.T) {
 func TestValues(t *testing.T) {
 	mbi := testUtils.RandomMBI(t)
 	scanner := bufio.NewScanner(strings.NewReader(mbi))
-	u, err := safecast.ToUint(cryptoRandInt31())
+	u, err := safecast.ToUint(testUtils.CryptoRandInt31())
 	if err != nil {
 		t.Fatalf("failed to convert to uint: %v", err)
 	}
@@ -60,14 +58,4 @@ func TestErr(t *testing.T) {
 
 	importer = &cclf8Importer{ctx: context.Background()}
 	assert.NoError(t, importer.Err())
-}
-
-func cryptoRandInt31() int32 {
-	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
-	if err != nil {
-		panic(err) // handle error appropriately
-	}
-
-	o, _ := safecast.ToInt32(n.Int64())
-	return o
 }

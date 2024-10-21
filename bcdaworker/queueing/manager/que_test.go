@@ -2,11 +2,8 @@ package manager
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math"
-	"math/big"
 	"os"
 	"regexp"
 	"testing"
@@ -174,7 +171,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 
 			// Set the error count to max to ensure that we've exceeded the retries
 			if tt.name == "NoParentJobRetriesExceeded" {
-				queJob.ErrorCount = cryptoRandInt31()
+				queJob.ErrorCount = testUtils.CryptoRandInt31()
 			}
 
 			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
@@ -277,7 +274,7 @@ func TestStartAlrJob(t *testing.T) {
 	// Since the worker is tested by BFD, it is not tested here
 	// and we jump straight to the work
 	err = master.startAlrJob(&que.Job{
-		ID:   cryptoRandInt63(),
+		ID:   testUtils.CryptoRandInt63(),
 		Args: jobArgsJson,
 	})
 	assert.NoError(t, err)
@@ -288,7 +285,7 @@ func TestStartAlrJob(t *testing.T) {
 	assert.Equal(t, models.JobStatusInProgress, alrJob.Status)
 
 	err = master.startAlrJob(&que.Job{
-		ID:   cryptoRandInt63(),
+		ID:   testUtils.CryptoRandInt63(),
 		Args: jobArgsJson2,
 	})
 	assert.NoError(t, err)
@@ -350,22 +347,4 @@ Outer:
 	}
 
 	assert.True(t, success)
-}
-
-func cryptoRandInt31() int32 {
-	n, err := rand.Int(rand.Reader, big.NewInt(1<<31))
-	if err != nil {
-		panic(err) // handle error appropriately
-	}
-	o, _ := safecast.ToInt32(n.Int64())
-	return o
-}
-
-// cryptoRandInt63 generates a random int63 using crypto/rand
-func cryptoRandInt63() int64 {
-	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-	if err != nil {
-		panic(err) // handle error appropriately
-	}
-	return n.Int64()
 }
