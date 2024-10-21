@@ -357,7 +357,7 @@ func cryptoRandInt31() int32 {
 	if err != nil {
 		panic(err) // handle error appropriately
 	}
-	o, err := safecast.ToInt32(n.Int64())
+	o, _ := safecast.ToInt32(n.Int64())
 	return o
 }
 
