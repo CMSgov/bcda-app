@@ -100,14 +100,14 @@ jobs:
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
 
           # Verify that we have a record of the CCLF file in the database
-          CCLF_FILE=`psql -t "$CONNECTION_URL?sslmode=require" -c "SELECT id FROM cclf_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
+          CCLF_FILE=`psql --set=sslmode=require -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $CCLF_FILE ]]; then
             echo "cclf_file query returned zero results or command failed"
             exit 1
           else
             
             # Verify that the correct number of benes were imported into the database.
-            CCLF_BENES=`psql -t "$CONNECTION_URL?sslmode=require" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
+            CCLF_BENES=`psql --set=sslmode=require -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
               if [[ $? -ne 0 || -z $CCLF_BENES ]]; then
                 echo "CCLF beneficiaries query returned zero results or command failed"
                 exit 1
