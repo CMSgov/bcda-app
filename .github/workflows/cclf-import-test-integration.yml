@@ -83,7 +83,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
       - name: Install psql
         run: |
-          sudo dnf install postgresql15
+          sudo dnf install postgresql15 -y
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
