@@ -103,13 +103,11 @@ jobs:
           }
           
           HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
-          log "DEBUG" "Retrieved host: $HOST"
-          
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          log "DEBUG" "Updated connection URL: $CONNECTION_URL"
 
           # Verify that we have a record of the CCLF file in the database
           CCLF_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
+          log "DEBUG" "CCLF File: $CCLF_FILE"
           if [[ $? -ne 0 || -z $CCLF_FILE ]]; then
             echo "cclf_file query returned zero results or command failed"
             exit 1
