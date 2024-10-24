@@ -21,13 +21,11 @@ type Enqueuer interface {
 }
 
 func NewEnqueuer() Enqueuer {
-	if conf.GetEnv("QUEUE_LIBRARY") == "que-go" {
-		return queEnqueuer{que.NewClient(database.QueueConnection)}
-	} else if conf.GetEnv("QUEUE_LIBRARY") == "river" {
+	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
 		return riverEnqueuer{}
-	} else {
-		panic("NO QUEUE LIBRARY SET")
 	}
+
+	return queEnqueuer{que.NewClient(database.QueueConnection)}
 }
 
 type queEnqueuer struct {

@@ -56,8 +56,7 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 func TestNewEnqueuer(t *testing.T) {
 	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
 
-	// Test que-go implementation
-	conf.SetEnv(t, "QUEUE_LIBRARY", "que-go")
+	// Test que-go implementation (default)
 	enq := NewEnqueuer()
 	var expectedEnq queEnqueuer
 	assert.IsType(t, expectedEnq, enq)
@@ -68,13 +67,10 @@ func TestNewEnqueuer(t *testing.T) {
 	var expectedRiverEnq riverEnqueuer
 	assert.IsType(t, expectedRiverEnq, enq)
 
-	// If unmatched name: panic
-	conf.SetEnv(t, "QUEUE_LIBRARY", "bad implementation name")
-	assert.Panics(t, func() { enq = NewEnqueuer() }, "NO QUEUE LIBRARY SET")
-
-	// If unset: panic
+	// If unset use default
 	conf.UnsetEnv(t, "QUEUE_LIBRARY")
-	assert.Panics(t, func() { enq = NewEnqueuer() }, "NO QUEUE LIBRARY SET")
+	enq = NewEnqueuer()
+	assert.IsType(t, expectedEnq, enq)
 
 	// Reset env var
 	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
