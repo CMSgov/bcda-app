@@ -166,7 +166,7 @@ func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi 
 	params := GetDefaultParams()
 	params.Set("identifier", fmt.Sprintf("http://hl7.org/fhir/sid/us-mbi|%s", mbi))
 
-	u, err := bbc.getURL("Patient/_search", params)
+	u, err := bbc.getURL("Patient/_search", url.Values{})
 	if err != nil {
 		return "", err
 	}
@@ -194,7 +194,7 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("Claim/_search", params)
+	u, err := bbc.getURL("Claim/_search", url.Values{})
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("ClaimResponse/_search", params)
+	u, err := bbc.getURL("ClaimResponse/_search", url.Values{})
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +376,6 @@ func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData models
 	req.Header.Add(constants.BBHeaderOriginQID, reqID.String())
 	req.Header.Add(constants.BBHeaderOriginQC, "1")
 	req.Header.Add(constants.BBHeaderOriginURL, req.URL.String())
-	req.Header.Add(constants.BBHeaderOriginQ, req.URL.RawQuery)
 	req.Header.Add("IncludeIdentifiers", "mbi")
 	req.Header.Add(jobIDHeader, strconv.Itoa(jobData.ID))
 	req.Header.Add(clientIDHeader, jobData.CMSID)
