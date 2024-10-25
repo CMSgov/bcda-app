@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,11 +46,16 @@ func (s *LocalFileProcessorTestSuite) SetupSuite() {
 		logrus.Fatal(err)
 	}
 
+	var hours, e = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	if e != nil {
+		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", e)
+	}
+
 	s.processor = &LocalFileProcessor{
 		Handler: optout.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+			FileArchiveThresholdHr: hours,
 		},
 	}
 	s.pendingDeletionDir = dir

@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
@@ -157,7 +158,8 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 	bundle := cr.GetBundle()
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), uint32(len(bundle.Entry)), bundle.Total.Value)
+	total, _ := safecast.ToUint32(len(bundle.Entry))
+	assert.Equal(s.T(), total, bundle.Total.Value)
 	assert.Equal(s.T(), fhircodes.BundleTypeCode_SEARCHSET, bundle.Type.Value)
 
 	task := bundle.Entry[0].GetResource().GetTask()

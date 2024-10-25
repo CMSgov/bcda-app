@@ -1,7 +1,8 @@
 package service
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"os"
 	"regexp"
 	"testing"
@@ -53,11 +54,14 @@ func TestIsACODisabled(t *testing.T) {
 }
 
 func TestLookbackTime(t *testing.T) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r, err := rand.Int(rand.Reader, big.NewInt(4))
+	if err != nil {
+		t.Fatalf("Failed to generate random number: %v", err)
+	}
+	lookback := int(r.Int64()) + 1
 
 	now := time.Now()
 	perfYearPast, perfYearFuture := now.Add(-30*24*time.Hour), now.Add(30*24*time.Hour)
-	lookback := r.Intn(4) + 1
 
 	tests := []struct {
 		name        string

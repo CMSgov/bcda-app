@@ -21,7 +21,7 @@ func TestClearTempDirectory(t *testing.T) {
 	assert.NoError(t, err)
 
 	tempFile := filepath.Join(tempDir, "tmp.txt")
-	err = os.WriteFile(tempFile, []byte("test data"), 0644)
+	err = os.WriteFile(tempFile, []byte("test data"), 0600)
 	assert.NoError(t, err)
 
 	dir, err := os.ReadDir(tempDir)

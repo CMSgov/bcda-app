@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"math/rand"
 	"regexp"
 	"strings"
 	"testing"
@@ -20,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/optout"
+	"github.com/ccoveille/go-safecast"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 
@@ -168,7 +168,8 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			mbis := []string{"0", "1", "2"}
-			cclfFileID := uint(rand.Int63())
+			cclfFileID, err := safecast.ToUint(testUtils.CryptoRandInt63())
+			assert.NoError(t, err)
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
@@ -242,7 +243,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
-			cclfFileID := uint(rand.Int63())
+			cclfFileID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 
 			db, mock, err := sqlmock.New()
 			assert.NoError(t, err)
@@ -588,7 +589,7 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
-	fileID := uint(rand.Int31())
+	fileID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
 	tooOld := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
@@ -781,10 +782,12 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
-	jobID := uint(rand.Int31())
+	jk, _ := safecast.ToUint(testUtils.CryptoRandInt31())
+
+	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	jk1 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: uint(rand.Int31()), FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
 
 	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
 
@@ -806,11 +809,11 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	ctx := context.Background()
 
-	jobID := uint(rand.Int31())
+	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	fileName := uuid.New()
 	jk1 := models.JobKey{JobID: jobID, FileName: fileName}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: uint(rand.Int31()), FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 
 	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
 
@@ -986,9 +989,15 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
 	return &models.CCLFFile{
-		ID:              uint(rand.Int63()),
+		ID: func() uint {
+			id, err := safecast.ToUint(testUtils.CryptoRandInt63())
+			if err != nil {
+				panic(err)
+			}
+			return id
+		}(),
 		CCLFNum:         cclfNum,
-		Name:            fmt.Sprintf("CCLFFile%d", rand.Uint64()),
+		Name:            fmt.Sprintf("CCLFFile%d", testUtils.CryptoRandInt63()),
 		ACOCMSID:        cmsID,
 		Timestamp:       createTime,
 		PerformanceYear: 2020,
@@ -999,10 +1008,22 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 
 func getCCLFBeneficiary() *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
-		ID:           uint(rand.Int63()),
-		FileID:       uint(rand.Uint32()),
-		MBI:          fmt.Sprintf("MBI%d", rand.Uint32()),
-		BlueButtonID: fmt.Sprintf("BlueButton%d", rand.Uint32()),
+		ID: func() uint {
+			id, err := safecast.ToUint(testUtils.CryptoRandInt63())
+			if err != nil {
+				panic(err)
+			}
+			return id
+		}(),
+		FileID: func() uint {
+			id, err := safecast.ToUint(testUtils.CryptoRandInt31())
+			if err != nil {
+				panic(err)
+			}
+			return id
+		}(),
+		MBI:          fmt.Sprintf("MBI%d", testUtils.CryptoRandInt31()),
+		BlueButtonID: fmt.Sprintf("BlueButton%d", testUtils.CryptoRandInt31()),
 	}
 }
 

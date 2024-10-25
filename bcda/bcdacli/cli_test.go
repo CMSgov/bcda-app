@@ -873,7 +873,7 @@ func (s *CLITestSuite) TestDenylistACO() {
 }
 
 func getRandomPort(t *testing.T) int {
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatal(err.Error())
 	}

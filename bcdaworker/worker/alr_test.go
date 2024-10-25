@@ -2,8 +2,10 @@ package worker
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
-	"math/rand"
+	"math"
+	"math/big"
 	"os"
 	"testing"
 
@@ -66,10 +68,10 @@ func (s *AlrWorkerTestSuite) TestNewAlrWorker() {
 // Test ProcessAlrJob
 func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 	ctx := context.Background()
-	err := s.alrWorker.ProcessAlrJob(ctx, rand.Int63(), s.jobArgs[0])
+	err := s.alrWorker.ProcessAlrJob(ctx, cryptoRandInt63(), s.jobArgs[0])
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
-	err = s.alrWorker.ProcessAlrJob(ctx, rand.Int63(), s.jobArgs[1])
+	err = s.alrWorker.ProcessAlrJob(ctx, cryptoRandInt63(), s.jobArgs[1])
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
 }
@@ -78,4 +80,12 @@ func TestAlrWorkerTestSuite(t *testing.T) {
 	d := new(AlrWorkerTestSuite)
 	suite.Run(t, d)
 	t.Cleanup(func() { os.RemoveAll(d.alrWorker.StagingDir) })
+}
+
+func cryptoRandInt63() int64 {
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err) // handle error appropriately
+	}
+	return n.Int64()
 }

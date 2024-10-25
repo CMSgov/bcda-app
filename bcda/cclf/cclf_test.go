@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -45,11 +47,16 @@ func (s *CCLFTestSuite) SetupTest() {
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 
+	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	if err != nil {
+		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
+	}
+
 	file_processor := &LocalFileProcessor{
 		Handler: optout.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: uint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72)),
+			FileArchiveThresholdHr: hours,
 		},
 	}
 

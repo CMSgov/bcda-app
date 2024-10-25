@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -41,7 +42,9 @@ func (s *ServiceMuxTestSuite) TestAddServer() {
 		defer sm.Close()
 	}()
 
-	srv := &http.Server{}
+	srv := &http.Server{
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	go func() {
 		defer srv.Close()
 	}()
@@ -89,7 +92,8 @@ var testHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) 
 
 func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 	srv := &http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	sm := New(getConfig().TestAddress)
@@ -114,7 +118,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 	// Allow certificate signed by unknown authority
 	http.DefaultClient.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402
 		},
 	}
 
@@ -133,7 +137,8 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 
 func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 	srv := &http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	sm := New(getConfig().TestAddress)
@@ -154,7 +159,8 @@ func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 
 func (s *ServiceMuxTestSuite) TestServeHTTP() {
 	srv := http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	sm := New(getConfig().TestAddress)
@@ -192,7 +198,8 @@ func (s *ServiceMuxTestSuite) TestServeHTTP() {
 
 func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 	srv := http.Server{
-		Handler: testHandler,
+		Handler:           testHandler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	sm := New(getConfig().TestAddress)

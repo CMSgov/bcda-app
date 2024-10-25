@@ -1,8 +1,9 @@
 package gen
 
 import (
+	"crypto/rand"
 	"encoding/csv"
-	"math/rand"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,12 +16,15 @@ func TestUpdateCSV(t *testing.T) {
 
 	isTesting = true
 
-	mbiCount := rand.Intn(1000)
+	mbiCount, e := rand.Int(rand.Reader, big.NewInt(1000))
+	if e != nil {
+		t.Fatalf("failed to generate random number: %v", e)
+	}
 	path, cleanup := testUtils.CopyToTemporaryDirectory(t, "testdata")
 	defer cleanup()
 
 	csvPath := filepath.Join(path, "PY21ALRTemplatePrelimProspTable1.csv")
-	err := UpdateCSV(csvPath, randomMBIGenerator{t, mbiCount}.GetMBIs)
+	err := UpdateCSV(csvPath, randomMBIGenerator{t, int(mbiCount.Int64())}.GetMBIs)
 	assert.NoError(t, err)
 
 	file, err := os.Open(csvPath)
@@ -31,7 +35,7 @@ func TestUpdateCSV(t *testing.T) {
 	assert.NoError(t, err)
 
 	// One more record to account for header
-	assert.Equal(t, mbiCount+1, len(records))
+	assert.Equal(t, int(mbiCount.Int64())+1, len(records))
 }
 
 type randomMBIGenerator struct {
