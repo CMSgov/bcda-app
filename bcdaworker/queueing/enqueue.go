@@ -5,6 +5,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
 )
@@ -20,6 +21,10 @@ type Enqueuer interface {
 }
 
 func NewEnqueuer() Enqueuer {
+	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
+		return riverEnqueuer{}
+	}
+
 	return queEnqueuer{que.NewClient(database.QueueConnection)}
 }
 
@@ -34,7 +39,6 @@ func (q queEnqueuer) AddJob(job models.JobEnqueueArgs, priority int) error {
 	}
 
 	p, e := safecast.ToInt16(priority)
-
 	if e != nil {
 		return e
 	}
@@ -56,7 +60,6 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 	}
 
 	p, e := safecast.ToInt16(priority)
-
 	if e != nil {
 		return e
 	}
@@ -68,4 +71,14 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 	}
 
 	return q.Enqueue(j)
+}
+
+type riverEnqueuer struct{}
+
+func (q riverEnqueuer) AddJob(job models.JobEnqueueArgs, priority int) error {
+	return nil
+}
+
+func (q riverEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error {
+	return nil
 }

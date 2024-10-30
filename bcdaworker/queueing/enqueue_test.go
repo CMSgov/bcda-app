@@ -8,13 +8,14 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
 	_ "github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestQueEnqueuer(t *testing.T) {
+func TestQueEnqueuer_Integration(t *testing.T) {
 	// Need access to the queue database to ensure we've enqueued the job successfully
 	db := database.QueueConnection
 
@@ -50,4 +51,27 @@ func TestQueEnqueuer(t *testing.T) {
 
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
+}
+
+func TestNewEnqueuer(t *testing.T) {
+	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
+
+	// Test que-go implementation (default)
+	enq := NewEnqueuer()
+	var expectedEnq queEnqueuer
+	assert.IsType(t, expectedEnq, enq)
+
+	// Test river implementation
+	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
+	enq = NewEnqueuer()
+	var expectedRiverEnq riverEnqueuer
+	assert.IsType(t, expectedRiverEnq, enq)
+
+	// If unset use default
+	conf.UnsetEnv(t, "QUEUE_LIBRARY")
+	enq = NewEnqueuer()
+	assert.IsType(t, expectedEnq, enq)
+
+	// Reset env var
+	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
 }

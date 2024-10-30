@@ -162,15 +162,16 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 }
 
 func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
-	params := url.Values{}
+	headers := createURLEncodedHeader()
+	params := GetDefaultParams()
+	params.Set("identifier", fmt.Sprintf("http://hl7.org/fhir/sid/us-mbi|%s", mbi))
 
-	u, err := bbc.getURL("Patient/_search", params)
+	u, err := bbc.getURL("Patient/_search", url.Values{})
 	if err != nil {
 		return "", err
 	}
 
-	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.getRawData(jobData, "POST", u, strings.NewReader(body))
+	return bbc.getRawData("POST", jobData, u, headers, strings.NewReader(params.Encode()))
 }
 
 func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
@@ -187,41 +188,33 @@ func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, benefici
 }
 
 func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
-	header := make(http.Header)
-	header.Add("IncludeTaxNumbers", "true")
-
+	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
-	params.Set("excludeSAMHSA", "true")
-
+	updateParamsWithClaimsDefaults(&params, mbi)
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("Claim/_search", params)
+	u, err := bbc.getURL("Claim/_search", url.Values{})
 	if err != nil {
 		return nil, err
 	}
 
-	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
+	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
 func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
-	header := make(http.Header)
-	header.Add("IncludeTaxNumbers", "true")
-
+	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
-	params.Set("excludeSAMHSA", "true")
-
+	updateParamsWithClaimsDefaults(&params, mbi)
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 
-	u, err := bbc.getURL("ClaimResponse/_search", params)
+	u, err := bbc.getURL("ClaimResponse/_search", url.Values{})
 	if err != nil {
 		return nil, err
 	}
 
-	body := fmt.Sprintf(`{"identifier":"http://hl7.org/fhir/sid/us-mbi|%s"}`, mbi)
-	return bbc.makeBundleDataRequest("POST", u, jobData, header, strings.NewReader(body))
+	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
@@ -249,7 +242,7 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	}
 	jobData := models.JobEnqueueArgs{}
 
-	return bbc.getRawData(jobData, "GET", u, nil)
+	return bbc.getRawData("GET", jobData, u, nil, nil)
 }
 
 func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
@@ -300,9 +293,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 				req.Header.Add(key, value)
 			}
 		}
-
-		queryID := uuid.NewRandom()
-		addDefaultRequestHeaders(req, queryID, jobData)
+		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
 
 		result, nextURL, err = bbc.client.DoBundleRequest(req)
 		if err != nil {
@@ -323,7 +314,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 	return result, nextURL, nil
 }
 
-func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, method string, u *url.URL, body io.Reader) (string, error) {
+func (bbc *BlueButtonClient) getRawData(method string, jobData models.JobEnqueueArgs, u *url.URL, headers http.Header, body io.Reader) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
@@ -340,8 +331,15 @@ func (bbc *BlueButtonClient) getRawData(jobData models.JobEnqueueArgs, method st
 			logger.Error(err)
 			return err
 		}
+
 		req = newrelic.RequestWithTransactionContext(req, txn)
+		for key, values := range headers {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
 		addDefaultRequestHeaders(req, uuid.NewRandom(), jobData)
+
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
 			logger.Error(err)
@@ -378,7 +376,6 @@ func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData models
 	req.Header.Add(constants.BBHeaderOriginQID, reqID.String())
 	req.Header.Add(constants.BBHeaderOriginQC, "1")
 	req.Header.Add(constants.BBHeaderOriginURL, req.URL.String())
-	req.Header.Add(constants.BBHeaderOriginQ, req.URL.RawQuery)
 	req.Header.Add("IncludeIdentifiers", "mbi")
 	req.Header.Add(jobIDHeader, strconv.Itoa(jobData.ID))
 	req.Header.Add(clientIDHeader, jobData.CMSID)
@@ -424,6 +421,20 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	if len(since) > 0 && strings.HasPrefix(since, "gt") {
 		params.Add("_lastUpdated", since)
 	}
+}
+
+func updateParamsWithClaimsDefaults(params *url.Values, mbi string) {
+	params.Set("excludeSAMHSA", "true")
+	params.Set("includeTaxNumbers", "true")
+	params.Set("isHashed", "false")
+	params.Set("mbi", mbi)
+}
+
+func createURLEncodedHeader() http.Header {
+	headers := make(http.Header)
+	headers.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	return headers
 }
 
 type httpLogger struct {
