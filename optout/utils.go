@@ -57,6 +57,11 @@ func IsOptOut(filename string) (isOptOut bool, matches []string) {
 	return isOptOut, matches
 }
 
+func IsCSV(filename string) (isMdtcoc string) {
+	filenameRegexp := regexp.MustCompile(`((P|T)\.PCPB\.M\d{4}\.(D\d{6}\.T\d{6})\d`)
+	return filenameRegexp.FindString(filename)
+}
+
 func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 	dt, err := ConvertDt(ds)

@@ -296,6 +296,137 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	return success, failure, skipped, err
 }
 
+type CSVFileProcessor interface {
+	ImportCSV(string, string) (uint, uint, uint, error)
+}
+
+// Manages the import process for CCLF files from a given source
+type CSVImporter struct {
+	Logger        logrus.FieldLogger
+	FileProcessor CclfFileProcessor
+}
+
+func (importer CSVImporter) ImportCSV(s3AssumeRoleArn, s3ImportPath string) (uint, uint, uint, error) {
+	// acoID := GetCSVPartsFromImportPath(s3ImportPath) P.PCPB.M2410.D241022.T1357031 -> M2410
+	metadata, err := cclf.GetCSVMetadataFromImportPath(s3ImportPath)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get metadata from CSV S3 import parth")
+		importer.Logger.Error(err)
+		return nil, err
+	}
+
+	db := database.Connection
+	repository := postgres.NewRepository(db)
+	exists, err := repository.GetCCLFFileExistsByName(ctx, metadata.name)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to check existence of CSV file")
+		importer.Logger.Error(err)
+		return err
+	}
+
+	if exists {
+		importer.Logger.Infof("CSV File %s already exists in database, skipping import...", fileMetadata)
+		return nil
+	}
+
+	importer.Logger.Infof("Importing CSV file %s...", fileMetadata)
+
+	conn, err := stdlib.AcquireConn(db)
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
+
+	tx, err := conn.BeginEx(ctx, nil)
+	if err != nil {
+		err = fmt.Errorf("failed to start transaction: %w", err)
+		importer.Logger.Error(err)
+
+		return err
+	}
+
+	rtx := postgres.NewRepositoryPgxTx(tx)
+
+	defer func() {
+		if err != nil {
+			if err1 := tx.Rollback(); err1 != nil {
+				importer.Logger.Warnf("Failed to rollback transaction %s", err.Error())
+			}
+			return
+		}
+	}()
+
+	csvFile := models.CSVFile {
+		Name: metadata.name,
+		ACOMSID: metadata.aocID,
+		Timestamp: metadata.timestamp,
+		PerformanceYear: metadata.performanceYear,
+		ImportStatus: constants.ImportInprog,
+	}
+
+	csvFile.ID, err = rtx.CreateCSVFile(ctx, cclfFile)
+	if err != nil {
+		err = errors.Wrapf(err, "could not create CSV %s file record", metadata)
+		importer.Logger.Error(err)
+		return err
+	}
+
+	metadata.fileID = csvFile.ID
+
+	// rc, err := zipMetadata.cclf8File.Open()
+	// if err != nil {
+	// 	err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, zipMetadata.filePath)
+	// 	importer.Logger.Error(err)
+	// 	return err
+	// }
+	// defer rc.Close()
+	sc := bufio.NewScanner(rc)
+
+	// CopyFrom creates cclf_beneficiaries records
+	// importedCount, recordCount, err := CopyFrom(ctx, tx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.Logger, validator.maxRecordLength)
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to copy data to beneficiaries table")
+	// }
+	// scanner -> csv
+	csvRecords, err := csv.NewReader(sc).ReadAll()
+	// fileId into records eg:
+	// [["mbi01"], ["mbi02"], ["mbi03"]] -> [["{file_id}", "mbi01"], ["{file_id}", "mbi02"], ...[]]
+	var modifiedCSVRecords [][]string
+	for entry := range csvRecords {
+		modifiedCSVRecords.append([file, entry])
+	}
+	importedCount, recordCount, err := tx.CopyFrom("cclf_beneficiaries", []string{"file_id", "mbi"}, csvRecords)
+
+	if recordCount > validator.totalRecordCount {
+		err := fmt.Errorf("Unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
+		importer.Logger.Error(err)
+		return err
+	}
+
+	// update cclf_file record status
+	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
+	if err != nil {
+		err = errors.Wrapf(err, "could not update CSV file record for file: %s.", fileMetadata)
+		importer.Logger.Error(err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		importer.Logger.Error(err.Error())
+		failMsg := fmt.Sprintf("failed to commit transaction for CSV%d import file %s", fileMetadata.cclfNum, fileMetadata)
+		return errors.Wrap(err, failMsg)
+	}
+
+	s3FileHandler := optout.S3FileHandler{
+		Logger:        logger,
+		Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
+		AssumeRoleArn: s3AssumeRoleArn,
+	},
+	err := s3FileHandler.Delete(filepath)
+	if err != nil { ... }
+
+	successMsg := fmt.Sprintf("Successfully imported %d records from CSV%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
+	importer.Logger.WithFields(logrus.Fields{"imported_count": importedCount}).Info(successMsg)
+
+	return nil
+}
+
 func (m cclfFileMetadata) String() string {
 	return m.name
 }

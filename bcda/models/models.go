@@ -86,6 +86,18 @@ func (aco *ACO) Denylisted() bool {
 	}
 }
 
+type CSVFile struct {
+	ID              uint
+	Name            string
+	ACOCMSID        string
+	Timestamp       time.Time
+	PerformanceYear int
+	ImportStatus    string
+	// CreatedAt is automatically set by the database. This is only
+	// set/pulled when querying data in the DB.
+	CreatedAt time.Time
+}
+
 type CCLFFileType int16
 
 const (

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -24,6 +25,61 @@ func getCMSID(name string) (string, error) {
 	}
 
 	return parts[1], nil
+}
+
+func CheckIfAttributionCSVFile(filePath string) bool {
+	pattern := `P\.PCPB\.M\d{4}\.D\d{6}\.T\d{7}`
+	filenameRegexp := regexp.MustCompile(pattern)
+	found := filenameRegexp.Match([]byte(filePath))
+	return found
+}
+
+type csvFileMetadata struct {
+	name         string
+	env          string
+	acoID        string
+	perfYear     int
+	timestamp    time.Time
+	deliveryDate time.Time
+}
+
+type CSVParser struct {
+	FilePath string
+}
+
+func (parser CSVParser) GetCSVMetadataFromImportPath() (csvFileMetadata, error) {
+	// P.PCPB.M2410.D241022.T1357031 <- example filename
+	var metadata csvFileMetadata
+	parts := strings.Split(parser.FilePath, ".")
+
+	if len(parts) != 5 {
+		err := fmt.Errorf("invalid filename ('%s') for CSV file, parts: %v", parser.FilePath, parts)
+		log.API.Warning(err)
+		return metadata, err
+	}
+
+	perfYear, err := strconv.Atoi(parts[2])
+	if err != nil {
+		err = errors.Wrapf(err, "failed to parse performance year from file: %s", parser.FilePath)
+		log.API.Error(err)
+		return metadata, err
+	}
+
+	filenameDate := parts[3]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil || t.IsZero() {
+		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, parser.FilePath)
+		log.API.Error(err)
+		return metadata, err
+	}
+
+	metadata.name = parser.FilePath
+	metadata.acoID = parts[2]
+	metadata.timestamp = t
+	metadata.perfYear = perfYear
+	metadata.env = "production"
+
+	return metadata, nil
 }
 
 func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {

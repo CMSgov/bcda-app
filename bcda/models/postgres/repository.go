@@ -160,6 +160,25 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 	return &cclfFile, nil
 }
 
+// inserts the metadata of the received CSV file into the database
+// TODO: Add file type
+func (r *Repository) CreateCSVFile(ctx context.Context, csvFile models.CSVFile) (uint, error) {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("cclf_files")
+	ib.Cols("cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").
+		Values(-1, csvFile.Name, csvFile.ACOCMSID, csvFile.Timestamp, csvFile.PerformanceYear,
+			csvFile.ImportStatus, "-1")
+	query, args := ib.Build()
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the CCLF File
+	query = fmt.Sprintf(constants.CCLFFileRetID, query)
+
+	var id uint
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
 func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFile) (uint, error) {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("cclf_files")
 	ib.Cols("cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").

@@ -69,6 +69,18 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	return &result, skipped, err
 }
 
+func (handler *S3FileHandler) OpenCSVFile(path string) (*bufio.Scanner, func(), error) {
+	byte_arr, err := handler.OpenFileBytes(path)
+
+	if err != nil {
+		handler.Errorf("Failed to download %s\n", path)
+		return nil, nil, err
+	}
+
+	sc := bufio.NewScanner(bytes.NewReader(byte_arr))
+	return sc, func() {}, err
+}
+
 func (handler *S3FileHandler) ListFiles(bucket, prefix string) (objects []*s3.Object, err error) {
 	sess, err := handler.createSession()
 	if err != nil {
