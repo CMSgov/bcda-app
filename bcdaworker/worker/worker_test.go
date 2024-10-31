@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"math/rand"
+	"math"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +36,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 )
 
 var logHook *test.Hook
@@ -219,7 +222,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 
 	for _, tt := range tests {
 		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
+		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
 		if tt.err == nil {
 			assert.NoError(s.T(), err)
 		} else {
@@ -316,7 +319,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
 	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
@@ -344,7 +347,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Len(s.T(), jobKeys, 2)
@@ -394,7 +397,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err := createDir(s.tempDir)
 	assert.NoError(s.T(), err)
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
@@ -437,7 +440,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, rand.Int63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
@@ -535,8 +538,9 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -548,7 +552,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
-	err = s.w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
+	err = s.w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 
 	entries := logHook.AllEntries()
 	assert.Nil(s.T(), err)
@@ -574,8 +578,9 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 		JobCount:   1,
 	}
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -584,9 +589,12 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	r := &repository.MockRepository{}
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(s.testACO, nil)
-	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, uint(jobArgs.ID), models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
+
+	rid, _ := safecast.ToUint(j.ID)
+
+	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, rid, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
-	err := w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
+	err := w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -600,8 +608,9 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 		JobCount:   1,
 	}
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
@@ -612,7 +621,7 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
 	w := &worker{r}
-	err := w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
+	err := w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -692,8 +701,9 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
@@ -704,7 +714,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, rand.Int63(), j, jobArgs).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, cryptoRandInt63(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
@@ -717,15 +727,16 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
+	id, _ := safecast.ToInt(j.ID)
 	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
+		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
 		ResourceType:   "ExplanationOfBenefit",
 		BBBasePath:     constants.TestFHIRPath,
 	}
 
-	processJobErr := s.w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
+	processJobErr := s.w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 	completedJob, _ := s.r.GetJobByID(ctx, j.ID)
 
 	// cancelled parent job status should not update after failed queuejob
@@ -782,15 +793,16 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 			}
 			postgrestest.CreateJobs(s.T(), s.db, &j)
 
+			id, _ := safecast.ToInt(j.ID)
 			jobArgs := models.JobEnqueueArgs{
-				ID:             int(j.ID),
+				ID:             id,
 				ACOID:          j.ACOID.String(),
 				BeneficiaryIDs: []string{"10000", "11000"},
 				ResourceType:   "ExplanationOfBenefit",
 				BBBasePath:     constants.TestFHIRPath,
 			}
 
-			processJobErr := s.w.ProcessJob(ctx, rand.Int63(), j, jobArgs)
+			processJobErr := s.w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
 
 			// cancelled parent job status should not update after failed queuejob
 			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {
@@ -832,7 +844,11 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			jobID := uint(rand.Uint64())
+			randInt64, err := cryptoRandInt64()
+			if err != nil {
+				s.FailNow("Failed to generate random int64")
+			}
+			jobID, _ := safecast.ToUint(randInt64)
 
 			sDir := fmt.Sprintf("%s/%d", staging, jobID)
 			pDir := fmt.Sprintf("%s/%d", payload, jobID)
@@ -886,35 +902,48 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	r := &repository.MockRepository{}
 	w := &worker{r}
 
-	noBasePath := models.JobEnqueueArgs{ID: int(rand.Int31())}
-	jobNotFound := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
-	dbErr := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
-	jobCancelled := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
-	jobFailed := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
-	validJob := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobNotFound.ID)).Return(nil, repository.ErrJobNotFound)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(dbErr.ID)).Return(nil, fmt.Errorf("some db error"))
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobCancelled.ID)).
-		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusCancelled}, nil)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobFailed.ID)).
-		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusFailed}, nil)
+	noBasePath := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31())}
+	jobNotFound := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	dbErr := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	jobCancelled := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	jobFailed := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	validJob := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
 
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(validJob.ID)).
-		Return(&models.Job{ID: uint(validJob.ID), Status: models.JobStatusPending}, nil)
-	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), int64(0)).
+	jobNotFoundId, err := safecast.ToUint(jobNotFound.ID)
+	assert.NoError(s.T(), err)
+	dbErrId, err := safecast.ToUint(dbErr.ID)
+	assert.NoError(s.T(), err)
+	jobCancelledId, err := safecast.ToUint(jobCancelled.ID)
+	assert.NoError(s.T(), err)
+	jobFailedId, err := safecast.ToUint(jobFailed.ID)
+	assert.NoError(s.T(), err)
+	validJobId, err := safecast.ToUint(validJob.ID)
+	assert.NoError(s.T(), err)
+
+	r.On("GetJobByID", testUtils.CtxMatcher, jobNotFoundId).Return(nil, repository.ErrJobNotFound)
+	r.On("GetJobByID", testUtils.CtxMatcher, dbErrId).Return(nil, fmt.Errorf("some db error"))
+	r.On("GetJobByID", testUtils.CtxMatcher, jobCancelledId).
+		Return(&models.Job{ID: jobCancelledId, Status: models.JobStatusCancelled}, nil)
+	r.On("GetJobByID", testUtils.CtxMatcher, jobFailedId).
+		Return(&models.Job{ID: jobCancelledId, Status: models.JobStatusFailed}, nil)
+
+	r.On("GetJobByID", testUtils.CtxMatcher, validJobId).
+		Return(&models.Job{ID: validJobId, Status: models.JobStatusPending}, nil)
+	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(0)).
 		Return(nil, repository.ErrJobKeyNotFound)
 
 	// Return existing job key, indicating que job was already processed.
-	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), int64(1)).
-		Return(&models.JobKey{ID: uint(validJob.ID)}, nil)
+	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(1)).
+		Return(&models.JobKey{ID: validJobId}, nil)
 
-	r.On("GetJobKey", testUtils.CtxMatcher, uint(validJob.ID), int64(2)).
+	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(2)).
 		Return(nil, fmt.Errorf("some db error"))
 
 	defer func() {
 		r.AssertExpectations(s.T())
 		// Shouldn't be called because we already determined the job is invalid
-		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, uint(noBasePath.ID))
+		id, _ := safecast.ToUint(noBasePath.ID)
+		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, id)
 	}()
 
 	j, err := w.ValidateJob(ctx, 0, noBasePath)
@@ -970,7 +999,8 @@ func (s *WorkerTestSuite) TestCreateJobKeys() {
 	err = createJobKeys(s.logctx, s.r, keys, j.ID)
 	assert.NoError(s.T(), err)
 	for i := 0; i < len(keys); i++ {
-		job, _ := postgrestest.GetJobKey(s.db, int(keys[i].JobID))
+		id, _ := safecast.ToInt(keys[i].JobID)
+		job, _ := postgrestest.GetJobKey(s.db, id)
 		assert.NotEmpty(s.T(), job)
 	}
 }
@@ -1011,7 +1041,8 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 		RequestURL: "/some/request/URL",
 	}
 	postgrestest.CreateJobs(t, db, &j)
-	return int(j.ID)
+	id, _ := safecast.ToInt(j.ID)
+	return id
 }
 
 // first argument is lowerBound, second argument is upperBound
@@ -1051,4 +1082,13 @@ func assertEqualErrorFiles(t *testing.T, expected, actual string) {
 	}
 
 	assert.Equal(t, expectedOO, actualOO)
+}
+
+// cryptoRandInt64 generates a cryptographically secure random int64.
+func cryptoRandInt64() (int64, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		return 0, err
+	}
+	return n.Int64(), nil
 }

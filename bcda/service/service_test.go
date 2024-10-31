@@ -1,7 +1,7 @@
 package service
 
 import (
-	context "context"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/middleware"
+	"github.com/ccoveille/go-safecast"
 	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -659,7 +660,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	allBenes := [][]*models.CCLFBeneficiary{benes1, benes2}
 	for idx, b := range allBenes {
 		for i := 0; i < len(b); i++ {
-			id := uint(idx*10000 + i + 1)
+			id, _ := safecast.ToUint(idx*10000 + i + 1)
 			b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
 		}
 	}
@@ -939,7 +940,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 	allBenes := [][]*models.CCLFBeneficiary{benes1, benes2}
 	for idx, b := range allBenes {
 		for i := 0; i < len(b); i++ {
-			id := uint(idx*10000 + i + 1)
+			id, _ := safecast.ToUint(idx*10000 + i + 1)
 			b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
 		}
 	}
