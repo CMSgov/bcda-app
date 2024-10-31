@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"regexp"
 	"testing"
@@ -24,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -83,7 +83,8 @@ func TestProcessJob(t *testing.T) {
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 	// Since the jobArgs does not have any beneIDs, the job should complete almost immediately
-	jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: cmsID, BBBasePath: uuid.New()}
+	id, _ := safecast.ToInt(job.ID)
+	jobArgs := models.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
 	enqueuer := queueing.NewEnqueuer()
 	assert.NoError(t, enqueuer.AddJob(jobArgs, 1))
@@ -152,8 +153,17 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			repo := repository.NewMockRepository(t)
 			queue := &queue{worker: worker, repository: repo, log: logger}
 
-			job := models.Job{ID: uint(rand.Int31())}
-			jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: uuid.New()}
+			id, err := safecast.ToUint(1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := models.Job{ID: id}
+
+			jobid, e := safecast.ToInt(1)
+			if e != nil {
+				t.Fatal(e)
+			}
+			jobArgs := models.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
 
 			queJob := que.Job{ID: 1}
 			queJob.Args, err = json.Marshal(jobArgs)
@@ -161,7 +171,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 
 			// Set the error count to max to ensure that we've exceeded the retries
 			if tt.name == "NoParentJobRetriesExceeded" {
-				queJob.ErrorCount = rand.Int31()
+				queJob.ErrorCount = testUtils.CryptoRandInt31()
 			}
 
 			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
@@ -219,19 +229,22 @@ func TestStartAlrJob(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create JobArgs
+	k, _ := safecast.ToInt64(alr[0].MetaKey)
 	jobArgs := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
-		MetaKey:    int64(alr[0].MetaKey),
+		MetaKey:    k,
 		MBIs:       []string{alr[0].BeneMBI},
 		BBBasePath: "/v1/fhir",
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},
 	}
+
+	key, _ := safecast.ToInt64(alr[0].MetaKey)
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
-		MetaKey:    int64(alr[1].MetaKey),
+		MetaKey:    key,
 		BBBasePath: "/v1/fhir",
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
@@ -261,7 +274,7 @@ func TestStartAlrJob(t *testing.T) {
 	// Since the worker is tested by BFD, it is not tested here
 	// and we jump straight to the work
 	err = master.startAlrJob(&que.Job{
-		ID:   rand.Int63(),
+		ID:   testUtils.CryptoRandInt63(),
 		Args: jobArgsJson,
 	})
 	assert.NoError(t, err)
@@ -272,7 +285,7 @@ func TestStartAlrJob(t *testing.T) {
 	assert.Equal(t, models.JobStatusInProgress, alrJob.Status)
 
 	err = master.startAlrJob(&que.Job{
-		ID:   rand.Int63(),
+		ID:   testUtils.CryptoRandInt63(),
 		Args: jobArgsJson2,
 	})
 	assert.NoError(t, err)
@@ -334,5 +347,4 @@ Outer:
 	}
 
 	assert.True(t, success)
-
 }

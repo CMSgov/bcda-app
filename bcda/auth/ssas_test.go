@@ -48,7 +48,7 @@ var (
 
 var testACOUUID = "dd0a19eb-c614-46c7-9ec0-95bbae959f37"
 
-var sSasTokenErrorMsg string = "no token for SSAS; "
+var sSasTErrorMsg string = "no token for SSAS; "
 var sSasClientErrorMsg string = "no client for SSAS; "
 var unexpectedErrorMsg string = "unexpected error; "
 
@@ -269,7 +269,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 	_, tokenString, _, err := MockSSASToken()
-	require.NotNil(s.T(), tokenString, sSasTokenErrorMsg, err)
+	require.NotNil(s.T(), tokenString, sSasTErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(tokenString)
 
@@ -282,7 +282,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenCheckFails() {
 	_, tokenString, _, err := MockSSASToken()
-	require.NotNil(s.T(), tokenString, sSasTokenErrorMsg, err)
+	require.NotNil(s.T(), tokenString, sSasTErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(tokenString)
 
@@ -464,7 +464,7 @@ func (s *SSASPluginTestSuite) TestgetAuthDataFromClaimsReturnErrorWhenCommonClai
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
 	_, tokenString, _, err := MockSSASToken()
-	require.NotNil(s.T(), tokenString, sSasTokenErrorMsg, err)
+	require.NotNil(s.T(), tokenString, sSasTErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	MockSSASServer(tokenString)
 

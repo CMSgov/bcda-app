@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -204,7 +205,9 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				} else {
 					for k := range tt.statuses {
 						mockArgs = append(mockArgs, mock.Anything)
-						jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+						u, err := safecast.ToUint(k)
+						assert.NoError(t, err)
+						jobs = s.addNewJob(jobs, u, tt.statuses[k], apiVersion)
 					}
 				}
 
@@ -241,7 +244,9 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				bundle := resp.(*fhirmodelsv1.ContainedResource)
 				respB := bundle.GetBundle()
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
-				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+				val, err := safecast.ToUint32(len(respB.Entry))
+				assert.NoError(s.T(), err)
+				assert.Equal(s.T(), val, respB.Total.Value)
 
 				for k, entry := range respB.Entry {
 					respT := entry.GetResource().GetTask()
@@ -310,7 +315,12 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 					} else {
 						for k := range tt.statuses {
 							mockArgs = append(mockArgs, mock.Anything)
-							jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+							u, err := safecast.ToUint(k)
+							if err != nil {
+								// handle the error appropriately, e.g., log it or return it
+								t.Fatalf("Failed to convert key to uint: %v", err)
+							}
+							jobs = s.addNewJob(jobs, u, tt.statuses[k], apiVersion)
 						}
 					}
 
@@ -353,7 +363,9 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 				bundle := resp.(*fhirmodelv2CR.ContainedResource)
 				respB := bundle.GetBundle()
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
-				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+				val, err := safecast.ToUint32(len(respB.Entry))
+				assert.NoError(s.T(), err)
+				assert.Equal(s.T(), val, respB.Total.Value)
 
 				for k, entry := range respB.Entry {
 					respT := entry.GetResource().GetTask()

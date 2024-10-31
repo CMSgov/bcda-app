@@ -1,9 +1,10 @@
 package migrations
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"regexp"
 	"testing"
 	"time"
@@ -175,10 +176,10 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					{
 						"cclf_files",
 						map[string]interface{}{
-							"cclf_num":         rand.Intn(10),
+							"cclf_num":         getRandomInt(10),
 							"name":             uuid.New(),
 							"timestamp":        time.Now(),
-							"performance_year": rand.Intn(4),
+							"performance_year": getRandomInt(4),
 						},
 					},
 					// cclf_beneficiaries must be written AFTER cclf_files to ensure
@@ -199,7 +200,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					{
 						"suppressions",
 						map[string]interface{}{
-							"file_id": rand.Intn(25),
+							"file_id": getRandomInt(25),
 						},
 					},
 					{
@@ -761,4 +762,12 @@ func cleanData(t *testing.T, db *sql.DB) {
 		_, err := db.Exec(fmt.Sprintf("TRUNCATE %s CASCADE", tableName))
 		assert.NoError(t, err)
 	}
+}
+
+func getRandomInt(max int) int {
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		panic(err) // handle error appropriately
+	}
+	return int(n.Int64())
 }
