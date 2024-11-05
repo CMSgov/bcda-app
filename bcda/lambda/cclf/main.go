@@ -60,12 +60,55 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
+			parser := cclf.CSVParser{Filepath: e.S3.Object.Key}
+			if parser.CheckIfAttributionCSVFile(e.S3.Object.Key) {
+				return handleCSVImport(s3AssumeRoleArn, filepath)
+			} else {
 			return handleCclfImport(s3AssumeRoleArn, filepath)
 		}
+	}
 	}
 
 	logger.Info("No ObjectCreated events found, skipping safely.")
 	return "", nil
+}
+
+func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
+	env := conf.GetEnv("ENV")
+	appName := conf.GetEnv("APP_NAME")
+	logger := configureLogger(env, appName)
+	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+
+	importer := cclf.CSVImporter{
+		Logger: logger,
+		FileProcessor: &cclf.S3FileProcessor{
+			Handler: optout.S3FileHandler{
+				Logger:        logger,
+				Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
+				AssumeRoleArn: s3AssumeRoleArn,
+			},
+		},
+	}
+
+	success, failure, skipped, err := importer.ImportCSV(s3AssumeRoleArn, s3ImportPath)
+
+	if err != nil {
+		logger.Error("error returned from ImportCSV: ", err)
+		return "", err
+	}
+
+	if failure > 0 || skipped > 0 {
+		result := fmt.Sprintf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+		logger.Error(result)
+
+		err = errors.New("Files skipped or failed import. See logs for more details.")
+		return result, err
+
+	}
+
+	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+	logger.Info(result)
+	return result, nil
 }
 
 func loadBfdS3Params() (string, error) {
