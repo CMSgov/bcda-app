@@ -14,15 +14,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CclfImportMainSuite struct {
+type AttributionImportMainSuite struct {
 	suite.Suite
 }
 
-func TestCclfImportMainSuite(t *testing.T) {
-	suite.Run(t, new(CclfImportMainSuite))
+func TestAttributionImportMainSuite(t *testing.T) {
+	suite.Run(t, new(AttributionImportMainSuite))
 }
 
-func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
+func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	targetACO := "A0001"
 	assert := assert.New(s.T())
 
@@ -60,7 +60,7 @@ func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
 		path, cleanup := testUtils.CopyToS3(s.T(), tc.path)
 		defer cleanup()
 
-		res, err := cclfImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), path, tc.filename))
+		res, err := attributionImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), path, tc.filename))
 
 		if tc.err == nil {
 			assert.Nil(err)
@@ -75,8 +75,8 @@ func (s *CclfImportMainSuite) TestImportCCLFDirectory() {
 	}
 }
 
-func (s *CclfImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
+func (s *AttributionImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
 	assert := assert.New(s.T())
-	_, err := cclfImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), "doesn't-matter", "fake_filename"))
+	_, err := attributionImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), "doesn't-matter", "fake_filename"))
 	assert.Contains(err.Error(), "Error retrieving parameter /cclf-import/bcda/local/bfd-bucket-role-arn from parameter store: ParameterNotFound: Parameter /cclf-import/bcda/local/bfd-bucket-role-arn not found.")
 }
