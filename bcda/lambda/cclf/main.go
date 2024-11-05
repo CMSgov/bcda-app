@@ -30,11 +30,11 @@ func main() {
 			fmt.Println(res)
 		}
 	} else {
-		lambda.Start(cclfImportHandler)
+		lambda.Start(attributionImportHandler)
 	}
 }
 
-func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
+func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
