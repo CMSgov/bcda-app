@@ -664,7 +664,8 @@ func (s *RequestsTestSuite) TestBulkRequestSafecastError() {
 	})
 
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A0000", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
+	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 
