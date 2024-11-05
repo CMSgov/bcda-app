@@ -38,7 +38,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/ccoveille/go-safecast"
+	safecast "github.com/ccoveille/go-safecast"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -53,6 +53,8 @@ const v1BasePath = "/v1/fhir"
 const v2BasePath = "/v2/fhir"
 const v1JobRequestUrl = "http://bcda.cms.gov/api/v1/Jobs/1"
 const v2JobRequestUrl = "http://bcda.cms.gov/api/v2/Jobs/1"
+
+var SafecastToInt = safecast.ToInt[int]
 
 type RequestsTestSuite struct {
 	suite.Suite
@@ -639,6 +641,42 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		})
 
 	}
+}
+
+func (s *RequestsTestSuite) TestBulkRequestSafecastError() {
+	originalSafecastToInt := SafecastToInt
+	defer func() {
+		SafecastToInt = originalSafecastToInt
+	}()
+
+	SafecastToInt = func(i int) (int, error) {
+		return 0, errors.New("safecast error")
+	}
+
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
+	rctx := chi.NewRouteContext()
+
+	rctx.URLParams.Add("jobID", "1234")
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	ctx = context.WithValue(ctx, auth.AuthDataContextKey, auth.AuthData{
+		ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+		CMSID: "A0000",
+	})
+
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A0000", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
+
+	w := httptest.NewRecorder()
+
+	h := newHandler(s.resourceType, v1BasePath, apiVersionOne, s.db)
+	h.BulkPatientRequest(w, req)
+
+	resp := w.Result()
+	body, err := io.ReadAll(resp.Body)
+
+	s.NoError(err)
+	s.Equal(http.StatusInternalServerError, resp.StatusCode)
+	s.Contains(string(body), "safecast error")
 }
 
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
