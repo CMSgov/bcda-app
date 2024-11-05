@@ -665,6 +665,11 @@ func (s *RequestsTestSuite) TestBulkRequestSafecastError() {
 
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A0000", "request_id": uuid.NewRandom().String()})
 	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
+	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{
+		Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+		ResourceTypes: []string{"Patient"},
+		Version:       apiVersionOne,
+	})
 	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
