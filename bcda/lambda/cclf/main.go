@@ -60,8 +60,7 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
-			parser := cclf.CSVParser{Filepath: e.S3.Object.Key}
-			if parser.CheckIfAttributionCSVFile(e.S3.Object.Key) {
+			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
 				return handleCSVImport(s3AssumeRoleArn, filepath)
 			} else {
 				return handleCclfImport(s3AssumeRoleArn, filepath)
