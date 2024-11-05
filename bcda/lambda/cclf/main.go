@@ -64,9 +64,9 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 			if parser.CheckIfAttributionCSVFile(e.S3.Object.Key) {
 				return handleCSVImport(s3AssumeRoleArn, filepath)
 			} else {
-			return handleCclfImport(s3AssumeRoleArn, filepath)
+				return handleCclfImport(s3AssumeRoleArn, filepath)
+			}
 		}
-	}
 	}
 
 	logger.Info("No ObjectCreated events found, skipping safely.")
