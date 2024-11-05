@@ -653,26 +653,19 @@ func (s *RequestsTestSuite) TestBulkRequestSafecastError() {
 		return 0, errors.New("safecast error")
 	}
 
-	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
-	rctx := chi.NewRouteContext()
-
-	rctx.URLParams.Add("jobID", "1234")
-	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
-	ctx = context.WithValue(ctx, auth.AuthDataContextKey, auth.AuthData{
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, auth.AuthData{
 		ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
 		CMSID: "A0000",
-	})
-
+	}))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A0000", "request_id": uuid.NewRandom().String()})
-	ctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
-	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{
+	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+	req = req.WithContext(middleware.SetRequestParamsCtx(req.Context(), middleware.RequestParameters{
 		Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 		ResourceTypes: []string{"Patient"},
 		Version:       apiVersionOne,
-	})
-	req = req.WithContext(ctx)
-
-	w := httptest.NewRecorder()
+	}))
 
 	h := newHandler(s.resourceType, v1BasePath, apiVersionOne, s.db)
 	h.BulkPatientRequest(w, req)
