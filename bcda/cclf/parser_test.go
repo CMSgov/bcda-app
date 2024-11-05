@@ -293,3 +293,26 @@ func TestGetCCLFMetadata(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckIfAttributionCSVFile(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		testIsCSV bool
+	}{
+		{name: "Is an Attribution CSV File path", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: true},
+		{name: "Is not an Attribution CSV File path", path: "T.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is an Attribution CCLF File path", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(sub *testing.T) {
+			isCSV := CheckIfAttributionCSVFile(test.path)
+			if test.testIsCSV {
+				assert.True(sub, isCSV)
+			} else {
+				assert.False(sub, isCSV)
+			}
+		})
+	}
+}
