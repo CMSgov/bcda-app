@@ -87,7 +87,7 @@ func TestProcessJob(t *testing.T) {
 	jobArgs := models.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
 	enqueuer := queueing.NewEnqueuer()
-	assert.NoError(t, enqueuer.AddJob(jobArgs, 1))
+	assert.NoError(t, enqueuer.AddJob(context.Background(), jobArgs, 1))
 
 	timeout := time.After(10 * time.Second)
 	for {
@@ -298,7 +298,7 @@ func TestStartAlrJob(t *testing.T) {
 
 // Test alr cancel logic
 func TestAlrJobCancel(t *testing.T) {
-	q := masterQueue{
+	q := MasterQueue{
 		queue: &queue{
 			repository: nil,
 		},

@@ -23,7 +23,7 @@ import (
 ******************************************************************************/
 
 // alrQueue is the data structure for jobs related to Assignment List Report
-// (ALR). ALR piggybacks Beneficiary FHIR through the masterQueue data struct.
+// (ALR). ALR piggybacks Beneficiary FHIR through the MasterQueue data struct.
 // Ensure there is no field clashes with queue data struct.
 type alrQueue struct {
 	alrLog    logrus.FieldLogger
@@ -64,7 +64,7 @@ func checkIfCancelled(ctx context.Context, r repository.Repository,
 // startALRJob is the Job that the worker will run from the pool. This function
 // has been written here (alr.go) to separate from beneficiary FHIR workflow.
 // This job is handled by the same worker pool that works on beneficiary.
-func (q *masterQueue) startAlrJob(queJob *que.Job) error {
+func (q *MasterQueue) startAlrJob(queJob *que.Job) error {
 
 	// Creating Context for possible cancellation; used by checkIfCancelled fn
 	ctx := context.Background()
@@ -192,7 +192,7 @@ func (q *masterQueue) startAlrJob(queJob *que.Job) error {
 	return nil
 }
 
-func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
+func (q *MasterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
 	j, err := q.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get job: %w", err)

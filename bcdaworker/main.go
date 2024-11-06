@@ -96,7 +96,7 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	queue := manager.StartQue(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+	queue := startQueueWatcher()
 	defer queue.StopQue()
 
 	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
@@ -138,4 +138,12 @@ func logHealth() {
 	}
 
 	entry.WithFields(logFields).Info()
+}
+
+func startQueueWatcher() *manager.MasterQueue {
+	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
+		return manager.StartRiver(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+	}
+
+	return manager.StartQue(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
 }

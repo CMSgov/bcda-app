@@ -109,7 +109,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	for _, j := range alrJobs {
 		j.ID = newJob.ID
 		priority := h.Svc.GetJobPriority(ad.CMSID, "alr", !rp.Since.IsZero())
-		if err = h.Enq.AddAlrJob(*j, int(priority)); err != nil {
+		if err = h.Enq.AddAlrJob(ctx, *j, int(priority)); err != nil {
 			return // Rollback handled in the defer
 		}
 	}

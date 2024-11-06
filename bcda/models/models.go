@@ -137,3 +137,7 @@ type JobEnqueueArgs struct {
 	}
 	DataType string
 }
+
+func (jobargs JobEnqueueArgs) Kind() string {
+	return "Job"
+}

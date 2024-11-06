@@ -1,6 +1,7 @@
 package queueing
 
 import (
+	"context"
 	"crypto/rand"
 	"math"
 	"math/big"
@@ -34,8 +35,9 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 		LowerBound: time.Now(),
 		UpperBound: time.Now(),
 	}
-	assert.NoError(t, enqueuer.AddJob(jobArgs, priority))
-	assert.NoError(t, enqueuer.AddAlrJob(alrJobArgs, priority))
+	ctx := context.Background()
+	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, priority))
+	assert.NoError(t, enqueuer.AddAlrJob(ctx, alrJobArgs, priority))
 
 	// Verify that we've inserted the que_job as expected
 	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("que_jobs")

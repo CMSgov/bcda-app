@@ -18,54 +18,14 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
-	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-// queue is responsible for retrieving jobs using the que client and
-// transforming and delegating that work to the underlying worker
-type queue struct {
-	// Resources associated with the underlying que client
-	quePool *que.WorkerPool
-
-	worker     worker.Worker
-	repository repository.Repository
-	log        logrus.FieldLogger
-	queDB      *pgx.ConnPool
-
-	cloudWatchEnv string
-}
-
-// Assignment List Report (ALR) shares the worker pool and "piggy-backs" off
-// Beneficiary FHIR Data workflow. Instead of creating redundant functions and
-// methods, masterQueue wraps both structs allows for sharing.
-type masterQueue struct {
-	*queue
-	*alrQueue // This is defined in alr.go
-
-	StagingDir string `conf:"FHIR_STAGING_DIR"`
-	PayloadDir string `conf:"FHIR_PAYLOAD_DIR"`
-	MaxRetry   int32  `conf:"BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES" conf_default:"3"`
-}
-
-func newMasterQueue(q *queue, qAlr *alrQueue) *masterQueue {
-	mq := &masterQueue{
-		queue:    q,
-		alrQueue: qAlr,
-	}
-
-	if err := conf.Checkout(mq); err != nil {
-		logrus.Fatal("Could not get data from conf for ALR.", err)
-	}
-
-	return mq
-}
-
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
-func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
+func StartQue(log logrus.FieldLogger, numWorkers int) *MasterQueue {
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
 	mainDB := database.Connection
@@ -97,7 +57,7 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
 }
 
 // StopQue cleans up any resources created
-func (q *masterQueue) StopQue() {
+func (q *MasterQueue) StopQue() {
 	q.queDB.Close()
 	q.quePool.Shutdown()
 }
