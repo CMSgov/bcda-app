@@ -656,8 +656,8 @@ func (s *RequestsTestSuite) TestBulkRequestSafecastError() {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, auth.AuthData{
-		ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
-		CMSID: "A0000",
+		ACOID: "ba21d24d-cd96-4d7d-a691-b0e8c88e67a5",
+		CMSID: "A0002",
 	}))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A0000", "request_id": uuid.NewRandom().String()})
 	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
