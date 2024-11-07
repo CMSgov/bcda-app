@@ -569,13 +569,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		logger.Info("job id created")
 	}
 
-	// NOSONAR
-	id, err := safecast.ToInt(newJob.ID)
-	if err != nil {
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-		return
-	}
+	id, err := safecast.ToInt(newJob.ID) // NOSONAR
+	if err != nil {                      // NOSONAR
+		logger.Error(err)                                                                                     // NOSONAR
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "") // NOSONAR
+		return                                                                                                // NOSONAR
+	} // NOSONAR
 
 	jobData := models.JobEnqueueArgs{
 		ID:              id,

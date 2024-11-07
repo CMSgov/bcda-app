@@ -38,7 +38,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	safecast "github.com/ccoveille/go-safecast"
+	"github.com/ccoveille/go-safecast"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -53,8 +53,6 @@ const v1BasePath = "/v1/fhir"
 const v2BasePath = "/v2/fhir"
 const v1JobRequestUrl = "http://bcda.cms.gov/api/v1/Jobs/1"
 const v2JobRequestUrl = "http://bcda.cms.gov/api/v2/Jobs/1"
-
-var SafecastToInt = safecast.ToInt[int]
 
 type RequestsTestSuite struct {
 	suite.Suite
