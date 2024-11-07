@@ -88,6 +88,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	}{
 		{"Non CCLF0 or CCLF8 file", sspID, "P.A0001.ACO.ZC9Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Unsupported CCLF file type", "Z9999", "P.Z0001.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"Unsupported CSV file type", sspID, "P.PCPB.M2014.D00302.T2420001", "invalid filename", cclfFileMetadata{}},
 		{"Invalid date (no 13th month)", sspID, "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
 		{"CCLF file too old", sspID, gen(sspProd, startUTC.Add(-365*24*time.Hour)), "out of range", cclfFileMetadata{}},
 		{"CCLF file too new", sspID, gen(sspProd, startUTC.Add(365*24*time.Hour)), "out of range", cclfFileMetadata{}},
