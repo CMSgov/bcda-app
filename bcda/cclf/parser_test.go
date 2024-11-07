@@ -323,6 +323,7 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		{name: "Is not an Attribution CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D003022.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (incorrect fifth)", path: "P.PCPB.M2014.D00302.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 	}
 
 	for _, test := range tests {
