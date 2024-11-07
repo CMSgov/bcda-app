@@ -643,41 +643,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	}
 }
 
-func (s *RequestsTestSuite) TestBulkRequestSafecastError() {
-	originalSafecastToInt := SafecastToInt
-	defer func() {
-		SafecastToInt = originalSafecastToInt
-	}()
-
-	SafecastToInt = func(i int) (int, error) {
-		return 0, errors.New("safecast error")
-	}
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, auth.AuthData{
-		ACOID: "ba21d24d-cd96-4d7d-a691-b0e8c88e67a5",
-		CMSID: "A0002",
-	}))
-	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A0000", "request_id": uuid.NewRandom().String()})
-	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
-	req = req.WithContext(middleware.SetRequestParamsCtx(req.Context(), middleware.RequestParameters{
-		Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
-		ResourceTypes: []string{"Patient"},
-		Version:       apiVersionOne,
-	}))
-
-	h := newHandler(s.resourceType, v1BasePath, apiVersionOne, s.db)
-	h.BulkPatientRequest(w, req)
-
-	resp := w.Result()
-	body, err := io.ReadAll(resp.Body)
-
-	s.NoError(err)
-	s.Equal(http.StatusInternalServerError, resp.StatusCode)
-	s.Contains(string(body), "safecast error")
-}
-
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 

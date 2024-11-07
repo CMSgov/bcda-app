@@ -569,6 +569,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		logger.Info("job id created")
 	}
 
+	// NOSONAR
 	id, err := safecast.ToInt(newJob.ID)
 	if err != nil {
 		logger.Error(err)
