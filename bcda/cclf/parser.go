@@ -26,6 +26,13 @@ func getCMSID(name string) (string, error) {
 	return parts[1], nil
 }
 
+func CheckIfAttributionCSVFile(filePath string) bool {
+	pattern := `(P|T)\.PCPB\.M\d{4}\.D\d{6}\.T\d{7}`
+	filenameRegexp := regexp.MustCompile(pattern)
+	found := filenameRegexp.Match([]byte(filePath))
+	return found
+}
+
 func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	const (
