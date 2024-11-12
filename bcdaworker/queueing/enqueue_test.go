@@ -3,6 +3,7 @@ package queueing
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -16,6 +17,29 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestEnqueuerImplementation(t *testing.T) {
+	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
+
+	// Test que-go implementation (default)
+	enq := NewEnqueuer()
+	var expectedEnq queEnqueuer
+	assert.IsType(t, expectedEnq, enq)
+
+	// Test river implementation
+	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
+	enq = NewEnqueuer()
+	var expectedRiverEnq riverEnqueuer
+	assert.IsType(t, expectedRiverEnq, enq)
+
+	// If unset use default
+	conf.UnsetEnv(t, "QUEUE_LIBRARY")
+	enq = NewEnqueuer()
+	assert.IsType(t, expectedEnq, enq)
+
+	// Reset env var
+	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+}
 
 func TestQueEnqueuer_Integration(t *testing.T) {
 	// Need access to the queue database to ensure we've enqueued the job successfully
@@ -35,9 +59,10 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 		LowerBound: time.Now(),
 		UpperBound: time.Now(),
 	}
+	fmt.Printf("Que Test Job args: %+v", jobArgs)
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, priority))
-	assert.NoError(t, enqueuer.AddAlrJob(ctx, alrJobArgs, priority))
+	assert.NoError(t, enqueuer.AddAlrJob(alrJobArgs, priority))
 
 	// Verify that we've inserted the que_job as expected
 	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("que_jobs")
@@ -60,24 +85,50 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestNewEnqueuer(t *testing.T) {
+func TestRiverEnqueuer_Integration(t *testing.T) {
 	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
 
-	// Test que-go implementation (default)
-	enq := NewEnqueuer()
-	var expectedEnq queEnqueuer
-	assert.IsType(t, expectedEnq, enq)
+	// Need access to the queue database to ensure we've enqueued the job successfully
+	db := database.Connection
 
-	// Test river implementation
 	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
-	enq = NewEnqueuer()
-	var expectedRiverEnq riverEnqueuer
-	assert.IsType(t, expectedRiverEnq, enq)
+	enqueuer := NewEnqueuer()
+	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
+	if e != nil {
+		t.Fatalf("failed to generate job ID: %v\n", e)
+	}
+	jobArgs := models.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 
-	// If unset use default
-	conf.UnsetEnv(t, "QUEUE_LIBRARY")
-	enq = NewEnqueuer()
-	assert.IsType(t, expectedEnq, enq)
+	ctx := context.Background()
+	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))
+
+	// Verify that we've inserted the que_job as expected
+	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("river_job")
+	sb.Where(
+		sb.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID),
+		sb.Equal("args ->> 'ACOID'", jobArgs.ACOID),
+		sb.Equal("priority", 3),
+	)
+
+	var count int
+	query, args := sb.Build()
+	fmt.Println(query)
+	fmt.Printf("%+v", args)
+	row := db.QueryRow(query, args...)
+	assert.NoError(t, row.Scan(&count))
+	assert.Equal(t, 1, count)
+
+	// Cleanup the que data
+	delete := sqlbuilder.PostgreSQL.NewDeleteBuilder().DeleteFrom("river_job")
+	delete.Where(
+		delete.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID),
+		delete.Equal("args ->> 'ACOID'", jobArgs.ACOID),
+		delete.Equal("priority", 3),
+	)
+	query, args = delete.Build()
+
+	_, err := db.Exec(query, args...)
+	assert.NoError(t, err)
 
 	// Reset env var
 	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)

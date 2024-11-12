@@ -1,4 +1,4 @@
-package manager
+package queueing
 
 import (
 	"context"

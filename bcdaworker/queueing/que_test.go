@@ -1,4 +1,4 @@
-package manager
+package queueing
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -53,9 +52,9 @@ func TestProcessJob(t *testing.T) {
 		conf.SetEnv(t, "BB_CLIENT_CA_FILE", ca)
 	}(conf.GetEnv("BB_CLIENT_CERT_FILE"), conf.GetEnv("BB_CLIENT_KEY_FILE"), conf.GetEnv("BB_CLIENT_CA_FILE"))
 
-	conf.SetEnv(t, "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	conf.SetEnv(t, "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
-	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
+	conf.SetEnv(t, "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	conf.SetEnv(t, "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
+	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 
 	// Ensure we do not clutter our working directory with any data
 	tempDir1, err := os.MkdirTemp("", "*")
@@ -86,7 +85,7 @@ func TestProcessJob(t *testing.T) {
 	id, _ := safecast.ToInt(job.ID)
 	jobArgs := models.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
-	enqueuer := queueing.NewEnqueuer()
+	enqueuer := NewEnqueuer()
 	assert.NoError(t, enqueuer.AddJob(context.Background(), jobArgs, 1))
 
 	timeout := time.After(10 * time.Second)

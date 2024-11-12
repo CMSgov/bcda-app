@@ -121,6 +121,11 @@ type CCLFBeneficiary struct {
 	BlueButtonID string
 }
 
+const (
+	QUE_PROCESS_JOB = "ProcessJob"
+	ALR_JOB         = "AlrJob"
+)
+
 type JobEnqueueArgs struct {
 	ID              int
 	ACOID           string
@@ -138,6 +143,24 @@ type JobEnqueueArgs struct {
 	DataType string
 }
 
+// type JobEnqueueArgs struct {
+// 	ID              int       `json:"id"`
+// 	ACOID           string    `json:"aco_id"`
+// 	CMSID           string    `json:"cms_id"`
+// 	BeneficiaryIDs  []string  `json:"beneficiary_ids"`
+// 	ResourceType    string    `json:"resource_type"`
+// 	Since           string    `json:"since"`
+// 	TransactionID   string    `json:"transaction_id"`
+// 	TransactionTime time.Time `json:"transaction_time"`
+// 	BBBasePath      string    `json:"bb_base_path"`
+// 	ClaimsWindow    struct {
+// 		LowerBound time.Time `json:"lower_bound"`
+// 		UpperBound time.Time `json:"upper_bound"`
+// 	} `json:"claims_window"`
+// 	DataType string `json:"data_type"`
+// }
+
+// Needed by River (queue library)
 func (jobargs JobEnqueueArgs) Kind() string {
-	return "Job"
+	return QUE_PROCESS_JOB
 }

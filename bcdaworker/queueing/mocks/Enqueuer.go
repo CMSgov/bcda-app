@@ -14,17 +14,17 @@ type Enqueuer struct {
 	mock.Mock
 }
 
-// AddAlrJob provides a mock function with given fields: ctx, job, priority
-func (_m *Enqueuer) AddAlrJob(ctx context.Context, job models.JobAlrEnqueueArgs, priority int) error {
-	ret := _m.Called(ctx, job, priority)
+// AddAlrJob provides a mock function with given fields: job, priority
+func (_m *Enqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error {
+	ret := _m.Called(job, priority)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddAlrJob")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, models.JobAlrEnqueueArgs, int) error); ok {
-		r0 = rf(ctx, job, priority)
+	if rf, ok := ret.Get(0).(func(models.JobAlrEnqueueArgs, int) error); ok {
+		r0 = rf(job, priority)
 	} else {
 		r0 = ret.Error(0)
 	}
