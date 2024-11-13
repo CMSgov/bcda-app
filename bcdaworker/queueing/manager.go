@@ -2,12 +2,20 @@ package queueing
 
 import (
 	"context"
+	goerrors "errors"
+	"fmt"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx"
 	pgxv5 "github.com/jackc/pgx/v5"
+	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
@@ -48,53 +56,104 @@ type queue struct {
 	cloudWatchEnv string
 }
 
-// func (q *queue) validateJob() error {
-// 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
-// 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
-// 		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", queJob.ID, jobArgs.ID)
-// 		return nil
-// 	} else if goerrors.Is(err, worker.ErrParentJobFailed) {
-// 		// ACK the job because we do not need to work on queue jobs associated with a failed parent job
-// 		logger.Warnf("queJob %d associated with a failed parent Job %d. Removing queuejob from que.", queJob.ID, jobArgs.ID)
-// 		return nil
-// 	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
-// 		// Data is corrupted, we cannot work on this job.
-// 		logger.Warnf("Job %d does not contain valid base path. Removing queuejob from que.", jobArgs.ID)
-// 		return nil
-// 	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
-// 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
-// 		// us plenty of headroom to ensure that the parent job will never be found.
-// 		maxNotFoundRetries, err := safecast.ToInt32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
-// 		if err != nil {
-// 			logger.Errorf("Failed to convert BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES to int32. Defaulting to 3. Error: %s", err)
-// 			return nil
-// 		}
+type ValidateJobConfig struct {
+	WorkerInstance worker.Worker
+	Logger         logrus.FieldLogger
+	Repository     repository.Repository
+	JobID          int64
+	QJobID         int64
+	Args           models.JobEnqueueArgs
+	ErrorCount     int
+}
 
-// 		if queJob.ErrorCount >= maxNotFoundRetries {
-// 			logger.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
-// 				jobArgs.ACOID)
-// 			// By returning a nil error response, we're signaling to que-go to remove this job from the job queue.
-// 			return nil
-// 		}
+// This is a weird function as it seems mostly unnecessary.  Could all of this logic just live in worker.ValidateJob?
+// On top of that we are checking for each type of error return and saying that some are allowed and should
+// acknowledge the job as successful but without doing anything.  This effectively just removes it form the queue.
+// The third return bool param (on true) allows us to succeed (acknowledge) a job.
+func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error, bool) {
+	exportJob, err := cfg.WorkerInstance.ValidateJob(ctx, cfg.QJobID, cfg.Args)
 
-// 		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
-// 		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
-// 	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
-// 		logger.Warnf("Queue job (que_jobs.id) %d already processed for job.id %d. Checking completion status and removing queuejob from que.", queJob.ID, id)
+	fmt.Printf("---In manager validate: %+v, %+v\n", exportJob, err)
 
-// 		_, err := worker.CheckJobCompleteAndCleanup(ctx, q.repository, id)
-// 		if err != nil {
-// 			return errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", id))
-// 		}
-// 		return nil
-// 	} else if err != nil {
-// 		err := errors.Wrap(err, "failed to validate job")
-// 		logger.Error(err)
-// 		return err
-// 	}
+	if goerrors.Is(err, worker.ErrParentJobCancelled) {
+		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
+		cfg.Logger.Warnf("QJob %d associated with a cancelled parent Job %d. Removing job from queue.", cfg.Args.ID, cfg.JobID)
+		return nil, err, true
+	} else if goerrors.Is(err, worker.ErrParentJobFailed) {
+		// ACK the job because we do not need to work on queue jobs associated with a failed parent job
+		cfg.Logger.Warnf("QJob %d associated with a failed parent Job %d. Removing job from queue.", cfg.Args.ID, cfg.JobID)
+		return nil, err, true
+	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
+		// Data is corrupted, we cannot work on this job.
+		cfg.Logger.Warnf("QJob %d does not contain valid base path. Removing job from queue.", cfg.JobID)
+		return nil, err, true
+	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
+		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
+		// us plenty of headroom to ensure that the parent job will never be found.
+		maxNotFoundRetries, err := safecast.ToInt(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
+		if err != nil {
+			cfg.Logger.Errorf("Failed to convert BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES to int32. Defaulting to 3. Error: %s", err)
+			return nil, err, false
+		}
 
-// 	return nil
-// }
+		if cfg.ErrorCount >= maxNotFoundRetries {
+			cfg.Logger.Errorf("No job found for Job: %d acoID: %s. Retries exhausted. Removing job from queue.", cfg.JobID, cfg.Args.ACOID)
+			return nil, err, true
+		}
+
+		cfg.Logger.Warnf("No job found for Job: %d acoID: %s. Will retry.", cfg.JobID, cfg.Args.ACOID)
+
+		return nil, errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database"), false
+	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
+		cfg.Logger.Warnf("QJob %d already processed for parent Job: %d. Checking completion status and removing job from queue.", cfg.Args.ID, cfg.JobID)
+
+		u, err := safecast.ToUint(cfg.JobID)
+		if err != nil {
+			cfg.Logger.Errorf("Failed to convert Job ID to uint. Error: %s", err)
+			return nil, err, false
+		}
+
+		_, err = worker.CheckJobCompleteAndCleanup(ctx, cfg.Repository, u)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for Job %d", cfg.JobID)), false
+		}
+
+		return nil, err, true
+	} else if err != nil {
+		err := errors.Wrap(err, "Failed to validate job")
+		cfg.Logger.Error(err)
+		return nil, err, false
+	}
+
+	return exportJob, err, false
+}
+
+func checkIfCancelled(ctx context.Context, r repository.Repository,
+	cancel context.CancelFunc, jobID int64, wait uint8) {
+
+	newID, err := safecast.ToUint(jobID)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		select {
+		case <-time.After(time.Duration(wait) * time.Second):
+			jobStatus, err := r.GetJobByID(ctx, newID)
+
+			if err != nil {
+				log.Worker.Warnf("Could not find job %d status: %s", newID, err)
+			}
+
+			if jobStatus.Status == models.JobStatusCancelled {
+				cancel()
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
 
 // func (q *queue) updateJobQueueCountCloudwatchMetric() {
 

@@ -19,7 +19,9 @@ import (
 )
 
 func TestEnqueuerImplementation(t *testing.T) {
-	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
+	defer func(origEnqueuer string) {
+		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+	}(conf.GetEnv("QUEUE_LIBRARY"))
 
 	// Test que-go implementation (default)
 	enq := NewEnqueuer()
@@ -36,9 +38,6 @@ func TestEnqueuerImplementation(t *testing.T) {
 	conf.UnsetEnv(t, "QUEUE_LIBRARY")
 	enq = NewEnqueuer()
 	assert.IsType(t, expectedEnq, enq)
-
-	// Reset env var
-	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
 }
 
 func TestQueEnqueuer_Integration(t *testing.T) {
@@ -86,12 +85,15 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 }
 
 func TestRiverEnqueuer_Integration(t *testing.T) {
-	origEnqueuer := conf.GetEnv("QUEUE_LIBRARY")
+	defer func(origEnqueuer string) {
+		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+	}(conf.GetEnv("QUEUE_LIBRARY"))
+
+	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 
 	// Need access to the queue database to ensure we've enqueued the job successfully
 	db := database.Connection
 
-	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 	enqueuer := NewEnqueuer()
 	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
 	if e != nil {
@@ -129,7 +131,4 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
-
-	// Reset env var
-	conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
 }

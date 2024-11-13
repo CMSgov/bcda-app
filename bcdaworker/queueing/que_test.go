@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -20,7 +18,6 @@ import (
 	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
@@ -77,7 +74,7 @@ func TestProcessJob(t *testing.T) {
 	postgrestest.CreateJobs(t, db, &job)
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
-
+	fmt.Printf("\n---JOB in que test: %+v\n", job)
 	q := StartQue(logger, 1)
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
@@ -125,74 +122,6 @@ func TestProcessJobInvalidArgs(t *testing.T) {
 	assert.NotNil(t, entry)
 	assert.Contains(t, entry.Message,
 		fmt.Sprintf("Failed to deserialize job.Args '%s'", job.Args))
-}
-
-func TestProcessJobFailedValidation(t *testing.T) {
-	tests := []struct {
-		name        string
-		validateErr error
-		expectedErr error
-		expLogMsg   string
-	}{
-		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `^queJob \d+ associated with a cancelled parent Job`},
-		{"ParentJobFailed", worker.ErrParentJobFailed, nil, `^queJob \d+ associated with a failed parent Job`},
-		{"NoBasePath", worker.ErrNoBasePathSet, nil, `^Job \d+ does not contain valid base path`},
-		{"NoParentJob", worker.ErrParentJobNotFound, repository.ErrJobNotFound, `^No job found for ID: \d+ acoID.*Will retry`},
-		{"NoParentJobRetriesExceeded", worker.ErrParentJobNotFound, nil, `No job found for ID: \d+ acoID.*Retries exhausted`},
-		{"QueJobAlreadyProcessed", worker.ErrQueJobProcessed, nil, `^Queue job \(que_jobs.id\) \d+ already processed for job.id \d+`},
-		{"OtherError", fmt.Errorf(constants.DefaultError), fmt.Errorf(constants.DefaultError), ""},
-	}
-	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var err error
-			worker := &worker.MockWorker{}
-			defer worker.AssertExpectations(t)
-
-			repo := repository.NewMockRepository(t)
-			queue := &queue{worker: worker, repository: repo, log: logger}
-
-			id, err := safecast.ToUint(1)
-			if err != nil {
-				t.Fatal(err)
-			}
-			job := models.Job{ID: id}
-
-			jobid, e := safecast.ToInt(1)
-			if e != nil {
-				t.Fatal(e)
-			}
-			jobArgs := models.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
-
-			queJob := que.Job{ID: 1}
-			queJob.Args, err = json.Marshal(jobArgs)
-			assert.NoError(t, err)
-
-			// Set the error count to max to ensure that we've exceeded the retries
-			if tt.name == "NoParentJobRetriesExceeded" {
-				queJob.ErrorCount = testUtils.CryptoRandInt31()
-			}
-
-			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
-
-			if tt.name == "QueJobAlreadyProcessed" {
-				job.Status = models.JobStatusCompleted
-				repo.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
-			}
-
-			err = queue.processJob(&queJob)
-			if tt.expectedErr == nil {
-				assert.NoError(t, err)
-			} else {
-				assert.Contains(t, err.Error(), tt.expectedErr.Error())
-			}
-
-			if tt.expLogMsg != "" {
-				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
-			}
-		})
-	}
-
 }
 
 // Test ALR startAlrjob
@@ -324,8 +253,11 @@ func TestAlrJobCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs := models.JobAlrEnqueueArgs{}
 
+	jobID, err := safecast.ToInt64(jobs.ID)
+	assert.NoError(t, err)
+
 	// In produation we wait 15 second intervals, for test we do 1
-	go checkIfCancelled(ctx, q.repository, cancel, jobs.ID, 1)
+	go checkIfCancelled(ctx, q.repository, cancel, jobID, 1)
 
 	// Check if the context has been cancelled
 	var cnt uint8

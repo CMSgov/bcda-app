@@ -144,7 +144,3 @@ func logHealth() {
 
 	entry.WithFields(logFields).Info()
 }
-
-// func startQueueWatcher() *manager.MasterQueue {
-
-// }
