@@ -72,7 +72,6 @@ func TestProcessJob_Integration(t *testing.T) {
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
 	q := StartRiver(logger, 1)
-	q.cloudWatchEnv = "dev"
 	defer q.StopRiver()
 
 	id, _ := safecast.ToInt(job.ID)
@@ -98,3 +97,36 @@ func TestProcessJob_Integration(t *testing.T) {
 		}
 	}
 }
+
+// Runs 100k (simplified) jobs to try to test performance, DB connections, etc
+// func TestProcessJobPerformance_Integration(t *testing.T) {
+// 	defer func(origEnqueuer string) {
+// 		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+// 	}(conf.GetEnv("QUEUE_LIBRARY"))
+
+// 	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
+
+// 	q := StartRiver(logger, 1)
+// 	defer q.StopRiver()
+
+// 	db := database.Connection
+
+// 	cmsID := testUtils.RandomHexID()[0:4]
+// 	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}
+// 	postgrestest.CreateACO(t, db, aco)
+// 	job := models.Job{ACOID: aco.UUID, Status: models.JobStatusPending}
+// 	postgrestest.CreateJobs(t, db, &job)
+// 	bbPath := uuid.New()
+
+// 	defer postgrestest.DeleteACO(t, db, aco.UUID)
+
+// 	jobID, _ := safecast.ToInt(job.ID)
+
+// 	enqueuer := NewEnqueuer()
+
+// 	for i := 0; i <= 100_000; i++ {
+// 		jobArgs := models.JobEnqueueArgs{ID: jobID, ACOID: cmsID, BBBasePath: bbPath}
+// 		err := enqueuer.AddJob(context.Background(), jobArgs, 1)
+// 		assert.NoError(t, err)
+// 	}
+// }

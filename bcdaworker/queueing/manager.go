@@ -22,32 +22,14 @@ import (
 
 // queue is responsible for retrieving jobs using the que client and
 // transforming and delegating that work to the underlying worker
-// type queue struct {
-// 	worker worker.Worker
-
-// 	// Resources associated with the underlying que client
-// 	quePool *que.WorkerPool
-// 	queDB   *pgx.ConnPool
-
-// 	// Resources associated with river client
-// 	client *river.Client[pgxv5.Tx]
-// 	// riverDB *pgxpool.Pool
-
-// 	ctx           context.Context
-// 	repository    repository.Repository
-// 	log           logrus.FieldLogger
-// 	cloudWatchEnv string
-// }
-
-// type queue[T models.JobEnqueueArgs | manager.RiverJobArgs, C *que.Client | *river.Client[pgxv5.Tx]] struct {
 type queue struct {
 	worker worker.Worker
 
-	// Resources associated with the underlying Que client
+	// Resources associated with the underlying Que client library
 	quePool *que.WorkerPool
 	queDB   *pgx.ConnPool
 
-	// Resources associated with River
+	// Resources associated with River library
 	client *river.Client[pgxv5.Tx]
 
 	ctx           context.Context
@@ -68,12 +50,10 @@ type ValidateJobConfig struct {
 
 // This is a weird function as it seems mostly unnecessary.  Could all of this logic just live in worker.ValidateJob?
 // On top of that we are checking for each type of error return and saying that some are allowed and should
-// acknowledge the job as successful but without doing anything.  This effectively just removes it form the queue.
+// acknowledge the job as successful but without doing anything.  This effectively just removes it from the queue.
 // The third return bool param (on true) allows us to succeed (acknowledge) a job.
 func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error, bool) {
 	exportJob, err := cfg.WorkerInstance.ValidateJob(ctx, cfg.QJobID, cfg.Args)
-
-	fmt.Printf("---In manager validate: %+v, %+v\n", exportJob, err)
 
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
@@ -128,9 +108,13 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 	return exportJob, err, false
 }
 
-func checkIfCancelled(ctx context.Context, r repository.Repository,
-	cancel context.CancelFunc, jobID int64, wait uint8) {
-
+func checkIfCancelled(
+	ctx context.Context,
+	r repository.Repository,
+	cancel context.CancelFunc,
+	jobID int64,
+	wait uint8,
+) {
 	newID, err := safecast.ToUint(jobID)
 	if err != nil {
 		panic(err)
@@ -154,32 +138,3 @@ func checkIfCancelled(ctx context.Context, r repository.Repository,
 		}
 	}
 }
-
-// func (q *queue) updateJobQueueCountCloudwatchMetric() {
-
-// 	// Update the Cloudwatch Metric for job queue count
-// 	if q.cloudWatchEnv != "" {
-// 		sampler, err := metrics.NewSampler("BCDA", "Count")
-// 		if err != nil {
-// 			fmt.Println("Warning: failed to create new metric sampler...")
-// 		} else {
-// 			err := sampler.PutSample("JobQueueCount", q.getQueueJobCount(), []metrics.Dimension{
-// 				{Name: "Environment", Value: q.cloudWatchEnv},
-// 			})
-// 			if err != nil {
-// 				q.log.Error(err)
-// 			}
-// 		}
-// 	}
-// }
-
-// func (q *queue) getQueueJobCount() float64 {
-// 	row := q.queDB.QueryRow(`select count(*) from que_jobs;`)
-
-// 	var count int
-// 	if err := row.Scan(&count); err != nil {
-// 		q.log.Error(err)
-// 	}
-
-// 	return float64(count)
-// }

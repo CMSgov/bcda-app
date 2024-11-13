@@ -74,8 +74,6 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *MasterQueue {
 
 	q.quePool.Start()
 
-	fmt.Printf("\n---START QUEUE: %+v\n", q)
-
 	return master
 }
 
@@ -86,7 +84,6 @@ func (q *MasterQueue) StopQue() {
 }
 
 func (q *queue) processJob(queJob *que.Job) error {
-	fmt.Printf("---Is que processjobbing: %+v\n", queJob)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	defer q.updateJobQueueCountCloudwatchMetric()
@@ -99,8 +96,6 @@ func (q *queue) processJob(queJob *que.Job) error {
 		q.log.Warnf("Failed to deserialize job.Args '%s' %s. Removing queuejob from que.", queJob.Args, err)
 		return nil
 	}
-
-	fmt.Printf("\n---process job jobArgs: %+v", jobArgs)
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	ctx, _ = log.SetCtxLogger(ctx, "job_id", queJob.ID)
@@ -120,9 +115,6 @@ func (q *queue) processJob(queJob *que.Job) error {
 		Args:           jobArgs,
 		ErrorCount:     int(queJob.ErrorCount),
 	})
-	fmt.Printf("\n---exportJob: %+v\n", exportJob)
-	fmt.Printf("---exportJob error: %+v\n", err)
-	fmt.Printf("---exportJob ackJob: %+v\n", ackJob)
 	if ackJob {
 		// End logic here, basically acknowledge and return which will remove it from the queue.
 		return nil
@@ -134,8 +126,6 @@ func (q *queue) processJob(queJob *que.Job) error {
 
 	// start a goroutine that will periodically check the status of the parent job
 	go checkIfCancelled(ctx, q.repository, cancel, queJob.ID, 15)
-
-	fmt.Printf("---after check, %+v, %+v, %+v", queJob.ID, *exportJob, jobArgs)
 
 	if err := q.worker.ProcessJob(ctx, queJob.ID, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")

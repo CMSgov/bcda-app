@@ -3,12 +3,9 @@ package queueing
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-
-	// "github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
@@ -18,32 +15,14 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
 
-// type queueConfig[T models.JobEnqueueArgs | manager.RiverJobArgs] struct {
-// 	jobArgs T
-
-// 	ctx           context.Context
-// 	repository    repository.Repository
-// 	log           logrus.FieldLogger
-// 	cloudWatchEnv string
-// }
-
 // Enqueuer only handles inserting job entries into the appropriate table
 type Enqueuer interface {
 	AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error
 	AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 }
 
-// type JobArgs[T models.JobEnqueueArgs | manager.RiverJobArgs] struct {
-// 	args T
-// }
-
-// type EnqueuerImplementation interface {
-// 	impl(Impl) error
-// }
-
 func NewEnqueuer() Enqueuer {
 	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
-		fmt.Println("---Using queuer: river")
 		workers := river.NewWorkers()
 		river.AddWorker(workers, &JobWorker{})
 
@@ -56,24 +35,20 @@ func NewEnqueuer() Enqueuer {
 
 		return riverEnqueuer{riverClient}
 	}
-	fmt.Println("---Using queuer: Que")
+
 	return queEnqueuer{que.NewClient(database.QueueConnection)}
 }
 
 // QUE-GO implementation https://github.com/bgentry/que-go
 type queEnqueuer struct {
 	*que.Client
-	// config queueConfig[models.JobEnqueueArgs]
 }
 
 func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
-	fmt.Printf("--Que AddJob job args: %+v\n", job)
 	args, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("--Marshaled to string: %+v\n", string(args))
 
 	p, e := safecast.ToInt16(priority)
 	if e != nil {
@@ -86,14 +61,11 @@ func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, prio
 		Priority: int16(p),
 	}
 
-	fmt.Printf("--Que AddJob --job: %+v\n", j)
-
 	return q.Enqueue(j)
 }
 
 // ALR ENQ...
 func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error {
-	fmt.Printf("Que AddJob ALR job args: %+v\n", job)
 	args, err := json.Marshal(job)
 	if err != nil {
 		return err
@@ -126,7 +98,6 @@ func (q riverEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, pr
 		Priority: priority,
 	})
 	if err != nil {
-		fmt.Printf("---ERROR: %+v", err)
 		return err
 	}
 

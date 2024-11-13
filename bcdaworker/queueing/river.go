@@ -2,9 +2,11 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -25,6 +27,9 @@ func StartRiver(log logrus.FieldLogger, numWorkers int) *queue {
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
+		// TODO: whats an appropriate timeout?  default is 1m
+		// JobTimeout: 10 * time.Minute,
+		JobTimeout: -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
 		// TODO: https://pkg.go.dev/github.com/darvaza-proxy/slog/handlers/logrus
 		// Logger:  log,
 		Workers: workers,
@@ -39,19 +44,17 @@ func StartRiver(log logrus.FieldLogger, numWorkers int) *queue {
 
 	mainDB := database.Connection
 	q := &queue{
-		ctx:           context.Background(),
-		client:        riverClient,
-		worker:        worker.NewWorker(mainDB),
-		repository:    postgres.NewRepository(mainDB),
-		log:           log,
-		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
+		ctx:        context.Background(),
+		client:     riverClient,
+		worker:     worker.NewWorker(mainDB),
+		repository: postgres.NewRepository(mainDB),
+		log:        log,
 	}
 
 	return q
 }
 
 func (q queue) StopRiver() {
-	fmt.Printf("---STOP RIVER: %+v, %+v\n", q, q.client)
 	if err := q.client.Stop(q.ctx); err != nil {
 		panic(err)
 	}
@@ -62,21 +65,19 @@ type JobWorker struct {
 }
 
 func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueArgs]) error {
-	fmt.Printf("---Is River processjobbing: %+v\n", job)
 	ctx, cancel := context.WithCancel(ctx)
-
-	// TODO
-	// defer updateJobQueueCountCloudwatchMetric()
 	defer cancel()
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	ctx, _ = log.SetCtxLogger(ctx, "job_id", job.Args.ID)
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", job.Args.TransactionID)
 
-	// TODO: is this ok per worker?
+	// TODO: use pgxv5 when available
 	mainDB := database.Connection
 	workerInstance := worker.NewWorker(mainDB)
 	repo := postgres.NewRepository(mainDB)
+
+	defer updateJobQueueCountCloudwatchMetric(mainDB, logger)
 
 	jobID, err := safecast.ToInt64(job.Args.ID)
 	if err != nil {
@@ -101,9 +102,6 @@ func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueAr
 		return err
 	}
 
-	fmt.Printf("---exportJob: %+v\n", exportJob)
-	fmt.Printf("---exportJob error: %+v\n", err)
-
 	// start a goroutine that will periodically check the status of the parent job
 	go checkIfCancelled(ctx, repo, cancel, jobID, 15)
 
@@ -116,31 +114,57 @@ func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueAr
 	return nil
 }
 
-// func (q *queue) updateJobQueueCountCloudwatchMetric() {
+// func logger(logger *logrus.Logger, outputFile string,
+// 	application, environment string) logrus.FieldLogger {
 
-// 	// Update the Cloudwatch Metric for job queue count
-// 	if q.cloudWatchEnv != "" {
-// 		sampler, err := metrics.NewSampler("BCDA", "Count")
-// 		if err != nil {
-// 			fmt.Println("Warning: failed to create new metric sampler...")
+// 	if outputFile != "" {
+// 		// #nosec G302 -- 0640 permissions required for Splunk ingestion
+// 		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
+// 			logger.SetOutput(file)
 // 		} else {
-// 			err := sampler.PutSample("JobQueueCount", q.getQueueJobCount(), []metrics.Dimension{
-// 				{Name: "Environment", Value: q.cloudWatchEnv},
-// 			})
-// 			if err != nil {
-// 				q.log.Error(err)
-// 			}
+// 			logger.Infof("Failed to open output file %s. Will use stderr. %s",
+// 				outputFile, err.Error())
 // 		}
 // 	}
+// 	// Disable the HTML escape so we get the raw URLs
+// 	logger.SetFormatter(&logrus.JSONFormatter{
+// 		DisableHTMLEscape: true,
+// 		TimestampFormat:   time.RFC3339Nano,
+// 	})
+// 	logger.SetReportCaller(true)
+
+// 	return logger.WithFields(logrus.Fields{
+// 		"application": application,
+// 		"environment": environment,
+// 		"version":     constants.Version})
 // }
 
-// func (q *queue) getQueueJobCount() float64 {
-// 	row := q.queDB.QueryRow(`select count(*) from que_jobs;`)
+// TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
+// Update the AWS Cloudwatch Metric for job queue count
+func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
+	cloudWatchEnv := conf.GetEnv("DEPLOYMENT_TARGET")
+	if cloudWatchEnv != "" {
+		sampler, err := metrics.NewSampler("BCDA", "Count")
+		if err != nil {
+			fmt.Println("Warning: failed to create new metric sampler...")
+		} else {
+			err := sampler.PutSample("JobQueueCount", getQueueJobCount(db, log), []metrics.Dimension{
+				{Name: "Environment", Value: cloudWatchEnv},
+			})
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
+}
 
-// 	var count int
-// 	if err := row.Scan(&count); err != nil {
-// 		q.log.Error(err)
-// 	}
+func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
+	row := db.QueryRow(`select count(*) from que_jobs;`)
 
-// 	return float64(count)
-// }
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Error(err)
+	}
+
+	return float64(count)
+}

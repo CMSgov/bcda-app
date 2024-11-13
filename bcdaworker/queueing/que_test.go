@@ -74,7 +74,7 @@ func TestProcessJob(t *testing.T) {
 	postgrestest.CreateJobs(t, db, &job)
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
-	fmt.Printf("\n---JOB in que test: %+v\n", job)
+
 	q := StartQue(logger, 1)
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
