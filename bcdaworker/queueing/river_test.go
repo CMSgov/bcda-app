@@ -71,7 +71,7 @@ func TestProcessJob_Integration(t *testing.T) {
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-	q := StartRiver(logger, 1)
+	q := StartRiver(1)
 	defer q.StopRiver()
 
 	id, _ := safecast.ToInt(job.ID)
@@ -106,7 +106,7 @@ func TestProcessJob_Integration(t *testing.T) {
 
 // 	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 
-// 	q := StartRiver(logger, 1)
+// 	q := StartRiver(1)
 // 	defer q.StopRiver()
 
 // 	db := database.Connection

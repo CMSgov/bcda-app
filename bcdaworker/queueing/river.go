@@ -4,7 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -16,10 +21,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
 )
 
-func StartRiver(log logrus.FieldLogger, numWorkers int) *queue {
+func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{})
 
@@ -27,12 +33,10 @@ func StartRiver(log logrus.FieldLogger, numWorkers int) *queue {
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
-		// TODO: whats an appropriate timeout?  default is 1m
-		// JobTimeout: 10 * time.Minute,
+		// TODO: whats an appropriate timeout?
 		JobTimeout: -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
-		// TODO: https://pkg.go.dev/github.com/darvaza-proxy/slog/handlers/logrus
-		// Logger:  log,
-		Workers: workers,
+		Logger:     getSlogLogger(),
+		Workers:    workers,
 	})
 	if err != nil {
 		panic(err)
@@ -48,10 +52,40 @@ func StartRiver(log logrus.FieldLogger, numWorkers int) *queue {
 		client:     riverClient,
 		worker:     worker.NewWorker(mainDB),
 		repository: postgres.NewRepository(mainDB),
-		log:        log,
 	}
 
 	return q
+}
+
+// River requires a slog.Logger for logging
+// Much of this function is pulled from logger.go
+func getSlogLogger() *slog.Logger {
+	logrusLogger := logrus.New()
+
+	outputFile := conf.GetEnv("BCDA_WORKER_ERROR_LOG")
+	if outputFile != "" {
+		// #nosec G302 -- 0640 permissions required for Splunk ingestion
+		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
+			logrusLogger.SetOutput(file)
+		} else {
+			logrusLogger.Infof("Failed to open output file %s. Will use stderr. %s",
+				outputFile, err.Error())
+		}
+	}
+	// Disable the HTML escape so we get the raw URLs
+	logrusLogger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+		TimestampFormat:   time.RFC3339Nano,
+	})
+	logrusLogger.SetReportCaller(true)
+
+	logrusLogger.WithFields(logrus.Fields{
+		"application": "worker",
+		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
+		"version":     constants.Version,
+	})
+
+	return slog.New(sloglogrus.Option{Logger: logrusLogger}.NewLogrusHandler())
 }
 
 func (q queue) StopRiver() {
@@ -114,31 +148,6 @@ func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueAr
 	return nil
 }
 
-// func logger(logger *logrus.Logger, outputFile string,
-// 	application, environment string) logrus.FieldLogger {
-
-// 	if outputFile != "" {
-// 		// #nosec G302 -- 0640 permissions required for Splunk ingestion
-// 		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
-// 			logger.SetOutput(file)
-// 		} else {
-// 			logger.Infof("Failed to open output file %s. Will use stderr. %s",
-// 				outputFile, err.Error())
-// 		}
-// 	}
-// 	// Disable the HTML escape so we get the raw URLs
-// 	logger.SetFormatter(&logrus.JSONFormatter{
-// 		DisableHTMLEscape: true,
-// 		TimestampFormat:   time.RFC3339Nano,
-// 	})
-// 	logger.SetReportCaller(true)
-
-// 	return logger.WithFields(logrus.Fields{
-// 		"application": application,
-// 		"environment": environment,
-// 		"version":     constants.Version})
-// }
-
 // TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
 // Update the AWS Cloudwatch Metric for job queue count
 func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
@@ -159,7 +168,7 @@ func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
 }
 
 func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
-	row := db.QueryRow(`select count(*) from que_jobs;`)
+	row := db.QueryRow(`select count(*) from river_job;`)
 
 	var count int
 	if err := row.Scan(&count); err != nil {

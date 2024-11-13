@@ -32,7 +32,7 @@ require (
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/securego/gosec v0.0.0-20200401082031-e946c8c39989
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.9.0
@@ -56,6 +56,9 @@ require (
 	github.com/riverqueue/river/riverdriver v0.14.1 // indirect
 	github.com/riverqueue/river/rivershared v0.14.1 // indirect
 	github.com/riverqueue/river/rivertype v0.14.1 // indirect
+	github.com/samber/lo v1.44.0 // indirect
+	github.com/samber/slog-common v0.17.0 // indirect
+	github.com/samber/slog-logrus/v2 v2.5.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -109,6 +112,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.14.1
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/samber/slog-logrus v1.0.0
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
