@@ -614,6 +614,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
 			return
+		} else {
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, err.Error())
+			return
 		}
 	}
 	newJob.JobCount = len(queJobs)

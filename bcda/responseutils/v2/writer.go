@@ -3,7 +3,6 @@ package responseutils
 import (
 	"context"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"io"
 
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 

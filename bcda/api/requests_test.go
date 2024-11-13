@@ -117,8 +117,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
-		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionOne},
-		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionTwo},
+		{"No up-to-date attribution information", service.CCLFNotFoundError{}, http.StatusInternalServerError, apiVersionOne},
+		{"No up-to-date attribution information", service.CCLFNotFoundError{}, http.StatusInternalServerError, apiVersionTwo},
 		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
 		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
 	}
