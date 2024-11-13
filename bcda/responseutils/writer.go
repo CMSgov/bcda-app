@@ -149,6 +149,16 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 				Severity:    &fhircodes.IssueSeverityCode{Value: severity},
 				Code:        &fhircodes.IssueTypeCode{Value: code},
 				Diagnostics: &fhirdatatypes.String{Value: diagnostics},
+				Details: &fhirdatatypes.CodeableConcept{
+					Coding: []*fhirdatatypes.Coding{
+						{
+							System:  &fhirdatatypes.Uri{Value: "http://hl7.org/fhir/ValueSet/operation-outcome"},
+							Code:    &fhirdatatypes.Code{Value: RequestErr},
+							Display: &fhirdatatypes.String{Value: diagnostics},
+						},
+					},
+					Text: &fhirdatatypes.String{Value: diagnostics},
+				},
 			},
 		},
 	}

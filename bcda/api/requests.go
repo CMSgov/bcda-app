@@ -610,23 +610,15 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
 	if err != nil {
 		logger.Error(err)
-		var (
-			respCode int
-			errType  string
-		)
-		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok && reqType == service.Runout {
-			respCode = http.StatusNotFound
-			errType = responseutils.NotFoundErr
-		} else {
-			respCode = http.StatusInternalServerError
-			errType = responseutils.InternalErr
+		group := chi.URLParam(r, "groupId")
+		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
+			return
 		}
-		h.RespWriter.Exception(r.Context(), w, respCode, errType, err.Error())
-		return
 	}
 	newJob.JobCount = len(queJobs)
 
-	// We've now computed all of the fields necessary to populate a fully defined job
+	// We've now computed all the fields necessary to populate a fully defined job
 	if err = rtx.UpdateJob(ctx, newJob); err != nil {
 		logger.Error(err.Error())
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
@@ -637,7 +629,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		sinceParam := (!rp.Since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
+		sinceParam := !rp.Since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
 		logger.Infof("Adding jobs using %T", h.Enq)
