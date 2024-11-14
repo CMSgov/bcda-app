@@ -21,9 +21,9 @@ import (
 // var logger = logrus.New()
 // var logHook = test.NewLocal(logger)
 
-// TestProcessJob acts as an end-to-end verification of the process.
-// It uses the postgres/que-go backed implementations
-func TestProcessJob_Integration(t *testing.T) {
+// TestWork acts as an end-to-end verification of the entire process:
+// adding a job, picking up the job, processing the job, and closing the client
+func TestWork_Integration(t *testing.T) {
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
 

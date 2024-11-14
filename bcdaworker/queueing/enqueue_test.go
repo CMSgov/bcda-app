@@ -15,6 +15,8 @@ import (
 	"github.com/huandu/go-sqlbuilder"
 	_ "github.com/jackc/pgx"
 	"github.com/pborman/uuid"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -104,7 +106,11 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))
 
-	// Verify that we've inserted the river job as expected
+	// Use river test helper to assert job was inserted
+	checkJob := rivertest.RequireInserted(ctx, t, riverpgxv5.New(database.Pgxv5Connection), jobArgs, nil)
+	assert.NotNil(t, checkJob)
+
+	// Also Verify that we've inserted the river job as expected via DB queries
 	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("river_job")
 	sb.Where(
 		sb.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID),

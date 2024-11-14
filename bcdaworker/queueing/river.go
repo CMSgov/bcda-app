@@ -25,6 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
 func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{})
