@@ -69,11 +69,6 @@ func (s *APITestSuite) SetupSuite() {
 
 	s.db = database.Connection
 
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	// enqueuer := mockEnq.NewEnqueuer(s.T())
-	// enqueuer.On("AddJob", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	// h.Enq = enqueuer
-
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BBAPI)
 }

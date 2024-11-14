@@ -93,7 +93,6 @@ type riverEnqueuer struct {
 func (q riverEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
 	// TODO: convert this to use transactions (q.InsertTx), likely only possible after removal of que-go AND upgrade to pgxv5
 	// This could also be refactored to a batch insert: riverClient.InsertManyTx or riverClient.InsertMany
-	// opts := river.InsertOpts{Priority: priority}
 	_, err := q.Insert(ctx, job, &river.InsertOpts{
 		Priority: priority,
 	})

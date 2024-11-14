@@ -927,7 +927,7 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	r.On("GetJobByID", testUtils.CtxMatcher, jobFailedId).
 		Return(&models.Job{ID: jobCancelledId, Status: models.JobStatusFailed}, nil)
 	r.On("GetJobByID", testUtils.CtxMatcher, validJobId).
-		Return(&models.Job{ID: 0, Status: models.JobStatusPending}, nil)
+		Return(&models.Job{ID: validJobId, Status: models.JobStatusPending}, nil)
 
 	r.On("GetJobKey", testUtils.CtxMatcher, validJobId, int64(0)).
 		Return(nil, repository.ErrJobKeyNotFound)
@@ -966,7 +966,7 @@ func (s *WorkerTestSuite) TestValidateJob() {
 
 	j, err = w.ValidateJob(ctx, 0, validJob)
 	assert.NoError(s.T(), err)
-	assert.EqualValues(s.T(), 0, j.ID)
+	assert.EqualValues(s.T(), validJobId, j.ID)
 
 	j, err = w.ValidateJob(ctx, 1, validJob)
 	assert.Nil(s.T(), j)

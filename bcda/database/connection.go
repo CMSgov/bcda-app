@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bgentry/que-go"
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/jackc/pgx/stdlib"
@@ -105,9 +106,17 @@ func createQueue(cfg *Config) (*pgx.ConnPool, error) {
 func createPgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 	ctx := context.Background()
 
-	// pgxv5Config, err := pgxv5.ParseConfig(cfg.DatabaseURL)
 	pgxv5PoolConfig, err := pgxv5Pool.ParseConfig((cfg.DatabaseURL))
-	pgxv5PoolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	if err != nil {
+		return nil, err
+	}
+
+	maxConns, err := safecast.ToInt32(cfg.MaxOpenConns)
+	if err != nil {
+		return nil, err
+	}
+
+	pgxv5PoolConfig.MaxConns = maxConns
 	pgxv5PoolConfig.MaxConnIdleTime = time.Duration(cfg.ConnMaxIdleTime)
 	pgxv5PoolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetimeMin)
 	pgxv5PoolConfig.HealthCheckPeriod = time.Duration(cfg.HealthCheckSec)

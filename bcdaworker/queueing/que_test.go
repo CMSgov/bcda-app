@@ -14,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
@@ -24,7 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // logHook allows us to retrieve the messages emitted by the logging instance
@@ -222,60 +220,4 @@ func TestStartAlrJob(t *testing.T) {
 	alrJob, err = r.GetJobByID(ctx, id)
 	assert.NoError(t, err)
 	assert.Equal(t, models.JobStatusCompleted, alrJob.Status)
-}
-
-// Test alr cancel logic
-func TestAlrJobCancel(t *testing.T) {
-	q := MasterQueue{
-		queue: &queue{
-			repository: nil,
-		},
-		StagingDir: "",
-		PayloadDir: "",
-		MaxRetry:   0,
-	}
-
-	mockRepo := repository.MockRepository{}
-	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
-		&models.Job{
-			Status: models.JobStatusInProgress,
-		},
-		nil,
-	).Once()
-	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
-		&models.Job{
-			Status: models.JobStatusCancelled,
-		},
-		nil,
-	)
-	q.repository = &mockRepo
-
-	ctx, cancel := context.WithCancel(context.Background())
-	jobs := models.JobAlrEnqueueArgs{}
-
-	jobID, err := safecast.ToInt64(jobs.ID)
-	assert.NoError(t, err)
-
-	// In produation we wait 15 second intervals, for test we do 1
-	go checkIfCancelled(ctx, q.repository, cancel, jobID, 1)
-
-	// Check if the context has been cancelled
-	var cnt uint8
-	var success bool
-
-Outer:
-	for {
-		select {
-		case <-time.After(time.Second):
-			if cnt > 10 {
-				break Outer
-			}
-			cnt++
-		case <-ctx.Done():
-			success = true
-			break Outer
-		}
-	}
-
-	assert.True(t, success)
 }

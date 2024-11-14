@@ -1,10 +1,12 @@
 package queueing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -17,6 +19,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestProcessJobFailedValidation(t *testing.T) {
@@ -85,4 +88,59 @@ func TestProcessJobFailedValidation(t *testing.T) {
 		})
 	}
 
+}
+
+func TestCheckIfCancelled(t *testing.T) {
+	q := MasterQueue{
+		queue: &queue{
+			repository: nil,
+		},
+		StagingDir: "",
+		PayloadDir: "",
+		MaxRetry:   0,
+	}
+
+	mockRepo := repository.MockRepository{}
+	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
+		&models.Job{
+			Status: models.JobStatusInProgress,
+		},
+		nil,
+	).Once()
+	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
+		&models.Job{
+			Status: models.JobStatusCancelled,
+		},
+		nil,
+	)
+	q.repository = &mockRepo
+
+	ctx, cancel := context.WithCancel(context.Background())
+	jobs := models.JobEnqueueArgs{}
+
+	jobID, err := safecast.ToInt64(jobs.ID)
+	assert.NoError(t, err)
+
+	// In produation we wait 15 second intervals, for test we do 1
+	go checkIfCancelled(ctx, q.repository, cancel, jobID, 1)
+
+	// Check if the context has been cancelled
+	var cnt uint8
+	var success bool
+
+Outer:
+	for {
+		select {
+		case <-time.After(time.Second):
+			if cnt > 10 {
+				break Outer
+			}
+			cnt++
+		case <-ctx.Done():
+			success = true
+			break Outer
+		}
+	}
+
+	assert.True(t, success)
 }

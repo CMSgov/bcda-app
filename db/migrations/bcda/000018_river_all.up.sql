@@ -1,4 +1,8 @@
 -- River migration 002 [up]
+
+-- Generated via river cli tool, compressing all migrations into one file.  See:
+-- https://riverqueue.com/docs/migrations#exporting-sql-for-use-in-other-frameworks
+
 CREATE TYPE river_job_state AS ENUM(
   'available',
   'cancelled',

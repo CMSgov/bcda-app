@@ -104,7 +104,7 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))
 
-	// Verify that we've inserted the que_job as expected
+	// Verify that we've inserted the river job as expected
 	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("river_job")
 	sb.Where(
 		sb.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID),
@@ -114,13 +114,11 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 
 	var count int
 	query, args := sb.Build()
-	fmt.Println(query)
-	fmt.Printf("%+v", args)
 	row := db.QueryRow(query, args...)
 	assert.NoError(t, row.Scan(&count))
 	assert.Equal(t, 1, count)
 
-	// Cleanup the que data
+	// Cleanup the queue data
 	delete := sqlbuilder.PostgreSQL.NewDeleteBuilder().DeleteFrom("river_job")
 	delete.Where(
 		delete.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID),

@@ -651,10 +651,6 @@ func (s *RequestsTestSuite) TestRequests() {
 
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	// enqueuer := mockEnq.NewEnqueuer(s.T())
-	// enqueuer.On("AddJob", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	// h.Enq = enqueuer
 	mockSvc := service.MockService{}
 
 	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)

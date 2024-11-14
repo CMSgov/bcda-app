@@ -20,8 +20,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// queue is responsible for retrieving jobs using the que client and
-// transforming and delegating that work to the underlying worker
+// manager is designed to be the shared space for common logic and structs between
+// the specific queue library implementations
+
+// queue is responsible for setting the required components necessary for queue clients
+// to pick up and handle work
 type queue struct {
 	worker worker.Worker
 
@@ -50,7 +53,7 @@ type ValidateJobConfig struct {
 
 // This is a weird function as it seems mostly unnecessary.  Could all of this logic just live in worker.ValidateJob?
 // On top of that we are checking for each type of error return and saying that some are allowed and should
-// acknowledge the job as successful but without doing anything.  This effectively just removes it from the queue.
+// acknowledge the job as successful but without doing anything (effectively just removes it from the queue).
 // The third return bool param (on true) allows us to succeed (acknowledge) a job.
 func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error, bool) {
 	exportJob, err := cfg.WorkerInstance.ValidateJob(ctx, cfg.QJobID, cfg.Args)

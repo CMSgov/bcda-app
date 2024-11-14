@@ -98,7 +98,8 @@ func TestProcessJob_Integration(t *testing.T) {
 	}
 }
 
-// Runs 100k (simplified) jobs to try to test performance, DB connections, etc
+// Runs 100k (very simple) jobs to try to test performance, DB connections, etc
+// Commented out as something we probably only want to run very occassionally
 // func TestProcessJobPerformance_Integration(t *testing.T) {
 // 	defer func(origEnqueuer string) {
 // 		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
