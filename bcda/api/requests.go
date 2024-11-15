@@ -396,10 +396,10 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieve the most recent cclf 8 file we have successfully ingested
+	group := chi.URLParam(r, "groupId")
 	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "Failed to retrieve recent CCLF8 file"))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
 		return
 	}
 	if asd != nil {
@@ -408,9 +408,8 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "Failed to retrieve recent runout CCLF8 file"))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
 		return
 	}
 	if asr != nil {
