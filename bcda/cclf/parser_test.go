@@ -2,6 +2,7 @@ package cclf
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -36,6 +37,76 @@ func TestGetCMSID(t *testing.T) {
 			assert.Equal(sub, tt.cmsID, cmsID)
 		})
 	}
+}
+
+func TestGetCSVMetadata(t *testing.T) {
+	start := time.Now()
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
+		time.UTC)
+
+	dateFormat := "D060102.T1504050"
+
+	validTime := startUTC.Add(-24 * time.Hour)
+	fileDateTime := validTime.Format(dateFormat)
+
+	tests := []struct {
+		name     string
+		fileName string
+		errMsg   string
+		metadata csvFileMetadata
+	}{
+		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, "", csvFileMetadata{
+			env:       "production",
+			name:      "P.PCPB.M2411." + fileDateTime,
+			cclfNum:   8,
+			acoID:     "TCOCMD",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata, err := GetCSVMetadata(tt.fileName)
+			if tt.errMsg == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.errMsg)
+			}
+			assert.Equal(t, tt.metadata, metadata)
+		})
+	}
+}
+
+func TestValidateCCLFFileName(t *testing.T) {
+	// TODO add more test cases
+	start := time.Now()
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
+		time.UTC)
+
+	dateFormat := "D060102.T1504050"
+
+	validTime := startUTC.Add(-24 * time.Hour)
+	fileDateTime := validTime.Format(dateFormat)
+
+	var metadata csvFileMetadata
+	//metadata.name = "P.PPB.M2411.D24110.T000001"
+	//metadata.acoID = "TCOCMD"
+	metadata.perfYear = 24
+	metadata.timestamp = validTime
+	metadata.env = "production"
+
+	tcocmd := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
+	path := "P.PCPB.M2411." + fileDateTime
+	filenameRegexp := regexp.MustCompile(tcocmd)
+	//filenameRegexp := regexp.MustCompile(t)
+	parts := filenameRegexp.FindStringSubmatch(path)
+	actualmetadata, err := validateCSVMetadata(parts)
+	assert.Nil(t, err)
+	assert.Equal(t, metadata, actualmetadata)
+
 }
 
 func TestGetCCLFMetadata(t *testing.T) {

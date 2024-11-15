@@ -26,6 +26,108 @@ func getCMSID(name string) (string, error) {
 	return parts[1], nil
 }
 
+func CheckIfAttributionCSVFile(filePath string) bool {
+	pattern := `P\.PCPB\.M\d{4}\.D\d{6}\.T\d{7}`
+	filenameRegexp := regexp.MustCompile(pattern)
+	found := filenameRegexp.Match([]byte(filePath))
+	return found
+}
+
+type CSVParser struct {
+	FilePath string
+}
+
+// func getACOConfigs() ([]service.ACOConfig, error) {
+// 	configs, err := service.LoadConfig()
+// 	if err != nil {
+// 		return []service.ACOConfig{}, err
+// 	}
+// 	return configs.ACOConfigs, err
+
+// }
+
+// type AttributionFileRegex struct {
+// 	fileNameReg string
+// 	regMatches  int
+// }
+
+// GetCSVMetadata builds an entry for the cclf_files table, based on the name of the file.
+// The filename regex is part of aco configuration.
+func GetCSVMetadata(path string) (csvFileMetadata, error) {
+	var metadata csvFileMetadata
+	var err error
+
+	// acos, err := getACOConfigs()
+	// if err != nil {
+	// 	return cclfFileMetadata{}, err
+	// }
+
+	// for i, v := range acos {
+	// 	filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
+	// 	parts := filenameRegexp.FindStringSubmatch(path)
+	// 	if len(parts) == v.AttributionFile.RegParts {
+	// 		metadata, err = validateCSVMetadata(v.AttributionFile, parts)
+	// 		if err != nil {
+	// 			return cclfFileMetadata{}, nil
+	// 		}
+	// 	}
+	// }
+
+	// CSV (not CCLF) file name convention for TCOCMD: P.PCPB.Myymm.Dyymmdd.Thhmmsst
+	tcocmd := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
+
+	filenameRegexp := regexp.MustCompile(tcocmd)
+	parts := filenameRegexp.FindStringSubmatch(path)
+
+	metadata, err = validateCSVMetadata(parts)
+	if err != nil {
+		return csvFileMetadata{}, err
+	}
+
+	metadata.name = path
+	metadata.acoID = "TCOCMD"
+	metadata.cclfNum = 8
+	return metadata, nil
+}
+
+// Validate the csv attribution filename contains the required values.
+// Ingestion of the file fails if the validation fails.
+func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
+	var metadata csvFileMetadata
+	var err error
+	if len(subMatches) != 7 {
+		err := fmt.Errorf("invalid filename for attribution file")
+		log.API.Error(err)
+		return metadata, err
+	}
+
+	metadata.perfYear, err = strconv.Atoi(subMatches[4])
+	if err != nil {
+		err = errors.Wrapf(err, "failed to parse performance year from file")
+		log.API.Error(err)
+		return metadata, err
+	}
+
+	filenameDate := subMatches[6]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil || t.IsZero() {
+		err = errors.Wrapf(err, "failed to parse date '%s' from file", filenameDate)
+		log.API.Error(err)
+		return metadata, err
+	}
+	metadata.timestamp = t
+
+	switch subMatches[1] {
+	case "T":
+		metadata.env = "test"
+	case "P":
+		metadata.env = "production"
+	}
+	return metadata, nil
+}
+
+// getCCLFFileMetadata takes an attribution file name and converts it to a cclfFileMetadata entry.
+// The cclfFileMetadat entry will be insert into the database as a record in the cclf_files table.
 func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	const (

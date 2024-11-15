@@ -2,6 +2,7 @@ package cclf
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -279,4 +280,62 @@ func (processor *LocalFileProcessor) OpenZipArchive(filePath string) (*zip.Reade
 			processor.Handler.Logger.Warningf("Could not close zip archive %s", filePath)
 		}
 	}, err
+}
+
+func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
+	var err error
+
+	func() {
+		close := metrics.NewChild(context.Background(), "cleanUpCSV")
+		defer close()
+
+		processor.Handler.Logger.Infof("Cleaning up file %s.\n", file.metadata.name)
+		folderName := filepath.Base(file.filepath)
+		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
+		if !file.imported {
+			// check the timestamp on the failed files
+			elapsed := time.Since(file.metadata.deliveryDate).Hours()
+			deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
+			if int(elapsed) > deleteThreshold {
+				if _, err = os.Stat(newpath); err == nil {
+					return
+				}
+				// move the (un)successful files to the deletion dir
+				err = os.Rename(file.filepath, newpath)
+				if err != nil {
+					processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
+				} else {
+					processor.Handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", file.filepath)
+				}
+			}
+		} else {
+			if _, err = os.Stat(newpath); err == nil {
+				return
+			}
+			// move the successful file to the deletion dir
+			err := os.Rename(file.filepath, newpath)
+			if err != nil {
+				processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
+
+			} else {
+				processor.Handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", file.filepath)
+			}
+		}
+	}()
+	return err
+}
+
+func (processor *LocalFileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
+	optOut, _ := optout.IsOptOut(filepath)
+	if optOut {
+		return nil, nil, nil
+	}
+	byte_arr, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, nil, err
+	}
+	reader := bytes.NewReader(byte_arr)
+
+	return reader, func() {}, err
+
 }
