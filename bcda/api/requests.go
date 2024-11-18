@@ -635,7 +635,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
 		logger.Infof("Adding jobs using %T", h.Enq)
-		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
+		if err = h.Enq.AddJob(ctx, *j, int(jobPriority)); err != nil {
 			logger.Error(err)
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
