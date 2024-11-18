@@ -118,8 +118,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
-		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionOne},
-		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionTwo},
+		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne},
+		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo},
 		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
 		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
 	}
@@ -1046,4 +1046,15 @@ func (s *RequestsTestSuite) TestValidateResources() {
 	}, fhirPath, apiVersion, s.db)
 	err := h.validateResources([]string{"Vegetable"}, "1234")
 	assert.Contains(s.T(), err.Error(), "invalid resource type")
+}
+
+type CCLFNotFoundOperationOutcomeError struct {
+	FileNumber int
+	CMSID      string
+	FileType   models.CCLFFileType
+	CutoffTime time.Time
+}
+
+func (e CCLFNotFoundOperationOutcomeError) Error() string {
+	return "No up-to-date attribution information is available for Group"
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 
@@ -153,6 +154,16 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 				Severity:    &fhirmodelOO.OperationOutcome_Issue_SeverityCode{Value: severity},
 				Code:        &fhirmodelOO.OperationOutcome_Issue_CodeType{Value: code},
 				Diagnostics: &fhirdatatypes.String{Value: diagnostics},
+				Details: &fhirdatatypes.CodeableConcept{
+					Coding: []*fhirdatatypes.Coding{
+						{
+							System:  &fhirdatatypes.Uri{Value: "http://hl7.org/fhir/ValueSet/operation-outcome"},
+							Code:    &fhirdatatypes.Code{Value: responseutils.RequestErr},
+							Display: &fhirdatatypes.String{Value: diagnostics},
+						},
+					},
+					Text: &fhirdatatypes.String{Value: diagnostics},
+				},
 			},
 		},
 	}
