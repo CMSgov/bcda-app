@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
+	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -312,8 +313,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 			if _, err = os.Stat(newpath); err == nil {
 				return
 			}
-			// move the successful file to the deletion dir
-			err := os.Rename(file.filepath, newpath)
+			err = os.Rename(file.filepath, newpath)
 			if err != nil {
 				processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
 
@@ -328,7 +328,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 func (processor *LocalFileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
 	optOut, _ := optout.IsOptOut(filepath)
 	if optOut {
-		return nil, nil, nil
+		return nil, nil, &ers.IsOptOutFile{}
 	}
 	byte_arr, err := os.ReadFile(filepath)
 	if err != nil {

@@ -2,7 +2,9 @@ package cclf
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,9 +31,10 @@ type LocalFileProcessorTestSuite struct {
 	cclfRefDate        string
 	pendingDeletionDir string
 
-	processor CclfFileProcessor
-	basePath  string
-	cleanup   func()
+	cclfProcessor CclfFileProcessor
+	csvProcessor  CSVFileProcessor
+	basePath      string
+	cleanup       func()
 }
 
 func (s *LocalFileProcessorTestSuite) SetupTest() {
@@ -51,7 +54,7 @@ func (s *LocalFileProcessorTestSuite) SetupSuite() {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", e)
 	}
 
-	s.processor = &LocalFileProcessor{
+	s.cclfProcessor = &LocalFileProcessor{
 		Handler: optout.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
@@ -59,6 +62,13 @@ func (s *LocalFileProcessorTestSuite) SetupSuite() {
 		},
 	}
 	s.pendingDeletionDir = dir
+	s.csvProcessor = &LocalFileProcessor{
+		Handler: optout.LocalFileHandler{
+			Logger:                 log.API,
+			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+			FileArchiveThresholdHr: hours,
+		},
+	}
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
 
@@ -309,7 +319,7 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 		},
 	}
 
-	deletedCount, err := s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err := s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(0, deletedCount)
 	assert.Nil(err)
 
@@ -317,7 +327,7 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 	cclfmap[acoID][0].cclf0Metadata.deliveryDate = fileTime
 	cclfmap[acoID][0].cclf8Metadata.deliveryDate = fileTime
 
-	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err = s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(1, deletedCount)
 	assert.Nil(err)
 
@@ -327,14 +337,14 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 	cclfmap[acoID][0].filePath = filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.Z1000000")
 	cclfmap[acoID][0].imported = true
 
-	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err = s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(0, deletedCount)
 	assert.EqualError(err, "1 files could not be cleaned up")
 
 	// File unable to be renamed after failed import (file does not exist)
 	cclfmap[acoID][0].imported = false
 
-	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err = s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(0, deletedCount)
 	assert.EqualError(err, "1 files could not be cleaned up")
 
@@ -345,4 +355,87 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 	for _, file := range files {
 		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())
 	}
+}
+
+func (s *LocalFileProcessorTestSuite) TestLoadCSV() {
+	tests := []struct {
+		name string
+		file string
+		err  error
+	}{
+		{"Valid file", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", nil},
+		{"Opt-out", "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", errors.New("error")},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			file := filepath.Join(s.basePath, test.file)
+			e, _, err := s.csvProcessor.LoadCSV(file)
+			if test.err != nil {
+				assert.Nil(s.T(), e)
+				assert.NotNil(s.T(), err)
+			} else {
+				assert.NotEmpty(s.T(), e)
+				assert.Nil(s.T(), err)
+			}
+
+		})
+	}
+}
+
+func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
+	expiredTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
+	file := csvFile{
+		metadata: csvFileMetadata{
+			name:      "P.PCPB.M2411.D181120.T1000000",
+			env:       "test",
+			acoID:     "FOOACO",
+			cclfNum:   8,
+			perfYear:  24,
+			timestamp: time.Now(),
+			fileID:    0,
+			fileType:  1,
+		},
+		data: bytes.NewReader([]byte("MBIS\nMBI000001\nMBI000002\nMBI000003")),
+	}
+
+	tests := []struct {
+		name         string
+		filepath     string
+		deliverytime time.Time
+		imported     bool
+		delFiles     int
+		baseFiles    int
+	}{
+		{"Not imported and expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), expiredTime, false, 1, 0},
+		{"Not imported and not expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), false, 1, 0},
+		{"Successfully imported", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), true, 1, 0},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			file.metadata.deliveryDate = test.deliverytime
+			file.imported = test.imported
+			file.filepath = test.filepath
+			err := s.csvProcessor.CleanUpCSV(file)
+			assert.Nil(s.T(), err)
+			delDir, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
+			if err != nil {
+				s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
+			}
+			assert.Len(s.T(), delDir, test.delFiles)
+			if test.delFiles == 1 {
+				assert.Equal(s.T(), file.metadata.name, delDir[0].Name())
+			}
+			baseDir, err := os.ReadDir(filepath.Join(s.basePath, "cclf/archives/csv"))
+			if err != nil {
+				s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
+			}
+			assert.Len(s.T(), baseDir, test.baseFiles)
+			if test.baseFiles == 1 {
+				assert.Equal(s.T(), file.metadata.name, baseDir[0].Name())
+			}
+		})
+	}
+
 }

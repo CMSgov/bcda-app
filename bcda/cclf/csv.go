@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -58,11 +59,6 @@ type CSVImporter struct {
 func (importer CSVImporter) ImportCSV(filepath string) error {
 
 	file := csvFile{filepath: filepath}
-	data, _, err := importer.FileProcessor.LoadCSV(filepath)
-	if err != nil {
-		importer.Logger.Error(err)
-	}
-	file.data = data
 
 	metadata, err := GetCSVMetadata(filepath)
 	if err != nil {
@@ -71,6 +67,17 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 		return err
 	}
 	file.metadata = metadata
+
+	data, _, err := importer.FileProcessor.LoadCSV(filepath)
+	if err != nil {
+		if errors.As(err, &ers.IsOptOutFile{}) {
+			importer.Logger.Info(err)
+		} else {
+			importer.Logger.Error(err)
+		}
+		return err
+	}
+	file.data = data
 
 	err = importer.ProcessCSV(file)
 	if err != nil {
