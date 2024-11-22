@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -25,6 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 	"github.com/go-testfixtures/testfixtures/v3"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -38,7 +38,6 @@ type CSVTestSuite struct {
 }
 
 func (s *CSVTestSuite) SetupTest() {
-	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 
 	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
@@ -76,6 +75,7 @@ func (s *CSVTestSuite) SetupSuite() {
 }
 
 func (s *CSVTestSuite) TearDownSuite() {
+
 }
 
 func (s *CSVTestSuite) TearDownTest() {
@@ -87,11 +87,47 @@ func TestCSVTestSuite(t *testing.T) {
 }
 
 func (s *CSVTestSuite) TestImportCSV_Integration() {
-	// TODO add more test cases
+	// TODO apply fixture data for dupe file test case
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
+	tests := []struct {
+		name        string
+		filepath    string
+		cclfFileID  int
+		cclfBeneRec []string
+		err         error
+	}{
+		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
+		//{"Import CSV attribution that already exists", "", 0, []string{}},
+		{"Import CSV attribution invalid name", filepath.Join(s.basePath, "cclf/archives/csv/P.PC.M2411.D181120.T1000000"), 0, []string{}, errors.New("invalid filename")},
+		{"Import Opt Out failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("invalid filename")},
+	}
 
-	file := filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000")
-	err := s.importer.ImportCSV(file)
-	assert.Nil(s.T(), err)
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			filename := filepath.Clean(test.filepath)
+			err := s.importer.ImportCSV(test.filepath)
+			if test.err == nil {
+				assert.Nil(s.T(), err)
+			} else {
+				assert.NotNil(s.T(), err)
+				assert.Contains(s.T(), err.Error(), test.err.Error())
+			}
+			cclfRecords := postgrestest.GetCCLFFilesByName(tt, s.db, filepath.Clean(test.filepath))
+			if len(cclfRecords) != 0 {
+				assert.Equal(tt, 1, len(cclfRecords))
+				assert.Equal(tt, filename, cclfRecords[0].Name)
+				//assert.NotNil()
+				beneRecords, _ := postgrestest.GetCCLFBeneficiaries(s.db, int(cclfRecords[0].ID))
+				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
+				for i, v := range beneRecords {
+					fmt.Println(i, v)
+					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v, " ", "")))
+				}
+			} else {
+				assert.Equal(tt, 0, len(cclfRecords))
+			}
+		})
+	}
 
 }
 
@@ -190,7 +226,7 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 // 		})
 // 	}
 
-// }
+//}
 
 func TestPrepareCSVData(t *testing.T) {
 	c := CSVImporter{}

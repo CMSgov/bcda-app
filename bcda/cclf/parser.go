@@ -115,6 +115,23 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 		log.API.Error(err)
 		return metadata, err
 	}
+
+	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
+	refDateString := conf.GetEnv("CCLF_REF_DATE")
+	refDate, err := time.Parse("060102", refDateString)
+	if err != nil {
+		refDate = time.Now()
+	}
+
+	// Files must not be too old
+	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
+	filesNotAfter := refDate
+	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
+		err = errors.New(fmt.Sprintf("date '%s' out of range; comparison date %s", filenameDate, refDate.Format("060102")))
+		log.API.Error(err)
+		return metadata, err
+	}
+
 	metadata.timestamp = t
 
 	switch subMatches[1] {

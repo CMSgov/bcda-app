@@ -1,6 +1,7 @@
 package cclf
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -81,7 +82,8 @@ func TestGetCSVMetadata(t *testing.T) {
 }
 
 func TestValidateCCLFFileName(t *testing.T) {
-	// TODO add more test cases
+
+	// TODO finish test cases
 	start := time.Now()
 	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
 		time.UTC)
@@ -91,21 +93,41 @@ func TestValidateCCLFFileName(t *testing.T) {
 	validTime := startUTC.Add(-24 * time.Hour)
 	fileDateTime := validTime.Format(dateFormat)
 
-	var metadata csvFileMetadata
-	//metadata.name = "P.PPB.M2411.D24110.T000001"
-	//metadata.acoID = "TCOCMD"
-	metadata.perfYear = 24
-	metadata.timestamp = validTime
-	metadata.env = "production"
-
 	tcocmd := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
-	path := "P.PCPB.M2411." + fileDateTime
-	filenameRegexp := regexp.MustCompile(tcocmd)
-	//filenameRegexp := regexp.MustCompile(t)
-	parts := filenameRegexp.FindStringSubmatch(path)
-	actualmetadata, err := validateCSVMetadata(parts)
-	assert.Nil(t, err)
-	assert.Equal(t, metadata, actualmetadata)
+
+	tests := []struct {
+		name     string
+		fileName string
+		err      error
+		metadata csvFileMetadata
+	}{
+		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+			env:       "production",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		// {"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		// {"invalid csv - file date too old", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		// {"invalid csv - file date in the future", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filenameRegexp := regexp.MustCompile(tcocmd)
+			//filenameRegexp := regexp.MustCompile(t)
+			parts := filenameRegexp.FindStringSubmatch(test.fileName)
+			actualmetadata, err := validateCSVMetadata(parts)
+			if test.err != nil {
+				assert.NotNil(t, test.err.Error(), err.Error())
+			} else {
+				assert.Nil(t, err)
+			}
+			assert.Equal(t, test.metadata, actualmetadata)
+		})
+	}
 
 }
 

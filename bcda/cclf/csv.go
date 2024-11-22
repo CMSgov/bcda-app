@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	f "path/filepath"
 	"time"
 
 	"github.com/jackc/pgx"
@@ -60,7 +61,7 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 
 	file := csvFile{filepath: filepath}
 
-	metadata, err := GetCSVMetadata(filepath)
+	metadata, err := GetCSVMetadata(f.Clean(filepath))
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get metadata from CSV S3 import parth")
 		importer.Logger.Error(err)
