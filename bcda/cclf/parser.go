@@ -26,6 +26,7 @@ func getCMSID(name string) (string, error) {
 	return parts[1], nil
 }
 
+
 type CSVParser struct {
 	FilePath string
 }
