@@ -97,7 +97,6 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	var err error
 	if len(subMatches) != 7 {
 		err := fmt.Errorf("invalid filename for attribution file")
-		log.API.Error(err)
 		return metadata, err
 	}
 
@@ -112,7 +111,6 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file", filenameDate)
-		log.API.Error(err)
 		return metadata, err
 	}
 
@@ -128,7 +126,6 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	filesNotAfter := refDate
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
 		err = errors.New(fmt.Sprintf("date '%s' out of range; comparison date %s", filenameDate, refDate.Format("060102")))
-		log.API.Error(err)
 		return metadata, err
 	}
 

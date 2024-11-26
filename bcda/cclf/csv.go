@@ -12,7 +12,6 @@ import (
 
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/stdlib"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -20,7 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/log"
+	"github.com/CMSgov/bcda-app/optout"
 )
 
 // FileProcessors for attribution are created as interfaces so that they can be passed in place of the implementation; local development and other envs will require different processors.
@@ -59,35 +58,37 @@ type CSVImporter struct {
 
 func (importer CSVImporter) ImportCSV(filepath string) error {
 
+	//logger := importer.Logger.WithFields(logrus.Fields{"file": filepath})
+
 	file := csvFile{filepath: filepath}
 
-	metadata, err := GetCSVMetadata(f.Clean(filepath))
+	optOut, _ := optout.IsOptOut(filepath)
+	if optOut {
+		return &ers.IsOptOutFile{}
+	}
+
+	short := f.Base(filepath)
+
+	metadata, err := GetCSVMetadata(short)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get metadata from CSV S3 import parth")
-		importer.Logger.Error(err)
-		return err
+		return &ers.InvalidCSVMetadata{Msg: err.Error()}
 	}
 	file.metadata = metadata
 
 	data, _, err := importer.FileProcessor.LoadCSV(filepath)
 	if err != nil {
-		if errors.As(err, &ers.IsOptOutFile{}) {
-			importer.Logger.Info(err)
-		} else {
-			importer.Logger.Error(err)
-		}
 		return err
 	}
 	file.data = data
 
 	err = importer.ProcessCSV(file)
 	if err != nil {
-		importer.Logger.Error()
+		return err
 	}
 
 	err = importer.FileProcessor.CleanUpCSV(file)
 	if err != nil {
-		log.API.Error("error!")
+		return err
 	}
 	return nil
 }
@@ -100,13 +101,11 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	repository := postgres.NewRepository(importer.Database)
 	exists, err := repository.GetCCLFFileExistsByName(ctx, csv.metadata.name)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to check existence of CSV file")
-		importer.Logger.Error(err)
+		err = fmt.Errorf("database query returned an error: %s", err)
 		return err
 	}
 	if exists {
-		importer.Logger.Infof("CSV File %s already exists in database, skipping import...", csv.metadata.name)
-		return errors.New("Attribution file already exists") // make this a type
+		return &ers.AttributionFileAlreadyExists{Filename: csv.metadata.name}
 	}
 
 	importer.Logger.Infof("Importing CSV file %s...", csv.metadata.name)
@@ -120,8 +119,6 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	tx, err := conn.BeginEx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
-		importer.Logger.Error(err)
-
 		return err
 	}
 
@@ -130,13 +127,13 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	defer func() {
 		if err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
-				importer.Logger.Warnf("Failed to rollback transaction %s", err.Error())
+				importer.Logger.Errorf("Failed to rollback transaction: %s", err.Error())
 			}
 			return
 		}
 	}()
 
-	// technically not a cclf file, but this model corresponds with a database record
+	// CCLF model corresponds with a database record
 	record := models.CCLFFile{
 		Name:            csv.metadata.name,
 		ACOCMSID:        csv.metadata.acoID,
@@ -147,8 +144,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 
 	record.ID, err = rtx.CreateCCLFFile(ctx, record)
 	if err != nil {
-		err = errors.Wrapf(err, "could not create CSV %s file record", csv.metadata.name)
-		importer.Logger.Error(err)
+		err := fmt.Errorf("database error when calling CreateCCLFFile(): %s", err)
 		return err
 	}
 
@@ -161,20 +157,20 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 
 	num, err := tx.CopyFrom(pgx.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgx.CopyFromRows(rows))
 	if count != num {
-		importer.Logger.Error("unexpected record count")
+		return fmt.Errorf("Unexpected number of records imported (expected: %d, actual: %d)", count, num)
 	}
 
 	err = rtx.UpdateCCLFFileImportStatus(ctx, csv.metadata.fileID, constants.ImportComplete)
 	if err != nil {
-		err = errors.Wrapf(err, "could not update CSV file record for file: %s.", csv.metadata.name)
-		importer.Logger.Error(err)
+		return fmt.Errorf("database error when calling UpdateCCLFFileImportStatus(): %s", csv.metadata.name)
 	}
 
 	if err = tx.Commit(); err != nil {
-		importer.Logger.Error(err.Error())
-		failMsg := fmt.Sprintf("failed to commit transaction for CSV%d import file %s", csv.metadata.cclfNum, csv.metadata.name)
-		return errors.Wrap(err, failMsg)
+		return fmt.Errorf("failed to commit database transaction: %s", err)
 	}
+
+	successMsg := fmt.Sprintf("Successfully imported %d records from csv file %s.", num, csv.metadata.name)
+	importer.Logger.WithFields(logrus.Fields{"imported_count": num}).Info(successMsg)
 	return nil
 }
 

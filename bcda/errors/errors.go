@@ -93,3 +93,19 @@ type IsOptOutFile struct {
 func (e *IsOptOutFile) Error() string {
 	return fmt.Sprint("File is type: opt-out. Skipping attribution import.")
 }
+
+type InvalidCSVMetadata struct {
+	Msg string
+}
+
+func (e *InvalidCSVMetadata) Error() string {
+	return fmt.Sprintf("CSV Attribution metadata invalid: %s", e.Msg)
+}
+
+type AttributionFileAlreadyExists struct {
+	Filename string
+}
+
+func (e *AttributionFileAlreadyExists) Error() string {
+	return fmt.Sprintf("Attribution csv file %s already exists, skipping import...", e.Filename)
+}

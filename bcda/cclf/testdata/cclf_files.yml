@@ -1,0 +1,9 @@
+---
+- id: 1
+  cclf_num: 8
+  name: P.PCPB.M2411.D181121.T1000000
+  aco_cms_id: A0002
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 0

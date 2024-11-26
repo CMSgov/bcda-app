@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -31,19 +32,32 @@ import (
 
 type CSVTestSuite struct {
 	suite.Suite
-	basePath string
-	importer CSVImporter
-	cleanup  func()
-	db       *sql.DB
+	basePath           string
+	importer           CSVImporter
+	cleanup            func()
+	db                 *sql.DB
+	origDate           string
+	pendingDeletionDir string
+}
+
+func (s *CSVTestSuite) SetupSuite() {
+	s.origDate = conf.GetEnv("CCLF_REF_DATE")
 }
 
 func (s *CSVTestSuite) SetupTest() {
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
-
+	dir, err := os.MkdirTemp("", "*")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	s.pendingDeletionDir = dir
+	testUtils.SetPendingDeletionDir(s.Suite, dir)
 	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	tf, err := testfixtures.New(
 		testfixtures.Database(db),
 		testfixtures.Dialect("postgres"),
+		testfixtures.Directory("testdata/"),
 	)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
@@ -71,11 +85,10 @@ func (s *CSVTestSuite) SetupTest() {
 	s.importer = c
 
 }
-func (s *CSVTestSuite) SetupSuite() {
-}
 
 func (s *CSVTestSuite) TearDownSuite() {
-
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
+	os.RemoveAll(conf.GetEnv("PENDING_DELETION_DIR"))
 }
 
 func (s *CSVTestSuite) TearDownTest() {
@@ -87,7 +100,6 @@ func TestCSVTestSuite(t *testing.T) {
 }
 
 func (s *CSVTestSuite) TestImportCSV_Integration() {
-	// TODO apply fixture data for dupe file test case
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 	tests := []struct {
 		name        string
@@ -97,9 +109,9 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 		err         error
 	}{
 		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
-		//{"Import CSV attribution that already exists", "", 0, []string{}},
+		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
 		{"Import CSV attribution invalid name", filepath.Join(s.basePath, "cclf/archives/csv/P.PC.M2411.D181120.T1000000"), 0, []string{}, errors.New("invalid filename")},
-		{"Import Opt Out failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("invalid filename")},
+		{"Import Opt Out failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("File is type: opt-out. Skipping attribution import.")},
 	}
 
 	for _, test := range tests {
@@ -116,7 +128,6 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 			if len(cclfRecords) != 0 {
 				assert.Equal(tt, 1, len(cclfRecords))
 				assert.Equal(tt, filename, cclfRecords[0].Name)
-				//assert.NotNil()
 				beneRecords, _ := postgrestest.GetCCLFBeneficiaries(s.db, int(cclfRecords[0].ID))
 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
 				for i, v := range beneRecords {

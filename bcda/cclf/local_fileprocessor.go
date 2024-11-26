@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
-	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -326,10 +325,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 }
 
 func (processor *LocalFileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
-	optOut, _ := optout.IsOptOut(filepath)
-	if optOut {
-		return nil, nil, &ers.IsOptOutFile{}
-	}
+
 	byte_arr, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, nil, err
