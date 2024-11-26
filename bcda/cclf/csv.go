@@ -93,7 +93,7 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 	return nil
 }
 
-// ImportCSV() will take provided metadata and write a new record to the cclf_files table and the contents of the file and write new record(s) to the cclf_beneficiaries table.
+// ProcessCSV() will take provided metadata and write a new record to the cclf_files table and the contents of the file and write new record(s) to the cclf_beneficiaries table.
 // If any step of writing to the database should fail, the whole transaction will fail. If the new records are written successfully, then the new record in the cclf_files
 // table will have it's import status updated.
 func (importer CSVImporter) ProcessCSV(csv csvFile) error {
@@ -135,11 +135,13 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 
 	// CCLF model corresponds with a database record
 	record := models.CCLFFile{
+		CCLFNum:         csv.metadata.cclfNum,
 		Name:            csv.metadata.name,
 		ACOCMSID:        csv.metadata.acoID,
 		Timestamp:       csv.metadata.timestamp,
 		PerformanceYear: csv.metadata.perfYear,
 		ImportStatus:    constants.ImportInprog,
+		Type:            csv.metadata.fileType,
 	}
 
 	record.ID, err = rtx.CreateCCLFFile(ctx, record)

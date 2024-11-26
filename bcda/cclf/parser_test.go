@@ -82,8 +82,6 @@ func TestGetCSVMetadata(t *testing.T) {
 }
 
 func TestValidateCCLFFileName(t *testing.T) {
-
-	// TODO finish test cases
 	start := time.Now()
 	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
 		time.UTC)
@@ -110,14 +108,13 @@ func TestValidateCCLFFileName(t *testing.T) {
 		},
 		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
 		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		// {"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		// {"invalid csv - file date too old", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		// {"invalid csv - file date in the future", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		{"invalid csv - file date too old", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		{"invalid csv - file date in the future", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			filenameRegexp := regexp.MustCompile(tcocmd)
-			//filenameRegexp := regexp.MustCompile(t)
 			parts := filenameRegexp.FindStringSubmatch(test.fileName)
 			actualmetadata, err := validateCSVMetadata(parts)
 			if test.err != nil {

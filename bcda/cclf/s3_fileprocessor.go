@@ -168,7 +168,7 @@ func (processor *S3FileProcessor) OpenZipArchive(filePath string) (*zip.Reader, 
 	return reader, func() {}, err
 }
 
-func (processor *S3FileProcessor) CleanUpCSV(file csvFile) (err error) {
+func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
 
 	close := metrics.NewChild(context.Background(), "cleanUpCCLFZip")
 	defer close()
@@ -177,10 +177,11 @@ func (processor *S3FileProcessor) CleanUpCSV(file csvFile) (err error) {
 		// Don't do anything. The S3 bucket should have a retention policy that
 		// automatically cleans up files after a specified period of time.
 		processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", file.filepath)
+		return nil
 	}
 
 	processor.Handler.Infof("Cleaning up file %s\n", file.filepath)
-	err = processor.Handler.Delete(file.filepath)
+	err := processor.Handler.Delete(file.filepath)
 
 	if err != nil {
 		processor.Handler.Logger.Error("Failed to clean up file %s\n", file.filepath)
@@ -193,12 +194,7 @@ func (processor *S3FileProcessor) CleanUpCSV(file csvFile) (err error) {
 }
 
 func (processor *S3FileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
-	optOut, _ := optout.IsOptOut(filepath)
-	if optOut {
-		return nil, nil, nil
-	}
 	byte_arr, err := processor.Handler.OpenFileBytes(filepath)
-
 	if err != nil {
 		processor.Handler.Errorf("Failed to download %s\n", filepath)
 		return nil, nil, err

@@ -26,13 +26,6 @@ func getCMSID(name string) (string, error) {
 	return parts[1], nil
 }
 
-func CheckIfAttributionCSVFile(filePath string) bool {
-	pattern := `P\.PCPB\.M\d{4}\.D\d{6}\.T\d{7}`
-	filenameRegexp := regexp.MustCompile(pattern)
-	found := filenameRegexp.Match([]byte(filePath))
-	return found
-}
-
 type CSVParser struct {
 	FilePath string
 }
@@ -51,7 +44,7 @@ type CSVParser struct {
 // 	regMatches  int
 // }
 
-// GetCSVMetadata builds an entry for the cclf_files table, based on the name of the file.
+// GetCSVMetadata builds a metadata struct based on the filename parts.
 // The filename regex is part of aco configuration.
 func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	var metadata csvFileMetadata
