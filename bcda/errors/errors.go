@@ -91,7 +91,7 @@ type IsOptOutFile struct {
 }
 
 func (e *IsOptOutFile) Error() string {
-	return fmt.Sprint("File is type: opt-out. Skipping attribution import.")
+	return "File is type: opt-out. Skipping attribution import."
 }
 
 type InvalidCSVMetadata struct {

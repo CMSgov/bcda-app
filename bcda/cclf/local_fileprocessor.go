@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	fp "path/filepath"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
@@ -325,8 +327,11 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 }
 
 func (processor *LocalFileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
-
-	byte_arr, err := os.ReadFile(filepath)
+	c := fp.Clean(filepath)
+	if !strings.HasPrefix(filepath, "/var/folder") {
+		return nil, nil, fmt.Errorf("invalid path")
+	}
+	byte_arr, err := os.ReadFile(c)
 	if err != nil {
 		return nil, nil, err
 	}

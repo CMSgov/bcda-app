@@ -128,7 +128,8 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 			if len(cclfRecords) != 0 {
 				assert.Equal(tt, 1, len(cclfRecords))
 				assert.Equal(tt, filename, cclfRecords[0].Name)
-				beneRecords, _ := postgrestest.GetCCLFBeneficiaries(s.db, int(cclfRecords[0].ID))
+				id, _ := safecast.ToInt(cclfRecords[0].ID)
+				beneRecords, _ := postgrestest.GetCCLFBeneficiaries(s.db, id)
 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
 				for i, v := range beneRecords {
 					fmt.Println(i, v)
