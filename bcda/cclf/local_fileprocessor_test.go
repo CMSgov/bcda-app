@@ -407,9 +407,9 @@ func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
 		delFiles     int
 		baseFiles    int
 	}{
-		{"Not imported and expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), expiredTime, false, 1, 0},
-		{"Not imported and not expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), false, 1, 0},
-		{"Successfully imported", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), true, 1, 0},
+		{"Not imported and expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), expiredTime, false, 1, 1},
+		{"Not imported and not expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), false, 1, 1},
+		{"Successfully imported", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), true, 1, 1},
 	}
 
 	for _, test := range tests {
@@ -432,7 +432,7 @@ func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
 				s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
 			}
 			assert.Len(s.T(), baseDir, test.baseFiles)
-			if test.baseFiles == 1 {
+			if test.baseFiles == 2 {
 				assert.Equal(s.T(), file.metadata.name, baseDir[0].Name())
 			}
 		})

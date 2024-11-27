@@ -328,8 +328,8 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 
 func (processor *LocalFileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
 	c := fp.Clean(filepath)
-	if !strings.HasPrefix(filepath, "/var/folder") {
-		return nil, nil, fmt.Errorf("invalid path")
+	if !strings.HasPrefix(filepath, "/tmp") {
+		return nil, nil, fmt.Errorf("invalid path, %s", filepath)
 	}
 	byte_arr, err := os.ReadFile(c)
 	if err != nil {
