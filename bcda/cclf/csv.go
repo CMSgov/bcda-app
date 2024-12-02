@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	f "path/filepath"
@@ -76,6 +77,10 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 	file.metadata = metadata
 
 	data, _, err := importer.FileProcessor.LoadCSV(filepath)
+	if errors.Is(err, &ers.AttributionFileMismatchedEnv{}) {
+		importer.Logger.WithFields(logrus.Fields{"file": filepath}).Info(err)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

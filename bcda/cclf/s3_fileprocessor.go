@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
+	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/optout"
 )
@@ -194,6 +195,10 @@ func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
 }
 
 func (processor *S3FileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
+	if !optout.IsForCurrentEnv(filepath) {
+		processor.Handler.Infof("Skipping file for different environment: %s/%s", filepath)
+		return nil, nil, &ers.AttributionFileMismatchedEnv{}
+	}
 	byte_arr, err := processor.Handler.OpenFileBytes(filepath)
 	if err != nil {
 		processor.Handler.Errorf("Failed to download %s\n", filepath)
