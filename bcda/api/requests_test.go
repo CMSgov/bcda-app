@@ -18,8 +18,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
-	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing/mocks"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -30,6 +28,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -546,9 +545,9 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := mockEnq.NewEnqueuer(s.T())
-	enqueuer.On("AddJob", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
-	h.Enq = enqueuer
+	mockEnq := &queueing.MockEnqueuer{}
+	mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
+	h.Enq = mockEnq
 	h.supportedDataTypes = dataTypeMap
 
 	client.SetLogger(log.API) // Set logger so we don't get errors later
@@ -651,6 +650,10 @@ func (s *RequestsTestSuite) TestRequests() {
 
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 
+	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
+	enqueuer := &queueing.MockEnqueuer{}
+	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	h.Enq = enqueuer
 	mockSvc := service.MockService{}
 
 	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)

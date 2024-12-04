@@ -38,7 +38,7 @@ func TestHealthCheck(t *testing.T) {
 	hook := test.NewGlobal()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	startHealthCheck(ctx, Connection, QueueConnection, Pgxv5Connection, 100*time.Microsecond)
+	startHealthCheck(ctx, Connection, QueueConnection, 100*time.Microsecond)
 	// Let some time elapse to ensure we've successfully ran health checks
 	time.Sleep(50 * time.Millisecond)
 	cancel()
