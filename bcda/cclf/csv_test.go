@@ -205,41 +205,6 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 	}
 }
 
-// func (s *CSVTestSuite) TestProcessCSV() {
-
-// 	csvFile := csvFile{
-// 		metadata: cclfFileMetadata{
-// 			name:         "P.PCPB.M2411.D191005.T0209260",
-// 			env:          "test",
-// 			acoID:        "FOOACO",
-// 			cclfNum:      8,
-// 			perfYear:     24,
-// 			timestamp:    time.Now(),
-// 			deliveryDate: time.Now(),
-// 			fileID:       0,
-// 			fileType:     1,
-// 		},
-// 		fileContent: bytes.NewReader([]byte("MBIS\nMBI000001\nMBI000002\nMBI000003")),
-// 	}
-
-// 	repository := &models.MockRepository{}
-
-// 	tests := []struct {
-// 		name string
-// 		data *mock.Call
-// 		err  string
-// 	}{
-// 		{"GetCCLFFileExistsByName", repository.On("GetLatestCCLFFile").Return("", errors.New("failed to check existence")), "failed to check existence"},
-// 	}
-// 	for _, test := range tests {
-// 		s.T().Run(test.name, func(tt *testing.T) {
-// 			err := s.importer.ProcessCSV(csvFile)
-// 			assert.Nil(tt, err)
-// 		})
-// 	}
-
-//}
-
 func TestPrepareCSVData(t *testing.T) {
 	c := CSVImporter{}
 	tests := []struct {

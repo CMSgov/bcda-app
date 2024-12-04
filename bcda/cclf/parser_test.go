@@ -1,7 +1,6 @@
 package cclf
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,6 +67,9 @@ func TestGetCSVMetadata(t *testing.T) {
 		},
 		},
 		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,7 +94,7 @@ func TestValidateCCLFFileName(t *testing.T) {
 	validTime := startUTC.Add(-24 * time.Hour)
 	fileDateTime := validTime.Format(dateFormat)
 
-	tcocmd := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
+	futureTime := startUTC.Add(24 * time.Hour)
 
 	tests := []struct {
 		name     string
@@ -106,19 +109,22 @@ func TestValidateCCLFFileName(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
-		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		{"invalid csv - file date too old", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
-		{"invalid csv - file date in the future", "P.PCPBPCPB.M2411." + fileDateTime, errors.New("invalid filename"), csvFileMetadata{}},
+		{"invalid csv - file date too old", "P.PCPB.M2411.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
+		{"invalid csv - file date in the future", "P.PCPB.M2411." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			filenameRegexp := regexp.MustCompile(tcocmd)
-			parts := filenameRegexp.FindStringSubmatch(test.fileName)
-			actualmetadata, err := validateCSVMetadata(parts)
+			acos, err := getACOConfigs()
+			var actualmetadata csvFileMetadata
+			for _, v := range acos {
+				filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
+				parts := filenameRegexp.FindStringSubmatch(test.fileName)
+				if len(parts) == v.AttributionFile.MetadataMatches {
+					actualmetadata, err = validateCSVMetadata(parts)
+				}
+			}
 			if test.err != nil {
-				assert.NotNil(t, test.err.Error(), err.Error())
+				assert.Contains(t, err.Error(), test.err.Error())
 			} else {
 				assert.Nil(t, err)
 			}
