@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -218,8 +217,9 @@ func TestPrepareCSVData(t *testing.T) {
 			{uint(1), "MBI000002"},
 			{uint(1), "MBI000003"},
 		}},
-		{"Empty CSV file", bytes.NewReader([]byte("")), io.EOF, [][]interface{}(nil)},
-		{"Valid CSV file with unexpected content", bytes.NewReader([]byte("MBIS\nMBI000001,10\nMBI000002,bar\nMBI000003,")), nil, [][]interface{}{
+		{"Empty CSV file", bytes.NewReader([]byte("")), errors.New("empty attribution file"), [][]interface{}(nil)},
+		{"Valid CSV file with unexpected content - more columns than headers", bytes.NewReader([]byte("MBIS\nMBI000001,10\nMBI000002,bar\nMBI000003,")), errors.New("failed to read csv attribution file"), [][]interface{}(nil)},
+		{"Valid CSV file with unexpected content - extra column and header", bytes.NewReader([]byte("MBIS,foo\nMBI000001,10\nMBI000002,bar\nMBI000003,")), nil, [][]interface{}{
 			{uint(1), "MBI000001"},
 			{uint(1), "MBI000002"},
 			{uint(1), "MBI000003"},
@@ -231,7 +231,7 @@ func TestPrepareCSVData(t *testing.T) {
 			rows, _, err := c.prepareCSVData(test.data, uint(1))
 			assert.Equal(t, test.expected, rows)
 			if err != nil {
-				assert.Equal(t, test.err.Error(), err.Error())
+				assert.Contains(t, err.Error(), test.err.Error())
 			}
 		})
 	}

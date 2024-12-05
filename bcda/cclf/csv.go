@@ -59,8 +59,6 @@ type CSVImporter struct {
 
 func (importer CSVImporter) ImportCSV(filepath string) error {
 
-	//logger := importer.Logger.WithFields(logrus.Fields{"file": filepath})
-
 	file := csvFile{filepath: filepath}
 
 	optOut, _ := optout.IsOptOut(filepath)
@@ -106,8 +104,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	repository := postgres.NewRepository(importer.Database)
 	exists, err := repository.GetCCLFFileExistsByName(ctx, csv.metadata.name)
 	if err != nil {
-		err = fmt.Errorf("database query returned an error: %s", err)
-		return err
+		return fmt.Errorf("database query returned an error: %s", err)
 	}
 	if exists {
 		return &ers.AttributionFileAlreadyExists{Filename: csv.metadata.name}
@@ -123,12 +120,11 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 
 	tx, err := conn.BeginEx(ctx, nil)
 	if err != nil {
-		err = fmt.Errorf("failed to start transaction: %w", err)
-		return err
+		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 
 	rtx := postgres.NewRepositoryPgxTx(tx)
-
+	var records int
 	defer func() {
 		if err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
@@ -162,9 +158,12 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return err
 	}
 
-	num, err := tx.CopyFrom(pgx.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgx.CopyFromRows(rows))
-	if count != num {
-		return fmt.Errorf("Unexpected number of records imported (expected: %d, actual: %d)", count, num)
+	records, err = tx.CopyFrom(pgx.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgx.CopyFromRows(rows))
+	if count != records {
+		return fmt.Errorf("unexpected number of records imported (expected: %d, actual: %d)", count, records)
+	}
+	if err != nil {
+		return errors.New("failed to write attribution beneficiaries to database using CopyFrom.")
 	}
 
 	err = rtx.UpdateCCLFFileImportStatus(ctx, csv.metadata.fileID, constants.ImportComplete)
@@ -176,8 +175,8 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return fmt.Errorf("failed to commit database transaction: %s", err)
 	}
 
-	successMsg := fmt.Sprintf("Successfully imported %d records from csv file %s.", num, csv.metadata.name)
-	importer.Logger.WithFields(logrus.Fields{"imported_count": num}).Info(successMsg)
+	successMsg := fmt.Sprintf("successfully imported %d records from csv file %s.", records, csv.metadata.name)
+	importer.Logger.WithFields(logrus.Fields{"imported_count": records}).Info(successMsg)
 	return nil
 }
 
@@ -186,8 +185,11 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 	r := csv.NewReader(csvfile)
 
 	_, err := r.Read()
+	if err == io.EOF {
+		return nil, 0, errors.New("empty attribution file")
+	}
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to read csv attribution header: %s", err)
 	}
 
 	count := 0
@@ -199,7 +201,9 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 			err = nil
 			break
 		}
-		// should there be additional validation here so that we know the mbi is a valid mbi?
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to read csv attribution file: %s", err)
+		}
 		row := make([]interface{}, 2)
 		row[0] = id
 		row[1] = record[0]
