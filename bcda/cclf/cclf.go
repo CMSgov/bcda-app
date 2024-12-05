@@ -125,7 +125,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 		return validator, nil
 	}
 
-	err = fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata)
+	err = fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata.name)
 	importer.Logger.Error(err)
 	return nil, err
 }
@@ -214,17 +214,17 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
-		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata)
+		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata.name)
 		importer.Logger.Error(err)
 	}
 
 	if err = tx.Commit(); err != nil {
 		importer.Logger.Error(err.Error())
-		failMsg := fmt.Sprintf("failed to commit transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata)
+		failMsg := fmt.Sprintf("failed to commit transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
 		return errors.Wrap(err, failMsg)
 	}
 
-	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
+	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata.name)
 	importer.Logger.WithFields(logrus.Fields{"imported_count": importedCount}).Info(successMsg)
 
 	return nil

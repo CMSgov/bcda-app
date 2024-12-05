@@ -406,3 +406,29 @@ func GetJobKey(db *sql.DB, jobID int) ([]models.JobKey, error) {
 	}
 	return jobKeys, err
 }
+
+func GetCCLFBeneficiaries(db *sql.DB, file_id int) ([]string, error) {
+	var mbis []string
+	sb := sqlFlavor.NewSelectBuilder().Select("mbi").From("cclf_beneficiaries")
+	sb.Where(sb.Equal("file_id", file_id))
+	query, args := sb.Build()
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mbi string
+		if err = rows.Scan(&mbi); err != nil {
+			return nil, err
+		}
+		mbis = append(mbis, mbi)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return mbis, nil
+
+}

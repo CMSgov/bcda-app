@@ -89,23 +89,14 @@ func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 		},
 	}
 
-	success, failure, skipped, err := importer.ImportCSV(s3AssumeRoleArn, s3ImportPath)
+	err := importer.ImportCSV(s3ImportPath)
 
 	if err != nil {
 		logger.Error("error returned from ImportCSV: ", err)
 		return "", err
 	}
 
-	if failure > 0 || skipped > 0 {
-		result := fmt.Sprintf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
-		logger.Error(result)
-
-		err = errors.New("Files skipped or failed import. See logs for more details.")
-		return result, err
-
-	}
-
-	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v.   See logs for more details.", s3ImportPath)
 	logger.Info(result)
 	return result, nil
 }

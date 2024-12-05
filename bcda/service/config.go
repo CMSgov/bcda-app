@@ -54,16 +54,23 @@ type RunoutConfig struct {
 
 type ACOConfig struct {
 	Model              string
-	Pattern            string   `conf:"name_pattern"`
-	PerfYearTransition string   `conf:"performance_year_transition"`
-	LookbackYears      int      `conf:"lookback_period"`
-	Disabled           bool     `conf:"disabled" conf_default:"false"`
-	Data               []string `conf:"data"`
-	IgnoreSuppressions bool     `conf:"ignore_suppressions" conf_default:"false"`
+	Pattern            string          `conf:"name_pattern"`
+	PerfYearTransition string          `conf:"performance_year_transition"`
+	LookbackYears      int             `conf:"lookback_period"`
+	Disabled           bool            `conf:"disabled" conf_default:"false"`
+	Data               []string        `conf:"data"`
+	IgnoreSuppressions bool            `conf:"ignore_suppressions" conf_default:"false"`
+	AttributionFile    AttributionFile `conf:"attribution_file"`
 
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
 	perfYear   time.Time
+}
+
+type AttributionFile struct {
+	FileType        string `conf:"file_type"`
+	NamePattern     string `conf:"name_pattern" `
+	MetadataMatches int    `conf:"metadata_matches" `
 }
 
 func (config Config) String() string {

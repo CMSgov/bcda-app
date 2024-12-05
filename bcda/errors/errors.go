@@ -85,3 +85,35 @@ type ExpiredTokenError struct {
 func (e *ExpiredTokenError) Error() string {
 	return fmt.Sprintf("Expired Token Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
+
+type IsOptOutFile struct {
+	Msg string
+}
+
+func (e *IsOptOutFile) Error() string {
+	return "File is type: opt-out. Skipping attribution import."
+}
+
+type InvalidCSVMetadata struct {
+	Msg string
+}
+
+func (e *InvalidCSVMetadata) Error() string {
+	return fmt.Sprintf("CSV Attribution metadata invalid: %s", e.Msg)
+}
+
+type AttributionFileAlreadyExists struct {
+	Filename string
+}
+
+func (e *AttributionFileAlreadyExists) Error() string {
+	return fmt.Sprintf("Attribution csv file %s already exists, skipping import...", e.Filename)
+}
+
+type AttributionFileMismatchedEnv struct {
+	Msg string
+}
+
+func (e *AttributionFileMismatchedEnv) Error() string {
+	return "Skipping import; env does not match path."
+}

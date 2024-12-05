@@ -2,12 +2,14 @@ package cclf
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,6 +38,100 @@ func TestGetCMSID(t *testing.T) {
 			assert.Equal(sub, tt.cmsID, cmsID)
 		})
 	}
+}
+
+func TestGetCSVMetadata(t *testing.T) {
+	start := time.Now()
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
+		time.UTC)
+
+	dateFormat := "D060102.T1504050"
+
+	validTime := startUTC.Add(-24 * time.Hour)
+	fileDateTime := validTime.Format(dateFormat)
+
+	tests := []struct {
+		name     string
+		fileName string
+		errMsg   string
+		metadata csvFileMetadata
+	}{
+		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, "", csvFileMetadata{
+			env:       "production",
+			name:      "P.PCPB.M2411." + fileDateTime,
+			cclfNum:   8,
+			acoID:     "TCOCMD",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata, err := GetCSVMetadata(tt.fileName)
+			if tt.errMsg == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.errMsg)
+			}
+			assert.Equal(t, tt.metadata, metadata)
+		})
+	}
+}
+
+func TestValidateCCLFFileName(t *testing.T) {
+	start := time.Now()
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
+		time.UTC)
+
+	dateFormat := "D060102.T1504050"
+
+	validTime := startUTC.Add(-24 * time.Hour)
+	fileDateTime := validTime.Format(dateFormat)
+
+	futureTime := startUTC.Add(24 * time.Hour)
+
+	tests := []struct {
+		name     string
+		fileName string
+		err      error
+		metadata csvFileMetadata
+	}{
+		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+			env:       "production",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid csv - file date too old", "P.PCPB.M2411.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
+		{"invalid csv - file date in the future", "P.PCPB.M2411." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			acos, err := getACOConfigs()
+			var actualmetadata csvFileMetadata
+			for _, v := range acos {
+				filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
+				parts := filenameRegexp.FindStringSubmatch(test.fileName)
+				if len(parts) == v.AttributionFile.MetadataMatches {
+					actualmetadata, err = validateCSVMetadata(parts)
+				}
+			}
+			if test.err != nil {
+				assert.Contains(t, err.Error(), test.err.Error())
+			} else {
+				assert.Nil(t, err)
+			}
+			assert.Equal(t, test.metadata, actualmetadata)
+		})
+	}
+
 }
 
 func TestGetCCLFMetadata(t *testing.T) {
@@ -317,11 +413,11 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		path      string
 		testIsCSV bool
 	}{
-		{name: "Is an Attribution CSV File path", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: true},
+		{name: "Is an Attribution CSV File path", path: "P.PCPB.M2014.D003026.T0000001", testIsCSV: true},
 		{name: "Is not an Attribution CSV File path (incorrect first)", path: "M.PCPB.M2014.D00302.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (incorrect second)", path: "P.BFD.N2014.D00302.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (incorrect third)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D003022.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (incorrect fifth)", path: "P.PCPB.M2014.D00302.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
 		{name: "Is not an Attribution CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},

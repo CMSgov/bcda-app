@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
+	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/optout"
 )
@@ -165,5 +166,45 @@ func (processor *S3FileProcessor) OpenZipArchive(filePath string) (*zip.Reader, 
 	}
 
 	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
+	return reader, func() {}, err
+}
+
+func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
+
+	close := metrics.NewChild(context.Background(), "cleanUpCCLFZip")
+	defer close()
+
+	if !file.imported {
+		// Don't do anything. The S3 bucket should have a retention policy that
+		// automatically cleans up files after a specified period of time.
+		processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", file.filepath)
+		return nil
+	}
+
+	processor.Handler.Infof("Cleaning up file %s\n", file.filepath)
+	err := processor.Handler.Delete(file.filepath)
+
+	if err != nil {
+		processor.Handler.Logger.Error("Failed to clean up file %s\n", file.filepath)
+		return err
+
+	}
+
+	processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", file.filepath)
+	return err
+}
+
+func (processor *S3FileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
+	if !optout.IsForCurrentEnv(filepath) {
+		processor.Handler.Infof("Skipping file for different environment: %s/%s", filepath)
+		return nil, nil, &ers.AttributionFileMismatchedEnv{}
+	}
+	byte_arr, err := processor.Handler.OpenFileBytes(filepath)
+	if err != nil {
+		processor.Handler.Errorf("Failed to download %s\n", filepath)
+		return nil, nil, err
+	}
+
+	reader := bytes.NewReader(byte_arr)
 	return reader, func() {}, err
 }
