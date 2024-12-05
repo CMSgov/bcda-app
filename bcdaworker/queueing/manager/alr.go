@@ -1,4 +1,4 @@
-package queueing
+package manager
 
 import (
 	"context"
@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
-	"github.com/ccoveille/go-safecast"
+	"github.com/CMSgov/bcda-app/log"
 
 	// The follow two packages imported to use repository.ErrJobNotFound etc.
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
@@ -22,7 +23,7 @@ import (
 ******************************************************************************/
 
 // alrQueue is the data structure for jobs related to Assignment List Report
-// (ALR). ALR piggybacks Beneficiary FHIR through the MasterQueue data struct.
+// (ALR). ALR piggybacks Beneficiary FHIR through the masterQueue data struct.
 // Ensure there is no field clashes with queue data struct.
 type alrQueue struct {
 	alrLog    logrus.FieldLogger
@@ -33,6 +34,29 @@ type alrQueue struct {
 	Functions
 ******************************************************************************/
 
+// checkIFCanncelled was originally a closure to check if the job was cancelled,
+// but it has been turned into a func for ALR for clarity
+func checkIfCancelled(ctx context.Context, r repository.Repository,
+	cancel context.CancelFunc, jobID uint, wait uint8) {
+	for {
+		select {
+		case <-time.After(time.Duration(wait) * time.Second):
+			jobStatus, err := r.GetJobByID(ctx, jobID)
+
+			if err != nil {
+				log.Worker.Warnf("Could not find job %d status: %s", jobID, err)
+			}
+
+			if jobStatus.Status == models.JobStatusCancelled {
+				cancel()
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 /******************************************************************************
 	Methods
 ******************************************************************************/
@@ -40,7 +64,7 @@ type alrQueue struct {
 // startALRJob is the Job that the worker will run from the pool. This function
 // has been written here (alr.go) to separate from beneficiary FHIR workflow.
 // This job is handled by the same worker pool that works on beneficiary.
-func (q *MasterQueue) startAlrJob(queJob *que.Job) error {
+func (q *masterQueue) startAlrJob(queJob *que.Job) error {
 
 	// Creating Context for possible cancellation; used by checkIfCancelled fn
 	ctx := context.Background()
@@ -102,14 +126,8 @@ func (q *MasterQueue) startAlrJob(queJob *que.Job) error {
 	}
 	// End of validation
 
-	u, err := safecast.ToInt64(jobArgs.ID)
-	if err != nil {
-		q.alrLog.Errorf("Failed to convert JobID to uint. Error: %s", err)
-		return err
-	}
-
 	// Check if the job was cancelled
-	go checkIfCancelled(ctx, q.repository, cancel, u, 15)
+	go checkIfCancelled(ctx, q.repository, cancel, jobArgs.ID, 15)
 
 	// Before moving forward, check if this job has failed before
 	// If it has reached the maxRetry, stop the parent job
@@ -174,7 +192,7 @@ func (q *MasterQueue) startAlrJob(queJob *que.Job) error {
 	return nil
 }
 
-func (q *MasterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
+func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
 	j, err := q.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get job: %w", err)

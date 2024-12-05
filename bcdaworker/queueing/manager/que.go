@@ -1,27 +1,46 @@
-package queueing
+package manager
 
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
+	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
+// queue is responsible for retrieving jobs using the que client and
+// transforming and delegating that work to the underlying worker
+type queue struct {
+	// Resources associated with the underlying que client
+	quePool *que.WorkerPool
+
+	worker     worker.Worker
+	repository repository.Repository
+	log        logrus.FieldLogger
+	queDB      *pgx.ConnPool
+
+	cloudWatchEnv string
+}
+
 // Assignment List Report (ALR) shares the worker pool and "piggy-backs" off
 // Beneficiary FHIR Data workflow. Instead of creating redundant functions and
 // methods, masterQueue wraps both structs allows for sharing.
-type MasterQueue struct {
+type masterQueue struct {
 	*queue
 	*alrQueue // This is defined in alr.go
 
@@ -30,8 +49,8 @@ type MasterQueue struct {
 	MaxRetry   int32  `conf:"BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES" conf_default:"3"`
 }
 
-func newMasterQueue(q *queue, qAlr *alrQueue) *MasterQueue {
-	mq := &MasterQueue{
+func newMasterQueue(q *queue, qAlr *alrQueue) *masterQueue {
+	mq := &masterQueue{
 		queue:    q,
 		alrQueue: qAlr,
 	}
@@ -46,7 +65,7 @@ func newMasterQueue(q *queue, qAlr *alrQueue) *MasterQueue {
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
-func StartQue(log logrus.FieldLogger, numWorkers int) *MasterQueue {
+func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
 	mainDB := database.Connection
@@ -66,8 +85,8 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *MasterQueue {
 
 	qc := que.NewClient(q.queDB)
 	wm := que.WorkMap{
-		models.QUE_PROCESS_JOB: q.processJob,
-		models.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
+		queueing.QUE_PROCESS_JOB: q.processJob,
+		queueing.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
 	}
 
 	q.quePool = que.NewWorkerPool(qc, wm, numWorkers)
@@ -78,7 +97,7 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *MasterQueue {
 }
 
 // StopQue cleans up any resources created
-func (q *MasterQueue) StopQue() {
+func (q *masterQueue) StopQue() {
 	q.queDB.Close()
 	q.quePool.Shutdown()
 }
@@ -98,34 +117,61 @@ func (q *queue) processJob(queJob *que.Job) error {
 	}
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, _ = log.SetCtxLogger(ctx, "job_id", queJob.ID)
+	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobArgs.ID)
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
+	id, e := safecast.ToUint(jobArgs.ID)
 
-	jobID, err := safecast.ToInt64(jobArgs.ID)
-	if err != nil {
-		return err
+	if e != nil {
+		return e
 	}
 
-	exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
-		WorkerInstance: q.worker,
-		Logger:         logger,
-		Repository:     q.repository,
-		JobID:          jobID,
-		QJobID:         queJob.ID,
-		Args:           jobArgs,
-		ErrorCount:     int(queJob.ErrorCount),
-	})
-	if ackJob {
-		// End logic here, basically acknowledge and return which will remove it from the queue.
+	exportJob, err := q.worker.ValidateJob(ctx, queJob.ID, jobArgs)
+	if goerrors.Is(err, worker.ErrParentJobCancelled) {
+		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
+		logger.Warnf("queJob %d associated with a cancelled parent Job %d. Removing queuejob from que.", queJob.ID, jobArgs.ID)
 		return nil
-	}
-	// Return error when we want to mark a job as having errored out, which will mark it to be retried
-	if err != nil {
+	} else if goerrors.Is(err, worker.ErrParentJobFailed) {
+		// ACK the job because we do not need to work on queue jobs associated with a failed parent job
+		logger.Warnf("queJob %d associated with a failed parent Job %d. Removing queuejob from que.", queJob.ID, jobArgs.ID)
+		return nil
+	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
+		// Data is corrupted, we cannot work on this job.
+		logger.Warnf("Job %d does not contain valid base path. Removing queuejob from que.", jobArgs.ID)
+		return nil
+	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
+		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
+		// us plenty of headroom to ensure that the parent job will never be found.
+		maxNotFoundRetries, err := safecast.ToInt32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
+		if err != nil {
+			logger.Errorf("Failed to convert BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES to int32. Defaulting to 3. Error: %s", err)
+			return nil
+		}
+
+		if queJob.ErrorCount >= maxNotFoundRetries {
+			logger.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
+				jobArgs.ACOID)
+			// By returning a nil error response, we're signaling to que-go to remove this job from the job queue.
+			return nil
+		}
+
+		logger.Warnf("No job found for ID: %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
+		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
+	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
+		logger.Warnf("Queue job (que_jobs.id) %d already processed for job.id %d. Checking completion status and removing queuejob from que.", queJob.ID, id)
+
+		_, err := worker.CheckJobCompleteAndCleanup(ctx, q.repository, id)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", id))
+		}
+		return nil
+	} else if err != nil {
+		err := errors.Wrap(err, "failed to validate job")
+		logger.Error(err)
 		return err
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
-	go checkIfCancelled(ctx, q.repository, cancel, queJob.ID, 15)
+	go checkIfCancelled(ctx, q.repository, cancel, id, 15)
 
 	if err := q.worker.ProcessJob(ctx, queJob.ID, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")

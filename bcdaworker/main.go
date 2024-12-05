@@ -12,7 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
@@ -96,13 +96,8 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
-		queue := queueing.StartRiver(utils.GetEnvInt("WORKER_POOL_SIZE", 2))
-		defer queue.StopRiver()
-	} else {
-		queue := queueing.StartQue(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
-		defer queue.StopQue()
-	}
+	queue := manager.StartQue(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+	defer queue.StopQue()
 
 	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
 		ticker := time.NewTicker(time.Duration(hInt) * time.Second)

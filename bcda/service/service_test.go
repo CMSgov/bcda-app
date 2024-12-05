@@ -1146,15 +1146,15 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	for _, tt := range tests {
-		expectedPriority := int16(4)
+		expectedPriority := int16(100)
 
 		s.T().Run(string(tt.name), func(t *testing.T) {
 			if isPriorityACO(tt.acoID) {
-				expectedPriority = 1
+				expectedPriority = 10
 			} else if tt.resourceType == "Patient" || tt.resourceType == "Coverage" {
-				expectedPriority = 2
+				expectedPriority = 20
 			} else if len(tt.expSince) > 0 || tt.reqType == RetrieveNewBeneHistData {
-				expectedPriority = 3
+				expectedPriority = 30
 			}
 
 			sinceParam := (len(tt.expSince) > 0) || tt.reqType == RetrieveNewBeneHistData
