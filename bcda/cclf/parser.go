@@ -63,6 +63,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 		parts := filenameRegexp.FindStringSubmatch(path)
 		if len(parts) == v.AttributionFile.MetadataMatches {
 			metadata, err = validateCSVMetadata(parts)
+			log.API.Error("regex for aco (%s): %s", v.Model, v.AttributionFile.NamePattern)
 			if err != nil {
 				return csvFileMetadata{}, err
 			}
@@ -72,7 +73,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	if metadata == (csvFileMetadata{}) {
-		err := fmt.Errorf("invalid filename for attribution file: %s", err)
+		err := fmt.Errorf("invalid filename for attribution file: %s.", err.Error())
 		return metadata, err
 	}
 
