@@ -130,21 +130,21 @@ jobs:
               fi
           fi
 
-          # Verify that we have a record of the CCLF file in the database
+          # Verify that we have a record of the CSV file in the database
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
-            echo "cclf_file query returned zero results or command failed"
+            echo "csv_file query returned zero results or command failed"
             exit 1
           else
             
             # Verify that the correct number of benes were imported into the database.
             CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
               if [[ $? -ne 0 || -z $CSV_BENES ]]; then
-                echo "CCLF beneficiaries query returned zero results or command failed"
+                echo "CSV beneficiaries query returned zero results or command failed"
                 exit 1
               fi
               if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
-                echo "expected 6 beneficiaries imported from file, received $CSV_BENES".
+                echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
                 exit 1
               fi
           fi
