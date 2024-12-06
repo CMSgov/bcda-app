@@ -41,12 +41,13 @@ type CSVParser struct {
 func getACOConfigs() ([]service.ACOConfig, error) {
 	configs, err := service.LoadConfig()
 	if err != nil {
-		log.API.Error("error when fetching configs: %s", err)
+		log.API.Errorf("error when fetching configs: %s", err)
 		return []service.ACOConfig{}, err
 	}
 	if configs == nil {
-		log.API.Error("no configs loaded: %s", err)
+		log.API.Errorf("no configs loaded: %s", err)
 	}
+	log.API.Infof("configs loaded: %s", configs)
 	return configs.ACOConfigs, err
 
 }
@@ -81,7 +82,6 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	if metadata == (csvFileMetadata{}) {
-		err := fmt.Errorf("invalid filename for attribution file: %s.", err.Error())
 		return metadata, err
 	}
 
