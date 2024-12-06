@@ -64,7 +64,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 		if len(parts) == v.AttributionFile.MetadataMatches {
 			metadata, err = validateCSVMetadata(parts)
 			if err != nil {
-				return csvFileMetadata{}, nil
+				return csvFileMetadata{}, err
 			}
 			metadata.acoID = v.Model
 			break
@@ -72,7 +72,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	if metadata == (csvFileMetadata{}) {
-		err := fmt.Errorf("invalid filename for attribution file: %s", path)
+		err := fmt.Errorf("invalid filename for attribution file: %s", err)
 		return metadata, err
 	}
 
