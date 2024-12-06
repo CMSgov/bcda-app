@@ -45,15 +45,17 @@ func NewWorker(db *sql.DB) Worker {
 	return &worker{postgres.NewRepository(db)}
 }
 
-func (w *worker) ValidateJob(ctx context.Context, queJobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
+func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
-	id, err := safecast.ToUint(jobArgs.ID)
+
+	jobID, err := safecast.ToUint(jobArgs.ID)
 	if err != nil {
 		return nil, err
 	}
-	exportJob, err := w.r.GetJobByID(ctx, id)
+
+	exportJob, err := w.r.GetJobByID(ctx, jobID)
 	if goerrors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound
 	} else if err != nil {
@@ -68,7 +70,7 @@ func (w *worker) ValidateJob(ctx context.Context, queJobID int64, jobArgs models
 		return nil, ErrParentJobFailed
 	}
 
-	_, err = w.r.GetJobKey(ctx, id, queJobID)
+	_, err = w.r.GetJobKey(ctx, jobID, qjobID)
 	if goerrors.Is(err, repository.ErrJobKeyNotFound) {
 		// No job key exists, which means this queue job needs to be processed.
 		return exportJob, nil

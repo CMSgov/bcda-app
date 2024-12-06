@@ -12,7 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing/mocks"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -38,7 +38,7 @@ func (s *AlrTestSuite) SetupSuite() {
 }
 
 func (s *AlrTestSuite) TestAlrRequest() {
-	enqueuer := &queueing.MockEnqueuer{}
+	enqueuer := mockEnq.NewEnqueuer(s.T())
 	enqueuer.On("AddAlrJob", mock.Anything, mock.Anything).Return(nil)
 
 	resourceMap := map[string]service.DataType{

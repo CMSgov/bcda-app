@@ -169,14 +169,14 @@ func (r *Repository) GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int,
 	return count, nil
 }
 
-func (r *Repository) GetJobKey(ctx context.Context, jobID uint, queJobID int64) (*models.JobKey, error) {
+func (r *Repository) GetJobKey(ctx context.Context, jobID uint, qjobID int64) (*models.JobKey, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id").From("job_keys")
-	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("que_job_id", queJobID)))
+	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("que_job_id", qjobID)))
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 
-	jk := &models.JobKey{JobID: jobID, QueJobID: &queJobID}
+	jk := &models.JobKey{JobID: jobID, QueJobID: &qjobID}
 
 	if err := row.Scan(&jk.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
