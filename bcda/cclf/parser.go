@@ -72,7 +72,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	if metadata == (csvFileMetadata{}) {
-		err := fmt.Errorf("invalid filename for attribution file.")
+		err := fmt.Errorf("invalid filename for attribution file: %s", path)
 		return metadata, err
 	}
 
