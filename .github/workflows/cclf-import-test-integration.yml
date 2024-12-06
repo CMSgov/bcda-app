@@ -33,7 +33,8 @@ jobs:
       run:
         working-directory: bcda
     outputs:
-      filename: ${{ steps.createfile.outputs.FILENAME }}
+      cclffilename: ${{ steps.createfile.outputs.cclffilename }}
+      csvfilename: ${{ steps.createfile.outputs.csvfilename }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -53,9 +54,15 @@ jobs:
           year=$(date +'%y')
           date=$(date +'%y%m%d')
           time=$(date +'%H%M%S')
+
           fname=T.BCD.A0001.ZCY24.D${date}.T${time}1
           cclf8_fname=T.BCD.A0001.ZC8Y24.D${date}.T${time}1
-          echo "FILENAME=$cclf8_fname" >> "$GITHUB_OUTPUT"
+          echo "CCLFFILENAME=$cclf8_fname" >> "$GITHUB_OUTPUT"
+
+          csvname=T.PCPB.M${year}11.D${date}.T${time}1
+          echo "CSVFILENAME=$csvname" >> "$GITHUB_OUTPUT"
+
+          mv ../shared_files/cclf/archives/csv/P.PCPB.M2411.D181120.T1000000 ${csvname}
 
           unzip ../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000
 
@@ -69,6 +76,9 @@ jobs:
 
           aws s3 cp --no-progress $fname \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/$fname
+
+          aws s3 cp --no-progress ${csvname} \
+            s3://bfd-test-eft/bfdeft01/bcda/in/test/${csvname}
 
   verify:
     needs: trigger
@@ -93,7 +103,8 @@ jobs:
             CONNECTION_INFO=/bcda/test/api/DATABASE_URL
       - name: Verify CCLF file was ingested
         env:
-          FILENAME: ${{needs.trigger.outputs.filename}}
+          CCLFFILENAME: ${{needs.trigger.outputs.cclffilename}}
+          CSVFILENAME: ${{needs.trigger.outputs.csvfilename}}
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
@@ -101,7 +112,7 @@ jobs:
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
 
           # Verify that we have a record of the CCLF file in the database
-          CCLF_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
+          CCLF_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CCLFFILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $CCLF_FILE ]]; then
             echo "cclf_file query returned zero results or command failed"
             exit 1
@@ -118,3 +129,24 @@ jobs:
                 exit 1
               fi
           fi
+
+          # Verify that we have a record of the CCLF file in the database
+          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
+          if [[ $? -ne 0 || -z $CSV_FILE ]]; then
+            echo "cclf_file query returned zero results or command failed"
+            exit 1
+          else
+            
+            # Verify that the correct number of benes were imported into the database.
+            CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
+              if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+                echo "CCLF beneficiaries query returned zero results or command failed"
+                exit 1
+              fi
+              if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
+                echo "expected 6 beneficiaries imported from file, received $CSV_BENES".
+                exit 1
+              fi
+          fi
+
+
