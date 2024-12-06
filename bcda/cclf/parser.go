@@ -57,6 +57,9 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	if err != nil {
 		return csvFileMetadata{}, err
 	}
+	if acos == nil {
+		log.API.Error("no aco configs present!")
+	}
 
 	for _, v := range acos {
 		filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
