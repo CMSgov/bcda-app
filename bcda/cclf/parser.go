@@ -60,11 +60,10 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 
 	acos, err := getACOConfigs()
 	if err != nil {
-
-		return csvFileMetadata{}, err
+		return csvFileMetadata{}, errors.New("Failed to load ACO configs")
 	}
 	if acos == nil {
-		log.API.Error("no aco configs present!")
+		return csvFileMetadata{}, errors.New("No ACO configs found.")
 	}
 
 	for _, v := range acos {
@@ -82,7 +81,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	if metadata == (csvFileMetadata{}) {
-		return metadata, err
+		return metadata, errors.New("Invalid filename for csv attribution file")
 	}
 
 	metadata.name = path
