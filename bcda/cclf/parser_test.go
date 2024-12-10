@@ -109,6 +109,13 @@ func TestValidateCCLFFileName(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
+		{"valid csv test filename", "T.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+			env:       "test",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
 		{"invalid csv - file date too old", "P.PCPB.M2411.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
 		{"invalid csv - file date in the future", "P.PCPB.M2411." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
 	}
