@@ -95,7 +95,7 @@ func init() {
 }
 
 func LoadLambdaEnvVars(env string) {
-	envPath := fmt.Sprintf("./configs/%s.yml", env)
+	envPath := fmt.Sprintf("./%s.yml", env)
 	var configPaths []string
 	configPaths = append(configPaths, envPath)
 	envVars, state = loadConfigs(configPaths...)
