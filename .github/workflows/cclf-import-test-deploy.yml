@@ -23,7 +23,7 @@ jobs:
         run: |
           cp -r ../conf/configs ./lambda/cclf
           go build -o bin/bootstrap ./lambda/cclf/main.go
-          zip -j function.zip bin/bootstrap
+          zip -j function.zip bin/bootstrap ./lambda/cclf/configs
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}

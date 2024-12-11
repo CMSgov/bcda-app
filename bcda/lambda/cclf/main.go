@@ -94,21 +94,12 @@ func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 			},
 		},
 	}
-
 	logger.Info("bcda lambda api config: ", os.Getenv("BCDA_API_CONFIG_PATH"))
 	wd, _ := os.Getwd()
 	logger.Infof("Working directory: %s", wd)
 	dirs, _ := os.ReadDir("./")
 	for _, v := range dirs {
-		logger.Infof("dir: %s, file: %s", (v.Name()))
-	}
-	dirs, _ = os.ReadDir("../")
-	for _, v := range dirs {
-		logger.Infof("dir: ../, file: %s", (v.Name()))
-	}
-	dirs, _ = os.ReadDir("../../")
-	for _, v := range dirs {
-		logger.Infof("dir: ../.., file: %s", (v.Name()))
+		logger.Infof("dir: %s, file: %s", wd, (v.Name()))
 	}
 	err := importer.ImportCSV(s3ImportPath)
 
@@ -139,7 +130,6 @@ func loadBfdS3Params() (string, error) {
 }
 
 func loadBCDAParams() error {
-	// loadlambdconfigs and update  the path
 	env := conf.GetEnv("ENV")
 	conf.LoadLambdaEnvVars(env)
 
