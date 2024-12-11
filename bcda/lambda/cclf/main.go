@@ -56,10 +56,10 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			if err != nil {
 				return "", err
 			}
-			// err = loadBCDAParams()
-			// if err != nil {
-			// 	return "", err
-			// }
+			err = loadBCDAParams()
+			if err != nil {
+				return "", err
+			}
 
 			// Send the entire filepath into the CCLF Importer so we are only
 			// importing the one file that was sent in the trigger.
@@ -98,9 +98,17 @@ func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	logger.Info("bcda lambda api config: ", os.Getenv("BCDA_API_CONFIG_PATH"))
 	wd, _ := os.Getwd()
 	logger.Infof("Working directory: %s", wd)
-	dirs, _ := os.ReadDir(wd)
+	dirs, _ := os.ReadDir("./")
 	for _, v := range dirs {
-		logger.Infof(v.Name())
+		logger.Infof("dir: %s, file: %s", (v.Name()))
+	}
+	dirs, _ = os.ReadDir("../")
+	for _, v := range dirs {
+		logger.Infof("dir: ../, file: %s", (v.Name()))
+	}
+	dirs, _ = os.ReadDir("../../")
+	for _, v := range dirs {
+		logger.Infof("dir: ../.., file: %s", (v.Name()))
 	}
 	err := importer.ImportCSV(s3ImportPath)
 
@@ -130,23 +138,13 @@ func loadBfdS3Params() (string, error) {
 	return param, nil
 }
 
-// func loadBCDAParams() error {
-// 	// loadlambdconfigs and update  the path
-// 	os.Getwd()
-// 	env := conf.GetEnv("ENV")
-// 	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
-// 	if err != nil {
-// 		return err
-// 	}
+func loadBCDAParams() error {
+	// loadlambdconfigs and update  the path
+	env := conf.GetEnv("ENV")
+	conf.LoadLambdaEnvVars(env)
 
-// 	param, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/", env))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	os.Setenv("BCDA_API_CONFIG_PATH", param)
-
-// 	return nil
-// }
+	return nil
+}
 
 func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
