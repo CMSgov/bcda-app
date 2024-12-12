@@ -38,10 +38,18 @@ type LocalFileProcessorTestSuite struct {
 }
 
 func (s *LocalFileProcessorTestSuite) SetupTest() {
+	setupTestHelper(s)
+}
+
+func setupTestHelper(s *LocalFileProcessorTestSuite) {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
 func (s *LocalFileProcessorTestSuite) SetupSuite() {
+	setupSuiteHelper(s)
+}
+
+func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 	dir, err := os.MkdirTemp("", "*")
@@ -73,10 +81,18 @@ func (s *LocalFileProcessorTestSuite) SetupSuite() {
 }
 
 func (s *LocalFileProcessorTestSuite) TearDownTest() {
+	tearDownTestHelper(s)
+}
+
+func tearDownTestHelper(s *LocalFileProcessorTestSuite) {
 	s.cleanup()
 }
 
 func (s *LocalFileProcessorTestSuite) TearDownSuite() {
+	tearDownSuiteHelper(s)
+}
+
+func tearDownSuiteHelper(s *LocalFileProcessorTestSuite) {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.cclfRefDate)
 	os.RemoveAll(s.pendingDeletionDir)
 }
@@ -401,22 +417,30 @@ func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
 
 	tests := []struct {
 		name         string
-		filepath     string
+		filename     string
 		deliverytime time.Time
 		imported     bool
 		delFiles     int
 		baseFiles    int
 	}{
-		{"Not imported and expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), expiredTime, false, 1, 1},
-		{"Not imported and not expired", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), false, 1, 1},
-		{"Successfully imported", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), time.Now(), true, 1, 1},
+		{"Not imported and expired", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", expiredTime, false, 1, 2},
+		{"Not imported and not expired", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", time.Now(), false, 0, 3},
+		{"Successfully imported", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", time.Now(), true, 1, 2},
 	}
 
+	runcount := 0
+
 	for _, test := range tests {
+
 		s.T().Run(test.name, func(tt *testing.T) {
+			if runcount != 0 {
+				setupSuiteHelper(s)
+				setupTestHelper(s)
+			}
+
 			file.metadata.deliveryDate = test.deliverytime
 			file.imported = test.imported
-			file.filepath = test.filepath
+			file.filepath = filepath.Join(s.basePath, test.filename)
 			err := s.csvProcessor.CleanUpCSV(file)
 			assert.Nil(s.T(), err)
 			delDir, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
@@ -432,10 +456,14 @@ func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
 				s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
 			}
 			assert.Len(s.T(), baseDir, test.baseFiles)
-			if test.baseFiles == 2 {
-				assert.Equal(s.T(), file.metadata.name, baseDir[0].Name())
+			runcount++
+			tearDownTestHelper(s)
+			if runcount < 3 {
+				tearDownSuiteHelper(s)
 			}
+
 		})
+
 	}
 
 }
