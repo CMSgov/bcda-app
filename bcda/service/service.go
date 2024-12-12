@@ -562,16 +562,17 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
 // Priority is based on the request parameters that the job is executing on.
+// Note: River queue library requires a priority between 1 and 4 (inclusive)
 func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	var priority int16
 	if isPriorityACO(acoID) {
-		priority = int16(10) // priority level for jobs for synthetic ACOs that are used for smoke testing
+		priority = int16(1) // priority level for jobs for synthetic ACOs that are used for smoke testing
 	} else if resourceType == "Patient" || resourceType == "Coverage" {
-		priority = int16(20) // priority level for jobs that only request smaller resources
+		priority = int16(2) // priority level for jobs that only request smaller resources
 	} else if sinceParam {
-		priority = int16(30) // priority level for jobs that only request data for a limited timeframe
+		priority = int16(3) // priority level for jobs that only request data for a limited timeframe
 	} else {
-		priority = int16(100) // default priority level for jobs
+		priority = int16(4) // default priority level for jobs
 	}
 	return priority
 }
