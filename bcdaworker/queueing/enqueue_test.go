@@ -107,7 +107,7 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))
 
 	// Use river test helper to assert job was inserted
-	checkJob := rivertest.RequireInserted(ctx, t, riverpgxv5.New(database.Pgxv5Connection), jobArgs, nil)
+	checkJob := rivertest.RequireInserted(ctx, t, riverpgxv5.New(database.Pgxv5Pool), jobArgs, nil)
 	assert.NotNil(t, checkJob)
 
 	// Also Verify that we've inserted the river job as expected via DB queries

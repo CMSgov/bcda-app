@@ -20,7 +20,7 @@ import (
 var (
 	Connection      *sql.DB
 	QueueConnection *pgx.ConnPool
-	Pgxv5Connection *pgxv5Pool.Pool
+	Pgxv5Pool       *pgxv5Pool.Pool
 )
 
 func init() {
@@ -40,16 +40,19 @@ func init() {
 		logrus.Fatalf("Failed to create queue %s", err.Error())
 	}
 
-	Pgxv5Connection, err = createPgxv5DB(cfg)
+	Pgxv5Pool, err = createPgxv5DB(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create pgxv5 DB connection %s", err.Error())
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	startHealthCheck(
-		context.Background(),
+		ctx,
 		Connection,
 		QueueConnection,
-		Pgxv5Connection,
+		Pgxv5Pool,
 		time.Duration(cfg.HealthCheckSec)*time.Second,
 	)
 }
@@ -106,7 +109,7 @@ func createQueue(cfg *Config) (*pgx.ConnPool, error) {
 func createPgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 	ctx := context.Background()
 
-	pgxv5PoolConfig, err := pgxv5Pool.ParseConfig((cfg.DatabaseURL))
+	pgxv5PoolConfig, err := pgxv5Pool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +120,9 @@ func createPgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 	}
 
 	pgxv5PoolConfig.MaxConns = maxConns
-	pgxv5PoolConfig.MaxConnIdleTime = time.Duration(cfg.ConnMaxIdleTime)
-	pgxv5PoolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetimeMin)
-	pgxv5PoolConfig.HealthCheckPeriod = time.Duration(cfg.HealthCheckSec)
+	pgxv5PoolConfig.MaxConnIdleTime = time.Duration(cfg.ConnMaxIdleTime) * time.Second
+	pgxv5PoolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetimeMin) * time.Minute
+	pgxv5PoolConfig.HealthCheckPeriod = time.Duration(cfg.HealthCheckSec) * time.Second
 
 	dbPool, err := pgxv5Pool.NewWithConfig(ctx, pgxv5PoolConfig)
 	if err != nil {

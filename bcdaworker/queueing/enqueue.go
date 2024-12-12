@@ -26,7 +26,7 @@ func NewEnqueuer() Enqueuer {
 		workers := river.NewWorkers()
 		river.AddWorker(workers, &JobWorker{})
 
-		riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Connection), &river.Config{
+		riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 			Workers: workers,
 		})
 		if err != nil {

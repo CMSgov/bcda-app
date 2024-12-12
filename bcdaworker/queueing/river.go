@@ -30,7 +30,7 @@ func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{})
 
-	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Connection), &river.Config{
+	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
@@ -58,7 +58,7 @@ func StartRiver(numWorkers int) *queue {
 	return q
 }
 
-// River requires a slog.Logger for logging
+// River requires a slog.Logger for logging, this function converts logrus to slog
 // Much of this function is pulled from logger.go
 func getSlogLogger() *slog.Logger {
 	logrusLogger := logrus.New()
