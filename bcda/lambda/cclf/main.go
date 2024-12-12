@@ -14,6 +14,7 @@ import (
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -55,6 +56,10 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			if err != nil {
 				return "", err
 			}
+			err = loadBCDAParams()
+			if err != nil {
+				return "", err
+			}
 
 			// Send the entire filepath into the CCLF Importer so we are only
 			// importing the one file that was sent in the trigger.
@@ -79,7 +84,8 @@ func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	importer := cclf.CSVImporter{
-		Logger: logger,
+		Logger:   logger,
+		Database: database.Connection,
 		FileProcessor: &cclf.S3FileProcessor{
 			Handler: optout.S3FileHandler{
 				Logger:        logger,
@@ -88,7 +94,6 @@ func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 			},
 		},
 	}
-
 	err := importer.ImportCSV(s3ImportPath)
 
 	if err != nil {
@@ -115,6 +120,12 @@ func loadBfdS3Params() (string, error) {
 	}
 
 	return param, nil
+}
+
+func loadBCDAParams() error {
+	env := conf.GetEnv("ENV")
+	conf.LoadLambdaEnvVars(env)
+	return nil
 }
 
 func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {

@@ -66,10 +66,10 @@ func TestGetCSVMetadata(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
-		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -104,6 +104,13 @@ func TestValidateCCLFFileName(t *testing.T) {
 	}{
 		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
 			env:       "production",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"valid csv test filename", "T.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+			env:       "test",
 			timestamp: validTime,
 			perfYear:  24,
 			fileType:  models.FileTypeDefault,
