@@ -120,7 +120,11 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 		// Ensure that we have compression enabled. This allows the transport to request for gzip content
 		// and handle the decompression transparently.
 		// See: https://golang.org/src/net/http/transport.go?s=3396:10950#L182 for more information
-		DisableCompression: false,
+		DisableCompression:  false,
+		MaxIdleConns:        100,              // default value
+		MaxIdleConnsPerHost: 100,              // Upped from 2 to 100 to match the default value of MaxIdleConns
+		IdleConnTimeout:     90 * time.Second, // default value
+		MaxConnsPerHost:     0,                // default value (0 means no limit)
 	}
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("BB_TIMEOUT_MS")); err != nil {
