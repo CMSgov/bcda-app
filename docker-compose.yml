@@ -1,14 +1,14 @@
 ---
 services:
   queue:
-    image: postgres:15
+    image: postgres:16
     environment:
       - POSTGRES_DB=bcda_queue
       - POSTGRES_PASSWORD=toor
     ports:
       - "5433:5432"
   db:
-    image: postgres:15
+    image: postgres:16
     environment:
       - POSTGRES_DB=bcda
       - POSTGRES_PASSWORD=toor
