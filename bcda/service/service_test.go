@@ -129,7 +129,7 @@ func TestGetMaxBeneCount(t *testing.T) {
 		expVal   int
 		setup    func(resourceType string, val int)
 	}{
-		{"DefaultEOB", "ExplanationOfBenefit", 200, clearer},
+		{"DefaultEOB", "ExplanationOfBenefit", 50, clearer},
 		{"MaxEOB", "ExplanationOfBenefit", 5, setter},
 		{"DefaultPatient", "Patient", 5000, clearer},
 		{"MaxPatient", "Patient", 10, setter},

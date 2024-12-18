@@ -258,7 +258,6 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 }
 
 func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
-
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
 	if !since.IsZero() {
@@ -271,7 +270,7 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 			return nil, err
 		}
 
-		var rowCount = 0
+		rowCount := 0
 		jobIDs := make([]string, 0, maxBeneficiaries)
 		for _, b := range beneficiaries {
 			rowCount++
@@ -315,7 +314,6 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 
 								jobs = append(jobs, &enqueueArgs)
 							}
-
 						} else {
 							// This should never be possible, would have returned earlier
 							return nil, errors.New("Invalid resource type: " + rt)
@@ -337,10 +335,7 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 // Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
 // split between existing beneficiaries and newly-attributed beneficiaries.
 func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
-
-	var (
-		cutoffTime time.Time
-	)
+	var cutoffTime time.Time
 
 	// only set cutoffTime if there is no attributionDate set
 	if s.stdCutoffDuration > 0 && conditions.attributionDate.IsZero() {
@@ -359,7 +354,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	if conditions.fileType == models.FileTypeRunout {
 		performanceYear -= 1
 	}
-	//Note, we only compare performanceYear for the new CCLF file since the old file will only be used for identifying new ones.
+	// Note, we only compare performanceYear for the new CCLF file since the old file will only be used for identifying new ones.
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
@@ -451,9 +446,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 }
 
 func (s *service) getBeneficiaries(ctx context.Context, conditions RequestConditions) ([]*models.CCLFBeneficiary, error) {
-	var (
-		cutoffTime time.Time
-	)
+	var cutoffTime time.Time
 
 	// only set a cutoffTime if there is no attributionDate set
 	if conditions.attributionDate.IsZero() {
@@ -541,7 +534,6 @@ func (s *service) timeConstraints(ctx context.Context, cmsID string) (timeConstr
 
 // setClaimsDate computes the claims window to apply on the args
 func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestConditions) {
-
 	// If the caller made a request for runout data
 	// it takes precedence over any other claims date
 	// that may be applied
@@ -592,18 +584,17 @@ func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
 // environment variable.
 func isPriorityACO(acoID string) bool {
 	if priorityACOPattern := conf.GetEnv("PRIORITY_ACO_REG_EX"); priorityACOPattern != "" {
-		var priorityACORegex = regexp.MustCompile(priorityACOPattern)
+		priorityACORegex := regexp.MustCompile(priorityACOPattern)
 		if priorityACORegex.MatchString(acoID) {
 			return true
 		}
 	}
 	return false
-
 }
 
 func getMaxBeneCount(requestType string) (int, error) {
 	const (
-		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT           = 200
+		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT           = 50
 		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT       = 5000
 		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT      = 4000
 		BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT         = 4000
