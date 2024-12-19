@@ -138,9 +138,9 @@ func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueAr
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
-	go checkIfCancelled(ctx, repo, cancel, jobID, 15)
+	go checkIfCancelled(ctx, repo, cancel, job.ID, 15)
 
-	if err := workerInstance.ProcessJob(ctx, jobID, *exportJob, job.Args); err != nil {
+	if err := workerInstance.ProcessJob(ctx, job.ID, *exportJob, job.Args); err != nil {
 		err := errors.Wrap(err, "failed to process job")
 		logger.Error(err)
 		return err
