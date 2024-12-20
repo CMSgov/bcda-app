@@ -99,13 +99,18 @@ type JobWorker struct {
 	river.WorkerDefaults[models.JobEnqueueArgs]
 }
 
-func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueArgs]) error {
+func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueArgs]) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	jobID, err := safecast.ToInt64(rjob.Args.ID)
+	if err != nil {
+		return err
+	}
+
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, _ = log.SetCtxLogger(ctx, "job_id", job.Args.ID)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", job.Args.TransactionID)
+	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
 
 	// TODO: use pgxv5 when available
 	mainDB := database.Connection
@@ -114,19 +119,14 @@ func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueAr
 
 	defer updateJobQueueCountCloudwatchMetric(mainDB, logger)
 
-	jobID, err := safecast.ToInt64(job.Args.ID)
-	if err != nil {
-		return err
-	}
-
 	exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
 		WorkerInstance: workerInstance,
 		Logger:         logger,
 		Repository:     repo,
 		JobID:          jobID,
-		QJobID:         job.ID,
-		Args:           job.Args,
-		ErrorCount:     len(job.Errors),
+		QJobID:         rjob.ID,
+		Args:           rjob.Args,
+		ErrorCount:     len(rjob.Errors),
 	})
 	if ackJob {
 		// End logic here, basically acknowledge and return which will remove it from the queue.
@@ -138,9 +138,9 @@ func (w *JobWorker) Work(ctx context.Context, job *river.Job[models.JobEnqueueAr
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
-	go checkIfCancelled(ctx, repo, cancel, job.ID, 15)
+	go checkIfCancelled(ctx, repo, cancel, jobID, 15)
 
-	if err := workerInstance.ProcessJob(ctx, job.ID, *exportJob, job.Args); err != nil {
+	if err := workerInstance.ProcessJob(ctx, rjob.ID, *exportJob, rjob.Args); err != nil {
 		err := errors.Wrap(err, "failed to process job")
 		logger.Error(err)
 		return err

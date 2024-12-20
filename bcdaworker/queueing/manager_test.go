@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestProcessJobFailedValidation(t *testing.T) {
+func TestProcessJobFailedValidation_Integration(t *testing.T) {
 	tests := []struct {
 		name        string
 		validateErr error
@@ -87,7 +87,6 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestCheckIfCancelled(t *testing.T) {

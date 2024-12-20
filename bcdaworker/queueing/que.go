@@ -97,14 +97,14 @@ func (q *queue) processJob(queJob *que.Job) error {
 		return nil
 	}
 
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, _ = log.SetCtxLogger(ctx, "job_id", queJob.ID)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
-
 	jobID, err := safecast.ToInt64(jobArgs.ID)
 	if err != nil {
 		return err
 	}
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 
 	exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
 		WorkerInstance: q.worker,
@@ -125,7 +125,7 @@ func (q *queue) processJob(queJob *que.Job) error {
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
-	go checkIfCancelled(ctx, q.repository, cancel, queJob.ID, 15)
+	go checkIfCancelled(ctx, q.repository, cancel, jobID, 15)
 
 	if err := q.worker.ProcessJob(ctx, queJob.ID, *exportJob, jobArgs); err != nil {
 		err := errors.Wrap(err, "failed to process job")

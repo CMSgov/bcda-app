@@ -127,7 +127,7 @@ const (
 )
 
 type JobEnqueueArgs struct {
-	ID              int
+	ID              int // parent Job ID
 	ACOID           string
 	CMSID           string
 	BeneficiaryIDs  []string
