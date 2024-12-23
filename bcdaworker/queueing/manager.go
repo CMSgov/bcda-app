@@ -76,7 +76,7 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 		maxNotFoundRetries, err := safecast.ToInt(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
 		if err != nil {
 			cfg.Logger.Errorf("Failed to convert BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES to int32. Defaulting to 3. Error: %s", err)
-			return nil, err, false
+			return nil, err, true
 		}
 
 		if cfg.ErrorCount >= maxNotFoundRetries {
@@ -93,7 +93,7 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 		u, err := safecast.ToUint(cfg.JobID)
 		if err != nil {
 			cfg.Logger.Errorf("Failed to convert Job ID to uint. Error: %s", err)
-			return nil, err, false
+			return nil, err, true
 		}
 
 		_, err = worker.CheckJobCompleteAndCleanup(ctx, cfg.Repository, u)
