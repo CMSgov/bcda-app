@@ -121,8 +121,13 @@ type CCLFBeneficiary struct {
 	BlueButtonID string
 }
 
+const (
+	QUE_PROCESS_JOB = "ProcessJob"
+	ALR_JOB         = "AlrJob"
+)
+
 type JobEnqueueArgs struct {
-	ID              int
+	ID              int // parent Job ID
 	ACOID           string
 	CMSID           string
 	BeneficiaryIDs  []string
@@ -136,4 +141,9 @@ type JobEnqueueArgs struct {
 		UpperBound time.Time
 	}
 	DataType string
+}
+
+// Needed by River (queue library)
+func (jobargs JobEnqueueArgs) Kind() string {
+	return QUE_PROCESS_JOB
 }

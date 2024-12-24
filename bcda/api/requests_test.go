@@ -18,6 +18,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
+	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing/mocks"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -28,7 +30,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -117,8 +118,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
-		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionOne},
-		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, apiVersionTwo},
+		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne},
+		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo},
 		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
 		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
 	}
@@ -545,9 +546,9 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	mockEnq := &queueing.MockEnqueuer{}
-	mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
-	h.Enq = mockEnq
+	enqueuer := mockEnq.NewEnqueuer(s.T())
+	enqueuer.On("AddJob", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
+	h.Enq = enqueuer
 	h.supportedDataTypes = dataTypeMap
 
 	client.SetLogger(log.API) // Set logger so we don't get errors later
@@ -650,10 +651,6 @@ func (s *RequestsTestSuite) TestRequests() {
 
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := &queueing.MockEnqueuer{}
-	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
-	h.Enq = enqueuer
 	mockSvc := service.MockService{}
 
 	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
@@ -1049,4 +1046,15 @@ func (s *RequestsTestSuite) TestValidateResources() {
 	}, fhirPath, apiVersion, s.db)
 	err := h.validateResources([]string{"Vegetable"}, "1234")
 	assert.Contains(s.T(), err.Error(), "invalid resource type")
+}
+
+type CCLFNotFoundOperationOutcomeError struct {
+	FileNumber int
+	CMSID      string
+	FileType   models.CCLFFileType
+	CutoffTime time.Time
+}
+
+func (e CCLFNotFoundOperationOutcomeError) Error() string {
+	return "No up-to-date attribution information is available for Group"
 }

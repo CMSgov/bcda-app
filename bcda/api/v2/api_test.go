@@ -23,7 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
@@ -69,11 +68,6 @@ func (s *APITestSuite) SetupSuite() {
 	})
 
 	s.db = database.Connection
-
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := &queueing.MockEnqueuer{}
-	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
-	h.Enq = enqueuer
 
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BBAPI)

@@ -129,7 +129,7 @@ func TestGetMaxBeneCount(t *testing.T) {
 		expVal   int
 		setup    func(resourceType string, val int)
 	}{
-		{"DefaultEOB", "ExplanationOfBenefit", 200, clearer},
+		{"DefaultEOB", "ExplanationOfBenefit", 50, clearer},
 		{"MaxEOB", "ExplanationOfBenefit", 5, setter},
 		{"DefaultPatient", "Patient", 5000, clearer},
 		{"MaxPatient", "Patient", 10, setter},
@@ -1146,15 +1146,15 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	for _, tt := range tests {
-		expectedPriority := int16(100)
+		expectedPriority := int16(4)
 
 		s.T().Run(string(tt.name), func(t *testing.T) {
 			if isPriorityACO(tt.acoID) {
-				expectedPriority = 10
+				expectedPriority = 1
 			} else if tt.resourceType == "Patient" || tt.resourceType == "Coverage" {
-				expectedPriority = 20
+				expectedPriority = 2
 			} else if len(tt.expSince) > 0 || tt.reqType == RetrieveNewBeneHistData {
-				expectedPriority = 30
+				expectedPriority = 3
 			}
 
 			sinceParam := (len(tt.expSince) > 0) || tt.reqType == RetrieveNewBeneHistData
