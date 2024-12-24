@@ -187,16 +187,15 @@ func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
 	if err != nil {
 		processor.Handler.Logger.Error("Failed to clean up file %s\n", file.filepath)
 		return err
-
 	}
 
 	processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", file.filepath)
-	return err
+	return nil
 }
 
 func (processor *S3FileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
 	if !optout.IsForCurrentEnv(filepath) {
-		processor.Handler.Infof("Skipping file for different environment: %s/%s", filepath)
+		processor.Handler.Infof("Skipping file for different environment: %s", filepath)
 		return nil, nil, &ers.AttributionFileMismatchedEnv{}
 	}
 	byte_arr, err := processor.Handler.OpenFileBytes(filepath)

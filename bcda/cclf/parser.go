@@ -30,8 +30,8 @@ func getCMSID(name string) (string, error) {
 func CheckIfAttributionCSVFile(filePath string) bool {
 	pattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
 	filenameRegexp := regexp.MustCompile(pattern)
-	found := filenameRegexp.Match([]byte(filePath))
-	return found
+	return filenameRegexp.MatchString(filePath)
+
 }
 
 type CSVParser struct {

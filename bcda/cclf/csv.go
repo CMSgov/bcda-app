@@ -75,13 +75,15 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 	file.metadata = metadata
 
 	data, _, err := importer.FileProcessor.LoadCSV(filepath)
-	if errors.Is(err, &ers.AttributionFileMismatchedEnv{}) {
-		importer.Logger.WithFields(logrus.Fields{"file": filepath}).Info(err)
-		return nil
-	}
 	if err != nil {
-		return err
+		if errors.Is(err, &ers.AttributionFileMismatchedEnv{}) {
+			importer.Logger.WithFields(logrus.Fields{"file": filepath}).Info(err)
+			return nil
+		} else {
+			return err
+		}
 	}
+
 	file.data = data
 
 	err = importer.ProcessCSV(file)
@@ -128,7 +130,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	defer func() {
 		if err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
-				importer.Logger.Errorf("Failed to rollback transaction: %s", err.Error())
+				importer.Logger.Errorf("Failed to rollback transaction: %s, %s", err.Error(), err1.Error())
 			}
 			return
 		}

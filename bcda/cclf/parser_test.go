@@ -84,7 +84,7 @@ func TestGetCSVMetadata(t *testing.T) {
 	}
 }
 
-func TestValidateCCLFFileName(t *testing.T) {
+func TestValidateCSVFileName(t *testing.T) {
 	start := time.Now()
 	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
 		time.UTC)
