@@ -1215,7 +1215,7 @@
                           "var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
                           "",
                           "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping due to previous 500 (see Valid Token / Group / /runout (EOB Resource) / Start Group export).\");",
+                          "    console.log(\"EOY mode is enabled - Skipping due to previous 500, see above test.\");",
                           "    return;",
                           "} else {",
                           "    const retryDelay = 5000;",
