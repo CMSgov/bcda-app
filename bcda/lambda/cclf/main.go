@@ -14,6 +14,7 @@ import (
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -30,11 +31,11 @@ func main() {
 			fmt.Println(res)
 		}
 	} else {
-		lambda.Start(cclfImportHandler)
+		lambda.Start(attributionImportHandler)
 	}
 }
 
-func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
+func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -55,17 +56,54 @@ func cclfImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, e
 			if err != nil {
 				return "", err
 			}
+			err = loadBCDAParams()
+			if err != nil {
+				return "", err
+			}
 
 			// Send the entire filepath into the CCLF Importer so we are only
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
-			return handleCclfImport(s3AssumeRoleArn, filepath)
+			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
+				return handleCSVImport(s3AssumeRoleArn, filepath)
+			} else {
+				return handleCclfImport(s3AssumeRoleArn, filepath)
+			}
 		}
 	}
 
 	logger.Info("No ObjectCreated events found, skipping safely.")
 	return "", nil
+}
+
+func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
+	env := conf.GetEnv("ENV")
+	appName := conf.GetEnv("APP_NAME")
+	logger := configureLogger(env, appName)
+	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+
+	importer := cclf.CSVImporter{
+		Logger:   logger,
+		Database: database.Connection,
+		FileProcessor: &cclf.S3FileProcessor{
+			Handler: optout.S3FileHandler{
+				Logger:        logger,
+				Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
+				AssumeRoleArn: s3AssumeRoleArn,
+			},
+		},
+	}
+	err := importer.ImportCSV(s3ImportPath)
+
+	if err != nil {
+		logger.Error("error returned from ImportCSV: ", err)
+		return "", err
+	}
+
+	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v.   See logs for more details.", s3ImportPath)
+	logger.Info(result)
+	return result, nil
 }
 
 func loadBfdS3Params() (string, error) {
@@ -82,6 +120,12 @@ func loadBfdS3Params() (string, error) {
 	}
 
 	return param, nil
+}
+
+func loadBCDAParams() error {
+	env := conf.GetEnv("ENV")
+	conf.LoadLambdaEnvVars(env)
+	return nil
 }
 
 func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {

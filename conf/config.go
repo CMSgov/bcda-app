@@ -94,6 +94,14 @@ func init() {
 
 }
 
+func LoadLambdaEnvVars(env string) {
+	envPath := fmt.Sprintf("./%s.yml", env)
+	var configPaths []string
+	configPaths = append(configPaths, envPath)
+	envVars, state = loadConfigs(configPaths...)
+
+}
+
 // This is the private helper function that sets up viper. This function is
 // called by the init() function only once during initialization of the package.
 func loadConfigs(locations ...string) (config, configStatus) {

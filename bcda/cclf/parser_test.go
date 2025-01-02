@@ -2,12 +2,14 @@ package cclf
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,6 +38,107 @@ func TestGetCMSID(t *testing.T) {
 			assert.Equal(sub, tt.cmsID, cmsID)
 		})
 	}
+}
+
+func TestGetCSVMetadata(t *testing.T) {
+	start := time.Now()
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
+		time.UTC)
+
+	dateFormat := "D060102.T1504050"
+
+	validTime := startUTC.Add(-24 * time.Hour)
+	fileDateTime := validTime.Format(dateFormat)
+
+	tests := []struct {
+		name     string
+		fileName string
+		errMsg   string
+		metadata csvFileMetadata
+	}{
+		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, "", csvFileMetadata{
+			env:       "production",
+			name:      "P.PCPB.M2411." + fileDateTime,
+			cclfNum:   8,
+			acoID:     "TCOCMD",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata, err := GetCSVMetadata(tt.fileName)
+			if tt.errMsg == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Contains(t, err.Error(), tt.errMsg)
+			}
+			assert.Equal(t, tt.metadata, metadata)
+		})
+	}
+}
+
+func TestValidateCSVFileName(t *testing.T) {
+	start := time.Now()
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
+		time.UTC)
+
+	dateFormat := "D060102.T1504050"
+
+	validTime := startUTC.Add(-24 * time.Hour)
+	fileDateTime := validTime.Format(dateFormat)
+
+	futureTime := startUTC.Add(24 * time.Hour)
+
+	tests := []struct {
+		name     string
+		fileName string
+		err      error
+		metadata csvFileMetadata
+	}{
+		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+			env:       "production",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"valid csv test filename", "T.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+			env:       "test",
+			timestamp: validTime,
+			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid csv - file date too old", "P.PCPB.M2411.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
+		{"invalid csv - file date in the future", "P.PCPB.M2411." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			acos, err := getACOConfigs()
+			var actualmetadata csvFileMetadata
+			for _, v := range acos {
+				filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
+				parts := filenameRegexp.FindStringSubmatch(test.fileName)
+				if len(parts) == v.AttributionFile.MetadataMatches {
+					actualmetadata, err = validateCSVMetadata(parts)
+				}
+			}
+			if test.err != nil {
+				assert.Contains(t, err.Error(), test.err.Error())
+			} else {
+				assert.Nil(t, err)
+			}
+			assert.Equal(t, test.metadata, actualmetadata)
+		})
+	}
+
 }
 
 func TestGetCCLFMetadata(t *testing.T) {
@@ -88,10 +191,12 @@ func TestGetCCLFMetadata(t *testing.T) {
 	}{
 		{"Non CCLF0 or CCLF8 file", sspID, "P.A0001.ACO.ZC9Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Unsupported CCLF file type", "Z9999", "P.Z0001.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"Unsupported CSV file type", sspID, "P.PCPB.M2014.D00302.T2420001", "invalid filename", cclfFileMetadata{}},
 		{"Invalid date (no 13th month)", sspID, "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
 		{"CCLF file too old", sspID, gen(sspProd, startUTC.Add(-365*24*time.Hour)), "out of range", cclfFileMetadata{}},
 		{"CCLF file too new", sspID, gen(sspProd, startUTC.Add(365*24*time.Hour)), "out of range", cclfFileMetadata{}},
-		{"Production SSP file", sspID, sspProdFile, "",
+		{
+			"Production SSP file", sspID, sspProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      sspProdFile,
@@ -102,7 +207,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test SSP file", sspID, sspTestFile, "",
+		{
+			"Test SSP file", sspID, sspTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      sspTestFile,
@@ -125,7 +231,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeRunout,
 			},
 		},
-		{"Production CEC file", cecID, cecProdFile, "",
+		{
+			"Production CEC file", cecID, cecProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      cecProdFile,
@@ -136,7 +243,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test CEC file", cecID, cecTestFile, "",
+		{
+			"Test CEC file", cecID, cecTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      cecTestFile,
@@ -147,7 +255,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Production NGACO file", ngacoID, ngacoProdFile, "",
+		{
+			"Production NGACO file", ngacoID, ngacoProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      ngacoProdFile,
@@ -158,7 +267,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test NGACO file", ngacoID, ngacoTestFile, "",
+		{
+			"Test NGACO file", ngacoID, ngacoTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      ngacoTestFile,
@@ -169,7 +279,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Production CKCC file", ckccID, ckccProdFile, "",
+		{
+			"Production CKCC file", ckccID, ckccProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      ckccProdFile,
@@ -180,7 +291,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test CKCC file", ckccID, ckccTestFile, "",
+		{
+			"Test CKCC file", ckccID, ckccTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      ckccTestFile,
@@ -191,7 +303,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Production KCF file", kcfID, kcfProdFile, "",
+		{
+			"Production KCF file", kcfID, kcfProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      kcfProdFile,
@@ -202,7 +315,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test KCF file", kcfID, kcfTestFile, "",
+		{
+			"Test KCF file", kcfID, kcfTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      kcfTestFile,
@@ -213,7 +327,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Production DC file", dcID, dcProdFile, "",
+		{
+			"Production DC file", dcID, dcProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      dcProdFile,
@@ -224,7 +339,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test DC file", dcID, dcTestFile, "",
+		{
+			"Test DC file", dcID, dcTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      dcTestFile,
@@ -235,7 +351,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Production TEST file", testID, testProdFile, "",
+		{
+			"Production TEST file", testID, testProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      testProdFile,
@@ -246,7 +363,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test TEST file", testID, testTestFile, "",
+		{
+			"Test TEST file", testID, testTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      testTestFile,
@@ -257,7 +375,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Production SBX file", sbxID, sbxProdFile, "",
+		{
+			"Production SBX file", sbxID, sbxProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      sbxProdFile,
@@ -268,7 +387,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 				fileType:  models.FileTypeDefault,
 			},
 		},
-		{"Test SBX file", sbxID, sbxTestFile, "",
+		{
+			"Test SBX file", sbxID, sbxTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      sbxTestFile,
@@ -290,6 +410,34 @@ func TestGetCCLFMetadata(t *testing.T) {
 				assert.Contains(sub, err.Error(), tt.errMsg)
 			}
 			assert.Equal(sub, tt.metadata, metadata)
+		})
+	}
+}
+
+func TestCheckIfAttributionCSVFile(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		testIsCSV bool
+	}{
+		{name: "Is an Attribution CSV File path", path: "P.PCPB.M2014.D003026.T0000001", testIsCSV: true},
+		{name: "Is not an Attribution CSV File path (incorrect first)", path: "M.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (incorrect second)", path: "P.BFD.N2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (incorrect third)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (incorrect fifth)", path: "P.PCPB.M2014.D00302.T24200011", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
+		{name: "Is not an Attribution CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(sub *testing.T) {
+			isCSV := CheckIfAttributionCSVFile(test.path)
+			if test.testIsCSV {
+				assert.True(sub, isCSV)
+			} else {
+				assert.False(sub, isCSV)
+			}
 		})
 	}
 }

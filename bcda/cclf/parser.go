@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -26,6 +27,109 @@ func getCMSID(name string) (string, error) {
 	return parts[1], nil
 }
 
+func CheckIfAttributionCSVFile(filePath string) bool {
+	pattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
+	filenameRegexp := regexp.MustCompile(pattern)
+	return filenameRegexp.MatchString(filePath)
+
+}
+
+type CSVParser struct {
+	FilePath string
+}
+
+func getACOConfigs() ([]service.ACOConfig, error) {
+	configs, err := service.LoadConfig()
+	if err != nil {
+		return []service.ACOConfig{}, err
+	}
+	return configs.ACOConfigs, err
+
+}
+
+// GetCSVMetadata builds a metadata struct based on the filename parts.
+// The filename regex is part of aco configuration.
+func GetCSVMetadata(path string) (csvFileMetadata, error) {
+	var metadata csvFileMetadata
+	var err error
+
+	acos, err := getACOConfigs()
+	if err != nil {
+		return csvFileMetadata{}, errors.New("Failed to load ACO configs")
+	}
+	if acos == nil {
+		return csvFileMetadata{}, errors.New("No ACO configs found.")
+	}
+
+	for _, v := range acos {
+		filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
+		parts := filenameRegexp.FindStringSubmatch(path)
+		if len(parts) == v.AttributionFile.MetadataMatches {
+			metadata, err = validateCSVMetadata(parts)
+			if err != nil {
+				return csvFileMetadata{}, err
+			}
+			metadata.acoID = v.Model
+			break
+		}
+	}
+
+	if metadata == (csvFileMetadata{}) {
+		return metadata, errors.New("Invalid filename for csv attribution file")
+	}
+
+	metadata.name = path
+	metadata.cclfNum = 8
+	return metadata, nil
+}
+
+// Validate the csv attribution filename contains the required values.
+// Ingestion of the file fails if the validation fails.
+func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
+	var metadata csvFileMetadata
+	var err error
+
+	metadata.perfYear, err = strconv.Atoi(subMatches[4])
+	if err != nil {
+		err = errors.Wrapf(err, "failed to parse performance year from file")
+		log.API.Error(err)
+		return csvFileMetadata{}, err
+	}
+
+	filenameDate := subMatches[6]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil || t.IsZero() {
+		err = errors.Wrapf(err, "failed to parse date '%s' from file", filenameDate)
+		return csvFileMetadata{}, err
+	}
+
+	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
+	refDateString := conf.GetEnv("CCLF_REF_DATE")
+	refDate, err := time.Parse("060102", refDateString)
+	if err != nil {
+		refDate = time.Now()
+	}
+
+	// Files must not be too old
+	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
+	filesNotAfter := refDate
+	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
+		err = errors.New(fmt.Sprintf("date '%s' out of range; comparison date %s", filenameDate, refDate.Format("060102")))
+		return csvFileMetadata{}, err
+	}
+
+	metadata.timestamp = t
+	switch subMatches[1] {
+	case "T":
+		metadata.env = "test"
+	case "P":
+		metadata.env = "production"
+	}
+	return metadata, nil
+}
+
+// getCCLFFileMetadata takes an attribution file name and converts it to a cclfFileMetadata entry.
+// The cclfFileMetadat entry will be insert into the database as a record in the cclf_files table.
 func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	const (

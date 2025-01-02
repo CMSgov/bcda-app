@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 
@@ -20,9 +21,10 @@ import (
 
 type S3ProcessorTestSuite struct {
 	suite.Suite
-	cclfRefDate string
-	basePath    string
-	processor   CclfFileProcessor
+	cclfRefDate   string
+	basePath      string
+	cclfProcessor CclfFileProcessor
+	csvProcessor  CSVFileProcessor
 }
 
 func (s *S3ProcessorTestSuite) SetupSuite() {
@@ -30,7 +32,13 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 
 	s.basePath = "../../shared_files"
-	s.processor = &S3FileProcessor{
+	s.cclfProcessor = &S3FileProcessor{
+		Handler: optout.S3FileHandler{
+			Logger:   logrus.StandardLogger(),
+			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
+		},
+	}
+	s.csvProcessor = &S3FileProcessor{
 		Handler: optout.S3FileHandler{
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
@@ -63,7 +71,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 			bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
 			defer cleanup()
 
-			cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(filepath.Join(bucketName, tt.path))
+			cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(filepath.Join(bucketName, tt.path))
 			cclfZipFiles := cclfMap[cmsID]
 			assert.NoError(t, err)
 			assert.Equal(t, tt.skipped, skipped)
@@ -86,7 +94,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 	s3Bucket, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
 	defer cleanupS3()
 
-	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(s3Bucket)
+	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(s3Bucket)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
@@ -108,7 +116,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_DuplicateCCLFs() {
 	)
 	defer cleanupS3()
 
-	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(bucketName)
+	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(bucketName)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 2, failure)
@@ -132,7 +140,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SingleFile() {
 			bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
 			defer cleanup()
 
-			cclfMap, skipped, failure, err := s.processor.LoadCclfFiles(filepath.Join(bucketName, tt.path, tt.filename))
+			cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(filepath.Join(bucketName, tt.path, tt.filename))
 			cclfZipFiles := cclfMap[cmsID]
 			assert.NoError(t, err)
 			assert.Equal(t, tt.skipped, skipped)
@@ -150,7 +158,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SingleFile() {
 }
 
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_InvalidPath() {
-	cclfMap, skipped, failure, err := s.processor.LoadCclfFiles("foo")
+	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles("foo")
 	assert.ErrorContains(s.T(), err, "NoSuchBucket: The specified bucket does not exist")
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
@@ -192,7 +200,7 @@ func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
 
 	defer cleanup()
 
-	m, skipped, f, err := s.processor.LoadCclfFiles(bucketName)
+	m, skipped, f, err := s.cclfProcessor.LoadCclfFiles(bucketName)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, f)
@@ -244,14 +252,95 @@ func (s *S3ProcessorTestSuite) TestCleanupCCLF() {
 		},
 	}
 
-	deletedCount, err := s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err := s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(0, deletedCount)
 	assert.Nil(err)
 
 	// Cleanup file after import
 	cclfmap[acoID][0].imported = true
 
-	deletedCount, err = s.processor.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err = s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(1, deletedCount)
 	assert.Nil(err)
+}
+
+func (s *S3ProcessorTestSuite) TestCleanupCSV() {
+	assert := assert.New(s.T())
+	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+
+	tests := []struct {
+		name     string
+		filepath string
+		imported bool
+		err      error
+	}{
+		{"Clean up sucessful import", filepath.Join(bucketName, path), true, nil},
+		{"Clean up failed import", filepath.Join(bucketName, path), false, nil},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			defer cleanup()
+			csv := csvFile{
+				metadata: csvFileMetadata{},
+				imported: test.imported,
+				filepath: test.filepath,
+			}
+			err := s.csvProcessor.CleanUpCSV(csv)
+			assert.Nil(err)
+
+		})
+	}
+
+}
+
+func (s *S3ProcessorTestSuite) TestLoadCSV() {
+	assert := assert.New(s.T())
+	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+
+	tests := []struct {
+		name     string
+		filepath string
+		err      error
+	}{
+		{"Load CSV sucessful", filepath.Join(bucketName, path), nil},
+		{"Load CSV failed", "foo/bar", errors.New("S3 error")},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			defer cleanup()
+			r, _, err := s.csvProcessor.LoadCSV(test.filepath)
+			if test.err == nil {
+				assert.Nil(err)
+				assert.NotNil(r)
+			} else {
+				s.T().Log("FOO BAR")
+				assert.NotNil(err)
+				assert.Nil(r)
+			}
+
+		})
+	}
+}
+
+func (s *S3ProcessorTestSuite) TestLoadCSV_InvalidPath() {
+}
+
+func (s *S3ProcessorTestSuite) TestLoadCSV_SkipOtherEnvs() {
+
+	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "dev"}})
+	defer cleanupEnvVars()
+
+	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+	defer cleanup()
+	_, _, err := s.csvProcessor.LoadCSV(filepath.Join(bucketName, path))
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "Skipping import")
+
 }
