@@ -46,7 +46,7 @@ type Config struct {
 
 type RunoutConfig struct {
 	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
-	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2020-12-31"`
+	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2024-12-31"`
 	// Un-exported fields that are computed using the exported ones above
 	cutoffDuration time.Duration
 	claimThru      time.Time
