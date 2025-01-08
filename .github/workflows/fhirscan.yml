@@ -1,18 +1,10 @@
 name: FHIR Scan
 
 on:
-  schedule:
-    - cron: H H * * 1
+  pull_request:
+    paths:
+      - .github/workflows/fhirscan.yml
   workflow_dispatch:
-    inputs:
-      target_host:
-        description: Check where?
-        required: true
-        default: 'https://stage.bcda.cms.gov'
-        type: choice
-        options:
-          - 'https://stage.bcda.cms.gov'
-          - 'https://bcda.cms.gov'
 
 jobs:
   fhirscan:
