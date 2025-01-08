@@ -19,7 +19,7 @@ jobs:
       - name: Checkout bdt repo
         uses: actions/checkout@v4
         with:
-          repository: https://github.com/smart-on-fhir/bdt
+          repository: smart-on-fhir/bdt
           path: my-tools
       - uses: aws-actions/configure-aws-credentials@v3
         with:
