@@ -36,8 +36,9 @@ jobs:
         id: run
         run: |
           echo "Running FHIR scan against https://dev.bcda.cms.gov"
-          docker build --no-cache -t bdt -f ${GITHUB_WORKSPACE}/Dockerfiles/Dockerfile.bdt .
-          ls ${GITHUB_WORKSPACE}
+          docker build --no-cache -t bdt -f ./bcda-app/Dockerfiles/Dockerfile.bdt .
+          ls
+          pwd
           docker rm -f bdt || echo "BDT container already cleaned up."
           docker run --name bdt -e BASE_URL="https://dev.bcda.cms.gov" -e CLIENT_ID="$CLIENT_ID" -e SECRET="$CLIENT_SECRET" bdt 2>&1
           RESULT=$(docker logs bdt --tail 6 | grep -o "failed tests: [0-9]*" | cut -d ' ' -f3)
