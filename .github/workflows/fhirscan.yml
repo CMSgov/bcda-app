@@ -16,10 +16,6 @@ jobs:
         with:
           path: main
 
-      - name: Checkout bdt repo
-        uses: actions/checkout@v4
-        with:
-          repository: smart-on-fhir/bdt
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -39,6 +35,7 @@ jobs:
           echo ${GITHUB_WORKSPACE}
           echo ${{ github.workspace }}
           cd ${GITHUB_WORKSPACE} 
+          pwd
           ls 
           docker build --no-cache -t bdt -f /opt/actions-runner/_work/bcda-app/bcda-app/Dockerfiles/Dockerfile.bdt .
 
