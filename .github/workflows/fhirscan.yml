@@ -40,7 +40,7 @@ jobs:
           echo ${{ github.workspace }}
           cd ${GITHUB_WORKSPACE} 
           ls 
-          docker build --no-cache -t bdt -f ./bcda-app/Dockerfiles/Dockerfile.bdt .
+          docker build --no-cache -t bdt -f /opt/actions-runner/_work/bcda-app/bcda-app/Dockerfiles/Dockerfile.bdt .
 
           docker rm -f bdt || echo "BDT container already cleaned up."
           docker run --name bdt -e BASE_URL="https://dev.bcda.cms.gov" -e CLIENT_ID="$CLIENT_ID" -e SECRET="$CLIENT_SECRET" bdt 2>&1
