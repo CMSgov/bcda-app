@@ -46,6 +46,7 @@ require (
 require (
 	github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
 	github.com/ccoveille/go-safecast v1.1.0
+	github.com/pashagolub/pgxmock/v4 v4.4.0
 	github.com/riverqueue/river v0.14.1
 )
 
