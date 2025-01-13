@@ -43,7 +43,8 @@ jobs:
         id: invoke-lambda
         run: |
           echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
-          aws lambda invoke --function-name bcda-dev-admin-aco-deny test-result.txt
+          aws lambda invoke --function-name bcda-dev-admin-aco-deny \
+            --payload '{ "deny_aco_ids": ["foo001", "bar002"] }' test-result.txt
       - name: Verify result
         run: |
           if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
