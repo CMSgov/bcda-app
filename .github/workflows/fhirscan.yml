@@ -1,0 +1,51 @@
+name: FHIR Scan
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/fhirscan.yml
+  workflow_dispatch:
+
+jobs:
+  fhirscan:
+    name: run fhir scan
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+      - name: Get client credentials
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            CLIENT_ID=/bcda/dev/api/DEV_CLIENT_ID
+            CLIENT_SECRET=/bcda/dev/api/DEV_CLIENT_SECRET
+      - name: Run BDT
+        id: run
+        run: |
+          echo "Running FHIR scan against https://dev.bcda.cms.gov"
+          echo ${GITHUB_WORKSPACE}
+          echo ${{ github.workspace }}
+          cd ${GITHUB_WORKSPACE} 
+          pwd
+          ls 
+          docker build --no-cache -t bdt -f /opt/actions-runner/_work/bcda-app/bcda-app/Dockerfiles/Dockerfile.bdt .
+
+          docker rm -f bdt || echo "BDT container already cleaned up."
+          docker run --name bdt -e BASE_URL="https://dev.bcda.cms.gov" -e CLIENT_ID="$CLIENT_ID" -e SECRET="$CLIENT_SECRET" bdt 2>&1
+          RESULT=$(docker logs bdt --tail 6 | grep -o "failed tests: [0-9]*" | cut -d ' ' -f3)
+          docker rm -f bdt || echo "BDT container already cleaned up."
+          if [[ $RESULT -eq 0 ]]; then
+            exit 0
+          else
+            exit 1
+          fi
+
+
