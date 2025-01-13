@@ -27,7 +27,7 @@ jobs:
         env:
           CGO_ENABLED: 0
         run: |
-          go build -o bin/bootstrap ./bcda/lambda/admin_aco_deny/main.go
+          go build -o bin/bootstrap ./lambda/admin_aco_deny/*.go
           zip -j function.zip bin/bootstrap
       - uses: aws-actions/configure-aws-credentials@v4
         with:
