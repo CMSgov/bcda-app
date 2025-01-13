@@ -32,7 +32,7 @@ func TestDenyACOsSuccess(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
 
-	err = denyACOs(ctx, mock, Payload{testACODenies})
+	err = denyACOs(ctx, mock, payload{testACODenies})
 	assert.Nil(t, err)
 }
 
@@ -46,17 +46,17 @@ func TestDenyACOsQueryFailure(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnError(errors.New("test error"))
 
-	err = denyACOs(ctx, mock, Payload{testACODenies})
+	err = denyACOs(ctx, mock, payload{testACODenies})
 	assert.ErrorContains(t, err, "test error")
 }
 
 func TestDenyACOs_Integration(t *testing.T) {
 	ctx := context.Background()
 
-	dbURL, err := getDBURL()
+	params, err := getAWSParams()
 	assert.Nil(t, err)
 
-	conn, err := pgx.Connect(ctx, dbURL)
+	conn, err := pgx.Connect(ctx, params.DBURL)
 	assert.Nil(t, err)
 	defer conn.Close(ctx)
 
@@ -75,7 +75,7 @@ func TestDenyACOs_Integration(t *testing.T) {
 	err = tx.QueryRow(ctx, `INSERT INTO acos (cms_id, uuid, name) VALUES('test005', $1, 'ACO5') RETURNING id;`, uuid.New()).Scan(&ACO5)
 	assert.Nil(t, err)
 
-	err = denyACOs(ctx, tx, Payload{testACODenies})
+	err = denyACOs(ctx, tx, payload{testACODenies})
 	assert.Nil(t, err)
 
 	rows, err := tx.Query(ctx, `SELECT id, cms_id, termination_details FROM acos WHERE id IN($1, $2, $3, $4, $5);`, ACO1, ACO2, ACO3, ACO4, ACO5)
