@@ -61,6 +61,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 
 	err = handleACODenies(ctx, conn, data, params.SlackURL)
 	if err != nil {
+		log.Errorf("Failed to handle ACO denies: %+v", err)
 		return err
 	}
 

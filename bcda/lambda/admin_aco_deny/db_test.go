@@ -82,10 +82,12 @@ func TestDenyACOs_Integration(t *testing.T) {
 	assert.Nil(t, err)
 	defer rows.Close()
 
+	i := 0
 	for rows.Next() {
 		var id string
 		var cmsID string
 		var td *models.Termination
+		i++
 
 		err = rows.Scan(&id, &cmsID, &td)
 		assert.Nil(t, err)
@@ -100,6 +102,9 @@ func TestDenyACOs_Integration(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	// double check we are finding the appropriate amount of rows
+	assert.Equal(t, i, 5)
 
 	// cleanup
 	err = tx.Rollback(ctx)

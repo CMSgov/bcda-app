@@ -22,6 +22,10 @@ func TestHandleACODenies(t *testing.T) {
 	assert.Nil(t, err)
 	defer mock.Close(ctx)
 
+	mock.ExpectExec("^UPDATE acos SET termination_details = (.+)").
+		WithArgs(mockTermination{}, testACODenies).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
+
 	err = handleACODenies(ctx, mock, payload{testACODenies}, slackURL)
 	assert.Nil(t, err)
 }
