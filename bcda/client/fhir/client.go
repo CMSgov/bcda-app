@@ -38,7 +38,6 @@ type singleClient struct {
 var _ Client = &singleClient{}
 
 func (c *singleClient) DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextURL *url.URL, err error) {
-
 	// Ensure that we'll receive the entire bundle response in a single request
 	vals := req.URL.Query()
 	vals.Del("_count")
@@ -129,26 +128,23 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	s := newrelic.StartExternalSegment(txn, req)
 
 	resp, err := c.Do(req)
+	if err != nil {
+		resp.Body.Close()
+		return nil, err
+	}
+	defer resp.Body.Close()
 	s.Response = resp
 	s.End()
 
-	if resp != nil {
-		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
-		defer func() {
-			_, _ = io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
-		}()
-	}
-	if err != nil {
-		return nil, err
-	}
-
 	if resp.StatusCode >= http.StatusBadRequest {
-		// Attempt to read the body in case it offers valuable troubleshooting info
-		body, _ := io.ReadAll(resp.Body)
+		body, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("received incorrect status code %d, failed to parse body %+v", resp.StatusCode, err)
+		}
 		return nil, fmt.Errorf("received incorrect status code %d body %s",
 			resp.StatusCode, string(body))
 	}
+
 	body, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
