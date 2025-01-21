@@ -129,7 +129,9 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
