@@ -1,6 +1,9 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -105,4 +108,23 @@ func (t *Termination) ClaimsDate() time.Time {
 	default:
 		panic(fmt.Sprintf("Unsupported claims strategy %d supplied.", t.ClaimsStrategy))
 	}
+}
+
+// The following two methods are used to scan Termination details into and out of the DB
+
+// Make the Termination struct implement the driver.Valuer interface. This method
+// simply returns the JSON-encoded representation of the struct.
+func (t Termination) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+// Make the Termination struct implement the sql.Scanner interface. This method
+// simply decodes a JSON-encoded value into the struct fields.
+func (t *Termination) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &t)
 }
