@@ -1,0 +1,42 @@
+name: Build AMI
+
+# on:
+#   schedule:
+#     - cron: "H 23 * * *"
+# below trigger will be modified after testing
+on:
+  pull_request:
+    paths:
+      - .github/workflows/build_amis.yml
+  workflow_dispatch:
+
+jobs:
+  build_ami:
+    name: build ami
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: cmsgov/bcda-ops
+
+
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+      - name: Get client credentials
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            SUBNET_ID=/bcda/workflows/packer_subnet_id
+            GOLD_IMAGE=/bcda/workflows/gold_image_ami
+      - name: Create Platinum AMI
+        id: run
+        run: |
+          # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
+          set -euo pipefail
+          USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
+
