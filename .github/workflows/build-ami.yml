@@ -7,7 +7,7 @@ name: Build AMI
 on:
   pull_request:
     paths:
-      - .github/workflows/build_ami.yml
+      - .github/workflows/build-ami.yml
   workflow_dispatch:
 
 jobs:
