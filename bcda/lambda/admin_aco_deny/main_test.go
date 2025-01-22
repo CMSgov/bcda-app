@@ -2,30 +2,33 @@ package main
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/pashagolub/pgxmock/v4"
+	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 )
+
+type mockNotifier struct {
+	Notifier
+}
+
+func (m *mockNotifier) PostMessageContext(ctx context.Context, channelID string, options ...slack.MsgOption) (string, string, error) {
+	return channelID, time.Now().String(), nil
+}
 
 func TestHandleACODenies(t *testing.T) {
 	ctx := context.Background()
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	tsAddr := ts.Listener.Addr().String()
-	slackURL := "http://" + tsAddr + "/webhook"
-	defer ts.Close()
-
-	mock, err := pgxmock.NewConn()
+	mockConn, err := pgxmock.NewConn()
 	assert.Nil(t, err)
-	defer mock.Close(ctx)
+	defer mockConn.Close(ctx)
 
-	mock.ExpectExec("^UPDATE acos SET termination_details = (.+)").
+	mockConn.ExpectExec("^UPDATE acos SET termination_details = (.+)").
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
 
-	err = handleACODenies(ctx, mock, payload{testACODenies}, slackURL)
+	err = handleACODenies(ctx, mockConn, payload{testACODenies}, &mockNotifier{})
 	assert.Nil(t, err)
 }

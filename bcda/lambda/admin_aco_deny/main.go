@@ -17,15 +17,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var slackChannel = "#bcda-alerts"
+var slackChannel = "C034CFU945C" // #bcda-alerts
 
 type payload struct {
 	DenyACOIDs []string `json:"deny_aco_ids"`
 }
 
 type awsParams struct {
-	DBURL    string
-	SlackURL string
+	DBURL      string
+	SlackToken string
+}
+
+type Notifier interface {
+	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
 func main() {
@@ -59,7 +63,9 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	}
 	defer conn.Close(ctx)
 
-	err = handleACODenies(ctx, conn, data, params.SlackURL)
+	slackClient := slack.New(params.SlackToken)
+
+	err = handleACODenies(ctx, conn, data, slackClient)
 	if err != nil {
 		log.Errorf("Failed to handle ACO denies: %+v", err)
 		return err
@@ -70,36 +76,33 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	return nil
 }
 
-func handleACODenies(ctx context.Context, conn PgxConnection, data payload, slackURL string) error {
-	err := slack.PostWebhookContext(ctx, slackURL, &slack.WebhookMessage{
-		Channel: slackChannel,
-		Text:    fmt.Sprintf("Started ACO Deny lambda in %s env.", os.Getenv("ENV")),
-	})
+func handleACODenies(ctx context.Context, conn PgxConnection, data payload, notifier Notifier) error {
+	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		fmt.Sprintf("Started ACO Deny lambda in %s env.", os.Getenv("ENV")), false),
+	)
 	if err != nil {
-		log.Errorf("Error sending slack start message: %+v", err)
+		log.Errorf("Error sending notifier start message: %+v", err)
 	}
 
 	err = denyACOs(ctx, conn, data)
 	if err != nil {
 		log.Errorf("Error finding and denying ACOs: %+v", err)
 
-		err = slack.PostWebhookContext(ctx, slackURL, &slack.WebhookMessage{
-			Channel: slackChannel,
-			Text:    fmt.Sprintf("Failed: ACO Deny lambda in %s env.", os.Getenv("ENV")),
-		})
+		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: ACO Deny List lambda in %s env.", os.Getenv("ENV")), false),
+		)
 		if err != nil {
-			log.Errorf("Error sending slack failure message: %+v", err)
+			log.Errorf("Error sending notifier failure message: %+v", err)
 		}
 
 		return err
 	}
 
-	err = slack.PostWebhookContext(ctx, slackURL, &slack.WebhookMessage{
-		Channel: slackChannel,
-		Text:    fmt.Sprintf("Success: ACO Deny lambda in %s env.", os.Getenv("ENV")),
-	})
+	_, _, err = notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		fmt.Sprintf("Success: ACO Deny List lambda in %s env.", os.Getenv("ENV")), false),
+	)
 	if err != nil {
-		log.Errorf("Error sending slack success message: %+v", err)
+		log.Errorf("Error sending notifier success message: %+v", err)
 	}
 
 	return nil
@@ -122,10 +125,10 @@ func getAWSParams() (awsParams, error) {
 		return awsParams{}, err
 	}
 
-	slackURL, err := bcdaaws.GetParameter(bcdaSession, "/bcda/lambda/slack_webhook_url")
+	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
 	if err != nil {
 		return awsParams{}, err
 	}
 
-	return awsParams{dbURL, slackURL}, nil
+	return awsParams{dbURL, slackToken}, nil
 }

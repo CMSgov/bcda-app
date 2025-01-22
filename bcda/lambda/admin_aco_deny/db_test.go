@@ -60,7 +60,7 @@ func TestDenyACOs_Integration(t *testing.T) {
 	assert.Nil(t, err)
 	defer conn.Close(ctx)
 
-	tx, err := conn.Begin(context.Background())
+	tx, err := conn.Begin(ctx)
 	assert.Nil(t, err)
 
 	var ACO1, ACO2, ACO3, ACO4, ACO5 string
