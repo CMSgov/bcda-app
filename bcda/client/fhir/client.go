@@ -141,7 +141,7 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	if resp.StatusCode >= http.StatusBadRequest {
 		body, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, fmt.Errorf("received incorrect status code %d, failed to parse body %+v", resp.StatusCode, err)
+			return nil, fmt.Errorf("failed to parse response body %+v", err)
 		}
 		return nil, fmt.Errorf("received incorrect status code %d body %s",
 			resp.StatusCode, string(body))
