@@ -169,7 +169,7 @@ func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
 }
 
 func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
-	row := db.QueryRow(`select count(*) from river_job;`)
+	row := db.QueryRow(`SELECT COUNT(*) FROM river_job WHERE state NOT IN ('completed', 'cancelled', 'discarded');`)
 
 	var count int
 	if err := row.Scan(&count); err != nil {

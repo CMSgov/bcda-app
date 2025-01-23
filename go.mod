@@ -46,10 +46,12 @@ require (
 require (
 	github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
 	github.com/ccoveille/go-safecast v1.1.0
+	github.com/pashagolub/pgxmock/v4 v4.4.0
 	github.com/riverqueue/river v0.14.1
 )
 
 require (
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -81,7 +83,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -111,6 +113,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/slog-logrus v1.0.0
 	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/slack-go/slack v0.15.0
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

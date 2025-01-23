@@ -93,4 +93,8 @@ func main() {
 		fmt.Printf("Error occurred while executing command %s\n", err)
 		log.API.Fatal(err)
 	}
+
+	// Log a made up MBI number for testing the Splunk alert
+	log.API.Info("Processing MBI number: 1EG4-TE5-MK73")
+	log.API.Info("Processing HICN number: 123-45-6789")
 }
