@@ -8,10 +8,10 @@ on:
   pull_request:
     paths:
       - .github/workflows/build-ami.yml
-  workflow_dispatch:
+
 
 permissions:
-  id-token: read
+  id-token: write
   contents: read
 
 jobs:
