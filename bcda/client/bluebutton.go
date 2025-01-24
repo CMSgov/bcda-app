@@ -463,7 +463,7 @@ func (h *httpLogger) logRequest(req *http.Request) {
 
 func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
 	h.l.WithFields(logrus.Fields{
-		"resp_code":      resp.StatusCode,
+		"resp_status":    resp.StatusCode,
 		"bb_query_id":    req.Header.Get(constants.BBHeaderOriginQID),
 		"bb_query_ts":    req.Header.Get(constants.BBHeaderTS),
 		"bb_uri":         req.URL.String(),
