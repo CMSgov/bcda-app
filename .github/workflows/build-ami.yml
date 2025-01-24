@@ -19,6 +19,9 @@ jobs:
     name: build ami
     runs-on: self-hosted
     steps:
+      # Workaround suggested in https://github.com/actions/checkout/issues/1203
+      - name: Set owner of working dir recursively
+        run: sudo chown -R $(whoami) .
       - name: Checkout
         uses: actions/checkout@v4
         with:
