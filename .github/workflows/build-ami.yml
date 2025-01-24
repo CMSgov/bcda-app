@@ -9,7 +9,6 @@ on:
     paths:
       - .github/workflows/build-ami.yml
 
-
 permissions:
   id-token: write
   contents: read
@@ -19,7 +18,6 @@ jobs:
     name: build ami
     runs-on: self-hosted
     container: # Workaround suggested in https://github.com/actions/checkout/issues/956
-      image: alpine:latest
       options: --user root
     steps:
       - name: Checkout
