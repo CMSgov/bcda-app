@@ -18,6 +18,11 @@ jobs:
     name: build ami
     runs-on: self-hosted
     steps:
+      - name: Debug
+        run: |
+          whoami
+          echo $RUNNER_TEMP
+          ls -lRa $RUNNER_TEMP
       - name: Checkout
         uses: actions/checkout@v4
         with:
