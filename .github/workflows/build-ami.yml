@@ -17,8 +17,6 @@ jobs:
   build_ami:
     name: build ami
     runs-on: self-hosted
-    container: # Workaround suggested in https://github.com/actions/checkout/issues/956
-      options: --user root
     steps:
       - name: Checkout
         uses: actions/checkout@v4
