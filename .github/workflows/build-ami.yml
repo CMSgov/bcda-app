@@ -28,8 +28,7 @@ jobs:
         with:
           repository: CMSgov/bcda-ops
           ref: 'main'
-          ssh-key: ${{ secrets.BCDA_OPS_SSH_KEY }}
-          path: bcda-ops
+          token: ${{ secrets.GSF_PAT }}
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
