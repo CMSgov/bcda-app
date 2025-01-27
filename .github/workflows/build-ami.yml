@@ -37,12 +37,13 @@ jobs:
           repository: CMSgov/bcda-ops
           ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
-      - name: Create Platinum AMI
-        id: run
+
+      - name: packer build
         env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
         run: |
-          # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
-          set -euo pipefail
           packer init .
-          USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
+          # Security groups must be set by flag since they're a list
+          packer validate -evaluate-datasources -var "security_group_ids=$SUBNET_ID" .
+          ${RUNNER_DEBUG:+"PACKER_LOG=1"} packer build -var "security_group_ids=$SUBNET_ID" .
