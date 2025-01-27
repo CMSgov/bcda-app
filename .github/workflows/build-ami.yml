@@ -18,6 +18,7 @@ jobs:
     name: build ami
     runs-on: self-hosted
     steps:
+      - uses: hashicorp/setup-packer@v2.0.1
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
