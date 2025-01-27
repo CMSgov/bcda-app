@@ -36,7 +36,7 @@ jobs:
         with: 
           repository: cmsgov/ab2d-bcda-dpc-platform
           ref: 'main'
-          path: packer
+          path: platformrepo
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -50,7 +50,8 @@ jobs:
           TMPDIR: /home/ec2-user/
         run: |
           pwd
-          ls packer/
+          ls 
+          
           packer init ./packer/packer/github-actions-runner/
           # Security groups must be set by flag since they're a list
           packer validate -evaluate-datasources -var "security_group_ids=$SUBNET_ID" .
