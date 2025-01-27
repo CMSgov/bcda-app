@@ -50,8 +50,8 @@ jobs:
           TMPDIR: /home/ec2-user/
         run: |
           pwd
-          ls
-          packer init ./packer/packer/github-actions-runner
+          ls packer/
+          packer init ./packer/packer/github-actions-runner/
           # Security groups must be set by flag since they're a list
           packer validate -evaluate-datasources -var "security_group_ids=$SUBNET_ID" .
           ${RUNNER_DEBUG:+"PACKER_LOG=1"} packer build -var "security_group_ids=$SUBNET_ID" .
