@@ -39,6 +39,8 @@ jobs:
           token: ${{ env.GITHUB_TOKEN }}
       - name: Create Platinum AMI
         id: run
+        env:
+          TMPDIR: /home/ec2-user/
         run: |
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
