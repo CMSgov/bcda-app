@@ -49,6 +49,8 @@ jobs:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
         run: |
+          pwd
+          ls
           packer init ./packer/packer/github-actions-runner
           # Security groups must be set by flag since they're a list
           packer validate -evaluate-datasources -var "security_group_ids=$SUBNET_ID" .
