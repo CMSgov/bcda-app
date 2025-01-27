@@ -34,7 +34,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with: 
-          repository: cmsgov/ab2d-bcda-dpc-platform/
+          repository: cmsgov/ab2d-bcda-dpc-platform
           ref: 'main'
           path: packer
       - name: Checkout
