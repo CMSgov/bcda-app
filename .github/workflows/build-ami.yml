@@ -45,7 +45,7 @@ jobs:
           pwd
           ls 
           
-          packer init ./packer/packer/github-actions-runner/
+          packer init ./platformrepo/packer/github-actions-runner/
       - name: Checkout
         uses: actions/checkout@v4
         with:
