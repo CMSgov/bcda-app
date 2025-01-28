@@ -54,7 +54,7 @@ jobs:
         run: |
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
-          ls
+          ls ${{ github.workspace }}
           pwd
           packer init ${{ github.workspace }}/packer-config/github-actions-runner/
           USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
