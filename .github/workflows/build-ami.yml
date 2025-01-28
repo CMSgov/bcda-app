@@ -31,6 +31,7 @@ jobs:
   build_ami:
     name: build the platinum ami
     runs-on: self-hosted
+    needs: get_packer_configs
     steps:
       - uses: hashicorp/setup-packer@v2.0.1
       - uses: aws-actions/configure-aws-credentials@v3
@@ -65,5 +66,5 @@ jobs:
           ls ./packer-configs/
           pwd
           packer init packer-configs/
-          USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' ./platinum.json 2>&1 | tee platinum_packer_output.txt
+          USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
 
