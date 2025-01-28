@@ -39,12 +39,11 @@ jobs:
           path: ./platformrepo
       - name: copy packer config
         run: |   
-          mkdir ${{ github.workspace }}/packer-config
+          #mkdir ${{ github.workspace }}/packer-config
           cp -a ./platformrepo/packer/. ${{ github.workspace }}/packer-config
-      - name: Checkout
+      - name: Checkout ops
         uses: actions/checkout@v4
         with:
-          clean: false
           repository: CMSgov/bcda-ops
           ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
