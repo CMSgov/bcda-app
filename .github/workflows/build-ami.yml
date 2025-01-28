@@ -14,8 +14,22 @@ permissions:
   contents: read
 
 jobs:
-  build_ami:
+  get_packer_configs:
     name: build ami
+    runs-on: self-hosted
+    steps:
+      - name: checkout platform repo
+        uses: actions/checkout@v4
+        with: 
+          repository: cmsgov/ab2d-bcda-dpc-platform
+          ref: 'main'
+      - name: upload packer configs
+        uses: actions/upload-artifact@v4
+        with:
+          name: packer-configs
+          path: ./packer/github-actions-runner/
+  build_ami:
+    name: build the platinum ami
     runs-on: self-hosted
     steps:
       - uses: hashicorp/setup-packer@v2.0.1
@@ -31,11 +45,16 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
             GOLD_IMAGE=/bcda/workflows/gold_image_ami
-      - name: Checkout
+      - name: download packer configs
+        uses: actions/download-artifact@v4
+        with:
+          name: packer-configs
+      - name: checkout bcda-ops
         uses: actions/checkout@v4
-        with: 
-          repository: cmsgov/ab2d-bcda-dpc-platform
+        with:
+          repository: CMSgov/bcda-ops
           ref: 'main'
+          token: ${{ env.GITHUB_TOKEN }}
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
