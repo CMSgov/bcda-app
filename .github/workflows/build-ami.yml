@@ -44,6 +44,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          clean: false
           repository: CMSgov/bcda-ops
           ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
