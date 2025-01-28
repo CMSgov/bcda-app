@@ -45,14 +45,15 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
             GOLD_IMAGE=/bcda/workflows/gold_image_ami
-      - name: download packer configs
-        uses: actions/download-artifact@v4
       - name: checkout bcda-ops
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
           ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
+
+      - name: download packer configs
+        uses: actions/download-artifact@v4
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
