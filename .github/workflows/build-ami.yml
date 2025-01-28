@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'main'
+          ref: 'lauren/BCDA-8635'
           token: ${{ env.GITHUB_TOKEN }}
 
       - name: download packer configs
@@ -65,6 +65,6 @@ jobs:
           ls $GITHUB_WORKSPACE/packer-configs/
           ls ./packer-configs/
           pwd
-          packer init packer/platinum.json 2>&1
-          PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
+          packer init packer/platinum.json.pkr.hcl 2>&1
+          PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json.pkr.hcl 2>&1 | tee platinum_packer_output.txt
 
