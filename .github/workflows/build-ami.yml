@@ -39,8 +39,8 @@ jobs:
           path: ./platformrepo
       - name: copy packer config
         run: |   
-          mkdir ./packer-config
-          cp -a ./platformrepo/packer/. ./packer-config
+          mkdir ${{ github.workspace }}/packer-config
+          cp -a ./platformrepo/packer/. ${{ github.workspace }}/packer-config
       - name: Checkout
         uses: actions/checkout@v4
         with:
