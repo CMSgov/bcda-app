@@ -37,13 +37,6 @@ jobs:
           repository: cmsgov/ab2d-bcda-dpc-platform
           ref: 'main'
           path: platformrepo
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-ops
-          ref: 'main'
-          token: ${{ env.GITHUB_TOKEN }}
-
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,6 +46,10 @@ jobs:
           ls 
           
           packer init ./packer/packer/github-actions-runner/
-          # Security groups must be set by flag since they're a list
-          packer validate -evaluate-datasources -var "security_group_ids=$SUBNET_ID" .
-          ${RUNNER_DEBUG:+"PACKER_LOG=1"} packer build -var "security_group_ids=$SUBNET_ID" .
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: 'main'
+          token: ${{ env.GITHUB_TOKEN }}
+
