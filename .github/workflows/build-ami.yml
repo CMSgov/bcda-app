@@ -65,7 +65,6 @@ jobs:
           ls $GITHUB_WORKSPACE/packer-configs/
           ls ./packer-configs/
           pwd
-          packer init packer-configs/
-          packer plugins install github.com/hashicorp/ansible
-          USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
+          #packer init packer/platinum.json
+          PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
 
