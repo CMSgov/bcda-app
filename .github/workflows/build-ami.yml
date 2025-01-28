@@ -37,14 +37,11 @@ jobs:
           repository: cmsgov/ab2d-bcda-dpc-platform
           ref: 'main'
           path: platformrepo
-      - name: packer build
+      - name: packer init
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
-        run: |
-          pwd
-          ls 
-          
+        run: |        
           packer init ./platformrepo/packer/github-actions-runner/
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,4 +49,9 @@ jobs:
           repository: CMSgov/bcda-ops
           ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
+      - name: packer init
+        run: |
+          # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
+          set -euo pipefail
+          USER=`whoami` PACKER_LOG=1 packer build -color=false -var 'source_ami=$GOLD_IMAGE' -var 'subnet_id=$SUBNET_ID' packer/platinum.json 2>&1 | tee platinum_packer_output.txt
 
