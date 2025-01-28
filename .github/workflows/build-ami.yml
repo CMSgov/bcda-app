@@ -47,8 +47,6 @@ jobs:
             GOLD_IMAGE=/bcda/workflows/gold_image_ami
       - name: download packer configs
         uses: actions/download-artifact@v4
-        with:
-          name: packer-configs
       - name: checkout bcda-ops
         uses: actions/checkout@v4
         with:
