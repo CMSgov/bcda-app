@@ -59,8 +59,8 @@ jobs:
         with:
           python-version: '3.8'
 
-      - name: Install ansible
-        run: pip install ansible
+      - name: Install ansible #6.5.0
+        run: pip install ansible==6.5.0
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
