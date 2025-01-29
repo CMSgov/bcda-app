@@ -16,7 +16,7 @@ permissions:
 jobs:
   get_packer_configs:
     name: get packer configs
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: checkout platform repo
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TMPDIR: /home/ec2-user/
+          #TMPDIR: /home/ec2-user/
         run: |
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
