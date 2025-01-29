@@ -1,4 +1,6 @@
 name: Build AMI
+# Build AMI will create a 'platinum ami' using packer and ansible that is based of the CMS monthly Gold Image.
+
 
 on:
   pull_request:
