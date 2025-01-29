@@ -1,14 +1,9 @@
 name: Build AMI
 
-# on:
-#   pull_request:
-#     types:
-#       - closed
 on:
   pull_request:
-    paths:
-      - .github/workflows/build-ami.yml
-
+    types:
+      - closed
 
 permissions:
   id-token: write
@@ -36,7 +31,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'lauren/BCDA-8635'
+          ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
       - name: Install Ansible
         run: |
