@@ -56,9 +56,6 @@ jobs:
         uses: actions/download-artifact@v4
       - name: Install python
         uses: actions/setup-python@v3
-        with:
-          python-version: '3.8'
-
       - name: Install ansible #6.5.0
         run: pip install ansible==6.5.0
       - name: packer build
