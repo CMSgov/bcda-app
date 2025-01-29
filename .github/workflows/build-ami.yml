@@ -55,9 +55,9 @@ jobs:
       - name: download packer configs
         uses: actions/download-artifact@v4
       - name: Install python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v3
       - name: Install pipx #6.5.0
-        run: python3 -m pip install --user pipx
+        run: python3 -m pip3 install --user pipx
       - name: Install ansible #6.5.0
         run: pipx install --include-deps ansible==6.5.0
       - name: packer build
