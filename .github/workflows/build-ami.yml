@@ -1,13 +1,9 @@
 name: Build AMI
 
-# on:
-#   schedule:
-#     - cron: "H 23 * * *"
-# below trigger will be modified after testing
 on:
   pull_request:
-    paths:
-      - .github/workflows/build-ami.yml
+    types:
+      - closed
 
 permissions:
   id-token: write
@@ -50,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'lauren/BCDA-8635'
+          ref: 'main'
           token: ${{ env.GITHUB_TOKEN }}
       - name: download packer configs
         uses: actions/download-artifact@v4
@@ -66,7 +62,6 @@ jobs:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
         run: |
-          # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
           packer init packer/platinum.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.hcl 2>&1
