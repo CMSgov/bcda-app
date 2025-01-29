@@ -10,20 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  get_packer_configs:
-    name: get packer configs
-    runs-on: self-hosted
-    steps:
-      - name: checkout platform repo
-        uses: actions/checkout@v4
-        with: 
-          repository: cmsgov/ab2d-bcda-dpc-platform
-          ref: 'main'
-      - name: upload packer configs
-        uses: actions/upload-artifact@v4
-        with:
-          name: packer-configs
-          path: ./packer/github-actions-runner/
   build_ami:
     name: build the platinum ami
     runs-on: self-hosted
@@ -46,11 +32,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'main'
+          ref: 'lauren/BCDA-8635'
           token: ${{ env.GITHUB_TOKEN }}
-      - name: download packer configs
-        uses: actions/download-artifact@v4
-
       - name: Install Ansible
         run: |
           sudo yum update -y
