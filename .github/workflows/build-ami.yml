@@ -30,7 +30,7 @@ jobs:
           path: ./packer/github-actions-runner/
   build_ami:
     name: build the platinum ami
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: get_packer_configs
     steps:
       - uses: aws-actions/configure-aws-credentials@v3
