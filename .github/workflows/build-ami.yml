@@ -16,7 +16,7 @@ permissions:
 jobs:
   get_packer_configs:
     name: get packer configs
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: checkout platform repo
         uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
           path: ./packer/github-actions-runner/
   build_ami:
     name: build the platinum ami
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: get_packer_configs
     steps:
       - uses: hashicorp/setup-packer@v2.0.1
