@@ -1,9 +1,14 @@
 name: Build AMI
 
+# on:
+#   pull_request:
+#     types:
+#       - closed
 on:
   pull_request:
-    types:
-      - closed
+    paths:
+      - .github/workflows/build-ami.yml
+
 
 permissions:
   id-token: write
