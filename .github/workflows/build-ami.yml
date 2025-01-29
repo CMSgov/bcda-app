@@ -55,7 +55,7 @@ jobs:
       - name: download packer configs
         uses: actions/download-artifact@v4
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
       - name: Install ansible #6.5.0
         run: pip3 install ansible==6.5.0
       - name: packer build
