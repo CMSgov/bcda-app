@@ -251,7 +251,7 @@ func setUpApp() *cli.App {
 				if len(ips) > 0 {
 					ipAddr = strings.Split(ips, ",")
 				}
-				msg, err := generateClientCredentials(acoCMSID, ipAddr)
+				msg, err := GenerateClientCredentials(acoCMSID, ipAddr)
 				if err != nil {
 					return err
 				}
@@ -723,7 +723,7 @@ func createACO(name, cmsID string) (string, error) {
 	return aco.UUID.String(), nil
 }
 
-func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
+func GenerateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 	if err != nil {
 		return "", err

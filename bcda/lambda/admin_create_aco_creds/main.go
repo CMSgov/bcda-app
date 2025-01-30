@@ -5,26 +5,37 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/jackc/pgx/v5"
 	"github.com/slack-go/slack"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 var slackChannel = "C034CFU945C" // #bcda-alerts
+var destBucket = "bcda-aco-credentials"
+var kmsAliasName = "alias/bcda-aco-creds-kms"
+
+// var awsRegion = "us-east-1"
 
 type payload struct {
-	// DenyACOIDs []string `json:"deny_aco_ids"`
+	ACOID string   `json:"aco_id"`
+	IPs   []string `josn:"ips"`
 }
 
 type awsParams struct {
-	DBURL      string
 	SlackToken string
 }
 
@@ -36,7 +47,7 @@ func main() {
 	lambda.Start(handler)
 }
 
-func handler(ctx context.Context, event json.RawMessage) error {
+func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	log.SetFormatter(&log.JSONFormatter{
 		DisableHTMLEscape: true,
 		TimestampFormat:   time.RFC3339Nano,
@@ -47,36 +58,36 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	err := json.Unmarshal(event, &data)
 	if err != nil {
 		log.Errorf("Failed to unmarshal event: %v", err)
-		return err
+		return "", err
 	}
 
-	params, err := getAWSParams()
+	session, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
 	if err != nil {
-		log.Errorf("Unable to extract DB URL from parameter store: %+v", err)
-		return err
+		return "", err
 	}
 
-	conn, err := pgx.Connect(ctx, params.DBURL)
+	params, err := getAWSParams(session)
 	if err != nil {
-		log.Errorf("Unable to connect to database: %+v", err)
-		return err
+		log.Errorf("Unable to extract slack token from parameter store: %+v", err)
+		return "", err
 	}
-	defer conn.Close(ctx)
 
+	kmsService := kms.New(session)
+	s3Service := s3.New(session)
 	slackClient := slack.New(params.SlackToken)
 
-	err = handleCreateACOCreds(ctx, conn, data, slackClient)
+	s3Path, err := handleCreateACOCreds(ctx, data, kmsService, s3Service, slackClient)
 	if err != nil {
 		log.Errorf("Failed to handle ACO denies: %+v", err)
-		return err
+		return "", err
 	}
 
 	log.Info("Completed Create ACO Creds administrative task")
 
-	return nil
+	return fmt.Sprintf("Client credentials for %s can be found at: %s", data.ACOID, s3Path), nil
 }
 
-func handleCreateACOCreds(ctx context.Context, conn PgxConnection, data payload, notifier Notifier) error {
+func handleCreateACOCreds(ctx context.Context, data payload, kmsService *kms.KMS, s3Service *s3.S3, notifier Notifier) (string, error) {
 	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 		fmt.Sprintf("Started Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 	)
@@ -84,9 +95,9 @@ func handleCreateACOCreds(ctx context.Context, conn PgxConnection, data payload,
 		log.Errorf("Error sending notifier start message: %+v", err)
 	}
 
-	err = createACOCreds(ctx, conn, data)
+	creds, err := bcdacli.GenerateClientCredentials(data.ACOID, data.IPs)
 	if err != nil {
-		log.Errorf("Error finding and creating ACO creds: %+v", err)
+		log.Errorf("Error creating ACO creds: %+v", err)
 
 		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 			fmt.Sprintf("Failed: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
@@ -95,7 +106,59 @@ func handleCreateACOCreds(ctx context.Context, conn PgxConnection, data payload,
 			log.Errorf("Error sending notifier failure message: %+v", err)
 		}
 
-		return err
+		return "", err
+	}
+
+	kmsInput := &kms.ListAliasesInput{}
+	kmsResult, err := kmsService.ListAliases(kmsInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case kms.ErrCodeDependencyTimeoutException:
+				log.Error(kms.ErrCodeDependencyTimeoutException, aerr.Error())
+			case kms.ErrCodeInvalidMarkerException:
+				log.Error(kms.ErrCodeInvalidMarkerException, aerr.Error())
+			case kms.ErrCodeInternalException:
+				log.Error(kms.ErrCodeInternalException, aerr.Error())
+			case kms.ErrCodeInvalidArnException:
+				log.Error(kms.ErrCodeInvalidArnException, aerr.Error())
+			case kms.ErrCodeNotFoundException:
+				log.Error(kms.ErrCodeNotFoundException, aerr.Error())
+			default:
+				log.Error(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
+			log.Error(err.Error())
+		}
+		return "", err
+	}
+
+	var kmsID string
+	for _, alias := range kmsResult.Aliases {
+		if *alias.AliasName == kmsAliasName {
+			kmsID = *alias.TargetKeyId
+			break
+		}
+	}
+
+	s3Input := &s3.PutObjectInput{
+		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
+		Bucket: aws.String(destBucket),
+		Key:    aws.String(kmsID),
+	}
+	s3Result, err := s3Service.PutObject(s3Input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Error(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
+			log.Error(err.Error())
+		}
+		return "", err
 	}
 
 	_, _, err = notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
@@ -105,30 +168,20 @@ func handleCreateACOCreds(ctx context.Context, conn PgxConnection, data payload,
 		log.Errorf("Error sending notifier success message: %+v", err)
 	}
 
-	return nil
+	return s3Result.String(), nil
 }
 
-func getAWSParams() (awsParams, error) {
+func getAWSParams(session *session.Session) (awsParams, error) {
 	env := conf.GetEnv("ENV")
 
 	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
+		return awsParams{}, nil
 	}
 
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
 	if err != nil {
 		return awsParams{}, err
 	}
 
-	dbURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	return awsParams{dbURL, slackToken}, nil
+	return awsParams{slackToken}, nil
 }
