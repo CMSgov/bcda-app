@@ -27,6 +27,22 @@ type SSASPlugin struct {
 // validates that SSASPlugin implements the interface
 var _ Provider = SSASPlugin{}
 
+func (s SSASPlugin) FindAndCreateACOCredentials(ACOID string, ips []string) (string, error) {
+	aco, err := s.repository.GetACOByCMSID(context.Background(), ACOID)
+	if err != nil {
+		return "", err
+	}
+
+	creds, err := s.RegisterSystem(aco.UUID.String(), "", aco.GroupID, ips...)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not register system for %s", ACOID)
+	}
+
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+
+	return msg, nil
+}
+
 // RegisterSystemWithIPs adds a software client for the ACO identified by localID.
 func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	creds := Credentials{}

@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/slack-go/slack"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockNotifier struct {
@@ -17,16 +19,15 @@ func (m *mockNotifier) PostMessageContext(ctx context.Context, channelID string,
 }
 
 func TestHandleCreateACOCreds(t *testing.T) {
-	// ctx := context.Background()
+	ctx := context.Background()
 
-	// mockConn, err := pgxmock.NewConn()
-	// assert.Nil(t, err)
-	// defer mockConn.Close(ctx)
+	data := payload{ACOID: "TEST1234", IPs: []string{"1.2.3.4", "1.2.3.5"}}
 
-	// mockConn.ExpectExec("^UPDATE acos SET termination_details = (.+)").
-	// 	WithArgs(mockTermination{}, testACODenies).
-	// 	WillReturnResult(pgxmock.NewResult("UPDATE", 3))
+	mock := &auth.MockProvider{}
+	mock.On("FindAndCreateACOCredentials", data.ACOID, data.IPs).Return("creds\nstring", nil)
+	auth.SetMockProvider(t, mock)
 
-	// err = handleACODenies(ctx, mockConn, payload{testACODenies}, &mockNotifier{})
-	// assert.Nil(t, err)
+	s3Path, err := handleCreateACOCreds(ctx, data, &mockKMS{}, &mockS3{}, &mockNotifier{})
+	assert.Nil(t, err)
+	assert.Equal(t, s3Path, "{\n\n}")
 }

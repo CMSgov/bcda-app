@@ -251,7 +251,7 @@ func setUpApp() *cli.App {
 				if len(ips) > 0 {
 					ipAddr = strings.Split(ips, ",")
 				}
-				msg, err := GenerateClientCredentials(acoCMSID, ipAddr)
+				msg, err := generateClientCredentials(acoCMSID, ipAddr)
 				if err != nil {
 					return err
 				}
@@ -723,21 +723,14 @@ func createACO(name, cmsID string) (string, error) {
 	return aco.UUID.String(), nil
 }
 
-func GenerateClientCredentials(acoCMSID string, ips []string) (string, error) {
-	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
-	if err != nil {
-		return "", err
-	}
-
+func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	// The public key is optional for SSAS, and not used by the ACO API
-	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), "", aco.GroupID, ips...)
+	creds, err := auth.GetProvider().FindAndCreateACOCredentials(acoCMSID, ips)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}
 
-	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
-
-	return msg, nil
+	return creds, nil
 }
 
 func revokeAccessToken(accessToken string) error {

@@ -5,30 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/slack-go/slack"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
 
 var slackChannel = "C034CFU945C" // #bcda-alerts
-var destBucket = "bcda-aco-credentials"
-var kmsAliasName = "alias/bcda-aco-creds-kms"
-
-// var awsRegion = "us-east-1"
 
 type payload struct {
 	ACOID string   `json:"aco_id"`
@@ -87,7 +80,13 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	return fmt.Sprintf("Client credentials for %s can be found at: %s", data.ACOID, s3Path), nil
 }
 
-func handleCreateACOCreds(ctx context.Context, data payload, kmsService *kms.KMS, s3Service *s3.S3, notifier Notifier) (string, error) {
+func handleCreateACOCreds(
+	ctx context.Context,
+	data payload,
+	kmsService kmsiface.KMSAPI,
+	s3Service s3iface.S3API,
+	notifier Notifier,
+) (string, error) {
 	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 		fmt.Sprintf("Started Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 	)
@@ -95,7 +94,7 @@ func handleCreateACOCreds(ctx context.Context, data payload, kmsService *kms.KMS
 		log.Errorf("Error sending notifier start message: %+v", err)
 	}
 
-	creds, err := bcdacli.GenerateClientCredentials(data.ACOID, data.IPs)
+	creds, err := auth.GetProvider().FindAndCreateACOCredentials(data.ACOID, data.IPs)
 	if err != nil {
 		log.Errorf("Error creating ACO creds: %+v", err)
 
@@ -109,55 +108,31 @@ func handleCreateACOCreds(ctx context.Context, data payload, kmsService *kms.KMS
 		return "", err
 	}
 
-	kmsInput := &kms.ListAliasesInput{}
-	kmsResult, err := kmsService.ListAliases(kmsInput)
+	kmsID, err := getKMSID(kmsService)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case kms.ErrCodeDependencyTimeoutException:
-				log.Error(kms.ErrCodeDependencyTimeoutException, aerr.Error())
-			case kms.ErrCodeInvalidMarkerException:
-				log.Error(kms.ErrCodeInvalidMarkerException, aerr.Error())
-			case kms.ErrCodeInternalException:
-				log.Error(kms.ErrCodeInternalException, aerr.Error())
-			case kms.ErrCodeInvalidArnException:
-				log.Error(kms.ErrCodeInvalidArnException, aerr.Error())
-			case kms.ErrCodeNotFoundException:
-				log.Error(kms.ErrCodeNotFoundException, aerr.Error())
-			default:
-				log.Error(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
-			log.Error(err.Error())
+		log.Errorf("Error getting kms ID: %+v", err)
+
+		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
+		)
+		if err != nil {
+			log.Errorf("Error sending notifier failure message: %+v", err)
 		}
+
 		return "", err
 	}
 
-	var kmsID string
-	for _, alias := range kmsResult.Aliases {
-		if *alias.AliasName == kmsAliasName {
-			kmsID = *alias.TargetKeyId
-			break
-		}
-	}
-
-	s3Input := &s3.PutObjectInput{
-		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
-		Bucket: aws.String(destBucket),
-		Key:    aws.String(kmsID),
-	}
-	s3Result, err := s3Service.PutObject(s3Input)
+	s3Path, err := putObject(s3Service, creds, kmsID)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				log.Error(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
-			log.Error(err.Error())
+		log.Errorf("Error putting object: %+v", err)
+
+		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
+		)
+		if err != nil {
+			log.Errorf("Error sending notifier failure message: %+v", err)
 		}
+
 		return "", err
 	}
 
@@ -168,20 +143,5 @@ func handleCreateACOCreds(ctx context.Context, data payload, kmsService *kms.KMS
 		log.Errorf("Error sending notifier success message: %+v", err)
 	}
 
-	return s3Result.String(), nil
-}
-
-func getAWSParams(session *session.Session) (awsParams, error) {
-	env := conf.GetEnv("ENV")
-
-	if env == "local" {
-		return awsParams{}, nil
-	}
-
-	slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	return awsParams{slackToken}, nil
+	return s3Path, nil
 }
