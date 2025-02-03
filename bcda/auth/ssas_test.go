@@ -75,11 +75,13 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 }
 
 func (s *SSASPluginTestSuite) SetupTest() {
+	cmsID := "TEST1234"
 	postgrestest.CreateACO(s.T(), s.db,
 		models.ACO{
 			UUID:     uuid.Parse(testACOUUID),
 			Name:     "SSAS Plugin Test ACO",
 			ClientID: testACOUUID,
+			CMSID:    &cmsID,
 		})
 }
 
@@ -111,6 +113,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 		assert.NoError(tester, err)
 		var obj map[string]interface{}
 		assert.NoError(tester, json.Unmarshal(reqBody, &obj))
+		fmt.Printf("----- response obj: %+v", obj)
 		if obj["ips"] == nil {
 			assert.Equal(tester, 0, len(ips), "ips should be empty since request contained no ips field")
 		} else {
@@ -118,6 +121,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 			for _, ip := range obj["ips"].([]interface{}) {
 				ipsReceived = append(ipsReceived, ip.(string))
 			}
+			fmt.Printf("----- ips: %+v, %+v", ipsReceived, ips)
 			assert.Equal(tester, ipsReceived, ips)
 		}
 
@@ -136,6 +140,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	}
 	s.p = SSASPlugin{client: c, repository: s.r}
 
+	randomIPs := []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())}
 	validResp := `{ "system_id": "1", "client_id": ` + constants.FakeClientIDBt + `, "client_secret": ` + constants.FakeSecretBt + `, "client_name": "fake-name" }`
 	tests := []struct {
 		name      string
@@ -144,8 +149,8 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 		expErrMsg string
 	}{
 		{"Successful response", nil, validResp, ""},
-		{"Successful response with IPs", []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())}, validResp, ""},
 		{"Invalid JSON response", nil, `"this is": "invalid"`, "failed to unmarshal response json"},
+		{"Successful response with IPs", randomIPs, validResp, ""},
 	}
 
 	for _, tt := range tests {
@@ -164,6 +169,17 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 			assert.Equal(t, constants.FakeClientID, creds.ClientID)
 		})
 	}
+
+	// Also testing out FindAndCreateACOCredentials here as it basically calls RegisterSystem
+	// and there is a lot of set up needed to test this
+	creds, err := s.p.FindAndCreateACOCredentials("TEST1234", randomIPs)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), creds, fmt.Sprint("fake-name\nfake-client-id\nfake-secret"))
+
+	creds, err = s.p.FindAndCreateACOCredentials("fake-id-should-fail", []string{})
+	assert.NotNil(s.T(), err)
+	assert.Equal(s.T(), "", creds)
+
 }
 
 func (s *SSASPluginTestSuite) TestUpdateSystem() {

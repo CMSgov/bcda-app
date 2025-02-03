@@ -56,6 +56,33 @@ func (_m *MockProvider) MakeAccessToken(credentials Credentials, r *http.Request
 	return r0, r1
 }
 
+func (_m *MockProvider) FindAndCreateACOCredentials(ACOID string, IPs []string) (string, error) {
+	ret := _m.Called(ACOID, IPs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindAndCreateACOCredentials")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []string) (string, error)); ok {
+		return rf(ACOID, IPs)
+	}
+	if rf, ok := ret.Get(0).(func(string, []string) string); ok {
+		r0 = rf(ACOID, IPs)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
+		r1 = rf(ACOID, IPs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RegisterSystem provides a mock function with given fields: localID, publicKey, groupID, ips
 func (_m *MockProvider) RegisterSystem(localID string, publicKey string, groupID string, ips ...string) (Credentials, error) {
 	_va := make([]interface{}, len(ips))
