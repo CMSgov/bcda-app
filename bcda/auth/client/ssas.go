@@ -26,6 +26,10 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
+type HTTPClient interface {
+	CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error)
+}
+
 // SSASClient is a client for interacting with the System-to-System Authentication Service.
 type SSASClient struct {
 	http.Client
@@ -104,17 +108,17 @@ func (c *SSASClient) CreateGroup(groupId, name, acoCMSID string) ([]byte, error)
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create group")
+		return nil, err
 	}
 
 	rb, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create group")
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.Errorf("could not create group: %s", rb)
+		return nil, errors.Errorf("%s", rb)
 	}
 
 	return rb, nil
