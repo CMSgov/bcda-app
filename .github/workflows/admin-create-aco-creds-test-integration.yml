@@ -45,7 +45,11 @@ jobs:
           echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
           aws lambda invoke --function-name bcda-dev-admin-create-aco-creds \
             --cli-binary-format raw-in-base64-out \
-            --payload '{}' test-result.txt
+            --payload '{"aco_id":"A0012","ips":["1.2.3.4", "1.2.3.5"]}' test-result.txt
       - name: Verify result
         run: |
+          cat test-result.txt
           if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
+      # - name: Cleanup
+      #     run: |
+          

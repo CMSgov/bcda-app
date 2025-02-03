@@ -99,7 +99,7 @@ func handleCreateACOCreds(
 		log.Errorf("Error creating ACO creds: %+v", err)
 
 		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 		)
 		if err != nil {
 			log.Errorf("Error sending notifier failure message: %+v", err)
@@ -113,7 +113,7 @@ func handleCreateACOCreds(
 		log.Errorf("Error getting kms ID: %+v", err)
 
 		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 		)
 		if err != nil {
 			log.Errorf("Error sending notifier failure message: %+v", err)
@@ -127,7 +127,7 @@ func handleCreateACOCreds(
 		log.Errorf("Error putting object: %+v", err)
 
 		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 		)
 		if err != nil {
 			log.Errorf("Error sending notifier failure message: %+v", err)
@@ -137,7 +137,7 @@ func handleCreateACOCreds(
 	}
 
 	_, _, err = notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Success: Create ACO Creds List lambda in %s env.", os.Getenv("ENV")), false),
+		fmt.Sprintf("Success: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 	)
 	if err != nil {
 		log.Errorf("Error sending notifier success message: %+v", err)
