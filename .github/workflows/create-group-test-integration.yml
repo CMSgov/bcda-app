@@ -1,0 +1,51 @@
+name: Create Group Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/create-group-test-integration.yml
+      - .github/workflows/create-group-dev-deploy.yml
+      - .github/workflows/create-group-test-deploy.yml
+      - .github/workflows/create-group-prod-deploy.yml
+      - bcda/lambda/create_group/**
+  workflow_dispatch:
+
+# Ensure we have only one integration test running at a time
+concurrency:
+  group: create-group-integration-test
+
+jobs:
+  # Deploy first if triggered by pull_request
+  deploy:
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/create-group-dev-deploy.yml
+    secrets: inherit
+
+  trigger:
+    if: ${{ always() }}
+    needs: deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./bcda/lambda/create_group
+    outputs:
+      start_time: ${{ steps.invoke-lambda.outputs.STARTTIME }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
+      - name: Send event to trigger lambda function
+        id: invoke-lambda
+        run: |
+          echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
+          aws lambda invoke --function-name bcda-dev-create-group \
+            --cli-binary-format raw-in-base64-out \
+            --payload '{"group_id":"", group_name:"", aco_id:""}' test-result.txt
+      - name: Verify result
+        run: |
+          if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
