@@ -1,6 +1,9 @@
 name: 'BCDA Smoke Tests'
 
 on:
+  pull_request:
+    types:
+      - opened
   workflow_dispatch:
     inputs:
       app-branch:
