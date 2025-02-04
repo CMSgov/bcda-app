@@ -2,8 +2,8 @@ name: 'BCDA Smoke Tests'
 
 on:
   pull_request:
-    types:
-      - opened
+    paths:
+      - .github/workflows/smoke-tests.yml
   workflow_dispatch:
     inputs:
       app-branch:
