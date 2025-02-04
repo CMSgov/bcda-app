@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
@@ -21,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/robfig/cron/v3"
 	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
 )
@@ -30,14 +33,31 @@ func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{})
 
+	schedule, err := cron.ParseStandard("0 11,23 * * *")
+
+	if err != nil {
+		panic("Invalid cron schedule")
+	}
+
+	periodicJobs := []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			schedule,
+			func() (river.JobArgs, *river.InsertOpts) {
+				return CleanupJobArgs{}, nil
+			},
+			nil,
+		),
+	}
+
 	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
 		// TODO: whats an appropriate timeout?
-		JobTimeout: -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
-		Logger:     getSlogLogger(),
-		Workers:    workers,
+		JobTimeout:   -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
+		Logger:       getSlogLogger(),
+		Workers:      workers,
+		PeriodicJobs: periodicJobs,
 	})
 	if err != nil {
 		panic(err)
@@ -97,6 +117,60 @@ func (q queue) StopRiver() {
 
 type JobWorker struct {
 	river.WorkerDefaults[models.JobEnqueueArgs]
+}
+
+type CleanupJobArgs struct {
+	TransactionID   string
+	MaxDate         time.Time
+	CurrentStatus   string
+	NewStatus       string
+	RootDirsToClean []string
+}
+
+type CleanupJobWorker struct {
+	river.WorkerDefaults[CleanupJobArgs]
+}
+
+func (args CleanupJobArgs) Kind() string {
+	return "CleanupJob"
+}
+
+func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobArgs]) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
+
+	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
+	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
+
+	if err := bcdacli.CleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
+		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg))
+		logger.Error(err)
+		return err
+	}
+
+	if err := bcdacli.CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, archiveDir, stagingDir); err != nil {
+		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg))
+		logger.Error(err)
+		return err
+	}
+
+	if err := bcdacli.CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, archiveDir, stagingDir); err != nil {
+		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg))
+		logger.Error(err)
+		return err
+	}
+
+	if err := bcdacli.ArchiveExpiring(cutoff); err != nil {
+		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles))
+		logger.Error(err)
+		return err
+	}
+
+	return nil
 }
 
 func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueArgs]) error {

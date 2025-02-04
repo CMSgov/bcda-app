@@ -301,7 +301,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
-				return archiveExpiring(cutoff)
+				return ArchiveExpiring(cutoff)
 			},
 		},
 		{
@@ -317,7 +317,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
-				return cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired,
+				return CleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired,
 					conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
 			},
 		},
@@ -334,7 +334,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
-				return cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired,
+				return CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired,
 					conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_PAYLOAD_DIR"))
 			},
 		},
@@ -351,7 +351,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
-				return cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired,
+				return CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired,
 					conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_PAYLOAD_DIR"))
 			},
 		},
@@ -748,7 +748,7 @@ func revokeAccessToken(accessToken string) error {
 	return auth.GetProvider().RevokeAccessToken(accessToken)
 }
 
-func archiveExpiring(maxDate time.Time) error {
+func ArchiveExpiring(maxDate time.Time) error {
 	log.API.Info("Archiving expiring job files...")
 
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
@@ -786,7 +786,7 @@ func archiveExpiring(maxDate time.Time) error {
 	return lastJobError
 }
 
-func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+func CleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
 		time.Time{}, maxDate, currentStatus)
 	if err != nil {
