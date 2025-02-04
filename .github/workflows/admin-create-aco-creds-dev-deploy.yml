@@ -26,6 +26,7 @@ jobs:
       - name: Build admin-create-aco-creds zip file
         env:
           CGO_ENABLED: 0
+          SSAS_USE_TLS: true
         run: |
           go build -o bin/bootstrap ./lambda/admin_create_aco_creds/*.go
           zip -j function.zip bin/bootstrap

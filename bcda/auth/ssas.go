@@ -33,6 +33,12 @@ func (s SSASPlugin) FindAndCreateACOCredentials(ACOID string, ips []string) (str
 		return "", err
 	}
 
+	// reset client as we need to get updated SSAS_URL
+	s.client, err = client.NewSSASClient()
+	if err != nil {
+		return "", err
+	}
+
 	creds, err := s.RegisterSystem(aco.UUID.String(), "", aco.GroupID, ips...)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", ACOID)
