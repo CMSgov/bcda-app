@@ -26,7 +26,7 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
-type HTTPClient interface {
+type SSASHTTPClient interface {
 	CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error)
 }
 

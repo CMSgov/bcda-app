@@ -1,4 +1,4 @@
-name: Create Group Test Deploy
+name: Admin Create Group Sbx Deploy
 
 on:
   workflow_call:
@@ -8,7 +8,7 @@ on:
       - main
     paths:
       - bcda/lambda/create_group/**
-      - .github/workflows/create-group-test-deploy.yml
+      - .github/workflows/create-group-sbx-deploy.yml
 
 jobs:
   test:
@@ -19,7 +19,7 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    environment: test
+    environment: sbx
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -32,10 +32,10 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-sbx-github-actions
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
-            s3://bcda-test-create-group-function/function-${{ github.sha }}.zip
-          aws lambda update-function-code --function-name bcda-test-create-group \
-            --s3-bucket bcda-test-create-group-function --s3-key function-${{ github.sha }}.zip
+            s3://bcda-sbx-create-group-function/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-sbx-create-group \
+            --s3-bucket bcda-sbx-create-group-function --s3-key function-${{ github.sha }}.zip

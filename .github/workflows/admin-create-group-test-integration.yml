@@ -1,4 +1,4 @@
-name: Create Group Integration Tests
+name: Admin Create Group Integration Tests
 
 on:
   pull_request:

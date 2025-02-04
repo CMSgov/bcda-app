@@ -93,7 +93,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	return nil
 }
 
-func handleCreateGroup(c client.HTTPClient, r *postgres.Repository, data payload) error {
+func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data payload) error {
 	var (
 		aco *models.ACO
 		err error
