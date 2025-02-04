@@ -45,7 +45,7 @@ func StartRiver(numWorkers int) *queue {
 			func() (river.JobArgs, *river.InsertOpts) {
 				return CleanupJobArgs{}, nil
 			},
-			nil,
+			&river.PeriodicJobOpts{RunOnStart: true},
 		),
 	}
 
@@ -142,35 +142,36 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
 
-	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	cutoff := getCutOffTime()
 	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
 
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
-		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg))
-		logger.Error(err)
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 		return err
 	}
 
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, archiveDir, stagingDir); err != nil {
-		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg))
-		logger.Error(err)
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 		return err
 	}
 
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, archiveDir, stagingDir); err != nil {
-		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg))
-		logger.Error(err)
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 		return err
 	}
 
 	if err := bcdacli.ArchiveExpiring(cutoff); err != nil {
-		err := errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles))
-		logger.Error(err)
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
 		return err
 	}
 
 	return nil
+}
+
+func getCutOffTime() time.Time {
+	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	return cutoff
 }
 
 func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueArgs]) error {
