@@ -22,17 +22,25 @@ var kmsAliasName = "alias/bcda-aco-creds-kms"
 
 func getAWSParams(session *session.Session) (awsParams, error) {
 	env := conf.GetEnv("ENV")
+	if env == "sbx" {
+		env = "opensbx"
+	}
 
 	if env == "local" {
-		return awsParams{}, nil
+		return awsParams{"", ""}, nil
 	}
 
 	slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
 	if err != nil {
-		return awsParams{}, err
+		return awsParams{"", ""}, err
 	}
 
-	return awsParams{slackToken}, nil
+	ssasURL, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
+	if err != nil {
+		return awsParams{"", ""}, err
+	}
+
+	return awsParams{slackToken, ssasURL}, nil
 }
 
 func getKMSID(service kmsiface.KMSAPI) (string, error) {

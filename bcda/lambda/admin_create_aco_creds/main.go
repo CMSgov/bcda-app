@@ -30,6 +30,7 @@ type payload struct {
 
 type awsParams struct {
 	SlackToken string
+	SSASURL    string
 }
 
 type Notifier interface {
@@ -62,6 +63,12 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	params, err := getAWSParams(session)
 	if err != nil {
 		log.Errorf("Unable to extract slack token from parameter store: %+v", err)
+		return "", err
+	}
+	// need to set this env var for the initialization of SSASClient down the road
+	err = os.Setenv("SSAS_URL", params.SSASURL)
+	if err != nil {
+		log.Errorf("Error setting SSAS URL env var: %+v", err)
 		return "", err
 	}
 
