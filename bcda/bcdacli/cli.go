@@ -940,7 +940,7 @@ func scheduleArchiveCleanupJobs() {
 		return
 	}
 
-	_, e := c.AddFunc("0 11 * * *", func() {
+	_, e := c.AddFunc("0 11,23 * * *", func() {
 		cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
 		err := archiveExpiring(cutoff)
 		if err != nil {
