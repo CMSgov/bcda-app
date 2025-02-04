@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/conf"
@@ -37,8 +36,8 @@ func LoadConfig() (cfg *Config, err error) {
 
 		if env != "" {
 			cfg, err = LoadConfigFromParameterStore(
-				strings.TrimSpace(fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)),
-				strings.TrimSpace(fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env)))
+				fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env),
+				fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env))
 
 			if err != nil {
 				return nil, err
