@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ccoveille/go-safecast"
+	safecast "github.com/ccoveille/go-safecast"
 
 	"github.com/CMSgov/bcda-app/bcda/alr/csv"
 	"github.com/CMSgov/bcda-app/bcda/alr/gen"
@@ -45,8 +45,10 @@ import (
 )
 
 // App Name and usage.  Edit them here to prevent breaking tests
-const Name = "bcda"
-const Usage = "Beneficiary Claims Data API CLI"
+const (
+	Name  = "bcda"
+	Usage = "Beneficiary Claims Data API CLI"
+)
 
 var (
 	db *sql.DB
@@ -67,7 +69,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
 	}
@@ -195,7 +197,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID)
+				acoUUID, err := CreateACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -626,7 +628,7 @@ func createGroup(id, name, acoID string) (string, error) {
 	return ssasID, nil
 }
 
-func createACO(name, cmsID string) (string, error) {
+func CreateACO(name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
