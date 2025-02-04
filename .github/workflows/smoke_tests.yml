@@ -1,0 +1,103 @@
+name: 'BCDA Smoke Tests'
+
+on:
+  workflow_dispatch:
+    inputs:
+      app-branch:
+        description: The branch of the bcda-app to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      ops-branch:
+        description: The branch of the bcda-ops to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      ssas-app-branch:
+        description: The branch of the ssas-app to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      ssas-ops-branch:
+        description: The branch of the ssas-ops to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      env:
+        description: The environment in which to run smoke tests
+        required: true
+        type: choice
+        options:
+          - 'dev'
+          - 'test'
+          - 'opensbx'
+          - 'prod'
+      test-aco:
+        description: Run the tests using the selected ACO
+        required: true
+        type: choice
+        options:
+          - 'small'
+          - 'medium'
+          - 'large'
+          - 'extra-large'
+          - 'dev'
+          - 'paca'
+        default: 'dev'
+      smoke-tests:
+        description: Flag which indicates if smoke integration tests should be run
+        required: true
+        type: boolean
+        default: true
+      postman-tests:
+        description: Flag which indicates if smoke integration tests should be run
+        required: true
+        type: boolean
+        default: true
+      eoy:
+        description: The type of maintenance mode to put the application into. Empty string means no maintenance (i.e. normal)
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.env }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  checkout:
+    name: Deploy
+    runs-on: self-hosted
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build Test Images
+        run: |
+          docker compose -f docker-compose.test.yml build
+
+
+
+    # checkout app
+    # checkout ssas
+    # decrypt secrets
+    # build app image
+    # build ssas image 
+    # run ssas postman tests
+    # refresh cclf files
+    # run api postman tests
+    # run smoke tests
+    # run paca smoke tests
