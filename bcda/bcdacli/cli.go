@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/ccoveille/go-safecast"
+	"github.com/robfig/cron/v3"
 
 	"github.com/CMSgov/bcda-app/bcda/alr/csv"
 	"github.com/CMSgov/bcda-app/bcda/alr/gen"
@@ -69,6 +70,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
+	scheduleArchiveCleanupJobs()
 	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
@@ -928,4 +930,27 @@ func ignoreSignals() chan os.Signal {
 	}()
 
 	return sigs
+}
+
+func scheduleArchiveCleanupJobs() {
+	c := cron.New()
+	thresholdHr, err := strconv.Atoi(conf.GetEnv("ARCHIVE_THRESHOLD_HR"))
+	if err != nil {
+		log.API.Error(err)
+		return
+	}
+
+	_, e := c.AddFunc("0 11 * * *", func() {
+		cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
+		err := archiveExpiring(cutoff)
+		if err != nil {
+			log.API.Error("Error scheduling archiveExpiring:", err)
+			return
+		}
+	})
+
+	if e != nil {
+		log.API.Error(err)
+		return
+	}
 }
