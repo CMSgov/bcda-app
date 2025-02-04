@@ -1,0 +1,59 @@
+name: Build and Package BCDA
+
+on:
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+      env:
+        description: 'Release env'
+        required: true
+        default: 'dev'
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+      env:
+        description: 'Release env'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - test
+          - sbx
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build_and_package_bcda:
+    name: Build and package BCDA
+    runs-on: self-hosted
+    steps:
+      # - name: Clear working dir
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.release_version }}
+      # - name: Checkout BCDA-OPS
+      - name: Decrypt Secrets
+      # - name: Testing and Packaging
+      - name: Linting
+      - name: Unit Tests
+      - name: Build and package RPMs
+      - name: SonarQube Analysis
+      - name: SonarQube Quality Gate
+        # continue-on-error: true
+      - name: Upload RPM to s3 releases
+        if: ${{ inputs.release_version != '' }}
+      - name: Upload RPM to s3 dev
+        if: ${{ inputs.release_version == '' }}
