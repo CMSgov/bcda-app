@@ -3,10 +3,10 @@ name: Admin Create Group Integration Tests
 on:
   pull_request:
     paths:
-      - .github/workflows/create-group-test-integration.yml
-      - .github/workflows/create-group-dev-deploy.yml
-      - .github/workflows/create-group-test-deploy.yml
-      - .github/workflows/create-group-prod-deploy.yml
+      - .github/workflows/admin-create-group-test-integration.yml
+      - .github/workflows/admin-create-group-dev-deploy.yml
+      - .github/workflows/admin-create-group-test-deploy.yml
+      - .github/workflows/admin-create-group-prod-deploy.yml
       - bcda/lambda/create_group/**
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/create-group-dev-deploy.yml
+    uses: ./.github/workflows/admin-create-group-dev-deploy.yml
     secrets: inherit
 
   trigger:
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./bcda/lambda/create_group
+        working-directory: ./bcda/lambda/admin_create_group
     outputs:
       start_time: ${{ steps.invoke-lambda.outputs.STARTTIME }}
     steps:
