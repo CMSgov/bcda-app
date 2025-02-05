@@ -148,21 +148,25 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
 	payloadDir := conf.GetEnv("PAYLOAD_DIR")
 
+	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 		return err
 	}
 
+	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 		return err
 	}
 
+	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 		return err
 	}
 
+	// Archive expiring jobs: update job statuses and move files to an inaccessible location
 	if err := bcdacli.ArchiveExpiring(cutoff); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
 		return err
