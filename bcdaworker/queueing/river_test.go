@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
+	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,37 +98,44 @@ func TestWork_Integration(t *testing.T) {
 		}
 	}
 }
+func TestCleanupJobWorker_Work(t *testing.T) {
+	// Set up the logger since we're using the real client
+	client.SetLogger(logger)
 
-// Runs 100k (very simple) jobs to try to test performance, DB connections, etc
-// Commented out as something we probably only want to run very occassionally
-// func TestProcessJobPerformance_Integration(t *testing.T) {
-// 	defer func(origEnqueuer string) {
-// 		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
-// 	}(conf.GetEnv("QUEUE_LIBRARY"))
+	// Reset our environment once we've finished with the test
+	defer func(origEnqueuer string) {
+		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+	}(conf.GetEnv("QUEUE_LIBRARY"))
 
-// 	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
+	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 
-// 	q := StartRiver(1)
-// 	defer q.StopRiver()
+	defer func(payload, staging, archive string) {
+		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
+		conf.SetEnv(t, "FHIR_STAGING_DIR", staging)
+		conf.SetEnv(t, "FHIR_ARCHIVE_DIR", archive)
+	}(conf.GetEnv("FHIR_PAYLOAD_DIR"), conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_ARCHIVE_DIR"))
 
-// 	db := database.Connection
+	// Ensure we do not clutter our working directory with any data
+	tempDir1, err := os.MkdirTemp("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	tempDir2, err := os.MkdirTemp("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	tempDir3, err := os.MkdirTemp("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
+	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
+	conf.SetEnv(t, "FHIR_ARCHIVE_DIR", tempDir3)
 
-// 	cmsID := testUtils.RandomHexID()[0:4]
-// 	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}
-// 	postgrestest.CreateACO(t, db, aco)
-// 	job := models.Job{ACOID: aco.UUID, Status: models.JobStatusPending}
-// 	postgrestest.CreateJobs(t, db, &job)
-// 	bbPath := uuid.New()
+	cleanupJobWorker := &CleanupJobWorker{}
+	rjob := &river.Job[CleanupJobArgs]{}
 
-// 	defer postgrestest.DeleteACO(t, db, aco.UUID)
-
-// 	jobID, _ := safecast.ToInt(job.ID)
-
-// 	enqueuer := NewEnqueuer()
-
-// 	for i := 0; i <= 100_000; i++ {
-// 		jobArgs := models.JobEnqueueArgs{ID: jobID, ACOID: cmsID, BBBasePath: bbPath}
-// 		err := enqueuer.AddJob(context.Background(), jobArgs, 1)
-// 		assert.NoError(t, err)
-// 	}
-// }
+	ctx := context.Background()
+	err = cleanupJobWorker.Work(ctx, rjob)
+	assert.NoError(t, err)
+}
