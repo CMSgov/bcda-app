@@ -58,6 +58,7 @@ require (
 	github.com/riverqueue/river/riverdriver v0.14.1 // indirect
 	github.com/riverqueue/river/rivershared v0.14.1 // indirect
 	github.com/riverqueue/river/rivertype v0.14.1 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/samber/lo v1.44.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
