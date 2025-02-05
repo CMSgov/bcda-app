@@ -37,5 +37,5 @@ jobs:
         run: |
           aws s3 cp --no-progress function.zip \
             s3://bcda-prod-admin-create-group-function/function-${{ github.sha }}.zip
-          aws lambda update-function-code --function-name bcda-prod-create-group \
+          aws lambda update-function-code --function-name bcda-prod-admin-create-group \
             --s3-bucket bcda-prod-admin-create-group-function --s3-key function-${{ github.sha }}.zip
