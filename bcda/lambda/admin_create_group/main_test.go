@@ -17,10 +17,17 @@ func (s *mockSSASClient) CreateGroup(groupId string, name string, acoCMSID strin
 }
 
 func TestHandleCreateGroup(t *testing.T) {
-	group := payload{
-		GroupID:   "A9999",
-		GroupName: "A9999-group",
-		ACO_ID:    "A9999",
+	tests := []struct {
+		name    string
+		payload payload
+		err     string
+	}{
+		{"valid UUID", payload{GroupID: "A8888", GroupName: "A8888-group", ACO_ID: "7b864368-bab2-4e34-9793-0b74f8b5ba46"}, ""},
+		{"valid CMS ID", payload{GroupID: "A8888", GroupName: "A8888-group", ACO_ID: "A8888"}, ""},
+		{"invalid aco id not found UUID", payload{GroupID: "foo", GroupName: "foo-group", ACO_ID: "a7ff9610-0977-4a90-867e-f6b2b4c8b6a"}, "ACO ID is invalid or not found"},
+		{"aco id valid but not found CMS ID", payload{GroupID: "A9999", GroupName: "A9999-group", ACO_ID: "A1111"}, "no ACO record found for"},
+		{"missing ACO id", payload{GroupID: "A9999", GroupName: "A9999-group", ACO_ID: ""}, "missing one or more required field(s)"},
+		{"valid ID but missing required fields", payload{GroupID: "", GroupName: "A9999-group", ACO_ID: "A9999"}, "missing one or more required field(s)"},
 	}
 
 	db, _ := databasetest.CreateDatabase(t, "../../../db/migrations/bcda/", true)
@@ -38,8 +45,16 @@ func TestHandleCreateGroup(t *testing.T) {
 	}
 
 	r := postgres.NewRepository(db) // test database
-	c := &mockSSASClient{}          // new client
+	c := &mockSSASClient{}          // mock ssas client
 
-	err = handleCreateGroup(c, r, group)
-	assert.Nil(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err = handleCreateGroup(c, r, tt.payload)
+			if tt.err != "" {
+				assert.Contains(t, err.Error(), tt.err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
 }

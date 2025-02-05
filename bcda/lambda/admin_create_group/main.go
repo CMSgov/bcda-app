@@ -100,7 +100,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 	)
 
 	if data.GroupID == "" || data.GroupName == "" || data.ACO_ID == "" {
-		return errors.New("ID (--id), name (--name), and ACO ID (--aco-id) are required")
+		return errors.New("missing one or more required field(s): group_id, group_name, aco_id")
 	}
 
 	if match := service.IsSupportedACO(data.ACO_ID); match {
@@ -114,7 +114,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 			return err
 		}
 	} else {
-		return errors.New("ACO ID (--aco-id) must be a supported CMS ID or UUID")
+		return errors.New("ACO ID is invalid or not found")
 	}
 
 	b, err := c.CreateGroup(data.GroupID, data.GroupName, *aco.CMSID)

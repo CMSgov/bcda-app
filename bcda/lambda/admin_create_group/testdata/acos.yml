@@ -1,7 +1,10 @@
 ---
 - uuid: 7b864368-bab2-4e34-9793-0b74f8b5ba46
-  cms_id: A9999
-  name: CREATE GROUP TEST
+  cms_id: A8888
+  name: CREATE GROUP TEST VALID
 - uuid: a7ff9610-0977-4a90-867e-f6b2b4c8b6a8
   cms_id: A0003
-  name: CREATE GROUP TEST NOT VALID
+  name: CREATE GROUP TEST NOT VALID UUID
+
+
+
