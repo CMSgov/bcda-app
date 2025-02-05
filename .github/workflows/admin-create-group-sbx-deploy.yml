@@ -36,6 +36,6 @@ jobs:
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
-            s3://bcda-sbx-create-group-function/function-${{ github.sha }}.zip
+            s3://bcda-sbx-admin-create-group-function/function-${{ github.sha }}.zip
           aws lambda update-function-code --function-name bcda-sbx-create-group \
-            --s3-bucket bcda-sbx-create-group-function --s3-key function-${{ github.sha }}.zip
+            --s3-bucket bcda-sbx-admin-create-group-function --s3-key function-${{ github.sha }}.zip
