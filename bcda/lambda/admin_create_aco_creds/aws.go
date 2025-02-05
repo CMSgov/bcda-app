@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,32 +14,40 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 var destBucket = "bcda-aco-credentials"
 var kmsAliasName = "alias/bcda-aco-creds-kms"
 
 func getAWSParams(session *session.Session) (awsParams, error) {
-	env := conf.GetEnv("ENV")
-	if env == "sbx" {
-		env = "opensbx"
-	}
+	env := adjustedEnv()
 
 	if env == "local" {
-		return awsParams{"", ""}, nil
+		return awsParams{}, nil
 	}
 
 	slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
 	if err != nil {
-		return awsParams{"", ""}, err
+		return awsParams{}, err
 	}
 
 	ssasURL, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
 	if err != nil {
-		return awsParams{"", ""}, err
+		return awsParams{}, err
 	}
 
-	return awsParams{slackToken, ssasURL}, nil
+	clientID, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	clientSecret, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	return awsParams{slackToken, ssasURL, clientID, clientSecret}, nil
 }
 
 func getKMSID(service kmsiface.KMSAPI) (string, error) {
@@ -81,10 +88,7 @@ func getKMSID(service kmsiface.KMSAPI) (string, error) {
 }
 
 func putObject(service s3iface.S3API, creds string, kmsID string) (string, error) {
-	bucketSuffix := conf.GetEnv("ENV")
-	if bucketSuffix == "sbx" {
-		bucketSuffix = "opensbx"
-	}
+	bucketSuffix := adjustedEnv()
 
 	s3Input := &s3.PutObjectInput{
 		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
@@ -107,4 +111,12 @@ func putObject(service s3iface.S3API, creds string, kmsID string) (string, error
 	}
 
 	return result.String(), nil
+}
+
+func adjustedEnv() string {
+	env := conf.GetEnv("ENV")
+	if env == "sbx" {
+		env = "opensbx"
+	}
+	return env
 }

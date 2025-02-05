@@ -29,8 +29,10 @@ type payload struct {
 }
 
 type awsParams struct {
-	SlackToken string
-	SSASURL    string
+	slackToken   string
+	ssasURL      string
+	clientID     string
+	clientSecret string
 }
 
 type Notifier interface {
@@ -65,8 +67,19 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		log.Errorf("Unable to extract slack token from parameter store: %+v", err)
 		return "", err
 	}
-	// need to set this env var for the initialization of SSASClient down the road
-	err = os.Setenv("SSAS_URL", params.SSASURL)
+
+	// need to set these env vars for the initialization of SSASClient and for its requests to SSAS
+	err = os.Setenv("SSAS_URL", params.ssasURL)
+	if err != nil {
+		log.Errorf("Error setting SSAS URL env var: %+v", err)
+		return "", err
+	}
+	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)
+	if err != nil {
+		log.Errorf("Error setting SSAS URL env var: %+v", err)
+		return "", err
+	}
+	err = os.Setenv("BCDA_SSAS_SECRET", params.clientSecret)
 	if err != nil {
 		log.Errorf("Error setting SSAS URL env var: %+v", err)
 		return "", err
@@ -74,7 +87,7 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 
 	kmsService := kms.New(session)
 	s3Service := s3.New(session)
-	slackClient := slack.New(params.SlackToken)
+	slackClient := slack.New(params.slackToken)
 
 	s3Path, err := handleCreateACOCreds(ctx, data, kmsService, s3Service, slackClient)
 	if err != nil {
@@ -105,12 +118,12 @@ func handleCreateACOCreds(
 	if err != nil {
 		log.Errorf("Error creating ACO creds: %+v", err)
 
-		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
-		)
-		if err != nil {
-			log.Errorf("Error sending notifier failure message: %+v", err)
-		}
+		// _, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		// 	fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
+		// )
+		// if slackErr != nil {
+		// 	log.Errorf("Error sending notifier failure message: %+v", slackErr)
+		// }
 
 		return "", err
 	}
@@ -119,11 +132,11 @@ func handleCreateACOCreds(
 	if err != nil {
 		log.Errorf("Error getting kms ID: %+v", err)
 
-		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		_, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 		)
-		if err != nil {
-			log.Errorf("Error sending notifier failure message: %+v", err)
+		if slackErr != nil {
+			log.Errorf("Error sending notifier failure message: %+v", slackErr)
 		}
 
 		return "", err
@@ -133,11 +146,11 @@ func handleCreateACOCreds(
 	if err != nil {
 		log.Errorf("Error putting object: %+v", err)
 
-		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		_, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
 		)
-		if err != nil {
-			log.Errorf("Error sending notifier failure message: %+v", err)
+		if slackErr != nil {
+			log.Errorf("Error sending notifier failure message: %+v", slackErr)
 		}
 
 		return "", err
