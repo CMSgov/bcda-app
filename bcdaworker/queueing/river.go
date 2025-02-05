@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -43,7 +44,11 @@ func StartRiver(numWorkers int) *queue {
 		river.NewPeriodicJob(
 			schedule,
 			func() (river.JobArgs, *river.InsertOpts) {
-				return CleanupJobArgs{}, nil
+				return CleanupJobArgs{}, &river.InsertOpts{
+					UniqueOpts: river.UniqueOpts{
+						ByArgs: true,
+					},
+				}
 			},
 			&river.PeriodicJobOpts{RunOnStart: true},
 		),
@@ -120,11 +125,6 @@ type JobWorker struct {
 }
 
 type CleanupJobArgs struct {
-	TransactionID   string
-	MaxDate         time.Time
-	CurrentStatus   string
-	NewStatus       string
-	RootDirsToClean []string
 }
 
 type CleanupJobWorker struct {
@@ -140,23 +140,24 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	defer cancel()
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
+	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", uuid.New())
 
 	cutoff := getCutOffTime()
 	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
+	payloadDir := conf.GetEnv("PAYLOAD_DIR")
 
 	if err := bcdacli.CleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 		return err
 	}
 
-	if err := bcdacli.CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, archiveDir, stagingDir); err != nil {
+	if err := bcdacli.CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 		return err
 	}
 
-	if err := bcdacli.CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, archiveDir, stagingDir); err != nil {
+	if err := bcdacli.CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 		return err
 	}
