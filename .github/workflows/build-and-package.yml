@@ -3,7 +3,7 @@ name: Build and Package
 
 on:
   push:
-    branches: carl/BCDA-9633-build-bcda-on-ami
+    branches: carl/BCDA-8633-build-bcda-on-ami
   # workflow_call:
   #   inputs:
   #     release_version:
@@ -52,14 +52,14 @@ jobs:
         uses: ./.github/workflows/build-and-package-bcda.yml
         with:
           # release_version: ${{ inputs.release_version }}
-          release_version: carl/BCDA-9633-build-bcda-on-ami
+          release_version: carl/BCDA-8633-build-bcda-on-ami
           # env: ${{ inputs.env }}
           env: dev
       - name: Build and Package SSAS
-        uses: ./.github/workflows/build-and-package-ssas.yml
+        uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@carl/BCDA-8633-build-bcda-on-ami
         with:
           # release_version: ${{ inputs.release_version }}
-          release_version: carl/BCDA-9633-build-bcda-on-ami
+          release_version: carl/BCDA-8633-build-bcda-on-ami
           # env: ${{ inputs.env }}
           env: dev
       - name: Get platinum AMI

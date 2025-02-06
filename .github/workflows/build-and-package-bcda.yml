@@ -7,107 +7,62 @@ on:
         description: 'Release version (or branch name)'
         required: true
         type: string
-      env:
-        description: 'Release env'
-        required: true
-        default: 'dev'
-        type: string
+      # env:
+      #   description: 'Release env'
+      #   required: true
+      #   default: 'dev'
+      #   type: string
   workflow_dispatch:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
         required: true
         type: string
-      env:
-        description: 'Release env'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - test
-          - sbx
-          - prod
+      # env:
+      #   description: 'Release env'
+      #   required: true
+      #   default: 'dev'
+      #   type: choice
+      #   options:
+      #     - dev
+      #     - test
+      #     - sbx
+      #     - prod
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # i think we could parallelize (linting, testing, sonarqube) and (build and package)
   build_and_package_bcda:
     name: Build and package BCDA
     runs-on: self-hosted
     # timeout-minutes: 120 # this mimics the 2 hour SonarQube Quality Gate
     steps:
       # - name: Clear working dir
-      - name: Checkout BCDA
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-app
-          ref: ${{ inputs.release_version }}
+      # - name: Checkout BCDA
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: CMSgov/bcda-app
+      #     ref: ${{ inputs.release_version }}
       # - name: Checkout BCDA-OPS
-      - name: Decrypt secrets
-        env:
-          VAULT_PW: ${{ secrets.VAULT_PW }}
-        run: |
-          echo $VAULT_PW > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Linting
-        run: make lint LINT_TIMEOUT=4.5m
-      - name: Unit Tests
-        run: make unit-test
-      - name: Build and package RPMs
-        run: |
-          cp $BCDA_GPG_PUB_KEY ops/$GPG_PUB_KEY_FILE
-          cp $BCDA_GPG_SEC_KEY ops/$GPG_SEC_KEY_FILE
-          # Remove any slashes - we don't want RPM to contain slash
-          BCDA_GPG_RPM_PASSPHRASE=$BCDA_GPG_RPM_PASSPHRASE GPG_RPM_USER="$GPG_RPM_USER" GPG_RPM_EMAIL=$GPG_RPM_EMAIL GPG_PUB_KEY_FILE=$GPG_PUB_KEY_FILE GPG_SEC_KEY_FILE=$GPG_SEC_KEY_FILE make package version=`echo ${params.BCDA_GIT_VERSION} | sed 's/.*\\///'`
-      - name: SonarQube Analysis
-        uses: SonarSource/sonarqube-scan-action@v4.2.1 # Ex: v4.1.0, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
+      # - name: Decrypt secrets
+      #   env:
+      #     VAULT_PW: ${{ secrets.VAULT_PW }}
+      #   run: |
+      #     echo $VAULT_PW > .vault_password
+      #     bash ops/secrets --decrypt
+      #     mv -fv shared_files/encrypted/* shared_files/decrypted/
+      # Doing the above basic repo checkout in Quality Checks, does that make sense?
+      - name: Quality Checks
+        uses: ./.github/workflows/quality-checks.yml
         with:
-          args: >
-            -Dsonar.projectKey=bcda-aco-api
-            -Dsonar.host.url=https://sonarqube.cloud.cms.gov
-            -Dsonar.sources=.
-            -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out
-            -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
-            -Dsonar.branch.name=${{ inputs.release_version }}
-            -Dsonar.projectVersion=${{ github.sha }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }} # is above?  do we care where this lives?
-      # - name: SonarQube Quality Gate
-        # continue-on-error: true
-      - name: Upload BCDA RPM to s3 releases
-        # TODO: should we be checking blank release_version or should we be checking inputs.release_env == 'dev' ?
-        if: ${{ inputs.release_version != '' }}
-        working-directory: ./bcda-app/bcda
-        run: |
-          BCDA_RPM = ls bcda-*.rpm | tr '\n'
-          aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-releases/bcda-release-${{ inputs.release_version }}.rpm
-          aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-release-latest.rpm
-      - name: Upload BCDA Worker RPM to s3 releases
-        if: ${{ inputs.release_version != '' }}
-        working-directory: ./bcda-app/bcdaworker
-        run: |
-          BCDA_WORKER_RPM = ls bcdaworker-*.rpm | tr '\n'
-          aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
-          aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
-      - name: Upload BCDA RPM to s3 dev
-        if: ${{ inputs.release_version == '' }}
-        working-directory: ./bcda-app/bcda
-        run: |
-          BCDA_RPM = ls bcda-*.rpm | tr '\n'
-          aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-releases/bcda-release-${{ inputs.release_version }}.rpm
-          aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-release-latest.rpm
-      - name: Upload BCDA Worker RPM to s3 dev
-        if: ${{ inputs.release_version == '' }}
-        working-directory: ./bcda-app/bcdaworker
-        run: |
-          BCDA_WORKER_RPM = ls bcdaworker-*.rpm | tr '\n'
-          aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
-          aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
+          release_version: ${{ inputs.release_version }}
+      - name: Package BCDA and Worker RPMs
+        uses: ./.github/workflows/package-rpms.yml
+        with:
+          release_version: ${{ inputs.release_version }}
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
@@ -119,9 +74,10 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Build and Package BCDA/Worker in ${{ inputs.release_version }} env for run: <${{ github.server_url}}/${{ github.repository}}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "SUCCESS: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
+      # TODO: junit 'bcda-app/test_results/latest/junit.xml'
       - name: Failure Alert
         if: ${{ failure() }}
         uses: slackapi/slack-github-action@v2.0.0
@@ -133,7 +89,7 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: Build and Package BCDA/Worker in ${{ inputs.release_version }} env for run: <${{ github.server_url}}/${{ github.repository}}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "FAILURE: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
       - name: Cleanup secrets
