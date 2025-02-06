@@ -21,6 +21,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/riverqueue/river"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
 )
@@ -68,7 +69,7 @@ func TestWork_Integration(t *testing.T) {
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
 
-	// Reset our environment once we've finished with the test
+	// Reset our environment variables to their original values once we've finished with the test.
 	defer func(origEnqueuer string) {
 		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
 	}(conf.GetEnv("QUEUE_LIBRARY"))
@@ -139,9 +140,40 @@ func TestWork_Integration(t *testing.T) {
 	}
 }
 
+type MockCleanupJob struct {
+	mock.Mock
+}
+
+type MockArchiveExpiring struct {
+	mock.Mock
+}
+
+func (m *MockCleanupJob) CleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+	args := m.Called(maxDate, currentStatus, newStatus, rootDirsToClean)
+	return args.Error(0)
+}
+
+func (m *MockArchiveExpiring) ArchiveExpiring(maxDate time.Time) error {
+	args := m.Called(maxDate)
+	return args.Error(0)
+}
+
 func TestCleanupJobWorker_Work(t *testing.T) {
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
+
+	// Create mock objects
+	mockCleanupJob := new(MockCleanupJob)
+	mockArchiveExpiring := new(MockArchiveExpiring)
+
+	const archivePath = "/path/to/archive"
+	const stagingPath = "/path/to/staging"
+	const payloadPath = "/path/to/payload"
+
+	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusArchived, models.JobStatusExpired, []string{archivePath, stagingPath}).Return(nil)
+	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusFailed, models.JobStatusFailedExpired, []string{stagingPath, payloadPath}).Return(nil)
+	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusCancelled, models.JobStatusCancelledExpired, []string{stagingPath, payloadPath}).Return(nil)
+	mockArchiveExpiring.On("ArchiveExpiring", mock.AnythingOfType("time.Time")).Return(nil)
 
 	// Reset our environment once we've finished with the test
 	defer func(origEnqueuer string) {
@@ -173,12 +205,23 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
 	conf.SetEnv(t, "FHIR_ARCHIVE_DIR", tempDir3)
 
+	// Create a worker instance
 	cleanupJobWorker := &CleanupJobWorker{}
-	rjob := &river.Job[CleanupJobArgs]{}
 
-	ctx := context.Background()
-	err = cleanupJobWorker.Work(ctx, rjob)
+	// Create a mock river.Job
+	mockJob := &river.Job[CleanupJobArgs]{
+		Args: CleanupJobArgs{},
+	}
+
+	// Call the Work function
+	err = cleanupJobWorker.Work(context.Background(), mockJob)
+
+	// Assert that there was no error
 	assert.NoError(t, err)
+
+	// Assert that all expectations were met
+	mockCleanupJob.AssertExpectations(t)
+	mockArchiveExpiring.AssertExpectations(t)
 }
 
 func assertFileNotExists(t *testing.T, path string) {
