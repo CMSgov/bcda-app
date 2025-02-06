@@ -93,36 +93,6 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusCancelled, models.JobStatusCancelledExpired, []string{stagingPath, payloadPath}).Return(nil)
 	mockArchiveExpiring.On("ArchiveExpiring", mock.AnythingOfType("time.Time")).Return(nil)
 
-	// Reset our environment once we've finished with the test
-	defer func(origEnqueuer string) {
-		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
-	}(conf.GetEnv("QUEUE_LIBRARY"))
-
-	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
-
-	defer func(payload, staging, archive string) {
-		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
-		conf.SetEnv(t, "FHIR_STAGING_DIR", staging)
-		conf.SetEnv(t, "FHIR_ARCHIVE_DIR", archive)
-	}(conf.GetEnv("FHIR_PAYLOAD_DIR"), conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_ARCHIVE_DIR"))
-
-	// Ensure we do not clutter our working directory with any data
-	tempDir1, err := os.MkdirTemp("", "*")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	tempDir2, err := os.MkdirTemp("", "*")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	tempDir3, err := os.MkdirTemp("", "*")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
-	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
-	conf.SetEnv(t, "FHIR_ARCHIVE_DIR", tempDir3)
-
 	// Create a worker instance
 	cleanupJobWorker := &CleanupJobWorker{
 		cleanupJob:      mockCleanupJob.CleanupJob,
@@ -135,7 +105,7 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	}
 
 	// Call the Work function
-	err = cleanupJobWorker.Work(context.Background(), mockJob)
+	err := cleanupJobWorker.Work(context.Background(), mockJob)
 
 	// Assert that there was no error
 	assert.NoError(t, err)
