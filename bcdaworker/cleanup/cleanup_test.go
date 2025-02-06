@@ -124,7 +124,10 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	conf.SetEnv(t, "FHIR_ARCHIVE_DIR", tempDir3)
 
 	// Create a worker instance
-	cleanupJobWorker := &CleanupJobWorker{}
+	cleanupJobWorker := &CleanupJobWorker{
+		cleanupJob:      mockCleanupJob.CleanupJob,
+		archiveExpiring: mockArchiveExpiring.ArchiveExpiring,
+	}
 
 	// Create a mock river.Job
 	mockJob := &river.Job[CleanupJobArgs]{

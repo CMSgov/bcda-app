@@ -26,6 +26,15 @@ type CleanupJobArgs struct {
 
 type CleanupJobWorker struct {
 	river.WorkerDefaults[CleanupJobArgs]
+	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
+	archiveExpiring func(time.Time) error
+}
+
+func NewCleanupJobWorker() *CleanupJobWorker {
+	return &CleanupJobWorker{
+		cleanupJob:      cleanupJob,
+		archiveExpiring: archiveExpiring,
+	}
 }
 
 func (args CleanupJobArgs) Kind() string {
@@ -45,25 +54,25 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	payloadDir := conf.GetEnv("PAYLOAD_DIR")
 
 	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
-	if err := CleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
+	if err := w.cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 		return err
 	}
 
 	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
-	if err := CleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
+	if err := w.cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 		return err
 	}
 
 	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
-	if err := CleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
+	if err := w.cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 		return err
 	}
 
 	// Archive expiring jobs: update job statuses and move files to an inaccessible location
-	if err := ArchiveExpiring(cutoff); err != nil {
+	if err := w.archiveExpiring(cutoff); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
 		return err
 	}
@@ -76,7 +85,7 @@ func getCutOffTime() time.Time {
 	return cutoff
 }
 
-func ArchiveExpiring(maxDate time.Time) error {
+func archiveExpiring(maxDate time.Time) error {
 	log.API.Info("Archiving expiring job files...")
 
 	db := database.Connection
@@ -116,7 +125,7 @@ func ArchiveExpiring(maxDate time.Time) error {
 	return lastJobError
 }
 
-func CleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
 	db := database.Connection
 	r := postgres.NewRepository(db)
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
