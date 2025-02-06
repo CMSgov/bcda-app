@@ -11,7 +11,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/jackc/pgx/v5"
-	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -34,8 +34,11 @@ type payload struct {
 }
 
 type awsParams struct {
-	DBURL      string
-	SlackToken string
+	DBURL        string
+	SlackToken   string
+	ssasURL      string
+	clientID     string
+	clientSecret string
 }
 
 type Notifier interface {
@@ -66,6 +69,22 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
+	err = os.Setenv("SSAS_URL", params.ssasURL)
+	if err != nil {
+		log.Errorf("Error setting SSAS URL env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)
+	if err != nil {
+		log.Errorf("Error setting SSAS URL env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("BCDA_SSAS_SECRET", params.clientSecret)
+	if err != nil {
+		log.Errorf("Error setting SSAS URL env var: %+v", err)
+		return err
+	}
+
 	conn, err := pgx.Connect(ctx, params.DBURL)
 	if err != nil {
 		log.Errorf("Unable to connect to database: %+v", err)
@@ -77,9 +96,11 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	db := database.Connection
 	r := postgres.NewRepository(db)
 	ssas, err := client.NewSSASClient()
+
 	if err != nil {
 		log.Errorf("failed to create SSAS client: %s", err)
 	}
+
 	sendSlackMessage(slackClient, fmt.Sprintf("Started Create Group lambda in %s env.", os.Getenv("ENV")))
 	err = handleCreateGroup(ssas, r, data)
 	if err != nil {
@@ -87,6 +108,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		log.Errorf("Failed to Create Group: %+v", err)
 		return err
 	}
+
 	sendSlackMessage(slackClient, fmt.Sprintf("Success: Create Group lambda in %s env.", os.Getenv("ENV")))
 	log.Info("Completed Create Group administrative task")
 
@@ -150,7 +172,7 @@ func getAWSParams() (awsParams, error) {
 	env := conf.GetEnv("ENV")
 
 	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
+		return awsParams{conf.GetEnv("DATABASE_URL"), "", "", "", ""}, nil
 	}
 
 	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
@@ -168,7 +190,22 @@ func getAWSParams() (awsParams, error) {
 		return awsParams{}, err
 	}
 
-	return awsParams{dbURL, slackToken}, nil
+	ssasURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	clientID, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	clientSecret, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	return awsParams{dbURL, slackToken, ssasURL, clientID, clientSecret}, nil
 }
 
 func sendSlackMessage(sc *slack.Client, msg string) {
