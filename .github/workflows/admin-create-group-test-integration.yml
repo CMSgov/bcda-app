@@ -43,7 +43,7 @@ jobs:
         id: invoke-lambda
         run: |
           echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
-          aws lambda invoke --function-name bcda-dev-create-group \
+          aws lambda invoke --function-name bcda-dev-admin-create-group \
             --cli-binary-format raw-in-base64-out \
             --payload '{"group_id":"foo", "group_name":"bar", "aco_id":"foobar"}' test-result.txt
       - name: Verify result
