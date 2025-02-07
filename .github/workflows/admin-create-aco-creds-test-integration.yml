@@ -48,8 +48,6 @@ jobs:
             --payload '{"aco_id":"A0012","ips":["1.2.3.4", "1.2.3.5"]}' test-result.txt
       - name: Verify result
         run: |
-          cat test-result.txt
-          if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
-      # - name: Cleanup
-      #     run: |
+          if grep -q "errorType" test-result.txt; then echo "Failed: check lambda logs."; exit 1; else echo "Success"; fi
+
           
