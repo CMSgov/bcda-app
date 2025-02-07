@@ -174,7 +174,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	// and there is a lot of set up needed to test this
 	creds, err := s.p.FindAndCreateACOCredentials("TEST1234", randomIPs)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), creds, fmt.Sprint("fake-name\nfake-client-id\nfake-secret"))
+	assert.Equal(s.T(), creds, "fake-name\nfake-client-id\nfake-secret")
 
 	creds, err = s.p.FindAndCreateACOCredentials("fake-id-should-fail", []string{})
 	assert.NotNil(s.T(), err)
