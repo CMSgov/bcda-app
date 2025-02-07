@@ -48,4 +48,4 @@ jobs:
             --payload '{"deny_aco_ids":["foo001","bar002"]}' test-result.txt
       - name: Verify result
         run: |
-          if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
+          if grep -q "errorType" test-result.txt; then echo "Failed: check lambda logs."; exit 1; else echo "Success"; fi
