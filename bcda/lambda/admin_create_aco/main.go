@@ -24,11 +24,6 @@ type payload struct {
 	CMSID string `json:"cms_id"`
 }
 
-type awsParams struct {
-	DBURL      string
-	SlackToken string
-}
-
 type Notifier interface {
 	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
@@ -51,13 +46,13 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	params, err := getAWSParams()
+	slackToken, err := getSlackToken()
 	if err != nil {
-		log.Errorf("Unable to extract DB URL from parameter store: %+v", err)
+		log.Errorf("Unable to get Slack token: %+v", err)
 		return err
 	}
 
-	slackClient := slack.New(params.SlackToken)
+	slackClient := slack.New(slackToken)
 
 	err = handleCreateACO(ctx, data, slackClient)
 	if err != nil {
@@ -78,7 +73,6 @@ func handleCreateACO(ctx context.Context, data payload, notifier Notifier) error
 		log.Errorf("Error sending notifier start message: %+v", err)
 	}
 
-	// TODO: acoUuid potentially needs to be returned
 	_, err = bcdacli.CreateACO(data.Name, data.CMSID)
 	if err != nil {
 		log.Errorf("Error creating ACO: %+v", err)
@@ -103,27 +97,22 @@ func handleCreateACO(ctx context.Context, data payload, notifier Notifier) error
 	return nil
 }
 
-func getAWSParams() (awsParams, error) {
+func getSlackToken() (string, error) {
 	env := conf.GetEnv("ENV")
 
 	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
+		return "", nil
 	}
 
 	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
 	if err != nil {
-		return awsParams{}, err
-	}
-
-	dbURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
-	if err != nil {
-		return awsParams{}, err
+		return "", err
 	}
 
 	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
 	if err != nil {
-		return awsParams{}, err
+		return "", err
 	}
 
-	return awsParams{dbURL, slackToken}, nil
+	return slackToken, nil
 }
