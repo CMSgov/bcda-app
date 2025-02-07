@@ -13,12 +13,13 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	cleanup "github.com/CMSgov/bcda-app/bcdaworker/cleanup"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -27,8 +28,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type CleanupJobWorker = cleanup.CleanupJobWorker
-type CleanupJobArgs = cleanup.CleanupJobArgs
+type CleanupJobArgs struct {
+}
+
+func (args CleanupJobArgs) Kind() string {
+	return "CleanupJob"
+}
+
+type CleanupJobWorker struct {
+	river.WorkerDefaults[CleanupJobArgs]
+	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
+	archiveExpiring func(time.Time) error
+}
 
 // TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
 func StartRiver(numWorkers int) *queue {
@@ -176,6 +187,45 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueA
 	return nil
 }
 
+func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobArgs]) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	_, logger := log.SetCtxLogger(ctx, "transaction_id", uuid.New())
+
+	cutoff := getCutOffTime()
+	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
+	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
+	payloadDir := conf.GetEnv("PAYLOAD_DIR")
+
+	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
+	if err := w.cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
+		return err
+	}
+
+	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
+	if err := w.cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
+		return err
+	}
+
+	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
+	if err := w.cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
+		return err
+	}
+
+	// Archive expiring jobs: update job statuses and move files to an inaccessible location
+	if err := w.archiveExpiring(cutoff); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
+		return err
+	}
+
+	return nil
+}
+
 // TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
 // Update the AWS Cloudwatch Metric for job queue count
 func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
@@ -204,4 +254,9 @@ func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
 	}
 
 	return float64(count)
+}
+
+func getCutOffTime() time.Time {
+	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	return cutoff
 }

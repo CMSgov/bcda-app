@@ -8,84 +8,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
-type CleanupJobArgs struct {
-}
-
-type CleanupJobWorker struct {
-	river.WorkerDefaults[CleanupJobArgs]
-	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
-	archiveExpiring func(time.Time) error
-}
-
-func NewCleanupJobWorker() *CleanupJobWorker {
-	return &CleanupJobWorker{
-		cleanupJob:      cleanupJob,
-		archiveExpiring: archiveExpiring,
-	}
-}
-
-func (args CleanupJobArgs) Kind() string {
-	return "CleanupJob"
-}
-
-func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobArgs]) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, logger := log.SetCtxLogger(ctx, "transaction_id", uuid.New())
-
-	cutoff := getCutOffTime()
-	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
-	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
-	payloadDir := conf.GetEnv("PAYLOAD_DIR")
-
-	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
-	if err := w.cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
-		return err
-	}
-
-	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
-	if err := w.cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
-		return err
-	}
-
-	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
-	if err := w.cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
-		return err
-	}
-
-	// Archive expiring jobs: update job statuses and move files to an inaccessible location
-	if err := w.archiveExpiring(cutoff); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
-		return err
-	}
-
-	return nil
-}
-
-func getCutOffTime() time.Time {
-	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
-	return cutoff
-}
-
-func archiveExpiring(maxDate time.Time) error {
+func ArchiveExpiring(maxDate time.Time) error {
 	log.API.Info("Archiving expiring job files...")
 
 	db := database.Connection
@@ -125,7 +56,7 @@ func archiveExpiring(maxDate time.Time) error {
 	return lastJobError
 }
 
-func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+func CleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
 	db := database.Connection
 	r := postgres.NewRepository(db)
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
