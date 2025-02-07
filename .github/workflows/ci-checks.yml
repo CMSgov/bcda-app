@@ -1,0 +1,116 @@
+name: CI Checks
+
+on:
+  # push: # TEMP
+  #   branches:
+  #     - main
+  #   paths-ignore:
+  #     - .github/workflows/opt-out-import-*
+  #     - optout/**
+  # pull_request:
+  #   paths-ignore:
+  #     - .github/workflows/opt-out-import-*
+  #     - optout/**
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+
+env:
+  RELEASE_VERSION: ${{ inputs.release_version || github.sha }}
+
+jobs:
+  go_mod_tidy:
+    name: Modules Lint
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_VERSION }}
+      - name: Get Go # TEMP
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.23.1'
+      - name: Tidy modules
+        run: |
+          go mod tidy -v
+          CHANGES_FOUND=$(git diff-files --quiet)
+          if [[ "$(CHANGES_FOUND)" == "1" ]]; then
+            echo "Changes found. Run go mod tidy to clean up modules."
+            git diff
+            exit 1
+          fi
+
+  lint_and_test:
+    name: Lint and Test
+    runs-on: self-hosted
+    env:
+      VAULT_PW: ${{ secrets.VAULT_PW }}
+    #   DOCKER_BUILDKIT: 1
+    #   COMPOSE_DOCKER_CLI_BUILD: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_VERSION }}
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v1
+      - name: Get Go # TEMP
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.23.1'
+      - name: Build the stack
+        run: make docker-bootstrap
+      - name: "Run all tests"
+        run: make test
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: ./test_results/latest/testcoverage.out
+      - name: Cleanup secrets
+        if: ${{ always() }}
+        run: rm -r shared_files/decrypted shared_files/encrypted .vault_password
+
+  sonar-quality-gate:
+    name: Sonarqube Quality Gate
+    needs: lint_and_test
+    runs-on: self-hosted
+    steps:
+      - name: Download code coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-report
+      - name: Set env vars from AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            SONAR_HOST_URL=/sonarqube/url
+            SONAR_TOKEN=/sonarqube/token
+      - name: Run quality gate scan
+        uses: sonarsource/sonarqube-scan-action@master
+        with:
+          args: |
+            -Dsonar.projectKey=bcda-aco-api
+            -Dsonar.sources=.
+            -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out
+            -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
+            -Dsonar.branch.name=${{ github.event.pull_request.head.ref }}
+            -Dsonar.projectVersion=${{ github.event.pull_request.head.sha }}
+            -Dsonar.qualitygate.wait=true

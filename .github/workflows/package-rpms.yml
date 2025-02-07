@@ -23,54 +23,71 @@ jobs:
     name: Package BCDA, Worker RPMs
     runs-on: self-hosted
     steps:
-      # - name: Clear working dir
-    #   - name: Checkout BCDA
-    #     uses: actions/checkout@v4
-    #     with:
-    #       repository: CMSgov/bcda-app
-    #       ref: ${{ inputs.release_version }}
-      # - name: Checkout BCDA-OPS
-      # - name: Decrypt secrets
-      #   env:
-      #     VAULT_PW: ${{ secrets.VAULT_PW }}
-      #   run: |
-      #     echo $VAULT_PW > .vault_password
-      #     bash ops/secrets --decrypt
-      #     mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Build and package RPMs
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.release_version }}
+      - name: Decrypt secrets
+        env:
+          VAULT_PW: ${{ secrets.VAULT_PW }}
         run: |
-          cp $BCDA_GPG_PUB_KEY ops/$GPG_PUB_KEY_FILE
-          cp $BCDA_GPG_SEC_KEY ops/$GPG_SEC_KEY_FILE
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
+      - name: Get AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
+            BCDA_GPG_RPM_PASSPHRASE=/bcda/gpg/sec-key
+            BCDA_GPG_SEC_KEY=/bcda/gpg/rpm-passphrase
+      - name: Build and package RPMs
+        env: 
+          GPG_RPM_USER: Beneficiary Claims Data API
+          GPG_RPM_EMAIL: "bcda-ops.group@adhocteam.us"
+          GPG_PUB_KEY_FILE: "../ops/RPM-GPG-KEY-bcda"
+          GPG_SEC_KEY_FILE: "../ops/RPM-GPG-KEY-SECRET-bcda"
+        run: |
+          cp ${{ env.BCDA_GPG_PUB_KEY }} ops/${{ env.GPG_PUB_KEY_FILE }}
+          cp ${{ env.BCDA_GPG_SEC_KEY }} ops/${{ env.GPG_SEC_KEY_FILE }}
           # Remove any slashes - we don't want RPM to contain slash
-          BCDA_GPG_RPM_PASSPHRASE=$BCDA_GPG_RPM_PASSPHRASE GPG_RPM_USER="$GPG_RPM_USER" GPG_RPM_EMAIL=$GPG_RPM_EMAIL GPG_PUB_KEY_FILE=$GPG_PUB_KEY_FILE GPG_SEC_KEY_FILE=$GPG_SEC_KEY_FILE make package version=`echo ${{ inputs.release_version }} | sed 's/.*\\///'`
-      # - name: SonarQube Quality Gate
-        # continue-on-error: true
+          BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
       - name: Upload BCDA RPM to s3 releases
         # TODO: should we be checking blank release_version or should we be checking inputs.release_env == 'dev' ?
         if: ${{ inputs.release_version != '' }}
         working-directory: ./bcda-app/bcda
         run: |
-          BCDA_RPM = ls bcda-*.rpm | tr '\n' ' '
+          export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
+          echo $BCDA_RPM
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-releases/bcda-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-release-latest.rpm
       - name: Upload BCDA Worker RPM to s3 releases
         if: ${{ inputs.release_version != '' }}
         working-directory: ./bcda-app/bcdaworker
         run: |
-          BCDA_WORKER_RPM = ls bcdaworker-*.rpm | tr '\n' ' '
+          export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
+          echo $BCDA_RPM
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
       - name: Upload BCDA RPM to s3 dev
         if: ${{ inputs.release_version == '' }}
         working-directory: ./bcda-app/bcda
         run: |
-          BCDA_RPM = ls bcda-*.rpm | tr '\n' ' '
+          export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
+          echo $BCDA_RPM
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-releases/bcda-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-release-latest.rpm
       - name: Upload BCDA Worker RPM to s3 dev
         if: ${{ inputs.release_version == '' }}
         working-directory: ./bcda-app/bcdaworker
         run: |
-          BCDA_WORKER_RPM = ls bcdaworker-*.rpm | tr '\n' ' '
+          export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
+          echo $BCDA_RPM
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
+      - name: Cleanup secrets
+        if: ${{ always() }}
+        run: rm -r shared_files/decrypted shared_files/encrypted .vault_password

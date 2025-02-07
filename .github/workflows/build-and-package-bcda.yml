@@ -7,62 +7,35 @@ on:
         description: 'Release version (or branch name)'
         required: true
         type: string
-      # env:
-      #   description: 'Release env'
-      #   required: true
-      #   default: 'dev'
-      #   type: string
   workflow_dispatch:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
         required: true
         type: string
-      # env:
-      #   description: 'Release env'
-      #   required: true
-      #   default: 'dev'
-      #   type: choice
-      #   options:
-      #     - dev
-      #     - test
-      #     - sbx
-      #     - prod
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  # i think we could parallelize (linting, testing, sonarqube) and (build and package)
-  build_and_package_bcda:
-    name: Build and package BCDA
+  ci_checks:
+    uses: ./.github/workflows/ci-checks.yml
+    with:
+      # release_version: ${{ inputs.release_version }}
+      release_version: carl/BCDA-8633-build-bcda-on-ami
+
+  build_and_package:
+    uses: ./.github/workflows/package-rpms.yml
+    with:
+      # release_version: ${{ inputs.release_version }}
+      release_version: carl/BCDA-8633-build-bcda-on-ami
+  
+  post_build:
+    if: ${{ always() }}
+    name: Post Build (Cleanup, Alerts)
     runs-on: self-hosted
-    # timeout-minutes: 120 # this mimics the 2 hour SonarQube Quality Gate
     steps:
-      # - name: Clear working dir
-      # - name: Checkout BCDA
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: CMSgov/bcda-app
-      #     ref: ${{ inputs.release_version }}
-      # - name: Checkout BCDA-OPS
-      # - name: Decrypt secrets
-      #   env:
-      #     VAULT_PW: ${{ secrets.VAULT_PW }}
-      #   run: |
-      #     echo $VAULT_PW > .vault_password
-      #     bash ops/secrets --decrypt
-      #     mv -fv shared_files/encrypted/* shared_files/decrypted/
-      # Doing the above basic repo checkout in Quality Checks, does that make sense?
-      - name: Quality Checks
-        uses: ./.github/workflows/quality-checks.yml
-        with:
-          release_version: ${{ inputs.release_version }}
-      - name: Package BCDA and Worker RPMs
-        uses: ./.github/workflows/package-rpms.yml
-        with:
-          release_version: ${{ inputs.release_version }}
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
@@ -92,6 +65,3 @@ jobs:
                 text: "FAILURE: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
-      - name: Cleanup secrets
-        if: ${{ always() }}
-        run: rm -r shared_files/decrypted shared_files/encrypted .vault_password
