@@ -151,7 +151,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			ips, response, tester = tt.ips, tt.ssasResp, t
+			ips, tester = tt.ips, t
 			creds, err := s.p.RegisterSystem(testACOUUID, "", "", tt.ips...)
 			if tt.expErrMsg != "" {
 				assert.Error(t, err)
