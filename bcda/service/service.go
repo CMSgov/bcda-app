@@ -638,7 +638,7 @@ func IsSupportedACO(cmsID string) bool {
 		ckcc    = `^C\d{4}$`
 		kcf     = `^K\d{4}$`
 		dc      = `^D\d{4}$`
-		mdtcoc  = `^CT\d{4}$`
+		mdtcoc  = `^CT\d{4,6}$`
 		test    = `^TEST\d{3}$`
 		sandbox = `^SBX[A-Z]{2}\d{3}$`
 		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + test + `)|(` + sandbox + `)`
