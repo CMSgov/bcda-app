@@ -12,6 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -22,10 +23,16 @@ import (
 type CleanupTestSuite struct {
 	suite.Suite
 	testApp *cli.App
-
 	testACO models.ACO
+	db      *sql.DB
+}
 
-	db *sql.DB
+func TestCleanupTestSuite(t *testing.T) {
+	suite.Run(t, new(CleanupTestSuite))
+}
+
+func (s *CleanupTestSuite) TearDownTest() {
+	testUtils.PrintSeparator()
 }
 
 func (s *CleanupTestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
