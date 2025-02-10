@@ -27,7 +27,7 @@ on:
         required: true
         type: string
       ops_release_version:
-        description: 'Release version bcda-ops (or branch name)'
+        description: 'Release version for bcda-ops (or branch name)'
         required: true
         type: string
   #     env:
@@ -57,7 +57,7 @@ jobs:
   build_and_package_ssas:
     uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@carl/BCDA-8633-build-bcda-on-ami
     with:
-      # release_version: ${{ inputs.release_version }}
+      # release_version: ${{ inputs.ops_release_version }}
       release_version: carl/BCDA-8633-build-bcda-on-ami
       # env: ${{ inputs.env }}
       # env: dev
