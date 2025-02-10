@@ -77,11 +77,11 @@ func handleCreateACO(ctx context.Context, data payload, notifier Notifier) error
 	if err != nil {
 		log.Errorf("Error creating ACO: %+v", err)
 
-		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		_, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 			fmt.Sprintf("Failed: Create ACO lambda in %s env.", os.Getenv("ENV")), false),
 		)
-		if err != nil {
-			log.Errorf("Error sending notifier failure message: %+v", err)
+		if slackErr != nil {
+			log.Errorf("Error sending notifier failure message: %+v", slackErr)
 		}
 
 		return err
