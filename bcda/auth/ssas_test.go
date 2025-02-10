@@ -101,9 +101,8 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	// These variables will allow us to swap out expectations without
 	// reinstantiating the server
 	var (
-		response string
-		ips      []string
-		tester   *testing.T
+		ips    []string
+		tester *testing.T
 	)
 
 	// TODO: Mock client instead of server
