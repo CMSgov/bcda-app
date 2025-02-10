@@ -113,7 +113,6 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 		assert.NoError(tester, err)
 		var obj map[string]interface{}
 		assert.NoError(tester, json.Unmarshal(reqBody, &obj))
-		fmt.Printf("----- response obj: %+v", obj)
 		if obj["ips"] == nil {
 			assert.Equal(tester, 0, len(ips), "ips should be empty since request contained no ips field")
 		} else {
@@ -121,12 +120,10 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 			for _, ip := range obj["ips"].([]interface{}) {
 				ipsReceived = append(ipsReceived, ip.(string))
 			}
-			fmt.Printf("----- ips: %+v, %+v", ipsReceived, ips)
 			assert.Equal(tester, ipsReceived, ips)
 		}
 
 		w.WriteHeader(201)
-		fmt.Fprint(w, response)
 	})
 	server := httptest.NewServer(router)
 
