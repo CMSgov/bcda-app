@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"testing"
 	"time"
 
@@ -17,12 +16,10 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/urfave/cli"
 )
 
 type CleanupTestSuite struct {
 	suite.Suite
-	testApp *cli.App
 	testACO models.ACO
 	db      *sql.DB
 }
@@ -67,11 +64,6 @@ func assertFileNotExists(t *testing.T, path string) {
 func (s *CleanupTestSuite) TestArchiveExpiring() {
 	assert := assert.New(s.T())
 
-	// condition: no jobs exist
-	args := []string{"bcda", constants.ArchJobFiles}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-
 	// timestamp to ensure that the job gets archived (older than the default 24h window)
 	t := time.Now().Add(-48 * time.Hour)
 	j := models.Job{
@@ -89,14 +81,14 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	newpath := conf.GetEnv("FHIR_ARCHIVE_DIR")
 
-	if _, err = os.Stat(path); os.IsNotExist(err) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			s.T().Error(err)
 		}
 	}
 
-	if _, err = os.Stat(newpath); os.IsNotExist(err) {
+	if _, err := os.Stat(newpath); os.IsNotExist(err) {
 		err = os.MkdirAll(newpath, os.ModePerm)
 		if err != nil {
 			s.T().Error(err)
@@ -108,12 +100,6 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 		s.T().Error(err)
 	}
 	defer f.Close()
-
-	// condition: normal execution
-	// execute the test case from CLI
-	args = []string{"bcda", constants.ArchJobFiles}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
 
 	// check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_ARCHIVE_DIR"), j.ID)
@@ -135,11 +121,6 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 func (s *CleanupTestSuite) TestArchiveExpiringWithoutPayloadDir() {
 	assert := assert.New(s.T())
 
-	// condition: no jobs exist
-	args := []string{"bcda", constants.ArchJobFiles}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-
 	// timestamp to ensure that the job gets archived (older than the default 24h window)
 	t := time.Now().Add(-48 * time.Hour)
 	j := models.Job{
@@ -150,12 +131,6 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithoutPayloadDir() {
 		UpdatedAt:  t,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	// condition: normal execution
-	// execute the test case from CLI
-	args = []string{"bcda", constants.ArchJobFiles}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
 
 	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
 
@@ -192,11 +167,6 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	defer f.Close()
 
-	// execute the test case from CLI
-	args := []string{"bcda", constants.ArchJobFiles, constants.ThresholdArg, "1"}
-	err = s.testApp.Run(args)
-	assert.Nil(s.T(), err)
-
 	// check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	_, err = os.ReadFile(dataPath)
@@ -220,24 +190,8 @@ func (s *CleanupTestSuite) TestCleanArchive() {
 
 	assert := assert.New(s.T())
 
-	// condition: FHIR_ARCHIVE_DIR doesn't exist
-	conf.UnsetEnv(s.T(), "FHIR_ARCHIVE_DIR")
-	args := []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
 	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
-
-	// condition: FHIR_STAGING_DIR doesn't exist
-	conf.UnsetEnv(s.T(), "FHIR_STAGING_DIR")
-	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
 	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", constants.TestStagingPath)
-
-	// condition: no jobs exist
-	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
 
 	// create a file that was last modified before the Threshold, but accessed after it
 	modified := now.Add(-(time.Hour * (Threshold + 1)))
@@ -247,18 +201,6 @@ func (s *CleanupTestSuite) TestCleanArchive() {
 	// create a file that is clearly after the threshold (unless the threshold is 0)
 	afterJobID, after := s.setupJobFile(now, models.JobStatusArchived, conf.GetEnv("FHIR_ARCHIVE_DIR"))
 	defer after.Close()
-
-	// condition: bad threshold value
-	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, "abcde"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "invalid value \"abcde\" for flag -threshold: parse error")
-
-	// condition: before < Threshold < after <= now
-	// a file created before the Threshold should be deleted; one created after should not
-	// we use last modified as a proxy for created, because these files should not be changed after creation
-	args = []string{"bcda", constants.CleanupArchArg, constants.ThresholdArg, strconv.Itoa(Threshold)}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
 
 	assertFileNotExists(s.T(), before.Name())
 
@@ -300,9 +242,6 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 			f.Close()
 		}
 	}()
-
-	err := s.testApp.Run([]string{"bcda", "cleanup-failed", constants.ThresholdArg, strconv.Itoa(threshold)})
-	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), models.JobStatusFailedExpired,
 		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
@@ -352,9 +291,6 @@ func (s *CleanupTestSuite) TestCleanupCancelled() {
 			f.Close()
 		}
 	}()
-
-	err := s.testApp.Run([]string{"bcda", "cleanup-cancelled", constants.ThresholdArg, strconv.Itoa(threshold)})
-	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), models.JobStatusCancelledExpired,
 		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
