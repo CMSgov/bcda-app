@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -30,6 +31,10 @@ func TestCleanupTestSuite(t *testing.T) {
 
 func (s *CleanupTestSuite) TearDownTest() {
 	testUtils.PrintSeparator()
+}
+
+func (s *CleanupTestSuite) SetupTest() {
+	s.db = database.Connection
 }
 
 func (s *CleanupTestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
