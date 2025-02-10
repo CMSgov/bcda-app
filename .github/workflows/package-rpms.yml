@@ -28,6 +28,10 @@ jobs:
         with:
           repository: CMSgov/bcda-app
           ref: ${{ inputs.release_version }}
+      - name: Set up Ansible
+        run: |
+          sudo dnf -y install python3 python3-pip
+          pip install ansible
       - name: Decrypt secrets
         env:
           VAULT_PW: ${{ secrets.VAULT_PW }}

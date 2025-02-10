@@ -58,17 +58,8 @@ jobs:
     #   DOCKER_BUILDKIT: 1
     #   COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.RELEASE_VERSION }}
-      - name: Decrypt secrets
-        run: |
-          echo $VAULT_PW > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-#       - name: Set up Docker Buildx
-#         uses: docker/setup-buildx-action@v1
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v1
       - name: Get Go # TEMP
         uses: actions/setup-go@v5
         with:
@@ -80,9 +71,22 @@ jobs:
           sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_VERSION }}
+      - name: Set up Ansible
+        run: |
+          sudo dnf -y install python3 python3-pip
+          pip install ansible
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
         run: make docker-bootstrap
-      - name: "Run all tests"
+      - name: Lint and Test
         run: make test
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
