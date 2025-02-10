@@ -35,6 +35,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          repository: CMSgov/bcda-app
           ref: ${{ env.RELEASE_VERSION }}
       - name: Get Go # TEMP
         uses: actions/setup-go@v5
@@ -53,8 +54,8 @@ jobs:
   lint_and_test:
     name: Lint and Test
     runs-on: self-hosted
-    env:
-      VAULT_PW: ${{ secrets.VAULT_PW }}
+    # env:
+    #   VAULT_PW: ${{ secrets.VAULT_PW }}
     #   DOCKER_BUILDKIT: 1
     #   COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
@@ -74,6 +75,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          repository: CMSgov/bcda-app
           ref: ${{ env.RELEASE_VERSION }}
       - name: Set up Ansible
         run: |
@@ -81,7 +83,7 @@ jobs:
           pip install ansible
       - name: Decrypt secrets
         run: |
-          echo $VAULT_PW > .vault_password
+          echo ${{ secrets.VAULT_PW }} > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
@@ -102,6 +104,7 @@ jobs:
     needs: lint_and_test
     runs-on: self-hosted
     steps:
+      # checkout!?
       - name: Download code coverage
         uses: actions/download-artifact@v4
         with:

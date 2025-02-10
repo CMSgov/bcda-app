@@ -36,6 +36,7 @@ jobs:
     name: Post Build (Cleanup, Alerts)
     runs-on: self-hosted
     steps:
+      # TODO: junit 'bcda-app/test_results/latest/junit.xml'
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
@@ -50,7 +51,6 @@ jobs:
                 text: "SUCCESS: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
-      # TODO: junit 'bcda-app/test_results/latest/junit.xml'
       - name: Failure Alert
         if: ${{ failure() }}
         uses: slackapi/slack-github-action@v2.0.0
