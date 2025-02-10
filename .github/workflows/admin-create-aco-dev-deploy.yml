@@ -37,6 +37,6 @@ jobs:
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
-            s3://bcda-dev-admin-aco-deny-function/function-${{ github.sha }}.zip
+            s3://bcda-dev-admin-create-aco-function/function-${{ github.sha }}.zip
           aws lambda update-function-code --function-name bcda-dev-admin-create-aco \
             --s3-bucket bcda-dev-admin-create-aco-function --s3-key function-${{ github.sha }}.zip
