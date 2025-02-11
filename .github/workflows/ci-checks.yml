@@ -85,6 +85,7 @@ jobs:
         run: |
           echo "$VAULT_PW" > .vault_password
           pwd
+          stat .vault_password
           ls -als
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
