@@ -303,6 +303,10 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 		}
 	}()
 
+	err := CleanupJob(time.Now().Add(-threshold*time.Hour), models.JobStatusFailed, models.JobStatusFailedExpired,
+		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
+	assert.NoError(s.T(), err)
+
 	assert.Equal(s.T(), models.JobStatusFailedExpired,
 		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
 	assert.Equal(s.T(), models.JobStatusFailedExpired,
@@ -351,6 +355,10 @@ func (s *CleanupTestSuite) TestCleanupCancelled() {
 			f.Close()
 		}
 	}()
+
+	err := CleanupJob(time.Now().Add(-threshold*time.Hour), models.JobStatusCancelled, models.JobStatusCancelledExpired,
+		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
+	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), models.JobStatusCancelledExpired,
 		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
