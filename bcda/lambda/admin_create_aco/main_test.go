@@ -20,7 +20,7 @@ func (m *mockNotifier) PostMessageContext(ctx context.Context, channelID string,
 func TestHandleCreateACO(t *testing.T) {
 	ctx := context.Background()
 
-	data := payload{"Test", "A9996"}
+	data := payload{"TestACO", "T0006"}
 
 	err := handleCreateACO(ctx, data, &mockNotifier{})
 	assert.Nil(t, err)
