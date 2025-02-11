@@ -18,9 +18,6 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  VAULT_PW: ${{ secrets.VAULT_PW }}
-
 jobs:
   package_bcda_rpms:
     name: Package BCDA, Worker RPMs
@@ -36,8 +33,8 @@ jobs:
           sudo dnf -y install python3 python3-pip
           pip install ansible
       - name: Decrypt secrets
-        # env:
-        #   VAULT_PW: ${{ secrets.VAULT_PW }}
+        env:
+          VAULT_PW: ${{ secrets.VAULT_PW }}
         run: |
           echo "$VAULT_PW" > .vault_password
           bash ops/secrets --decrypt
@@ -49,8 +46,8 @@ jobs:
         with:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
-            BCDA_GPG_RPM_PASSPHRASE=/bcda/gpg/sec-key
-            BCDA_GPG_SEC_KEY=/bcda/gpg/passphrase
+            BCDA_GPG_SEC_KEY=/bcda/gpg/sec-key
+            BCDA_GPG_RPM_PASSPHRASE=/bcda/gpg/passphrase
       - name: Build and package RPMs
         env: 
           GPG_RPM_USER: Beneficiary Claims Data API
@@ -58,8 +55,8 @@ jobs:
           GPG_PUB_KEY_FILE: "../ops/RPM-GPG-KEY-bcda"
           GPG_SEC_KEY_FILE: "../ops/RPM-GPG-KEY-SECRET-bcda"
         run: |
-          cp ${{ env.BCDA_GPG_PUB_KEY }} ops/${{ env.GPG_PUB_KEY_FILE }}
-          cp ${{ env.BCDA_GPG_SEC_KEY }} ops/${{ env.GPG_SEC_KEY_FILE }}
+          echo ${{ env.BCDA_GPG_PUB_KEY }} > ops/${{ env.GPG_PUB_KEY_FILE }}
+          echo ${{ env.BCDA_GPG_SEC_KEY }} > ops/${{ env.GPG_SEC_KEY_FILE }}
           # Remove any slashes - we don't want RPM to contain slash
           BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
       - name: Upload BCDA RPM to s3 releases
@@ -76,7 +73,7 @@ jobs:
         working-directory: ./bcda-app/bcdaworker
         run: |
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
-          echo $BCDA_RPM
+          echo $BCDA_WORKER_RPM
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
       - name: Upload BCDA RPM to s3 dev
@@ -92,7 +89,7 @@ jobs:
         working-directory: ./bcda-app/bcdaworker
         run: |
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
-          echo $BCDA_RPM
+          echo $BCDA_WORKER_RPM
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
       - name: Cleanup secrets
