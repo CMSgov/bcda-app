@@ -84,6 +84,7 @@ jobs:
       - name: Decrypt secrets
         run: |
           echo ${{ secrets.VAULT_PW }} > .vault_password
+          ansible-vault --version
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
