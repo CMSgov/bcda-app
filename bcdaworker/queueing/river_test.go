@@ -169,3 +169,22 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	mockCleanupJob.AssertExpectations(t)
 	mockArchiveExpiring.AssertExpectations(t)
 }
+
+func TestGetCutOffTime(t *testing.T) {
+	// Save and set environment variable using conf.SetEnv and defer to reset it
+	defer func(origValue string) {
+		conf.SetEnv(t, "ARCHIVE_THRESHOLD_HR", origValue)
+	}(conf.GetEnv("ARCHIVE_THRESHOLD_HR"))
+
+	// Test with default value
+	conf.SetEnv(t, "ARCHIVE_THRESHOLD_HR", "")
+	expectedCutoff := time.Now().Add(-24 * time.Hour)
+	actualCutoff := getCutOffTime()
+	assert.WithinDuration(t, expectedCutoff, actualCutoff, time.Second, "Cutoff time should be 24 hours ago by default")
+
+	// Test with custom value
+	conf.SetEnv(t, "ARCHIVE_THRESHOLD_HR", "48")
+	expectedCutoff = time.Now().Add(-48 * time.Hour)
+	actualCutoff = getCutOffTime()
+	assert.WithinDuration(t, expectedCutoff, actualCutoff, time.Second, "Cutoff time should be 48 hours ago")
+}
