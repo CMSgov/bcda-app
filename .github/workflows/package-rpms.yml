@@ -18,6 +18,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  VAULT_PW: ${{ secrets.VAULT_PW }}
+
 jobs:
   package_bcda_rpms:
     name: Package BCDA, Worker RPMs
@@ -33,8 +36,8 @@ jobs:
           sudo dnf -y install python3 python3-pip
           pip install ansible
       - name: Decrypt secrets
-        env:
-          VAULT_PW: ${{ secrets.VAULT_PW }}
+        # env:
+        #   VAULT_PW: ${{ secrets.VAULT_PW }}
         run: |
           echo "$VAULT_PW" > .vault_password
           bash ops/secrets --decrypt
