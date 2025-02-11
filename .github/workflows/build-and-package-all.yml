@@ -53,6 +53,7 @@ jobs:
       release_version: carl/BCDA-8633-build-bcda-on-ami
       # env: ${{ inputs.env }}
       # env: dev
+    secrets: inherit
 
   build_and_package_ssas:
     uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@carl/BCDA-8633-build-bcda-on-ami
@@ -61,6 +62,7 @@ jobs:
       release_version: carl/BCDA-8633-build-bcda-on-ami
       # env: ${{ inputs.env }}
       # env: dev
+    secrets: inherit
 
   # TODO: Do we want this?  Or is the ami being built on merge to main enough?
   # build_platinum_ami:

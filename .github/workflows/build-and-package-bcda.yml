@@ -24,12 +24,14 @@ jobs:
     with:
       # release_version: ${{ inputs.release_version }}
       release_version: carl/BCDA-8633-build-bcda-on-ami
+    secrets: inherit
 
   build_and_package:
     uses: ./.github/workflows/package-rpms.yml
     with:
       # release_version: ${{ inputs.release_version }}
       release_version: carl/BCDA-8633-build-bcda-on-ami
+    secrets: inherit
   
   post_build:
     if: ${{ always() }}
