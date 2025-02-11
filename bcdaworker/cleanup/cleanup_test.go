@@ -279,16 +279,19 @@ func (s *CleanupTestSuite) TestCleanArchive() {
 func (s *CleanupTestSuite) TestCleanupFailed() {
 	const threshold = 30
 	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
-	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusFailed, conf.GetEnv("FHIR_PAYLOAD_DIR"))
-	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusFailed, conf.GetEnv("FHIR_STAGING_DIR"))
-	// Job is old enough, but does not match the status
-	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	payload := conf.GetEnv("FHIR_PAYLOAD_DIR")
+	staging := conf.GetEnv("FHIR_STAGING_DIR")
 
-	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusFailed, conf.GetEnv("FHIR_PAYLOAD_DIR"))
-	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusFailed, conf.GetEnv("FHIR_STAGING_DIR"))
+	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusFailed, payload)
+	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusFailed, staging)
+	// Job is old enough, but does not match the status
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, payload)
+
+	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusFailed, payload)
+	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusFailed, staging)
 
 	// Check that we can clean up jobs that do not have data
-	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, conf.GetEnv("FHIR_STAGING_DIR"))
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, staging)
 	dir, _ := path.Split(noData.Name())
 	os.RemoveAll(dir)
 	assertFileNotExists(s.T(), noData.Name())
@@ -304,7 +307,7 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 	}()
 
 	err := CleanupJob(time.Now().Add(-threshold*time.Hour), models.JobStatusFailed, models.JobStatusFailedExpired,
-		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
+		staging, payload)
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), models.JobStatusFailedExpired,
@@ -332,16 +335,21 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 func (s *CleanupTestSuite) TestCleanupCancelled() {
 	const threshold = 30
 	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
-	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_PAYLOAD_DIR"))
-	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
-	// Job is old enough, but does not match the status
-	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	payload := conf.GetEnv("FHIR_PAYLOAD_DIR")
+	staging := conf.GetEnv("FHIR_STAGING_DIR")
 
-	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusCancelled, conf.GetEnv("FHIR_PAYLOAD_DIR"))
-	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusCancelled, payload)
+	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusCancelled, staging)
+
+	// Job is old enough, but does not match the status
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, payload)
+
+	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusCancelled, payload)
+	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusCancelled, staging)
 
 	// Check that we can clean up jobs that do not have data
-	noDataID, noData := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusCancelled, staging)
+
 	dir, _ := path.Split(noData.Name())
 	os.RemoveAll(dir)
 	assertFileNotExists(s.T(), noData.Name())
@@ -356,8 +364,8 @@ func (s *CleanupTestSuite) TestCleanupCancelled() {
 		}
 	}()
 
-	err := CleanupJob(time.Now().Add(-threshold*time.Hour), models.JobStatusCancelled, models.JobStatusCancelledExpired,
-		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
+	err := CleanupJob(modified, models.JobStatusCancelled, models.JobStatusCancelledExpired,
+		staging, payload)
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), models.JobStatusCancelledExpired,
