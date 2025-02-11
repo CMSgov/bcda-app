@@ -18,7 +18,7 @@ setup-tests:
 LINT_TIMEOUT ?= 3m
 lint: setup-tests
 	docker compose -f docker-compose.test.yml run \
-	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
+	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S|s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
