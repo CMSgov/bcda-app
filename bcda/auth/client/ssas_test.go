@@ -166,10 +166,10 @@ func (s *SSASClientTestSuite) TestCreateGroupTable() {
 		errorMessage  string
 	}{
 		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{}, errorExpected: false, errorMessage: ""},
-		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, errorMessage: "could not create group: Post \"localhost/group\": unsupported protocol scheme \"\""},
+		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, errorMessage: "Post \"localhost/group\": unsupported protocol scheme \"\""},
 		{fnInput: []string{"\"", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, errorMessage: "invalid input for new group_id \": parse \"\\n/group\": net/url: invalid control character in URL"},
 		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, errorMessage: "missing clientID or secret"},
-		{fnInput: []string{"", "name", "", `{ "ID": 123456 }`}, env: EnvVars{}, header: http.StatusBadRequest, errorExpected: true, errorMessage: "could not create group: { \"ID\": 123456 }"},
+		{fnInput: []string{"", "name", "", `{ "ID": 123456 }`}, env: EnvVars{}, header: http.StatusBadRequest, errorExpected: true, errorMessage: "{ \"ID\": 123456 }"},
 	}
 
 	for _, tc := range tests {
