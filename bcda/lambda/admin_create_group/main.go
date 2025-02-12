@@ -54,7 +54,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	slackToken, err := getAWSParams()
+	slackToken, err := setupEnv()
 	if err != nil {
 		log.Errorf("Failed to retrieve parameter: %+v", err)
 		return err
@@ -136,7 +136,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 	return nil
 }
 
-func getAWSParams() (string, error) {
+func setupEnv() (string, error) {
 	env := conf.GetEnv("ENV")
 
 	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
