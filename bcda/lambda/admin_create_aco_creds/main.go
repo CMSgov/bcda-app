@@ -81,7 +81,7 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 
 	s3Path, err := handleCreateACOCreds(ctx, data, kmsService, s3Service, slackClient)
 	if err != nil {
-		log.Errorf("Failed to handle ACO denies: %+v", err)
+		log.Errorf("Failed to handle Create ACO creds: %+v", err)
 		return "", err
 	}
 
