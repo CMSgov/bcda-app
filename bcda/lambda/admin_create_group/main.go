@@ -150,7 +150,7 @@ func getAWSParams() (string, error) {
 		return "", err
 	}
 
-	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE.pem"}
+	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE", "BCDA_CA_FILE.pem"}
 	for _, v := range envVars {
 		envVar, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/%s", env, v))
 		if err != nil {
@@ -163,6 +163,9 @@ func getAWSParams() (string, error) {
 		}
 
 	}
+
+	ca := conf.GetEnv("BCDA_CA_FILE.pem")
+	log.Infof("cert info: %s ", ca)
 
 	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
 	if err != nil {
