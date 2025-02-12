@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/cleanup"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
@@ -43,6 +44,13 @@ type CleanupJobWorker struct {
 	river.WorkerDefaults[CleanupJobArgs]
 	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
 	archiveExpiring func(time.Time) error
+}
+
+func NewCleanupJobWorker() *CleanupJobWorker {
+	return &CleanupJobWorker{
+		cleanupJob:      cleanup.CleanupJob,
+		archiveExpiring: cleanup.ArchiveExpiring,
+	}
 }
 
 type Notifier interface {
