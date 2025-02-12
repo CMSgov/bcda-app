@@ -164,8 +164,16 @@ func getAWSParams() (string, error) {
 
 	}
 
-	ca := conf.GetEnv("BCDA_CA_FILE.pem")
-	log.Infof("cert info: %s ", ca)
+	// parameter store returns the value of the paremeter and SSAS expects a file
+	f, err := os.Create("BCDA_CA_FILE.pem")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	_, err = f.Write([]byte(conf.GetEnv("BCDA_CA_FILE.pem")))
+	if err != nil {
+		return "", err
+	}
 
 	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
 	if err != nil {
