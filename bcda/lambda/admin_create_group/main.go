@@ -170,8 +170,9 @@ func getAWSParams() (string, error) {
 		return "", err
 	}
 
-	// parameter store returns the value of the paremeter and SSAS expects a file
-	f, err := os.Create("/tmp/BCDA_CA_FILE.pem")
+	// parameter store returns the value of the paremeter and SSAS expects a file, so we need to create it
+	// nosec in use because lambda creates a tmp dir already
+	f, err := os.Create("/tmp/BCDA_CA_FILE.pem") // #nosec
 	if err != nil {
 		return "", err
 	}
@@ -190,8 +191,8 @@ func getAWSParams() (string, error) {
 }
 
 func sendSlackMessage(sc *slack.Client, msg string) {
-	// _, _, err := sc.PostMessageContext(context.Background(), slackChannel, slack.MsgOptionText(fmt.Sprint(msg), false))
-	// if err != nil {
-	// 	log.Errorf("Failed to send slack message: %+v", err)
-	// }
+	_, _, err := sc.PostMessageContext(context.Background(), slackChannel, slack.MsgOptionText(fmt.Sprint(msg), false))
+	if err != nil {
+		log.Errorf("Failed to send slack message: %+v", err)
+	}
 }
