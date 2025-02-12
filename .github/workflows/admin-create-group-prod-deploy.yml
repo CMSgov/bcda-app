@@ -8,7 +8,6 @@ on:
       - main
     paths:
       - bcda/lambda/create_group/**
-      - .github/workflows/admin-create-group-prod-deploy.yml
 
 jobs:
   test:
@@ -35,7 +34,8 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - name: Upload and reload
         run: |
-          aws s3 cp --no-progress function.zip \
+          aws s3 cp --no-progress \
+            s3://bcda-test-admin-create-group-function/function-${{ github.sha }}.zip \
             s3://bcda-prod-admin-create-group-function/function-${{ github.sha }}.zip
           aws lambda update-function-code --function-name bcda-prod-admin-create-group \
             --s3-bucket bcda-prod-admin-create-group-function --s3-key function-${{ github.sha }}.zip
