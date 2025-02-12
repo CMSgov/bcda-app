@@ -70,6 +70,9 @@ type CommonClaims struct {
 
 // Provider defines operations performed through an authentication provider.
 type Provider interface {
+	// FindAndCreateACOCredentials takes an ACO ID and calls RegisterSystem, then formats the results
+	FindAndCreateACOCredentials(ACOID string, IPs []string) (string, error)
+
 	// RegisterSystem adds a software client for the ACO identified by localID.
 	RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error)
 

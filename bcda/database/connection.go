@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/bgentry/que-go"
@@ -71,7 +72,7 @@ func createDB(cfg *Config) (*sql.DB, error) {
 
 	stdlib.RegisterDriverConfig(&dc)
 
-	db, err := sql.Open("nrpgx", dc.ConnectionString(cfg.DatabaseURL))
+	db, err := sql.Open("nrpgx", dc.ConnectionString(strings.TrimSpace(cfg.DatabaseURL)))
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func createDB(cfg *Config) (*sql.DB, error) {
 }
 
 func createQueue(cfg *Config) (*pgx.ConnPool, error) {
-	pgxCfg, err := pgx.ParseURI(cfg.QueueDatabaseURL)
+	pgxCfg, err := pgx.ParseURI(strings.TrimSpace(cfg.QueueDatabaseURL))
 	if err != nil {
 		return nil, err
 	}
