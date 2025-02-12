@@ -165,7 +165,7 @@ func getAWSParams() (string, error) {
 	}
 
 	// parameter store returns the value of the paremeter and SSAS expects a file
-	f, err := os.Create("BCDA_CA_FILE.pem")
+	f, err := os.Create("/tmp/BCDA_CA_FILE.pem")
 	if err != nil {
 		return "", err
 	}
