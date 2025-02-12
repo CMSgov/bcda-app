@@ -203,11 +203,11 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	_, logger := log.SetCtxLogger(ctx, "transaction_id", uuid.New())
 
 	cutoff := getCutOffTime()
-	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR") // Added to workers as SecureString
-	stagingDir := conf.GetEnv("FHIR_STAGING_DIR") // Exists on API and workers
-	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR") // Changed name to match param store
+	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
+	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
+	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 
-	logger.Info("Starting Archive and Clean Job Data for environment (using os): %s.", os.Getenv("ENV")) // Added to config files
+	logger.Info("Starting Archive and Clean Job Data for environment (using os): %s.", os.Getenv("ENV"))
 	logger.Info("Starting Archive and Clean Job Data for environment (using conf): %s.", conf.GetEnv("ENV"))
 	logger.Info("Using directories: %s | %s | %s", archiveDir, stagingDir, payloadDir)
 
