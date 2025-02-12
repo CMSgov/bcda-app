@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -71,4 +72,40 @@ func TestAdjustedEnv(t *testing.T) {
 	assert.Equal(t, resultEnv, "prod")
 
 	conf.SetEnv(t, "ENV", origEnv)
+}
+
+func TestSetupEnvironment(t *testing.T) {
+	// store env vars to restore later
+	origSSASURL := os.Getenv("SSAS_URL")
+	origBCDASSASClientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
+	origBCDASSASSecret := os.Getenv("BCDA_SSAS_SECRET")
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	origBCDACAFile := os.Getenv("BCDA_CA_FILE")
+
+	err := setupEnvironment(awsParams{
+		ssasURL:      "test-SSAS_URL",
+		clientID:     "test-BCDA_SSAS_CLIENT_ID",
+		clientSecret: "test-BCDA_SSAS_SECRET",
+	})
+	assert.Nil(t, err)
+
+	assert.Equal(t, "test-SSAS_URL", os.Getenv("SSAS_URL"))
+	assert.Equal(t, "test-BCDA_SSAS_CLIENT_ID", os.Getenv("BCDA_SSAS_CLIENT_ID"))
+	assert.Equal(t, "test-BCDA_SSAS_SECRET", os.Getenv("BCDA_SSAS_SECRET"))
+	assert.Equal(t, "true", os.Getenv("SSAS_USE_TLS"))
+	assert.Equal(t, pemFilePath, os.Getenv("BCDA_CA_FILE"))
+
+	assert.FileExists(t, pemFilePath)
+
+	// restore original env vars
+	err = os.Setenv("SSAS_URL", origSSASURL)
+	assert.Nil(t, err)
+	err = os.Setenv("BCDA_SSAS_CLIENT_ID", origBCDASSASClientID)
+	assert.Nil(t, err)
+	err = os.Setenv("BCDA_SSAS_SECRET", origBCDASSASSecret)
+	assert.Nil(t, err)
+	err = os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	assert.Nil(t, err)
+	err = os.Setenv("BCDA_CA_FILE", origBCDACAFile)
+	assert.Nil(t, err)
 }

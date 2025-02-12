@@ -33,6 +33,7 @@ type awsParams struct {
 	ssasURL      string
 	clientID     string
 	clientSecret string
+	ssasPEM      string
 }
 
 type Notifier interface {
@@ -68,20 +69,9 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	// need to set these env vars for the initialization of SSASClient and for its requests to SSAS
-	err = os.Setenv("SSAS_URL", params.ssasURL)
+	err = setupEnvironment(params)
 	if err != nil {
-		log.Errorf("Error setting SSAS URL env var: %+v", err)
-		return "", err
-	}
-	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)
-	if err != nil {
-		log.Errorf("Error setting SSAS URL env var: %+v", err)
-		return "", err
-	}
-	err = os.Setenv("BCDA_SSAS_SECRET", params.clientSecret)
-	if err != nil {
-		log.Errorf("Error setting SSAS URL env var: %+v", err)
+		log.Errorf("Unable to setupEnvironment properly: %+v", err)
 		return "", err
 	}
 

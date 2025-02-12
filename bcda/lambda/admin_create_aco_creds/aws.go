@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,6 +20,7 @@ import (
 
 var destBucket = "bcda-aco-credentials"
 var kmsAliasName = "alias/bcda-aco-creds-kms"
+var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
 func getAWSParams(session *session.Session) (awsParams, error) {
 	env := adjustedEnv()
@@ -47,7 +49,55 @@ func getAWSParams(session *session.Session) (awsParams, error) {
 		return awsParams{}, err
 	}
 
-	return awsParams{slackToken, ssasURL, clientID, clientSecret}, nil
+	ssasPEM, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM}, nil
+}
+
+func setupEnvironment(params awsParams) error {
+	// need to set these env vars for the initialization of SSASClient and for its requests to SSAS
+	err := os.Setenv("SSAS_URL", params.ssasURL)
+	if err != nil {
+		log.Errorf("Error setting SSAS_URL env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)
+	if err != nil {
+		log.Errorf("Error setting BCDA_SSAS_CLIENT_ID env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("BCDA_SSAS_SECRET", params.clientSecret)
+	if err != nil {
+		log.Errorf("Error setting BCDA_SSAS_SECRET env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("SSAS_USE_TLS", "true")
+	if err != nil {
+		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("BCDA_CA_FILE", pemFilePath)
+	if err != nil {
+		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
+	}
+
+	// parameter store returns the value of the paremeter and SSAS expects a file, so we need to create it
+	// nosec in use because lambda creates a tmp dir already
+	f, err := os.Create(pemFilePath) // #nosec
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write([]byte(params.ssasPEM))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getKMSID(service kmsiface.KMSAPI) (string, error) {
