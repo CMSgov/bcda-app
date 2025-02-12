@@ -136,12 +136,12 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	defer func(archiveDir, stagingDir, payloadDir string) {
 		conf.SetEnv(t, "FHIR_ARCHIVE_DIR", archiveDir)
 		conf.SetEnv(t, "FHIR_STAGING_DIR", stagingDir)
-		conf.SetEnv(t, "PAYLOAD_DIR", payloadDir)
-	}(conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("PAYLOAD_DIR"))
+		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payloadDir)
+	}(conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_PAYLOAD_DIR"))
 
 	conf.SetEnv(t, "FHIR_ARCHIVE_DIR", archivePath)
 	conf.SetEnv(t, "FHIR_STAGING_DIR", stagingPath)
-	conf.SetEnv(t, "PAYLOAD_DIR", payloadPath)
+	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payloadPath)
 
 	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusArchived, models.JobStatusExpired, []string{archivePath, stagingPath}).Return(nil)
 	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusFailed, models.JobStatusFailedExpired, []string{stagingPath, payloadPath}).Return(nil)
