@@ -170,7 +170,7 @@ func getAWSParams() (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	_, err = f.Write([]byte(conf.GetEnv("BCDA_CA_FILE.pem")))
+	_, err = f.Write([]byte(conf.GetEnv("/tmp/BCDA_CA_FILE.pem")))
 	if err != nil {
 		return "", err
 	}
