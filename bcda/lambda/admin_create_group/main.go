@@ -150,7 +150,7 @@ func getAWSParams() (string, error) {
 		return "", err
 	}
 
-	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE", "BCDA_CA_FILE.pem"}
+	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE.pem"}
 	for _, v := range envVars {
 		envVar, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/%s", env, v))
 		if err != nil {
@@ -162,6 +162,12 @@ func getAWSParams() (string, error) {
 			return "", err
 		}
 
+	}
+
+	err = os.Setenv("BCDA_CA_FILE", "/tmp/")
+	if err != nil {
+		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
+		return "", err
 	}
 
 	// parameter store returns the value of the paremeter and SSAS expects a file
