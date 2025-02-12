@@ -144,6 +144,12 @@ func getAWSParams() (string, error) {
 		return "", err
 	}
 
+	err = os.Setenv("SSAS_USE_TLS", "true")
+	if err != nil {
+		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
+		return "", err
+	}
+
 	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE"}
 	for _, v := range envVars {
 		envVar, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/%s", env, v))
@@ -167,8 +173,8 @@ func getAWSParams() (string, error) {
 }
 
 func sendSlackMessage(sc *slack.Client, msg string) {
-	_, _, err := sc.PostMessageContext(context.Background(), slackChannel, slack.MsgOptionText(fmt.Sprint(msg), false))
-	if err != nil {
-		log.Errorf("Failed to send slack message: %+v", err)
-	}
+	// _, _, err := sc.PostMessageContext(context.Background(), slackChannel, slack.MsgOptionText(fmt.Sprint(msg), false))
+	// if err != nil {
+	// 	log.Errorf("Failed to send slack message: %+v", err)
+	// }
 }
