@@ -1,0 +1,24 @@
+name: Admin Create ACO sbx deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: sbx
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-sbx-github-actions
+      - name: Promote lambda code from test to sbx
+        run: |
+          aws s3 cp --no-progress \
+            s3://bcda-test-admin-create-aco-function/function-${{ github.sha }}.zip \
+            s3://bcda-sbx-admin-create-aco-function/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-sbx-admin-create-aco \
+            --s3-bucket bcda-sbx-admin-create-aco-function --s3-key function-${{ github.sha }}.zip

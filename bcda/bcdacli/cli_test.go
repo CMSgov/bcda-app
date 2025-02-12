@@ -132,8 +132,12 @@ func (s *CLITestSuite) TestIgnoreSignals() {
 }
 
 func (s *CLITestSuite) TestGenerateClientCredentials() {
-	for idx, ips := range [][]string{nil, {testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
-		{testUtils.GetRandomIPV4Address(s.T())}, nil} {
+	for idx, ips := range [][]string{
+		nil,
+		{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
+		{testUtils.GetRandomIPV4Address(s.T())},
+		nil,
+	} {
 		s.T().Run(strconv.Itoa(idx), func(t *testing.T) {
 			mockArgs := []interface{}{s.testACO.UUID.String(), "", s.testACO.GroupID}
 			// ips argument is a variadic argument so we need to ensure that the list is expanded
@@ -177,7 +181,6 @@ func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
 }
 
 func (s *CLITestSuite) TestResetSecretCLI() {
-
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -187,8 +190,10 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 
 	mock := &auth.MockProvider{}
 	mock.On("ResetSecret", s.testACO.ClientID).Return(
-		auth.Credentials{ClientName: *s.testACO.CMSID, ClientID: s.testACO.ClientID,
-			ClientSecret: uuid.New()},
+		auth.Credentials{
+			ClientName: *s.testACO.CMSID, ClientID: s.testACO.ClientID,
+			ClientSecret: uuid.New(),
+		},
 		nil)
 	auth.SetMockProvider(s.T(), mock)
 
@@ -527,14 +532,18 @@ func (s *CLITestSuite) TestDenylistACO() {
 	notDenylistedCMSID := testUtils.RandomHexID()[0:4]
 	notFoundCMSID := testUtils.RandomHexID()[0:4]
 
-	denylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &denylistedCMSID,
+	denylistedACO := models.ACO{
+		UUID: uuid.NewUUID(), CMSID: &denylistedCMSID,
 		TerminationDetails: &models.Termination{
 			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			DenylistType:    models.Involuntary,
-		}}
-	notDenylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notDenylistedCMSID,
-		TerminationDetails: nil}
+		},
+	}
+	notDenylistedACO := models.ACO{
+		UUID: uuid.NewUUID(), CMSID: &notDenylistedCMSID,
+		TerminationDetails: nil,
+	}
 
 	defer func() {
 		postgrestest.DeleteACO(s.T(), s.db, denylistedACO.UUID)
@@ -663,15 +672,19 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 
 func (s *CLITestSuite) TestGenerateAlrData() {
 	initialCount := postgrestest.GetALRCount(s.T(), s.db, "A9990")
-	args := []string{"bcda", "generate-synthetic-alr-data", constants.CMSIDArg, "A9990",
-		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"}
+	args := []string{
+		"bcda", "generate-synthetic-alr-data", constants.CMSIDArg, "A9990",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv",
+	}
 	err := s.testApp.Run(args)
 	assert.NoError(s.T(), err)
 	assert.Greater(s.T(), postgrestest.GetALRCount(s.T(), s.db, "A9990"), initialCount)
 
 	// No CCLF file
-	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", constants.CMSIDArg, "UNKNOWN_ACO",
-		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"})
+	err = s.testApp.Run([]string{
+		"bcda", "generate-synthetic-alr-data", constants.CMSIDArg, "UNKNOWN_ACO",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv",
+	})
 	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
 }
 
