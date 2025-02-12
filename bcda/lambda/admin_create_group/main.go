@@ -10,7 +10,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 
@@ -31,14 +30,6 @@ type payload struct {
 	GroupID   string `json:"group_id"`
 	GroupName string `json:"group_name"`
 	ACO_ID    string `json:"aco_id"` // CMS_ID or UUID
-}
-
-type awsParams struct {
-	DBURL        string
-	SlackToken   string
-	ssasURL      string
-	clientID     string
-	clientSecret string
 }
 
 type Notifier interface {
@@ -63,36 +54,13 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	params, err := getAWSParams()
+	slackToken, err := getAWSParams()
 	if err != nil {
-		log.Errorf("Unable to extract DB URL from parameter store: %+v", err)
+		log.Errorf("Failed to retrieve parameter: %+v", err)
 		return err
 	}
 
-	err = os.Setenv("SSAS_URL", params.ssasURL)
-	if err != nil {
-		log.Errorf("Error setting SSAS URL env var: %+v", err)
-		return err
-	}
-	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)
-	if err != nil {
-		log.Errorf("Error setting SSAS URL env var: %+v", err)
-		return err
-	}
-	err = os.Setenv("BCDA_SSAS_SECRET", params.clientSecret)
-	if err != nil {
-		log.Errorf("Error setting SSAS URL env var: %+v", err)
-		return err
-	}
-
-	conn, err := pgx.Connect(ctx, params.DBURL)
-	if err != nil {
-		log.Errorf("Unable to connect to database: %+v", err)
-		return err
-	}
-	defer conn.Close(ctx)
-
-	slackClient := slack.New(params.SlackToken)
+	slackClient := slack.New(slackToken)
 	db := database.Connection
 	r := postgres.NewRepository(db)
 	ssas, err := client.NewSSASClient()
@@ -168,44 +136,34 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 	return nil
 }
 
-func getAWSParams() (awsParams, error) {
+func getAWSParams() (string, error) {
 	env := conf.GetEnv("ENV")
-
-	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), "", "", "", ""}, nil
-	}
 
 	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
 	if err != nil {
-		return awsParams{}, err
+		return "", err
 	}
 
-	dbURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
-	if err != nil {
-		return awsParams{}, err
+	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE"}
+	for _, v := range envVars {
+		envVar, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/%s", env, v))
+		if err != nil {
+			return "", err
+		}
+		err = os.Setenv(v, envVar)
+		if err != nil {
+			log.Errorf("Error setting %s env var: %+v", envVar, err)
+			return "", err
+		}
+
 	}
 
 	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
 	if err != nil {
-		return awsParams{}, err
+		return "", err
 	}
 
-	ssasURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	clientID, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	clientSecret, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	return awsParams{dbURL, slackToken, ssasURL, clientID, clientSecret}, nil
+	return slackToken, nil
 }
 
 func sendSlackMessage(sc *slack.Client, msg string) {
