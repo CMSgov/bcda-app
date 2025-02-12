@@ -164,7 +164,7 @@ func getAWSParams() (string, error) {
 
 	}
 
-	err = os.Setenv("BCDA_CA_FILE", "/tmp/")
+	err = os.Setenv("BCDA_CA_FILE", "/tmp/BCDA_CA_FILE.pem")
 	if err != nil {
 		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
 		return "", err
