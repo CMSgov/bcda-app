@@ -215,8 +215,8 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
 	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 
-	logger.Info("Starting Archive and Clean Job Data for environment (using os): %s.", os.Getenv("ENV"))
-	logger.Info("Starting Archive and Clean Job Data for environment (using conf): %s.", conf.GetEnv("ENV"))
+	logger.Info("Starting Archive and Clean Job Data for environment (using os): %s.", os.Getenv("DEPLOYMENT_TARGET"))
+	logger.Info("Starting Archive and Clean Job Data for environment (using conf): %s.", conf.GetEnv("DEPLOYMENT_TARGET"))
 	logger.Info("Using directories: %s | %s | %s", archiveDir, stagingDir, payloadDir)
 
 	params, err := getAWSParams()
