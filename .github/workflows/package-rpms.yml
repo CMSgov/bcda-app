@@ -50,7 +50,7 @@ jobs:
             BCDA_GPG_RPM_PASSPHRASE=/bcda/gpg/passphrase
       - name: Build and package RPMs
         env: 
-          GPG_RPM_USER: Beneficiary Claims Data API
+          GPG_RPM_USER: "Beneficiary Claims Data API (for signing RPMs)"
           GPG_RPM_EMAIL: "bcapi@cms.hhs.gov"
           GPG_PUB_KEY_FILE: "../ops/RPM-GPG-KEY-bcda"
           GPG_SEC_KEY_FILE: "../ops/RPM-GPG-KEY-SECRET-bcda"
