@@ -40,3 +40,4 @@ jobs:
             s3://bcda-dev-admin-create-aco-creds-function/function-${{ github.sha }}.zip
           aws lambda update-function-code --function-name bcda-dev-admin-create-aco-creds \
             --s3-bucket bcda-dev-admin-create-aco-creds-function --s3-key function-${{ github.sha }}.zip
+
