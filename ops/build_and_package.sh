@@ -45,9 +45,14 @@ fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
 
 #Sign RPMs
 echo "Importing GPG Key files"
+stat $GPG_PUB_KEY_FILE
+stat $GPG_SEC_KEY_FILE
 /usr/bin/gpg --version
+echo "GPG Import pub key"
 /usr/bin/gpg --batch --import $GPG_PUB_KEY_FILE
+echo "GPG Import priv key"
 /usr/bin/gpg --batch --import $GPG_SEC_KEY_FILE
+echo "RPM Import pub key"
 /usr/bin/rpm --import $GPG_PUB_KEY_FILE
 
 cd ../bcda
