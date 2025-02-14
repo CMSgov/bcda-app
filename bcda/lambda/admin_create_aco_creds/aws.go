@@ -133,7 +133,7 @@ func getKMSID(service kmsiface.KMSAPI) (string, error) {
 			break
 		}
 	}
-
+	log.Infof("---Kms ID found %s", id[0:4])
 	return id, nil
 }
 
@@ -141,9 +141,11 @@ func putObject(service s3iface.S3API, creds string, kmsID string) (string, error
 	bucketSuffix := adjustedEnv()
 
 	s3Input := &s3.PutObjectInput{
-		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
-		Bucket: aws.String(fmt.Sprintf("%s/%s", destBucket, bucketSuffix)),
-		Key:    aws.String(kmsID),
+		Body:                 aws.ReadSeekCloser(strings.NewReader(creds)),
+		Bucket:               aws.String(fmt.Sprintf("%s/%s", destBucket, bucketSuffix)),
+		Key:                  aws.String(kmsID),
+		ServerSideEncryption: aws.String("aws:kms"),
+		SSEKMSKeyId:          aws.String(kmsID),
 	}
 
 	result, err := service.PutObject(s3Input)
