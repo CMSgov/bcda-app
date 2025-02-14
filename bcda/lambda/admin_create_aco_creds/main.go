@@ -97,23 +97,23 @@ func handleCreateACOCreds(
 	s3Service s3iface.S3API,
 	notifier Notifier,
 ) (string, error) {
-	// _, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-	// 	fmt.Sprintf("Started Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
-	// )
-	// if err != nil {
-	// 	log.Errorf("Error sending notifier start message: %+v", err)
-	// }
+	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		fmt.Sprintf("Started Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
+	)
+	if err != nil {
+		log.Errorf("Error sending notifier start message: %+v", err)
+	}
 
 	creds, err := auth.GetProvider().FindAndCreateACOCredentials(data.ACOID, data.IPs)
 	if err != nil {
 		log.Errorf("Error creating ACO creds: %+v", err)
 
-		// _, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		// 	fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
-		// )
-		// if slackErr != nil {
-		// 	log.Errorf("Error sending notifier failure message: %+v", slackErr)
-		// }
+		_, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
+		)
+		if slackErr != nil {
+			log.Errorf("Error sending notifier failure message: %+v", slackErr)
+		}
 
 		return "", err
 	}
