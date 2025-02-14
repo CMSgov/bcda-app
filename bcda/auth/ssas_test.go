@@ -101,8 +101,9 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	// These variables will allow us to swap out expectations without
 	// reinstantiating the server
 	var (
-		ips    []string
-		tester *testing.T
+		response string
+		ips      []string
+		tester   *testing.T
 	)
 
 	// TODO: Mock client instead of server
@@ -123,6 +124,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 		}
 
 		w.WriteHeader(201)
+		fmt.Fprint(w, response)
 	})
 	server := httptest.NewServer(router)
 
@@ -151,7 +153,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			ips, tester = tt.ips, t
+			ips, response, tester = tt.ips, tt.ssasResp, t
 			creds, err := s.p.RegisterSystem(testACOUUID, "", "", tt.ips...)
 			if tt.expErrMsg != "" {
 				assert.Error(t, err)
