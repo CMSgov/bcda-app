@@ -142,8 +142,8 @@ func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) 
 
 	s3Input := &s3.PutObjectInput{
 		Body:                 aws.ReadSeekCloser(strings.NewReader(creds)),
-		Bucket:               aws.String(fmt.Sprintf("%s/%s", destBucket, bucketSuffix)),
-		Key:                  aws.String(fmt.Sprintf("%s-creds", acoID)),
+		Bucket:               aws.String(destBucket),
+		Key:                  aws.String(fmt.Sprintf("%s/%s-creds", bucketSuffix, acoID)),
 		ServerSideEncryption: aws.String("aws:kms"),
 		SSEKMSKeyId:          aws.String(kmsID),
 	}
