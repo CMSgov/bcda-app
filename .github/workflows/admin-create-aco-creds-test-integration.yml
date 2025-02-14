@@ -50,4 +50,3 @@ jobs:
         run: |
           if grep -q "errorType" test-result.txt; then echo "Failed: check lambda logs."; exit 1; else echo "Success"; fi
 
-          
