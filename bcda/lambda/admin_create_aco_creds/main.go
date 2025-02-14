@@ -132,7 +132,7 @@ func handleCreateACOCreds(
 		return "", err
 	}
 
-	s3Path, err := putObject(s3Service, creds, kmsID)
+	s3Path, err := putObject(s3Service, data.ACOID, creds, kmsID)
 	if err != nil {
 		log.Errorf("Error putting object: %+v", err)
 
