@@ -15,11 +15,6 @@ on:
         description: 'Release version bcda-ops (or branch name)'
         required: true
         type: string
-  #     env:
-  #       description: 'Release env'
-  #       required: true
-  #       default: 'dev'
-  #       type: string
   workflow_dispatch:
     inputs:
       release_version:
@@ -30,16 +25,6 @@ on:
         description: 'Release version for bcda-ops (or branch name)'
         required: true
         type: string
-  #     env:
-  #       description: 'Release env'
-  #       required: true
-  #       default: 'dev'
-  #       type: choice
-  #       options:
-  #         - dev
-  #         - test
-  #         - sbx
-  #         - prod
 
 permissions:
   id-token: write
@@ -72,6 +57,7 @@ jobs:
     runs-on: self-hosted
     needs: [build_and_package_bcda, build_and_package_ssas]
     steps:
+      - uses: hashicorp/setup-packer@v2.0.1
       - name: Get AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -80,7 +66,7 @@ jobs:
           params: |
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
-      - name: checkout bcda-ops
+      - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
@@ -88,43 +74,46 @@ jobs:
           ref: main
           token: ${{ env.GITHUB_TOKEN }}
       - name: Get platinum AMI ID
-        run: export BCDA_PLATINUM_AMI=`aws --region us-east-1 ec2 describe-images --filters Name=name,Values='bcda-platinum-??????????????' --query 'sort_by(Images,&CreationDate)[-1]' --output json | jq -r .ImageId"`
+        run: |
+          export BCDA_PLATINUM_AMI=`aws --region us-east-1 ec2 describe-images --filters Name=name,Values='bcda-platinum-??????????????' --query 'sort_by(Images,&CreationDate)[-1]' --output json | jq -r .ImageId"`
+          echo $BCDA_PLATINUM_AMI
+          echo "BCDA_PLATINUM_AMI=$BCDA_PLATINUM_AMI" >> $GITHUB_ENV
       - name: Get release type
         run: |
           if [[ $(git tag -l main | wc -c | xargs) -eq "0" ]]; then
               export RELEASE_TYPE=dev
+              
           else
               export RELEASE_TYPE=release
           fi
-      # - name: Install Ansible
-      #   run: |
-      #     sudo yum update -y
-      #     sudo yum install python3-pip -y
-      #     python3 -m pip install ansible==6.5.0
+          echo $RELEASE_TYPE
+          echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_ENV
+      - name: Install Ansible
+        run: |
+          sudo yum update -y
+          sudo yum install python3-pip -y
+          python3 -m pip install ansible==6.5.0
       - name: Create API AMI
-        # env:
-        #   PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        #   TMPDIR: /home/ec2-user/
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: /home/ec2-user/
         run: |
-          echo $BCDA_PLATINUM_AMI
-          echo $RELEASE_TYPE
+          echo ${{ env.BCDA_PLATINUM_AMI }}
+          echo ${{ env.RELEASE_TYPE }}
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
-          USER=`whoami` PACKER_LOG=1  packer build -var 'source_ami=${BCDA_PLATINUM_AMI}' -var 'subnet_id=${{ env.SUBNET_ID }}' -var 'version=${{ inputs.release_version}}' -var 'release_type=${RELEASE_TYPE}' packer/api.json 2>&1 | tee api_packer_output.txt
+          # USER=`whoami` PACKER_LOG=1  packer build -var 'source_ami=${{ env.BCDA_PLATINUM_AMI }}' -var 'subnet_id=${{ env.SUBNET_ID }}' -var 'version=${{ inputs.release_version}}' -var 'release_type=${{ env.RELEASE_TYPE }}' packer/api.json 2>&1 | tee api_packer_output.txt
+          packer init packer/api.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
       - name: Create Worker AMI
-        # env:
-        #   PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        #   TMPDIR: /home/ec2-user/
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: /home/ec2-user/
         run: |
-          echo $BCDA_PLATINUM_AMI
-          echo $RELEASE_TYPE
+          echo ${{ env.BCDA_PLATINUM_AMI }}
+          echo ${{ env.RELEASE_TYPE }}
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
-          USER=`whoami` packer build -var 'source_ami=${BCDA_PLATINUM_AMI}' -var 'subnet_id=${{ env.SUBNET_ID }}' -var 'version=${{ inputs.release_version }}' -var 'release_type=${RELEASE_TYPE}' packer/worker.json 2>&1 | tee worker_packer_output.txt
-
-      # TODO: I think these are more deploy focused
-      # - name: Get AMIs
-      # - name: Run migrations (BCDA)
-      # - name: Run migrations (SSAS)
-      # - name: Deploy to {env}
-
+          # USER=`whoami` packer build -var 'source_ami=${{ env.BCDA_PLATINUM_AMI }}' -var 'subnet_id=${{ env.SUBNET_ID }}' -var 'version=${{ inputs.release_version }}' -var 'release_type=${{ env.RELEASE_TYPE }}' packer/worker.json 2>&1 | tee worker_packer_output.txt
+          packer init packer/worker.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker.json.pkr.hcl 2>&1
