@@ -79,7 +79,7 @@ func StartRiver(numWorkers int) *queue {
 					},
 				}
 			},
-			&river.PeriodicJobOpts{RunOnStart: true},
+			&river.PeriodicJobOpts{},
 		),
 	}
 
