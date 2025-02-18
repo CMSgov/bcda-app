@@ -1,0 +1,26 @@
+name: Admin Create Group Prod Deploy
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
+      - name: Upload and reload
+        run: |
+          aws s3 cp --no-progress \
+            s3://bcda-test-admin-create-group-function/function-${{ github.sha }}.zip \
+            s3://bcda-prod-admin-create-group-function/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-prod-admin-create-group \
+            --s3-bucket bcda-prod-admin-create-group-function --s3-key function-${{ github.sha }}.zip

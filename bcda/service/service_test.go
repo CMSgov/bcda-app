@@ -72,6 +72,11 @@ func TestSupportedACOs(t *testing.T) {
 		{"DC invalid characters", "D999V", false},
 		{"valid DC", "D9999", true},
 
+		{"MDTCOC too short", "CT999", false},
+		{"MDTCOC too long", "CT9999999", false},
+		{"MDTCOC invalid characters", "CT999V", false},
+		{"valid MDTCOC", "CT99999", true},
+
 		{"SBX too short", "SBXB1", false},
 		{"SBX too long", "SBXPA0123", false},
 		{"SBX invalid characters 1", "SBX0A123", false},
