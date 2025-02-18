@@ -9,35 +9,89 @@ import (
 	"path/filepath"
 	"time"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/cleanup"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/robfig/cron/v3"
 	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
+	"github.com/slack-go/slack"
 )
+
+var slackChannel = "C034CFU945C" // #bcda-alerts
+
+type CleanupJobArgs struct {
+}
+
+func (args CleanupJobArgs) Kind() string {
+	return "CleanupJob"
+}
+
+type CleanupJobWorker struct {
+	river.WorkerDefaults[CleanupJobArgs]
+	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
+	archiveExpiring func(time.Time) error
+}
+
+func NewCleanupJobWorker() *CleanupJobWorker {
+	return &CleanupJobWorker{
+		cleanupJob:      cleanup.CleanupJob,
+		archiveExpiring: cleanup.ArchiveExpiring,
+	}
+}
+
+type Notifier interface {
+	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
+}
 
 // TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
 func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{})
+	river.AddWorker(workers, NewCleanupJobWorker())
+
+	schedule, err := cron.ParseStandard("0 11,23 * * *")
+
+	if err != nil {
+		panic("Invalid cron schedule")
+	}
+
+	periodicJobs := []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			schedule,
+			func() (river.JobArgs, *river.InsertOpts) {
+				return CleanupJobArgs{}, &river.InsertOpts{
+					UniqueOpts: river.UniqueOpts{
+						ByArgs: true,
+					},
+				}
+			},
+			&river.PeriodicJobOpts{},
+		),
+	}
 
 	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
 		// TODO: whats an appropriate timeout?
-		JobTimeout: -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
-		Logger:     getSlogLogger(),
-		Workers:    workers,
+		JobTimeout:   -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
+		Logger:       getSlogLogger(),
+		Workers:      workers,
+		PeriodicJobs: periodicJobs,
 	})
 	if err != nil {
 		panic(err)
@@ -149,6 +203,103 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueA
 	return nil
 }
 
+func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobArgs]) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	_, logger := log.SetCtxLogger(ctx, "transaction_id", uuid.New())
+
+	cutoff := getCutOffTime()
+	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
+	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
+	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
+	environment := conf.GetEnv("DEPLOYMENT_TARGET")
+
+	params, err := getAWSParams()
+
+	if err != nil {
+		logger.Error("Unable to extract Slack Token from parameter store: %+v", err)
+		return err
+	}
+
+	slackClient := slack.New(params)
+
+	_, _, err = slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), false),
+	)
+
+	if err != nil {
+		logger.Error("Error sending notifier start message: %+v", err)
+	}
+
+	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
+	if err := w.cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
+
+		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupArchArg, environment), false),
+		)
+		if err != nil {
+			logger.Error("Error sending notifier failure message: %+v", err)
+		}
+
+		return err
+	}
+
+	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
+	if err := w.cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
+
+		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupFailedArg, environment), false),
+		)
+		if err != nil {
+			logger.Error("Error sending notifier failure message: %+v", err)
+		}
+
+		return err
+	}
+
+	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
+	if err := w.cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
+
+		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupCancelledArg, environment), false),
+		)
+		if err != nil {
+			logger.Error("Error sending notifier failure message: %+v", err)
+		}
+
+		return err
+	}
+
+	// Archive expiring jobs: update job statuses and move files to an inaccessible location
+	if err := w.archiveExpiring(cutoff); err != nil {
+		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
+
+		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+			fmt.Sprintf("Failed: %s job in %s env.", constants.ArchiveJobFiles, environment), false),
+		)
+		if err != nil {
+			logger.Error("Error sending notifier failure message: %+v", err)
+		}
+
+		return err
+	}
+
+	_, _, err = slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
+		fmt.Sprintf("SUCCESS: Archive and Clean Job Data for %s environment.", environment), false),
+	)
+
+	if err != nil {
+		logger.Error("Error sending notifier success message: %+v", err)
+	}
+
+	return nil
+}
+
 // TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
 // Update the AWS Cloudwatch Metric for job queue count
 func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
@@ -177,4 +328,29 @@ func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
 	}
 
 	return float64(count)
+}
+
+func getCutOffTime() time.Time {
+	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	return cutoff
+}
+
+func getAWSParams() (string, error) {
+	env := conf.GetEnv("ENV")
+
+	if env == "local" {
+		return conf.GetEnv("workflow-alerts"), nil
+	}
+
+	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	if err != nil {
+		return "", err
+	}
+
+	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
+	if err != nil {
+		return slackToken, err
+	}
+
+	return slackToken, nil
 }
