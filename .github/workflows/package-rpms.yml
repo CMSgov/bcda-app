@@ -23,6 +23,10 @@ jobs:
     name: Package BCDA, Worker RPMs
     runs-on: self-hosted
     steps:
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - name: Checkout BCDA
         uses: actions/checkout@v4
         with:
@@ -67,6 +71,7 @@ jobs:
         working-directory: ./bcda
         run: |
           ls -als
+          ls -als bcda
           export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
           echo $BCDA_RPM
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-releases/bcda-release-${{ inputs.release_version }}.rpm
@@ -76,6 +81,7 @@ jobs:
         working-directory: ./bcdaworker
         run: |
           ls -als
+          ls -als bcdaworker
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
           echo $BCDA_WORKER_RPM
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
