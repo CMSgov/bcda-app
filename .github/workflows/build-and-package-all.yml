@@ -75,7 +75,7 @@ jobs:
           token: ${{ env.GITHUB_TOKEN }}
       - name: Get platinum AMI ID
         run: |
-          export BCDA_PLATINUM_AMI=`aws --region us-east-1 ec2 describe-images --filters Name=name,Values='bcda-platinum-??????????????' --query 'sort_by(Images,&CreationDate)[-1]' --output json | jq -r .ImageId"`
+          export BCDA_PLATINUM_AMI=`aws --region us-east-1 ec2 describe-images --filters Name=name,Values='bcda-platinum-??????????????' --query 'sort_by(Images,&CreationDate)[-1]' --output json | jq -r .ImageId`
           echo $BCDA_PLATINUM_AMI
           echo "BCDA_PLATINUM_AMI=$BCDA_PLATINUM_AMI" >> $GITHUB_ENV
       - name: Get release type
