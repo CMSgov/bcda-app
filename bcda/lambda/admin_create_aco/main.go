@@ -3,25 +3,37 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/jackc/pgx/v5"
+	"github.com/pborman/uuid"
 	"github.com/slack-go/slack"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/bcdacli"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var slackChannel = "C034CFU945C" // #bcda-alerts
+var (
+	slackChannel = "C034CFU945C" // #bcda-alerts
+	id           = uuid.NewRandom()
+)
 
 type payload struct {
 	Name  string `json:"name"`
 	CMSID string `json:"cms_id"`
+}
+
+type awsParams struct {
+	dbURL      string
+	slackToken string
 }
 
 type Notifier interface {
@@ -46,15 +58,22 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	slackToken, err := getSlackToken()
+	params, err := getAWSParams()
 	if err != nil {
-		log.Errorf("Unable to get Slack token: %+v", err)
+		log.Errorf("Unable to extract DB URL from parameter store: %+v", err)
 		return err
 	}
 
-	slackClient := slack.New(slackToken)
+	conn, err := pgx.Connect(ctx, params.dbURL)
+	if err != nil {
+		log.Errorf("Unable to connect to database: %+v", err)
+		return err
+	}
+	defer conn.Close(ctx)
 
-	err = handleCreateACO(ctx, data, slackClient)
+	slackClient := slack.New(params.slackToken)
+
+	err = handleCreateACO(ctx, conn, data, id, slackClient)
 	if err != nil {
 		log.Errorf("Failed to handle Create ACO: %+v", err)
 		return err
@@ -65,7 +84,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	return nil
 }
 
-func handleCreateACO(ctx context.Context, data payload, notifier Notifier) error {
+func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id uuid.UUID, notifier Notifier) error {
 	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
 		fmt.Sprintf("Started Create ACO lambda in %s env.", os.Getenv("ENV")), false),
 	)
@@ -73,17 +92,23 @@ func handleCreateACO(ctx context.Context, data payload, notifier Notifier) error
 		log.Errorf("Error sending notifier start message: %+v", err)
 	}
 
-	_, err = bcdacli.CreateACO(data.Name, data.CMSID)
-	if err != nil {
-		log.Errorf("Error creating ACO: %+v", err)
+	if data.Name == "" {
+		return errors.New("ACO name must be provided")
+	}
 
-		_, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: Create ACO lambda in %s env.", os.Getenv("ENV")), false),
-		)
-		if slackErr != nil {
-			log.Errorf("Error sending notifier failure message: %+v", slackErr)
+	var cmsIDPt *string
+	if data.CMSID != "" {
+		match := service.IsSupportedACO(data.CMSID)
+		if !match {
+			return errors.New("ACO CMS ID is invalid")
 		}
+		cmsIDPt = &data.CMSID
+	}
 
+	aco := models.ACO{Name: data.Name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
+
+	err = createACO(context.Background(), conn, aco)
+	if err != nil {
 		return err
 	}
 
@@ -97,22 +122,27 @@ func handleCreateACO(ctx context.Context, data payload, notifier Notifier) error
 	return nil
 }
 
-func getSlackToken() (string, error) {
+func getAWSParams() (awsParams, error) {
 	env := conf.GetEnv("ENV")
 
 	if env == "local" {
-		return "", nil
+		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
 	}
 
 	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
 	if err != nil {
-		return "", err
+		return awsParams{}, err
+	}
+
+	dbURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	if err != nil {
+		return awsParams{}, err
 	}
 
 	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
 	if err != nil {
-		return "", err
+		return awsParams{}, err
 	}
 
-	return slackToken, nil
+	return awsParams{dbURL, slackToken}, nil
 }
