@@ -188,3 +188,29 @@ func TestGetCutOffTime(t *testing.T) {
 	actualCutoff = getCutOffTime()
 	assert.WithinDuration(t, expectedCutoff, actualCutoff, time.Second, "Cutoff time should be 48 hours ago")
 }
+
+func TestGetAWSParams(t *testing.T) {
+	defer func(env, workflowAlerts, localStackEndpoint string) {
+		conf.SetEnv(t, "ENV", env)
+		conf.SetEnv(t, "workflow-alerts", workflowAlerts)
+		os.Setenv("LOCAL_STACK_ENDPOINT", localStackEndpoint)
+	}(conf.GetEnv("ENV"), conf.GetEnv("workflow-alerts"), os.Getenv("LOCAL_STACK_ENDPOINT"))
+
+	t.Run("Local Environment", func(t *testing.T) {
+		conf.SetEnv(t, "ENV", "local")
+		expectedToken := "local-token"
+		conf.SetEnv(t, "workflow-alerts", expectedToken)
+
+		token, err := getAWSParams()
+		assert.NoError(t, err)
+		assert.Equal(t, expectedToken, token)
+	})
+}
+
+func TestNewCleanupJobWorker(t *testing.T) {
+	worker := NewCleanupJobWorker()
+
+	assert.NotNil(t, worker)
+	assert.NotNil(t, worker.cleanupJob)
+	assert.NotNil(t, worker.archiveExpiring)
+}
