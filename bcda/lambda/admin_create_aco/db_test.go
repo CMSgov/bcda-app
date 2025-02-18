@@ -13,20 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mockTermination struct{}
-
-func (mt mockTermination) Match(v any) bool {
-	_, ok := v.(*models.Termination)
-	return ok
-}
-
-type mockACO struct{}
-
-func (maco mockACO) Match(v any) bool {
-	_, ok := v.(*models.ACO)
-	return ok
-}
-
 var (
 	cms_id  = "TEST002"
 	td      = &models.Termination{}

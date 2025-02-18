@@ -21,13 +21,6 @@ func (m *mockNotifier) PostMessageContext(ctx context.Context, channelID string,
 	return channelID, time.Now().String(), nil
 }
 
-type mockCMSID struct{}
-
-func (mcms mockCMSID) Match(v any) bool {
-	_, ok := v.(*string)
-	return ok
-}
-
 type mockString struct{}
 
 func (ms mockString) Match(v any) bool {
