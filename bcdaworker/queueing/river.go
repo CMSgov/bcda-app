@@ -61,7 +61,7 @@ type Notifier interface {
 func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{})
-	river.AddWorker(workers, &CleanupJobWorker{})
+	river.AddWorker(workers, NewCleanupJobWorker())
 
 	schedule, err := cron.ParseStandard("0 11,23 * * *")
 
