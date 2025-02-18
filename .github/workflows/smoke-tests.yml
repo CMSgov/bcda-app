@@ -77,7 +77,7 @@ env:
 
 jobs:
   checkout:
-    name: Build Containers
+    name: bcda-api smoke tests
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1
@@ -92,9 +92,25 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      - name: Build Test Images
+      - name: Build Test Image
         run: |
           docker compose -f docker-compose.test.yml build
+      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            CLIENT_CREDENTIALS=/bcda/workflows/dev_client_credentials
+            DENYLIST_CLIENT_CREDENTIALS=/bcda/workflows/deny_client_credentials
+      - name: Build Test Image
+        run: |
+          export CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | jq .client_id`
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+          -e test/postman_test/${params.TEST_ENV}.postman_environment.json \
+          --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
+          --global-var v2Disabled=false \
+          --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
+          --global-var maintenanceMode=${params.MAINTENANCE_MODE}
 
 
 
