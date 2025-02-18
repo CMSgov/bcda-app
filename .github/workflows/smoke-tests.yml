@@ -78,23 +78,23 @@ env:
 jobs:
   checkout:
     name: bcda-api smoke tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Decrypt secrets
-        run: |
-          echo $VAULT_PW > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Build Test Image
-        run: |
-          docker compose -f docker-compose.test.yml build
+      # - name: Decrypt secrets
+      #   run: |
+      #     echo $VAULT_PW > .vault_password
+      #     bash ops/secrets --decrypt
+      #     mv -fv shared_files/encrypted/* shared_files/decrypted/
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v1
+      # - name: Build Test Image
+      #   run: |
+      #     docker compose -f docker-compose.test.yml build
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -105,6 +105,9 @@ jobs:
       - name: Build Test Image
         run: |
           export CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | jq .client_id`
+          export CLIENT_SECRET=`echo 'CLIENT_CREDENTIALS' | jq .client_secret`
+          export DENY_CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | jq .client_id`
+          export DENY_CLIENT_SECRET=`echo 'CLIENT_CREDENTIALS' | jq .client_secret`
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${params.TEST_ENV}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
