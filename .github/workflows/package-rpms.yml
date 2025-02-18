@@ -61,8 +61,6 @@ jobs:
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ops/${{ env.GPG_PUB_KEY_FILE }}
           echo "${{ env.BCDA_GPG_SEC_KEY }}" > ops/${{ env.GPG_SEC_KEY_FILE }}
-          pwd
-          ls -als
           # Remove any slashes - we don't want RPM to contain slash
           BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
       - name: Upload BCDA RPM to s3 releases
@@ -70,42 +68,30 @@ jobs:
         if: ${{ inputs.release_version != '' }}
         working-directory: ./bcda
         run: |
-          ls -als
-          ls -als bcda
           export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
-          echo $BCDA_RPM
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-releases/bcda-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-release-latest.rpm
       - name: Upload BCDA Worker RPM to s3 releases
         if: ${{ inputs.release_version != '' }}
         working-directory: ./bcdaworker
         run: |
-          ls -als
-          ls -als bcdaworker
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
-          echo $BCDA_WORKER_RPM
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-releases/bcdaworker-release-${{ inputs.release_version }}.rpm
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-release-latest.rpm
       - name: Upload BCDA RPM to s3 dev
         if: ${{ inputs.release_version == '' }}
         working-directory: ./bcda
         run: |
-          ls -als
           export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
-          echo $BCDA_RPM
           export NEW_BCDA_RPM_NAME=`echo $BCDA_RPM | sed -e 's/-1.x86_64.rpm/-'build'${{ github.run_id }}''.rpm/g'`
-          echo NEW_BCDA_RPM_NAME
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-dev/${NEW_BCDA_RPM_NAME}
           aws s3 cp --only-show-errors $BCDA_RPM s3://bcda-rpms/bcda-dev-latest.rpm
       - name: Upload BCDA Worker RPM to s3 dev
         if: ${{ inputs.release_version == '' }}
         working-directory: ./bcdaworker
         run: |
-          ls -als
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
-          echo $BCDA_WORKER_RPM
           export NEW_BCDA_WORKER_RPM_NAME=`echo $BCDA_WORKER_RPM | sed -e 's/-1.x86_64.rpm/-'build'${{ github.run_id }}''.rpm/g'`
-          echo $NEW_BCDA_WORKER_RPM_NAME
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcda-dev/${NEW_BCDA_WORKER_RPM_NAME}
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-dev-latest.rpm
       - name: Cleanup secrets
