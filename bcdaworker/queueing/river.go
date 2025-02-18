@@ -214,10 +214,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
 	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
-
-	logger.Info("Starting Archive and Clean Job Data for environment (using os): %s.", os.Getenv("DEPLOYMENT_TARGET"))
-	logger.Info("Starting Archive and Clean Job Data for environment (using conf): %s.", conf.GetEnv("DEPLOYMENT_TARGET"))
-	logger.Info("Using directories: %s | %s | %s", archiveDir, stagingDir, payloadDir)
+	environment := conf.GetEnv("DEPLOYMENT_TARGET")
 
 	params, err := getAWSParams()
 
@@ -229,7 +226,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	slackClient := slack.New(params)
 
 	_, _, err = slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Started Archive and Clean Job Data for environment: %s.", os.Getenv("ENV")), false),
+		fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), false),
 	)
 
 	if err != nil {
@@ -241,7 +238,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 
 		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupArchArg, os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupArchArg, environment), false),
 		)
 		if err != nil {
 			logger.Error("Error sending notifier failure message: %+v", err)
@@ -255,7 +252,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 
 		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupFailedArg, os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupFailedArg, environment), false),
 		)
 		if err != nil {
 			logger.Error("Error sending notifier failure message: %+v", err)
@@ -269,7 +266,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 
 		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupCancelledArg, os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupCancelledArg, environment), false),
 		)
 		if err != nil {
 			logger.Error("Error sending notifier failure message: %+v", err)
@@ -283,7 +280,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
 
 		_, _, err := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.ArchiveJobFiles, os.Getenv("ENV")), false),
+			fmt.Sprintf("Failed: %s job in %s env.", constants.ArchiveJobFiles, environment), false),
 		)
 		if err != nil {
 			logger.Error("Error sending notifier failure message: %+v", err)
@@ -293,7 +290,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobA
 	}
 
 	_, _, err = slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("SUCCESS: Archive and Clean Job Data for %s environment.", os.Getenv("ENV")), false),
+		fmt.Sprintf("SUCCESS: Archive and Clean Job Data for %s environment.", environment), false),
 	)
 
 	if err != nil {
