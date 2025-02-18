@@ -3,14 +3,16 @@
 name: Build and Package All
 
 on:
-  push: # TEMP
-    branches: carl/BCDA-8633-build-bcda-on-ami
   workflow_call:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
         required: true
         type: string
+      ssas_release_version:
+          description: 'Release version for bcda-ssas (or branch name)'
+          required: true
+          type: string
       ops_release_version:
         description: 'Release version bcda-ops (or branch name)'
         required: true
@@ -19,6 +21,10 @@ on:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version for bcda-ssas (or branch name)'
         required: true
         type: string
       ops_release_version:
@@ -34,24 +40,14 @@ jobs:
   build_and_package_bcda:
     uses: ./.github/workflows/build-and-package-bcda.yml
     with:
-      # release_version: ${{ inputs.release_version }}
-      release_version: carl/BCDA-8633-build-bcda-on-ami
-      # env: ${{ inputs.env }}
-      # env: dev
+      release_version: ${{ inputs.release_version }}
     secrets: inherit
 
   build_and_package_ssas:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@carl/BCDA-8633-build-bcda-on-ami
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
     with:
-      # release_version: ${{ inputs.ops_release_version }}
-      release_version: carl/BCDA-8633-build-bcda-on-ami
-      # env: ${{ inputs.env }}
-      # env: dev
+      ssas_release_version: ${{ inputs.ssas_release_version }}
     secrets: inherit
-
-  # TODO: Do we want this?  Or is the ami being built on merge to main enough?
-  # build_platinum_ami:
-    # uses: ./.github/workflows/build-ami.yml
   
   create_amis:
     runs-on: self-hosted
@@ -74,8 +70,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          # ref: ${{ inputs.ops_release_version }}
-          ref: main
+          ref: ${{ inputs.ops_release_version }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Get platinum AMI ID
         run: |
@@ -84,10 +79,9 @@ jobs:
       - name: Get release type
         run: |
           if [[ $(git tag -l main | wc -c | xargs) -eq "0" ]]; then
-              export RELEASE_TYPE=dev
-              
+            export RELEASE_TYPE=dev
           else
-              export RELEASE_TYPE=release
+            export RELEASE_TYPE=release
           fi
           echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_ENV
       - name: Install Ansible
@@ -100,11 +94,8 @@ jobs:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
         run: |
-          echo ${{ env.BCDA_PLATINUM_AMI }}
-          echo ${{ env.RELEASE_TYPE }}
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
-          # USER=`whoami` PACKER_LOG=1  packer build -var 'source_ami=${{ env.BCDA_PLATINUM_AMI }}' -var 'subnet_id=${{ env.SUBNET_ID }}' -var 'version=${{ inputs.release_version}}' -var 'release_type=${{ env.RELEASE_TYPE }}' packer/api.json 2>&1 | tee api_packer_output.txt
           packer init packer/api.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
       - name: Create Worker AMI
@@ -112,10 +103,36 @@ jobs:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
         run: |
-          echo ${{ env.BCDA_PLATINUM_AMI }}
-          echo ${{ env.RELEASE_TYPE }}
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
-          # USER=`whoami` packer build -var 'source_ami=${{ env.BCDA_PLATINUM_AMI }}' -var 'subnet_id=${{ env.SUBNET_ID }}' -var 'version=${{ inputs.release_version }}' -var 'release_type=${{ env.RELEASE_TYPE }}' packer/worker.json 2>&1 | tee worker_packer_output.txt
           packer init packer/worker.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker.json.pkr.hcl 2>&1
+          post_build:
+      - name: Success Alert
+        if: ${{ success() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                text: "SUCCESS: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                mrkdown_in:
+                  - text
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                mrkdown_in:
+                  - text
