@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	cms_id  = "TEST002"
-	td      = &models.Termination{}
-	testACO = &models.ACO{UUID: uuid.NewRandom(), CMSID: &cms_id, Name: "TESTACO", ClientID: "", TerminationDetails: td}
+	cms_id       = "TEST002"
+	testACO      = &models.ACO{UUID: uuid.NewRandom(), CMSID: &cms_id, Name: "TESTACO", ClientID: "", TerminationDetails: &models.Termination{}}
+	literalRegex = regexp.QuoteMeta(insertACOQuery)
 )
 
 func TestCreateACOSuccess(t *testing.T) {
@@ -26,9 +26,6 @@ func TestCreateACOSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer mockConn.Close(ctx)
-
-	expectedSQL := "INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;"
-	literalRegex := regexp.QuoteMeta(expectedSQL)
 
 	mockConn.ExpectExec(literalRegex).
 		WithArgs(testACO.UUID, testACO.CMSID, testACO.ClientID, testACO.Name, testACO.TerminationDetails).
@@ -45,9 +42,6 @@ func TestCreateACOQueryFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer mockConn.Close(ctx)
-
-	expectedSQL := "INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;"
-	literalRegex := regexp.QuoteMeta(expectedSQL)
 
 	mockConn.ExpectExec(literalRegex).
 		WithArgs(testACO.UUID, testACO.CMSID, testACO.ClientID, testACO.Name, testACO.TerminationDetails).

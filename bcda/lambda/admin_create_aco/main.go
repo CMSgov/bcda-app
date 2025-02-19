@@ -21,10 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	slackChannel = "C034CFU945C" // #bcda-alerts
-	id           = uuid.NewRandom()
-)
+var slackChannel = "C034CFU945C" // #bcda-alerts
 
 type payload struct {
 	Name  string `json:"name"`
@@ -72,6 +69,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	defer conn.Close(ctx)
 
 	slackClient := slack.New(params.slackToken)
+	id := uuid.NewRandom()
 
 	err = handleCreateACO(ctx, conn, data, id, slackClient)
 	if err != nil {

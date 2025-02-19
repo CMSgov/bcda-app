@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"regexp"
 	"testing"
 	"time"
 
@@ -44,9 +43,6 @@ func TestHandleCreateACOSuccess(t *testing.T) {
 	}
 	defer mockConn.Close(ctx)
 
-	expectedSQL := "INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;"
-	literalRegex := regexp.QuoteMeta(expectedSQL)
-
 	mockConn.ExpectExec(literalRegex).
 		WithArgs(
 			mockUuid{},
@@ -58,6 +54,7 @@ func TestHandleCreateACOSuccess(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	data := payload{"TESTACO", "TEST002"}
+	id := uuid.NewRandom()
 
 	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
 	assert.Nil(t, err)
@@ -72,11 +69,6 @@ func TestHandleCreateACOFailure(t *testing.T) {
 	}
 	defer mockConn.Close(ctx)
 
-	data := payload{"TESTACO", "TEST002"}
-
-	expectedSQL := "INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;"
-	literalRegex := regexp.QuoteMeta(expectedSQL)
-
 	mockConn.ExpectExec(literalRegex).
 		WithArgs(
 			mockUuid{},
@@ -86,6 +78,9 @@ func TestHandleCreateACOFailure(t *testing.T) {
 			testACO.TerminationDetails,
 		).
 		WillReturnError(errors.New("test error"))
+
+	data := payload{"TESTACO", "TEST002"}
+	id := uuid.NewRandom()
 
 	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
 	assert.ErrorContains(t, err, "test error")

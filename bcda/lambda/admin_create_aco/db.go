@@ -18,11 +18,12 @@ type PgxConnection interface {
 	Prepare(context.Context, string, string) (*pgconn.StatementDescription, error)
 }
 
+var insertACOQuery = `INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;`
+
 func createACO(ctx context.Context, conn PgxConnection, aco models.ACO) error {
-	query := `INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;`
-	_, err := conn.Exec(ctx, query, aco.UUID, aco.CMSID, aco.ClientID, aco.Name, &models.Termination{})
+	_, err := conn.Exec(ctx, insertACOQuery, aco.UUID, aco.CMSID, aco.ClientID, aco.Name, &models.Termination{})
 	if err != nil {
-		log.Errorf("Error running update query: %+v", err)
+		log.Errorf("Error running insert ACO query: %+v", err)
 		return err
 	}
 
