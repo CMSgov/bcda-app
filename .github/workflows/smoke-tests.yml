@@ -102,9 +102,12 @@ jobs:
           params: |
             CLIENT_CREDENTIALS=/bcda/workflows/dev_client_credentials
             DENYLIST_CLIENT_CREDENTIALS=/bcda/workflows/deny_client_credentials
+            TEST_PARAM=/bcda/workflows/test_quotes
       - name: Build Test Image
         run: |
-
+          echo $TEST_PARAM
+          TEST=$(echo $TEST_PARAM | sed 's/"$//' | jq .foo)
+          
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_secret)
           DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
