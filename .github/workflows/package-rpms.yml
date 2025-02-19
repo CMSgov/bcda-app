@@ -96,4 +96,4 @@ jobs:
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://bcda-rpms/bcdaworker-dev-latest.rpm
       - name: Cleanup secrets
         if: ${{ always() }}
-        run: rm -r shared_files/decrypted shared_files/encrypted .vault_password
+        run: rm -rf shared_files/decrypted shared_files/encrypted .vault_password
