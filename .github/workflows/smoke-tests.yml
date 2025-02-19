@@ -104,10 +104,12 @@ jobs:
             DENYLIST_CLIENT_CREDENTIALS=/bcda/workflows/deny_client_credentials
       - name: Build Test Image
         run: |
-          export CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | jq .client_id`
-          export CLIENT_SECRET=`echo 'CLIENT_CREDENTIALS' | jq .client_secret`
-          export DENY_CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | jq .client_id`
-          export DENY_CLIENT_SECRET=`echo 'CLIENT_CREDENTIALS' | jq .client_secret`
+
+          export CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | sed 's/"$//' | jq .client_id`
+          export CLIENT_SECRET=`echo 'CLIENT_CREDENTIALS' | sed 's/"$//' | jq .client_secret`
+          export DENY_CLIENT_ID=`echo 'CLIENT_CREDENTIALS' | sed 's/"$//' | jq .client_id`
+          export DENY_CLIENT_SECRET=`echo 'CLIENT_CREDENTIALS' | sed 's/"$//' | jq .client_secret`
+
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${params.TEST_ENV}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
