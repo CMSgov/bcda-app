@@ -53,10 +53,6 @@ jobs:
     runs-on: self-hosted
     needs: [build_and_package_bcda, build_and_package_ssas]
     steps:
-      - uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - uses: hashicorp/setup-packer@v2.0.1
       - name: Get AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
@@ -89,6 +85,10 @@ jobs:
           sudo yum update -y
           sudo yum install python3-pip -y
           python3 -m pip install ansible==6.5.0
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - name: Create API AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}

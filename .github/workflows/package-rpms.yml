@@ -23,10 +23,6 @@ jobs:
     name: Package BCDA, Worker RPMs
     runs-on: self-hosted
     steps:
-      - uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - name: Checkout BCDA
         uses: actions/checkout@v4
         with:
@@ -63,6 +59,10 @@ jobs:
           echo "${{ env.BCDA_GPG_SEC_KEY }}" > ops/${{ env.GPG_SEC_KEY_FILE }}
           # Remove any slashes - we don't want RPM to contain slash
           BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - name: Upload BCDA RPM to s3 releases
         # TODO: should we be checking blank release_version or should we be checking inputs.release_env == 'dev' ?
         if: ${{ inputs.release_version != '' }}
