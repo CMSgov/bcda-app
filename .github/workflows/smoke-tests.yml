@@ -106,8 +106,8 @@ jobs:
       - name: Build Test Image
         run: |
           echo $TEST_PARAM
-          TEST=$(echo $TEST_PARAM | sed 's/"$//' | jq .foo)
-          
+          TEST=$(echo $TEST_PARAM | jq .foo)
+
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_secret)
           DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
