@@ -41,4 +41,4 @@ jobs:
 
       - name: Cleanup secrets
         if: always()
-        run: rm -r shared_files/decrypted shared_files/encrypted .vault_password
+        run: rm -rf shared_files/decrypted shared_files/encrypted .vault_password
