@@ -24,8 +24,9 @@ import (
 var slackChannel = "C034CFU945C" // #bcda-alerts
 
 type payload struct {
-	Name  string `json:"name"`
-	CMSID string `json:"cms_id"`
+	Name    string  `json:"name"`
+	CMSID   string  `json:"cms_id"`
+	CleanUp *string `json:"clean_up,omitempty"`
 }
 
 type awsParams struct {
@@ -71,10 +72,27 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	slackClient := slack.New(params.slackToken)
 	id := uuid.NewRandom()
 
-	err = handleCreateACO(ctx, conn, data, id, slackClient)
-	if err != nil {
-		log.Errorf("Failed to handle Create ACO: %+v", err)
-		return err
+	if *data.CleanUp == "yes" {
+		// create a rollbackable transaction
+		tx, cErr := conn.Begin(ctx)
+		if cErr != nil {
+			log.Errorf("Failed to create transaction: %v+", cErr)
+			return err
+		}
+		defer tx.Rollback(ctx)
+
+		err = handleCreateACO(ctx, tx, data, id, slackClient)
+		if err != nil {
+			log.Errorf("Failed to handle Create ACO: %+v", err)
+			return err
+		}
+	} else {
+		// run the regular logic (non-rollback transaction)
+		err = handleCreateACO(ctx, conn, data, id, slackClient)
+		if err != nil {
+			log.Errorf("Failed to handle Create ACO: %+v", err)
+			return err
+		}
 	}
 
 	log.Info("Completed Create ACO administrative task")

@@ -95,7 +95,7 @@ func TestHandleCreateACOSuccess(t *testing.T) {
 		).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
-	data := payload{"TESTACO", "TEST002"}
+	data := payload{"TESTACO", "TEST002", nil}
 	id := uuid.NewRandom()
 
 	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
@@ -121,7 +121,7 @@ func TestHandleCreateACOFailure(t *testing.T) {
 		).
 		WillReturnError(errors.New("test error"))
 
-	data := payload{"TESTACO", "TEST002"}
+	data := payload{"TESTACO", "TEST002", nil}
 	id := uuid.NewRandom()
 
 	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
@@ -129,7 +129,7 @@ func TestHandleCreateACOFailure(t *testing.T) {
 }
 
 func (c *HandleCreateACOTestSuite) TestHandleCreateACOInvalidCMSID() {
-	data := payload{"TESTACO", "12345678"}
+	data := payload{"TESTACO", "12345678", nil}
 	id := uuid.NewRandom()
 
 	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
@@ -137,7 +137,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOInvalidCMSID() {
 }
 
 func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingName() {
-	data := payload{"", "TEST510"}
+	data := payload{"", "TEST510", nil}
 	id := uuid.NewRandom()
 
 	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
@@ -145,7 +145,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingName() {
 }
 
 func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
-	data := payload{"Test ACO 5", ""}
+	data := payload{"Test ACO 5", "", nil}
 	id := uuid.NewRandom()
 
 	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
