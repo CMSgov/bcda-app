@@ -61,6 +61,11 @@ jobs:
           go-version: '>=1.23.6'
       - name: Get golang-migrate
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          # role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ inputs.env }}-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
       - name: Migrate DB
         run: migrate -database ${DB_URL} -path db/migrations/bcda up
       # - name: Success Alert
