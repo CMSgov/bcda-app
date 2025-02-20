@@ -12,7 +12,48 @@ import (
 
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
+
+type CreateACOTestSuite struct {
+	suite.Suite
+	tx   pgx.Tx
+	conn pgx.Conn
+	ctx  context.Context
+}
+
+func (c *CreateACOTestSuite) SetupTest() {
+	c.ctx = context.Background()
+
+	params, err := getAWSParams()
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to get AWS Params")
+	}
+
+	conn, err := pgx.Connect(c.ctx, params.dbURL)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to setup pgx connection")
+	}
+
+	c.tx, err = conn.Begin(c.ctx)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to begin transaction")
+	}
+}
+
+func (c *CreateACOTestSuite) TeardownTest() {
+	// cleanup
+	err := c.tx.Rollback(c.ctx)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to rollback transaction")
+	}
+
+	c.conn.Close(context.Background())
+}
+
+func TestCreateACOTestSuite(t *testing.T) {
+	suite.Run(t, new(CreateACOTestSuite))
+}
 
 var (
 	cms_id       = "TEST002"
@@ -52,74 +93,46 @@ func TestCreateACOQueryFailure(t *testing.T) {
 	assert.ErrorContains(t, err, "test error")
 }
 
-func TestCreateACO_Integration(t *testing.T) {
-	ctx := context.Background()
+func (c *CreateACOTestSuite) TestCreateACO_Integration() {
+	var (
+		name  = "Test ACO 1"
+		cmsId = "TEST501"
+	)
+	testACO := createACOModel(name, cmsId)
 
-	params, err := getAWSParams()
-	assert.Nil(t, err)
+	c.T().Run("Valid ACO model", func(t *testing.T) {
+		err := createACO(c.ctx, c.tx, testACO)
+		assert.Nil(t, err)
+	})
 
-	conn, err := pgx.Connect(ctx, params.dbURL)
-	assert.Nil(t, err)
-	defer conn.Close(ctx)
+	// check that the ACO is within the DB
+	var count int
+	err := c.tx.QueryRow(c.ctx, "SELECT COUNT(*) FROM acos WHERE (name, cms_id) = ($1, $2)", name, cmsId).Scan(&count)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to get count of ACO")
+	}
+	assert.Equal(c.T(), count, 1)
+}
 
-	tx, err := conn.Begin(ctx)
-	assert.Nil(t, err)
-
-	tests := []struct {
-		name string
-		aco  models.ACO
-		err  string
-	}{
-		{"Valid ACO model", createACOModel("Test 501", "TEST501"), ""},
-		{"Duplicate ACO Name", createACOModel("Test 501", "TEST502"), "Duplicate ACO Model"},
-		{"Duplicate CMSID", createACOModel("Test 503", "TEST502"), ""},
-		{"Duplicate ACO Name and CMSID", createACOModel("Test 503", "TEST502"), ""},
+func (c *CreateACOTestSuite) TestCreateACO_DupCMSID_Integration() {
+	// put original ACO into DB
+	_, err := c.tx.Exec(c.ctx, "INSERT INTO acos (name, uuid, cms_id) VALUES ('TEST ACO 2', $1, 'TEST501') RETURNING id;", uuid.New())
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to insert ACO into database")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err = createACO(ctx, tx, tt.aco)
-			if tt.err != "" {
-				assert.Contains(t, err.Error(), tt.err)
-			} else {
-				assert.Nil(t, err)
-			}
-		})
-	}
-
-	// cleanup
-	tx.Rollback(ctx)
-	assert.Nil(t, err)
+	// insert ACO with duplicate CMS ID
+	c.T().Run("Duplicate CMSID", func(t *testing.T) {
+		err = createACO(c.ctx, c.tx, createACOModel("Test ACO 3", "TEST501"))
+		assert.Contains(t, err.Error(), "duplicate key")
+	})
 }
 
 func createACOModel(name string, cmsId string) models.ACO {
 	testUuid := uuid.NewRandom()
 	testClientId := testUuid.String()
 	td := models.Termination{}
-	return models.ACO{Name: name, CMSID: &cmsId, UUID: testUuid, ClientID: testClientId, TerminationDetails: &td}
+	cmsIdPtr := &cmsId
+	aco := models.ACO{Name: name, CMSID: cmsIdPtr, UUID: testUuid, ClientID: testClientId, TerminationDetails: &td}
+	return aco
 }
-
-// func TestCreateACO_Integration(t *testing.T) {
-// 	ctx := context.Background()
-//
-// 	params, err := getAWSParams()
-// 	assert.Nil(t, err)
-//
-// 	conn, err := pgx.Connect(ctx, params.dbURL)
-// 	assert.Nil(t, err)
-// 	defer conn.Close(ctx)
-//
-// 	tx, err := conn.Begin(ctx)
-// 	assert.Nil(t, err)
-//
-// 	// aco.UUID, aco.CMSID, aco.ClientID, aco.Name, &models.Termination{}
-// 	id := uuid.NewRandom()
-// 	clientid := id.String()
-// 	name := "TEST501"
-// 	err = tx.QueryRow(ctx, `INSERT INTO acos (uuid, cms_id, client_id, name, termination_details) VALUES($1, $2, $3, $4, $5) RETURNING id;`, id, clientid, name)
-// 	assert.Nil(t, err)
-//
-// 	// cleanup
-// 	err = tx.Rollback(ctx)
-// 	assert.Nil(t, err)
-// }

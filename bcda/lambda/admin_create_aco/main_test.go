@@ -6,11 +6,53 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/pborman/uuid"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
+
+type HandleCreateACOTestSuite struct {
+	suite.Suite
+	tx   pgx.Tx
+	conn pgx.Conn
+	ctx  context.Context
+}
+
+func (c *HandleCreateACOTestSuite) SetupTest() {
+	c.ctx = context.Background()
+
+	params, err := getAWSParams()
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to get AWS Params")
+	}
+
+	conn, err := pgx.Connect(c.ctx, params.dbURL)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to setup pgx connection")
+	}
+
+	c.tx, err = conn.Begin(c.ctx)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to begin transaction")
+	}
+}
+
+func (c *HandleCreateACOTestSuite) TeardownTest() {
+	// cleanup
+	err := c.tx.Rollback(c.ctx)
+	if err != nil {
+		assert.FailNow(c.T(), "Failed to rollback transaction")
+	}
+
+	c.conn.Close(context.Background())
+}
+
+func TestHandleCreateACOTestSuite(t *testing.T) {
+	suite.Run(t, new(HandleCreateACOTestSuite))
+}
 
 type mockNotifier struct {
 	Notifier
@@ -84,4 +126,28 @@ func TestHandleCreateACOFailure(t *testing.T) {
 
 	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
 	assert.ErrorContains(t, err, "test error")
+}
+
+func (c *HandleCreateACOTestSuite) TestHandleCreateACOInvalidCMSID() {
+	data := payload{"TESTACO", "12345678"}
+	id := uuid.NewRandom()
+
+	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
+	assert.ErrorContains(c.T(), err, "invalid")
+}
+
+func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingName() {
+	data := payload{"", "TEST510"}
+	id := uuid.NewRandom()
+
+	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
+	assert.ErrorContains(c.T(), err, "ACO name must be provided")
+}
+
+func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
+	data := payload{"Test ACO 5", ""}
+	id := uuid.NewRandom()
+
+	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
+	assert.ErrorContains(c.T(), err, "CMSID must be provided")
 }

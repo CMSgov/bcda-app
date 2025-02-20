@@ -94,6 +94,10 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 		return errors.New("ACO name must be provided")
 	}
 
+	if data.CMSID == "" {
+		return errors.New("CMSID must be provided")
+	}
+
 	var cmsIDPt *string
 	if data.CMSID != "" {
 		match := service.IsSupportedACO(data.CMSID)
