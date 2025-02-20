@@ -105,12 +105,14 @@ jobs:
             TEST_PARAM=/bcda/workflows/test_quotes
       - name: Build Test Image
         run: |
+          TEST=$(echo '{"foo":"bar", "hello":"world"}' | jq .foo)
+          echo $TEST
+          
           echo $TEST_PARAM
           TEST=$(echo $TEST_PARAM | jq .foo)
           echo $TEST
                 
-          TEST=$(echo '{"foo":"bar", "hello":"world"}' | jq .foo)
-          echo $TEST
+
 
           # CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
           # CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_secret)
