@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/jackc/pgx/v5"
@@ -23,8 +24,9 @@ var insertACOQuery = `INSERT INTO acos (uuid, cms_id, client_id, name, terminati
 func createACO(ctx context.Context, conn PgxConnection, aco models.ACO) error {
 	_, err := conn.Exec(ctx, insertACOQuery, aco.UUID, aco.CMSID, aco.ClientID, aco.Name, &models.Termination{})
 	if err != nil {
-		log.Errorf("Error running insert ACO query: %+v", err)
-		return err
+		errMsg := fmt.Errorf("error running insert ACO query: %v+", err)
+		log.Error(errMsg)
+		return errMsg
 	}
 
 	return nil
