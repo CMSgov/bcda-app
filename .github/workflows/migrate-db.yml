@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to migrate for (dev, test, opensbx, prod)'
+        description: 'Environment you want to migrate for (dev, test, sbx, prod)'
         required: true
         type: string
   workflow_dispatch:
@@ -21,14 +21,14 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to migrate for (dev, test, opensbx, prod)'
+        description: 'Environment you want to migrate for (dev, test, sbx, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sbx
           - prod
 
 permissions:
@@ -61,13 +61,32 @@ jobs:
           go-version: '>=1.23.6'
       - name: Get golang-migrate
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      # - name: Set DB name
+      #   if: ${{ inputs.env == 'dev' }}
+      #   run: echo "DB_NAME=bcda-dev-rds" >> "$GITHUB_OUTPUT"
+      # - name: Set DB name
+      #   if: ${{ inputs.env == 'test' }}
+      #   run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_OUTPUT"
+      # - name: Set DB name
+      #   if: ${{ inputs.env == 'sbx' }}
+      #   run: echo "DB_NAME=bcda-opensbx-rds-20190311" >> "$GITHUB_OUTPUT"
+      # - name: Set DB name
+      #   if: ${{ inputs.env == 'prod' }}
+      #   run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_OUTPUT"
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ inputs.env }}-github-actions
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
       - name: Migrate DB
-        run: migrate -database ${DB_URL} -path db/migrations/bcda up
+        env:
+          PGSSLMODE: require
+        # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
+        run: |
+          # HOST=$(aws rds describe-db-instances --db-instance-identifier ${{ env.DB_NAME }} 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-dev-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
       # - name: Success Alert
       #   if: ${{ success() }}
       #   uses: slackapi/slack-github-action@v2.0.0
