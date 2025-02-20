@@ -105,26 +105,17 @@ jobs:
             TEST_PARAM=/bcda/workflows/test_quotes
       - name: Build Test Image
         run: |
-          TEST=$(echo '{"foo":"bar", "hello":"world"}' | jq .foo)
-          echo $TEST
-          
-          echo $TEST_PARAM
-          TEST=$(echo $TEST_PARAM | jq .foo)
-          echo $TEST
-                
+          CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
+          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
+          DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
+          DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
 
-
-          # CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
-          # CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_secret)
-          # DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_id)
-          # DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | sed 's/"$//' | jq .client_secret)
-
-          # docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
-          # -e test/postman_test/${params.TEST_ENV}.postman_environment.json \
-          # --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
-          # --global-var v2Disabled=false \
-          # --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-          # --global-var maintenanceMode=${params.MAINTENANCE_MODE}
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+          -e test/postman_test/${params.TEST_ENV}.postman_environment.json \
+          --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
+          --global-var v2Disabled=false \
+          --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
+          --global-var maintenanceMode=${params.MAINTENANCE_MODE}
 
 
 
