@@ -52,7 +52,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            DB_URL= /bcda/dev/api/DATABASE_URL
+            DB_URL=/bcda/dev/api/DATABASE_URL
           # params: |
           #   DB_URL=/bcda/${{ inputs.env }}/api/DATABASE_URL
       - name: Get Go # TEMP
