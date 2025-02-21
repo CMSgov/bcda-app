@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	safecast "github.com/ccoveille/go-safecast"
+	"github.com/ccoveille/go-safecast"
 
 	"github.com/CMSgov/bcda-app/bcda/alr/csv"
 	"github.com/CMSgov/bcda-app/bcda/alr/gen"
@@ -45,10 +45,8 @@ import (
 )
 
 // App Name and usage.  Edit them here to prevent breaking tests
-const (
-	Name  = "bcda"
-	Usage = "Beneficiary Claims Data API CLI"
-)
+const Name = "bcda"
+const Usage = "Beneficiary Claims Data API CLI"
 
 var (
 	db *sql.DB
@@ -69,7 +67,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
 	}
