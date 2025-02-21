@@ -98,7 +98,7 @@ func (c *CreateACOTestSuite) TestCreateACO_Integration() {
 		name  = "Test ACO 1"
 		cmsId = "TEST501"
 	)
-	testACO := createACOModel(name, cmsId)
+	testACO := createTestACOModel(name, cmsId)
 
 	c.T().Run("Valid ACO model", func(t *testing.T) {
 		err := createACO(c.ctx, c.tx, testACO)
@@ -123,12 +123,12 @@ func (c *CreateACOTestSuite) TestCreateACO_DupCMSID_Integration() {
 
 	// insert ACO with duplicate CMS ID
 	c.T().Run("Duplicate CMSID", func(t *testing.T) {
-		err = createACO(c.ctx, c.tx, createACOModel("Test ACO 3", "TEST501"))
+		err = createACO(c.ctx, c.tx, createTestACOModel("Test ACO 3", "TEST501"))
 		assert.Contains(t, err.Error(), "duplicate key")
 	})
 }
 
-func createACOModel(name string, cmsId string) models.ACO {
+func createTestACOModel(name string, cmsId string) models.ACO {
 	testUuid := uuid.NewRandom()
 	testClientId := testUuid.String()
 	td := models.Termination{}
