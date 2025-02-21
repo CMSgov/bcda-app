@@ -73,11 +73,7 @@ func StartRiver(numWorkers int) *queue {
 		river.NewPeriodicJob(
 			schedule,
 			func() (river.JobArgs, *river.InsertOpts) {
-				return CleanupJobArgs{}, &river.InsertOpts{
-					UniqueOpts: river.UniqueOpts{
-						ByArgs: true,
-					},
-				}
+				return CleanupJobArgs{}, &river.InsertOpts{}
 			},
 			&river.PeriodicJobOpts{},
 		),
