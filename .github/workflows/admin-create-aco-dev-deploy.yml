@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - austin/BCDA-8629-create-aco-wf
+      - main
     paths:
       - bcda/lambda/admin_create_aco/**
       - .github/workflows/admin-create-aco-dev-deploy.yml
