@@ -75,7 +75,7 @@ env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
-jobs:
+
 
   # get_params:
   #   name: get parameters
@@ -98,8 +98,56 @@ jobs:
   #         echo "DENYLIST_CLIENT_CREDENTIALS=${DENYLIST_CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
 #
 
-  app_smoke_tests:
-    name: bcda-api smoke tests
+  # app_smoke_tests:
+  #   name: bcda-api smoke tests
+  #   runs-on: self-hosted
+  #   env:
+  #     DOCKER_BUILDKIT: 1
+  #     COMPOSE_DOCKER_CLI_BUILD: 1
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #     - name: Install Ansible
+  #       run: |
+  #         sudo yum update -y
+  #         sudo yum install python3-pip -y
+  #         python3 -m pip install ansible==6.5.0
+  #     - name: Decrypt secrets
+  #       run: |
+  #         echo $VAULT_PW > .vault_password
+  #         bash ops/secrets --decrypt
+  #         mv -fv shared_files/encrypted/* shared_files/decrypted/
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v1
+  #     - name: Build Test Image
+  #       run: |
+  #         docker compose -f docker-compose.test.yml build
+  #     - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+  #       env:
+  #         AWS_REGION: ${{ vars.AWS_REGION }}
+  #       with:
+  #         params: |
+  #           CLIENT_CREDENTIALS=/bcda/workflows/dev_client_credentials
+  #           DENYLIST_CLIENT_CREDENTIALS=/bcda/workflows/deny_client_credentials
+  #           TEST_PARAM=/bcda/workflows/test_quotes
+  #     - name: Build Test Image
+  #       run: |
+  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
+  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
+  #         DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
+  #         DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
+
+  #         docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+  #         -e test/postman_test/dev.postman_environment.json \
+  #         --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
+  #         --global-var v2Disabled=false \
+  #         --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
+  #         #--global-var maintenanceMode=""
+
+
+jobs:
+  smoke_tests: 
+    name: run smoke tests
     runs-on: self-hosted
     env:
       DOCKER_BUILDKIT: 1
@@ -117,36 +165,34 @@ jobs:
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Build Test Image
-        run: |
-          docker compose -f docker-compose.test.yml build
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CLIENT_CREDENTIALS=/bcda/workflows/dev_client_credentials
-            DENYLIST_CLIENT_CREDENTIALS=/bcda/workflows/deny_client_credentials
-            TEST_PARAM=/bcda/workflows/test_quotes
-      - name: Build Test Image
+            CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
+            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build the stack
+        run: |
+          make docker-bootstrap
+      - name: Run all tests
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
           DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
           DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
 
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
-          -e test/postman_test/dev.postman_environment.json \
-          --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
-          --global-var v2Disabled=false \
-          --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-          #--global-var maintenanceMode=""
+          make postman env=dev CLIENT_ID=$CLIENT_ID CLIENT_SECRET=$CLIENT_SECRET maintenanceMode=""
+          # make smoke-test env=dev maintenanceMode=""
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: ./test_results/latest/testcoverage.out
 
-
-
-    # checkout app
+# checkout app
     # checkout ssas
     # decrypt secrets
     # build app image
