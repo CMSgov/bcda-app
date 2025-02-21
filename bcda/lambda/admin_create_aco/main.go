@@ -79,11 +79,16 @@ func handler(ctx context.Context, event json.RawMessage) error {
 			log.Errorf("Failed to create transaction: %v+", cErr)
 			return err
 		}
-		defer tx.Rollback(ctx)
 
 		err = handleCreateACO(ctx, tx, data, id, slackClient)
 		if err != nil {
 			log.Errorf("Failed to handle Create ACO: %+v", err)
+			return err
+		}
+
+		err := tx.Rollback(ctx)
+		if err != nil {
+			log.Errorf("Failed to rollback transaction: %v+", err)
 			return err
 		}
 	} else {
