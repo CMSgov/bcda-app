@@ -157,7 +157,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Ansible
         run: |
-          sudo yum update -y
+          #sudo yum update -y
           sudo yum install python3-pip -y
           python3 -m pip install ansible==6.5.0
       - name: Decrypt secrets
@@ -184,7 +184,7 @@ jobs:
           DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
           DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
 
-          make postman env=dev CLIENT_ID=$CLIENT_ID CLIENT_SECRET=$CLIENT_SECRET maintenanceMode=""
+          make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="${CLIENT_SECRET}" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
           # make smoke-test env=dev maintenanceMode=""
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
