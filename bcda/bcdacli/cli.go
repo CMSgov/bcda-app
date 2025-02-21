@@ -197,7 +197,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := CreateACO(acoName, acoCMSID)
+				acoUUID, err := createACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -628,7 +628,7 @@ func createGroup(id, name, acoID string) (string, error) {
 	return ssasID, nil
 }
 
-func CreateACO(name, cmsID string) (string, error) {
+func createACO(name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
