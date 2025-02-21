@@ -76,15 +76,42 @@ env:
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
 jobs:
-  checkout:
+
+  # get_params:
+  #   name: get parameters
+  #   runs-on: self-hosted
+  #   outputs:
+  #     client_credentials: ${{ steps.getparams.outputs.client_credentials }}
+  #     denylist_client_credetials: ${{ steps.getparams.outputs.denylist_client_credetials }}
+  #   steps:
+  #     - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+  #       env:
+  #         AWS_REGION: ${{ vars.AWS_REGION }}
+  #       with:
+  #         params: |
+  #           CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
+  #           DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+  #     - name: Set Output
+  #       id: getparams
+  #       run: |
+  #         echo "CLIENT_CREDENTIALS=${CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
+  #         echo "DENYLIST_CLIENT_CREDENTIALS=${DENYLIST_CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
+
+
+  app_smoke_tests:
     name: bcda-api smoke tests
-    runs-on: self-hosted
+    runs-on: ubuntu
     env:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Install Ansible
+        run: |
+          sudo yum update -y
+          sudo yum install python3-pip -y
+          python3 -m pip install ansible==6.5.0
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
