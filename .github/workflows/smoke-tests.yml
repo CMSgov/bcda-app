@@ -115,7 +115,7 @@ jobs:
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-          --global-var maintenanceMode=${params.MAINTENANCE_MODE}
+          #--global-var maintenanceMode=""
 
 
 
