@@ -63,7 +63,7 @@ func StartRiver(numWorkers int) *queue {
 	river.AddWorker(workers, &JobWorker{})
 	river.AddWorker(workers, NewCleanupJobWorker())
 
-	schedule, err := cron.ParseStandard("*/5 * * * *")
+	schedule, err := cron.ParseStandard("0 11,23 * * *")
 
 	if err != nil {
 		panic("Invalid cron schedule")
