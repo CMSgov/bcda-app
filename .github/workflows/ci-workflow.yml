@@ -7,10 +7,10 @@ on:
     paths-ignore:
       - .github/workflows/opt-out-import-*
       - optout/**
-  pull_request:
-    paths-ignore:
-      - .github/workflows/opt-out-import-*
-      - optout/**
+#   pull_request:
+#     paths-ignore:
+#       - .github/workflows/opt-out-import-*
+#       - optout/**
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
