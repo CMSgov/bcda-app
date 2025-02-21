@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to migrate for (dev, test, sbx, prod)'
+        description: 'Environment you want to migrate for (dev, test, opensbx, prod)'
         required: true
         type: string
   workflow_dispatch:
@@ -18,14 +18,14 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to migrate for (dev, test, sbx, prod)'
+        description: 'Environment you want to migrate for (dev, test, opensbx, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - sbx
+          - opensbx
           - prod
 
 permissions:
@@ -62,15 +62,21 @@ jobs:
         if: ${{ inputs.env == 'test' }}
         run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_OUTPUT"
       - name: Set DB name
-        if: ${{ inputs.env == 'sbx' }}
+        if: ${{ inputs.env == 'opensbx' }}
         run: echo "DB_NAME=bcda-opensbx-rds-20190311" >> "$GITHUB_OUTPUT"
       - name: Set DB name
         if: ${{ inputs.env == 'prod' }}
         run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_OUTPUT"
       - uses: aws-actions/configure-aws-credentials@v3
+        if: ${{ inputs.env != 'opensbx' }}
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ inputs.env }}-github-actions
+      - uses: aws-actions/configure-aws-credentials@v3
+        if: ${{ inputs.env == 'opensbx' }}
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-sbx-github-actions
       - name: Migrate DB
         env:
           PGSSLMODE: require
