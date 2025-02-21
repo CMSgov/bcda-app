@@ -179,12 +179,12 @@ jobs:
           make docker-bootstrap
       - name: Run all tests
         run: |
-          CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
-          DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
-          DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
+          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+          DENY_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+          DENY_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
 
-          make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="${CLIENT_SECRET}" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
+          make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
           # make smoke-test env=dev maintenanceMode=""
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
