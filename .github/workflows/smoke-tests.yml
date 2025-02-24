@@ -145,6 +145,7 @@ jobs:
           echo "CLIENT_CREDENTIALS=${CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
           echo "DENYLIST_CLIENT_CREDENTIALS=${DENYLIST_CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
   api_smoke_tests: 
+    needs: get_params
     name: run api smoke tests
     runs-on: ubuntu-latest
     env:
