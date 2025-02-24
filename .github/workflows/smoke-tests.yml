@@ -77,27 +77,6 @@ env:
 
 
 
-  # get_params:
-  #   name: get parameters
-  #   runs-on: self-hosted
-  #   outputs:
-  #     client_credentials: ${{ steps.getparams.outputs.client_credentials }}
-  #     denylist_client_credetials: ${{ steps.getparams.outputs.denylist_client_credetials }}
-  #   steps:
-  #     - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-  #       env:
-  #         AWS_REGION: ${{ vars.AWS_REGION }}
-  #       with:
-  #         params: |
-  #           CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
-  #           DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
-  #     - name: Set Output
-  #       id: getparams
-  #       run: |
-  #         echo "CLIENT_CREDENTIALS=${CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
-  #         echo "DENYLIST_CLIENT_CREDENTIALS=${DENYLIST_CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
-#
-
   # app_smoke_tests:
   #   name: bcda-api smoke tests
   #   runs-on: self-hosted
@@ -146,25 +125,13 @@ env:
 
 
 jobs:
-  smoke_tests: 
-    name: run smoke tests
+  get_params:
+    name: get parameters
     runs-on: self-hosted
-    env:
-      DOCKER_BUILDKIT: 1
-      COMPOSE_DOCKER_CLI_BUILD: 1
+    outputs:
+      client_credentials: ${{ steps.getparams.outputs.client_credentials }}
+      denylist_client_credetials: ${{ steps.getparams.outputs.denylist_client_credetials }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install Ansible
-        run: |
-          #sudo yum update -y
-          sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
-      - name: Decrypt secrets
-        run: |
-          echo $VAULT_PW > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -172,12 +139,46 @@ jobs:
           params: |
             CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+      - name: Set Output
+        id: getparams
+        run: |
+          echo "CLIENT_CREDENTIALS=${CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
+          echo "DENYLIST_CLIENT_CREDENTIALS=${DENYLIST_CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
+  api_smoke_tests: 
+    name: run api smoke tests
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+    steps:
+      # - name: Checkout code
+      #   uses: actions/checkout@v2
+      # - name: Install Ansible
+      #   run: |
+      #     #sudo yum update -y
+      #     sudo yum install python3-pip -y
+      #     python3 -m pip install ansible==6.5.0
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
+      # - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+      #   env:
+      #     AWS_REGION: ${{ vars.AWS_REGION }}
+      #   with:
+      #     params: |
+      #       CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
+      #       DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Build the stack
         run: |
           make docker-bootstrap
       - name: Run all tests
+        env:
+          CLIENT_CREDENTIALS_PARAMS: ${{needs.get_params.outputs.CLIENT_CREDENTIALS_PARAMS}}
+          DENYLIST_CLIENT_CREDENTIALS_PARAMS: ${{needs.get_params.outputs.DENYLIST_CLIENT_CREDENTIALS_PARAMS}}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
