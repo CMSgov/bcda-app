@@ -72,7 +72,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	slackClient := slack.New(params.slackToken)
 	id := uuid.NewRandom()
 
-	if *data.CleanUp == "yes" {
+	if data.CleanUp == nil {
+		// run the regular logic (non-rollback transaction)
+		err = handleCreateACO(ctx, conn, data, id, slackClient)
+		if err != nil {
+			log.Errorf("Failed to handle Create ACO: %+v", err)
+			return err
+		}
+	} else {
 		// create a rollbackable transaction
 		tx, cErr := conn.Begin(ctx)
 		if cErr != nil {
@@ -89,13 +96,6 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		err := tx.Rollback(ctx)
 		if err != nil {
 			log.Errorf("Failed to rollback transaction: %v+", err)
-			return err
-		}
-	} else {
-		// run the regular logic (non-rollback transaction)
-		err = handleCreateACO(ctx, conn, data, id, slackClient)
-		if err != nil {
-			log.Errorf("Failed to handle Create ACO: %+v", err)
 			return err
 		}
 	}
