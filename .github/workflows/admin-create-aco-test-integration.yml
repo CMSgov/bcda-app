@@ -46,7 +46,7 @@ jobs:
           echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
           aws lambda invoke --function-name bcda-dev-admin-create-aco \
             --cli-binary-format raw-in-base64-out \
-            --payload '{"name":"TESTACO","cms_id":"TEST623","clean_up":"yes"}' test-result.txt
+            --payload '{"name":"TESTACO","cms_id":"TEST623"}' test-result.txt
       - name: Verify result
         run: |
           if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
