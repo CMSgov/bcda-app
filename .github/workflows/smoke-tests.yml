@@ -75,10 +75,11 @@ env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
+jobs:
 
-
-  # app_smoke_tests:
-  #   name: bcda-api smoke tests
+  # api_smoke_tests: 
+  #   needs: get_params
+  #   name: run api smoke tests
   #   runs-on: self-hosted
   #   env:
   #     DOCKER_BUILDKIT: 1
@@ -88,7 +89,7 @@ env:
   #       uses: actions/checkout@v2
   #     - name: Install Ansible
   #       run: |
-  #         sudo yum update -y
+  #         #sudo yum update -y
   #         sudo yum install python3-pip -y
   #         python3 -m pip install ansible==6.5.0
   #     - name: Decrypt secrets
@@ -96,105 +97,75 @@ env:
   #         echo $VAULT_PW > .vault_password
   #         bash ops/secrets --decrypt
   #         mv -fv shared_files/encrypted/* shared_files/decrypted/
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v1
-  #     - name: Build Test Image
-  #       run: |
-  #         docker compose -f docker-compose.test.yml build
   #     - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
   #       env:
   #         AWS_REGION: ${{ vars.AWS_REGION }}
   #       with:
   #         params: |
-  #           CLIENT_CREDENTIALS=/bcda/workflows/dev_client_credentials
-  #           DENYLIST_CLIENT_CREDENTIALS=/bcda/workflows/deny_client_credentials
-  #           TEST_PARAM=/bcda/workflows/test_quotes
-  #     - name: Build Test Image
+  #           CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
+  #           DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v1
+  #     - name: Build the stack
   #       run: |
-  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
-  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
-  #         DENY_CLIENT_ID=$(echo $CLIENT_CREDENTIALS | jq .client_id)
-  #         DENY_CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS | jq .client_secret)
+  #         make docker-bootstrap
+  #     - name: Run all tests
+  #       run: |
+  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+  #         DENY_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+  #         DENY_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
 
-  #         docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
-  #         -e test/postman_test/dev.postman_environment.json \
-  #         --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
-  #         --global-var v2Disabled=false \
-  #         --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-  #         #--global-var maintenanceMode=""
+  #         make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
+  #         # make smoke-test env=dev maintenanceMode=""
+  #     - name: Archive code coverage results
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: code-coverage-report
+  #         path: ./test_results/latest/testcoverage.out
 
-
-jobs:
-  get_params:
-    name: get parameters
+  ssas_smoke_tests: 
+    name: run ssas smoke tests
     runs-on: self-hosted
-    outputs:
-      client_credentials: ${{ steps.getparams.outputs.client_credentials }}
-      denylist_client_credetials: ${{ steps.getparams.outputs.denylist_client_credetials }}
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
+      - name: checkout bcda-ssas
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ssas-app
+          ref: 'main'
+      # - name: Decrypt secrets
+      #   run: |
+      #     echo $VAULT_PW > .vault_password
+      #     bash ops/secrets --decrypt
+      #     mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
-            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
-      - name: Set Output
-        id: getparams
-        run: |
-          echo "CLIENT_CREDENTIALS=${CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
-          echo "DENYLIST_CLIENT_CREDENTIALS=${DENYLIST_CLIENT_CREDENTIALS_PARAMS} >> "$GITHUB_OUTPUT"
-  api_smoke_tests: 
-    needs: get_params
-    name: run api smoke tests
-    runs-on: ubuntu-latest
-    env:
-      DOCKER_BUILDKIT: 1
-      COMPOSE_DOCKER_CLI_BUILD: 1
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      # - name: Install Ansible
-      #   run: |
-      #     #sudo yum update -y
-      #     sudo yum install python3-pip -y
-      #     python3 -m pip install ansible==6.5.0
-      - name: Decrypt secrets
-        run: |
-          echo $VAULT_PW > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-      # - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-      #   env:
-      #     AWS_REGION: ${{ vars.AWS_REGION }}
-      #   with:
-      #     params: |
-      #       CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
-      #       DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+            SSAS_CREDENTIALS=/bcda/workflows/dev/ssas_admin_credentials
+            ASSERTION_AUD=/bcda/workflows/dev/ssas_assertion_aud
+            HOST=/bcda/workflows/dev/ssas_elb
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Build the stack
         run: |
           make docker-bootstrap
       - name: Run all tests
-        env:
-          CLIENT_CREDENTIALS_PARAMS: ${{needs.get_params.outputs.CLIENT_CREDENTIALS_PARAMS}}
-          DENYLIST_CLIENT_CREDENTIALS_PARAMS: ${{needs.get_params.outputs.DENYLIST_CLIENT_CREDENTIALS_PARAMS}}
         run: |
-          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
-          DENY_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_id)
-          DENY_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
-
-          make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
-          # make smoke-test env=dev maintenanceMode=""
+          CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
+          CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq .client_secret)
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: ./test_results/latest/testcoverage.out
 
-# checkout app
+    # checkout app
     # checkout ssas
     # decrypt secrets
     # build app image
