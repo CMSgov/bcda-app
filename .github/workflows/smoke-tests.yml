@@ -154,7 +154,7 @@ jobs:
       - name: Build the stack
         run: |
           make docker-build
-          make load-fixtures
+          #make load-fixtures
       - name: Run all tests
         run: |
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
