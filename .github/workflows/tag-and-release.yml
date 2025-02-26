@@ -82,6 +82,9 @@ jobs:
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
+          which python
+          which python3
+          ls -als /usr/bin
           GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
       # - name: Set release tag
       #   run: |
@@ -107,8 +110,6 @@ jobs:
       - name: Run release for Ops
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          which python
-          which python3
           GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ secrets.ACCESS_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash release.sh ${{ env.TAG_ARGS_OPS }}
       - name: Success Alert
         if: ${{ success() }}
