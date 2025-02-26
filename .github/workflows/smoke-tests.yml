@@ -164,9 +164,10 @@ jobs:
           yum install ca-certificates
       - name: copy cert
         run: |
-          echo $CERT > cert.pem
-          cp cert.pem /etc/pki/ca-trust/source/anchors/
+          echo $CERT > ~/cert.pem
+          sudo cp ~/cert.pem /etc/pki/ca-trust/source/anchors/
           update-ca-trust extract
+          ls /etc/pki/ca-trust/source/anchors/
       - name: Run all tests
         run: |
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
