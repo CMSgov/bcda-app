@@ -144,6 +144,7 @@ jobs:
             SSAS_CREDENTIALS=/bcda/workflows/dev/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/dev/ssas_assertion_aud
             HOST=/bcda/workflows/dev/ssas_elb
+            CERT=/bcda/dev/api/BCDA_CA_FILE.pem
       - name: checkout bcda-ssas
         uses: actions/checkout@v4
         with:
@@ -158,6 +159,14 @@ jobs:
       - name: Build the stack
         run: |
           make docker-bootstrap
+      - name: add cert
+        run: |
+          yum install ca-certificates
+      - name: copy cert
+        run: |
+          echo $CERT > cert.pem
+          cp cert.crt /etc/pki/ca-trust/source/anchors/
+          update-ca-trust extract
       - name: Run all tests
         run: |
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
