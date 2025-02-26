@@ -39,8 +39,6 @@ permissions:
   contents: write
 
 env:
-  GITHUB_USER: carlpartridge
-  GITHUB_EMAIL: "carlpartridge@navapbc.com"
   GPG_KEY_FILE_NAME: "bcda_ci_github_gpg.key"
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
@@ -80,6 +78,9 @@ jobs:
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             OPS_GITHUB_TOKEN=/ci/github/token
       - name: Run release script
+        env:
+          GITHUB_USER: carlpartridge
+          GITHUB_EMAIL: "carlpartridge@navapbc.com"
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
           GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
@@ -106,6 +107,9 @@ jobs:
         with:
           name: release-scripts
       - name: Run release for Ops
+        env:
+          GITHUB_USER: carlpartridge
+          GITHUB_EMAIL: "carlpartridge@navapbc.com"
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
           GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash release.sh ${{ env.TAG_ARGS_OPS }}
