@@ -43,8 +43,6 @@ then
   exit 1
 fi
 
-echo "CHECK PYTHON VERSION"
-python3 -V
 if [ -z "$(echo $(python3 -V) | grep "Python 3")" ]
 then
   echo "Python 3+ is required"
