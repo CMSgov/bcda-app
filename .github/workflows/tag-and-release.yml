@@ -78,11 +78,10 @@ jobs:
         with:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
-            GITHUB_TOKEN=/ci/github/token
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ env.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
       # - name: Set release tag
       #   run: |
       #     export RELEASE_TAG=`git describe --abbrev=0 --tags | tr '\n' ' '`
@@ -107,7 +106,7 @@ jobs:
       - name: Run release for Ops
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash release.sh ${{ env.TAG_ARGS_OPS }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash release.sh ${{ env.TAG_ARGS_OPS }}
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
