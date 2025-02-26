@@ -2,6 +2,9 @@
 name: Build AMI
 
 on:
+  push:
+    branches:
+      carl/BCDA-8634-add-tag-and-release-workflows
   # workflow_call:
   #   inputs:
   #     release_version:
@@ -39,6 +42,9 @@ env:
   GITHUB_USER: carlpartridge
   GITHUB_EMAIL: "carlpartridge@navapbc.com"
   GPG_KEY_FILE_NAME: "bcda_ci_github_gpg.key"
+  RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
+  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
+  PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || 'main' }}
 
 jobs:
   tag_and_release:
@@ -49,18 +55,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app 
-          ref: ${{ inputs.release_version }}
+          ref: ${{ env.RELEASE_VERSION }}
       - name: Set tags env var
-        if: ${{ inputs.release_version != '' && inputs.previous_release_version != '' }}
+        if: ${{ env.RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
         run: |
-          export TAG_ARGS_APP="'tag_args=-t ${{ inputs.previous_release_version }} ${{ inputs.release_version }}'"
+          export TAG_ARGS_APP="'tag_args=-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}'"
           echo $TAG_ARGS_APP
           echo "TAG_ARGS_APP=$TAG_ARGS_APP" >> $GITHUB_ENV
-          export TAG_ARGS_OPS="'-t ${{ inputs.previous_release_version }} ${{ inputs.release_version }}'"
+          export TAG_ARGS_OPS="'-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}'"
           echo $TAG_ARGS_OPS
           echo "TAG_ARGS_OPS=$TAG_ARGS_OPS" >> $GITHUB_ENV
       - name: Catch incorrect inputs
-        if: ${{ inputs.release_version != '' || inputs.previous_release_version != '' }}
+        if: ${{ env.RELEASE_VERSION != '' || env.PREVIOUS_RELEASE_VERSION != '' }}
         run: |
           echo 'FAILURE: To initiate manual tagging, both release_version and previous_release_version must be specified.'
           exit 1
@@ -91,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ inputs.ops_release_version }}
+          ref: ${{ env.OPS_RELEASE_VERSION }}
       - name: Download release scripts
         uses: actions/download-artifact@v4
         with:
@@ -111,7 +117,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Tag and Release BCDA (${{ inputs.release_version }})and OPS (${{ inputs.ops_release_version }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "SUCCESS: Tag and Release BCDA (${{ env.RELEASE_VERSION }})and OPS (${{ env.OPS_RELEASE_VERSION }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -125,7 +131,7 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILED: Tag and Release BCDA (${{ inputs.release_version }})and OPS (${{ inputs.ops_release_version }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "FAILED: Tag and Release BCDA (${{ env.RELEASE_VERSION }})and OPS (${{ env.OPS_RELEASE_VERSION }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
 
