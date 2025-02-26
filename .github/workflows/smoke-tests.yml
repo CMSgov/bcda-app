@@ -166,7 +166,7 @@ jobs:
         run: |
           echo $CERT > ~/cert.pem
           sudo cp ~/cert.pem /etc/pki/ca-trust/source/anchors/
-          update-ca-trust extract
+          sudo update-ca-trust extract
           ls /etc/pki/ca-trust/source/anchors/
       - name: Run all tests
         run: |
