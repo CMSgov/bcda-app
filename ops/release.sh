@@ -43,7 +43,7 @@ then
   exit 1
 fi
 
-if [ -z "$(echo $(python -V) | grep "Python 3")" ]
+if [ -z "$(echo $(python3 -V) | grep "Python 3")" ]
 then
   echo "Python 3+ is required"
   exit 1
@@ -108,7 +108,7 @@ echo "" >> $TMPFILE
 #git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
 RELEASE_PATH="/repos$GITHUB_REPO_PATH/releases"
-/usr/bin/python3 github_release.py --release $NEWTAG --release-file $TMPFILE --repo $RELEASE_PATH
+python3 github_release.py --release $NEWTAG --release-file $TMPFILE --repo $RELEASE_PATH
 
 rm $TMPFILE
 
