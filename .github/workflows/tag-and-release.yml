@@ -70,10 +70,8 @@ jobs:
         run: |
           echo 'FAILURE: To initiate manual tagging, both release_version and previous_release_version must be specified.'
           exit 1
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+      - name: Install python3
+        run: sudo apt-get install python 3.13
       - name: Get AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
