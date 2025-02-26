@@ -78,6 +78,7 @@ jobs:
         with:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
+            OPS_GITHUB_TOKEN=/ci/github/token
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
@@ -99,6 +100,7 @@ jobs:
         with:
           repository: CMSgov/bcda-ops
           ref: ${{ env.OPS_RELEASE_VERSION }}
+          token: ${{ env.OPS_GITHUB_TOKEN }}
       - name: Download release scripts
         uses: actions/download-artifact@v4
         with:
