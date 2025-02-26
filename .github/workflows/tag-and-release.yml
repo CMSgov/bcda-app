@@ -66,7 +66,7 @@ jobs:
           echo $TAG_ARGS_OPS
           echo "TAG_ARGS_OPS=$TAG_ARGS_OPS" >> $GITHUB_ENV
       - name: Catch incorrect inputs
-        if: ${{ env.RELEASE_VERSION != '' || env.PREVIOUS_RELEASE_VERSION != '' }}
+        if: ${{ env.RELEASE_VERSION == '' || env.PREVIOUS_RELEASE_VERSION == '' }}
         run: |
           echo 'FAILURE: To initiate manual tagging, both release_version and previous_release_version must be specified.'
           exit 1
@@ -117,22 +117,22 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Tag and Release BCDA (${{ env.RELEASE_VERSION }})and OPS (${{ env.OPS_RELEASE_VERSION }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "SUCCESS: Tag and Release BCDA (${{ env.RELEASE_VERSION }}) and OPS (${{ env.OPS_RELEASE_VERSION }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
                 mrkdown_in:
                   - text
-      - name: Failure Alert
-        if: ${{ failure() }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-alerts
-          payload: |
-            channel: "C034CFU945C"
-            attachments:
-              - color: danger
-                text: "FAILED: Tag and Release BCDA (${{ env.RELEASE_VERSION }})and OPS (${{ env.OPS_RELEASE_VERSION }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
-                mrkdown_in:
-                  - text
+      # - name: Failure Alert
+      #   if: ${{ failure() }}
+      #   uses: slackapi/slack-github-action@v2.0.0
+      #   with:
+      #     method: chat.postMessage
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     # Sends to bcda-alerts
+      #     payload: |
+      #       channel: "C034CFU945C"
+      #       attachments:
+      #         - color: danger
+      #           text: "FAILED: Tag and Release BCDA (${{ env.RELEASE_VERSION }}) and OPS (${{ env.OPS_RELEASE_VERSION }}) (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+      #           mrkdown_in:
+      #             - text
 
 
