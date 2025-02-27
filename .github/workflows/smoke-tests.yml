@@ -165,9 +165,9 @@ jobs:
       - name: copy cert
         run: |
           echo $CERT > ~/cert.pem
-          sudo cp ~/cert.pem /etc/pki/tls/private/
+          sudo cp ~/cert.pem /etc/pki/tls/certs
           sudo update-ca-trust extract
-          ls /etc/pki/tls/private/
+          ls /etc/pki/tls/certs
       - name: Run all tests
         run: |
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
