@@ -164,15 +164,16 @@ jobs:
           yum install ca-certificates
       - name: copy cert
         run: |
-          # echo $CERT > ~/cert.pem
-          # sudo cp ~/cert.pem /etc/pki/ca-trust/source/anchors/
-          # sudo update-ca-trust extract
-          # echo $?
-          # ls /etc/pki/ca-trust/source/anchors/
+          echo $CERT > ~/cert.crt
+          sudo cp ~/cert.crt /etc/pki/ca-trust/source/anchors/
+          sudo update-ca-trust extract
+          echo $?
+          ls /etc/pki/ca-trust/source/anchors/
           echo $CERT > ~/cert.pem
           sudo cp ~/cert.pem /etc/ssl/
           sudo ln -s /etc/ssl/cert.pem /etc/pki/ca-trust/source/anchors/cert.pem
           sudo update-ca-trust
+          echo $?
 
       - name: Run all tests
         run: |
