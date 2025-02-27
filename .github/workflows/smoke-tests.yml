@@ -165,7 +165,7 @@ jobs:
       - name: copy cert
         run: |
           echo $CERT > ~/cert.pem
-          SSL_CERT_FILE=~/cert.pem
+          export SSL_CERT_FILE=~/cert.pem
           sudo cp ~/cert.pem /etc/pki/ca-trust/source/anchors/
           sudo update-ca-trust
           echo $?
