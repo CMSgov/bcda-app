@@ -79,6 +79,9 @@ jobs:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             OPS_GITHUB_TOKEN=/ci/github/token
+      - run: |
+          echo $GITHUB_USER
+          echo $GITHUB_EMAIL
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
@@ -88,6 +91,9 @@ jobs:
       #     export RELEASE_TAG=`git describe --abbrev=0 --tags | tr '\n' ' '`
       #     echo $RELEASE_TAG
       #     echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+      - run: |
+          echo $GITHUB_USER
+          echo $GITHUB_EMAIL
       - name: Upload release scripts
         uses: actions/upload-artifact@v4
         with:
