@@ -142,9 +142,7 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 				mockArgs = append(mockArgs, ip)
 			}
 			m := &auth.MockProvider{}
-			m.On("RegisterSystem", mockArgs...).Return(
-				auth.Credentials{ClientName: *s.testACO.CMSID, ClientID: s.testACO.UUID.String(), ClientSecret: uuid.New()},
-				nil)
+			m.On("FindAndCreateACOCredentials", *s.testACO.CMSID, ips).Return("mock\ncreds\ntest", nil)
 			auth.SetMockProvider(t, m)
 
 			buf := new(bytes.Buffer)
@@ -166,13 +164,13 @@ func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
 
 	args := []string{"bcda", constants.GenClientCred, constants.CMSIDArg, "9994"}
 	err := s.testApp.Run(args)
-	assert.EqualError(err, "no ACO record found for 9994")
+	assert.ErrorContains(err, "no ACO record found for 9994")
 	assert.Empty(buf)
 	buf.Reset()
 
 	args = []string{"bcda", constants.GenClientCred, constants.CMSIDArg, "A6543"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "no ACO record found for A6543")
+	assert.ErrorContains(err, "no ACO record found for A6543")
 	assert.Empty(buf)
 }
 
