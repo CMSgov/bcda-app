@@ -63,7 +63,7 @@ jobs:
           export TAG_ARGS_APP="'tag_args=-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}'"
           echo $TAG_ARGS_APP
           echo "TAG_ARGS_APP=$TAG_ARGS_APP" >> $GITHUB_ENV
-          export TAG_ARGS_OPS="'-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}'"
+          export TAG_ARGS_OPS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}"
           echo $TAG_ARGS_OPS
           echo "TAG_ARGS_OPS=$TAG_ARGS_OPS" >> $GITHUB_ENV
       - name: Catch incorrect inputs
@@ -79,10 +79,6 @@ jobs:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             OPS_GITHUB_TOKEN=/ci/github/token
-      - run: |
-          echo $GITHUB_USER
-          echo $GITHUB_EMAIL
-          git config --list
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
@@ -92,13 +88,9 @@ jobs:
       #     export RELEASE_TAG=`git describe --abbrev=0 --tags | tr '\n' ' '`
       #     echo $RELEASE_TAG
       #     echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-      - run: |
-          echo $GITHUB_USER
-          echo $GITHUB_EMAIL
-          git config --list
+      - run: | # This is not necessary...
           git config --unset user.name
           git config --unset user.email
-          git config --list
       - name: Upload release scripts
         uses: actions/upload-artifact@v4
         with:
