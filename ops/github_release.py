@@ -23,8 +23,11 @@ def main(release, release_file, repo):
             "Authorization": "token %s" % access_token
         }
 
+        print("URL: %s", (base_url + path))
+
         req = urllib.request.Request(
-            base_url + path, data=json.dumps(data).encode('utf-8'),
+            base_url + path,
+            data=json.dumps(data).encode('utf-8'),
             headers=headers,
             method='POST'
         )
