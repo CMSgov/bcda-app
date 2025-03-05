@@ -95,8 +95,9 @@ jobs:
       - run: |
           echo $GITHUB_USER
           echo $GITHUB_EMAIL
-          git config --global --unset-all user.name
-          git config --global --unset-all user.email
+          git config --list
+          git config --unset user.name
+          git config --unset user.email
           git config --list
       - name: Upload release scripts
         uses: actions/upload-artifact@v4
