@@ -79,18 +79,10 @@ jobs:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             OPS_GITHUB_TOKEN=/ci/github/token
-      - name: Run release script
-        run: |
-          echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
-      # - name: Set release tag
+      # - name: Run release script
       #   run: |
-      #     export RELEASE_TAG=`git describe --abbrev=0 --tags | tr '\n' ' '`
-      #     echo $RELEASE_TAG
-      #     echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-      # - run: | # This is not necessary...
-      #     git config --unset user.name
-      #     git config --unset user.email
+      #     echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
+      #     GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
       - name: Upload release scripts
         uses: actions/upload-artifact@v4
         with:
@@ -109,12 +101,10 @@ jobs:
         with:
           name: release-scripts
           path: ops
-      # - run: |
-      #     ls -als .
-      #     ls -als ./ops
       - name: Run release for Ops
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
+          echo "${{ env.OPS_GITHUB_TOKEN }}" | cut -c -5
           GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.OPS_GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_OPS }}
       - name: Success Alert
         if: ${{ success() }}
