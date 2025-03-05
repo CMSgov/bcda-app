@@ -23,8 +23,6 @@ def main(release, release_file, repo):
             "Authorization": "Bearer %s" % access_token
         }
 
-        print("URL: %s", (base_url + path))
-
         req = urllib.request.Request(
             base_url + path,
             data=json.dumps(data).encode('utf-8'),
