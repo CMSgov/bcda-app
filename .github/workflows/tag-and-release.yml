@@ -43,6 +43,8 @@ env:
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
   PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || 'main' }}
+  RELEASE_GITHUB_USER: carlpartridge
+  RELEASE_GITHUB_EMAIL: "carlpartridge@navapbc.com"
 
 jobs:
   tag_and_release:
@@ -78,12 +80,9 @@ jobs:
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             OPS_GITHUB_TOKEN=/ci/github/token
       - name: Run release script
-        env:
-          GITHUB_USER: carlpartridge
-          GITHUB_EMAIL: "carlpartridge@navapbc.com"
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
       # - name: Set release tag
       #   run: |
       #     export RELEASE_TAG=`git describe --abbrev=0 --tags | tr '\n' ' '`
@@ -107,12 +106,9 @@ jobs:
         with:
           name: release-scripts
       - name: Run release for Ops
-        env:
-          GITHUB_USER: carlpartridge
-          GITHUB_EMAIL: "carlpartridge@navapbc.com"
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.GITHUB_USER }}' GITHUB_EMAIL='${{ env.GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash release.sh ${{ env.TAG_ARGS_OPS }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash release.sh ${{ env.TAG_ARGS_OPS }}
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
