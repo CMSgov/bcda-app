@@ -108,6 +108,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-scripts
+          path: ops
+      - run: |
+          ls -als .
+          ls -als ./ops
       - name: Run release for Ops
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
