@@ -20,7 +20,7 @@ def main(release, release_file, repo):
         base_url = "https://api.github.com"
         path = repo
         headers = {
-            "Authorization": "token %s" % access_token
+            "Authorization": "Bearer %s" % access_token
         }
 
         print("URL: %s", (base_url + path))
