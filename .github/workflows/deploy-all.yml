@@ -118,7 +118,7 @@ jobs:
           touch bcda-release-api-worker-vars.tfvars
           export TF_CLI_ARGS="-no-color"
           terraform init
-          TF_OUT=\$(terraform plan \
+          terraform plan \
             -var 'vpc_id=${{ secrets.VPC_ID }}' \
             -var 'env=${{ env.RELEASE_ENV }}' \
             -var 'gdit_security_group_ids=[${{ secrets.GDIT_SECURITY_GROUP_IDS }}]' \
@@ -128,7 +128,7 @@ jobs:
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -var-file=bcda-release-api-worker-vars.tfvars \
-            -out 'bcda-release-api-worker.tfplan')
+            -out 'bcda-release-api-worker.tfplan'
       - name: Terraform Apply
         run: |
           cd terraform/${{ env.RELEASE_ENV }}
