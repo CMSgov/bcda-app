@@ -149,7 +149,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ssas-app
-          ref: 'main'
+          ref: 'lauren/BCDA-8637'
       - name: Install docker compose manually
         run: |
           sudo mkdir -p /usr/local/lib/docker/cli-plugins
@@ -159,32 +159,10 @@ jobs:
       - name: Build the stack
         run: |
           make docker-bootstrap
-      # - name: add cert
-      #   run: |
-      #     yum install ca-certificates
-      # - name: copy cert
-      #   run: |
-      #     echo $CERT > ~/cert.pem
-      #     export SSL_CERT_FILE=~/cert.pem
-      #     sudo cp ~/cert.pem /etc/pki/ca-trust/source/anchors/
-      #     sudo update-ca-trust
-      #     echo $?
-
-      #     # ls /etc/pki/ca-trust/source/anchors/
-      #     # echo $CERT > ~/cert.pem
-      #     # sudo cp ~/cert.pem /etc/ssl/
-      #     # sudo ln -s /etc/ssl/cert.pem /etc/pki/ca-trust/source/anchors/cert.pem
-      #     # sudo update-ca-trust
-      #     # echo $?
 
       - name: Run all tests
         run: |
-          yum install ca-certificates
-          echo $CERT > ~/cert.pem
-          export SSL_CERT_FILE=~/cert.pem
-          sudo cp ~/cert.pem /etc/pki/ca-trust/source/anchors/
-          sudo update-ca-trust
-          echo $?
+          echo $CERT > ~/cert.crt
 
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq .client_secret)
