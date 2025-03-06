@@ -2,9 +2,6 @@
 name: Tag and Release
 
 on:
-  push:
-    branches:
-      carl/BCDA-8634-add-tag-and-release-workflows
   workflow_dispatch:
     inputs:
       release_version:
@@ -45,8 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app 
-          # ref: ${{ env.RELEASE_VERSION }}
-          ref: carl/BCDA-8634-add-tag-and-release-workflows
+          ref: ${{ env.RELEASE_VERSION }}
       - name: Set tags env var
         if: ${{ env.NEXT_RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
         run: |
