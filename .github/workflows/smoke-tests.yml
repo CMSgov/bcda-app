@@ -149,7 +149,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ssas-app
-          ref: 'origin/lauren/BCDA-8637'
+          ref: 'origin/lauren/lauren/BCDA-8637'
       - name: Install docker compose manually
         run: |
           sudo mkdir -p /usr/local/lib/docker/cli-plugins
