@@ -53,12 +53,12 @@ env:
   ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
 
 jobs:
-  migrate_db:
-    uses: ./.github/workflows/migrate-db.yml
-    with:
-      release_version: ${{ inputs.release_version || 'main' }}
-      env: ${{ inputs.env || 'dev' }}
-    secrets: inherit
+  # migrate_db:
+  #   uses: ./.github/workflows/migrate-db.yml
+  #   with:
+  #     release_version: ${{ inputs.release_version || 'main' }}
+  #     env: ${{ inputs.env || 'dev' }}
+  #   secrets: inherit
 
   deploy:
     runs-on: self-hosted
@@ -97,10 +97,7 @@ jobs:
             OPS_GITHUB_TOKEN=/ci/github/token
       # This is pulled from CMSgov/ab2d-bcda-dpc-platform/github/actions/setup-tfenv-terraform/action.yml
       - name: Install terraform
-        run: |
-          git clone --depth=1 https://github.com/tfutils/tfenv.git ~/.tfenv
-          echo "PATH=$HOME/.tfenv/bin:$PATH" >> "$GITHUB_ENV"
-        shell: bash
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform
       - name: Checkout BCDA OPS
         uses: actions/checkout@v4
         with:

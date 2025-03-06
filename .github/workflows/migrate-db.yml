@@ -60,11 +60,7 @@ jobs:
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
       - name: Set DB name
         if: ${{ inputs.env == 'dev' }}
-        run: |
-          echo "DB_NAME=bcda-dev-rds" >> "$GITHUB_ENV"
-          echo "test"
-          echo $DB_NAME
-          echo ${{ env.DB_NAME }}
+        run: echo "DB_NAME=bcda-dev-rds" >> "$GITHUB_ENV"
       - name: Set DB name
         if: ${{ inputs.env == 'test' }}
         run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_ENV"
@@ -83,9 +79,6 @@ jobs:
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          echo "test"
-          echo $DB_NAME
-          echo ${{ env.DB_NAME }}
           HOST=$(aws rds describe-db-instances --db-instance-identifier ${{ env.DB_NAME }} 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
           migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
