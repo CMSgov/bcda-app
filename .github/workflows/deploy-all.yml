@@ -145,6 +145,7 @@ jobs:
       - name: Verify API version
         run: |
           export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
+          echo $BCDA_API_VERSION
           if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}"
             exit 1
@@ -152,6 +153,7 @@ jobs:
       - name: Verify SSAS version
         run: |
           export BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -r .version`
+          echo $BCDA_SSAS_VERSION
           if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}"
             exit 1
@@ -160,6 +162,8 @@ jobs:
         run: |
           export IMAGE_ID=`aws ec2 describe-instances --region us-east-1 --filters 'Name=tag:Name,Values=bcda-${params.ENV}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[0].{Instance:ImageId}' --output text`
           export BCDA_WORKER_VERSION=`aws ec2 describe-images --region us-east-1 --image-ids $IMAGE_ID --query 'Images[0].Tags[?Key==`version`].Value' --output text`
+          echo $IMAGE_ID
+          echo $BCDA_WORKER_VERSION
           if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}"
             exit 1
