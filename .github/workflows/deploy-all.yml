@@ -50,7 +50,8 @@ env:
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
-  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+  # ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || 'dev' }}
 
 jobs:
   # migrate_db:
