@@ -104,11 +104,10 @@ jobs:
       # - name: Set Role
       - name: Init, Plan Terraform
         run: |
-          IFS=":@" read -r -a STRS <<< "${{ env.DATABASE_URL }}"
-          echo $STRS[0]
-          echo $STRS[1]
-          echo $STRS[2]
-          export APP_DB_PW=$STRS[3]
+          IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
+          echo ${STRS[0]}
+          echo ${STRS[1]}
+          export APP_DB_PW=${STRS[2]}
           echo $APP_DB_PW | cut -c -2
           echo $APP_DB_PW | wc -c
           cd terraform/${{ env.RELEASE_ENV }}
