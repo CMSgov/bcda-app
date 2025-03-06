@@ -119,7 +119,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "SUCCESS: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -133,6 +133,6 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "FAILURE: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text

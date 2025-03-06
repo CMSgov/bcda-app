@@ -79,6 +79,7 @@ jobs:
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
+          echo ${{ env.DB_NAME }}
           HOST=$(aws rds describe-db-instances --db-instance-identifier ${{ env.DB_NAME }} 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
           migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
@@ -93,7 +94,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -107,6 +108,6 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
