@@ -67,38 +67,40 @@ jobs:
         run: |
           echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
           exit 1
-      - name: Started Deploy Alert
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-deploy
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: good
-                text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
-                mrkdown_in:
-                  - text
+      # - name: Started Deploy Alert
+      #   uses: slackapi/slack-github-action@v2.0.0
+      #   with:
+      #     method: chat.postMessage
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     # Sends to bcda-deploy
+      #     payload: |
+      #       channel: "C03S23MJFJS"
+      #       attachments:
+      #         - color: good
+      #           text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+      #           mrkdown_in:
+      #             - text
       - name: Get AMIs
         run: |
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
           export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
-      - name: Checkout BCDA OPS
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-ops
-          ref: ${{ env.OPS_RELEASE_VERSION }}
-      # - name: Set Role
-      - name: Set env vars from AWS params
+      - name: Get AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
+            OPS_GITHUB_TOKEN=/ci/github/token
+      - name: Checkout BCDA OPS
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: ${{ env.OPS_RELEASE_VERSION }}
+          token: ${{ env.OPS_GITHUB_TOKEN }}
+      # - name: Set Role
       - name: Init, Plan Terraform
         run: |
           export APP_DB_PW=`IFS="[:\@]" read -r -A STRS <<< "${{ env.DATABASE_URL }}" | echo $STRS[3]`
