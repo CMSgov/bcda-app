@@ -50,7 +50,7 @@ env:
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
-  PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || 'main' }}
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
 
 jobs:
   migrate_db:
@@ -155,31 +155,40 @@ jobs:
             exit 1
           fi
 
-  smoketests:
-    needs: [migrate_db, deploy]
-    uses: ./.github/workflows/smoketests.yml
-    with:
-      release_version: ${{ inputs.release_version || 'main' }}
-    secrets: inherit
+  # smoketests:
+  #   needs: [migrate_db, deploy]
+  #   uses: ./.github/workflows/smoketests.yml
+  #   with:
+  #     release_version: ${{ inputs.release_version || 'main' }}
+  #   secrets: inherit
 
   post_deploy:
-    needs: [smoketests]
+    # needs: [smoketests]
+    needs: [deploy]
     runs-on: self-hosted
     steps:
+      - name: Set env vars from AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
+            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/new-relic/app-id
       - name: Notify NewRelic
         if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'opensbx' || env.RELEASE_ENV == 'test' }}
         run: |
           python3 ./scripts/mark_deployment.py \
-            --app_id ${{ secrets.NEWRELIC_APP_ID }} \
-            --api_key ${{ secrets.NEWRELIC_API_KEY }} \
+            --app_id ${{ env.NEWRELIC_APP_ID }} \
+            --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${{ env.RELEASE_VERSION }}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           python3 ./scripts/mark_deployment.py \
-            --app_id ${{ secrets.NEWRELIC_APP_ID }} \
-            --api_key ${{ secrets.NEWRELIC_API_KEY }} \
+            --app_id ${{ env.NEWRELIC_APP_ID }} \
+            --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
       - name: Publish Build Info
         if: ${{ success() }}

@@ -28,6 +28,9 @@ on:
           - opensbx
           - prod
 
+env:
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+
 permissions:
   id-token: write
   contents: read
@@ -68,15 +71,9 @@ jobs:
         if: ${{ inputs.env == 'prod' }}
         run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_OUTPUT"
       - uses: aws-actions/configure-aws-credentials@v3
-        if: ${{ inputs.env != 'opensbx' }}
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ inputs.env }}-github-actions
-      - uses: aws-actions/configure-aws-credentials@v3
-        if: ${{ inputs.env == 'opensbx' }}
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-sbx-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
       - name: Migrate DB
         env:
           PGSSLMODE: require
