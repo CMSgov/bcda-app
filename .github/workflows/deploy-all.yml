@@ -97,7 +97,7 @@ jobs:
             OPS_GITHUB_TOKEN=/ci/github/token
       # This is pulled from CMSgov/ab2d-bcda-dpc-platform/github/actions/setup-tfenv-terraform/action.yml
       - name: Install terraform
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform@main
       - name: Checkout BCDA OPS
         uses: actions/checkout@v4
         with:
