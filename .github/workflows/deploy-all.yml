@@ -95,15 +95,14 @@ jobs:
           params: |
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
             OPS_GITHUB_TOKEN=/ci/github/token
-      # This is pulled from CMSgov/ab2d-bcda-dpc-platform/github/actions/setup-tfenv-terraform/action.yml
-      - name: Install terraform
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform@main
       - name: Checkout BCDA OPS
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
           ref: ${{ env.OPS_RELEASE_VERSION }}
           token: ${{ env.OPS_GITHUB_TOKEN }}
+      - name: Install terraform
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform@main
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
