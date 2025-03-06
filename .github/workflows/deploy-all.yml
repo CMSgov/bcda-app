@@ -54,9 +54,10 @@ env:
 
 jobs:
   migrate_db:
-    uses: ./.github/workflows/build-and-package-bcda.yml
+    uses: ./.github/workflows/migrate-db.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
+      env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
   deploy:
