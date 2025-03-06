@@ -109,7 +109,7 @@ jobs:
           token: ${{ env.OPS_GITHUB_TOKEN }}
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.BCDA_ACCOUNT }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
           aws-region: ${{ vars.AWS_REGION }}
       - name: Init, Plan Terraform
         run: |
