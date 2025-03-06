@@ -2,6 +2,9 @@
 name: Tag and Release
 
 on:
+  push:
+    branches:
+      carl/BCDA-8634-add-tag-and-release-workflows
   workflow_dispatch:
     inputs:
       release_version:
@@ -12,9 +15,11 @@ on:
         description: 'Release version for bcda-ops (or branch name)'
         required: true
         type: string
+      next_release_version:
+        description: 'Next version (tag or branch name) (OPTIONAL - If not set tag versions will be automatically figured out)'
+        type: string
       previous_release_version:
-        description: 'Previous version (tag or branch name)'
-        required: true
+        description: 'Previous version (tag or branch name) (OPTIONAL - If not set tag versions will be automatically figured out)'
         type: string
 
 permissions:
@@ -25,9 +30,11 @@ env:
   GPG_KEY_FILE_NAME: "bcda_ci_github_gpg.key"
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
-  PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || 'main' }}
+  NEXT_RELEASE_VERSION: ${{ inputs.previous_release_version || '' }}
+  PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || '' }}
   RELEASE_GITHUB_USER: carlpartridge
   RELEASE_GITHUB_EMAIL: "carlpartridge@navapbc.com"
+  MANUAL_TAG_ARGS: ''
 
 jobs:
   tag_and_release:
@@ -40,19 +47,10 @@ jobs:
           repository: CMSgov/bcda-app 
           ref: ${{ env.RELEASE_VERSION }}
       - name: Set tags env var
-        if: ${{ env.RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
+        if: ${{ env.NEXT_RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
         run: |
-          export TAG_ARGS_APP="'tag_args=-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}'"
-          echo $TAG_ARGS_APP
-          echo "TAG_ARGS_APP=$TAG_ARGS_APP" >> $GITHUB_ENV
-          export TAG_ARGS_OPS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.RELEASE_VERSION }}"
-          echo $TAG_ARGS_OPS
-          echo "TAG_ARGS_OPS=$TAG_ARGS_OPS" >> $GITHUB_ENV
-      - name: Catch incorrect inputs
-        if: ${{ env.RELEASE_VERSION == '' || env.PREVIOUS_RELEASE_VERSION == '' }}
-        run: |
-          echo 'FAILURE: To initiate manual tagging, both release_version and previous_release_version must be specified.'
-          exit 1
+          export MANUAL_TAG_ARGS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.NEXT_RELEASE_VERSION }}"
+          echo "MANUAL_TAG_ARGS=$MANUAL_TAG_ARGS" >> $GITHUB_ENV
       - name: Get AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -64,7 +62,7 @@ jobs:
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_APP }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.MANUAL_TAG_ARGS }}
       - name: Upload release scripts
         uses: actions/upload-artifact@v4
         with:
@@ -86,7 +84,7 @@ jobs:
       - name: Run release for Ops
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.OPS_GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.TAG_ARGS_OPS }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.OPS_GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.MANUAL_TAG_ARGS }}
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
