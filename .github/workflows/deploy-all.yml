@@ -95,21 +95,26 @@ jobs:
           params: |
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
             OPS_GITHUB_TOKEN=/ci/github/token
+      # This is pulled from CMSgov/ab2d-bcda-dpc-platform/github/actions/setup-tfenv-terraform/action.yml
+      - name: Install terraform
+        run: |
+          git clone --depth=1 https://github.com/tfutils/tfenv.git ~/.tfenv
+          echo "PATH=$HOME/.tfenv/bin:$PATH" >> "$GITHUB_ENV"
+        shell: bash
       - name: Checkout BCDA OPS
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
           ref: ${{ env.OPS_RELEASE_VERSION }}
           token: ${{ env.OPS_GITHUB_TOKEN }}
-      # - name: Set Role
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.BCDA_ACCOUNT }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
+          aws-region: ${{ vars.AWS_REGION }}
       - name: Init, Plan Terraform
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
-          echo ${STRS[0]}
-          echo ${STRS[1]}
           export APP_DB_PW=${STRS[2]}
-          echo $APP_DB_PW | cut -c -2
-          echo $APP_DB_PW | wc -c
           cd terraform/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
           export TF_CLI_ARGS="-no-color"
