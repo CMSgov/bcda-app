@@ -28,6 +28,9 @@ on:
           - opensbx
           - prod
 
+env:
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+
 permissions:
   id-token: write
   contents: read
@@ -57,26 +60,20 @@ jobs:
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
       - name: Set DB name
         if: ${{ inputs.env == 'dev' }}
-        run: echo "DB_NAME=bcda-dev-rds" >> "$GITHUB_OUTPUT"
+        run: echo "DB_NAME=bcda-dev-rds" >> "$GITHUB_ENV"
       - name: Set DB name
         if: ${{ inputs.env == 'test' }}
-        run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_OUTPUT"
+        run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_ENV"
       - name: Set DB name
         if: ${{ inputs.env == 'opensbx' }}
-        run: echo "DB_NAME=bcda-opensbx-rds-20190311" >> "$GITHUB_OUTPUT"
+        run: echo "DB_NAME=bcda-opensbx-rds-20190311" >> "$GITHUB_ENV"
       - name: Set DB name
         if: ${{ inputs.env == 'prod' }}
-        run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_OUTPUT"
+        run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_ENV"
       - uses: aws-actions/configure-aws-credentials@v3
-        if: ${{ inputs.env != 'opensbx' }}
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ inputs.env }}-github-actions
-      - uses: aws-actions/configure-aws-credentials@v3
-        if: ${{ inputs.env == 'opensbx' }}
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-sbx-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
       - name: Migrate DB
         env:
           PGSSLMODE: require
@@ -96,7 +93,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -110,6 +107,6 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }})>"
+                text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
