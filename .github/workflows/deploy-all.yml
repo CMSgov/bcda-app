@@ -172,6 +172,11 @@ jobs:
             echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
             exit 1
           fi
+      - name: Upload notify script
+        uses: actions/upload-artifact@v4
+        with:
+          name: notify-script
+          path: ./scripts/mark_deployment.py
 
   # smoketests:
   #   needs: [migrate_db, deploy]
@@ -193,18 +198,28 @@ jobs:
           params: |
             NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
             NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/new-relic/app-id
+      - name: Download notify scripts
+        uses: actions/download-artifact@v4
+        with:
+          name: notify-script
+          path: scripts
       - name: Notify NewRelic
         if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'opensbx' || env.RELEASE_ENV == 'test' }}
         run: |
-          python3 ./scripts/mark_deployment.py \
+          ls -als
+          ls -als scripts
+          python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${{ env.RELEASE_VERSION }}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
+          ls -als
+          ls -als scripts
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-          python3 ./scripts/mark_deployment.py \
+          echo $BCDA_AMI
+          python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
