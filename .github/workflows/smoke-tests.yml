@@ -164,8 +164,8 @@ jobs:
         run: |
           docker system prune -a -f
           docker compose -f docker-compose.test.yml build
-          CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
-          CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq .client_secret)
+          CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
           echo ${CLIENT_ID:0:4}
           echo ${CLIENT_SECRET:0:4}
           echo ${ASSERTION_AUD:0:4}
