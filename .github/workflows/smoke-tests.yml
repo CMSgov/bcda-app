@@ -141,7 +141,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            SSAS_CREDENTIALS=/bcda/workflows/dev/dev_client_credentials
+            SSAS_CREDENTIALS=/bcda/workflows/dev_client_credentials
             ASSERTION_AUD=/bcda/workflows/dev/ssas_assertion_aud
             HOST=/bcda/workflows/dev/ssas_elb
             CERT=/bcda/dev/api/BCDA_CA_FILE.pem
