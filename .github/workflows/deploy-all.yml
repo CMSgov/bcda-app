@@ -2,9 +2,6 @@
 name: Deploy All
 
 on:
-  push:
-    branches:
-      carl/BCDA-8761-deploy-all-workflows
   workflow_dispatch:
     inputs:
       release_version:
@@ -50,20 +47,18 @@ env:
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
-  # ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
-  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || 'dev' }}
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
 
 jobs:
-  # migrate_db:
-  #   uses: ./.github/workflows/migrate-db.yml
-  #   with:
-  #     release_version: ${{ inputs.release_version || 'main' }}
-  #     env: ${{ inputs.env || 'dev' }}
-  #   secrets: inherit
+  migrate_db:
+    uses: ./.github/workflows/migrate-db.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+      env: ${{ inputs.env || 'dev' }}
+    secrets: inherit
 
   deploy:
-    # environment: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
-    environment: dev
+    environment: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
     runs-on: self-hosted
     steps:
       - name: Confirm Env
@@ -71,19 +66,19 @@ jobs:
         run: |
           echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
           exit 1
-      # - name: Started Deploy Alert
-      #   uses: slackapi/slack-github-action@v2.0.0
-      #   with:
-      #     method: chat.postMessage
-      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     # Sends to bcda-deploy
-      #     payload: |
-      #       channel: "C03S23MJFJS"
-      #       attachments:
-      #         - color: good
-      #           text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-      #           mrkdown_in:
-      #             - text
+      - name: Started Deploy Alert
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
       - name: Get AMIs
         run: |
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
@@ -138,14 +133,11 @@ jobs:
       - name: Refresh Instances
         run: |
           ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
-          echo "BCDA Autoscaling Group: ${ASG}"
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
-          echo "Starting instance refresh"
       - run: sleep 120 # Give some time for instances to refresh
       - name: Verify API version
         run: |
           export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
-          echo $BCDA_API_VERSION
           if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
             exit 1
@@ -153,7 +145,6 @@ jobs:
       - name: Verify SSAS version
         run: |
           export BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -r .version`
-          echo $BCDA_SSAS_VERSION
           if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
             exit 1
@@ -161,13 +152,11 @@ jobs:
       - name: Verify Worker version
         run: |
           export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[0].{Instance:ImageId}' --output text`
-          echo $IMAGE_ID
           # Was unable to escape the backticks (`), creating this function seems to get around that
           get_image_version () {
               aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
           }
           export BCDA_WORKER_VERSION=`get_image_version`
-          echo $BCDA_WORKER_VERSION
           if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
             exit 1
@@ -206,8 +195,6 @@ jobs:
       - name: Notify NewRelic
         if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'opensbx' || env.RELEASE_ENV == 'test' }}
         run: |
-          ls -als
-          ls -als scripts
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
@@ -215,10 +202,7 @@ jobs:
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
-          ls -als
-          ls -als scripts
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-          echo $BCDA_AMI
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
@@ -249,17 +233,17 @@ jobs:
                 mrkdown_in:
                   - pretext
                   - footer
-      # - name: Failure Alert
-      #   if: ${{ failure() }}
-      #   uses: slackapi/slack-github-action@v2.0.0
-      #   with:
-      #     method: chat.postMessage
-      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     # Sends to bcda-alerts
-      #     payload: |
-      #       channel: "C034CFU945C"
-      #       attachments:
-      #         - color: danger
-      #           text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-      #           mrkdown_in:
-      #             - text
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
