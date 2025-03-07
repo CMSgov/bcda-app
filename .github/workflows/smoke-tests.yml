@@ -141,7 +141,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            SSAS_CREDENTIALS=/bcda/workflows/dev_client_credentials
+            SSAS_CREDENTIALS=/bcda/workflows/dev/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/dev/ssas_assertion_aud
             HOST=/bcda/workflows/dev/ssas_elb
             CERT=/bcda/dev/api/BCDA_CA_FILE.pem
@@ -165,6 +165,7 @@ jobs:
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq .client_id)
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq .client_secret)
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
+
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
