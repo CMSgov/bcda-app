@@ -141,7 +141,7 @@ jobs:
           echo "BCDA Autoscaling Group: ${ASG}"
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
           echo "Starting instance refresh"
-      - run: sleep 30 # Give some time for instances to refresh
+      - run: sleep 40 # Give some time for instances to refresh
       - name: Verify API version
         run: |
           export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
