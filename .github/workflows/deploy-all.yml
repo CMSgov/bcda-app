@@ -162,7 +162,11 @@ jobs:
         run: |
           export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[0].{Instance:ImageId}' --output text`
           echo $IMAGE_ID
-          export BCDA_WORKER_VERSION=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --image-ids $IMAGE_ID --query 'Images[0].Tags[?Key==`version`].Value' --output text`
+          # Was unable to escape the backticks (`), creating this function seems to get around that
+          get_image_version () {
+              aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
+          }
+          export BCDA_WORKER_VERSION=`get_image_version`
           echo $BCDA_WORKER_VERSION
           if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
