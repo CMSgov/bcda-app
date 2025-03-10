@@ -78,7 +78,6 @@ env:
 jobs:
 
   api_smoke_tests: 
-    needs: get_params
     name: run api smoke tests
     runs-on: self-hosted
     env:
