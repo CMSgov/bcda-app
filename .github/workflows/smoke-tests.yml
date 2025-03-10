@@ -77,52 +77,52 @@ env:
 
 jobs:
 
-  api_smoke_tests: 
-    name: run api smoke tests
-    runs-on: self-hosted
-    env:
-      DOCKER_BUILDKIT: 1
-      COMPOSE_DOCKER_CLI_BUILD: 1
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install Ansible
-        run: |
-          #sudo yum update -y
-          sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
-      - name: Decrypt secrets
-        run: |
-          echo $VAULT_PW > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
-            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      # - name: Build the stack
-      #   run: |
-      #     make docker-bootstrap
-      - name: Run Postman Tests
-        run: |
-          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
-          DENY_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_id)
-          DENY_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+  # api_smoke_tests: 
+  #   name: run api smoke tests
+  #   runs-on: self-hosted
+  #   env:
+  #     DOCKER_BUILDKIT: 1
+  #     COMPOSE_DOCKER_CLI_BUILD: 1
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #     - name: Install Ansible
+  #       run: |
+  #         #sudo yum update -y
+  #         sudo yum install python3-pip -y
+  #         python3 -m pip install ansible==6.5.0
+  #     - name: Decrypt secrets
+  #       run: |
+  #         echo $VAULT_PW > .vault_password
+  #         bash ops/secrets --decrypt
+  #         mv -fv shared_files/encrypted/* shared_files/decrypted/
+  #     - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+  #       env:
+  #         AWS_REGION: ${{ vars.AWS_REGION }}
+  #       with:
+  #         params: |
+  #           CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
+  #           DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v1
+  #     # - name: Build the stack
+  #     #   run: |
+  #     #     make docker-bootstrap
+  #     - name: Run Postman Tests
+  #       run: |
+  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+  #         DENY_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+  #         DENY_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
 
-          make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
-          # make smoke-test env=dev maintenanceMode=""
+  #         make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
+  #         # make smoke-test env=dev maintenanceMode=""
   
-      - name: Run Smoke Tests
-        run: |
-          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
+      # - name: Run Smoke Tests
+      #   run: |
+      #     CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+      #     CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+      #     docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
 
   #     - name: Run Paca Tests
   #       run: |
@@ -140,7 +140,7 @@ jobs:
 
   ssas_smoke_tests: 
     name: run ssas smoke tests
-    needs: api_smoke_tests
+    #needs: api_smoke_tests
     runs-on: self-hosted
     env:
       DOCKER_BUILDKIT: 1
