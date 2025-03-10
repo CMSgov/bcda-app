@@ -140,6 +140,7 @@ jobs:
 
   ssas_smoke_tests: 
     name: run ssas smoke tests
+    needs: api_smoke_tests
     runs-on: self-hosted
     env:
       DOCKER_BUILDKIT: 1
