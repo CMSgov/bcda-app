@@ -109,7 +109,7 @@ jobs:
   #     - name: Build the stack
   #       run: |
   #         make docker-bootstrap
-  #     - name: Run all tests
+  #     - name: Run Postman Tests
   #       run: |
   #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
   #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
@@ -118,6 +118,21 @@ jobs:
 
   #         make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
   #         # make smoke-test env=dev maintenanceMode=""
+  
+  #     - name: Run Smoke Tests
+  #       run: |
+  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+
+
+  #     - name: Run Paca Tests
+  #       run: |
+  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+
+
+
+
   #     - name: Archive code coverage results
   #       uses: actions/upload-artifact@v4
   #       with:
@@ -131,11 +146,6 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      # - name: Decrypt secrets
-      #   run: |
-      #     echo $VAULT_PW > .vault_password
-      #     bash ops/secrets --decrypt
-      #     mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -156,14 +166,8 @@ jobs:
           sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-      # - name: Build the stack
-      #   run: |
-      #     make docker-bootstrap
-
       - name: Run all tests
         run: |
-          docker system prune -a -f
-          docker compose -f docker-compose.test.yml build
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
           echo ${CLIENT_ID:0:4}
@@ -171,7 +175,6 @@ jobs:
           echo ${ASSERTION_AUD:0:4}
           echo ${HOST:0:4}
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
-
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
