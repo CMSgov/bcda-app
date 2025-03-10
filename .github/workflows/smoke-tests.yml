@@ -118,11 +118,11 @@ jobs:
           make postman env=dev CLIENT_ID="${CLIENT_ID}" CLIENT_SECRET="$CLIENT_SECRET" BLACKLIST_CLIENT_ID=$DENY_CLIENT_ID BLACKLIST_CLIENT_SECRET=$DENY_CLIENT_SECRET maintenanceMode=""
           # make smoke-test env=dev maintenanceMode=""
   
-  #     - name: Run Smoke Tests
-  #       run: |
-  #         CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
-  #         CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
-
+      - name: Run Smoke Tests
+        run: |
+          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
+          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
 
   #     - name: Run Paca Tests
   #       run: |
