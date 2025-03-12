@@ -1,0 +1,249 @@
+# Deploy BCDA/SSAS and Worker ec2 instances
+name: Deploy All
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version for bcda-ssas (or branch name)'
+        required: true
+        type: string
+      ops_release_version:
+        description: 'Release version for bcda-ops (or branch name)'
+        required: true
+        type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - opensbx
+          - prod
+      confirm_env:
+        description: 'Confirm the environment you want to deploy to'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - opensbx
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RELEASE_ENV: ${{ inputs.env || 'dev' }}
+  CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
+  RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
+  SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
+  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+
+jobs:
+  migrate_db:
+    uses: ./.github/workflows/migrate-db.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+      env: ${{ inputs.env || 'dev' }}
+    secrets: inherit
+
+  deploy:
+    environment: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+    runs-on: self-hosted
+    steps:
+      - name: Confirm Env
+        if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
+        run: |
+          echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
+          exit 1
+      - name: Started Deploy Alert
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
+      - name: Get AMIs
+        run: |
+          export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
+          export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
+      - name: Get AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
+            OPS_GITHUB_TOKEN=/ci/github/token
+      - name: Checkout BCDA OPS
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: ${{ env.OPS_RELEASE_VERSION }}
+          token: ${{ env.OPS_GITHUB_TOKEN }}
+      - name: Install terraform
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform@main
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Init, Plan Terraform
+        run: |
+          IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
+          export APP_DB_PW=${STRS[2]}
+          cd terraform/${{ env.RELEASE_ENV }}
+          touch bcda-release-api-worker-vars.tfvars
+          export TF_CLI_ARGS="-no-color"
+          terraform init
+          terraform plan \
+            -var 'vpc_id=${{ secrets.VPC_ID }}' \
+            -var 'env=${{ env.RELEASE_ENV }}' \
+            -var 'gdit_security_group_ids=[${{ secrets.GDIT_SECURITY_GROUP_IDS }}]' \
+            -var 'key_name=bcda-api-${{ env.RELEASE_ENV }}-${{ vars.KEY_ID }}' \
+            -var 'app_db_pw=${APP_DB_PW}' \
+            -var 'ami_id=${{ env.BCDA_AMI }}' \
+            -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
+            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
+            -var-file=bcda-release-api-worker-vars.tfvars \
+            -out 'bcda-release-api-worker.tfplan'
+      - name: Terraform Apply
+        run: |
+          cd terraform/${{ env.RELEASE_ENV }}
+          export TF_CLI_ARGS="-no-color"
+          terraform init
+          terraform apply bcda-release-api-worker.tfplan
+      - name: Refresh Instances
+        run: |
+          ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
+          aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
+      - run: sleep 120 # Give some time for instances to refresh
+      - name: Verify API version
+        run: |
+          export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
+          if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+            echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
+            exit 1
+          fi
+      - name: Verify SSAS version
+        run: |
+          export BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -r .version`
+          if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
+            echo "SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
+            exit 1
+          fi
+      - name: Verify Worker version
+        run: |
+          export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[0].{Instance:ImageId}' --output text`
+          # Was unable to escape the backticks (`), creating this function seems to get around that
+          get_image_version () {
+              aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
+          }
+          export BCDA_WORKER_VERSION=`get_image_version`
+          if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+            echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
+            exit 1
+          fi
+      - name: Upload notify script
+        uses: actions/upload-artifact@v4
+        with:
+          name: notify-script
+          path: ./scripts/mark_deployment.py
+
+  # smoketests:
+  #   needs: [migrate_db, deploy]
+  #   uses: ./.github/workflows/smoketests.yml
+  #   with:
+  #     release_version: ${{ inputs.release_version || 'main' }}
+  #   secrets: inherit
+
+  post_deploy:
+    # needs: [smoketests]
+    needs: [deploy]
+    runs-on: self-hosted
+    steps:
+      - name: Set env vars from AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
+            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/new-relic/app-id
+      - name: Download notify scripts
+        uses: actions/download-artifact@v4
+        with:
+          name: notify-script
+          path: scripts
+      - name: Notify NewRelic
+        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'opensbx' || env.RELEASE_ENV == 'test' }}
+        run: |
+          python3 scripts/mark_deployment.py \
+            --app_id ${{ env.NEWRELIC_APP_ID }} \
+            --api_key ${{ env.NEWRELIC_API_KEY }} \
+            --version ${{ env.RELEASE_VERSION }}
+      - name: Notify NewRelic (Dev)
+        if: ${{ env.RELEASE_ENV == 'dev' }}
+        run: |
+          export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          python3 scripts/mark_deployment.py \
+            --app_id ${{ env.NEWRELIC_APP_ID }} \
+            --api_key ${{ env.NEWRELIC_API_KEY }} \
+            --version ${BCDA_AMI}
+      - name: Publish Build Info
+        if: ${{ success() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                pretext: "Deployment information for BCDA environment *${{ env.RELEASE_ENV }}*"
+                footer: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|BCDA - Publish Release Information - Build ${{ github.run_id }}>)."
+                fields:
+                  - title: 'API'
+                    short: true
+                    value: ${{ env.RELEASE_VERSION }}
+                  - title: 'SSAS'
+                    short: true
+                    value: ${{ env.SSAS_RELEASE_VERSION }}
+                  - title: 'Worker'
+                    short: true
+                    value: ${{ env.RELEASE_VERSION }}
+                mrkdown_in:
+                  - pretext
+                  - footer
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
