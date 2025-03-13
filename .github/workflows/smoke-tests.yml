@@ -222,14 +222,14 @@ jobs:
           sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-      # - name: Run Postman Tests
-      #   run: |
-      #      docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
-      #      -e test/postman_test/dev.postman_environment.json \
-      #      --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
-      #      --global-var v2Disabled=false \
-      #      --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-      #      --global-var maintenanceMode=""
+      - name: Run Postman Tests
+        run: |
+           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+           -e test/postman_test/dev.postman_environment.json \
+           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
+           --global-var v2Disabled=false \
+           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
+           --global-var maintenanceMode=""
   
       - name: Run Smoke Tests
         run: |
