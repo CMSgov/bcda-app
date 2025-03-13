@@ -206,9 +206,9 @@ jobs:
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      # - name: Build the stack
-      #   run: |
-      #     make docker-bootstrap
+      - name: Build the stack
+        run: |
+          make docker-bootstrap
       # - name: Run Postman Tests
       #   run: |
       #      CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
@@ -236,7 +236,7 @@ jobs:
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq .client_secret)
           make smoke-test env=dev maintenanceMode=""
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
+          # docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
 
     # checkout app
     # checkout ssas
