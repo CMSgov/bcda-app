@@ -130,11 +130,13 @@ jobs:
           export TF_CLI_ARGS="-no-color"
           terraform init
           terraform apply bcda-release-api-worker.tfplan
-      - name: Refresh Instances
+      - name: Refresh AutoScaling Groups
         run: |
-          ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
+          export ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
-      - run: sleep 120 # Give some time for instances to refresh
+          export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
+          aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
+      - run: sleep 180 # Give some time for instances to refresh
       - name: Verify API version
         run: |
           export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
