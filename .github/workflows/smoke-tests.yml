@@ -83,11 +83,6 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            # SSAS_CREDENTIALS=/bcda/workflows/dev/ssas_admin_credentials
-            # ASSERTION_AUD=/bcda/workflows/${{ inputs.env }}/ssas_assertion_aud
-            # HOST=/bcda/workflows/${{ inputs.env }}/ssas_elb
-            # CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/${{ steps.vars.outputs.creds }}_client_credentials
-            # DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/denylisted_client_credentials
             SSAS_CREDENTIALS=/bcda/workflows/dev/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/dev/ssas_assertion_aud
             HOST=/bcda/workflows/dev/ssas_elb
