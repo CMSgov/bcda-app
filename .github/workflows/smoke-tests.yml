@@ -3,15 +3,47 @@ name: 'BCDA Smoke Tests'
 on:
   pull_request:
     paths:
-      - .github/workflows/smoke-tests.yml
-  workflow_dispatch:
+      - .github/workflows/smoke_tests.yml
+  workflow_call:
     inputs:
-      app-branch:
+      release_version:
         description: The branch of the bcda-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
-      ssas-app-branch:
+      ssas_release_version:
+        description: The branch of the ssas-app to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      env:
+        description: The environment in which to run smoke tests
+        required: true
+        type: string
+        default: 'dev'
+      test_aco:
+        description: Run the tests using the selected ACO
+        required: true
+        type: 'string'
+        default: 'dev'
+      smoke_tests:
+        description: Flag which indicates if smoke integration tests should be run
+        required: true
+        type: boolean
+        default: true
+      postman_tests:
+        description: Flag which indicates if postman integration tests should be run
+        required: true
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: The branch of the bcda-app to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      ssas_release_version:
         description: The branch of the ssas-app to use for the test execution.
         required: true
         type: 'string'
@@ -26,7 +58,7 @@ on:
           - 'opensbx'
           - 'prod'
         default: 'dev'
-      test-aco:
+      test_aco:
         description: Run the tests using the selected ACO
         required: true
         type: choice
@@ -38,21 +70,17 @@ on:
           - 'dev'
           - 'paca'
         default: 'dev'
-      smoke-tests:
+      smoke_tests:
         description: Flag which indicates if smoke integration tests should be run
         required: true
         type: boolean
         default: true
-      postman-tests:
-        description: Flag which indicates if smoke integration tests should be run
+      postman_tests:
+        description: Flag which indicates if postman integration tests should be run
         required: true
         type: boolean
         default: true
 
-
-concurrency:
-  group: ${{ github.workflow }}-${{ inputs.env }}
-  cancel-in-progress: false
 
 permissions:
   id-token: write
@@ -73,10 +101,10 @@ jobs:
     steps:
       - name: Modify Credentials For Dev Input
         run: |
-          if [[ inputs.test-aco == "dev" ]]; then
-            echo "creds=${{ inputs.env }}" >> $GITHUB_OUTPUT
+          if [[ inputs.test_aco == "dev" ]]; then
+            echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
           else 
-            echo "creds=$(${{ inputs.test-aco }})" >> $GITHUB_OUTPUT
+            echo "creds=$(${{ inputs.test_aco }})" >> $GITHUB_ENV
           fi
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -86,7 +114,7 @@ jobs:
             SSAS_CREDENTIALS=/bcda/workflows/${{ inputs.env }}/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/${{ inputs.env }}/ssas_assertion_aud
             HOST=/bcda/workflows/${{ inputs.env }}/ssas_elb
-            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/${{ steps.vars.outputs.creds }}_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/$creds_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/paca_client_credentials
       - name: checkout bcda-ssas
@@ -94,12 +122,6 @@ jobs:
         with:
           repository: CMSgov/bcda-ssas-app
           ref: 'main'
-      - name: Install docker compose manually
-        run: |
-          sudo mkdir -p /usr/local/lib/docker/cli-plugins
-          sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-          sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
-          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
       - name: Run all tests
         run: |
           docker system prune -af
@@ -122,6 +144,7 @@ jobs:
         run: |
           make docker-bootstrap
       - name: Run Postman Tests
+        if: ${{inputs.postman_tests}} == 'true'
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
@@ -133,10 +156,10 @@ jobs:
            --global-var maintenanceMode=""
   
       - name: Run Smoke Tests
+        if: ${{inputs.smoke_tests}} == 'true'
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          #make smoke-test env=dev maintenanceMode=""
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/${{ inputs.env }}.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
 
       - name: Run PACA Tests
