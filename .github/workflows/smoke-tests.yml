@@ -88,6 +88,7 @@ jobs:
             HOST=/bcda/workflows/dev/ssas_elb
             CLIENT_CREDENTIALS_PARAMS=/bcda/dev/dev_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/dev/denylisted_client_credentials
+            PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/dev/paca_client_credentials
       - name: checkout bcda-ssas
         uses: actions/checkout@v4
         with:
@@ -138,5 +139,12 @@ jobs:
           #make smoke-test env=dev maintenanceMode=""
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
 
-
+      - name: Run Paca Tests
+        run: |
+          CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/dev.postman_environment.json \
+          --global-var clientId=$CLIENT_ID \
+          --global-var clientSecret=$CLIENT_SECRET \
+  
     # run paca smoke tests
