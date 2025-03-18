@@ -20,11 +20,12 @@ def main(release, release_file, repo):
         base_url = "https://api.github.com"
         path = repo
         headers = {
-            "Authorization": "token %s" % access_token
+            "Authorization": "Bearer %s" % access_token
         }
 
         req = urllib.request.Request(
-            base_url + path, data=json.dumps(data).encode('utf-8'),
+            base_url + path,
+            data=json.dumps(data).encode('utf-8'),
             headers=headers,
             method='POST'
         )
