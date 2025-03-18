@@ -136,7 +136,7 @@ jobs:
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
           export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
-      - run: sleep 180 # Give some time for instances to refresh
+      - run: sleep 240 # Give plenty of time for api and worker instances to refresh
       - name: Verify API version
         run: |
           export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
@@ -153,7 +153,7 @@ jobs:
           fi
       - name: Verify Worker version
         run: |
-          export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[0].{Instance:ImageId}' --output text`
+          export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           # Was unable to escape the backticks (`), creating this function seems to get around that
           get_image_version () {
               aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
@@ -169,17 +169,18 @@ jobs:
           name: notify-script
           path: ./scripts/mark_deployment.py
 
-  # smoketests:
-  #   needs: [migrate_db, deploy]
-  #   uses: ./.github/workflows/smoketests.yml
-  #   with:
-  #     release_version: ${{ inputs.release_version || 'main' }}
-  #   secrets: inherit
+  smoketests:
+    needs: [migrate_db, deploy]
+    uses: ./.github/workflows/smoke-tests.yml
+    with:
+      release_version: ${{ inputs.release_version }}
+      ssas_release_version: ${{ inputs.ssas_release_version }}
+      env: ${{ inputs.env }}
+    secrets: inherit
 
   post_deploy:
     if: ${{ always() }}
-    # needs: [smoketests]
-    needs: [deploy]
+    needs: [smoketests]
     runs-on: self-hosted
     steps:
       - name: Set env vars from AWS params
@@ -211,8 +212,7 @@ jobs:
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
       - name: Publish Build Info
-        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' }}
-        # if: ${{ success() && needs.migrate_db.result == 'success' && needs.smoketests.result == 'success' && needs.deploy.result == 'success' }}
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.smoketests.result == 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -238,8 +238,7 @@ jobs:
                   - pretext
                   - footer
       - name: Failure Alert
-        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' }}
-        # if: ${{ failure() || needs.migrate_db.result != 'success' || needs.smoketests.result != 'success' || needs.deploy.result != 'success' }}
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.smoketests.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
