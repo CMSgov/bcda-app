@@ -5,15 +5,15 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version (or branch name)'
-        required: true
-        type: string
-      ssas_release_version:
-        description: 'Release version for bcda-ssas (or branch name)'
+        description: 'Release version/tag (or branch name)'
         required: true
         type: string
       ops_release_version:
-        description: 'Release version for bcda-ops (or branch name)'
+        description: 'Release version/tag for bcda-ops (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version/tag for bcda-ssas (or branch name)'
         required: true
         type: string
       env:
@@ -175,6 +175,7 @@ jobs:
   #   secrets: inherit
 
   post_deploy:
+    if: ${{ always() }}
     # needs: [smoketests]
     needs: [deploy]
     runs-on: self-hosted
@@ -208,7 +209,8 @@ jobs:
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
       - name: Publish Build Info
-        if: ${{ success() }}
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' }}
+        # if: ${{ success() && needs.migrate_db.result == 'success' && needs.smoketests.result == 'success' && needs.deploy.result == 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -234,7 +236,8 @@ jobs:
                   - pretext
                   - footer
       - name: Failure Alert
-        if: ${{ failure() }}
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' }}
+        # if: ${{ failure() || needs.migrate_db.result != 'success' || needs.smoketests.result != 'success' || needs.deploy.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage

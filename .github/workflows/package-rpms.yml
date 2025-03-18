@@ -4,13 +4,13 @@ on:
   workflow_call:
     inputs:
       release_version:
-        description: 'Release version (or branch name)'
+        description: 'Release version/tag (or branch name)'
         required: true
         type: string
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version (or branch name)'
+        description: 'Release version/tag (or branch name)'
         required: true
         type: string
 
