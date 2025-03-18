@@ -6,29 +6,29 @@ on:
   workflow_call:
     inputs:
       release_version:
-        description: 'Release version (or branch name)'
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ops_release_version:
+        description: 'Release version/tag bcda-ops (or branch name)'
         required: true
         type: string
       ssas_release_version:
-          description: 'Release version for bcda-ssas (or branch name)'
+          description: 'Release version/tag for bcda-ssas (or branch name)'
           required: true
           type: string
-      ops_release_version:
-        description: 'Release version bcda-ops (or branch name)'
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version (or branch name)'
-        required: true
-        type: string
-      ssas_release_version:
-        description: 'Release version for bcda-ssas (or branch name)'
+        description: 'Release version/tag (or branch name)'
         required: true
         type: string
       ops_release_version:
-        description: 'Release version for bcda-ops (or branch name)'
+        description: 'Release version/tag for bcda-ops (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version/tag for bcda-ssas (or branch name)'
         required: true
         type: string
 
@@ -72,14 +72,12 @@ jobs:
         run: |
           export BCDA_PLATINUM_AMI=`aws --region us-east-1 ec2 describe-images --filters Name=name,Values='bcda-platinum-??????????????' --query 'sort_by(Images,&CreationDate)[-1]' --output json | jq -r .ImageId`
           echo "BCDA_PLATINUM_AMI=$BCDA_PLATINUM_AMI" >> $GITHUB_ENV
-      - name: Get release type
-        run: |
-          if [[ $(git tag -l main | wc -c | xargs) -eq "0" ]]; then
-            export RELEASE_TYPE=dev
-          else
-            export RELEASE_TYPE=release
-          fi
-          echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_ENV
+      - name: Set release type (dev)
+        if: ${{ inputs.release_version == 'main' || inputs.release_version == '' }}
+        run: echo "RELEASE_TYPE=dev" >> $GITHUB_ENV
+      - name: Set release type (release)
+        if: ${{ inputs.release_version != 'main' && inputs.release_version != '' }}
+        run: echo "RELEASE_TYPE=release" >> $GITHUB_ENV
       - name: Install Ansible
         run: |
           sudo yum update -y
@@ -107,7 +105,6 @@ jobs:
           set -euo pipefail
           packer init packer/worker.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker.json.pkr.hcl 2>&1
-          post_build:
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
