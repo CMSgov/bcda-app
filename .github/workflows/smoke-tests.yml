@@ -11,18 +11,8 @@ on:
         required: true
         type: 'string'
         default: 'main'
-      ops-branch:
-        description: The branch of the bcda-ops to use for the test execution.
-        required: true
-        type: 'string'
-        default: 'main'
       ssas-app-branch:
         description: The branch of the ssas-app to use for the test execution.
-        required: true
-        type: 'string'
-        default: 'main'
-      ssas-ops-branch:
-        description: The branch of the ssas-ops to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
@@ -57,11 +47,7 @@ on:
         required: true
         type: boolean
         default: true
-      eoy:
-        description: The type of maintenance mode to put the application into. Empty string means no maintenance (i.e. normal)
-        required: true
-        type: boolean
-        default: false
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.env }}
@@ -79,12 +65,18 @@ jobs:
 
   smoke_tests: 
     name: run smoke tests
-    #needs: api_smoke_tests
     runs-on: self-hosted
     env:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
+      - name: Modify Credentials For Dev Input
+        run: |
+          if [[ inputs.test-aco == "dev" ]]; then
+            echo "creds=${{ inputs.env }}" >> $GITHUB_OUTPUT
+          else 
+            echo "creds=$()" >> $GITHUB_OUTPUT
+          fi
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -93,8 +85,8 @@ jobs:
             SSAS_CREDENTIALS=/bcda/workflows/dev/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/dev/ssas_assertion_aud
             HOST=/bcda/workflows/dev/ssas_elb
-            CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
-            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/${{ steps.vars.outputs.creds }}_client_credentials
+            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/denylisted_client_credentials
       - name: checkout bcda-ssas
         uses: actions/checkout@v4
         with:
@@ -124,13 +116,6 @@ jobs:
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/dev_client_credentials
-            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/workflows/deny_client_credentials
       - name: Build the stack
         run: |
           make docker-bootstrap
