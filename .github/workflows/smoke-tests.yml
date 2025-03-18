@@ -25,6 +25,7 @@ on:
           - 'test'
           - 'opensbx'
           - 'prod'
+        default: 'dev'
       test-aco:
         description: Run the tests using the selected ACO
         required: true
@@ -75,7 +76,7 @@ jobs:
           if [[ inputs.test-aco == "dev" ]]; then
             echo "creds=${{ inputs.env }}" >> $GITHUB_OUTPUT
           else 
-            echo "creds=$()" >> $GITHUB_OUTPUT
+            echo "creds=$(${{ inputs.test-aco }})" >> $GITHUB_OUTPUT
           fi
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
