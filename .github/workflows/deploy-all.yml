@@ -3,7 +3,7 @@ name: Deploy All
 
 on:
   push:
-    branches: [main]
+    branches: [main] # autodeploy to dev
   workflow_dispatch:
     inputs:
       release_version:
@@ -61,7 +61,7 @@ env:
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+  ENV_MODIFIER: ${{ (inputs.env == 'opensbx' && 'sbx') || inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
@@ -196,8 +196,7 @@ jobs:
       postman_tests: true
     secrets: inherit
 
-  post_deploy:
-    if: ${{ always() }}
+  notify_newrelic:
     needs: [smoketests]
     runs-on: self-hosted
     steps:
@@ -229,8 +228,14 @@ jobs:
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
+  
+  slack_alerts:
+    if: ${{ always() }}
+    runs-on: self-hosted
+    needs: [migrate_db, deploy, smoketests, notify_newrelic]
+    steps:
       - name: Publish Build Info
-        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.smoketests.result == 'success' }}
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.smoketests.result == 'success' && needs.notify_newrelic.result == 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -256,7 +261,7 @@ jobs:
                   - pretext
                   - footer
       - name: Failure Alert
-        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.smoketests.result != 'success' }}
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.smoketests.result != 'success' || needs.notify_newrelic.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
