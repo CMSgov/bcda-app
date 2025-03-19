@@ -99,15 +99,25 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      - name: Modify Credentials For Dev Input
+      - name: Check test_aco
+        if: ${{ inputs.test_aco == 'dev' }}
         run: |
-          if [[ inputs.test_aco == "dev" ]]; then
-            echo "environment is dev"
-            echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
-          else 
-            echo "environment is not dev"
-            echo "creds=$(${{ inputs.test_aco }})" >> $GITHUB_ENV
-          fi
+          echo ${{ inputs.env }}
+          echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
+      - name: Check test_aco again
+        if: ${{ inputs.test_aco != 'dev' }}
+        run: |
+          echo ${{ inputs.test_aco }}
+          echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
+        # run: |
+        #   echo "the test aco is: " ${{ inputs.test_aco }}
+        #   if [[ inputs.test_aco == "dev" ]]; then
+        #     echo "environment is dev"
+        #     echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
+        #   else 
+        #     echo "environment is not dev"
+        #     echo "creds=$(${{ inputs.test_aco }})" >> $GITHUB_ENV
+        #   fi
       - name: Use the value
         id: step_two
         run: |
