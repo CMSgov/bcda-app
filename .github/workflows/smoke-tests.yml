@@ -99,19 +99,14 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      - name: Check test_aco
+      - name: Set creds (non-dev)
         if: ${{ inputs.test_aco == 'dev' }}
         run: |
           echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
-      - name: Check test_aco again
+      - name: Set creds (dev)
         if: ${{ inputs.test_aco != 'dev' }}
         run: |
           echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
-      - name: Use the value
-        id: step_two
-        run: |
-          printf '%s\n' "$creds" 
-          echo FOO ${{ env.creds }}
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
