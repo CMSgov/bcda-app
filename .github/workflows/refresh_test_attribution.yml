@@ -1,0 +1,49 @@
+# Refreshes attribution for test acos in all envs.
+name: Refresh Attribution For Test ACOs
+
+on:
+  pull_request: # temporary for testing
+    paths:
+      - .github/workflows/refresh_test_attribution.yml
+  schedule:
+    - cron: "15 4,5 * * *"   # <=== Change this value
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  refresh_attribution:
+    name: Refresh Attribution
+    runs-on: self-hosted
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            DEV_DB=/bcda/dev/api/DATABASE_URL
+            TEST_DB=/bcda/test/api/DATABASE_URL
+      - name: checkout bcda-ops
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: 'main'
+          token: ${{ env.GITHUB_TOKEN }}
+      - name: Refresh all environments
+        run: |
+          set -euo pipefail
+          ENVS=($DEV_DB, $TEST_DB)
+          for aco in ${ENVS[@]}; do
+            echo "FOO BAR"
+            if [ $? -ne 0 ]; then
+              echo "Refresh failed. Run script locally for more details."
+            else 
+              echo "Refresh Successful."
+            fi
+          done
+          
