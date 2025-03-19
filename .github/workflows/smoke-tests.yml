@@ -99,13 +99,14 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      - name: Modify Credentials For Dev Input
+      - name: Set creds (non-dev)
+        if: ${{ inputs.test_aco == 'dev' }}
         run: |
-          if [[ inputs.test_aco == "dev" ]]; then
-            echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
-          else 
-            echo "creds=$(${{ inputs.test_aco }})" >> $GITHUB_ENV
-          fi
+          echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
+      - name: Set creds (dev)
+        if: ${{ inputs.test_aco != 'dev' }}
+        run: |
+          echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -114,7 +115,7 @@ jobs:
             SSAS_CREDENTIALS=/bcda/workflows/${{ inputs.env }}/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/${{ inputs.env }}/ssas_assertion_aud
             HOST=/bcda/workflows/${{ inputs.env }}/ssas_elb
-            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/$creds_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/${{ env.creds }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/paca_client_credentials
       - name: checkout bcda-ssas
@@ -122,7 +123,13 @@ jobs:
         with:
           repository: CMSgov/bcda-ssas-app
           ref: 'main'
-      - name: Run all tests
+      - name: Install docker compose manually
+        run: |
+          sudo mkdir -p /usr/local/lib/docker/cli-plugins
+          sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+          sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
+          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+      - name: Run SSAS tests
         run: |
           docker system prune -af
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
