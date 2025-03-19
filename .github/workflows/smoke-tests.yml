@@ -102,14 +102,17 @@ jobs:
       - name: Modify Credentials For Dev Input
         run: |
           if [[ inputs.test_aco == "dev" ]]; then
+            echo "environment is dev"
             echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
           else 
+            echo "environment is not dev"
             echo "creds=$(${{ inputs.test_aco }})" >> $GITHUB_ENV
           fi
       - name: Use the value
         id: step_two
         run: |
           printf '%s\n' "$creds" 
+          echo FOO ${{ env.creds }}
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
