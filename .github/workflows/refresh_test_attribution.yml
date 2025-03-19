@@ -38,9 +38,9 @@ jobs:
       - name: Refresh all environments
         run: |
           set -euo pipefail
-          ENVS=($DEV_DB, $TEST_DB)
-          for aco in ${ENVS[@]}; do
-            echo "FOO BAR"
+          ENVS=($DEV_DB)
+          for conn in ${ENVS[@]}; do
+            ./scripts/refresh_test_attribution.sh -c "${conn}" -f > /dev/null 2>&1
             if [ $? -ne 0 ]; then
               echo "Refresh failed. Run script locally for more details."
             else 
