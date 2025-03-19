@@ -36,6 +36,18 @@ on:
           - test
           - opensbx
           - prod
+      test_aco:
+        description: Run the smoke tests using the selected ACO
+        required: true
+        type: choice
+        options:
+          - 'dev'
+          - 'small'
+          - 'medium'
+          - 'large'
+          - 'extra-large'
+          - 'paca'
+        default: 'dev'
 
 permissions:
   id-token: write
@@ -176,6 +188,9 @@ jobs:
       release_version: ${{ inputs.release_version }}
       ssas_release_version: ${{ inputs.ssas_release_version }}
       env: ${{ inputs.env }}
+      test_aco: ${{ inputs.test_aco }}
+      smoke_tests: true
+      postman_tests: true
     secrets: inherit
 
   post_deploy:
