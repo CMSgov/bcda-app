@@ -26,6 +26,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
+            GITHUB_TOKEN=/ci/github/token
             DEV_DB=/bcda/dev/api/DATABASE_URL
             TEST_DB=/bcda/test/api/DATABASE_URL
       - name: checkout bcda-ops
