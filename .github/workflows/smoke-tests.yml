@@ -102,22 +102,11 @@ jobs:
       - name: Check test_aco
         if: ${{ inputs.test_aco == 'dev' }}
         run: |
-          echo ${{ inputs.env }}
           echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
       - name: Check test_aco again
         if: ${{ inputs.test_aco != 'dev' }}
         run: |
-          echo ${{ inputs.test_aco }}
           echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
-        # run: |
-        #   echo "the test aco is: " ${{ inputs.test_aco }}
-        #   if [[ inputs.test_aco == "dev" ]]; then
-        #     echo "environment is dev"
-        #     echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
-        #   else 
-        #     echo "environment is not dev"
-        #     echo "creds=$(${{ inputs.test_aco }})" >> $GITHUB_ENV
-        #   fi
       - name: Use the value
         id: step_two
         run: |
