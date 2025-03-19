@@ -2,6 +2,8 @@
 name: Deploy All
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       release_version:
@@ -36,18 +38,31 @@ on:
           - test
           - opensbx
           - prod
+      test_aco:
+        description: Run the smoke tests using the selected ACO
+        required: true
+        type: choice
+        options:
+          - 'dev'
+          - 'small'
+          - 'medium'
+          - 'large'
+          - 'extra-large'
+          - 'paca'
+        default: 'dev'
 
 permissions:
   id-token: write
   contents: read
 
 env:
+  RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
+  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
+  SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-  RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
-  SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
-  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
   ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+  TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
   migrate_db:
@@ -173,9 +188,12 @@ jobs:
     needs: [migrate_db, deploy]
     uses: ./.github/workflows/smoke-tests.yml
     with:
-      release_version: ${{ inputs.release_version }}
-      ssas_release_version: ${{ inputs.ssas_release_version }}
-      env: ${{ inputs.env }}
+      release_version: ${{ inputs.release_version || 'main' }}
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+      env: ${{ inputs.env || 'dev' }}
+      test_aco: ${{ inputs.test_aco || 'dev' }}
+      smoke_tests: true
+      postman_tests: true
     secrets: inherit
 
   post_deploy:
