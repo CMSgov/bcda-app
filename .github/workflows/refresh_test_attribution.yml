@@ -6,7 +6,7 @@ on:
     paths:
       - .github/workflows/refresh_test_attribution.yml
   schedule:
-    - cron: "15 4,5 * * *"   # <=== Change this value
+    - cron: "0 12 * * 1" 
 
 permissions:
   id-token: write
@@ -29,6 +29,8 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             DEV_DB=/bcda/dev/api/DATABASE_URL
             TEST_DB=/bcda/test/api/DATABASE_URL
+            SBX_DB=/bcda/opensbx/api/DATABASE_URL
+            PROD_DB=/bcda/prod/api/DATABASE_URL
       - name: checkout bcda-ops
         uses: actions/checkout@v4
         with:
@@ -38,7 +40,7 @@ jobs:
       - name: Refresh all environments
         run: |
           set -euo pipefail
-          ENVS=($DEV_DB)
+          ENVS=($DEV_DB, $TEST_DB, $SBX_DB, $PROD_DB)
           for conn in ${ENVS[@]}; do
             ./scripts/refresh_test_attribution.sh -c "${conn}" -f > /dev/null 2>&1
             if [ $? -ne 0 ]; then
