@@ -40,7 +40,6 @@ jobs:
       - name: Refresh all environments
         run: |
           set -euo pipefail
-
           declare -A environments
 
           environments["dev"]=$DEV_DB
@@ -49,21 +48,24 @@ jobs:
           # environments["prod"]=$PROD_DB
 
           for key in "${!environments[@]}"; do
+              value="${environments[$key]}"
 
-            value="${environments[$key]}"
-            echo "Key: $key, Value: $value"
+              HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-$key-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+              if [ $? -ne 0 ]; then
+                  echo "Error: failed to retrieve database host."
+                  exit
+              fi
+              CONNECTION_URL=$(echo $value 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+              ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
 
-            HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-$key-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
-            CONNECTION_URL=$(echo $value 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+              if [ $? -ne 0 ]; then
+                  echo "Refresh failed. Run script locally for more details."
+                  exit
+              else 
+                  echo "Refresh Successful."
+              fi
+              done
 
-            ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
-            
-            if [ $? -ne 0 ]; then
-              echo "Refresh failed. Run script locally for more details."
-            else 
-              echo "Refresh Successful."
-            fi
-          done
 
 
 
