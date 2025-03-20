@@ -31,6 +31,9 @@ jobs:
             TEST_DB=/bcda/test/api/DATABASE_URL
             SBX_DB=/bcda/opensbx/api/DATABASE_URL
             PROD_DB=/bcda/prod/api/DATABASE_URL
+      - name: Install psql
+        run: |
+          sudo amazon-linux-extras install postgresql14
       - name: checkout bcda-ops
         uses: actions/checkout@v4
         with:
