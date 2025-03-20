@@ -47,8 +47,8 @@ jobs:
 
           environments["dev"]=$DEV_DB
           environments["test"]=$TEST_DB
-          # environments["opensbx"]=$TEST_DB
-          # environments["prod"]=$PROD_DB
+          environments["opensbx"]=$TEST_DB
+          environments["prod"]=$PROD_DB
 
           for key in "${!environments[@]}"; do
               value="${environments[$key]}"
@@ -62,24 +62,9 @@ jobs:
               ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
 
               if [ $? -ne 0 ]; then
-                  echo "Refresh failed. Run script locally for more details."
+                  echo "Error: Refresh failed; run script locally for more details."
                   exit
               else 
-                  echo "Refresh Successful."
+                  echo "Success: refresh complete."
               fi
               done
-
-
-
-
-
-          # ENVS=($DEV_DB, $TEST_DB, $TEST_DB, $PROD_DB)
-          # for conn in ${ENVS[@]}; do
-          #   ./scripts/refresh_test_attribution.sh -c "${conn}" -f > /dev/null 2>&1
-          #   if [ $? -ne 0 ]; then
-          #     echo "Refresh failed. Run script locally for more details."
-          #   else 
-          #     echo "Refresh Successful."
-          #   fi
-          # done
-          
