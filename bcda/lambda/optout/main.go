@@ -21,8 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 )
 
-// integration test
-
 func main() {
 	// Localstack is a local-development server that mimics AWS. The endpoint variable
 	// should only be set in local development to avoid making external calls to a real AWS account.
