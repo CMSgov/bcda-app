@@ -1,41 +1,9 @@
-name: 'BCDA Smoke Tests'
+name: 'Smoke Tests'
 
 on:
   pull_request:
     paths:
       - .github/workflows/smoke_tests.yml
-  workflow_call:
-    inputs:
-      release_version:
-        description: The branch of the bcda-app to use for the test execution.
-        required: true
-        type: 'string'
-        default: 'main'
-      ssas_release_version:
-        description: The branch of the ssas-app to use for the test execution.
-        required: true
-        type: 'string'
-        default: 'main'
-      env:
-        description: The environment in which to run smoke tests
-        required: true
-        type: string
-        default: 'dev'
-      test_aco:
-        description: Run the tests using the selected ACO
-        required: true
-        type: 'string'
-        default: 'dev'
-      smoke_tests:
-        description: Flag which indicates if smoke integration tests should be run
-        required: true
-        type: boolean
-        default: true
-      postman_tests:
-        description: Flag which indicates if postman integration tests should be run
-        required: true
-        type: boolean
-        default: true
   workflow_dispatch:
     inputs:
       release_version:
@@ -80,6 +48,38 @@ on:
         required: true
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      release_version:
+        description: The branch of the bcda-app to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      ssas_release_version:
+        description: The branch of the ssas-app to use for the test execution.
+        required: true
+        type: 'string'
+        default: 'main'
+      env:
+        description: The environment in which to run smoke tests
+        required: true
+        type: string
+        default: 'dev'
+      test_aco:
+        description: Run the tests using the selected ACO
+        required: true
+        type: 'string'
+        default: 'dev'
+      smoke_tests:
+        description: Flag which indicates if smoke integration tests should be run
+        required: true
+        type: boolean
+        default: true
+      postman_tests:
+        description: Flag which indicates if postman integration tests should be run
+        required: true
+        type: boolean
+        default: true
 
 
 permissions:
@@ -90,9 +90,8 @@ env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
-jobs: 
-
-  smoke_tests: 
+jobs:
+  smoke_tests:
     name: run smoke tests
     runs-on: self-hosted
     env:
@@ -161,19 +160,51 @@ jobs:
            --global-var v2Disabled=false \
            --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
            --global-var maintenanceMode=""
-  
       - name: Run Smoke Tests
         if: ${{inputs.smoke_tests}} == 'true'
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/${{ inputs.env }}.postman_environment.json --global-var clientId=$CLIENT_ID --global-var clientSecret=$CLIENT_SECRET --global-var maintenanceMode=""
-
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
+            -e test/postman_test/${{ inputs.env }}.postman_environment.json \
+            --global-var clientId=$CLIENT_ID \
+            --global-var clientSecret=$CLIENT_SECRET \
+            --global-var maintenanceMode=""
       - name: Run PACA Tests
         run: |
           CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json -e test/postman_test/${{ inputs.env }}.postman_environment.json \
-          --global-var clientId=$CLIENT_ID \
-          --global-var clientSecret=$CLIENT_SECRET \
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
+            -e test/postman_test/${{ inputs.env }}.postman_environment.json \
+            --global-var clientId=$CLIENT_ID \
+            --global-var clientSecret=$CLIENT_SECRET \
+            --global-var maintenanceMode=""
+      - name: Success Alert
+        if: ${{ success() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                text: "SUCCESS: Smoketests in ${{ inputs.env }} for ${{ inputs.release_version }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                mrkdown_in:
+                  - text
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Smoketests in ${{ inputs.env }} for ${{ inputs.release_version }}. .  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                mrkdown_in:
+                  - text
   

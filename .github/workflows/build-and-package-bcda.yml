@@ -22,13 +22,13 @@ jobs:
   ci_checks:
     uses: ./.github/workflows/ci-checks.yml
     with:
-      release_version: ${{ inputs.release_version }}
+      release_version: ${{ inputs.release_version || 'main' }}
     secrets: inherit
 
   build_and_package:
     uses: ./.github/workflows/package-rpms.yml
     with:
-      release_version: ${{ inputs.release_version }}
+      release_version: ${{ inputs.release_version || 'main' }}
     secrets: inherit
   
   post_build:
@@ -37,20 +37,6 @@ jobs:
     needs: [ci_checks, build_and_package]
     runs-on: self-hosted
     steps:
-      - name: Success Alert
-        if: ${{ success() && needs.ci_checks.result == 'success' && needs.build_and_package.result == 'success' }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-deploy
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: good
-                text: "SUCCESS: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-                mrkdown_in:
-                  - text
       - name: Failure Alert
         if: ${{ failure() || needs.ci_checks.result != 'success' || needs.build_and_package.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0

@@ -3,6 +3,8 @@
 name: Build and Package All
 
 on:
+  push:
+    branches: [main] # autodeploy to dev
   workflow_call:
     inputs:
       release_version:
@@ -40,13 +42,13 @@ jobs:
   build_and_package_bcda:
     uses: ./.github/workflows/build-and-package-bcda.yml
     with:
-      release_version: ${{ inputs.release_version }}
+      release_version: ${{ inputs.release_version || 'main' }}
     secrets: inherit
 
   build_and_package_ssas:
     uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
     with:
-      ssas_release_version: ${{ inputs.ssas_release_version }}
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
     secrets: inherit
   
   create_amis:
@@ -66,7 +68,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ inputs.ops_release_version }}
+          ref: ${{ inputs.ops_release_version || 'main' }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Get platinum AMI ID
         run: |
@@ -95,7 +97,7 @@ jobs:
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
           packer init packer/api.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
       - name: Create Worker AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,9 +106,9 @@ jobs:
           # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
           packer init packer/worker.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version}}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker.json.pkr.hcl 2>&1
       - name: Success Alert
-        if: ${{ success() }}
+        if: ${{ success() && needs.build_and_package_bcda.result == 'success' && needs.build_and_package_ssas.result == 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -116,11 +118,11 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                text: "SUCCESS: Build and Package BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
       - name: Failure Alert
-        if: ${{ failure() }}
+        if: ${{ failure() || needs.build_and_package_bcda.result != 'success' || needs.build_and_package_ssas.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -130,6 +132,6 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: Build AMIs (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                text: "FAILURE: Build and Package BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text

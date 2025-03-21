@@ -2,8 +2,8 @@
 name: Deploy All
 
 on:
-  push:
-    branches: [main] # autodeploy to dev
+  schedule:
+    - cron: 0 8 * * 1-5 # every workday at 8am
   workflow_dispatch:
     inputs:
       release_version:
@@ -197,7 +197,7 @@ jobs:
     secrets: inherit
 
   notify_newrelic:
-    needs: [smoketests]
+    needs: [deploy]
     runs-on: self-hosted
     steps:
       - name: Set env vars from AWS params
@@ -232,10 +232,10 @@ jobs:
   slack_alerts:
     if: ${{ always() }}
     runs-on: self-hosted
-    needs: [migrate_db, deploy, smoketests, notify_newrelic]
+    needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info
-        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.smoketests.result == 'success' && needs.notify_newrelic.result == 'success' }}
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
@@ -261,7 +261,7 @@ jobs:
                   - pretext
                   - footer
       - name: Failure Alert
-        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.smoketests.result != 'success' || needs.notify_newrelic.result != 'success' }}
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
