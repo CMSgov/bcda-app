@@ -47,7 +47,7 @@ jobs:
 
           environments["dev"]=$DEV_DB
           environments["test"]=$TEST_DB
-          environments["opensbx"]=$SBX_DB
+          environments["opensbx"]=$foo
           environments["prod"]=$PROD_DB
 
           for key in "${!environments[@]}"; do
@@ -68,3 +68,17 @@ jobs:
                   echo "Success: refresh complete."
               fi
               done
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Refresh Test Attribution (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
