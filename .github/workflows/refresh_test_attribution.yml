@@ -53,7 +53,7 @@ jobs:
           for key in "${!environments[@]}"; do
               value="${environments[$key]}"
 
-              HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-$key-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+              HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[DBName,DBInstanceIdentifier,Endpoint.Address]' --output text | grep bcda-$key 2>&1)
               if [ $? -ne 0 ]; then
                   echo "Error: failed to retrieve database host."
                   exit
