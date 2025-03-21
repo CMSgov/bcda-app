@@ -30,7 +30,7 @@ jobs:
             PROD_DB=/bcda/prod/api/DATABASE_URL
       - name: Install psql
         run: |
-          sudo dnf install postgresql15 -y
+          sudo dnf install postgresql16 -y
       - name: checkout bcda-ops
         uses: actions/checkout@v4
         with:
