@@ -53,14 +53,14 @@ jobs:
               HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[Endpoint.Address]' --output text | grep bcda-$key 2>&1)
               if [ $? -ne 0 ]; then
                   echo "Error: failed to retrieve database host."
-                  exit
+                  exit 1
               fi
               CONNECTION_URL=$(echo $value 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
               ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
 
               if [ $? -ne 0 ]; then
                   echo "Error: Refresh failed; run script locally for more details."
-                  exit
+                  exit 1
               else 
                   echo "Success: refresh complete."
               fi
