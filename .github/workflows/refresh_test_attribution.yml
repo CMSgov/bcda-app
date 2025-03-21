@@ -1,0 +1,81 @@
+# Refreshes attribution for test acos in all envs.
+name: Refresh Attribution For Test ACOs
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" 
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  refresh_attribution:
+    name: Refresh Attribution
+    runs-on: self-hosted
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            GITHUB_TOKEN=/ci/github/token
+            DEV_DB=/bcda/dev/api/DATABASE_URL
+            TEST_DB=/bcda/test/api/DATABASE_URL
+            SBX_DB=/bcda/opensbx/api/DATABASE_URL
+            PROD_DB=/bcda/prod/api/DATABASE_URL
+      - name: Install psql
+        run: |
+          sudo dnf install postgresql16 -y
+      - name: checkout bcda-ops
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: 'main'
+          token: ${{ env.GITHUB_TOKEN }}
+      - name: Refresh all environments
+        run: |
+          set -euo pipefail
+          declare -A environments
+
+          environments["dev"]=$DEV_DB
+          environments["test"]=$TEST_DB
+          environments["opensbx"]=$SBX_DB
+          environments["prod"]=$PROD_DB
+
+          for key in "${!environments[@]}"; do
+              value="${environments[$key]}"
+
+              HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[Endpoint.Address]' --output text | grep bcda-$key 2>&1)
+              if [ $? -ne 0 ]; then
+                  echo "Error: failed to retrieve database host."
+                  exit 1
+              fi
+              CONNECTION_URL=$(echo $value 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+              ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
+
+              if [ $? -ne 0 ]; then
+                  echo "Error: Refresh failed; run script locally for more details."
+                  exit 1
+              else 
+                  echo "Success: refresh complete."
+              fi
+              done
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Refresh Test Attribution (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
