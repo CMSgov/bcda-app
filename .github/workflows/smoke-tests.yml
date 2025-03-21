@@ -117,18 +117,20 @@ jobs:
             CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/${{ env.creds }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/paca_client_credentials
-      - name: checkout bcda-ssas
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-ssas-app
-          ref: 'main'
       - name: Install docker compose manually
         run: |
           sudo mkdir -p /usr/local/lib/docker/cli-plugins
           sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
           sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+      - name: checkout bcda-ssas
+        if: ${{ inputs.env == 'dev' || inputs.env == 'test' }}
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ssas-app
+          ref: 'main'
       - name: Run SSAS tests
+        if: ${{ inputs.env == 'dev' || inputs.env == 'test' }}
         run: |
           docker system prune -af
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
@@ -204,7 +206,7 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: Smoketests in ${{ inputs.env }} for ${{ inputs.release_version }}. .  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "FAILURE: Smoketests in ${{ inputs.env }} for ${{ inputs.release_version }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
   
