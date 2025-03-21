@@ -2,9 +2,6 @@
 name: Refresh Attribution For Test ACOs
 
 on:
-  pull_request: # temporary for testing
-    paths:
-      - .github/workflows/refresh_test_attribution.yml
   schedule:
     - cron: "0 12 * * 1" 
 
