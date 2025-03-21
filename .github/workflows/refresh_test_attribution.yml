@@ -45,10 +45,10 @@ jobs:
           set -euo pipefail
           declare -A environments
 
-          # environments["dev"]=$DEV_DB
+          environments["dev"]=$DEV_DB
           environments["test"]=$TEST_DB
-          # environments["opensbx"]=$TEST_DB
-          # environments["prod"]=$PROD_DB
+          environments["opensbx"]=$SBX_DB
+          environments["prod"]=$PROD_DB
 
           for key in "${!environments[@]}"; do
               value="${environments[$key]}"
