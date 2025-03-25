@@ -2,8 +2,6 @@
 name: Deploy All
 
 on:
-  push:
-    branches: [carl/quickfix-add-default-env-to-deploy]
   schedule:
     - cron: 0 8 * * 1-5 # every workday at 8am
   workflow_dispatch:
