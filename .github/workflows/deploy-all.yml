@@ -2,6 +2,8 @@
 name: Deploy All
 
 on:
+  push:
+    branches: [carl/quickfix-add-default-env-to-deploy]
   schedule:
     - cron: 0 8 * * 1-5 # every workday at 8am
   workflow_dispatch:
@@ -73,7 +75,7 @@ jobs:
     secrets: inherit
 
   deploy:
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
     runs-on: self-hosted
     steps:
       - name: Confirm Env
