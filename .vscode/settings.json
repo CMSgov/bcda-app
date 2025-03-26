@@ -28,6 +28,6 @@
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
         "--fast",
-        "--exclude=\"(conf\\.(Un)?[S,s]etEnv)\"",
+        "-D=\"(conf\\.(Un)?[S,s]etEnv)\"",
     ]
 }
