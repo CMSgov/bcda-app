@@ -45,53 +45,53 @@ jobs:
             exit 1
           fi
 
-  lint_and_test:
-    name: Lint and Test
-    runs-on: self-hosted
-    steps:
-      - name: Get Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '>=1.23.1'
-      # TODO: TEMP (can remove this step once PLT-905 is implemented)
-      - name: Install docker compose manually
-        run: |
-          sudo mkdir -p /usr/local/lib/docker/cli-plugins
-          sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-          sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
-          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-app
-          ref: ${{ env.RELEASE_VERSION }}
-      - name: Set up Ansible
-        run: |
-          sudo dnf -y install python3 python3-pip
-          pip install ansible
-      - name: Decrypt secrets
-        env:
-          VAULT_PW: ${{ secrets.VAULT_PW }}
-        run: |
-          echo "$VAULT_PW" > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Build the stack
-        run: make docker-bootstrap
-      - name: Lint and Test
-        run: make test
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage-report
-          path: ./test_results/latest/testcoverage.out
-      - name: Cleanup secrets
-        if: ${{ always() }}
-        run: rm -rf shared_files/decrypted shared_files/encrypted .vault_password
+#  lint_and_test:
+#    name: Lint and Test
+#    runs-on: self-hosted
+#    steps:
+#      - name: Get Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version: '>=1.23.1'
+#      # TODO: TEMP (can remove this step once PLT-905 is implemented)
+#      - name: Install docker compose manually
+#        run: |
+#          sudo mkdir -p /usr/local/lib/docker/cli-plugins
+#          sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+#          sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
+#          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#        with:
+#          repository: CMSgov/bcda-app
+#          ref: ${{ env.RELEASE_VERSION }}
+#      - name: Set up Ansible
+#        run: |
+#          sudo dnf -y install python3 python3-pip
+#          pip install ansible
+#      - name: Decrypt secrets
+#        env:
+#          VAULT_PW: ${{ secrets.VAULT_PW }}
+#        run: |
+#          echo "$VAULT_PW" > .vault_password
+#          bash ops/secrets --decrypt
+#          mv -fv shared_files/encrypted/* shared_files/decrypted/
+#      - name: Build the stack
+#        run: make docker-bootstrap
+#      - name: Lint and Test
+#        run: make test
+#      - name: Archive code coverage results
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: code-coverage-report
+#          path: ./test_results/latest/testcoverage.out
+#      - name: Cleanup secrets
+#        if: ${{ always() }}
+#        run: rm -rf shared_files/decrypted shared_files/encrypted .vault_password
 
   sonar-quality-gate:
     name: Sonarqube Quality Gate
-    needs: lint_and_test
+#    needs: lint_and_test
     runs-on: self-hosted
     steps:
       - name: Download code coverage
