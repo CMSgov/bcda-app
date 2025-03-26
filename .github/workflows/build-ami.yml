@@ -34,7 +34,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'main'
+          ref: 'jreynolds_plt_916_remove_awslogsd_3'
           token: ${{ env.GITHUB_TOKEN }}
       - name: Install Ansible
         run: |
