@@ -91,7 +91,7 @@ jobs:
 
   sonar-quality-gate:
     name: Sonarqube Quality Gate
-#    needs: lint_and_test
+    needs: lint_and_test
     runs-on: self-hosted
     steps:
       - name: Download code coverage
