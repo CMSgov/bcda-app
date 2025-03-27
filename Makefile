@@ -15,10 +15,11 @@ setup-tests:
 	docker compose -f docker-compose.test.yml rm -fsv tests
 	docker compose -f docker-compose.test.yml build tests
 
+# -D(isabling) errcheck, staticcheck, and govet linters for now due to v2 upgrade, see: https://jira.cms.gov/browse/BCDA-8911
 LINT_TIMEOUT ?= 3m
 lint: setup-tests
 	docker compose -f docker-compose.test.yml run \
-	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S|s]etEnv)" --exclude="github\.com\/stretchr\/testify\/suite\.Suite contains sync\.RWMutex" --timeout=$(LINT_TIMEOUT) --verbose
+	--rm tests golangci-lint run -D=errcheck,staticcheck,govet --timeout=$(LINT_TIMEOUT) --verbose
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
