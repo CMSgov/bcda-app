@@ -1,23 +1,31 @@
-run:
+version: "2"
 linters:
-  # Disable all linters.
-  # Default: false
-  disable-all: true
-  # Enable specific linter
-  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  default: none
+  enable:
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
   enable:
     - gofmt
     - goimports
-    - ineffassign
-    - unused
-    - gosec
-    - govet
-    - gosimple
-    - errcheck
-issues:
-  exclude-rules:
-  - path: /
-    linters:
-    - typecheck
-output:
-  show-stats: true
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
