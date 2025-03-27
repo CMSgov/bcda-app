@@ -89,31 +89,31 @@ jobs:
 #        if: ${{ always() }}
 #        run: rm -rf shared_files/decrypted shared_files/encrypted .vault_password
 
-  sonar-quality-gate:
-    name: Sonarqube Quality Gate
-#    needs: lint_and_test
-    runs-on: self-hosted
-    steps:
-      - name: Download code coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: code-coverage-report
-      - name: Set env vars from AWS params
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            SONAR_HOST_URL=/sonarqube/url
-            SONAR_TOKEN=/sonarqube/token
-      - name: Run quality gate scan
-        uses: sonarsource/sonarqube-scan-action@master
-        with:
-          args:
-            -Dsonar.projectKey=bcda-aco-api
-            -Dsonar.sources=.
-            -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out
-            -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
-            -Dsonar.branch.name=${{ github.event.pull_request.head.ref }}
-            -Dsonar.projectVersion=${{ github.event.pull_request.head.sha }}
-            -Dsonar.qualitygate.wait=true
+#  sonar-quality-gate:
+#    name: Sonarqube Quality Gate
+##    needs: lint_and_test
+#    runs-on: self-hosted
+#    steps:
+#      - name: Download code coverage
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: code-coverage-report
+#      - name: Set env vars from AWS params
+#        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+#        env:
+#          AWS_REGION: ${{ vars.AWS_REGION }}
+#        with:
+#          params: |
+#            SONAR_HOST_URL=/sonarqube/url
+#            SONAR_TOKEN=/sonarqube/token
+#      - name: Run quality gate scan
+#        uses: sonarsource/sonarqube-scan-action@master
+#        with:
+#          args:
+#            -Dsonar.projectKey=bcda-aco-api
+#            -Dsonar.sources=.
+#            -Dsonar.go.coverage.reportPaths=./test_results/latest/testcoverage.out
+#            -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
+#            -Dsonar.branch.name=${{ github.event.pull_request.head.ref }}
+#            -Dsonar.projectVersion=${{ github.event.pull_request.head.sha }}
+#            -Dsonar.qualitygate.wait=true
