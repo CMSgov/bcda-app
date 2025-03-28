@@ -56,13 +56,23 @@ func TestGetCSVMetadata(t *testing.T) {
 		errMsg   string
 		metadata csvFileMetadata
 	}{
-		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, "", csvFileMetadata{
+		{"valid MDTCoC csv filename", "P.PCPB.M2411." + fileDateTime, "", csvFileMetadata{
 			env:       "production",
 			name:      "P.PCPB.M2411." + fileDateTime,
 			cclfNum:   8,
 			acoID:     "TCOCMD",
 			timestamp: validTime,
 			perfYear:  24,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"valid CDAC csv filename", "P.BCD.DA0000.MBIY25." + fileDateTime, "", csvFileMetadata{
+			env:       "production",
+			name:      "P.BCD.DA0000.MBIY25." + fileDateTime,
+			cclfNum:   8,
+			acoID:     "CDAC",
+			timestamp: validTime,
+			perfYear:  25,
 			fileType:  models.FileTypeDefault,
 		},
 		},
@@ -102,22 +112,39 @@ func TestValidateCSVFileName(t *testing.T) {
 		err      error
 		metadata csvFileMetadata
 	}{
-		{"valid csv filename", "P.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+		{"valid MDTCoC csv filename", "P.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
 			env:       "production",
 			timestamp: validTime,
 			perfYear:  24,
 			fileType:  models.FileTypeDefault,
 		},
 		},
-		{"valid csv test filename", "T.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
+		{"valid MDTCoC csv test filename", "T.PCPB.M2411." + fileDateTime, nil, csvFileMetadata{
 			env:       "test",
 			timestamp: validTime,
 			perfYear:  24,
 			fileType:  models.FileTypeDefault,
 		},
 		},
-		{"invalid csv - file date too old", "P.PCPB.M2411.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
-		{"invalid csv - file date in the future", "P.PCPB.M2411." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
+		{"invalid MDTCoC csv - file date too old", "P.PCPB.M2411.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
+		{"invalid MDTCoC csv - file date in the future", "P.PCPB.M2411." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
+
+		{"valid CDAC csv filename", "P.BCD.DA0000.MBIY25." + fileDateTime, nil, csvFileMetadata{
+			env:       "production",
+			timestamp: validTime,
+			perfYear:  25,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"valid CDAC csv test filename", "T.BCD.DA0000.MBIY25." + fileDateTime, nil, csvFileMetadata{
+			env:       "test",
+			timestamp: validTime,
+			perfYear:  25,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"invalid CDAC csv - file date too old", "P.BCD.DA0000.MBIY11.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
+		{"invalid CDAC csv - file date in the future", "P.BCD.DA0000.MBIY11." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -126,6 +153,7 @@ func TestValidateCSVFileName(t *testing.T) {
 			for _, v := range acos {
 				filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
 				parts := filenameRegexp.FindStringSubmatch(test.fileName)
+				fmt.Printf("----- ACO: %+v, parts: %+v, len/matches: %+v/%+v", v.Model, parts, len(parts), v.AttributionFile.MetadataMatches)
 				if len(parts) == v.AttributionFile.MetadataMatches {
 					actualmetadata, err = validateCSVMetadata(parts)
 				}
@@ -420,14 +448,23 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		path      string
 		testIsCSV bool
 	}{
-		{name: "Is an Attribution CSV File path", path: "P.PCPB.M2014.D003026.T0000001", testIsCSV: true},
-		{name: "Is not an Attribution CSV File path (incorrect first)", path: "M.PCPB.M2014.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (incorrect second)", path: "P.BFD.N2014.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (incorrect third)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (incorrect fifth)", path: "P.PCPB.M2014.D00302.T24200011", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
-		{name: "Is not an Attribution CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+		{name: "Is an Attribution MDTCoC CSV File path", path: "P.PCPB.M2014.D003026.T0000001", testIsCSV: true},
+		{name: "Is not an Attribution MDTCoC CSV File path (incorrect first)", path: "M.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (incorrect second)", path: "P.BFD.N2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (incorrect third)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (incorrect fifth)", path: "P.PCPB.M2014.D00302.T24200011", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+
+		{name: "Is an Attribution CDAC CSV File path", path: "P.BCD.DA0000.MBIY25.D003026.T0000001", testIsCSV: true},
+		{name: "Is not an Attribution CDAC CSV File path (incorrect first)", path: "x.BCD.DA0000.MBIY25.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (incorrect second)", path: "P.BxD.DA0000.MBIY25.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (incorrect third)", path: "P.BCD.Dx00x0.MBIY25.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (incorrect fourth)", path: "P.BCD.DA0000.MBxY2x.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (incorrect fifth)", path: "P.BCD.DA0000.MBIY25.D0x30x.T24200011", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 	}
 
 	for _, test := range tests {
