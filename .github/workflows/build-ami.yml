@@ -17,7 +17,7 @@ jobs:
     name: build the platinum ami
     runs-on: self-hosted
     steps:
-      - uses: hashicorp/setup-packer@v1.8.0
+      - uses: hashicorp/setup-packer@v1.12.0
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -31,6 +31,8 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
             GOLD_IMAGE=/bcda/workflows/gold_image_ami
+      - name: Print `packer` version
+        run: packer version
       - name: checkout bcda-ops
         uses: actions/checkout@v4
         with:
