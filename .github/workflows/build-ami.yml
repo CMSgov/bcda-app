@@ -25,6 +25,7 @@ jobs:
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
+          SSH_PRIVATE_KEY: ${{ secrets.JJR_ED25519_PRIVATE_KEY }}
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
