@@ -153,7 +153,6 @@ func TestValidateCSVFileName(t *testing.T) {
 			for _, v := range acos {
 				filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
 				parts := filenameRegexp.FindStringSubmatch(test.fileName)
-				fmt.Printf("----- ACO: %+v, parts: %+v, len/matches: %+v/%+v", v.Model, parts, len(parts), v.AttributionFile.MetadataMatches)
 				if len(parts) == v.AttributionFile.MetadataMatches {
 					actualmetadata, err = validateCSVMetadata(parts)
 				}

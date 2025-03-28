@@ -1,71 +1,68 @@
 aco_config:
-  - model: "CKCC"
-    name_pattern: "C\\d{4}"
-    performance_year_transition: "01/01"
-    lookback_period: 2
-    data:
-      - "adjudicated"
-  - model: "KCF"
-    name_pattern: "K\\d{4}"
-    performance_year_transition: "01/01"
-    lookback_period: 2
-    data:
-      - "adjudicated"
-  - model: "DC"
-    name_pattern: "D\\d{4}"
-    performance_year_transition: "04/01"
-    lookback_period: 3
-    disabled: true
-    data:
-      - "adjudicated"
-  - model: "SSP"
-    name_pattern: "A\\d{4}"
-    data:
-      - "adjudicated"
-  - model: "CEC"
-    name_pattern: "E\\d{4}"
-    data:
-      - "adjudicated"
-  - model: "NGACO"
-    name_pattern: "V\\d{3}"
-    data:
-      - "adjudicated"
-  - model: "TEST"
-    name_pattern: "TEST\\d{3}"
-    data:
-      - "adjudicated"
-      - "partially-adjudicated"
-    ignore_suppressions: false 
-  - model: "Sandbox Adj"
-    name_pattern: "SBXA\\w\\d{3}"
-    data:
-      - "adjudicated"
-  - model: "Sandbox Partially-Adj"
-    name_pattern: "SBXP\\w\\d{3}"
-    data:
-      - "partially-adjudicated"
-  - model: "Sandbox Both"
-    name_pattern: "SBXB\\w\\d{3}"
-    data:
-      - "adjudicated"
-      - "partially-adjudicated"
-  - model: "TCOCMD"
-    name_pattern: "CT\\d{6}"
-    data:
-      - "adjudicated"
-      - "partially-adjudicated"
-    attribution_file:
-      file_type: "csv"
-      name_pattern: '(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d'
-      metadata_matches: 7
-    ignore_suppressions: true 
-  - model: "CDAC"
-    name_pattern: "DA\\d{4}"
-    data:
-      - "adjudicated"
-      - "partially-adjudicated"
-    attribution_file:
-      file_type: "csv"
-      name_pattern: '(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d'
-      metadata_matches: 8
-    ignore_suppressions: true 
+    - model: "CKCC"
+      name_pattern: "C\\d{4}"
+      performance_year_transition: "01/01"
+      lookback_period: 2
+      data:
+        - "adjudicated"
+    - model: "KCF"
+      name_pattern: "K\\d{4}"
+      performance_year_transition: "01/01"
+      lookback_period: 2
+      data:
+        - "adjudicated"
+    - model: "DC"
+      name_pattern: "D\\d{4}"
+      performance_year_transition: "04/01"
+      lookback_period: 3
+      data:
+        - "adjudicated"
+    - model: "SSP"
+      name_pattern: "A\\d{4}"
+      data:
+        - "adjudicated"
+    - model: "CEC"
+      name_pattern: "E\\d{4}"
+      data:
+        - "adjudicated"
+    - model: "NGACO"
+      name_pattern: "V\\d{3}"
+      data:
+        - "adjudicated"
+    - model: "TEST"
+      name_pattern: "TEST\\d{3}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"
+    - model: "Sandbox Adj"
+      name_pattern: "SBXA\\w\\d{3}"
+      data:
+        - "adjudicated"
+    - model: "Sandbox Partially-Adj"
+      name_pattern: "SBXP\\w\\d{3}"
+      data:
+        - "partially-adjudicated"
+    - model: "Sandbox Both"
+      name_pattern: "SBXB\\w\\d{3}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"
+    - model: "TCOCMD"
+      name_pattern: "CT\\d{6}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"
+      attribution_file:
+        file_type: "csv"
+        name_pattern: '(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d'
+        metadata_matches: 7
+      ignore_suppressions: true 
+    - model: "CDAC"
+      name_pattern: "DA\\d{4}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"
+      attribution_file:
+        file_type: "csv"
+        name_pattern: '(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d'
+        metadata_matches: 8
