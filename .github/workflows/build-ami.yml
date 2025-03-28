@@ -17,7 +17,7 @@ jobs:
     name: build the platinum ami
     runs-on: self-hosted
     steps:
-      - uses: hashicorp/setup-packer@v2.0.1
+      - uses: hashicorp/setup-packer@v1.8.0
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
