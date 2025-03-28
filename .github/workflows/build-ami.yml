@@ -45,6 +45,7 @@ jobs:
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
+          SSH_PRIVATE_KEY: ${{ secrets.JJR_ED25519_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           packer init packer/platinum.json.pkr.hcl 2>&1
