@@ -28,14 +28,21 @@ func getCMSID(name string) (string, error) {
 }
 
 func CheckIfAttributionCSVFile(filePath string) bool {
-	pattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
-	filenameRegexp := regexp.MustCompile(pattern)
-	return filenameRegexp.MatchString(filePath)
-
+	MDTCOCPattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
+	CDACPattern := `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
+	MDTCOCRegexp := regexp.MustCompile(MDTCOCPattern)
+	CDACRegexp := regexp.MustCompile(CDACPattern)
+	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath))
 }
 
 type CSVParser struct {
 	FilePath string
+}
+
+// maps field to regexp submatches position
+type csvMetadataFileNameMap struct {
+	PerformanceYear int
+	DateTime        int
 }
 
 func getACOConfigs() ([]service.ACOConfig, error) {
@@ -89,14 +96,31 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	var metadata csvFileMetadata
 	var err error
 
-	metadata.perfYear, err = strconv.Atoi(subMatches[4])
+	var mapper csvMetadataFileNameMap
+	if subMatches[2] == "PCPB" { // MDTCoC CSV File
+		mapper = csvMetadataFileNameMap{
+			PerformanceYear: 4,
+			DateTime:        6,
+		}
+	} else if subMatches[2] == "BCD" { // CDAC CSV File
+		mapper = csvMetadataFileNameMap{
+			PerformanceYear: 6,
+			DateTime:        7,
+		}
+	} else {
+		err = errors.Wrapf(err, "failed to parse Model of csv file")
+		log.API.Error(err)
+		return csvFileMetadata{}, err
+	}
+
+	metadata.perfYear, err = strconv.Atoi(subMatches[mapper.PerformanceYear])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse performance year from file")
 		log.API.Error(err)
 		return csvFileMetadata{}, err
 	}
 
-	filenameDate := subMatches[6]
+	filenameDate := subMatches[mapper.DateTime]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file", filenameDate)
