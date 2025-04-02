@@ -55,8 +55,8 @@ jobs:
           date=$(date +'%y%m%d')
           time=$(date +'%H%M%S')
 
-          fname=T.BCD.A0001.ZCY24.D${date}.T${time}1
-          cclf8_fname=T.BCD.A0001.ZC8Y24.D${date}.T${time}1
+          fname=T.BCD.A0001.ZCY${year}.D${date}.T${time}1
+          cclf8_fname=T.BCD.A0001.ZC8Y${year}.D${date}.T${time}1
           echo "CCLFFILENAME=$cclf8_fname" >> "$GITHUB_OUTPUT"
 
           csvname=T.PCPB.M${year}11.D${date}.T${time}1

@@ -129,8 +129,8 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		if err := resp.Body.Close(); err != nil {
-			return nil, err
+		if innerErr := resp.Body.Close(); innerErr != nil {
+			return nil, innerErr
 		}
 		return nil, err
 	}
