@@ -282,7 +282,7 @@ func Checkout(v interface{}) error {
 		}
 	}
 
-	return errors.New("The data type provided to Checkout func is not supported.")
+	return errors.New("the data type provided to Checkout func is not supported")
 
 }
 

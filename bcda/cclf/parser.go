@@ -97,17 +97,18 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	var err error
 
 	var mapper csvMetadataFileNameMap
-	if subMatches[2] == "PCPB" { // MDTCoC CSV File
+	switch subMatches[2] {
+	case "PCPB":
 		mapper = csvMetadataFileNameMap{
 			PerformanceYear: 4,
 			DateTime:        6,
 		}
-	} else if subMatches[2] == "BCD" { // CDAC CSV File
+	case "BCD":
 		mapper = csvMetadataFileNameMap{
 			PerformanceYear: 6,
 			DateTime:        7,
 		}
-	} else {
+	default:
 		err = errors.Wrapf(err, "failed to parse Model of csv file")
 		log.API.Error(err)
 		return csvFileMetadata{}, err

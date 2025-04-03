@@ -121,7 +121,7 @@ func (cfg *Config) ComputeFields() (err error) {
 	}
 
 	if cfg.AlrJobSize == 0 {
-		return errors.New("invalid ALR job size supplied. Must be greater than zero.")
+		return errors.New("invalid ALR job size supplied. Must be greater than zero")
 	}
 
 	return nil

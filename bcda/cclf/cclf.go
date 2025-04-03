@@ -207,7 +207,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	}
 
 	if recordCount > validator.totalRecordCount {
-		err := fmt.Errorf("Unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
+		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
 		importer.Logger.Error(err)
 		return err
 	}

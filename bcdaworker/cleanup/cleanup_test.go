@@ -94,8 +94,10 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
+	err := conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	assert.Empty(s.T(), err)
+	err = conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
+	assert.Empty(s.T(), err)
 
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	newpath := conf.GetEnv("FHIR_ARCHIVE_DIR")

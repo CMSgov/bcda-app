@@ -170,7 +170,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 		}
 		queJobs = append(queJobs, jobs...)
 	} else {
-		return nil, fmt.Errorf("Unsupported RequestType %d", conditions.ReqType)
+		return nil, fmt.Errorf("unsupported RequestType %d", conditions.ReqType)
 	}
 
 	// add existiing beneficiaries to the job queue
@@ -369,7 +369,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 		}
 
 		if len(benes) == 0 {
-			return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+			return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
 				conditions.CMSID, cclfFileNew.ID)
 		}
 
@@ -407,7 +407,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 			return nil, nil, err
 		}
 		if len(newBeneficiaries) == 0 {
-			return nil, nil, fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+			return nil, nil, fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
 				conditions.CMSID, cclfFileNew.ID)
 		}
 		return newBeneficiaries, nil, nil
@@ -425,7 +425,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 		return nil, nil, err
 	}
 	if len(benes) == 0 {
-		return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+		return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
 			conditions.CMSID, cclfFileNew.ID)
 	}
 
@@ -476,7 +476,7 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 		return nil, err
 	}
 	if len(benes) == 0 {
-		return nil, fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+		return nil, fmt.Errorf("found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
 			conditions.CMSID, cclfFile.ID)
 	}
 
@@ -674,8 +674,8 @@ func (e CCLFNotFoundError) Error() string {
 }
 
 var (
-	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
-	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
+	ErrJobNotCancelled   = goerrors.New("job was not cancelled due to internal server error")
+	ErrJobNotCancellable = goerrors.New("job was not cancelled because it is not Pending or In Progress")
 )
 
 type CtxACOCfgType string

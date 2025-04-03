@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	fp "path/filepath"
 	"strings"
 	"time"
@@ -34,7 +33,7 @@ func (processor *LocalFileProcessor) LoadCclfFiles(path string) (cclfList map[st
 // a mapping between CMS_ID + perf year and associated CCLF Metadata
 func processCCLFArchives(rootPath string) (map[string][]*cclfZipMetadata, int, int, error) {
 	p := &processor{0, 0, make(map[string][]*cclfZipMetadata)}
-	if err := filepath.Walk(rootPath, p.walk); err != nil {
+	if err := fp.Walk(rootPath, p.walk); err != nil {
 		return nil, 0, 0, err
 	}
 	return p.cclfMap, p.skipped, p.failure, nil
@@ -72,7 +71,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	zipFile := filepath.Clean(path)
+	zipFile := fp.Clean(path)
 	zipReader, err := zip.OpenReader(zipFile)
 	zipCloser := func() {
 		if zipReader != nil {
@@ -95,7 +94,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		}
 
 		p.failure = p.failure + 1
-		msg := fmt.Errorf("Corrupted %s: file could not be opened as a CCLF archive. %s", path, err.Error())
+		msg := fmt.Errorf("corrupted %s: file could not be opened as a CCLF archive. %s", path, err.Error())
 		fmt.Println(msg)
 		log.API.Error(msg)
 		zipCloser()
@@ -133,20 +132,20 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 
 		if metadata.cclfNum == 0 {
 			if cclf0Metadata != nil {
-				readError = fmt.Errorf("Multiple CCLF0 files found in zip (%s)", path)
+				readError = fmt.Errorf("multiple CCLF0 files found in zip (%s)", path)
 				break
 			}
 			cclf0Metadata = &metadata
 			cclf0File = f
 		} else if metadata.cclfNum == 8 {
 			if cclf8Metadata != nil {
-				readError = fmt.Errorf("Multiple CCLF8 files found in zip (%s)", path)
+				readError = fmt.Errorf("multiple CCLF8 files found in zip (%s)", path)
 				break
 			}
 			cclf8Metadata = &metadata
 			cclf8File = f
 		} else {
-			readError = fmt.Errorf("Unexpected CCLF num %d processed (%s)", metadata.cclfNum, path)
+			readError = fmt.Errorf("unexpected CCLF num %d processed (%s)", metadata.cclfNum, path)
 			break
 		}
 	}
@@ -162,7 +161,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		log.API.WithFields(logrus.Fields{
 			"missingCCLF0": cclf0Metadata == nil,
 			"missingCCLF8": cclf8Metadata == nil,
-		}).Errorf("Missing CCLF0 or CCLF8 file in zip (%s)", path)
+		}).Errorf("missing CCLF0 or CCLF8 file in zip (%s)", path)
 		zipCloser()
 	} else {
 		zipMetadata := cclfZipMetadata{
@@ -199,7 +198,7 @@ func (p *processor) handleArchiveError(path string, info os.FileInfo, cause erro
 func checkDeliveryDate(folderPath string, deliveryDate time.Time) error {
 	deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if deliveryDate.Add(deleteThreshold).Before(time.Now()) {
-		folderName := filepath.Base(folderPath)
+		folderName := fp.Base(folderPath)
 		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 		err := os.Rename(folderPath, newpath)
 		if err != nil {
@@ -226,7 +225,7 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 				defer close()
 
 				processor.Handler.Logger.Infof("Cleaning up file %s.\n", cclfZipMetadata.filePath)
-				folderName := filepath.Base(cclfZipMetadata.filePath)
+				folderName := fp.Base(cclfZipMetadata.filePath)
 				newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 				if !cclfZipMetadata.imported {
 					// check the timestamp on the failed files
@@ -240,10 +239,10 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 						err := os.Rename(cclfZipMetadata.filePath, newpath)
 						if err != nil {
 							errCount++
-							processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+							processor.Handler.Logger.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 						} else {
 							deletedCount++
-							processor.Handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
+							processor.Handler.Logger.Infof("file %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 						}
 					}
 				} else {
@@ -254,10 +253,10 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 					err := os.Rename(cclfZipMetadata.filePath, newpath)
 					if err != nil {
 						errCount++
-						processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+						processor.Handler.Logger.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 					} else {
 						deletedCount++
-						processor.Handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
+						processor.Handler.Logger.Infof("file %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 					}
 				}
 			}()
@@ -292,7 +291,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 		defer close()
 
 		processor.Handler.Logger.Infof("Cleaning up file %s.\n", file.metadata.name)
-		folderName := filepath.Base(file.filepath)
+		folderName := fp.Base(file.filepath)
 		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 		if !file.imported {
 			// check the timestamp on the failed files

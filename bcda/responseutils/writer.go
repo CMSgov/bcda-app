@@ -12,7 +12,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 
 	"github.com/google/fhir/go/fhirversion"
@@ -311,7 +310,7 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 	}
 	resourceJSON, err := marshaller.Marshal(resource)
 	if err != nil {
-		logAPI.API.Error(err)
+		log.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -320,7 +319,7 @@ func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(resourceJSON)
 	if err != nil {
-		logAPI.API.Error(err)
+		log.API.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

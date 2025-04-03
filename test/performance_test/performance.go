@@ -200,11 +200,11 @@ func validateMetrics(metrics vegeta.Metrics) error {
 	}
 
 	if len(metrics.Errors) > 0 {
-		return fmt.Errorf("Encountered %v errors", metrics.Errors)
+		return fmt.Errorf("encountered %v errors", metrics.Errors)
 	}
 
 	if metrics.Success < 1.0 {
-		return fmt.Errorf("Expected success rate of 1.0, received %f",
+		return fmt.Errorf("expected success rate of 1.0, received %f",
 			metrics.Success)
 	}
 
