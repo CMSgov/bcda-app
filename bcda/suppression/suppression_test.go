@@ -39,7 +39,7 @@ func (s *SuppressionTestSuite) SetupSuite() {
 		log.Fatal(err)
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 }
 

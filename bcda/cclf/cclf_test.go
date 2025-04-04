@@ -74,7 +74,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 		s.FailNow(err.Error())
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 	s.db = database.Connection
 }
@@ -199,7 +199,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	validator.totalRecordCount = 2
 
 	err = s.importer.importCCLF8(context.Background(), metadata, validator)
-	s.ErrorContains(err, "Unexpected number of records imported for file T.BCD.A0001.ZC8Y18.D181120.T1000009 (expected: 2, actual: 7)")
+	s.ErrorContains(err, "unexpected number of records imported for file T.BCD.A0001.ZC8Y18.D181120.T1000009 (expected: 2, actual: 7)")
 
 	// successful
 	validator.maxRecordLength = 549

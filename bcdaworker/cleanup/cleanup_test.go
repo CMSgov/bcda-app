@@ -37,7 +37,7 @@ func (s *CleanupTestSuite) SetupSuite() {
 		log.Fatal(err)
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 	s.db = database.Connection
 
@@ -94,10 +94,8 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	err := conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	assert.Empty(s.T(), err)
-	err = conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
-	assert.Empty(s.T(), err)
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
 
 	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	newpath := conf.GetEnv("FHIR_ARCHIVE_DIR")

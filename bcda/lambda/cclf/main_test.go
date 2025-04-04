@@ -49,7 +49,7 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 
 	tests := []test{
 		{path: "../../../shared_files/cclf/archives/valid/", filename: "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000", expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 0 files."}},
-		{path: "../../../shared_files/cclf/archives/invalid_bcd/", filename: "cclf/archives/invalid_bcd/P.BCD.A0009.ZCY18.D181120.T0001000", err: errors.New("Files skipped or failed import. See logs for more details."), expectedLogs: []string{}},
+		{path: "../../../shared_files/cclf/archives/invalid_bcd/", filename: "cclf/archives/invalid_bcd/P.BCD.A0009.ZCY18.D181120.T0001000", err: errors.New("files skipped or failed import. See logs for more details"), expectedLogs: []string{}},
 		{path: "../../../shared_files/cclf/archives/skip/", filename: "cclf/archives/skip/T.BCD.ACOB.ZC0Y18.D181120.T0001000", expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."}},
 	}
 
@@ -78,5 +78,5 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 func (s *AttributionImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
 	assert := assert.New(s.T())
 	_, err := attributionImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), "doesn't-matter", "fake_filename"))
-	assert.Contains(err.Error(), "Error retrieving parameter /cclf-import/bcda/local/bfd-bucket-role-arn from parameter store: ParameterNotFound: Parameter /cclf-import/bcda/local/bfd-bucket-role-arn not found.")
+	assert.Contains(err.Error(), "error retrieving parameter /cclf-import/bcda/local/bfd-bucket-role-arn from parameter store: ParameterNotFound: Parameter /cclf-import/bcda/local/bfd-bucket-role-arn not found.")
 }

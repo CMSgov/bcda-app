@@ -99,7 +99,7 @@ func SetAndRestoreEnvKey(key, value string) func() {
 	}
 }
 
-func MakeDirToDelete(s suite.Suite, filePath string) {
+func MakeDirToDelete(s *suite.Suite, filePath string) {
 	assert := assert.New(s.T())
 	_, err := os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe1.txt")))
 	assert.Nil(err)
@@ -113,7 +113,7 @@ func MakeDirToDelete(s suite.Suite, filePath string) {
 
 // SetPendingDeletionDir sets the PENDING_DELETION_DIR to the supplied "path" and ensures
 // that the directory is created
-func SetPendingDeletionDir(s suite.Suite, path string) {
+func SetPendingDeletionDir(s *suite.Suite, path string) {
 	err := conf.SetEnv(s.T(), "PENDING_DELETION_DIR", path)
 	if err != nil {
 		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)

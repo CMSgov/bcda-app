@@ -455,7 +455,7 @@ func (s *APITestSuite) TestDeleteJob() {
 			DeleteJob(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
 			if rr.Code == http.StatusGone {
-				assert.Contains(t, rr.Body.String(), "Job was not cancelled because it is not Pending or In Progress")
+				assert.Contains(t, rr.Body.String(), "job was not cancelled because it is not Pending or In Progress")
 			}
 		})
 	}

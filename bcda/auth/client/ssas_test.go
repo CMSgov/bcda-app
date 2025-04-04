@@ -42,33 +42,26 @@ type EnvVars struct {
 }
 
 func (s *SSASClientTestSuite) setEnvVars(r EnvVars) {
-	var err error
 	if r.SSAS_URL != "" {
 		if r.SSAS_URL == "-1" {
-			err = conf.SetEnv(s.T(), "SSAS_URL", "")
-			s.Empty(s.T(), err)
+			conf.SetEnv(s.T(), "SSAS_URL", "")
 		} else {
-			err = conf.SetEnv(s.T(), "SSAS_URL", r.SSAS_URL)
-			s.Empty(s.T(), err)
+			conf.SetEnv(s.T(), "SSAS_URL", r.SSAS_URL)
 		}
 	}
 	if r.SSAS_PUBLIC_URL != "" {
 		if r.SSAS_PUBLIC_URL == "-1" {
-			err = conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", "")
-			s.Empty(s.T(), err)
+			conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", "")
 		} else {
-			err = conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", r.SSAS_PUBLIC_URL)
-			s.Empty(s.T(), err)
+			conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", r.SSAS_PUBLIC_URL)
 		}
 	}
 
 	if r.BCDA_SSAS_CLIENT_ID != "" {
 		if r.BCDA_SSAS_CLIENT_ID == "-1" {
-			err = conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "")
-			s.Empty(s.T(), err)
+			conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "")
 		} else {
-			err = conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", r.BCDA_SSAS_CLIENT_ID)
-			s.Empty(s.T(), err)
+			conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", r.BCDA_SSAS_CLIENT_ID)
 		}
 	}
 }
