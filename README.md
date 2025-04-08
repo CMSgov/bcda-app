@@ -116,8 +116,6 @@ Before we can run the application locally, we need to build the docker images an
 make docker-bootstrap
 ```
 
-\*Known Issue: If the swagger/documentation container fails to build or start, edit the makefile locally to remove `documentation` from the `docker-bootstrap` command line.
-
 After that has completed successfully, we can start the containers:
 
 ```sh
