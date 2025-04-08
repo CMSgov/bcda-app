@@ -344,9 +344,8 @@ func setUpApp() *cli.App {
 				}
 				if failure > 0 || skipped > 0 {
 					log.API.Errorf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped, err)
-					err = errors.New("Files skipped or failed import. See logs for more details.")
+					err = errors.New("files skipped or failed import. See logs for more details")
 					return err
-
 				}
 				log.API.Infof("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)

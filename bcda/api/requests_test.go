@@ -103,11 +103,14 @@ func (s *RequestsTestSuite) SetupTest() {
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
-	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
+	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
+	assert.Empty(s.T(), err)
 }
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
-	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "true")
+	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "true")
+	assert.Empty(s.T(), err)
+
 	qj := []*models.JobEnqueueArgs{}
 	tests := []struct {
 		name string
@@ -486,7 +489,9 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 }
 
 func (s *RequestsTestSuite) TestRunoutDisabled() {
-	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "false")
+	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "false")
+	assert.Empty(s.T(), err)
+
 	req := s.genGroupRequest("runout", middleware.RequestParameters{})
 	w := httptest.NewRecorder()
 	h := &Handler{}

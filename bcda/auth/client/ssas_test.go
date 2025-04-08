@@ -42,7 +42,6 @@ type EnvVars struct {
 }
 
 func (s *SSASClientTestSuite) setEnvVars(r EnvVars) {
-
 	if r.SSAS_URL != "" {
 		if r.SSAS_URL == "-1" {
 			conf.SetEnv(s.T(), "SSAS_URL", "")

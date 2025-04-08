@@ -107,5 +107,5 @@ func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Failed() {
 func (s *OptOutImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
 	assert := assert.New(s.T())
 	_, err := optOutImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), "doesn't-matter", "fake_filename"))
-	assert.Contains(err.Error(), "Error retrieving parameter /opt-out-import/bcda/local/bfd-bucket-role-arn from parameter store: ParameterNotFound: Parameter /opt-out-import/bcda/local/bfd-bucket-role-arn not found.")
+	assert.Contains(err.Error(), "error retrieving parameter /opt-out-import/bcda/local/bfd-bucket-role-arn from parameter store: ParameterNotFound: Parameter /opt-out-import/bcda/local/bfd-bucket-role-arn not found.")
 }

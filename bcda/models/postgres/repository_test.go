@@ -981,7 +981,7 @@ func (r *RepositoryTestSuite) TestGetAlrMBIs() {
 	r.NotEmpty(alrMBI.Metakey)
 
 	alrMBI, err = r.repository.GetAlrMBIs(context.Background(), "A9996")
-	r.Contains(err.Error(), "No ALR meta data found for A9996")
+	r.Contains(err.Error(), "no ALR meta data found for A9996")
 	r.Nil(alrMBI)
 }
 

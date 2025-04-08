@@ -40,7 +40,7 @@ func TestGetParameter(t *testing.T) {
 			// GetParameter fails
 			keyname:       key1,
 			expectedValue: "",
-			expectedErr:   errors.New("Error retrieving parameter key1 from parameter store: error"),
+			expectedErr:   errors.New("error retrieving parameter key1 from parameter store: error"),
 			ssmNew:        func(p client.ConfigProvider, cfgs ...*aws.Config) *ssm.SSM { return nil },
 			ssmsvcGetParameter: func(c *ssm.SSM, input *ssm.GetParameterInput) (*ssm.GetParameterOutput, error) {
 				return nil, errors.New("error")
@@ -50,7 +50,7 @@ func TestGetParameter(t *testing.T) {
 			// Empty parameter
 			keyname:       key1,
 			expectedValue: "",
-			expectedErr:   fmt.Errorf("No parameter store value found for %s", key1),
+			expectedErr:   fmt.Errorf("no parameter store value found for %s", key1),
 			ssmNew:        func(p client.ConfigProvider, cfgs ...*aws.Config) *ssm.SSM { return nil },
 			ssmsvcGetParameter: func(c *ssm.SSM, input *ssm.GetParameterInput) (*ssm.GetParameterOutput, error) {
 				val := ""

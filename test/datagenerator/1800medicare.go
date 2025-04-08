@@ -42,7 +42,8 @@ func main() {
 		panic(err)
 	}
 
-	_, err = outf.WriteString(fmt.Sprintf("HDR_BENEDATASHR%s\n", now.Format("20060102")))
+	str := fmt.Sprintf("HDR_BENEDATASHR%s\n", now.Format("20060102"))
+	_, err = outf.WriteString(str)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +69,8 @@ func main() {
 			recs := records(p)
 			for _, r := range recs {
 				for _, f := range []field{r.hicn, r.blk, r.firstName, r.middleName, r.lastName, r.dob, r.addr1, r.addr2, r.addr3, r.city, r.state, r.zip5, r.zip4, r.gender, r.encDate, r.effDate, r.srcCode, r.mechCode, r.prefInd, r.saEffDate, r.saSrcCode, r.saMechCode, r.saPrefInd, r.acoID, r.acoName} {
-					_, err = outf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
+					str = fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v)
+					_, err = outf.WriteString(str)
 					if err != nil {
 						panic(err)
 					}
@@ -81,7 +83,8 @@ func main() {
 			recCount += len(recs)
 		}
 
-		_, err = outf.WriteString(fmt.Sprintf("TRL_BENEDATASHR%s%-10d", now.Format("20060102"), recCount))
+		str = fmt.Sprintf("TRL_BENEDATASHR%s%-10d", now.Format("20060102"), recCount)
+		_, err = outf.WriteString(str)
 		if err != nil {
 			panic(err)
 		}

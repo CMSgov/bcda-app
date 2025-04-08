@@ -608,7 +608,7 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) (*models.AlrM
 	err := row.Scan(&id, &aco, &timestamp)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("No ALR meta data found for %s", cmsID)
+			return nil, fmt.Errorf("no ALR meta data found for %s", cmsID)
 		}
 		return nil, err
 	}
@@ -622,7 +622,7 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) (*models.AlrM
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("No ALR MBIs found for %s with id %d", cmsID, id)
+			return nil, fmt.Errorf("no ALR MBIs found for %s with id %d", cmsID, id)
 		}
 		return nil, err
 	}

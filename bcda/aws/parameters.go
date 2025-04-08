@@ -22,13 +22,13 @@ func GetParameter(s *session.Session, keyname string) (string, error) {
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("Error retrieving parameter %s from parameter store: %w", keyname, err)
+		return "", fmt.Errorf("error retrieving parameter %s from parameter store: %w", keyname, err)
 	}
 
 	val := *result.Parameter.Value
 
 	if val == "" {
-		return "", fmt.Errorf("No parameter store value found for %s", keyname)
+		return "", fmt.Errorf("no parameter store value found for %s", keyname)
 	}
 
 	return val, nil
@@ -58,7 +58,7 @@ func GetParameters(s *session.Session, keynames []*string) (map[string]string, e
 	}
 
 	// Build the parameter map that we're going to return
-	var paramMap map[string]string = make(map[string]string)
+	paramMap := make(map[string]string)
 
 	for _, item := range params.Parameters {
 		paramMap[*item.Name] = *item.Value
