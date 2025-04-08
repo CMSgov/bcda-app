@@ -139,12 +139,13 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 
 			JobStatus(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
-			if rr.Code == http.StatusAccepted {
+			switch rr.Code {
+			case http.StatusAccepted:
 				assert.Contains(t, rr.Header().Get("X-Progress"), tt.status)
 				assert.Equal(t, "", rr.Header().Get("Expires"))
-			} else if rr.Code == http.StatusInternalServerError {
+			case http.StatusInternalServerError:
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
-			} else if rr.Code == http.StatusGone {
+			case http.StatusGone:
 				assertExpiryEquals(t, j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
@@ -347,7 +348,7 @@ func (s *APITestSuite) TestDeleteJob() {
 			DeleteJob(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
 			if rr.Code == http.StatusGone {
-				assert.Contains(t, rr.Body.String(), "Job was not cancelled because it is not Pending or In Progress")
+				assert.Contains(t, rr.Body.String(), "job was not cancelled because it is not Pending or In Progress")
 			}
 		})
 	}

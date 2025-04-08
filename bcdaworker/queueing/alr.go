@@ -98,7 +98,7 @@ func (q *MasterQueue) startAlrJob(queJob *que.Job) error {
 		return nil
 	}
 	if !errors.Is(err, repository.ErrJobKeyNotFound) {
-		return fmt.Errorf("Failed to search for job keys in database: %w", err)
+		return fmt.Errorf("failed to search for job keys in database: %w", err)
 	}
 	// End of validation
 

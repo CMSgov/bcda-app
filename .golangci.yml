@@ -19,6 +19,10 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - linters:
+        - errcheck
+        text: "conf.UnsetEnv|conf.SetEnv" # these are used and unchecked in over 280 test files
 formatters:
   enable:
     - gofmt

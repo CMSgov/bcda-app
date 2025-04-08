@@ -77,7 +77,7 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 			FileArchiveThresholdHr: hours,
 		},
 	}
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 }
 
 func (s *LocalFileProcessorTestSuite) TearDownTest() {

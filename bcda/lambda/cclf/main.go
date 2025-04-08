@@ -156,7 +156,7 @@ func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 		result := fmt.Sprintf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 		logger.Error(result)
 
-		err = errors.New("Files skipped or failed import. See logs for more details.")
+		err = errors.New("files skipped or failed import. See logs for more details")
 		return result, err
 
 	}

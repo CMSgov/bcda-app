@@ -37,7 +37,7 @@ func (s *CleanupTestSuite) SetupSuite() {
 		log.Fatal(err)
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 	s.db = database.Connection
 

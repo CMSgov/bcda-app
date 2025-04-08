@@ -112,7 +112,7 @@ func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 		jobKeys = append(jobKeys, jk)
 	}
 
-	if err := a.Repository.CreateJobKeys(ctx, jobKeys); err != nil {
+	if err := a.CreateJobKeys(ctx, jobKeys); err != nil {
 		result <- fmt.Errorf(constants.JobKeyCreateErr, err)
 		return
 	}
@@ -174,7 +174,7 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 		jobKeys = append(jobKeys, jk)
 	}
 
-	if err := a.Repository.CreateJobKeys(ctx, jobKeys); err != nil {
+	if err := a.CreateJobKeys(ctx, jobKeys); err != nil {
 		result <- fmt.Errorf(constants.JobKeyCreateErr, err)
 		return
 	}
@@ -211,7 +211,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	// there is no data associated with this job.
 	if len(alrModels) == 0 {
 		jk := models.JobKey{JobID: id, QueJobID: &queJobID, FileName: models.BlankFileName, ResourceType: "ALR"}
-		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
+		if err := a.CreateJobKey(ctx, jk); err != nil {
 			return fmt.Errorf(constants.JobKeyCreateErr, err)
 		}
 	}

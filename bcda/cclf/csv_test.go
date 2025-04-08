@@ -51,7 +51,7 @@ func (s *CSVTestSuite) SetupTest() {
 		s.FailNow(err.Error())
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	tf, err := testfixtures.New(
 		testfixtures.Database(db),

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 
@@ -40,7 +39,7 @@ func (s *SuppressionTestSuite) SetupSuite() {
 		log.Fatal(err)
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 }
 
@@ -76,7 +75,7 @@ func TestSuppressionTestSuite(t *testing.T) {
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
 
-	hook := test.NewLocal(logrus.StandardLogger())
+	hook := test.NewLocal(log.StandardLogger())
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := &optout.OptOutFilenameMetadata{

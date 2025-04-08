@@ -363,7 +363,7 @@ func isGzipEncoded(filePath string) (encoded bool, err error) {
 
 	//We can't compare to a magic number if there's less than 2 bytes returned. Also can't be ndjson
 	if bytesRead < 2 {
-		return false, errors.New("Invalid file with length 1 byte.")
+		return false, errors.New("invalid file with length 1 byte")
 	}
 
 	comparison := []byte{0x1f, 0x8b}

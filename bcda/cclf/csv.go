@@ -165,7 +165,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return fmt.Errorf("unexpected number of records imported (expected: %d, actual: %d)", count, records)
 	}
 	if err != nil {
-		return errors.New("failed to write attribution beneficiaries to database using CopyFrom.")
+		return errors.New("failed to write attribution beneficiaries to database using CopyFrom")
 	}
 
 	err = rtx.UpdateCCLFFileImportStatus(ctx, csv.metadata.fileID, constants.ImportComplete)

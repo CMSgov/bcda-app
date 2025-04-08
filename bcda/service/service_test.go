@@ -280,14 +280,14 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			getCCLFFile(4, false, false),
 			nil,
 			nil,
-			fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID"),
+			fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoBenesFoundNewAndOld",
 			getCCLFFile(5, false, false),
 			getCCLFFile(6, false, false),
 			nil,
-			fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID"),
+			fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoMBIsForOldCCLF",
@@ -494,7 +494,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 
 			// Assert
 			if !tt.populateBenes {
-				assert.ErrorContains(err, "Found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
+				assert.ErrorContains(err, "found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
 			} else {
 				assert.NoError(err)
 				assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
@@ -544,7 +544,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			"NoBenesFound",
 			models.FileTypeDefault,
 			getCCLFFile(2, false, false),
-			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
+			fmt.Errorf("found 0 beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"BenesReturnedRunout",
@@ -1462,7 +1462,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 
 			// Assert
 			if !tt.populateBenes {
-				assert.ErrorContains(err, "Found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
+				assert.ErrorContains(err, "found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
 			} else {
 				assert.NoError(err)
 				assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))

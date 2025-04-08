@@ -66,7 +66,7 @@ func (s *CLITestSuite) SetupSuite() {
 		log.Fatal(err)
 	}
 	s.pendingDeletionDir = dir
-	testUtils.SetPendingDeletionDir(s.Suite, dir)
+	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 	s.db = database.Connection
 
@@ -400,12 +400,13 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	}
 
 	tests := []test{
-		{path: "../../shared_files/cclf/archives/valid/", err: errors.New("Files skipped or failed import. See logs for more details."), expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."}},
-		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("Failed to import 1 files"), expectedLogs: []string{"Missing CCLF0 or CCLF8 file in zip", "", ""}},
-		{path: "../../shared_files/cclf/archives/skip/", err: errors.New("Files failed to import or no files were imported. See logs for more details."), expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 1 files."}},
+		{path: "../../shared_files/cclf/archives/valid/", err: errors.New("files skipped or failed import. See logs for more details"), expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."}},
+		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("failed to import 1 files"), expectedLogs: []string{"missing CCLF0 or CCLF8 file in zip", "", ""}},
+		{path: "../../shared_files/cclf/archives/skip/", err: errors.New("files failed to import or no files were imported. See logs for more details."), expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 1 files."}},
 	}
 
 	for _, tc := range tests {
+		fmt.Printf("\n-----path %+v,\n   expected: %+v\n", tc.path, tc.expectedLogs)
 		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 		path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tc.path)
@@ -418,13 +419,18 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 		var success, failed bool
 		for _, entry := range hook.AllEntries() {
+			fmt.Printf("\n-----entry %+v,\n   expected: %+v\n", entry.Message, tc.expectedLogs[0])
 			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
+				fmt.Print("\n--setting success to true\n")
 				success = true
 			}
 			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
+				fmt.Print("\n--setting failed to true\n")
 				failed = true
 			}
 		}
+
+		fmt.Printf("\n-----end result, success: %+v, failed: %+v\n", success, failed)
 		assert.True(success)
 		assert.True(failed)
 	}

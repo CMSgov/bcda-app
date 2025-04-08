@@ -108,7 +108,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
 	relversion := "r1"
 	baseurl := "bcda.cms.gov"
-	var cs *fhirmodelCS.CapabilityStatement = CreateCapabilityStatement(time.Now(), relversion, baseurl)
+	cs := CreateCapabilityStatement(time.Now(), relversion, baseurl)
 	assert.Equal(s.T(), relversion, cs.Software.Version.Value)
 	assert.Equal(s.T(), "Beneficiary Claims Data API", cs.Software.Name.Value)
 	assert.Equal(s.T(), baseurl, cs.Implementation.Url.Value)
@@ -178,7 +178,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundle() {
-	var jb *fhirmodelCR.Bundle = CreateJobsBundle(nil, constants.TestAPIUrl)
+	jb := CreateJobsBundle(nil, constants.TestAPIUrl)
 
 	assert.Equal(s.T(), uint32(0), jb.Total.Value)
 	assert.Equal(s.T(), fhircodes.BundleTypeCode_SEARCHSET, jb.Type.Value)

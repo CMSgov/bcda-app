@@ -62,10 +62,10 @@ func (bbc *MockBlueButtonClient) GetData(endpoint, patientID string) (string, er
 			return "", err
 		}
 	}
-	cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
+	cleanData := strings.ReplaceAll(string(fData), "20000000000001", patientID)
 	if bbc.MBI != nil {
 		// no longer hashed, but this is only a test file with synthetic test data
-		cleanData = strings.Replace(cleanData, "-1Q03Z002871", *bbc.MBI, -1)
+		cleanData = strings.ReplaceAll(cleanData, "-1Q03Z002871", *bbc.MBI)
 	}
 	return cleanData, err
 }
