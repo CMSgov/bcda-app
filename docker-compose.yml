@@ -41,6 +41,7 @@ services:
         - action: rebuild
           path: .
           ignore: ["!go.mod", "!go.sum", "!tools.go"]
+    stop_grace_period: 1s
   worker:
     build:
       context: .
@@ -62,6 +63,7 @@ services:
         - action: rebuild
           path: .
           ignore: ["!go.mod", "!go.sum", "!tools.go"]
+    stop_grace_period: 1s
   ssas:
     build:
       context: .
