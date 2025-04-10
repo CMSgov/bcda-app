@@ -133,17 +133,23 @@ load-fixtures: reset-db
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
-	docker compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test ' ' $(ACO_SIZES)"
+	for ACO_SIZE in $(ACO_SIZES) ; do \
+		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
+	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
-	docker compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test-new-beneficiaries ' ' $(ACO_SIZES)"
-	docker compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test runout $(ACO_SIZES)"
+	for ACO_SIZE in $(ACO_SIZES) ; do \
+		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test-new-beneficiaries' --fileType='' " ; \
+		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='runout' " ; \
+	done
 
 	# Improved Synthea BFD Data Ingestion
-	$(eval IMPROVED_SIZE := improved-dev improved-small improved-large)
-	docker compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh improved ' ' $(IMPROVED_SIZE)"
-	docker compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh improved-new ' ' $(IMPROVED_SIZE)"
-	docker compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh improved runout $(IMPROVED_SIZE)"
+	$(eval IMPROVED_SIZES := improved-dev improved-small improved-large)
+	for IMPROVED_SIZE in $(IMPROVED_SIZES) ; do \
+			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='' " ; \
+			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved-new' --fileType='' " ; \
+			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='runout' " ; \
+	done
 
 load-synthetic-suppression-data:
 	docker compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
