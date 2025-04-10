@@ -26,8 +26,6 @@ services:
     command: ["bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -53,8 +51,6 @@ services:
     command: ["bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
       - db
       - queue
