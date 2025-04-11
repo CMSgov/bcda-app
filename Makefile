@@ -124,8 +124,8 @@ load-fixtures: reset-db
 
 	# Ensure components are started as expected
 	docker compose up -d api worker ssas
-	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 100
-	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 100
+	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
+	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
 
 	# Additional fixtures for postman+ssas
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
