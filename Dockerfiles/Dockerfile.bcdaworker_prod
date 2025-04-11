@@ -1,4 +1,3 @@
-# syntax = docker/dockerfile:1-experimental
 FROM golang:1.23.1-alpine3.20 AS builder
 
 RUN apk update upgrade
@@ -18,14 +17,18 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go install -v
+    go install
 
-# syntax = docker/dockerfile:1-experimental
+# ------------------------------------------------------------------------
 FROM golang:1.23.1-alpine3.20
 ARG ENVIRONMENT
 # only add dev packages if the environment argument was set to development
 RUN [ "$ENVIRONMENT" != "development" ] || apk add git openssl entr bash
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
+
+# This file is needed on the worker container by hcc.go -- similar requirement in build_and_package.sh
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils/hcc_crosswalk.tsv /etc/sv/worker/hcc_crosswalk.tsv
+
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
 COPY --from=builder /go/bin/ /go/bin/
 ENTRYPOINT ["bcdaworker"]

@@ -23,13 +23,9 @@ services:
       args:
         ENVIRONMENT: development
     entrypoint: ""
-    command: ["../scripts/watch.sh", "api", "bcda", "start-api"]
+    command: ["bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
-    environment:
-      - CI=${CI} # Used to determine if the API is running on a CI process
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -37,6 +33,15 @@ services:
       - ssas
       - db
       - queue
+    develop:
+      watch:
+        - action: rebuild
+          path: ./bcda
+          ignore: ["!**/*.go"]
+        - action: rebuild
+          path: .
+          ignore: ["!go.mod", "!go.sum", "!tools.go"]
+    stop_grace_period: 1s
   worker:
     build:
       context: .
@@ -44,16 +49,21 @@ services:
       args:
         ENVIRONMENT: development
     entrypoint: ""
-    command: ["../scripts/watch.sh", "worker", "bcdaworker"]
+    command: ["bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
-    environment:
-      - CI=${CI} # Used to determine if the API is running on a CI process
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
       - db
       - queue
+    develop:
+      watch:
+        - action: rebuild
+          path: ./bcdaworker
+          ignore: ["!**/*.go"]
+        - action: rebuild
+          path: .
+          ignore: ["!go.mod", "!go.sum", "!tools.go"]
+    stop_grace_period: 1s
   ssas:
     build:
       context: .

@@ -116,10 +116,10 @@ Before we can run the application locally, we need to build the docker images an
 make docker-bootstrap
 ```
 
-After that has completed successfully, we can start the containers:
+After that has completed successfully, we can start the containers. Include the `--watch` flag to automatically rebuild the API and worker containers on code changes.
 
 ```sh
-docker compose up
+docker compose up --watch
 ```
 
 ### **2. Get a token**
