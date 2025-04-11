@@ -1,3 +1,17 @@
+/*
+Package queueing implements "job" processing for bulk export requests
+
+Job Processing is handled by RiverQueue and consists of three main components:
+1. Asynchronously building and preparing a bulk export job for a received request
+2. Asynchronously processing the job from #1
+3. Asynchronously cleaning up any necessary components from the previous two steps
+
+There are three workers for each step above; they are assigned a "kind" of work and do that work only.
+
+When a request comes in, the pendingExportWorker will divide the steps into multiple pieces to be worked, depending on the number of beneficiaries and resources requested. Each of those pieces will enqueue a new Job which will be picked up by a jobProcessWorker.
+
+Jobs are written to the application database. Jobs contain set of keys, which are generated in step 2 and then made available for the consumer that made the request.
+*/
 package queueing
 
 import (
@@ -13,16 +27,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/bcdaworker/cleanup"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/log"
-	"github.com/ccoveille/go-safecast"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/robfig/cron/v3"
@@ -33,26 +41,6 @@ import (
 
 var slackChannel = "C034CFU945C" // #bcda-alerts
 
-type CleanupJobArgs struct {
-}
-
-func (args CleanupJobArgs) Kind() string {
-	return "CleanupJob"
-}
-
-type CleanupJobWorker struct {
-	river.WorkerDefaults[CleanupJobArgs]
-	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
-	archiveExpiring func(time.Time) error
-}
-
-func NewCleanupJobWorker() *CleanupJobWorker {
-	return &CleanupJobWorker{
-		cleanupJob:      cleanup.CleanupJob,
-		archiveExpiring: cleanup.ArchiveExpiring,
-	}
-}
-
 type Notifier interface {
 	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
@@ -60,8 +48,13 @@ type Notifier interface {
 // TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
 func StartRiver(numWorkers int) *queue {
 	workers := river.NewWorkers()
+	prepareWorker, err := NewPrepareJobWorker()
+	if err != nil {
+		panic(err)
+	}
 	river.AddWorker(workers, &JobWorker{})
 	river.AddWorker(workers, NewCleanupJobWorker())
+	river.AddWorker(workers, prepareWorker)
 
 	schedule, err := cron.ParseStandard("0 11,23 * * *")
 
@@ -89,6 +82,7 @@ func StartRiver(numWorkers int) *queue {
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,
 	})
+
 	if err != nil {
 		panic(err)
 	}
@@ -143,154 +137,6 @@ func (q queue) StopRiver() {
 	if err := q.client.Stop(q.ctx); err != nil {
 		panic(err)
 	}
-}
-
-type JobWorker struct {
-	river.WorkerDefaults[models.JobEnqueueArgs]
-}
-
-func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueArgs]) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	jobID, err := safecast.ToInt64(rjob.Args.ID)
-	if err != nil {
-		return err
-	}
-
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobID)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
-
-	// TODO: use pgxv5 when available
-	mainDB := database.Connection
-	workerInstance := worker.NewWorker(mainDB)
-	repo := postgres.NewRepository(mainDB)
-
-	defer updateJobQueueCountCloudwatchMetric(mainDB, logger)
-
-	exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
-		WorkerInstance: workerInstance,
-		Logger:         logger,
-		Repository:     repo,
-		JobID:          jobID,
-		QJobID:         rjob.ID,
-		Args:           rjob.Args,
-		ErrorCount:     len(rjob.Errors),
-	})
-	if ackJob {
-		// End logic here, basically acknowledge and return which will remove it from the queue.
-		return nil
-	}
-	// Return error when we want to mark a job as having errored out, which will mark it to be retried
-	if err != nil {
-		return err
-	}
-
-	// start a goroutine that will periodically check the status of the parent job
-	go checkIfCancelled(ctx, repo, cancel, jobID, 15)
-
-	if err := workerInstance.ProcessJob(ctx, rjob.ID, *exportJob, rjob.Args); err != nil {
-		err := errors.Wrap(err, "failed to process job")
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobArgs]) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, logger := log.SetCtxLogger(ctx, "transaction_id", uuid.New())
-
-	cutoff := getCutOffTime()
-	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
-	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
-	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
-	environment := conf.GetEnv("DEPLOYMENT_TARGET")
-
-	params, err := getAWSParams()
-	if err != nil {
-		logger.Error("Unable to extract Slack Token from parameter store: %+v", err)
-		return err
-	}
-
-	slackClient := slack.New(params)
-
-	_, _, err = slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), false),
-	)
-	if err != nil {
-		logger.Error("Error sending notifier start message: %+v", err)
-	}
-
-	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
-	if err := w.cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
-
-		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupArchArg, environment), false),
-		)
-		if slackErr != nil {
-			logger.Error("Error sending notifier failure message: %+v", slackErr)
-		}
-
-		return err
-	}
-
-	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
-	if err := w.cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
-
-		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupFailedArg, environment), false),
-		)
-		if slackErr != nil {
-			logger.Error("Error sending notifier failure message: %+v", slackErr)
-		}
-
-		return err
-	}
-
-	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
-	if err := w.cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
-
-		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.CleanupCancelledArg, environment), false),
-		)
-		if slackErr != nil {
-			logger.Error("Error sending notifier failure message: %+v", slackErr)
-		}
-
-		return err
-	}
-
-	// Archive expiring jobs: update job statuses and move files to an inaccessible location
-	if err := w.archiveExpiring(cutoff); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
-
-		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: %s job in %s env.", constants.ArchiveJobFiles, environment), false),
-		)
-		if slackErr != nil {
-			logger.Error("Error sending notifier failure message: %+v", slackErr)
-		}
-
-		return err
-	}
-
-	_, _, err = slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("SUCCESS: Archive and Clean Job Data for %s environment.", environment), false),
-	)
-	if err != nil {
-		logger.Error("Error sending notifier success message: %+v", err)
-	}
-
-	return nil
 }
 
 // TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager

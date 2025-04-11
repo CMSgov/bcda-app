@@ -77,7 +77,7 @@ type BlueButtonClient struct {
 	retryInterval time.Duration
 
 	bbServer   string
-	bbBasePath string
+	BBBasePath string
 }
 
 // Ensure BlueButtonClient satisfies the interface
@@ -360,7 +360,7 @@ func (bbc *BlueButtonClient) getRawData(method string, jobData models.JobEnqueue
 }
 
 func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, error) {
-	u, err := url.Parse(fmt.Sprintf("%s%s/%s/", bbc.bbServer, bbc.bbBasePath, path))
+	u, err := url.Parse(fmt.Sprintf("%s%s/%s/", bbc.bbServer, bbc.BBBasePath, path))
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,8 @@ package service
 
 import (
 	context "context"
+	"time"
+
 
 	models "github.com/CMSgov/bcda-app/bcda/models"
 	mock "github.com/stretchr/testify/mock"
@@ -153,7 +155,7 @@ func (_m *MockService) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ..
 }
 
 // GetLatestCCLFFile provides a mock function with given fields: ctx, cmsID, fileType
-func (_m *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+func (_m *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	ret := _m.Called(ctx, cmsID, fileType)
 
 	var r0 *models.CCLFFile

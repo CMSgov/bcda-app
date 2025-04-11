@@ -29,8 +29,8 @@ type queue struct {
 	worker worker.Worker
 
 	// Resources associated with the underlying Que client library
-	quePool *que.WorkerPool
-	queDB   *pgx.ConnPool
+	quePool *que.WorkerPool // Decprecated: use river instead.
+	queDB   *pgx.ConnPool   // Decprecated: use river instead.
 
 	// Resources associated with River library
 	client *river.Client[pgxv5.Tx]

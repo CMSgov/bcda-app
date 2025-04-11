@@ -10,19 +10,23 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-testfixtures/testfixtures/v3"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
-	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing/mocks"
+	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -30,6 +34,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -544,59 +549,49 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	}
 
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
-
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := mockEnq.NewEnqueuer(s.T())
-	enqueuer.On("AddJob", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
-	h.Enq = enqueuer
 	h.supportedDataTypes = dataTypeMap
-
 	client.SetLogger(log.API) // Set logger so we don't get errors later
-
 	jsonBytes, _ := json.Marshal("{}")
 
 	tests := []struct {
-		name string
-
-		cmsId           string
-		resources       []string
-		expectedCode    int
-		acoConfig       *service.ACOConfig
-		supplyAuthData  bool
-		breakBB         bool
-		mockQueueFilled bool
-		closeDB         bool
-		breakBBInit     bool
+		name           string
+		cmsId          string
+		resources      []string
+		expectedCode   int
+		acoConfig      *service.ACOConfig
+		supplyAuthData bool
+		mockQueue      bool
+		closeDB        bool
+		mockAddJob     bool
 	}{
-		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, false, false, false, false},
-		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, false, false, false, false},
-		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, false, false},
-		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, false, false},
-		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, false, false, false, false},
-		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, false, false},
-		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, false, false},
-		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, false, false},
-		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false, false},
-		{"Break Blue Button Patient call", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, false, false},
-		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, false, true, false},
-		{"Break Blue button client init", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, false, false, true},
+		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, true, false, false},
+		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, true, false, false},
+		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, true},
+		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, true},
+		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, true, false, false},
+		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, true},
+		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, true},
+		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
+		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
+		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
 	}
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
 
 			mockSvc := service.MockService{}
-			if test.mockQueueFilled {
-				mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: int(15), ACOID: uuid.New()}}, nil)
-				mockSvc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1), nil)
-
-			} else {
-				mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
-
-			}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
-
 			h.Svc = &mockSvc
+
+			enqueuer := mockEnq.NewMockEnqueuer(s.T())
+			h.Enq = enqueuer
+			if test.mockQueue {
+				if test.mockAddJob {
+					enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
+				} else {
+					enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+				}
+			}
 
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
@@ -614,13 +609,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 				Version:       apiVersionTwo,
 			}))
 
-			if test.breakBB {
-				h.bbBasePath = "\n"
-			}
-			if test.breakBBInit {
-				t.Setenv("BB_CLIENT_CA_FILE", "ex,124234,1234")
-				t.Setenv("BB_CHECK_CERT", "true")
-			}
 			temp_db := &h.db
 			if test.closeDB {
 				h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
@@ -628,9 +616,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}
 
 			h.bulkRequest(w, r, service.DefaultRequest)
-			if test.breakBB {
-				h.bbBasePath = v2BasePath
-			}
 			if h.db == nil {
 				h.db = *temp_db
 			}
@@ -960,6 +945,94 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 		assert.Equal(s.T(), rt, test.expectedResources)
 	}
 
+}
+
+func TestBulkRequest_Integration(t *testing.T) {
+	acoA := &service.ACOConfig{
+		Model:              "Model A",
+		Pattern:            "A\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated"},
+	}
+
+	dataTypeMap := map[string]service.DataType{
+		"Coverage":             {Adjudicated: true},
+		"Patient":              {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PartiallyAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
+	}
+
+	os.Setenv("QUEUE_LIBRARY", "river")
+
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
+
+	client.SetLogger(log.API) // Set logger so we don't get errors later
+
+	jsonBytes, _ := json.Marshal("{}")
+
+	tests := []struct {
+		name         string
+		cmsId        string
+		resources    []string
+		expectedCode int
+		acoConfig    *service.ACOConfig
+	}{
+		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Patient"}, http.StatusAccepted, acoA},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
+			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
+				ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+				CMSID: test.cmsId,
+			}))
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
+			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
+				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+				ResourceTypes: test.resources,
+				Version:       apiVersionTwo,
+			}))
+
+			h.bulkRequest(w, r, service.DefaultRequest)
+
+		})
+	}
+
+	cfg, err := database.LoadConfig()
+	if err != nil {
+		t.Log()
+	}
+	d, err := database.CreatePgxv5DB(cfg)
+	if err != nil {
+		t.Log()
+	}
+	driver := riverpgxv5.New(d)
+	ctx := context.Background()
+
+	e := driver.GetExecutor()
+	t.Log(e)
+
+	// TODO: rollback or remove jobs from queue after test is done
+
+	//tx, err := d.Begin(context.Background())
+	if err != nil {
+		// handle error
+	}
+	//defer tx.Rollback(ctx)
+
+	// bulk request
+	os.Unsetenv("QUEUE_LIBRARY")
+	job := rivertest.RequireInserted(ctx, t, driver, queueing.PrepareJobArgs{}, nil)
+	// builder := sqlFlavor.NewDeleteBuilder().DeleteFrom("river_jobs")
+	// query, args := builder.Build()
+	// _, err := db.Exec(query, args...)
+	fmt.Printf("Test passed with message: %d\n", job.Args.Job.ID)
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {

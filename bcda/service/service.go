@@ -72,7 +72,7 @@ type Service interface {
 
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 
-	GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error)
+	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 }
@@ -345,6 +345,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	// Retrieve beneficiaries from either:
 	// - The newest CCLF file in the last X days (where X is the environment's configured cutoff duration)
 	// - OR the newest CCLF file prior to the requested attributionDate
+	// TODO: service has a method called GetLatestCCLFFile; update
 	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
 		cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
@@ -647,7 +648,7 @@ func IsSupportedACO(cmsID string) bool {
 	return regexp.MustCompile(pattern).MatchString(cmsID)
 }
 
-func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, time.Time{}, fileType)
 	if err != nil {
 		return nil, err

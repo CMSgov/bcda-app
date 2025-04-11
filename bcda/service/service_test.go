@@ -1205,7 +1205,7 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFile_Integration() {
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
-	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), uint(1), cclfFile.ID)
 }
@@ -1216,7 +1216,7 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound_Integration() {
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
-	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.Nil(s.T(), cclfFile)
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), 8, err.(CCLFNotFoundError).FileNumber)
