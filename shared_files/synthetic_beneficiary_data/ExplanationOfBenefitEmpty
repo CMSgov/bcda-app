@@ -9,7 +9,7 @@
   "link": [
     {
       "relation": "self",
-      "url": "https://prod-sbx.bfd.cms.gov/v1/fhir/ExplanationOfBenefit/?_format=application%2Ffhir%2Bjson&excludeSAMHSA=true&patient=-19990000000169&service-date=gt2021-01-01"
+      "url": "https://prod-sandbox.bfd.cms.gov/v1/fhir/ExplanationOfBenefit/?_format=application%2Ffhir%2Bjson&excludeSAMHSA=true&patient=-19990000000169&service-date=gt2021-01-01"
     }
   ]
 }

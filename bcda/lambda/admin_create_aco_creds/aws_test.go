@@ -63,7 +63,7 @@ func TestAdjustedEnv(t *testing.T) {
 	resultEnv = adjustedEnv()
 	assert.Equal(t, resultEnv, "test")
 
-	conf.SetEnv(t, "ENV", "sbx")
+	conf.SetEnv(t, "ENV", "sandbox")
 	resultEnv = adjustedEnv()
 	assert.Equal(t, resultEnv, "opensbx")
 
