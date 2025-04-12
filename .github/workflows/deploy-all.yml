@@ -61,7 +61,7 @@ env:
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-  ENV_MODIFIER: ${{ (inputs.env == 'opensbx' && 'sbx') || inputs.env || 'dev' }}
+  ENV_MODIFIER: ${{ (inputs.env == 'opensbx' && 'sandbox') || inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
@@ -73,7 +73,7 @@ jobs:
     secrets: inherit
 
   deploy:
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    environment: ${{ inputs.env == 'opensbx' && 'sandbox' || (inputs.env != '0' && inputs.env || 'dev') }}
     runs-on: self-hosted
     steps:
       - name: Confirm Env
@@ -228,7 +228,7 @@ jobs:
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
-  
+
   slack_alerts:
     if: ${{ always() }}
     runs-on: self-hosted

@@ -29,7 +29,7 @@ on:
           - prod
 
 env:
-  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
+  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sandbox' || inputs.env }}
 
 permissions:
   id-token: write

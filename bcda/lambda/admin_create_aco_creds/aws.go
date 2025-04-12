@@ -168,7 +168,7 @@ func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) 
 func adjustedEnv() string {
 	env := conf.GetEnv("ENV")
 	if env == "sbx" {
-		env = "opensbx"
+		env = "sandbox"
 	}
 	return env
 }
