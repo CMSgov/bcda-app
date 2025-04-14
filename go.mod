@@ -48,6 +48,7 @@ require (
 	github.com/ccoveille/go-safecast v1.1.0
 	github.com/pashagolub/pgxmock/v4 v4.5.0
 	github.com/riverqueue/river v0.20.2
+	github.com/riverqueue/river/rivertype v0.20.2
 	github.com/robfig/cron/v3 v3.0.1
 )
 
@@ -58,7 +59,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/riverqueue/river/riverdriver v0.20.2 // indirect
 	github.com/riverqueue/river/rivershared v0.20.2 // indirect
-	github.com/riverqueue/river/rivertype v0.20.2 // indirect
 	github.com/samber/lo v1.44.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
