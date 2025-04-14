@@ -21,8 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
-	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -149,7 +147,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
-			enqueuer := mockEnq.NewMockEnqueuer(s.T())
+			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
 			if tt.errToReturn.Error() == "error" {
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
@@ -599,7 +597,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
 			h.Svc = &mockSvc
 
-			enqueuer := mockEnq.NewMockEnqueuer(s.T())
+			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
 			if test.mockQueue {
 				if test.mockAddJob {

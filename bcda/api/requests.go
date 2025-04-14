@@ -459,7 +459,8 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 	return status, nil
 }
 
-// bulkRequest generates a job ID for a bulk export request
+// bulkRequest generates a job ID for a bulk export request. It will not queue a job
+// until auth, attirbution, and request resources are validated.
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx, cancel := context.WithCancel(r.Context())
@@ -510,10 +511,10 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	_, err = h.Svc.GetLatestCCLFFile(ctx, ad.CMSID, time.Time{}, time.Time{}, models.CCLFFileType(reqType))
 	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year."))
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, "Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.")
 		return
 	} else if err != nil {
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, fmt.Sprintf("No up-to-date attribution information is available for Group"))
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "No up-to-date attribution information is available for Group")
 		return
 	}
 
