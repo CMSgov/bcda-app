@@ -116,41 +116,51 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "true")
 	assert.Empty(s.T(), err)
 
-	qj := []*models.JobEnqueueArgs{}
 	tests := []struct {
 		name string
 
-		errToReturn error
-		respCode    int
-		apiVersion  string
+		errToReturn   error
+		respCode      int
+		apiVersion    string
+		noAttribution bool
 	}{
-		{"Successful", nil, http.StatusAccepted, apiVersionOne},
-		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
-		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne},
-		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo},
-		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
-		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne, false},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, false},
+		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, true},
+		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, true},
+		{constants.DefaultError, errors.New("error"), http.StatusInternalServerError, apiVersionOne, false},
+		{constants.DefaultError + " v2", errors.New("error"), http.StatusInternalServerError, apiVersionTwo, false},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mockSvc := &service.MockService{}
-			var jobs []*models.JobEnqueueArgs
-			if tt.errToReturn == nil {
-				jobs = qj
-			}
 
 			resourceMap := s.resourceType
 
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
+			if tt.noAttribution {
+				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, CCLFNotFoundOperationOutcomeError{})
+			} else {
+				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
+			}
+
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
+			enqueuer := mockEnq.NewMockEnqueuer(s.T())
+			h.Enq = enqueuer
+			if tt.errToReturn.Error() == "error" {
+				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
+			} else {
+				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+			}
+
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			w := httptest.NewRecorder()
 			h.BulkGroupRequest(w, req)
 
@@ -426,7 +436,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 				switch name {
 				case "":
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
 						nil,
 						service.CCLFNotFoundError{
 							FileNumber: 8,
@@ -436,17 +446,17 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 					)
 
 				case "InduceError_Default": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, models.FileTypeDefault).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
 						nil,
 						errors.New("Database connection closed."),
 					)
 				case "InduceError_Runout": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, models.FileTypeRunout).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
 						nil,
 						errors.New("Database connection closed."),
 					)
 				default:
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
 						&models.CCLFFile{
 							ID:        1,
 							Name:      tt.fileNames[i],
@@ -586,6 +596,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 
 			mockSvc := service.MockService{}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
 			h.Svc = &mockSvc
 
 			enqueuer := mockEnq.NewMockEnqueuer(s.T())
@@ -608,6 +619,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
@@ -642,8 +654,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 
 	mockSvc := service.MockService{}
-
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
@@ -669,6 +680,7 @@ func (s *RequestsTestSuite) TestRequests() {
 				}
 				rr := httptest.NewRecorder()
 				req := s.genGroupRequest(groupID, rp)
+				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				h.BulkGroupRequest(rr, req)
 				assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 			}
@@ -684,7 +696,9 @@ func (s *RequestsTestSuite) TestRequests() {
 				Since:         since,
 			}
 			rr := httptest.NewRecorder()
-			h.BulkPatientRequest(rr, s.genPatientRequest(rp))
+			req := s.genPatientRequest(rp)
+			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+			h.BulkPatientRequest(rr, req)
 			assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 		}
 	}
@@ -972,9 +986,9 @@ func TestBulkRequest_Integration(t *testing.T) {
 
 	os.Setenv("QUEUE_LIBRARY", "river")
 
-	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
-
 	client.SetLogger(log.API) // Set logger so we don't get errors later
+
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
 
 	jsonBytes, _ := json.Marshal("{}")
 
@@ -985,7 +999,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 		expectedCode int
 		acoConfig    *service.ACOConfig
 	}{
-		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Patient"}, http.StatusAccepted, acoA},
+		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A9994", []string{"Patient"}, http.StatusAccepted, acoA},
 	}
 
 	for _, test := range tests {
@@ -998,6 +1012,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 			}))
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
@@ -1026,9 +1041,9 @@ func TestBulkRequest_Integration(t *testing.T) {
 	// TODO: rollback or remove jobs from queue after test is done
 
 	//tx, err := d.Begin(context.Background())
-	if err != nil {
-		// handle error
-	}
+	// if err != nil {
+	// 	// handle error
+	// }
 	//defer tx.Rollback(ctx)
 
 	// bulk request

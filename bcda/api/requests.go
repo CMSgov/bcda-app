@@ -508,6 +508,15 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		Status:     models.JobStatusPending,
 	}
 
+	_, err = h.Svc.GetLatestCCLFFile(ctx, ad.CMSID, time.Time{}, time.Time{}, models.CCLFFileType(reqType))
+	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year."))
+		return
+	} else if err != nil {
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, fmt.Sprintf("No up-to-date attribution information is available for Group"))
+		return
+	}
+
 	// Need to create job in transaction instead of the very end of the process because we need
 	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
 	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob

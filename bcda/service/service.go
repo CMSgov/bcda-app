@@ -662,6 +662,41 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBoun
 	return cclfFile, nil
 }
 
+func (s *service) GetLatestCCLFFilet(ctx context.Context, rc RequestConditions, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+
+	var cutoffTime time.Time
+
+	// // default request
+	// if rc.attributionDate.IsZero() {
+	// 	if rc.fileType == models.FileTypeDefault && s.stdCutoffDuration > 0 {
+	// 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
+	// 	} else if rc.fileType == models.FileTypeRunout && s.rp.cutoffDuration > 0 {
+	// 		cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
+	// 	}
+	// }
+
+	// // new bene request
+	// if s.stdCutoffDuration > 0 && rc.attributionDate.IsZero() {
+	// 	cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
+	// }
+
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, rc.CMSID, cclf8FileNum, constants.ImportComplete, lowerBound, upperBound, rc.fileType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
+			rc.CMSID, rc.fileType, err.Error())
+	}
+	performanceYear := time.Now().Year() % 100
+	if rc.fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+
+	if cclfFile == nil || performanceYear != cclfFile.PerformanceYear {
+		return nil, CCLFNotFoundError{8, rc.CMSID, rc.fileType, cutoffTime}
+	}
+
+	return cclfFile, nil
+}
+
 type CCLFNotFoundError struct {
 	FileNumber int
 	CMSID      string

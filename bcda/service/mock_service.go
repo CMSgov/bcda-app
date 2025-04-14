@@ -156,11 +156,11 @@ func (_m *MockService) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ..
 
 // GetLatestCCLFFile provides a mock function with given fields: ctx, cmsID, fileType
 func (_m *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-	ret := _m.Called(ctx, cmsID, fileType)
+	ret := _m.Called(ctx, cmsID, lowerBound, upperBound, fileType)
 
 	var r0 *models.CCLFFile
-	if rf, ok := ret.Get(0).(func(context.Context, string, models.CCLFFileType) *models.CCLFFile); ok {
-		r0 = rf(ctx, cmsID, fileType)
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time, models.CCLFFileType) *models.CCLFFile); ok {
+		r0 = rf(ctx, cmsID, lowerBound, upperBound, fileType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.CCLFFile)
@@ -168,8 +168,8 @@ func (_m *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, lowe
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, models.CCLFFileType) error); ok {
-		r1 = rf(ctx, cmsID, fileType)
+	if rf, ok := ret.Get(1).(func(context.Context, string, time.Time, time.Time, models.CCLFFileType) error); ok {
+		r1 = rf(ctx, cmsID, lowerBound, upperBound, fileType)
 	} else {
 		r1 = ret.Error(1)
 	}

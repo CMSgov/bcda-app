@@ -25,6 +25,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 	"github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
@@ -542,7 +543,7 @@ func (s *APITestSuite) TestResourceTypes() {
 	h := api.NewHandler(resources, "/v2/fhir", "v2")
 	mockSvc := &service.MockService{}
 
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
@@ -572,7 +573,7 @@ func (s *APITestSuite) TestResourceTypes() {
 				rctx := chi.NewRouteContext()
 				rctx.URLParams.Add("groupId", "all")
 				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-
+				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				ad := s.getAuthData()
 				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 				req = req.WithContext(middleware.SetRequestParamsCtx(req.Context(), rp))
