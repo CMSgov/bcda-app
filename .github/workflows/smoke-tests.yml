@@ -23,7 +23,7 @@ on:
         options:
           - 'dev'
           - 'test'
-          - 'opensbx'
+          - 'sandbox'
           - 'prod'
         default: 'dev'
       test_aco:
@@ -135,7 +135,7 @@ jobs:
           docker system prune -af
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure      
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Install Ansible
@@ -209,4 +209,3 @@ jobs:
                 text: "FAILURE: Smoketests in ${{ inputs.env }} for ${{ inputs.release_version }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
-  
