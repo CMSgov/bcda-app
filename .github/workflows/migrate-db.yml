@@ -29,7 +29,7 @@ on:
           - prod
 
 env:
-  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sandbox' || inputs.env }}
+  ENV_MODIFIER: ${{ inputs.env }}
 
 permissions:
   id-token: write
@@ -65,8 +65,8 @@ jobs:
         if: ${{ inputs.env == 'test' }}
         run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_ENV"
       - name: Set DB name
-        if: ${{ inputs.env == 'opensbx' }}
-        run: echo "DB_NAME=bcda-opensbx-rds-20190311" >> "$GITHUB_ENV"
+        if: ${{ inputs.env == 'sandbox' }}
+        run: echo "DB_NAME=bcda-sandbox-rds-20190311" >> "$GITHUB_ENV"
       - name: Set DB name
         if: ${{ inputs.env == 'prod' }}
         run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_ENV"
