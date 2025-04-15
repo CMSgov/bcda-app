@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
@@ -50,28 +49,6 @@ func TestPutObject(t *testing.T) {
 	result, err := putObject(mock, "test-filename", "test-creds", "kms-id")
 	assert.Nil(t, err)
 	assert.Equal(t, result, "{\n\n}")
-}
-
-func TestAdjustedEnv(t *testing.T) {
-	origEnv := conf.GetEnv("ENV")
-
-	conf.SetEnv(t, "ENV", "dev")
-	resultEnv := adjustedEnv()
-	assert.Equal(t, resultEnv, "dev")
-
-	conf.SetEnv(t, "ENV", "test")
-	resultEnv = adjustedEnv()
-	assert.Equal(t, resultEnv, "test")
-
-	conf.SetEnv(t, "ENV", "sandbox")
-	resultEnv = adjustedEnv()
-	assert.Equal(t, resultEnv, "opensbx")
-
-	conf.SetEnv(t, "ENV", "prod")
-	resultEnv = adjustedEnv()
-	assert.Equal(t, resultEnv, "prod")
-
-	conf.SetEnv(t, "ENV", origEnv)
 }
 
 func TestSetupEnvironment(t *testing.T) {

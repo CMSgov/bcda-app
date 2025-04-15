@@ -19,14 +19,14 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
       confirm_env:
         description: 'Confirm the environment you want to deploy to'
@@ -36,7 +36,7 @@ on:
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
       test_aco:
         description: Run the smoke tests using the selected ACO

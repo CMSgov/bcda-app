@@ -23,7 +23,7 @@ var kmsAliasName = "alias/bcda-aco-creds-kms"
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
 func getAWSParams(session *session.Session) (awsParams, error) {
-	env := adjustedEnv()
+	env := conf.GetEnv("ENV")
 
 	if env == "local" {
 		return awsParams{}, nil
@@ -138,7 +138,7 @@ func getKMSID(service kmsiface.KMSAPI) (string, error) {
 }
 
 func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) (string, error) {
-	bucketSuffix := adjustedEnv()
+	bucketSuffix := conf.GetEnv("ENV")
 
 	s3Input := &s3.PutObjectInput{
 		Body:                 aws.ReadSeekCloser(strings.NewReader(creds)),
@@ -163,12 +163,4 @@ func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) 
 	}
 
 	return result.String(), nil
-}
-
-func adjustedEnv() string {
-	env := conf.GetEnv("ENV")
-	if env == "sbx" {
-		env = "sandbox"
-	}
-	return env
 }

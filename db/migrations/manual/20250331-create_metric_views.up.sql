@@ -140,14 +140,14 @@ select distinct on (acos.cms_id) acos.cms_id from active_acos acos
 join groups g on g.x_data::json#>>'{"cms_ids",0}' = acos.cms_id
 join systems s on s.g_id = g.id
 join secrets sec on sec.system_id = s.id
-where sec.created_at > DATE(NOW() - interval '1 year') or 
-    sec.updated_at > DATE(NOW() - interval '1 year') or 
+where sec.created_at > DATE(NOW() - interval '1 year') or
+    sec.updated_at > DATE(NOW() - interval '1 year') or
     sec.deleted_at > DATE(NOW() - interval '1 year');
 
 -- Get total unique, active ACOs that are making v2 requests
 -- NO PHI/PII allowed!
 CREATE OR REPLACE VIEW unique_entities_making_v2_requests AS
-select distinct acos.cms_id, jobs.request_url from jobs 
+select distinct acos.cms_id, jobs.request_url from jobs
 join acos on acos.uuid = jobs.aco_id
 inner join active_acos on acos.cms_id = active_acos.cms_id
 where jobs.request_url like '%/v2/%';
@@ -155,7 +155,7 @@ where jobs.request_url like '%/v2/%';
 -- Total number of requests made using the since parameter
 -- NO PHI/PII allowed!
 CREATE OR REPLACE VIEW requests_using_since_param AS
-select acos.cms_id, jobs.request_url from jobs 
+select acos.cms_id, jobs.request_url from jobs
 join acos on acos.uuid = jobs.aco_id
 where jobs.request_url like '%_since%'
 and jobs.created_at > DATE(NOW() - interval '1 year');
@@ -163,7 +163,7 @@ and jobs.created_at > DATE(NOW() - interval '1 year');
 -- Total number of requests made for prior year runout
 -- NO PHI/PII allowed!
 CREATE OR REPLACE VIEW requests_for_runout_data AS
-select acos.cms_id, jobs.request_url from jobs 
+select acos.cms_id, jobs.request_url from jobs
 join acos on acos.uuid = jobs.aco_id
 where jobs.request_url like '%/runout/%'
 and jobs.created_at > DATE(NOW() - interval '1 year');
@@ -186,8 +186,8 @@ select sub.job_id, SUM(sub.max_benes) as max_benes from (
 group by sub.job_id
 order by sub.job_id;
 
--- Get OPENSBX requests by entity
--- This should be run in OPENSBX only!
+-- Get SANDBOX requests by entity
+-- This should be run in SANDBOX only!
 CREATE OR REPLACE VIEW requests_per_entity AS
 select  acos.name, jobs.request_url, jobs.created_at FROM jobs
 join acos on acos.uuid = jobs.aco_id
