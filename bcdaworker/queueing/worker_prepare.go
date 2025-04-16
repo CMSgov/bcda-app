@@ -128,7 +128,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 	jobData := models.JobEnqueueArgs{
 		ID:              id,
 		ACOID:           args.Job.ACOID.String(),
-		Since:           "",
+		Since:           args.Since.String(),
 		TransactionTime: time.Now(),
 		CMSID:           args.CMSID,
 	}
@@ -139,8 +139,9 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 	}
 
 	conditions := service.RequestConditions{
-		ReqType:   args.RequestType,
-		Resources: args.ResourceTypes,
+		ReqType:    args.RequestType,
+		Resources:  args.ResourceTypes,
+		BBBasePath: args.BFDPath,
 
 		CMSID: args.CMSID,
 		ACOID: args.Job.ACOID,

@@ -30,16 +30,20 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type PrepareWorkerUnitTestSuite struct {
+type PrepareWorkerIntegrationTestSuite struct {
 	suite.Suite
-	r models.Repository
+	r     models.Repository
+	s     service.Service
+	mockR models.MockRepository
+	mockS service.MockService
+	ctx   context.Context
 }
 
 func TestCleanupTestSuite(t *testing.T) {
-	suite.Run(t, new(PrepareWorkerUnitTestSuite))
+	suite.Run(t, new(PrepareWorkerIntegrationTestSuite))
 }
 
-func (s *PrepareWorkerUnitTestSuite) SetupTest() {
+func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	tf, err := testfixtures.New(
 		testfixtures.Database(db),
@@ -53,15 +57,16 @@ func (s *PrepareWorkerUnitTestSuite) SetupTest() {
 		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 	}
 	s.r = postgres.NewRepository(db)
-}
 
-func (s *PrepareWorkerUnitTestSuite) TestPrepareExportJobsDatabase_Integration() {
 	var lggr logrus.Logger
 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{})
-	ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
+	s.ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
 
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integration() {
 	tests := []struct {
 		name            string
 		expectedErr     bool
@@ -109,7 +114,7 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareExportJobsDatabase_Integration()
 				c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
 			}
 
-			exports, _, err := worker.prepareExportJobs(ctx, jobArgs)
+			exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
 			if tt.expectedErr {
 				assert.NotNil(s.T(), err)
 			} else {
@@ -121,36 +126,23 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareExportJobsDatabase_Integration()
 	}
 }
 
-func (s *PrepareWorkerUnitTestSuite) TestPrepareExportJobs_Integration() {
-	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	tf, err := testfixtures.New(
-		testfixtures.Database(db),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("testdata/"),
-	)
-	if err != nil {
-		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-	}
-	if err := tf.Load(); err != nil {
-		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-	}
+func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() {
 	cfg, err := service.LoadConfig()
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
 	}
-	r := postgres.NewRepository(db)
-	svc := service.NewService(r, cfg, "/v1/fhir")
+	svc := service.NewService(s.r, cfg, "/v1/fhir")
 
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
 
-	aco, err := r.GetACOByCMSID(context.Background(), "A0003")
+	aco, err := s.r.GetACOByCMSID(context.Background(), "A0003")
 	if err != nil {
 		s.T().Log("failed to get job")
 		s.T().FailNow()
 	}
 	j := models.Job{Status: models.JobStatusPending, ACOID: aco.UUID, RequestURL: "/foo/bar"}
-	id, _ := r.CreateJob(context.Background(), j)
+	id, _ := s.r.CreateJob(context.Background(), j)
 	j.ID = id
 	jobArgs := PrepareJobArgs{
 		Job:           j,
@@ -160,18 +152,12 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareExportJobs_Integration() {
 		ResourceTypes: []string{"Coverage"},
 	}
 
-	var lggr logrus.Logger
-	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
-	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
-	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{})
-	ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
-
-	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: r}
-	exports, _, err := worker.prepareExportJobs(ctx, jobArgs)
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
 
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), exports)
-	result, err := r.GetJobByID(ctx, id)
+	result, err := s.r.GetJobByID(s.ctx, id)
 	if err != nil {
 		s.T().Log("failed to get job")
 		s.T().FailNow()
@@ -179,9 +165,17 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareExportJobs_Integration() {
 	assert.Equal(s.T(), result.Status, models.JobStatusPending)
 	assert.Equal(s.T(), result.JobCount, len(exports))
 
+	assert.NotEmpty(s.T(), exports[0].ACOID)
+	assert.NotEmpty(s.T(), exports[0].ID)
+	assert.NotEmpty(s.T(), exports[0].BBBasePath)
+	assert.NotEmpty(s.T(), exports[0].BeneficiaryIDs)
+	assert.NotEmpty(s.T(), exports[0].CMSID)
+	assert.NotNil(s.T(), exports[0].ClaimsWindow)
+	assert.NotNil(s.T(), result)
+
 }
 
-func (s *PrepareWorkerUnitTestSuite) TestPrepareWorkerWork() {
+func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	conf.SetEnv(s.T(), "QUEUE_LIBRARY", "river")
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
@@ -198,12 +192,6 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareWorkerWork() {
 	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 1}}, nil)
 	svc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
-	var lggr logrus.Logger
-	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
-	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
-	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{})
-	ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
-
 	j := &river.Job[PrepareJobArgs]{
 		Args: PrepareJobArgs{
 			Job:           models.Job{},
@@ -215,7 +203,6 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareWorkerWork() {
 	}
 
 	driver := riverpgxv5.New(database.Pgxv5Pool)
-
 	worker := &PrepareJobWorker{
 		svc:      svc,
 		v1Client: c,
@@ -224,67 +211,79 @@ func (s *PrepareWorkerUnitTestSuite) TestPrepareWorkerWork() {
 	}
 	w := rivertest.NewWorker(s.T(), driver, &river.Config{}, worker)
 	d := database.Pgxv5Pool
-	tx, err := d.Begin(ctx)
+	tx, err := d.Begin(s.ctx)
 	if err != nil {
 		s.T().Log(err)
 	}
 
-	result, err := w.Work(ctx, s.T(), tx, j.Args, &river.InsertOpts{})
-	//assert.NotNil(s.T(), mockCall)
+	result, err := w.Work(s.ctx, s.T(), tx, j.Args, &river.InsertOpts{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), river.EventKindJobCompleted, result.EventKind)
 	assert.Equal(s.T(), rivertype.JobStateCompleted, result.Job.State)
-	// assert
 
 }
 
-func (s *PrepareWorkerUnitTestSuite) TestWorkerWork_Integration() {
-	/*
-		- setup a new handler
-		- call bulk requests
-		- verify job gets put on queue
-		- run through work
-		- verify job gets put on other queue
-		- verify job gets processed
-	*/
+func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() {
 
-	//h := NewHandler()
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		log.API.Fatalf("Failed to load service config. Err: %v", err)
+	}
 
-	//tx := pgxv5Pool.Tx{}
+	svc := service.NewService(s.r, cfg, "/v1/fhir")
 
-	// tests the execution of an existing job:
-	//job := client.InsertTx(ctx, tx, args, nil)
-	// ...
-	//result, err := testWorker.WorkJob(ctx, t, tx, job.JobRow)
+	c := new(client.MockBlueButtonClient)
+	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+
+	aco, err := s.r.GetACOByCMSID(context.Background(), "A0003")
+	if err != nil {
+		s.T().Log("failed to get job")
+		s.T().FailNow()
+	}
+	j := models.Job{Status: models.JobStatusPending, ACOID: aco.UUID, RequestURL: "/foo/bar"}
+	id, _ := s.r.CreateJob(context.Background(), j)
+	j.ID = id
+
+	jobArgs := &river.Job[PrepareJobArgs]{
+		Args: PrepareJobArgs{
+			Job:           j,
+			CMSID:         "A0003",
+			BFDPath:       "/v1/fhir",
+			RequestType:   service.RequestType(1),
+			ResourceTypes: []string{"Coverage"},
+		},
+	}
+
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	driver := riverpgxv5.New(database.Pgxv5Pool)
+	w := rivertest.NewWorker(s.T(), driver, &river.Config{}, worker)
+	d := database.Pgxv5Pool
+	tx, err := d.Begin(s.ctx)
+	if err != nil {
+		s.T().Log(err)
+	}
+	result, err := w.Work(s.ctx, s.T(), tx, jobArgs.Args, &river.InsertOpts{})
+
+	assert.Nil(s.T(), err)
+	dbresult, err := s.r.GetJobByID(s.ctx, id)
+	if err != nil {
+		s.T().Log("failed to get job")
+		s.T().FailNow()
+	}
+	assert.Equal(s.T(), dbresult.Status, models.JobStatusPending)
+	assert.NotEqual(s.T(), dbresult.JobCount, 0)
+	assert.Equal(s.T(), result.EventKind, river.EventKindJobCompleted)
+	assert.Equal(s.T(), rivertype.JobStateCompleted, result.Job.State)
+
 }
 
-func (s *PrepareWorkerUnitTestSuite) TestPrepareWorker() {
-
-}
-func (s *PrepareWorkerUnitTestSuite) TestGetPatient() {
+func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
 
 }
 
-func (s *PrepareWorkerUnitTestSuite) TestQueueExportJobs() {
+func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
+
 }
 
-// func getCCLFBeneficiary() *models.CCLFBeneficiary {
-// 	return &models.CCLFBeneficiary{
-// 		ID: func() uint {
-// 			id, err := safecast.ToUint(testUtils.CryptoRandInt63())
-// 			if err != nil {
-// 				panic(err)
-// 			}
-// 			return id
-// 		}(),
-// 		FileID: func() uint {
-// 			id, err := safecast.ToUint(testUtils.CryptoRandInt31())
-// 			if err != nil {
-// 				panic(err)
-// 			}
-// 			return id
-// 		}(),
-// 		MBI:          fmt.Sprintf("MBI%d", testUtils.CryptoRandInt31()),
-// 		BlueButtonID: fmt.Sprintf("BlueButton%d", testUtils.CryptoRandInt31()),
-// 	}
-// }
+func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
+}
