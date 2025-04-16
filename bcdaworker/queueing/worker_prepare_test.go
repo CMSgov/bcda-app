@@ -32,11 +32,9 @@ import (
 
 type PrepareWorkerIntegrationTestSuite struct {
 	suite.Suite
-	r     models.Repository
-	s     service.Service
-	mockR models.MockRepository
-	mockS service.MockService
-	ctx   context.Context
+	r models.Repository
+
+	ctx context.Context
 }
 
 func TestCleanupTestSuite(t *testing.T) {
