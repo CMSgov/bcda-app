@@ -126,8 +126,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, false},
 		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, true},
 		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, true},
-		{constants.DefaultError, errors.New("error"), http.StatusInternalServerError, apiVersionOne, false},
-		{constants.DefaultError + " v2", errors.New("error"), http.StatusInternalServerError, apiVersionTwo, false},
+		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, false},
+		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, false},
 	}
 
 	for _, tt := range tests {
@@ -149,10 +149,14 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
-			if tt.errToReturn.Error() == "error" {
-				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
-			} else {
+
+			switch tt.errToReturn {
+			case nil:
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+			case QueueError{}:
+				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
+			case CCLFNotFoundOperationOutcomeError{}:
+
 			}
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
@@ -1148,4 +1152,10 @@ type CCLFNotFoundOperationOutcomeError struct {
 
 func (e CCLFNotFoundOperationOutcomeError) Error() string {
 	return "No up-to-date attribution information is available for Group"
+}
+
+type QueueError struct{}
+
+func (e QueueError) Error() string {
+	return "error"
 }

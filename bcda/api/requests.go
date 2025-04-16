@@ -518,9 +518,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		return
 	}
 
-	// Need to create job in transaction instead of the very end of the process because we need
-	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
-	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
@@ -540,16 +537,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 			return
 		}
 
-		// We create the job after populating all of the data needed for the job (including inserting all of the queue jobs) to
-		// ensure that the job will be able to be processed and it WILL NOT BE stuck in the Pending state.
-		// For example, we write that the job has 10 queuejobs. We fail after inserting 9 queuejobs. The job will
-		// never move out of the IN_PROGRESS (or PENDING) state since we'll never be able to add the last queuejob.
-		//
-		// Since the queue jobs may (and do) exist in a different database, we cannot use a single transaction to encompass
-		// both adding queuejobs and adding the parent job.
-		//
-		// This does introduce an error scenario where we have queuejobs but no parent job.
-		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
 			logger.Error(err.Error())
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")

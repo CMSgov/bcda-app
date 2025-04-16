@@ -7,7 +7,8 @@ package queueing
 
 import (
 	"context"
-	goerrors "errors"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -21,7 +22,6 @@ import (
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
 	pgxv5 "github.com/jackc/pgx/v5"
-	"github.com/pborman/uuid"
 	"github.com/riverqueue/river"
 )
 
@@ -48,6 +48,7 @@ type PrepareJobWorker struct {
 	svc      service.Service
 	v1Client client.APIClient
 	v2Client client.APIClient
+	r        models.Repository
 }
 
 func NewPrepareJobWorker() (*PrepareJobWorker, error) {
@@ -69,7 +70,7 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 		return &PrepareJobWorker{}, err
 	}
 
-	return &PrepareJobWorker{svc: svc, v1Client: v1, v2Client: v2}, nil
+	return &PrepareJobWorker{svc: svc, v1Client: v1, v2Client: v2, r: repository}, nil
 
 }
 
@@ -79,12 +80,11 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[PrepareJobA
 	defer cancel()
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	_, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
-	ctx = context.WithValue(ctx, m.CtxTransactionKey, uuid.New())
+	ctx = context.WithValue(ctx, m.CtxTransactionKey, rjob.Args.TransactionID)
+	logger := log.GetCtxLogger(ctx)
 
 	exports, since, err := w.prepareExportJobs(ctx, rjob.Args)
 	if err != nil {
-		// TODO update job in jobs table as failed
 		logger.Errorf("failed to add jobs to the main queue: %s", err)
 		return err
 	}
@@ -105,8 +105,19 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[PrepareJobA
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
 func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJobArgs) ([]*models.JobEnqueueArgs, time.Time, error) {
 
+	var err error
 	exports := []*models.JobEnqueueArgs{}
 	logger := log.GetCtxLogger(ctx)
+
+	defer func() {
+		if err != nil {
+			args.Job.Status = models.JobStatusFailed
+		}
+		dberr := p.r.UpdateJob(ctx, args.Job)
+		if dberr != nil {
+			err = fmt.Errorf("%w: %w", err, dberr)
+		}
+	}()
 
 	id, err := safecast.ToInt(args.Job.ID) // NOSONAR
 	if err != nil {                        // NOSONAR
@@ -143,7 +154,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 	exports, err = p.svc.GetQueJobs(ctx, conditions)
 	if err != nil {
 		logger.Error(err)
-		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok {
 			return exports, args.Since, err
 		} else {
 			return exports, args.Since, err
@@ -151,37 +162,20 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 	}
 	args.Job.JobCount = len(exports)
 
-	// TODO: update the jobs table
-
-	// We've now computed all the fields necessary to populate a fully defined job
-	// if err = rtx.UpdateJob(ctx, newJob); err != nil {
-	// 	logger.Error(err.Error())
-	// 	return
-	// }
-	// tx, err := .db.BeginTx(ctx, nil)
-	// if err != nil {
-	// 	err = fmt.Errorf("failed to start transaction: %w", err)
-	// 	logger.Error(err)
-	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-	// 	return
-	// }
-	// rtx := postgres.NewRepositoryTx(tx)
-
 	return exports, args.Since, err
 }
 
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
 func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData models.JobEnqueueArgs) (time.Time, error) {
-	var err error
 	switch basepath {
-	case "v1":
+	case "/v1/fhir":
 		b, err := p.v1Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
-	case "v2":
+	case "/v2/fhir":
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
 	default:
-		return time.Time{}, err
+		return time.Time{}, errors.New("no BFD base path")
 	}
 }
 
