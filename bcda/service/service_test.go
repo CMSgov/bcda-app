@@ -758,11 +758,12 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			conditions := RequestConditions{
-				CMSID:     tt.acoID,
-				ACOID:     uuid.NewUUID(),
-				Resources: tt.resourceTypes,
-				Since:     tt.expSince,
-				ReqType:   tt.reqType,
+				CMSID:      tt.acoID,
+				ACOID:      uuid.NewUUID(),
+				Resources:  tt.resourceTypes,
+				Since:      tt.expSince,
+				ReqType:    tt.reqType,
+				BBBasePath: basePath,
 			}
 
 			repository := &models.MockRepository{}
@@ -996,6 +997,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 				ReqType:         tt.reqType,
 				CreationTime:    timeA,
 				TransactionTime: timeB,
+				BBBasePath:      basePath,
 			}
 
 			repository := &models.MockRepository{}

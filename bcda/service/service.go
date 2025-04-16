@@ -22,8 +22,9 @@ import (
 )
 
 type RequestConditions struct {
-	ReqType   RequestType
-	Resources []string
+	ReqType    RequestType
+	Resources  []string
+	BBBasePath string
 
 	CMSID string
 	ACOID uuid.UUID
@@ -306,7 +307,7 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 									Since:           sinceArg,
 									TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
 									TransactionTime: transactionTime,
-									BBBasePath:      s.bbBasePath,
+									BBBasePath:      conditions.BBBasePath,
 									DataType:        dataType,
 								}
 
