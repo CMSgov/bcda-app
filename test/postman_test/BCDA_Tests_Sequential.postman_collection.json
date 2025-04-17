@@ -2456,7 +2456,7 @@
                           "    return;",
                           "}",
                           "",
-                          "const retryDelay = 5000;",
+                          "const retryDelay = 10000;",
                           "const maxRetries = 20;",
                           "",
                           "var eobJobReq = {",

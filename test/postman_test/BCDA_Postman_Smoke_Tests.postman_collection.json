@@ -336,7 +336,7 @@
                       "listen": "prerequest",
                       "script": {
                         "exec": [
-                          "const retryDelay = 5000;",
+                          "const retryDelay = 10000;",
                           "const maxRetries = 20;",
                           "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
                           "",
