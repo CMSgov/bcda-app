@@ -2,13 +2,14 @@
 Package queueing implements "job" processing for bulk export requests
 
 Job Processing is handled by RiverQueue and consists of three main components:
-1. Asynchronously building and preparing a bulk export job for a received request
-2. Asynchronously processing the job from #1
-3. Asynchronously cleaning up any necessary components from the previous two steps
+1. ProcessJob: Main job, ie bulk export requests.
+2. PrepareJob: Handles logic dedicated to creating subjobs for ProcessJob.
+3. CleanupJob: Handles cleaning up old/archived bulk export job files.
 
 There are three workers for each step above; they are assigned a "kind" of work and do that work only.
 
-When a request comes in, the pendingExportWorker will divide the steps into multiple pieces to be worked, depending on the number of beneficiaries and resources requested. Each of those pieces will enqueue a new Job which will be picked up by a jobProcessWorker.
+When a request comes in, the PrepareWorker will divide the steps into multiple pieces to be worked,
+depending on the number of beneficiaries and resources requested. Each of those pieces will enqueue a new Job which will be picked up by a jobProcessWorker.
 
 Jobs are written to the application database. Jobs contain set of keys, which are generated in step 2 and then made available for the consumer that made the request.
 */

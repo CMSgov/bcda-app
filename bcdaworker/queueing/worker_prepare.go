@@ -61,11 +61,11 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 	repository := postgres.NewRepository(database.Connection)
 	svc := service.NewService(repository, cfg, "")
 
-	v1, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
+	v1, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV1Path))
 	if err != nil {
 		return &PrepareJobWorker{}, err
 	}
-	v2, err := client.NewBlueButtonClient(client.NewConfig("/v2/fhir"))
+	v2, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV2Path))
 	if err != nil {
 		return &PrepareJobWorker{}, err
 	}
@@ -169,10 +169,10 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
 func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData models.JobEnqueueArgs) (time.Time, error) {
 	switch basepath {
-	case "/v1/fhir":
+	case constants.BFDV1Path:
 		b, err := p.v1Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
-	case "/v2/fhir":
+	case constants.BFDV2Path:
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
 	default:

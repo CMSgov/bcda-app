@@ -133,7 +133,6 @@ func (q riverEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, pr
 	// This could also be refactored to a batch insert: riverClient.InsertManyTx or riverClient.InsertMany
 	_, err := q.Insert(ctx, job, &river.InsertOpts{
 		Priority: priority,
-		Queue:    river.QueueDefault,
 	})
 	if err != nil {
 		return err
@@ -147,9 +146,7 @@ func (q riverEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) err
 }
 
 func (q riverEnqueuer) AddPrepareJob(ctx context.Context, job PrepareJobArgs) error {
-	_, err := q.Insert(ctx, job, &river.InsertOpts{
-		Queue: river.QueueDefault,
-	})
+	_, err := q.Insert(ctx, job, nil)
 	if err != nil {
 		return err
 	}
