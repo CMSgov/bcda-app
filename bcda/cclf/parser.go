@@ -43,6 +43,7 @@ type CSVParser struct {
 type csvMetadataFileNameMap struct {
 	PerformanceYear int
 	DateTime        int
+	ACOID           string
 }
 
 func getACOConfigs() ([]service.ACOConfig, error) {
@@ -76,7 +77,6 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 			if err != nil {
 				return csvFileMetadata{}, err
 			}
-			metadata.acoID = v.Model
 			break
 		}
 	}
@@ -92,21 +92,24 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 
 // Validate the csv attribution filename contains the required values.
 // Ingestion of the file fails if the validation fails.
+// This also sets various parts of metadata.
 func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	var metadata csvFileMetadata
 	var err error
 
 	var mapper csvMetadataFileNameMap
 	switch subMatches[2] {
-	case "PCPB":
+	case "PCPB": // MD TCoC
 		mapper = csvMetadataFileNameMap{
 			PerformanceYear: 4,
 			DateTime:        6,
+			ACOID:           "CT000000",
 		}
-	case "BCD":
+	case "BCD": // CDAC
 		mapper = csvMetadataFileNameMap{
-			PerformanceYear: 6,
-			DateTime:        7,
+			PerformanceYear: 5,
+			DateTime:        6,
+			ACOID:           "3",
 		}
 	default:
 		err = errors.Wrapf(err, "failed to parse Model of csv file")
@@ -150,6 +153,14 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 	case "P":
 		metadata.env = "production"
 	}
+
+	switch mapper.ACOID {
+	case "CT000000":
+		metadata.acoID = "CT000000"
+	case "3":
+		metadata.acoID = subMatches[3]
+	}
+
 	return metadata, nil
 }
 
