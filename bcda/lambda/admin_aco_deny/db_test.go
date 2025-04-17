@@ -47,7 +47,7 @@ func TestDenyACOsQueryFailure(t *testing.T) {
 	assert.ErrorContains(t, err, "test error")
 }
 
-// TODO <ticket number> this test is failing due to pgx version update needed for riverqueue tests
+// TODO BCDA-8987 this test is failing due to pgx version update needed for riverqueue tests
 // func TestDenyACOs_Integration(t *testing.T) {
 // 	ctx := context.Background()
 

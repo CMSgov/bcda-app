@@ -511,10 +511,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	_, err = h.Svc.GetLatestCCLFFile(ctx, ad.CMSID, time.Time{}, time.Time{}, models.CCLFFileType(reqType))
 	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+		logger.Error("No update to date attribution information for: %s", ad.CMSID)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, "Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.")
 		return
 	} else if err != nil {
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "No up-to-date attribution information is available for Group")
+		logger.Error("failed to get latest cclf file: %s", err)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
@@ -550,7 +552,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
-		logger.Error(err)
+		logger.Error("failed to create job: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
@@ -572,8 +574,8 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	logger.Infof("Adding jobs using %T", h.Enq)
 	err = h.Enq.AddPrepareJob(ctx, pjob)
 	if err != nil {
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		logger.Errorf("failed to add job to the queue: %s", err)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
