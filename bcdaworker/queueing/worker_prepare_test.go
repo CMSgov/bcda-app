@@ -276,11 +276,19 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
-
+	w, err := NewPrepareJobWorker()
+	assert.Nil(s.T(), err)
+	assert.NotEmpty(s.T(), w)
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
-
+	basepath := "/v1/fhir"
+	svc := &service.MockService{}
+	c := new(client.MockBlueButtonClient)
+	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	_, err := worker.GetBundleLastUpdated(basepath, models.JobEnqueueArgs{})
+	assert.Nil(s.T(), err)
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
