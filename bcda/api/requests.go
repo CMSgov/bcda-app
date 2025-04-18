@@ -460,7 +460,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 }
 
 // bulkRequest generates a job ID for a bulk export request. It will not queue a job
-// until auth, attirbution, and request resources are validated.
+// until auth, attribution, and request resources are validated.
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx, cancel := context.WithCancel(r.Context())
