@@ -190,10 +190,6 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 		return nil, nil, err
 	}
 
-	// No need to look up job keys if the job is complete
-	if j.Status != models.JobStatusCompleted {
-		return j, nil, nil
-	}
 	keys, err := s.repository.GetJobKeys(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
