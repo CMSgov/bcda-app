@@ -3,11 +3,25 @@ version: '3'
 
 services:
   api:
+    build:
+      args:
+        GO_FLAGS: -gcflags=all=-N -l
+    entrypoint: dlv
+    command: exec --headless --listen=:4040 --accept-multiclient /go/bin/bcda -- start-api
     security_opt:
       - seccomp:unconfined
+    ports:
+      - "4040:4040"
   worker:
+    build:
+      args:
+        GO_FLAGS: -gcflags=all=-N -l
+    entrypoint: dlv
+    command: exec --headless --listen=:4040 --accept-multiclient /go/bin/bcdaworker
     security_opt:
       - seccomp:unconfined
+    ports:
+      - "4040:4040"
 
 networks:
   default:

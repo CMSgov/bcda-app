@@ -175,16 +175,12 @@ worker-shell:
 	docker compose exec -T worker bash
 
 debug-api:
-	docker compose start db queue worker
-	@echo "Starting debugger. This may take a while..."
-	@-bash -c "trap 'docker compose stop' EXIT; \
-		docker compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -p 3000:3000 -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app api dlv debug -- start-api"
+	docker compose up --watch worker & \
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --watch api
 
 debug-worker:
-	docker compose start db queue api
-	@echo "Starting debugger. This may take a while..."
-	@-bash -c "trap 'docker compose stop' EXIT; \
-		docker compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
+	docker compose up --watch api & \
+	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --watch worker
 
 bdt:
 	# Set up valid client credentials
