@@ -1,5 +1,6 @@
 FROM golang:1.23.1-alpine3.20 AS builder
 
+ARG GO_FLAGS
 RUN apk update upgrade
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
@@ -17,13 +18,14 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go install
+    go install "$GO_FLAGS"
 
 # ------------------------------------------------------------------------
 FROM golang:1.23.1-alpine3.20
+
 ARG ENVIRONMENT
 # only add dev packages if the environment argument was set to development
-RUN [ "$ENVIRONMENT" != "development" ] || apk add git openssl entr bash
+RUN [ "$ENVIRONMENT" != "development" ] || apk add git openssl entr bash && go install github.com/go-delve/delve/cmd/dlv@latest
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
 # This directory is needed on the api container to import synthetic data
@@ -31,5 +33,6 @@ COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/git
 
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
 COPY --from=builder /go/bin/ /go/bin/
+
 ENTRYPOINT ["bcda"]
 CMD ["start-api"]
