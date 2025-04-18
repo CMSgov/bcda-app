@@ -22,8 +22,9 @@ import (
 )
 
 type RequestConditions struct {
-	ReqType   RequestType
-	Resources []string
+	ReqType    RequestType
+	Resources  []string
+	BBBasePath string
 
 	CMSID string
 	ACOID uuid.UUID
@@ -72,7 +73,7 @@ type Service interface {
 
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 
-	GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error)
+	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 }
@@ -302,7 +303,7 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 									Since:           sinceArg,
 									TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
 									TransactionTime: transactionTime,
-									BBBasePath:      s.bbBasePath,
+									BBBasePath:      conditions.BBBasePath,
 									DataType:        dataType,
 								}
 
@@ -644,8 +645,8 @@ func IsSupportedACO(cmsID string) bool {
 	return regexp.MustCompile(pattern).MatchString(cmsID)
 }
 
-func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, time.Time{}, fileType)
+func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, lowerBound, upperBound, fileType)
 	if err != nil {
 		return nil, err
 	}

@@ -20,7 +20,6 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -34,7 +33,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/ccoveille/go-safecast"
+	m "github.com/CMSgov/bcda-app/middleware"
 )
 
 type Handler struct {
@@ -76,7 +75,7 @@ func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewEnqueuer()
+	h.Enq = queueing.NewPrepareEnqueuer()
 
 	cfg, err := service.LoadConfig()
 	if err != nil {
@@ -435,7 +434,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
 	logger := log.GetCtxLogger(ctx)
-	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, fileType)
+	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, time.Time{}, time.Time{}, fileType)
 	if err != nil {
 		logger.Error(err)
 
@@ -460,6 +459,8 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 	return status, nil
 }
 
+// bulkRequest generates a job ID for a bulk export request. It will not queue a job
+// until auth, attribution, and request resources are validated.
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx, cancel := context.WithCancel(r.Context())
@@ -495,13 +496,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		return
 	}
 
-	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
-	if err != nil {
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-		return
-	}
-
 	acoID := uuid.Parse(ad.ACOID)
 
 	scheme := "http"
@@ -515,9 +509,17 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		Status:     models.JobStatusPending,
 	}
 
-	// Need to create job in transaction instead of the very end of the process because we need
-	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
-	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
+	// _, err = h.Svc.GetLatestCCLFFile(ctx, ad.CMSID, time.Time{}, time.Time{}, models.CCLFFileType(reqType))
+	// if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+	// 	logger.Error("No update to date attribution information for: %s", ad.CMSID)
+	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, "Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.")
+	// 	return
+	// } else if err != nil {
+	// 	logger.Error("failed to get latest cclf file: %s", err)
+	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+	// 	return
+	// }
+
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
@@ -537,16 +539,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 			return
 		}
 
-		// We create the job after populating all of the data needed for the job (including inserting all of the queue jobs) to
-		// ensure that the job will be able to be processed and it WILL NOT BE stuck in the Pending state.
-		// For example, we write that the job has 10 queuejobs. We fail after inserting 9 queuejobs. The job will
-		// never move out of the IN_PROGRESS (or PENDING) state since we'll never be able to add the last queuejob.
-		//
-		// Since the queue jobs may (and do) exist in a different database, we cannot use a single transaction to encompass
-		// both adding queuejobs and adding the parent job.
-		//
-		// This does introduce an error scenario where we have queuejobs but no parent job.
-		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
 			logger.Error(err.Error())
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
@@ -560,7 +552,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
-		logger.Error(err)
+		logger.Error("failed to create job: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
@@ -570,79 +562,23 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		logger.Info("job id created")
 	}
 
-	id, err := safecast.ToInt(newJob.ID) // NOSONAR
-	if err != nil {                      // NOSONAR
-		logger.Error(err)                                                                                     // NOSONAR
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "") // NOSONAR
-		return                                                                                                // NOSONAR
-	} // NOSONAR
-
-	jobData := models.JobEnqueueArgs{
-		ID:              id,
-		ACOID:           acoID.String(),
-		Since:           "",
-		TransactionTime: time.Now(),
-		CMSID:           ad.CMSID,
+	pjob := queueing.PrepareJobArgs{
+		Job:           newJob,
+		CMSID:         ad.CMSID,
+		BFDPath:       h.bbBasePath,
+		RequestType:   reqType,
+		ResourceTypes: resourceTypes,
+		Since:         rp.Since,
+		TransactionID: r.Context().Value(m.CtxTransactionKey).(string),
 	}
-
-	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	b, err := bb.GetPatient(jobData, "0")
+	logger.Infof("Adding jobs using %T", h.Enq)
+	err = h.Enq.AddPrepareJob(ctx, pjob)
 	if err != nil {
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
-		return
-	}
-	newJob.TransactionTime = b.Meta.LastUpdated
-
-	var queJobs []*models.JobEnqueueArgs
-
-	conditions := service.RequestConditions{
-		ReqType:   reqType,
-		Resources: resourceTypes,
-
-		CMSID: ad.CMSID,
-		ACOID: newJob.ACOID,
-
-		JobID:           newJob.ID,
-		Since:           rp.Since,
-		TransactionTime: newJob.TransactionTime,
-		CreationTime:    time.Now(),
-	}
-	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
-	if err != nil {
-		logger.Error(err)
-		group := chi.URLParam(r, "groupId")
-		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
-			return
-		} else {
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, err.Error())
-			return
-		}
-	}
-	newJob.JobCount = len(queJobs)
-
-	// We've now computed all the fields necessary to populate a fully defined job
-	if err = rtx.UpdateJob(ctx, newJob); err != nil {
-		logger.Error(err.Error())
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+		logger.Errorf("failed to add job to the queue: %s", err)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
-	// Since we're enqueuing these queuejobs BEFORE we've created the actual job, we may encounter a transient
-	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
-	// once we finish inserting the job.
-	for _, j := range queJobs {
-		sinceParam := !rp.Since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData
-		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
-
-		logger.Infof("Adding jobs using %T", h.Enq)
-		if err = h.Enq.AddJob(ctx, *j, int(jobPriority)); err != nil {
-			logger.Error(err)
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-			return
-		}
-	}
 }
 
 func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {

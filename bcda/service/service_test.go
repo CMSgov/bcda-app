@@ -796,11 +796,12 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			conditions := RequestConditions{
-				CMSID:     tt.acoID,
-				ACOID:     uuid.NewUUID(),
-				Resources: tt.resourceTypes,
-				Since:     tt.expSince,
-				ReqType:   tt.reqType,
+				CMSID:      tt.acoID,
+				ACOID:      uuid.NewUUID(),
+				Resources:  tt.resourceTypes,
+				Since:      tt.expSince,
+				ReqType:    tt.reqType,
+				BBBasePath: basePath,
 			}
 
 			repository := &models.MockRepository{}
@@ -1034,6 +1035,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 				ReqType:         tt.reqType,
 				CreationTime:    timeA,
 				TransactionTime: timeB,
+				BBBasePath:      basePath,
 			}
 
 			repository := &models.MockRepository{}
@@ -1248,7 +1250,7 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFile_Integration() {
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
-	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), uint(1), cclfFile.ID)
 }
@@ -1259,7 +1261,7 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound_Integration() {
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
-	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.Nil(s.T(), cclfFile)
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), 8, err.(CCLFNotFoundError).FileNumber)
