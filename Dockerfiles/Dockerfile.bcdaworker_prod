@@ -26,6 +26,7 @@ ARG ENVIRONMENT
 RUN [ "$ENVIRONMENT" != "development" ] || apk add git openssl entr bash
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 # This file is needed on the worker container by hcc.go -- similar requirement in build_and_package.sh
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils/hcc_crosswalk.tsv /etc/sv/worker/hcc_crosswalk.tsv
 
