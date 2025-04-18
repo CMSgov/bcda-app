@@ -2,8 +2,10 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -32,8 +34,8 @@ import (
 
 type PrepareWorkerIntegrationTestSuite struct {
 	suite.Suite
-	r models.Repository
-
+	r   models.Repository
+	db  *sql.DB
 	ctx context.Context
 }
 
@@ -42,9 +44,9 @@ func TestCleanupTestSuite(t *testing.T) {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
-	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	s.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	tf, err := testfixtures.New(
-		testfixtures.Database(db),
+		testfixtures.Database(s.db),
 		testfixtures.Dialect("postgres"),
 		testfixtures.Directory("testdata/"),
 	)
@@ -54,7 +56,7 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	if err := tf.Load(); err != nil {
 		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 	}
-	s.r = postgres.NewRepository(db)
+	s.r = postgres.NewRepository(s.db)
 
 	var lggr logrus.Logger
 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
@@ -201,6 +203,10 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	}
 
 	driver := riverpgxv5.New(database.Pgxv5Pool)
+	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	if err != nil {
+		s.T().Log(err)
+	}
 	worker := &PrepareJobWorker{
 		svc:      svc,
 		v1Client: c,
@@ -254,6 +260,10 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
 	driver := riverpgxv5.New(database.Pgxv5Pool)
+	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	if err != nil {
+		s.T().Log(err)
+	}
 	w := rivertest.NewWorker(s.T(), driver, &river.Config{}, worker)
 	d := database.Pgxv5Pool
 	tx, err := d.Begin(s.ctx)
@@ -292,4 +302,23 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
+	prepArgs := PrepareJobArgs{}
+	ms := &service.MockService{}
+	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
+
+	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
+	q := NewEnqueuer()
+	a := &models.JobEnqueueArgs{
+		ID: 1,
+	}
+
+	driver := riverpgxv5.New(database.Pgxv5Pool)
+	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	if err != nil {
+		s.T().Log(err)
+	}
+	err = worker.queueExportJobs(context.Background(), q, prepArgs, []*models.JobEnqueueArgs{a}, time.Time{})
+	assert.Nil(s.T(), err)
+	re := rivertest.RequireInserted(s.ctx, s.T(), driver, models.JobEnqueueArgs{}, nil)
+	assert.Equal(s.T(), re.State, rivertype.JobState("available"))
 }

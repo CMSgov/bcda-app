@@ -1,6 +1,6 @@
 /*
-Prepare Worker takes all of the arguments of a bulk export request and prepares all of the
-jobs needed for the bulk export. bulkExport() is responsible for enqueuing the prepare job.
+Prepare Worker takes all of the arguments of a bulk export request to BCDA API and asynchronously prepares and
+creates (enqueues?) all of the subjobs needed for the requests bulk export main job.
 */
 
 package queueing
@@ -53,9 +53,12 @@ type PrepareJobWorker struct {
 
 func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 
+	logger := log.Worker
+	client.SetLogger(logger)
+
 	cfg, err := service.LoadConfig()
 	if err != nil {
-		log.API.Fatalf("Failed to load service config. Err: %v", err)
+		logger.Fatalf("failed to load service config. Err: %v", err)
 	}
 
 	repository := postgres.NewRepository(database.Connection)
@@ -63,10 +66,12 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 
 	v1, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV1Path))
 	if err != nil {
+		logger.Fatalf("failed to load bfd client. Err: %v", err)
 		return &PrepareJobWorker{}, err
 	}
 	v2, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV2Path))
 	if err != nil {
+		logger.Fatalf("failed to load bfd client. Err: %v", err)
 		return &PrepareJobWorker{}, err
 	}
 
