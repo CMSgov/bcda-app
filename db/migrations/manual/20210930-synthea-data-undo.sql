@@ -1,5 +1,5 @@
 -- This SQL script is for bookkeeping and auditing purposes
--- This script can be used to remove the improved synthea data from opensbx
+-- This script can be used to remove the improved synthea data from sandbox
 
 BEGIN;
 DO $$

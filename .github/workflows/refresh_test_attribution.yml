@@ -3,7 +3,7 @@ name: Refresh Attribution For Test ACOs
 
 on:
   schedule:
-    - cron: "0 12 * * 1" 
+    - cron: "0 12 * * 1"
 
 permissions:
   id-token: write
@@ -26,7 +26,7 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             DEV_DB=/bcda/dev/api/DATABASE_URL
             TEST_DB=/bcda/test/api/DATABASE_URL
-            SBX_DB=/bcda/opensbx/api/DATABASE_URL
+            SANDBOX_DB=/bcda/sandbox/api/DATABASE_URL
             PROD_DB=/bcda/prod/api/DATABASE_URL
       - name: Install psql
         run: |
@@ -44,7 +44,7 @@ jobs:
 
           environments["dev"]=$DEV_DB
           environments["test"]=$TEST_DB
-          environments["opensbx"]=$SBX_DB
+          environments["sandbox"]=$SANDBOX_DB
           environments["prod"]=$PROD_DB
 
           for key in "${!environments[@]}"; do
@@ -61,7 +61,7 @@ jobs:
               if [ $? -ne 0 ]; then
                   echo "Error: Refresh failed; run script locally for more details."
                   exit 1
-              else 
+              else
                   echo "Success: refresh complete."
               fi
               done

@@ -6,7 +6,7 @@ on:
       - .github/workflows/admin-create-aco-test-integration.yml
       - .github/workflows/admin-create-aco-dev-deploy.yml
       - .github/workflows/admin-create-aco-test-deploy.yml
-      - .github/workflows/admin-create-aco-sbx-deploy.yml
+      - .github/workflows/admin-create-aco-sandbox-deploy.yml
       - .github/workflows/admin-create-aco-prod-deploy.yml
       - bcda/lambda/admin_create_aco/**
   workflow_dispatch:

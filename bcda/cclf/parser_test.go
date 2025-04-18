@@ -403,7 +403,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 			},
 		},
 		{
-			"Production SBX file", sbxID, sbxProdFile, "",
+			"Production sandbox file", sbxID, sbxProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
 				name:      sbxProdFile,
@@ -415,7 +415,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 			},
 		},
 		{
-			"Test SBX file", sbxID, sbxTestFile, "",
+			"Test sandbox file", sbxID, sbxTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
 				name:      sbxTestFile,
