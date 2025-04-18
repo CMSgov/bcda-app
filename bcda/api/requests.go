@@ -509,16 +509,16 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		Status:     models.JobStatusPending,
 	}
 
-	_, err = h.Svc.GetLatestCCLFFile(ctx, ad.CMSID, time.Time{}, time.Time{}, models.CCLFFileType(reqType))
-	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-		logger.Error("No update to date attribution information for: %s", ad.CMSID)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, "Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.")
-		return
-	} else if err != nil {
-		logger.Error("failed to get latest cclf file: %s", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-		return
-	}
+	// _, err = h.Svc.GetLatestCCLFFile(ctx, ad.CMSID, time.Time{}, time.Time{}, models.CCLFFileType(reqType))
+	// if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+	// 	logger.Error("No update to date attribution information for: %s", ad.CMSID)
+	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, "Unable to perform export operations for this Group. No up-to-date attribution information is available. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.")
+	// 	return
+	// } else if err != nil {
+	// 	logger.Error("failed to get latest cclf file: %s", err)
+	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+	// 	return
+	// }
 
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
