@@ -819,6 +819,51 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 	}
 }
 
+func (s *RequestsTestSuite) TestJobStatusProgress() {
+	tests := []struct {
+		testName         string
+		status           models.JobStatus
+		expectedProgress string
+	}{
+		{testName: "In-Progress job displays partial progress", status: models.JobStatusInProgress, expectedProgress: "50%"},
+		{testName: "Completed job doesn't display progress", status: models.JobStatusCompleted, expectedProgress: ""},
+		{testName: "Archived job doesn't display progress", status: models.JobStatusArchived, expectedProgress: ""},
+	}
+
+	basePath := v2BasePath
+	apiVersion := apiVersionTwo
+	requestUrl := v2JobRequestUrl
+	resourceMap := s.resourceType
+	h := newHandler(resourceMap, basePath, apiVersion, s.db)
+
+	req := httptest.NewRequest("GET", requestUrl, nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "101")
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
+	req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
+
+	for _, tt := range tests {
+		s.T().Run(tt.testName, func(t *testing.T) {
+			job := models.Job{ID: 101, Status: tt.status, JobCount: 2}
+			jobKey := models.JobKey{ID: 1001, FileName: "goodFile.ndjson"}
+			mockSrv := service.MockService{}
+			h.Svc = &mockSrv
+			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, job.ID).Return(&job, []*models.JobKey{&jobKey}, nil)
+			w := httptest.NewRecorder()
+
+			h.JobStatus(w, req)
+			progressHeader := w.Header().Get("X-Progress")
+			if tt.expectedProgress == "" {
+				s.Empty(progressHeader)
+			} else {
+				s.Contains(progressHeader, tt.expectedProgress)
+			}
+		})
+	}
+}
+
 func (s *RequestsTestSuite) TestDeleteJob() {
 	// DeleteJob
 	basePath := v2BasePath

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -164,6 +165,43 @@ func TestGetMaxBeneCount(t *testing.T) {
 	max, err := getMaxBeneCount("Coverages")
 	assert.Equal(t, -1, max)
 	assert.EqualError(t, err, "invalid request type")
+}
+
+func TestGetJobAndKeys(t *testing.T) {
+	ipJob := models.Job{ID: 22, Status: models.JobStatusInProgress}
+	ipJobEmptyKey := models.Job{ID: 46, Status: models.JobStatusInProgress}
+	completeJob := models.Job{ID: 49, Status: models.JobStatusCompleted}
+	key := models.JobKey{ID: 101, FileName: "goodFile.ndjson"}
+	emptyKey := models.JobKey{ID: 155, FileName: models.BlankFileName}
+
+	repository := &models.MockRepository{}
+	configureMockRepo := func(job models.Job, jobKeys []*models.JobKey) {
+		repository.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
+		repository.On("GetJobKeys", testUtils.CtxMatcher, job.ID).Return(jobKeys, nil)
+	}
+	ctx := context.Background()
+	serviceInstance := NewService(repository, &Config{}, "").(*service)
+
+	tests := []struct {
+		name         string
+		job          models.Job
+		jobKeys      []*models.JobKey
+		expectedKeys []*models.JobKey
+	}{
+		{"In Progress job with 1 key returns job and key", ipJob, []*models.JobKey{&key}, []*models.JobKey{&key}},
+		{"In Progress job with 1 empty key returns job and no keys", ipJobEmptyKey, []*models.JobKey{&emptyKey}, nil},
+		{"Complete job with 1 key returns job and key", completeJob, []*models.JobKey{&key}, []*models.JobKey{&key}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configureMockRepo(tt.job, tt.expectedKeys)
+			serviceJob, serviceKeys, err := serviceInstance.GetJobAndKeys(ctx, tt.job.ID)
+			assert.Equal(t, tt.job.ID, serviceJob.ID)
+			assert.True(t, slices.Equal(tt.expectedKeys, serviceKeys))
+			assert.Nil(t, err)
+		})
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////
