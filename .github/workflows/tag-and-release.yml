@@ -49,7 +49,7 @@ jobs:
           export MANUAL_TAG_ARGS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.NEXT_RELEASE_VERSION }}"
           echo "MANUAL_TAG_ARGS=$MANUAL_TAG_ARGS" >> $GITHUB_ENV
       - name: Get AWS params
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
