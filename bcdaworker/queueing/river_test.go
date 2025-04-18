@@ -27,6 +27,7 @@ import (
 // TestWork acts as an end-to-end verification of the entire process:
 // adding a job, picking up the job, processing the job, and closing the client
 func TestWork_Integration(t *testing.T) {
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
 

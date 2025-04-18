@@ -26,6 +26,7 @@ func TestEnqueuerImplementation(t *testing.T) {
 	}(conf.GetEnv("QUEUE_LIBRARY"))
 
 	// Test que-go implementation (default)
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	enq := NewEnqueuer()
 	var expectedEnq queEnqueuer
 	assert.IsType(t, expectedEnq, enq)
@@ -43,6 +44,10 @@ func TestEnqueuerImplementation(t *testing.T) {
 }
 
 func TestQueEnqueuer_Integration(t *testing.T) {
+	defer func(origEnqueuer string) {
+		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+	}(conf.GetEnv("QUEUE_LIBRARY"))
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	// Need access to the queue database to ensure we've enqueued the job successfully
 	db := database.QueueConnection
 

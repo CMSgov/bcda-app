@@ -124,8 +124,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne, false},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, false},
-		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, true},
-		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, true},
+		{"No up-to-date attribution information", errors.New("No up-to-date attribution"), http.StatusInternalServerError, apiVersionOne, true},
+		{"No up-to-date attribution information v2", errors.New("No up-to-date attribution"), http.StatusInternalServerError, apiVersionTwo, true},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, false},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, false},
 	}
@@ -137,7 +137,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			resourceMap := s.resourceType
 
 			if tt.noAttribution {
-				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, CCLFNotFoundOperationOutcomeError{})
+				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, service.CCLFNotFoundError{})
 			} else {
 				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
 			}
@@ -155,7 +155,6 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 			case QueueError{}:
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
-			case CCLFNotFoundOperationOutcomeError{}:
 
 			}
 
@@ -1001,7 +1000,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 		expectedCode int
 		acoConfig    *service.ACOConfig
 	}{
-		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A9994", []string{"Patient"}, http.StatusAccepted, acoA},
+		{"Test Insert PrepareJob", "A9994", []string{"Patient"}, http.StatusAccepted, acoA},
 	}
 
 	for _, test := range tests {
@@ -1021,8 +1020,26 @@ func TestBulkRequest_Integration(t *testing.T) {
 				Version:       apiVersionTwo,
 			}))
 
-			h.bulkRequest(w, r, service.DefaultRequest)
+			cfg, err := database.LoadConfig()
+			if err != nil {
+				t.FailNow()
+			}
+			d, err := database.CreatePgxv5DB(cfg)
+			if err != nil {
+				t.FailNow()
+			}
+			driver := riverpgxv5.New(d)
+			ctx := context.Background()
+			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 
+			os.Unsetenv("QUEUE_LIBRARY")
+			h.bulkRequest(w, r, service.DefaultRequest)
+			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: queueing.PrepareJobArgs{}, Opts: nil}})
+			assert.Greater(t, len(jobs), 0)
+
+			if err != nil {
+				t.Log("failed to cleanup river jobs during tests")
+			}
 		})
 	}
 
@@ -1036,25 +1053,13 @@ func TestBulkRequest_Integration(t *testing.T) {
 	}
 	driver := riverpgxv5.New(d)
 	ctx := context.Background()
-
-	e := driver.GetExecutor()
-	t.Log(e)
-
-	// TODO: rollback or remove jobs from queue after test is done
-
-	//tx, err := d.Begin(context.Background())
-	// if err != nil {
-	// 	// handle error
-	// }
-	//defer tx.Rollback(ctx)
-
-	// bulk request
 	os.Unsetenv("QUEUE_LIBRARY")
-	job := rivertest.RequireInserted(ctx, t, driver, queueing.PrepareJobArgs{}, nil)
-	// builder := sqlFlavor.NewDeleteBuilder().DeleteFrom("river_jobs")
-	// query, args := builder.Build()
-	// _, err := db.Exec(query, args...)
-	fmt.Printf("Test passed with message: %d\n", job.Args.Job.ID)
+	jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: queueing.PrepareJobArgs{}, Opts: nil}})
+	assert.Greater(t, len(jobs), 0)
+	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	if err != nil {
+		t.Log("failed to cleanup river jobs during tests")
+	}
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {
