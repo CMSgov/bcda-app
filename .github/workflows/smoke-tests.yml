@@ -106,7 +106,7 @@ jobs:
         if: ${{ inputs.test_aco != 'dev' }}
         run: |
           echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
-      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+      - uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
