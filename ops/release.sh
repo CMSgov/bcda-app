@@ -79,12 +79,7 @@ if [ -n "$MANUAL_TAGS" ]; then
   PREVRELEASENUM=${PREVTAG//^r/}
   NEWRELEASENUM=${NEWTAG//^r/}
 else
-  PREVTAG=$(git tag | sort -n | tail -1)
-  if [ ! -n "$PREVTAG" ]; then
-      PREVRELEASENUM=
-  else
-      PREVRELEASENUM=$(git tag | grep '^r[0-9]' | sed 's/^r//' | sort -n | tail -1)
-  fi
+  PREVRELEASENUM=$(git tag | grep '^r[0-9]' | sed 's/^r//' | sort -n | tail -1)
   NEWRELEASENUM=$(($PREVRELEASENUM + 1))
   PREVTAG="r$PREVRELEASENUM"
   NEWTAG="r$NEWRELEASENUM"
