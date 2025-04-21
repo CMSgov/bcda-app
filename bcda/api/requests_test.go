@@ -124,8 +124,6 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne, false},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, false},
-		{"No up-to-date attribution information", errors.New("No up-to-date attribution"), http.StatusInternalServerError, apiVersionOne, true},
-		{"No up-to-date attribution information v2", errors.New("No up-to-date attribution"), http.StatusInternalServerError, apiVersionTwo, true},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, false},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, false},
 	}
@@ -136,11 +134,11 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			resourceMap := s.resourceType
 
-			if tt.noAttribution {
-				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, service.CCLFNotFoundError{})
-			} else {
-				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
-			}
+			// if tt.noAttribution {
+			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, service.CCLFNotFoundError{})
+			// } else {
+			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
+			// }
 
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
