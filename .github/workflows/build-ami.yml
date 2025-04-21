@@ -35,7 +35,7 @@ jobs:
         with:
           repository: CMSgov/bcda-ops
           ref: 'PLT-916_AL2023_gold_image'
-          token: ${{ env.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Ansible
         run: |
           sudo yum update -y
