@@ -49,4 +49,4 @@ jobs:
         run: |
           set -euo pipefail
           packer init packer/platinum.json.pkr.hcl 2>&1
-          packer build -color=false -var "session_token=${AWS_SESSION_TOKEN}" -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.hcl 2>&1
