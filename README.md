@@ -225,7 +225,7 @@ make performance-test
 ### **Update Database Seed Data**
 
 After the user has finished updating the Postgres database used for unit testing with the new data, the user can update
-the seed data by running the following comamnd:
+the seed data by running the following command:
 
 ```sh
 make unit-test-db-snapshot
@@ -309,3 +309,31 @@ docker exec -it bcda-app-api-1 sh -c 'bcda -h'
 
 Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
 Additional settings found under `.vscode/settings.json` allow tests to be run within vscode.
+
+## Debugging
+
+To attach to either the api or worker process within its respective docker container and debug, stop at breakpoints, and view local variables during execution, run the appropriate debug command.
+
+`make debug-api`
+
+or
+
+`make debug-worker`
+
+Once the containers are up, the program to debug will wait to be connected to dlv. Use dlv directly, or use a remote-attach debugging configuration in vscode.
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Connect to server",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "port": 4040,
+            "host": "127.0.0.1"
+        }
+    ]
+}
+```
+
