@@ -2457,7 +2457,7 @@
                           "}",
                           "",
                           "const retryDelay = 10000;",
-                          "const maxRetries = 20;",
+                          "const maxRetries = 30;",
                           "",
                           "var eobJobReq = {",
                           "  url: pm.environment.get(\"patientJobUrl\"),",
