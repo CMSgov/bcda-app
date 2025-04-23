@@ -23,6 +23,11 @@ if [[ "$CLIENT_SECRET" == "" ]]; then
   exit 1
 fi
 
+### TODO: Cloning the bulk test repo, running the docker compose/build, and
+### breaking things down at the end will all be handled outside of this script.
+### As part of automating the tests, we will remove these steps from here. This
+### is just for making running the script locally a little easier.
+
 # Clone test kit repo
 if [ ! -d "bulk-data-test-kit" ] ; then
   git clone https://github.com/inferno-framework/bulk-data-test-kit.git
