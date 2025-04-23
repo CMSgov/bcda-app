@@ -9,6 +9,20 @@ CLIENT_ID=$(echo $CONFIG | jq -r ".auth.client_id")
 CLIENT_SECRET=$(echo $CONFIG | jq -r ".auth.client_secret")
 TESTS=$(echo $CONFIG | jq -r ".required_tests.[]")
 
+if [[ "$CLIENT_ID" == "" ]]; then
+  echo "
+  client_id not set in config. exiting...
+  "
+  exit 1
+fi
+
+if [[ "$CLIENT_SECRET" == "" ]]; then
+  echo "
+  client_secret not set in config. exiting...
+  "
+  exit 1
+fi
+
 # Clone test kit repo
 if [ ! -d "bulk-data-test-kit" ] ; then
   git clone https://github.com/inferno-framework/bulk-data-test-kit.git
@@ -23,7 +37,7 @@ docker compose build
 docker compose up -d
 sleep 10
 
-# Stop the hl7 validator one - it takes a lot of time / memory, and those tests are not applicable
+# Stop the hl7 validator one - it takes a lot of time / memory to run, and those tests are not applicable
 docker stop bulk-data-test-kit-hl7_validator_service-1
 
 # Get the Token
@@ -78,7 +92,9 @@ done
 
 # Exit if the tests still arent done running
 if [[ "$TEST_STATUS" != "done" ]]; then
-  echo "--- Job Timed Out ---"
+  echo "
+  --- Job Timed Out ---
+  "
   exit 1
 fi
 
