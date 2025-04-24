@@ -47,7 +47,8 @@ jobs:
           TMPDIR: /home/ec2-user/
         run: |
           set -euo pipefail
-          echo "Sleeping for 10000"
-          sleep 10000
+          
+          codebuild-breakpoint
+
           # packer init packer/platinum.json.pkr.hcl 2>&1
           # packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.hcl 2>&1
