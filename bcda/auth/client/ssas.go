@@ -67,7 +67,7 @@ func NewSSASClient() (*SSASClient, error) {
 		timeout = 5000
 	}
 
-	ssasURL := conf.GetEnv("SSAS_URL")
+	ssasURL := strings.TrimSpace(conf.GetEnv("SSAS_URL"))
 	if ssasURL == "" {
 		return nil, errors.New("SSAS client could not be created: no URL provided")
 	}
