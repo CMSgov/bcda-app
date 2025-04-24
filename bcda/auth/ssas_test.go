@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -172,7 +173,11 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	// and there is a lot of set up needed to test this
 	creds, err := s.p.FindAndCreateACOCredentials("TEST1234", randomIPs)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), creds, "fake-name\nfake-client-id\nfake-secret")
+	creds_parts := strings.Split(creds, "\n")
+	assert.Equal(s.T(), creds_parts[0], "fake-name")
+	assert.Equal(s.T(), creds_parts[1], "fake-client-id")
+	assert.Equal(s.T(), creds_parts[2], "fake-secret")
+	assert.NotNil(s.T(), creds_parts[3])
 
 	creds, err = s.p.FindAndCreateACOCredentials("fake-id-should-fail", []string{})
 	assert.NotNil(s.T(), err)
