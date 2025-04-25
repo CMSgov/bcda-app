@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo yum update -y
           sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
+          python3 -m pip install --user ansible==6.5.0
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
