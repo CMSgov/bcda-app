@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo yum update -y
           sudo yum install python3-pip -y
-          sudo dnf install ansible-8.3.0 -y
+          sudo dnf install ansible-8.5.0 -y
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
