@@ -41,14 +41,14 @@ type Config struct {
 	ACOConfigs []ACOConfig `conf:"aco_config"`
 
 	// Un-exported fields that are computed using the exported ones above
-	cutoffDuration time.Duration
+	CutoffDuration time.Duration
 }
 
 type RunoutConfig struct {
 	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
 	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2024-12-31"`
 	// Un-exported fields that are computed using the exported ones above
-	cutoffDuration time.Duration
+	CutoffDuration time.Duration
 	claimThru      time.Time
 }
 
@@ -102,8 +102,8 @@ func (cfg *Config) ComputeFields() (err error) {
 		perfYearLayout = "01/02"
 	)
 
-	cfg.cutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
-	cfg.RunoutConfig.cutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
+	cfg.CutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
+	cfg.RunoutConfig.CutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
 	if cfg.RunoutConfig.claimThru, err = time.Parse(claimThruLayout, cfg.RunoutConfig.ClaimThruDate); err != nil {
 		return fmt.Errorf("failed to parse runout claim thru date: %w", err)
 	}

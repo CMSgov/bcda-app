@@ -38,6 +38,7 @@ type acoRepository interface {
 }
 
 type cclfFileRepository interface {
+	GetCCLFFileByID(ctx context.Context, ID uint) (*CCLFFile, error)
 	GetCCLFFileExistsByName(ctx context.Context, name string) (bool, error)
 
 	// GetLatestCCLFFile returns the latest CCLF File (most recent timestamp) that matches the search criteria.

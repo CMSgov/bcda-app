@@ -44,3 +44,12 @@ const EmptyString = ""
 
 const FiveSeconds = "5"
 const FiveHundredSeconds = "500"
+
+const CCLF8FileNum = int(8)
+
+const PrepareJobKind = "PrepareJob"
+const BFDV1Path = "/v1/fhir"
+const BFDV2Path = "/v2/fhir"
+
+const GetExistingBenes = "GetExistingBenes"
+const GetNewAndExistingBenes = "GetNewAndExistingBenes"

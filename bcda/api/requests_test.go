@@ -33,6 +33,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	worker_types "github.com/CMSgov/bcda-app/bcdaworker/queueing/types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -631,7 +632,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 				h.db.Close()
 			}
 
-			h.bulkRequest(w, r, service.DefaultRequest)
+			h.bulkRequest(w, r, constants.DefaultRequest)
 			if h.db == nil {
 				h.db = *temp_db
 			}
@@ -1076,8 +1077,8 @@ func TestBulkRequest_Integration(t *testing.T) {
 			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 
 			os.Unsetenv("QUEUE_LIBRARY")
-			h.bulkRequest(w, r, service.DefaultRequest)
-			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: queueing.PrepareJobArgs{}, Opts: nil}})
+			h.bulkRequest(w, r, constants.DefaultRequest)
+			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
 			assert.Greater(t, len(jobs), 0)
 
 			if err != nil {
@@ -1097,7 +1098,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 	driver := riverpgxv5.New(d)
 	ctx := context.Background()
 	os.Unsetenv("QUEUE_LIBRARY")
-	jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: queueing.PrepareJobArgs{}, Opts: nil}})
+	jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
 	assert.Greater(t, len(jobs), 0)
 	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {

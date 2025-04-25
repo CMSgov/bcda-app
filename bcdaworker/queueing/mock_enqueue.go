@@ -51,7 +51,7 @@ func (_m *MockEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, p
 }
 
 // AddJob provides a mock function with given fields: ctx, job, priority
-func (_m *MockEnqueuer) AddPrepareJob(ctx context.Context, job PrepareJobArgs) error {
+func (_m *MockEnqueuer) AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error {
 	ret := _m.Called(ctx, job)
 
 	if len(ret) == 0 {
@@ -59,7 +59,7 @@ func (_m *MockEnqueuer) AddPrepareJob(ctx context.Context, job PrepareJobArgs) e
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, PrepareJobArgs) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, worker_types.PrepareJobArgs) error); ok {
 		r0 = rf(ctx, job)
 	} else {
 		r0 = ret.Error(0)

@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	cm "github.com/CMSgov/bcda-app/middleware"
@@ -94,11 +96,11 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 			j := models.Job{Status: models.JobStatusPending, ACOID: aco.UUID, RequestURL: "/foo/bar"}
 			id, _ := s.r.CreateJob(context.Background(), j)
 			j.ID = id
-			jobArgs := PrepareJobArgs{
+			jobArgs := worker_types.PrepareJobArgs{
 				Job:           j,
 				CMSID:         "A0003",
 				BFDPath:       "/v1/fhir",
-				RequestType:   service.RequestType(1),
+				RequestType:   constants.DataRequestType(1),
 				ResourceTypes: []string{"Coverage"},
 			}
 
@@ -144,11 +146,11 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	j := models.Job{Status: models.JobStatusPending, ACOID: aco.UUID, RequestURL: "/foo/bar"}
 	id, _ := s.r.CreateJob(context.Background(), j)
 	j.ID = id
-	jobArgs := PrepareJobArgs{
+	jobArgs := worker_types.PrepareJobArgs{
 		Job:           j,
 		CMSID:         "A0003",
 		BFDPath:       "/v1/fhir",
-		RequestType:   service.RequestType(1),
+		RequestType:   constants.DataRequestType(1),
 		ResourceTypes: []string{"Coverage"},
 	}
 
@@ -192,12 +194,12 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 1}}, nil)
 	svc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
-	j := &river.Job[PrepareJobArgs]{
-		Args: PrepareJobArgs{
+	j := &river.Job[worker_types.PrepareJobArgs]{
+		Args: worker_types.PrepareJobArgs{
 			Job:           models.Job{},
 			CMSID:         "A9999",
 			BFDPath:       "/v1/fhir",
-			RequestType:   service.RequestType(1),
+			RequestType:   constants.DataRequestType(1),
 			ResourceTypes: []string{"Coverage"},
 		},
 	}
@@ -207,7 +209,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	if err != nil {
 		s.T().Log(err)
 	}
-	worker := &PrepareJobWorker{
+	worker := PrepareJobWorker{
 		svc:      svc,
 		v1Client: c,
 		v2Client: &client.MockBlueButtonClient{},
@@ -248,17 +250,17 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	id, _ := s.r.CreateJob(context.Background(), j)
 	j.ID = id
 
-	jobArgs := &river.Job[PrepareJobArgs]{
-		Args: PrepareJobArgs{
+	jobArgs := &river.Job[worker_types.PrepareJobArgs]{
+		Args: worker_types.PrepareJobArgs{
 			Job:           j,
 			CMSID:         "A0003",
 			BFDPath:       "/v1/fhir",
-			RequestType:   service.RequestType(1),
+			RequestType:   constants.DataRequestType(1),
 			ResourceTypes: []string{"Coverage"},
 		},
 	}
 
-	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	worker := PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
 	driver := riverpgxv5.New(database.Pgxv5Pool)
 	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
@@ -302,7 +304,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
-	prepArgs := PrepareJobArgs{}
+	prepArgs := worker_types.PrepareJobArgs{}
 	ms := &service.MockService{}
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
