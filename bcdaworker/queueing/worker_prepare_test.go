@@ -79,7 +79,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 	}{
 		{"Happy path", false, 1, string(models.JobStatusPending), false, false},
 		{"getBundleLastUpdated failed", true, 0, string(models.JobStatusFailed), false, true},
-		{"getQueueJobs failed", true, 0, string(models.JobStatusFailed), false, true},
+		{"getQueueJobs failed", true, 0, string(models.JobStatusFailed), true, false},
 	}
 
 	for _, tt := range tests {
@@ -97,17 +97,22 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 			id, _ := s.r.CreateJob(context.Background(), j)
 			j.ID = id
 			jobArgs := worker_types.PrepareJobArgs{
-				Job:           j,
-				CMSID:         "A0003",
-				BFDPath:       "/v1/fhir",
-				RequestType:   constants.DataRequestType(1),
-				ResourceTypes: []string{"Coverage"},
+				Job:                    j,
+				CMSID:                  "A0003",
+				BFDPath:                "/v1/fhir",
+				RequestType:            constants.DataRequestType(1),
+				ComplexDataRequestType: constants.GetNewAndExistingBenes,
+				CCLFFileNewID:          uint(1),
+				CCLFFileOldID:          uint(2),
+				ResourceTypes:          []string{"Coverage"},
 			}
 
-			if tt.qErr {
+			if tt.bfdErr {
+				// code returns before GetQueJobs
+			} else if tt.qErr {
 				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*models.JobEnqueueArgs{}, errors.New("an error occurred"))
 			} else {
-				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 1}}, nil)
+				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 52}}, nil)
 			}
 
 			if tt.bfdErr {
@@ -138,7 +143,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
 
-	aco, err := s.r.GetACOByCMSID(context.Background(), "A0003")
+	aco, err := s.r.GetACOByCMSID(context.Background(), "A0002")
 	if err != nil {
 		s.T().Log("failed to get job")
 		s.T().FailNow()
@@ -147,11 +152,15 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	id, _ := s.r.CreateJob(context.Background(), j)
 	j.ID = id
 	jobArgs := worker_types.PrepareJobArgs{
-		Job:           j,
-		CMSID:         "A0003",
-		BFDPath:       "/v1/fhir",
-		RequestType:   constants.DataRequestType(1),
-		ResourceTypes: []string{"Coverage"},
+		Job:                    j,
+		ACOID:                  aco.UUID,
+		CMSID:                  "A0002",
+		BFDPath:                "/v1/fhir",
+		RequestType:            constants.DataRequestType(1),
+		ComplexDataRequestType: constants.GetNewAndExistingBenes,
+		CCLFFileNewID:          uint(1),
+		CCLFFileOldID:          uint(2),
+		ResourceTypes:          []string{"Coverage"},
 	}
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
@@ -167,12 +176,13 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	assert.Equal(s.T(), result.Status, models.JobStatusPending)
 	assert.Equal(s.T(), result.JobCount, len(exports))
 
-	assert.NotEmpty(s.T(), exports[0].ACOID)
-	assert.NotEmpty(s.T(), exports[0].ID)
-	assert.NotEmpty(s.T(), exports[0].BBBasePath)
-	assert.NotEmpty(s.T(), exports[0].BeneficiaryIDs)
-	assert.NotEmpty(s.T(), exports[0].CMSID)
-	assert.NotNil(s.T(), exports[0].ClaimsWindow)
+	exportData := *exports[0]
+	assert.NotEmpty(s.T(), exportData.ACOID)
+	assert.NotEmpty(s.T(), exportData.ID)
+	assert.NotEmpty(s.T(), exportData.BBBasePath)
+	assert.NotEmpty(s.T(), exportData.BeneficiaryIDs)
+	assert.NotEmpty(s.T(), exportData.CMSID)
+	assert.NotNil(s.T(), exportData.ClaimsWindow)
 	assert.NotNil(s.T(), result)
 
 }
@@ -191,16 +201,19 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	clientID := uuid.New()
 	aco := &models.ACO{Name: "ACO Test Name", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: clientID, TerminationDetails: nil}
 	svc.On("GetACOByCMSID", mock.Anything, mock.Anything).Return(aco, nil)
-	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 1}}, nil)
+	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 2}}, nil)
 	svc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	j := &river.Job[worker_types.PrepareJobArgs]{
 		Args: worker_types.PrepareJobArgs{
-			Job:           models.Job{},
-			CMSID:         "A9999",
-			BFDPath:       "/v1/fhir",
-			RequestType:   constants.DataRequestType(1),
-			ResourceTypes: []string{"Coverage"},
+			Job:                    models.Job{},
+			CMSID:                  "A9999",
+			BFDPath:                "/v1/fhir",
+			RequestType:            constants.DataRequestType(1),
+			ComplexDataRequestType: constants.GetNewAndExistingBenes,
+			CCLFFileNewID:          uint(1),
+			CCLFFileOldID:          uint(2),
+			ResourceTypes:          []string{"Coverage"},
 		},
 	}
 
@@ -252,11 +265,14 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 
 	jobArgs := &river.Job[worker_types.PrepareJobArgs]{
 		Args: worker_types.PrepareJobArgs{
-			Job:           j,
-			CMSID:         "A0003",
-			BFDPath:       "/v1/fhir",
-			RequestType:   constants.DataRequestType(1),
-			ResourceTypes: []string{"Coverage"},
+			Job:                    j,
+			CMSID:                  "A0003",
+			BFDPath:                "/v1/fhir",
+			RequestType:            constants.DataRequestType(1),
+			ComplexDataRequestType: constants.GetNewAndExistingBenes,
+			CCLFFileNewID:          uint(1),
+			CCLFFileOldID:          uint(2),
+			ResourceTypes:          []string{"Coverage"},
 		},
 	}
 
@@ -311,16 +327,19 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
 	q := NewEnqueuer()
 	a := &models.JobEnqueueArgs{
-		ID: 1,
+		ID: 33,
 	}
 
 	driver := riverpgxv5.New(database.Pgxv5Pool)
 	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-	if err != nil {
-		s.T().Log(err)
-	}
+	assert.Nil(s.T(), err)
+
 	err = worker.queueExportJobs(context.Background(), q, prepArgs, []*models.JobEnqueueArgs{a}, time.Time{})
 	assert.Nil(s.T(), err)
 	re := rivertest.RequireInserted(s.ctx, s.T(), driver, models.JobEnqueueArgs{}, nil)
 	assert.Equal(s.T(), re.State, rivertype.JobState("available"))
+
+	// Cleanup the queue data
+	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	assert.Nil(s.T(), err)
 }

@@ -3,7 +3,6 @@ package queueing
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -65,7 +64,7 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 		LowerBound: time.Now(),
 		UpperBound: time.Now(),
 	}
-	fmt.Printf("Que Test Job args: %+v", jobArgs)
+
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, priority))
 	assert.NoError(t, enqueuer.AddAlrJob(alrJobArgs, priority))

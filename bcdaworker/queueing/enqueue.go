@@ -8,6 +8,7 @@ package queueing
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -56,7 +57,13 @@ type Enqueuer interface {
 func NewEnqueuer() Enqueuer {
 	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
 		workers := river.NewWorkers()
-		// river.AddWorker(workers, &JobWorker{})
+		river.AddWorker(workers, &JobWorker{})
+		prepareWorker, err := NewPrepareJobWorker()
+		if err != nil {
+			fmt.Printf("failed initializing NewEnqueuer()")
+			panic(err)
+		}
+		river.AddWorker(workers, prepareWorker)
 
 		riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 			Workers: workers,
