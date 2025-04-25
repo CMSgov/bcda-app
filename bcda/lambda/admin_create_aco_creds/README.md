@@ -1,4 +1,4 @@
-The Create ACO Credentials administrative task lambda will create and return a new client id and secret for the specified ACO.  It should be called via AWS's lambda interface (see: TBD).
+The Create ACO Credentials administrative task lambda will create and return a new client id and secret for the specified ACO.  It should be called via AWS's lambda interface see: [Manually Create Production Credentials](https://confluence.cms.gov/x/ApF9T).
 
 You can run the unit test suite from the base dir (bcda-app) using the following command:
 

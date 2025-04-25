@@ -156,6 +156,26 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
 	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
 }
 
+func (s *SSASClientTestSuite) TestNewSSASClient_EmptyURL() {
+	conf.UnsetEnv(s.T(), "SSAS_USE_TLS")
+	conf.SetEnv(s.T(), "SSAS_URL", " \n ")
+
+	client, err := authclient.NewSSASClient()
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), client)
+	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
+}
+
+func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseEmptyURL() {
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
+	conf.SetEnv(s.T(), "SSAS_URL", " \n ")
+
+	client, err := authclient.NewSSASClient()
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), client)
+	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
+}
+
 func (s *SSASClientTestSuite) TestCreateGroupTable() {
 	tests := []struct {
 		fnInput       []string
@@ -166,7 +186,6 @@ func (s *SSASClientTestSuite) TestCreateGroupTable() {
 	}{
 		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{}, errorExpected: false, errorMessage: ""},
 		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, errorMessage: "Post \"localhost/group\": unsupported protocol scheme \"\""},
-		{fnInput: []string{"\"", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, errorMessage: "invalid input for new group_id \": parse \"\\n/group\": net/url: invalid control character in URL"},
 		{fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, header: http.StatusCreated, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, errorMessage: "missing clientID or secret"},
 		{fnInput: []string{"", "name", "", `{ "ID": 123456 }`}, env: EnvVars{}, header: http.StatusBadRequest, errorExpected: true, errorMessage: "{ \"ID\": 123456 }"},
 	}
@@ -215,7 +234,6 @@ func (s *SSASClientTestSuite) TestDeleteGroupTable() {
 	}{
 		{ID: 5, createGroup: false, fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, env: EnvVars{}, errorExpected: true, errorMessage: "could not delete group: "},
 		{ID: 5, createGroup: false, fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, errorMessage: "could not delete group: Delete \"localhost/group/5\": unsupported protocol scheme \"\""},
-		{ID: 5, createGroup: false, fnInput: []string{"\"", "name", "", `{ "ID": 123456 }`}, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, errorMessage: "could not delete group: parse \"\\n/group/5\": net/url: invalid control character in URL"},
 		{ID: 5, createGroup: false, fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, errorMessage: "missing clientID or secret"},
 		{ID: 123456, createGroup: true, fnInput: []string{"1", "name", "", `{ "ID": 123456 }`}, env: EnvVars{}, errorExpected: false},
 	}
@@ -273,7 +291,6 @@ func (s *SSASClientTestSuite) TestGetVersionTable() {
 		versionString string
 	}{
 		{header: http.StatusOK, env: EnvVars{}, errorExpected: false, message: "foo", versionString: "{\"version\":\"foo\"}\n"},
-		{header: http.StatusOK, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, message: "parse \"\\n/_version\": net/url: invalid control character in URL", versionString: "{\"version\":\"foo\"}\n"},
 		{header: http.StatusOK, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "Get \"localhost/_version\": unsupported protocol scheme \"\"", versionString: "{\"version\":\"foo\"}\n"},
 		{header: http.StatusOK, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret", versionString: "{\"version\":\"foo\"}\n"},
 		{header: http.StatusOK, env: EnvVars{}, errorExpected: true, message: "Unable to parse version from response", versionString: "{\"foo\":\"foo\"}\n"},
@@ -525,7 +542,6 @@ func (s *SSASClientTestSuite) TestPingTable() {
 	}{
 		{fnInput: []string{}, env: EnvVars{}, errorExpected: false},
 		{fnInput: []string{}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "fake"}, errorExpected: true, message: "introspect request failed; 401"},
-		{fnInput: []string{}, env: EnvVars{SSAS_PUBLIC_URL: "\n"}, errorExpected: true, message: "bad request structure: parse \"\\n/introspect\": net/url: invalid control character in URL"},
 		{fnInput: []string{}, env: EnvVars{SSAS_PUBLIC_URL: "localhost"}, errorExpected: true, message: "introspect request failed: Post \"localhost/introspect\": unsupported protocol scheme \"\""},
 		{fnInput: []string{}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
 	}
@@ -558,7 +574,6 @@ func (s *SSASClientTestSuite) TestGetPublicKeyTable() {
 		message       string
 	}{
 		{fnInput: []string{}, header: http.StatusOK, env: EnvVars{}, errorExpected: false, message: ""},
-		{fnInput: []string{}, header: http.StatusOK, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, message: "could not get public key: parse \"\\n/system/1/key\": net/url: invalid control character in URL"},
 		{fnInput: []string{}, header: http.StatusOK, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "could not get public key: Get \"localhost/system/1/key\": unsupported protocol scheme \"\""},
 		{fnInput: []string{}, header: http.StatusOK, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
 	}
@@ -603,7 +618,6 @@ func (s *SSASClientTestSuite) TestResetCredentialsTable() {
 	}{
 		{fnInput: []string{}, header: http.StatusCreated, env: EnvVars{}, errorExpected: false, message: ""},
 		{fnInput: []string{}, header: http.StatusBadGateway, env: EnvVars{}, errorExpected: true, message: "failed to reset credentials. status code: 502"},
-		{fnInput: []string{}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, message: "failed to reset credentials: parse \"\\n/system/1/credentials\": net/url: invalid control character in URL"},
 		{fnInput: []string{}, header: http.StatusCreated, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "failed to reset credentials: Put \"localhost/system/1/credentials\": unsupported protocol scheme \"\""},
 		{fnInput: []string{}, header: http.StatusCreated, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
 	}
@@ -651,7 +665,6 @@ func (s *SSASClientTestSuite) TestDeleteCredentialsTable() {
 	}{
 		{fnInput: []string{}, header: http.StatusOK, env: EnvVars{}, errorExpected: false, message: ""},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{}, errorExpected: true, message: "failed to delete credentials; 404"},
-		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, message: "failed to delete credentials: parse \"\\n/system/1/credentials\": net/url: invalid control character in URL"},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "failed to delete credentials: Delete \"localhost/system/1/credentials\": unsupported protocol scheme \"\""},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
 	}
@@ -692,7 +705,6 @@ func (s *SSASClientTestSuite) TestRevokeAccessTokenTable() {
 	}{
 		{fnInput: []string{}, header: http.StatusOK, env: EnvVars{}, errorExpected: false, message: ""},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{}, errorExpected: true, message: "failed to revoke token; 404"},
-		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, message: "bad request structure: parse \"\\n/token/abc-123\": net/url: invalid control character in URL"},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "failed to revoke token: Delete \"localhost/token/abc-123\": unsupported protocol scheme \"\""},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
 	}
@@ -734,7 +746,6 @@ func (s *SSASClientTestSuite) TestCreateSystemTable() {
 	}{
 		{fnInput: []string{}, header: http.StatusCreated, env: EnvVars{}, errorExpected: false, message: ""},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{}, errorExpected: true, message: "failed to create system. status code: 404"},
-		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{SSAS_URL: "\n"}, errorExpected: true, message: "failed to create system: parse \"\\n/system\": net/url: invalid control character in URL"},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "failed to create system: Post \"localhost/system\": unsupported protocol scheme \"\""},
 		{fnInput: []string{}, header: http.StatusNotFound, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
 	}
