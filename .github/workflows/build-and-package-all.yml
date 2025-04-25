@@ -80,15 +80,13 @@ jobs:
       - name: Set release type (release)
         if: ${{ inputs.release_version != 'main' && inputs.release_version != '' }}
         run: echo "RELEASE_TYPE=release" >> $GITHUB_ENV
+
       - name: Install Ansible
         run: |
           sudo yum update -y
           sudo yum install python3-pip -y
           sudo dnf install ansible-8.5.0 -y
-      - uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
+
       - name: Create API AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
