@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	worker_types "github.com/CMSgov/bcda-app/bcdaworker/queueing/types"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/pborman/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
