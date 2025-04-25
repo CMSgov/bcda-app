@@ -80,21 +80,20 @@ jobs:
       - name: Set release type (release)
         if: ${{ inputs.release_version != 'main' && inputs.release_version != '' }}
         run: echo "RELEASE_TYPE=release" >> $GITHUB_ENV
-      - name: Install Ansible
-        run: |
-          sudo yum update -y
-          sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
-      - uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
+#      - name: Install Ansible
+#        run: |
+#          sudo yum update -y
+#          sudo yum install python3-pip -y
+#          python3 -m pip install ansible==6.5.0
+#      - uses: aws-actions/configure-aws-credentials@v3
+#        with:
+#          aws-region: ${{ vars.AWS_REGION }}
+#          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - name: Create API AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /home/ec2-user/
         run: |
-          # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
           packer init packer/api.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
