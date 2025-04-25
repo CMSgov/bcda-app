@@ -84,7 +84,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			svc := &service.MockService{}
+			svc := service.NewMockService(t)
 			c := new(client.MockBlueButtonClient)
 
 			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
@@ -209,7 +209,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	if err != nil {
 		s.T().Log(err)
 	}
-	worker := PrepareJobWorker{
+	worker := &PrepareJobWorker{
 		svc:      svc,
 		v1Client: c,
 		v2Client: &client.MockBlueButtonClient{},
@@ -260,7 +260,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 		},
 	}
 
-	worker := PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
 	driver := riverpgxv5.New(database.Pgxv5Pool)
 	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
