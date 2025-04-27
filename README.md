@@ -234,7 +234,7 @@ make unit-test-db-snapshot
 This script will update `./db/testing/docker-entrypoint-initdb.d/dump.pgdata` file.
 This file is used to initialize the Postgres db with all of the necessary data needed for the various unit tests.
 
-For more information on intialization, please see `db/testing/docker-entrypoint-initdb.d/01-restore.sh`.
+For more information on initialization, please see `db/testing/docker-entrypoint-initdb.d/01-restore.sh`.
 This script is executed when the Postgres container is launched.
 
 **\*Note**: The updated `dump.pgdata` should be committed with the other associated changes.
