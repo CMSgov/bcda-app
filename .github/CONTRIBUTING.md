@@ -6,7 +6,7 @@ The following expectations apply to each PR:
 2. Reviewers are selected to include people from all teams impacted by the changes in the PR.
 3. The PR has been assigned to the people who will respond to reviews and merge when ready (usually the person filing the review, but can change when a PR is handed off to someone else).
 4. The PR is reasonably limited in scope to ensure:
-   - It doesn't bunch together disparate features, fixes, refactorings, etc.
+   - It doesn't bunch together disparate features, fixes, refactoring, etc.
    - There isn't too much of a burden on reviewers.
    - Any problems it causes have a small blast radius.
    - Changes will be easier to roll back if necessary.
