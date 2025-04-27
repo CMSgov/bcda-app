@@ -1,7 +1,7 @@
 # Database Schema Changes
 
 ## Philosophy
-* All database changes will be modeled in discrete schema migrations
+* All database changes will be modelled in discrete schema migrations
     * Code to roll back a migration will be included unless highly impracticable
 * Migrations will receive unique sequential integer identifiers.
     * Engineers should keep aware of identifier collisions (and in some instances required migration order), and adjust their migration ID’s before merging with master, if necessary.
