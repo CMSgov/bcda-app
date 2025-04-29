@@ -2,8 +2,6 @@ FROM node:current
 
 WORKDIR /
 
-RUN apt update -y 
-
 RUN git clone https://github.com/smart-on-fhir/bdt.git
 WORKDIR '/bdt'
 
