@@ -52,6 +52,8 @@ type Service interface {
 	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
+
+	SetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
 }
 
 type service struct {
@@ -90,6 +92,12 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 	}
 }
 
+type TimeConstraints struct {
+	AttributionDate time.Time
+	OptOutDate      time.Time
+	ClaimsDate      time.Time
+}
+
 type suppressionParameters struct {
 	includeSuppressedBeneficiaries bool
 	lookbackDays                   int
@@ -107,6 +115,8 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 	// 	return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
 	// }
 
+	// fmt.Printf("\n-------- Start GetQueJobs: %+v", args)
+
 	var (
 		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
 		jobs                            []*models.JobEnqueueArgs
@@ -123,12 +133,16 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 	// for default requests, runouts, or any requests where the Since parameter is
 	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
 	if args.ComplexDataRequestType == constants.GetExistingBenes {
+		// fmt.Println("\n-------- GetExistingBenes")
 		beneficiaries, err = s.getBeneficiaries(ctx, args)
+		// fmt.Printf("\n-------- getBeneficiaries: %+v", beneficiaries)
 		if err != nil {
 			return nil, err
 		}
 	} else if args.ComplexDataRequestType == constants.GetNewAndExistingBenes {
+		// fmt.Println("\n-------- GetNewAndExistingBenes")
 		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, args)
+		// fmt.Printf("\n-------- newBeneficiaries: %+v, beneficiaries: %+v", newBeneficiaries, beneficiaries)
 		if err != nil {
 			return nil, err
 		}
@@ -143,6 +157,8 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 		return nil, fmt.Errorf("unsupported RequestType %d", args.RequestType)
 	}
 
+	// fmt.Printf("\n-------- queJobs PRE: %+v", queJobs)
+
 	// add existiing beneficiaries to the job queue
 	jobs, err = s.createQueueJobs(ctx, args, args.Since, beneficiaries)
 	if err != nil {
@@ -150,6 +166,8 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 	}
 
 	queJobs = append(queJobs, jobs...)
+
+	// fmt.Printf("\n-------- queJobs POST: %+v", queJobs)
 
 	return queJobs, nil
 }
@@ -251,6 +269,7 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 						// data ingestion timelines don't line up, therefore for all
 						// partially-adjudicated jobs we will just use conditions.CreationTime as an
 						// upper bound
+						// fmt.Printf("\n--- setting transaction time: %+v, %+v, %+v", dataType, args.CreationTime, args.Job.TransactionTime)
 						var transactionTime time.Time
 						if dataType == constants.PartiallyAdjudicated {
 							transactionTime = args.CreationTime
@@ -332,6 +351,11 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, args worke
 	if err != nil {
 		return nil, nil, err
 	}
+	if cclfFileNew == nil {
+		return nil, nil, fmt.Errorf("no CCLF8 file found for cmsID %s", args.CMSID)
+	}
+
+	fmt.Printf("\n--- cclfFileNew: %+v\n", cclfFileNew)
 
 	if !args.Since.IsZero() && cclfFileNew.CreatedAt.Sub(args.Since) < 0 {
 		// Retrieve all of the benes associated with this CCLF file.
@@ -341,7 +365,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, args worke
 		}
 
 		if len(benes) == 0 {
-			return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", args.CMSID, cclfFileNew.ID)
+			return nil, nil, fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", args.CMSID, cclfFileNew.ID)
 		}
 
 		return newBeneficiaries, benes, nil
@@ -446,6 +470,9 @@ func (s *service) getBeneficiaries(ctx context.Context, args worker_types.Prepar
 	cclfFile, err := s.repository.GetCCLFFileByID(ctx, args.CCLFFileNewID)
 	if err != nil {
 		return nil, err
+	}
+	if cclfFile == nil {
+		return nil, fmt.Errorf("no CCLF8 file found for cmsID %s", args.CMSID)
 	}
 
 	benes, err := s.getBenesByFileID(ctx, cclfFile.ID, args)
@@ -616,6 +643,26 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBoun
 	}
 
 	return cclfFile, nil
+}
+
+// SetTimeConstraints searches for any time bounds that we should apply on the associated ACO
+func (s *service) SetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
+	var constraint TimeConstraints
+	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
+	fmt.Printf("\n--- aco, err: %+v, %+v", aco, err)
+	if err != nil {
+		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
+	}
+
+	// If aco is not terminated, then we should not apply any time constraints
+	if aco.TerminationDetails == nil {
+		return constraint, nil
+	}
+
+	constraint.AttributionDate = aco.TerminationDetails.AttributionDate()
+	constraint.ClaimsDate = aco.TerminationDetails.ClaimsDate()
+	constraint.OptOutDate = aco.TerminationDetails.OptOutDate()
+	return constraint, nil
 }
 
 type CCLFNotFoundError struct {

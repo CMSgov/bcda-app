@@ -552,3 +552,58 @@ func (_c *MockService_GetQueJobs_Call) RunAndReturn(run func(ctx context.Context
 	_c.Call.Return(run)
 	return _c
 }
+
+// SetTimeConstraints provides a mock function for the type MockService
+func (_mock *MockService) SetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
+	ret := _mock.Called(ctx, cmsID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTimeConstraints")
+	}
+
+	var r0 TimeConstraints
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (TimeConstraints, error)); ok {
+		return returnFunc(ctx, cmsID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) TimeConstraints); ok {
+		r0 = returnFunc(ctx, cmsID)
+	} else {
+		r0 = ret.Get(0).(TimeConstraints)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, cmsID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockService_SetTimeConstraints_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTimeConstraints'
+type MockService_SetTimeConstraints_Call struct {
+	*mock.Call
+}
+
+// SetTimeConstraints is a helper method to define mock.On call
+//   - ctx
+//   - cmsID
+func (_e *MockService_Expecter) SetTimeConstraints(ctx interface{}, cmsID interface{}) *MockService_SetTimeConstraints_Call {
+	return &MockService_SetTimeConstraints_Call{Call: _e.mock.On("SetTimeConstraints", ctx, cmsID)}
+}
+
+func (_c *MockService_SetTimeConstraints_Call) Run(run func(ctx context.Context, cmsID string)) *MockService_SetTimeConstraints_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_SetTimeConstraints_Call) Return(timeConstraints TimeConstraints, err error) *MockService_SetTimeConstraints_Call {
+	_c.Call.Return(timeConstraints, err)
+	return _c
+}
+
+func (_c *MockService_SetTimeConstraints_Call) RunAndReturn(run func(ctx context.Context, cmsID string) (TimeConstraints, error)) *MockService_SetTimeConstraints_Call {
+	_c.Call.Return(run)
+	return _c
+}

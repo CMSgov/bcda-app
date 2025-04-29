@@ -84,12 +84,6 @@ type Handler struct {
 // 	timeConstraint
 // }
 
-type timeConstraint struct {
-	attributionDate time.Time
-	optOutDate      time.Time
-	claimsDate      time.Time
-}
-
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
@@ -491,6 +485,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 // bulkRequest generates a job ID for a bulk export request. It will not queue a job
 // until auth, attribution, and request resources are validated.
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType constants.DataRequestType) {
+	fmt.Printf("\n-------- Start bulkRequest, reqType: %+v\n", reqType)
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -502,30 +497,41 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		err error
 	)
 
+	fmt.Println("\n--- start GetAuthDataFromCtx")
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
+	fmt.Printf("\n--- ad %+v\n", ad)
 
+	fmt.Println("\n--- start GetACOConfigForID")
 	if acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID); ok {
 		ctx = service.NewACOCfgCtx(ctx, acoCfg)
+		fmt.Printf("\n--- acoCfg %+v\n", acoCfg)
 	}
 
+	fmt.Println("\n--- start GetRequestParamsFromCtx")
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
 	}
+	fmt.Printf("\n--- rp %+v\n", rp)
 
+	fmt.Println("\n--- start getResourceTypes")
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
+	fmt.Printf("\n--- resourceTypes %+v\n", resourceTypes)
 
+	fmt.Println("\n--- start validateResources")
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
+	fmt.Println("\n--- start job stuff")
 	acoID := uuid.Parse(ad.ACOID)
+	fmt.Printf("\n--- acoId: %+v\n", acoID)
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -568,7 +574,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// 	w.WriteHeader(http.StatusAccepted)
 	// }()
 
-	repo := postgres.NewRepository(h.db)
+	// repo := postgres.NewRepository(h.db)
 
 	// ------------------------------------------------------------------------------------------------
 
@@ -592,33 +598,37 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// quejobs logic
 	// are timeconstraints used anywhere?
 	var cutoffTime time.Time
-	var timeConstraints timeConstraint
-	var cclfFileOld *models.CCLFFile
+	var timeConstraints service.TimeConstraints
+	var cclfFileOldID uint
 	var complexDataRequestType string
 	var fileType models.CCLFFileType
 
-	if timeConstraints, err = setTimeConstraints(ctx, repo, ad.CMSID); err != nil {
+	fmt.Println("\n--- Start setTimeConstraints")
+	timeConstraints, err = h.Svc.SetTimeConstraints(ctx, ad.CMSID)
+	if err != nil {
+		fmt.Printf("\n--- time constraints err: %+v", err)
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
+	fmt.Printf("\n--- setTimeConstraints: %+v", timeConstraints)
 
-	hasAttributionDate := !timeConstraints.attributionDate.IsZero()
-
+	hasAttributionDate := !timeConstraints.AttributionDate.IsZero()
+	fmt.Printf("\n--- hasAttributionDate: %+v", hasAttributionDate)
 	if reqType == constants.Runout {
 		fileType = models.FileTypeRunout
 	} else {
 		fileType = models.FileTypeDefault
 	}
-
+	fmt.Printf("\n--- fileType: %+v", fileType)
 	// for default requests, runouts, or any requests where the Since parameter is
 	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
 	if reqType == constants.DefaultRequest ||
 		reqType == constants.Runout ||
-		(hasAttributionDate && rp.Since.After(timeConstraints.attributionDate)) {
+		(hasAttributionDate && rp.Since.After(timeConstraints.AttributionDate)) {
 		complexDataRequestType = constants.GetExistingBenes
 		// only set a cutoffTime if there is no attributionDate set
-		if timeConstraints.attributionDate.IsZero() {
+		if timeConstraints.AttributionDate.IsZero() {
 			if fileType == models.FileTypeDefault && h.cfg.CutoffDuration > 0 {
 				cutoffTime = time.Now().Add(-1 * h.cfg.CutoffDuration)
 			} else if fileType == models.FileTypeRunout && h.cfg.RunoutConfig.CutoffDuration > 0 {
@@ -628,23 +638,25 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	} else if reqType == constants.RetrieveNewBeneHistData {
 		complexDataRequestType = constants.GetNewAndExistingBenes
 		// only set cutoffTime if there is no attributionDate set
-		if h.cfg.CutoffDuration > 0 && timeConstraints.attributionDate.IsZero() {
+		if h.cfg.CutoffDuration > 0 && timeConstraints.AttributionDate.IsZero() {
 			cutoffTime = time.Now().Add(-1 * h.cfg.CutoffDuration)
 		}
 	} else {
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		logger.Error("invalid complex data request type")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
 		return
 	}
+	fmt.Printf("\n--- complexDataRequestType %+v, cutoffTime: %+v", complexDataRequestType, cutoffTime)
 
+	fmt.Printf("\n--- finding latest CCLF file based on: CMSID: %+v, cutoffTime: %+v, attributionDate: %+v, fileType: %+v", ad.CMSID, cutoffTime, timeConstraints.AttributionDate, fileType)
 	// get latest cclf file
-	cclfFileNew, err := repo.GetLatestCCLFFile(
+	cclfFileNew, err := h.Svc.GetLatestCCLFFile(
 		ctx,
 		ad.CMSID,
-		constants.CCLF8FileNum,
-		constants.ImportComplete,
+		// constants.CCLF8FileNum,
+		// constants.ImportComplete,
 		cutoffTime,
-		timeConstraints.attributionDate,
+		timeConstraints.AttributionDate,
 		fileType,
 	)
 	if err != nil {
@@ -652,20 +664,24 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
+	fmt.Printf("\n--- cclfFileNew: %+v", cclfFileNew)
 
 	// set PY
-	performanceYear := time.Now().Year() % 100
+	performanceYear := utils.GetPY()
 	if fileType == models.FileTypeRunout {
 		performanceYear -= 1
 	}
+	fmt.Printf("\n--- performanceYear: %+v", performanceYear)
 
 	// validate cclffile and PY
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
+		fmt.Println("\n--- failed on validate cclfile/PY")
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
 
 	if complexDataRequestType == "GetNewAndExistingBenes" {
+		fmt.Println("\n--- start GetNewAndExistingBenes")
 		// Retrieve an older CCLF file for beneficiary comparison.
 		// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
 		//
@@ -682,11 +698,11 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
 		}
 
-		cclfFileOld, err := repo.GetLatestCCLFFile(
+		cclfFileOld, err := h.Svc.GetLatestCCLFFile(
 			ctx,
 			ad.CMSID,
-			constants.CCLF8FileNum,
-			constants.ImportComplete,
+			// constants.CCLF8FileNum,
+			// constants.ImportComplete,
 			time.Time{},
 			oldFileUpperBound,
 			models.FileTypeDefault,
@@ -698,12 +714,16 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		}
 		if cclfFileOld == nil {
 			logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", ad.CMSID, rp.Since)
+		} else {
+			cclfFileOldID = cclfFileOld.ID
 		}
 	}
+	fmt.Printf("\n--- cclfFileOldID: %+v", cclfFileOldID)
 
 	// ----------------------------------------------------------------------------------------
 
-	newJob.ID, err = repo.CreateJob(ctx, newJob)
+	fmt.Println("\n--- Start create job")
+	newJob.ID, err = h.r.CreateJob(ctx, newJob)
 	if err != nil {
 		logger.Error("failed to create job: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
@@ -715,23 +735,25 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		logger.Info("job id created")
 	}
 
+	fmt.Println("\n--- Start pjob")
 	// lots of things needed for downstream logic!
 	pjob := worker_types.PrepareJobArgs{
 		Job:                    newJob,
 		ACOID:                  acoID,
 		CMSID:                  ad.CMSID,
 		CCLFFileNewID:          cclfFileNew.ID,
-		CCLFFileOldID:          cclfFileOld.ID,
+		CCLFFileOldID:          cclfFileOldID,
 		BFDPath:                h.bbBasePath,
 		RequestType:            reqType,
 		ComplexDataRequestType: complexDataRequestType,
 		ResourceTypes:          resourceTypes,
 		Since:                  rp.Since,
 		CreationTime:           time.Now(),
-		ClaimsDate:             timeConstraints.claimsDate,
-		OptOutDate:             timeConstraints.optOutDate,
+		ClaimsDate:             timeConstraints.ClaimsDate,
+		OptOutDate:             timeConstraints.OptOutDate,
 		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
 	}
+	fmt.Printf("\n--- ppreparejob data: %+v", pjob)
 	logger.Infof("Adding jobs using %T", h.Enq)
 	err = h.Enq.AddPrepareJob(ctx, pjob)
 	if err != nil {
@@ -739,7 +761,11 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
+	fmt.Printf("\n--- end of bulkrequest, status %+v", w)
+	fmt.Printf("\n--- end of bulkrequest, status %+v", r)
 
+	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
@@ -793,25 +819,6 @@ func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {
 		err = goerrors.New("no auth data in context")
 	}
 	return
-}
-
-// setTimeConstraints searches for any time bounds that we should apply on the associated ACO
-func setTimeConstraints(ctx context.Context, repo *postgres.Repository, cmsID string) (timeConstraint, error) {
-	var constraint timeConstraint
-	aco, err := repo.GetACOByCMSID(ctx, cmsID)
-	if err != nil {
-		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
-	}
-
-	// If aco is not terminated, then we should not apply any time constraints
-	if aco.TerminationDetails == nil {
-		return constraint, nil
-	}
-
-	constraint.attributionDate = aco.TerminationDetails.AttributionDate()
-	constraint.claimsDate = aco.TerminationDetails.ClaimsDate()
-	constraint.optOutDate = aco.TerminationDetails.OptOutDate()
-	return constraint, nil
 }
 
 // swagger:model fileItem

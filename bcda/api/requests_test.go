@@ -116,15 +116,16 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	assert.Empty(s.T(), err)
 
 	tests := []struct {
-		name string
-
-		errToReturn   error
-		respCode      int
-		apiVersion    string
-		noAttribution bool
+		name               string
+		errToReturn        error
+		respCode           int
+		apiVersion         string
+		runoutAttributions bool
 	}{
-		{"Successful", nil, http.StatusAccepted, apiVersionOne, false},
-		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, false},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
+		// {"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
+		// {"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, false},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, false},
 	}
@@ -135,10 +136,14 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			resourceMap := s.resourceType
 
-			// if tt.noAttribution {
-			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, service.CCLFNotFoundError{})
+			// if tt.runoutAttributions {
+			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+			// 		&models.CCLFFile{PerformanceYear: (utils.GetPY() - 1)}, nil,
+			// 	)
 			// } else {
-			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
+			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+			// 		&models.CCLFFile{}, service.CCLFNotFoundError{},
+			// 	)
 			// }
 
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
@@ -154,7 +159,6 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 			case QueueError{}:
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
-
 			}
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
@@ -579,13 +583,16 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		closeDB        bool
 		mockAddJob     bool
 	}{
+		// aco requesting accessable data
 		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, true, false, false},
 		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, true, false, false},
+		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, true, false, false},
+		// aco requesting non accessable data
 		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, true},
 		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, true},
-		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, true, false, false},
 		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, true},
 		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, true},
+		// other errors
 		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
 		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
 		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
@@ -593,9 +600,10 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
-
+			fmt.Printf("\n--- DATAAUTH: %s\n", test.name)
 			mockSvc := service.MockService{}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
+			mockSvc.On("SetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
 			h.Svc = &mockSvc
 
@@ -636,7 +644,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			if h.db == nil {
 				h.db = *temp_db
 			}
-
+			fmt.Printf("\n--- expected status: %+v, result status: %+v\n", test.expectedCode, w.Code)
 			assert.Equal(s.T(), test.expectedCode, w.Code)
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
 		})
@@ -1044,7 +1052,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 		expectedCode int
 		acoConfig    *service.ACOConfig
 	}{
-		{"Test Insert PrepareJob", "A9994", []string{"Patient"}, http.StatusAccepted, acoA},
+		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, http.StatusAccepted, acoA},
 	}
 
 	for _, test := range tests {
