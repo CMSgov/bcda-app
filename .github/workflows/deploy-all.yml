@@ -19,14 +19,14 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
       confirm_env:
         description: 'Confirm the environment you want to deploy to'
@@ -36,7 +36,7 @@ on:
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
       test_aco:
         description: Run the smoke tests using the selected ACO
@@ -61,7 +61,7 @@ env:
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-  ENV_MODIFIER: ${{ (inputs.env == 'opensbx' && 'sbx') || inputs.env || 'dev' }}
+  ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
@@ -73,7 +73,7 @@ jobs:
     secrets: inherit
 
   deploy:
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    environment: ${{ inputs.env || 'dev' }}
     runs-on: self-hosted
     steps:
       - name: Confirm Env
@@ -214,7 +214,7 @@ jobs:
           name: notify-script
           path: scripts
       - name: Notify NewRelic
-        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'opensbx' || env.RELEASE_ENV == 'test' }}
+        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'sandbox' || env.RELEASE_ENV == 'test' }}
         run: |
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
@@ -228,7 +228,7 @@ jobs:
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
-  
+
   slack_alerts:
     if: ${{ always() }}
     runs-on: self-hosted

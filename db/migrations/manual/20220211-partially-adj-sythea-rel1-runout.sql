@@ -1,5 +1,5 @@
 -- This SQL script is for bookkeeping and auditing purposes
--- This script can be used to add the improved synthea data to opensbx
+-- This script can be used to add the improved synthea data to sandbox
 
 BEGIN;
 DO $$

@@ -27,7 +27,7 @@ smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
 
 postman:
-	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
+	# This target should be executed by passing in an argument for the environment (dev/test/sandbox)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN> maintenanceMode=<CURRENT_MAINTENANCE_MODE>
@@ -64,10 +64,10 @@ unit-test-db:
 	# Clean up any existing data to ensure we spin up container in a known state.
 	docker compose -f docker-compose.test.yml rm -fsv db-unit-test
 	docker compose -f docker-compose.test.yml up -d db-unit-test
-	
+
 	# Wait for the database to be ready
 	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
-	
+
 	# Perform migrations to ensure matching schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
@@ -83,7 +83,7 @@ unit-test-localstack:
 	# Clean up any existing data to ensure we spin up container in a known state.
 	docker compose -f docker-compose.test.yml rm -fsv localstack
 	docker compose -f docker-compose.test.yml up -d localstack
-	
+
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
 	docker compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
@@ -115,9 +115,9 @@ load-fixtures: reset-db
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
-	
+
 	# Add ALR data for ACOs under test. Must have attribution already set.
-	$(eval ACO_CMS_IDS := A9994 A9996) 
+	$(eval ACO_CMS_IDS := A9994 A9996)
 	for acoId in $(ACO_CMS_IDS) ; do \
 		docker compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id='$$acoId' --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv' ; \
 	done
@@ -201,7 +201,7 @@ bdt:
 credentials:
 	$(eval ACO_CMS_ID = A9994)
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
-	# For example: ACO_CMS_ID=A9993 make credentials 
+	# For example: ACO_CMS_ID=A9993 make credentials
 	@docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
 
 dbdocs:
@@ -227,7 +227,7 @@ build-api:
 	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
 	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${CURRENT_COMMIT}' -f Dockerfiles/Dockerfile.bcda_prod .
 
-publish-api:	
+publish-api:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
 	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
 	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${DOCKER_REGISTRY_URL}'
