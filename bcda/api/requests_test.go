@@ -27,10 +27,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -126,8 +128,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
 		// {"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
 		// {"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
-		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, false},
-		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
+		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
 	}
 
 	for _, tt := range tests {
@@ -136,23 +138,34 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			resourceMap := s.resourceType
 
-			// if tt.runoutAttributions {
-			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			// 		&models.CCLFFile{PerformanceYear: (utils.GetPY() - 1)}, nil,
-			// 	)
-			// } else {
-			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			// 		&models.CCLFFile{}, service.CCLFNotFoundError{},
-			// 	)
-			// }
+			var cclfCall *mock.Call
+			// mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{ID: 1}, nil)
+			if tt.runoutAttributions {
+				fmt.Println("\n--- run GetLatestCCLFFile on Runout")
+				cclfCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+					&models.CCLFFile{PerformanceYear: (utils.GetPY() - 1)},
+					nil,
+				)
+			} else {
+				fmt.Println("\n--- run GetLatestCCLFFile on else")
+				cclfCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+					&models.CCLFFile{PerformanceYear: utils.GetPY()},
+					nil,
+				)
+			}
 
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+			mockSvc.On("SetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+			fmt.Printf("\n--- in test: mockSvc: %+v", mockSvc)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
+
+			fmt.Printf("\n--- in test: mockSvc: %+v", mockSvc)
+			fmt.Printf("\n--- in test: h.Svc: %+v", h.Svc)
 
 			switch tt.errToReturn {
 			case nil:
@@ -178,6 +191,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			} else {
 				assert.Contains(t, string(body), tt.errToReturn.Error())
 			}
+
+			cclfCall.Unset()
 		})
 	}
 }
@@ -595,7 +610,8 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		// other errors
 		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
 		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
-		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
+		// no longer running in transaction, test no longer relevant
+		// {"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
 	}
 
 	for _, test := range tests {
@@ -604,7 +620,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			mockSvc := service.MockService{}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
 			mockSvc.On("SetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
-			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
 			h.Svc = &mockSvc
 
 			enqueuer := queueing.NewMockEnqueuer(s.T())
@@ -634,16 +650,16 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 				Version:       apiVersionTwo,
 			}))
 
-			temp_db := &h.db
-			if test.closeDB {
-				h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-				h.db.Close()
-			}
+			// temp_db := &h.db
+			// if test.closeDB {
+			// 	h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+			// 	h.db.Close()
+			// }
 
 			h.bulkRequest(w, r, constants.DefaultRequest)
-			if h.db == nil {
-				h.db = *temp_db
-			}
+			// if h.db == nil {
+			// 	h.db = *temp_db
+			// }
 			fmt.Printf("\n--- expected status: %+v, result status: %+v\n", test.expectedCode, w.Code)
 			assert.Equal(s.T(), test.expectedCode, w.Code)
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
@@ -662,11 +678,13 @@ func (s *RequestsTestSuite) TestRequests() {
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
 
 	mockSvc := service.MockService{}
-	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
+	mockSvc.On("SetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
 	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+	cclfFile := models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()}
+	cclfFileLastYear := models.CCLFFile{ID: 2, PerformanceYear: (utils.GetPY() - 1)}
 
 	h.Svc = &mockSvc
 
@@ -686,11 +704,27 @@ func (s *RequestsTestSuite) TestRequests() {
 					ResourceTypes: []string{resource},
 					Since:         since,
 				}
+				var mockCall *mock.Call
+				if groupID == "all" {
+					fmt.Println("\n--- groupID ALL")
+					mockCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						&cclfFile,
+						nil,
+					)
+				} else {
+					fmt.Println("\n--- groupID RUNOUT")
+					mockCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						&cclfFileLastYear,
+						nil,
+					)
+				}
 				rr := httptest.NewRecorder()
 				req := s.genGroupRequest(groupID, rp)
 				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				h.BulkGroupRequest(rr, req)
 				assert.Equal(s.T(), http.StatusAccepted, rr.Code)
+
+				mockCall.Unset()
 			}
 		}
 	}
@@ -703,6 +737,10 @@ func (s *RequestsTestSuite) TestRequests() {
 				ResourceTypes: []string{resource},
 				Since:         since,
 			}
+			mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				&cclfFile,
+				nil,
+			)
 			rr := httptest.NewRecorder()
 			req := s.genPatientRequest(rp)
 			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
@@ -1042,6 +1080,23 @@ func TestBulkRequest_Integration(t *testing.T) {
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
+	fmt.Printf("\n--- h.db: %+v, %+v", &h.db, h.db)
+
+	acoID := "A0002"
+	repo := postgres.NewRepository(h.db)
+	fmt.Printf("\n--- repo : %+v", &repo)
+	// err := repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()})
+	// assert.Nil(t, err)
+	_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{
+		Name:            "testfilename",
+		ACOCMSID:        acoID,
+		PerformanceYear: utils.GetPY(),
+		Type:            models.FileTypeDefault,
+		Timestamp:       (time.Now()),
+		CCLFNum:         constants.CCLF8FileNum,
+		ImportStatus:    constants.ImportComplete,
+	})
+	assert.Nil(t, err)
 
 	jsonBytes, _ := json.Marshal("{}")
 
@@ -1081,37 +1136,36 @@ func TestBulkRequest_Integration(t *testing.T) {
 				t.FailNow()
 			}
 			driver := riverpgxv5.New(d)
-			ctx := context.Background()
-			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 
+			ctx := context.Background()
 			os.Unsetenv("QUEUE_LIBRARY")
 			h.bulkRequest(w, r, constants.DefaultRequest)
 			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
 			assert.Greater(t, len(jobs), 0)
-
+			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 			if err != nil {
 				t.Log("failed to cleanup river jobs during tests")
 			}
 		})
 	}
 
-	cfg, err := database.LoadConfig()
-	if err != nil {
-		t.Log()
-	}
-	d, err := database.CreatePgxv5DB(cfg)
-	if err != nil {
-		t.Log()
-	}
-	driver := riverpgxv5.New(d)
-	ctx := context.Background()
-	os.Unsetenv("QUEUE_LIBRARY")
-	jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
-	assert.Greater(t, len(jobs), 0)
-	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-	if err != nil {
-		t.Log("failed to cleanup river jobs during tests")
-	}
+	// cfg, err := database.LoadConfig()
+	// if err != nil {
+	// 	t.Log()
+	// }
+	// d, err := database.CreatePgxv5DB(cfg)
+	// if err != nil {
+	// 	t.Log()
+	// }
+	// driver := riverpgxv5.New(d)
+	// ctx := context.Background()
+	// os.Unsetenv("QUEUE_LIBRARY")
+	// jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
+	// assert.Greater(t, len(jobs), 0)
+	// _, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	// if err != nil {
+	// 	t.Log("failed to cleanup river jobs during tests")
+	// }
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {

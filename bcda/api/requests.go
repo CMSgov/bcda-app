@@ -650,6 +650,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	fmt.Printf("\n--- finding latest CCLF file based on: CMSID: %+v, cutoffTime: %+v, attributionDate: %+v, fileType: %+v", ad.CMSID, cutoffTime, timeConstraints.AttributionDate, fileType)
 	// get latest cclf file
+	fmt.Printf("\n--- h.Svc: %+v", h.Svc)
 	cclfFileNew, err := h.Svc.GetLatestCCLFFile(
 		ctx,
 		ad.CMSID,
@@ -660,6 +661,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		fileType,
 	)
 	if err != nil {
+		fmt.Printf("\n--- get latest cclf file error: %+v", err)
 		logger.Error(err.Error())
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
@@ -668,6 +670,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	// set PY
 	performanceYear := utils.GetPY()
+	fmt.Printf("\n--- fileType: %+v, %+v, logic?: %+v", fileType, models.FileTypeRunout, (fileType == models.FileTypeRunout))
 	if fileType == models.FileTypeRunout {
 		performanceYear -= 1
 	}
@@ -675,7 +678,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	// validate cclffile and PY
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-		fmt.Println("\n--- failed on validate cclfile/PY")
+		fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
@@ -757,6 +760,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	logger.Infof("Adding jobs using %T", h.Enq)
 	err = h.Enq.AddPrepareJob(ctx, pjob)
 	if err != nil {
+		fmt.Printf("\n--- AddPrepareJob err: %+v", err)
 		logger.Errorf("failed to add job to the queue: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
