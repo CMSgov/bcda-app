@@ -1,4 +1,4 @@
-# Build AMI will create a 'platinum ami' using packer and ansible that is based off of the CMS monthly Gold Image.
+# Build AMI GF will create a 'platinum ami' using packer and ansible that is based off of the CMS monthly Gold Image.
 name: Build AMI GF
 
 on:
@@ -50,5 +50,12 @@ jobs:
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/platinum.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.hcl 2>&1
+          packer init packer/platinum.json.pkr.gf.hcl 2>&1
+          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.gf.hcl 2>&1
+
+          AMI_ID=$(jq -r '.builds[-1].artifact_id' packer-manifest.json | cut -d ":" -f2)
+          echo $AMI_ID
+
+          aws ec2 modify-image-attribute \
+            --image-id $AMI_ID \
+            --launch-permission "Add=[{UserId=${{ secrets.NON_PROD_ACCOUNT_ID }}}]"
