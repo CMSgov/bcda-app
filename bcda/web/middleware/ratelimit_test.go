@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -19,6 +21,7 @@ import (
 )
 
 func TestNoConcurrentJobs(t *testing.T) {
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	tests := []struct {
 		name string
 		rp   RequestParameters
@@ -43,13 +46,15 @@ func TestNoConcurrentJobs(t *testing.T) {
 		repository = mockRepo
 
 		rr := httptest.NewRecorder()
-		CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		middleware := CheckConcurrentJobs(cfg)
+		middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// Conncurrent job test route check, blank return for overrides
 		})).ServeHTTP(rr, getRequest(tt.rp))
 		assert.Equal(t, http.StatusOK, rr.Code)
 	}
 }
 func TestHasConcurrentJobs(t *testing.T) {
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	// These jobs are not considered when determine duplicate jobs
 	ignoredJobs := []*models.Job{
 		{RequestURL: "http://a{b"},                           // InvalidURL
@@ -81,13 +86,15 @@ func TestHasConcurrentJobs(t *testing.T) {
 		repository = mockRepo
 
 		rr := httptest.NewRecorder()
-		CheckConcurrentJobs(nil).ServeHTTP(rr, getRequest(tt.rp))
+		middleware := CheckConcurrentJobs(cfg)
+		middleware(nil).ServeHTTP(rr, getRequest(tt.rp))
 		assert.Equal(t, http.StatusTooManyRequests, rr.Code)
 		assert.NotEmpty(t, rr.Header().Get("Retry-After"))
 	}
 }
 
 func TestFailedToGetJobs(t *testing.T) {
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	mockRepo := &models.MockRepository{}
 	// ctx, acoID, inprogress, pending
 	mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
@@ -98,7 +105,8 @@ func TestFailedToGetJobs(t *testing.T) {
 	repository = mockRepo
 
 	rr := httptest.NewRecorder()
-	CheckConcurrentJobs(nil).ServeHTTP(rr, getRequest(RequestParameters{}))
+	middleware := CheckConcurrentJobs(cfg)
+	middleware(nil).ServeHTTP(rr, getRequest(RequestParameters{}))
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	assert.Contains(t, rr.Body.String(), "code\":\"exception\"")
 }
@@ -136,4 +144,47 @@ func TestHasDuplicatesFullString(t *testing.T) {
 		assert.Equal(t, tt.expectedValue, responseBool)
 	}
 
+}
+
+func TestShouldRateLimit(t *testing.T) {
+	ctx := context.Background()
+	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
+
+	acoID := uuid.UUID("178e580c-9a81-4dd6-8ecd-93d2052c0c6f")
+	cmsID := "MyFavoriteACO"
+	aco := models.ACO{
+		UUID:  acoID,
+		CMSID: &cmsID,
+	}
+	nonexistentACOID := uuid.UUID("43fed117-925b-4e3c-b60f-8db7c8bf2aea")
+
+	mockRepo := &models.MockRepository{}
+	// ctx, acoID, inprogress, pending
+	mockRepo.On("GetACOByUUID", mock.Anything, acoID).Return(
+		&aco, // aco
+		nil,  // error
+	)
+	mockRepo.On("GetACOByUUID", mock.Anything, nonexistentACOID).Return(
+		nil,                               // aco
+		fmt.Errorf("ACO not found error"), //error
+	)
+	repository = mockRepo
+
+	tests := []struct {
+		name          string
+		acoID         uuid.UUID
+		config        service.RateLimitConfig
+		expectedValue bool
+	}{
+		{"Apply rate limit for all requests", acoID, service.RateLimitConfig{All: true, ACOs: []string{}}, true},
+		{"Apply rate limit for no requests", acoID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
+		{"Don't apply rate limit for ACO not found", nonexistentACOID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
+		{"Apply rate limit for ACO in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"IrrelevantACO", cmsID}}, true},
+		{"Dont apply rate limit for ACO not in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"IrrelevantACO"}}, false},
+	}
+
+	for _, tt := range tests {
+		actualValue := shouldRateLimit(ctx, tt.config, tt.acoID)
+		assert.Equal(t, tt.expectedValue, actualValue, tt.name)
+	}
 }
