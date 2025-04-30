@@ -132,14 +132,15 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 
 	// for default requests, runouts, or any requests where the Since parameter is
 	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
-	if args.ComplexDataRequestType == constants.GetExistingBenes {
+	switch args.ComplexDataRequestType {
+	case constants.GetExistingBenes:
 		// fmt.Println("\n-------- GetExistingBenes")
 		beneficiaries, err = s.getBeneficiaries(ctx, args)
 		// fmt.Printf("\n-------- getBeneficiaries: %+v", beneficiaries)
 		if err != nil {
 			return nil, err
 		}
-	} else if args.ComplexDataRequestType == constants.GetNewAndExistingBenes {
+	case constants.GetNewAndExistingBenes:
 		// fmt.Println("\n-------- GetNewAndExistingBenes")
 		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, args)
 		// fmt.Printf("\n-------- newBeneficiaries: %+v, beneficiaries: %+v", newBeneficiaries, beneficiaries)
@@ -153,7 +154,7 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 			return nil, err
 		}
 		queJobs = append(queJobs, jobs...)
-	} else {
+	default:
 		return nil, fmt.Errorf("unsupported RequestType %d", args.RequestType)
 	}
 

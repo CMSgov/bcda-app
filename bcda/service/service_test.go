@@ -1635,6 +1635,6 @@ func getJobs(id uint) []*models.Job {
 	}
 }
 
-func timeIsSetMatcher(t time.Time) bool {
-	return !t.IsZero()
-}
+// func timeIsSetMatcher(t time.Time) bool {
+// 	return !t.IsZero()
+// }
