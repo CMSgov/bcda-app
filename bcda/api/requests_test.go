@@ -1085,7 +1085,8 @@ func TestBulkRequest_Integration(t *testing.T) {
 	acoID := "A0002"
 	repo := postgres.NewRepository(h.db)
 	fmt.Printf("\n--- repo : %+v", &repo)
-	// err := repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()})
+	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
+	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
 	// assert.Nil(t, err)
 	_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{
 		Name:            "testfilename",
