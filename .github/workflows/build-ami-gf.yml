@@ -50,8 +50,8 @@ jobs:
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/platinum.json.pkr.gf.hcl 2>&1
-          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.gf.hcl 2>&1
+          packer init packer/platinum_gf.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum_gf.json.pkr.hcl 2>&1
 
           AMI_ID=$(jq -r '.builds[-1].artifact_id' packer-manifest.json | cut -d ":" -f2)
           echo $AMI_ID
