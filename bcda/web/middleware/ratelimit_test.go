@@ -37,20 +37,22 @@ func TestNoConcurrentJobs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		mockRepo := &models.MockRepository{}
-		// ctx, acoID, inprogress, pending
-		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			tt.jobs, //jobs
-			nil,     //error
-		)
-		repository = mockRepo
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &models.MockRepository{}
+			// ctx, acoID, inprogress, pending
+			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				tt.jobs, //jobs
+				nil,     //error
+			)
+			repository = mockRepo
 
-		rr := httptest.NewRecorder()
-		middleware := CheckConcurrentJobs(cfg)
-		middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			// Conncurrent job test route check, blank return for overrides
-		})).ServeHTTP(rr, getRequest(tt.rp))
-		assert.Equal(t, http.StatusOK, rr.Code)
+			rr := httptest.NewRecorder()
+			middleware := CheckConcurrentJobs(cfg)
+			middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				// Conncurrent job test route check, blank return for overrides
+			})).ServeHTTP(rr, getRequest(tt.rp))
+			assert.Equal(t, http.StatusOK, rr.Code)
+		})
 	}
 }
 func TestHasConcurrentJobs(t *testing.T) {
@@ -77,19 +79,21 @@ func TestHasConcurrentJobs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		mockRepo := &models.MockRepository{}
-		// ctx, acoID, inprogress, pending
-		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			append(ignoredJobs, tt.additionalJobs...), //jobs
-			nil, //error
-		)
-		repository = mockRepo
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &models.MockRepository{}
+			// ctx, acoID, inprogress, pending
+			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				append(ignoredJobs, tt.additionalJobs...), //jobs
+				nil, //error
+			)
+			repository = mockRepo
 
-		rr := httptest.NewRecorder()
-		middleware := CheckConcurrentJobs(cfg)
-		middleware(nil).ServeHTTP(rr, getRequest(tt.rp))
-		assert.Equal(t, http.StatusTooManyRequests, rr.Code)
-		assert.NotEmpty(t, rr.Header().Get("Retry-After"))
+			rr := httptest.NewRecorder()
+			middleware := CheckConcurrentJobs(cfg)
+			middleware(nil).ServeHTTP(rr, getRequest(tt.rp))
+			assert.Equal(t, http.StatusTooManyRequests, rr.Code)
+			assert.NotEmpty(t, rr.Header().Get("Retry-After"))
+		})
 	}
 }
 
@@ -139,9 +143,10 @@ func TestHasDuplicatesFullString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
-		responseBool := hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
-		assert.Equal(t, tt.expectedValue, responseBool)
+		t.Run(tt.name, func(t *testing.T) {
+			responseBool := hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
+			assert.Equal(t, tt.expectedValue, responseBool)
+		})
 	}
 
 }
@@ -184,7 +189,9 @@ func TestShouldRateLimit(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		actualValue := shouldRateLimit(ctx, tt.config, tt.acoID)
-		assert.Equal(t, tt.expectedValue, actualValue, tt.name)
+		t.Run(tt.name, func(t *testing.T) {
+			actualValue := shouldRateLimit(ctx, tt.config, tt.acoID)
+			assert.Equal(t, tt.expectedValue, actualValue, tt.name)
+		})
 	}
 }
