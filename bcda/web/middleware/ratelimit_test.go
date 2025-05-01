@@ -183,8 +183,8 @@ func TestShouldRateLimit(t *testing.T) {
 	}{
 		{"Apply rate limit for all requests", acoID, service.RateLimitConfig{All: true, ACOs: []string{}}, true},
 		{"Apply rate limit for no requests", acoID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
-		{"Don't apply rate limit for ACO not found", nonexistentACOID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
-		{"Apply rate limit for ACO in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"IrrelevantACO", cmsID}}, true},
+		{"Don't apply rate limit for ACO not found", nonexistentACOID, service.RateLimitConfig{All: false, ACOs: []string{"MyFavoriteACO"}}, false},
+		{"Apply rate limit for ACO in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"MyFavoriteACO", cmsID}}, true},
 		{"Dont apply rate limit for ACO not in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"IrrelevantACO"}}, false},
 	}
 
