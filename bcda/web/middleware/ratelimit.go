@@ -76,16 +76,10 @@ func CheckConcurrentJobs(cfg *service.Config) func(next http.Handler) http.Handl
 }
 
 func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
-	if config.All { // apply rate limit for all requests
-		return true
-	}
-	if len(config.ACOs) == 0 { // no rules to apply rate limit
+	if config.All || slices.Contains(config.ACOs, cmsID) {
 		return false
 	}
-	if !slices.Contains(config.ACOs, cmsID) { // ACO not within list that has rate limit
-		return false
-	}
-	return true // ACO is within list that has rate limit
+	return true
 }
 
 func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {
