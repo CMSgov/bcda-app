@@ -25,40 +25,39 @@ jobs:
           - env: prod
             account_id: PROD_ACCOUNT_ID
             role_to_assume: bcda-prod-github-actions
-
     steps:
-      # - uses: hashicorp/setup-packer@v3.1.0
+      - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
-      # - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-      #   env:
-      #     AWS_REGION: ${{ vars.AWS_REGION }}
-      #   with:
-      #     params: |
-      #       GITHUB_TOKEN=/ci/github/token
-      #       SUBNET_ID=/bcda/workflows/packer_subnet_id
-      #       GOLD_IMAGE=/bcda/workflows/gold_image_ami
-      # - name: checkout bcda-ops
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: CMSgov/bcda-ops
-      #     ref: 'jscott/PLT-891'
-      #     token: ${{ env.GITHUB_TOKEN }}
-      # - name: Install Ansible
-      #   run: |
-      #     sudo yum update -y
-      #     sudo yum install python3-pip -y
-      #     sudo dnf install ansible-8.3.0 -y
-      # - name: Install AWS Session Manager Plugin
-      #   run: |
-      #     sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
-      # - name: packer build
-      #   env:
-      #     PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     TMPDIR: /tmp/
-      #   run: |
-      #     set -euo pipefail
-      #     packer init packer/platinum_gf.json.pkr.hcl 2>&1
-      #     packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum_gf.json.pkr.hcl 2>&1
+      - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            GITHUB_TOKEN=/ci/github/token
+            SUBNET_ID=/bcda/workflows/packer_subnet_id
+            GOLD_IMAGE=/bcda/workflows/gold_image_ami
+      - name: checkout bcda-ops
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: 'jscott/PLT-891'
+          token: ${{ env.GITHUB_TOKEN }}
+      - name: Install Ansible
+        run: |
+          sudo yum update -y
+          sudo yum install python3-pip -y
+          sudo dnf install ansible-8.3.0 -y
+      - name: Install AWS Session Manager Plugin
+        run: |
+          sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+      - name: packer build
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: /tmp/
+        run: |
+          set -euo pipefail
+          packer init packer/platinum_gf.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum_gf.json.pkr.hcl 2>&1
