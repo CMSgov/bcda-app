@@ -31,7 +31,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ format('secrets.{0}', matrix.vars.account_id) }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
+          role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
       # - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
       #   env:
       #     AWS_REGION: ${{ vars.AWS_REGION }}
