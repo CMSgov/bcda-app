@@ -77,9 +77,9 @@ func CheckConcurrentJobs(cfg *service.Config) func(next http.Handler) http.Handl
 
 func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
 	if config.All || slices.Contains(config.ACOs, cmsID) {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {
