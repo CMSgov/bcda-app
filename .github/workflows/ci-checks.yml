@@ -79,7 +79,7 @@ jobs:
       - name: Build the stack
         run: make docker-bootstrap
       - name: Lint and Test
-        run: make test
+        run: make unit-test
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
@@ -94,10 +94,6 @@ jobs:
     needs: lint_and_test
     runs-on: self-hosted
     steps:
-      - name: Download code coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: code-coverage-report
       - name: Set env vars from AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -111,6 +107,10 @@ jobs:
         with:
           repository: CMSgov/bcda-app
           fetch-depth: 0
+      - name: Download code coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-report
       - name: Run quality gate scan
         uses: sonarsource/sonarqube-scan-action@master
         with:
