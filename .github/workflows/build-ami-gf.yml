@@ -18,13 +18,13 @@ jobs:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     strategy:
       matrix:
-        aws_account_id_secret: [ secrets.PROD_ACCOUNT_ID', 'secrets.PROD_ACCOUNT_ID' ]
+        aws_account_id_secret: [ PROD_ACCOUNT_ID', 'NON_PROD_ACCOUNT_ID' ]
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ matrix.aws_account_id_secret }}:role/delegatedadmin/developer/bcda-prod-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets[format('{0}', matrix.aws_account_id_secret)] }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
