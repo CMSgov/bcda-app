@@ -1082,13 +1082,26 @@ func TestBulkRequest_Integration(t *testing.T) {
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
 	fmt.Printf("\n--- h.db: %+v, %+v", &h.db, h.db)
 
+	cfg, err := database.LoadConfig()
+	if err != nil {
+		t.FailNow()
+	}
+	d, err := database.CreatePgxv5DB(cfg)
+	if err != nil {
+		t.FailNow()
+	}
+	driver := riverpgxv5.New(d)
+	// start from clean river_job slate
+	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	assert.Nil(t, err)
+
 	acoID := "A0002"
 	repo := postgres.NewRepository(h.db)
 	fmt.Printf("\n--- repo : %+v", &repo)
 	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
 	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
 	// assert.Nil(t, err)
-	_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{
+	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{
 		Name:            "testfilename",
 		ACOCMSID:        acoID,
 		PerformanceYear: utils.GetPY(),
@@ -1128,20 +1141,23 @@ func TestBulkRequest_Integration(t *testing.T) {
 				Version:       apiVersionTwo,
 			}))
 
-			cfg, err := database.LoadConfig()
-			if err != nil {
-				t.FailNow()
-			}
-			d, err := database.CreatePgxv5DB(cfg)
-			if err != nil {
-				t.FailNow()
-			}
-			driver := riverpgxv5.New(d)
+			// cfg, err := database.LoadConfig()
+			// if err != nil {
+			// 	t.FailNow()
+			// }
+			// d, err := database.CreatePgxv5DB(cfg)
+			// if err != nil {
+			// 	t.FailNow()
+			// }
+			// driver := riverpgxv5.New(d)
 
 			ctx := context.Background()
 			os.Unsetenv("QUEUE_LIBRARY")
 			h.bulkRequest(w, r, constants.DefaultRequest)
-			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
+			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{
+				Args: worker_types.PrepareJobArgs{},
+				Opts: nil,
+			}})
 			assert.Greater(t, len(jobs), 0)
 			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 			if err != nil {
