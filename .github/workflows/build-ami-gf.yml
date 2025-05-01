@@ -16,12 +16,15 @@ jobs:
   build_ami:
     name: build the platinum ami
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    strategy:
+      matrix:
+        aws_account_id_secret: [ secrets.PROD_ACCOUNT_ID', 'secrets.PROD_ACCOUNT_ID' ]
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
+          role-to-assume: arn:aws:iam::${{ matrix.aws_account_id_secret }}:role/delegatedadmin/developer/bcda-prod-github-actions
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -52,10 +55,3 @@ jobs:
           set -euo pipefail
           packer init packer/platinum_gf.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum_gf.json.pkr.hcl 2>&1
-
-          AMI_ID=$(jq -r '.builds[-1].artifact_id' packer-manifest.json | cut -d ":" -f2)
-          echo $AMI_ID
-
-          aws ec2 modify-image-attribute \
-            --image-id $AMI_ID \
-            --launch-permission "Add=[{UserId=${{ secrets.NON_PROD_ACCOUNT_ID }}}]"
