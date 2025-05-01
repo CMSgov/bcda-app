@@ -53,7 +53,7 @@ func CheckConcurrentJobs(cfg *service.Config) func(next http.Handler) http.Handl
 
 			acoID := uuid.Parse(ad.ACOID)
 
-			if shouldRateLimit(r.Context(), cfg.RateLimitConfig, acoID) {
+			if shouldRateLimit(cfg.RateLimitConfig, ad.CMSID) {
 				pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
 				if err != nil {
 					logger := log.GetCtxLogger(r.Context())
@@ -75,20 +75,14 @@ func CheckConcurrentJobs(cfg *service.Config) func(next http.Handler) http.Handl
 	}
 }
 
-func shouldRateLimit(ctx context.Context, config service.RateLimitConfig, acoID uuid.UUID) bool {
+func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
 	if config.All { // apply rate limit for all requests
 		return true
 	}
 	if len(config.ACOs) == 0 { // no rules to apply rate limit
 		return false
 	}
-	aco, err := repository.GetACOByUUID(ctx, acoID)
-	if err != nil { // can't find ACO by ID: log error and don't apply rate limit
-		logger := log.GetCtxLogger(ctx)
-		logger.Error(fmt.Errorf("failed to lookup ACO: %w", err))
-		return false
-	}
-	if !slices.Contains(config.ACOs, *aco.CMSID) { // ACO not within list that has rate limit
+	if !slices.Contains(config.ACOs, cmsID) { // ACO not within list that has rate limit
 		return false
 	}
 	return true // ACO is within list that has rate limit

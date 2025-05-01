@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -152,45 +151,24 @@ func TestHasDuplicatesFullString(t *testing.T) {
 }
 
 func TestShouldRateLimit(t *testing.T) {
-	ctx := context.Background()
-	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
-
-	acoID := uuid.UUID("178e580c-9a81-4dd6-8ecd-93d2052c0c6f")
 	cmsID := "MyFavoriteACO"
-	aco := models.ACO{
-		UUID:  acoID,
-		CMSID: &cmsID,
-	}
-	nonexistentACOID := uuid.UUID("43fed117-925b-4e3c-b60f-8db7c8bf2aea")
-
-	mockRepo := &models.MockRepository{}
-	// ctx, acoID, inprogress, pending
-	mockRepo.On("GetACOByUUID", mock.Anything, acoID).Return(
-		&aco, // aco
-		nil,  // error
-	)
-	mockRepo.On("GetACOByUUID", mock.Anything, nonexistentACOID).Return(
-		nil,                               // aco
-		fmt.Errorf("ACO not found error"), //error
-	)
-	repository = mockRepo
+	otherCMSID := "OtherCMSID"
 
 	tests := []struct {
 		name          string
-		acoID         uuid.UUID
+		cmsID         string
 		config        service.RateLimitConfig
 		expectedValue bool
 	}{
-		{"Apply rate limit for all requests", acoID, service.RateLimitConfig{All: true, ACOs: []string{}}, true},
-		{"Apply rate limit for no requests", acoID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
-		{"Don't apply rate limit for ACO not found", nonexistentACOID, service.RateLimitConfig{All: false, ACOs: []string{"MyFavoriteACO"}}, false},
-		{"Apply rate limit for ACO in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"MyFavoriteACO", cmsID}}, true},
-		{"Dont apply rate limit for ACO not in limit list", acoID, service.RateLimitConfig{All: false, ACOs: []string{"IrrelevantACO"}}, false},
+		{"Apply rate limit for all requests", cmsID, service.RateLimitConfig{All: true, ACOs: []string{}}, true},
+		{"Apply rate limit for no requests", cmsID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
+		{"Apply rate limit for ACO in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{cmsID, otherCMSID}}, true},
+		{"Dont apply rate limit for ACO not in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{otherCMSID}}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualValue := shouldRateLimit(ctx, tt.config, tt.acoID)
+			actualValue := shouldRateLimit(tt.config, tt.cmsID)
 			assert.Equal(t, tt.expectedValue, actualValue, tt.name)
 		})
 	}
