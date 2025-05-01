@@ -38,10 +38,9 @@ func TestNoConcurrentJobs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := &models.MockRepository{}
-			// ctx, acoID, inprogress, pending
 			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-				tt.jobs, //jobs
-				nil,     //error
+				tt.jobs,
+				nil,
 			)
 			repository = mockRepo
 
@@ -80,10 +79,9 @@ func TestHasConcurrentJobs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := &models.MockRepository{}
-			// ctx, acoID, inprogress, pending
 			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-				append(ignoredJobs, tt.additionalJobs...), //jobs
-				nil, //error
+				append(ignoredJobs, tt.additionalJobs...),
+				nil,
 			)
 			repository = mockRepo
 
@@ -99,11 +97,10 @@ func TestHasConcurrentJobs(t *testing.T) {
 func TestFailedToGetJobs(t *testing.T) {
 	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	mockRepo := &models.MockRepository{}
-	// ctx, acoID, inprogress, pending
 	mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 		nil,
 		errors.New("FORCING SOME ERROR"),
-		nil, //error
+		nil,
 	)
 	repository = mockRepo
 
