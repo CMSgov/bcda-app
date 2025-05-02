@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/pborman/uuid"
@@ -92,6 +93,63 @@ func (_c *MockService_CancelJob_Call) Return(v uint, err error) *MockService_Can
 }
 
 func (_c *MockService_CancelJob_Call) RunAndReturn(run func(ctx context.Context, jobID uint) (uint, error)) *MockService_CancelJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindCCLFFiles provides a mock function for the type MockService
+func (_mock *MockService) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, requestError) {
+	ret := _mock.Called(ctx, cmsID, reqType, since)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindCCLFFiles")
+	}
+
+	var r0 worker_types.PrepareJobArgs
+	var r1 requestError
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) (worker_types.PrepareJobArgs, requestError)); ok {
+		return returnFunc(ctx, cmsID, reqType, since)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) worker_types.PrepareJobArgs); ok {
+		r0 = returnFunc(ctx, cmsID, reqType, since)
+	} else {
+		r0 = ret.Get(0).(worker_types.PrepareJobArgs)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, constants.DataRequestType, time.Time) requestError); ok {
+		r1 = returnFunc(ctx, cmsID, reqType, since)
+	} else {
+		r1 = ret.Get(1).(requestError)
+	}
+	return r0, r1
+}
+
+// MockService_FindCCLFFiles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindCCLFFiles'
+type MockService_FindCCLFFiles_Call struct {
+	*mock.Call
+}
+
+// FindCCLFFiles is a helper method to define mock.On call
+//   - ctx
+//   - cmsID
+//   - reqType
+//   - since
+func (_e *MockService_Expecter) FindCCLFFiles(ctx interface{}, cmsID interface{}, reqType interface{}, since interface{}) *MockService_FindCCLFFiles_Call {
+	return &MockService_FindCCLFFiles_Call{Call: _e.mock.On("FindCCLFFiles", ctx, cmsID, reqType, since)}
+}
+
+func (_c *MockService_FindCCLFFiles_Call) Run(run func(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time)) *MockService_FindCCLFFiles_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(constants.DataRequestType), args[3].(time.Time))
+	})
+	return _c
+}
+
+func (_c *MockService_FindCCLFFiles_Call) Return(prepareJobArgs worker_types.PrepareJobArgs, requestErrorMoqParam requestError) *MockService_FindCCLFFiles_Call {
+	_c.Call.Return(prepareJobArgs, requestErrorMoqParam)
+	return _c
+}
+
+func (_c *MockService_FindCCLFFiles_Call) RunAndReturn(run func(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, requestError)) *MockService_FindCCLFFiles_Call {
 	_c.Call.Return(run)
 	return _c
 }
