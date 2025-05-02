@@ -39,50 +39,23 @@ import (
 
 type Handler struct {
 	JobTimeout time.Duration
+	Enq        queueing.Enqueuer
+	Svc        service.Service
 
-	Enq queueing.Enqueuer
-
-	Svc service.Service
+	supportedDataTypes     map[string]service.DataType
+	supportedResourceTypes []string
+	supportedStatuses      map[models.JobStatus]struct{}
+	bbBasePath             string
+	apiVersion             string
+	RespWriter             fhirResponseWriter
+	cfg                    *service.Config
 
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 	// logic into a service method.
 	r  models.Repository
 	db *sql.DB
-
-	supportedDataTypes map[string]service.DataType
-
-	supportedResourceTypes []string
-
-	supportedStatuses map[models.JobStatus]struct{}
-
-	bbBasePath string
-
-	apiVersion string
-
-	RespWriter fhirResponseWriter
-
-	cfg *service.Config
 }
-
-// type RequestConditions struct {
-// 	// ReqType    DataRequestType
-// 	Resources  []string
-// 	BBBasePath string
-
-// 	CMSID string
-// 	ACOID uuid.UUID
-
-// 	JobID           uint
-// 	Since           time.Time
-// 	TransactionTime time.Time
-// 	CreationTime    time.Time
-
-// 	// Fields set in the service
-// 	fileType models.CCLFFileType
-
-// 	timeConstraint
-// }
 
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
@@ -544,59 +517,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		Status:     models.JobStatusPending,
 	}
 
-	// tx, err := h.db.BeginTx(ctx, nil)
-	// if err != nil {
-	// 	err = fmt.Errorf("failed to start transaction: %w", err)
-	// 	logger.Error(err)
-	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-	// 	return
-	// }
-	// // Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
-	// rtx := postgres.NewRepositoryTx(tx)
-
-	// defer func() {
-	// 	if err != nil {
-	// 		if err1 := tx.Rollback(); err1 != nil {
-	// 			logger.Warnf("Failed to rollback transaction %s", err.Error())
-	// 		}
-	// 		// We've already written out the HTTP response so we can return after we've rolled back the transaction
-	// 		return
-	// 	}
-
-	// 	if err = tx.Commit(); err != nil {
-	// 		logger.Error(err.Error())
-	// 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
-	// 		return
-	// 	}
-
-	// 	// We've successfully created the job
-	// 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
-	// 	w.WriteHeader(http.StatusAccepted)
-	// }()
-
-	// repo := postgres.NewRepository(h.db)
-
-	// ------------------------------------------------------------------------------------------------
-
-	// set before quejobs
-	// conditions := RequestConditions{
-	// 	// ReqType:    reqType,
-	// 	Resources:  resourceTypes,
-	// 	BBBasePath: h.bbBasePath,
-
-	// 	// CMSID: ad.CMSID,
-	// 	// ACOID: acoID,
-
-	// 	// JobID:           args.Job.ID,
-	// 	// Since: rp.Since,
-	// 	// TransactionTime: args.Job.TransactionTime,
-	// 	// CreationTime: time.Now(),
-
-	// 	// set DEFAULT OR NEW AND EXISTING
-	// }
-
-	// quejobs logic
-	// are timeconstraints used anywhere?
 	var cutoffTime time.Time
 	var timeConstraints service.TimeConstraints
 	var cclfFileOldID uint

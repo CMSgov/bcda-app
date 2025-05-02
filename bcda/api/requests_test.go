@@ -126,8 +126,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
-		// {"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
-		// {"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
+		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
 	}
@@ -139,7 +139,6 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			resourceMap := s.resourceType
 
 			var cclfCall *mock.Call
-			// mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{ID: 1}, nil)
 			if tt.runoutAttributions {
 				fmt.Println("\n--- run GetLatestCCLFFile on Runout")
 				cclfCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
@@ -650,21 +649,11 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 				Version:       apiVersionTwo,
 			}))
 
-			// temp_db := &h.db
-			// if test.closeDB {
-			// 	h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-			// 	h.db.Close()
-			// }
-
 			h.bulkRequest(w, r, constants.DefaultRequest)
-			// if h.db == nil {
-			// 	h.db = *temp_db
-			// }
 			fmt.Printf("\n--- expected status: %+v, result status: %+v\n", test.expectedCode, w.Code)
 			assert.Equal(s.T(), test.expectedCode, w.Code)
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
 		})
-
 	}
 }
 
@@ -1141,16 +1130,6 @@ func TestBulkRequest_Integration(t *testing.T) {
 				Version:       apiVersionTwo,
 			}))
 
-			// cfg, err := database.LoadConfig()
-			// if err != nil {
-			// 	t.FailNow()
-			// }
-			// d, err := database.CreatePgxv5DB(cfg)
-			// if err != nil {
-			// 	t.FailNow()
-			// }
-			// driver := riverpgxv5.New(d)
-
 			ctx := context.Background()
 			os.Unsetenv("QUEUE_LIBRARY")
 			h.bulkRequest(w, r, constants.DefaultRequest)
@@ -1165,24 +1144,6 @@ func TestBulkRequest_Integration(t *testing.T) {
 			}
 		})
 	}
-
-	// cfg, err := database.LoadConfig()
-	// if err != nil {
-	// 	t.Log()
-	// }
-	// d, err := database.CreatePgxv5DB(cfg)
-	// if err != nil {
-	// 	t.Log()
-	// }
-	// driver := riverpgxv5.New(d)
-	// ctx := context.Background()
-	// os.Unsetenv("QUEUE_LIBRARY")
-	// jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: worker_types.PrepareJobArgs{}, Opts: nil}})
-	// assert.Greater(t, len(jobs), 0)
-	// _, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-	// if err != nil {
-	// 	t.Log("failed to cleanup river jobs during tests")
-	// }
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {

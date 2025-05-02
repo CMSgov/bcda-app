@@ -313,9 +313,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
 			lookbackDays := int(8)
 			sp := suppressionParameters{true, lookbackDays}
 			repository := &models.MockRepository{}
-			// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, models.FileTypeDefault).Return(tt.cclfFileNew, nil)
 			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFileNew, nil)
-			// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), models.FileTypeDefault).Return(tt.cclfFileOld, nil)
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return(tt.cclfFileOld, nil)
 				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return([]string{"1", "2", "3"}, nil)
@@ -383,6 +381,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			nil,
 			nil,
 		},
+		// no longer validating CCLF files in this function, test no longer relevant
 		// {
 		// 	"NoCCLFPerfYearIncompatible",
 		// 	getCCLFFile(7, false, true),
@@ -395,9 +394,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(30)
-			// fileNum := int(8)
 			repository := &models.MockRepository{}
-			// CutoffDuration := 1 * time.Hour
 			cmsID := "A0000"
 			since := time.Now().Add(-1 * time.Hour)
 			now := time.Now().Round(time.Millisecond)
@@ -428,24 +425,10 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			}
 
 			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFileNew, nil)
-			// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete,
-			// 	// Verify our cutoffTime is bsed on our provided duration
-			// 	mock.MatchedBy(func(t time.Time) bool {
-			// 		// Since we're using time.Now() within the service call, we can't compare directly.
-			// 		// Make sure we're close enough.
-			// 		return time.Now().Add(-1*CutoffDuration).Sub(t) < time.Second
-			// 	}),
-			// 	time.Time{},
-			// 	models.FileTypeDefault).Return(tt.cclfFileNew, nil)
-
 			if tt.cclfFileNew != nil {
-				// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, tt.cclfFileNew.Timestamp.Add(-1*time.Second), models.FileTypeDefault).Return(tt.cclfFileOld, nil)
 				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFileOld, nil)
 			}
-
-			// if tt.cclfFileOld != nil {
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.oldMBIs, nil)
-			// }
 			suppressedMBI := "suppressedMBI"
 			if tt.cclfFileNew != nil {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
@@ -471,7 +454,6 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 				worker_types.PrepareJobArgs{
 					CMSID: "A0000",
 					Since: since,
-					// fileType: models.FileTypeDefault
 				},
 			)
 
@@ -673,9 +655,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(30)
-			// fileNum := uint(8)
 			repository := &models.MockRepository{}
-			// CutoffDuration := 1 * time.Hour
 			cmsID := "A0000"
 			now := time.Now().Round(time.Millisecond)
 			// Since we're using time.Now() within the service call, we can't compare directly.
@@ -697,22 +677,6 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 				}
 			}
 			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFile, nil)
-			// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete,
-			// 	// Verify our cutoffTime is based on our provided duration
-			// 	mock.MatchedBy(func(t time.Time) bool {
-			// 		// Since we're using time.Now() within the service call, we can't compare directly.
-			// 		// Make sure we're close enough.
-			// 		switch tt.fileType {
-			// 		case models.FileTypeDefault:
-			// 			return time.Now().Add(-1*CutoffDuration).Sub(t) < time.Second
-			// 		case models.FileTypeRunout:
-			// 			return time.Now().Add(-1*120*24*time.Hour).Sub(t) < time.Second
-			// 		default:
-			// 			return false // We do not understand this fileType
-			// 		}
-			// 	}),
-			// 	time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
-
 			suppressedMBI := "suppressedMBI"
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, mockUpperBound).Return([]string{suppressedMBI}, nil)
 			if tt.cclfFile != nil {
@@ -737,8 +701,6 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 				ctxACOCfg,
 				worker_types.PrepareJobArgs{
 					CMSID: "A0000",
-					// CCLFFileNewID: tt.cclfFile.ID,
-					// fileType: tt.fileType,
 				},
 			)
 
@@ -884,10 +846,8 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).
 				Return(&models.ACO{UUID: args.ACOID, TerminationDetails: tt.terminationDetails}, nil)
 			if tt.RequestType == constants.Runout {
-				// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, true, false), nil)
 				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.Anything).Return(getCCLFFile(1, true, false), nil)
 			} else {
-				// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 			}
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
@@ -1121,7 +1081,6 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 			repository := &models.MockRepository{}
 			repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).
 				Return(&models.ACO{UUID: args.ACOID, TerminationDetails: tt.terminationDetails}, nil)
-			// repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
@@ -1634,7 +1593,3 @@ func getJobs(id uint) []*models.Job {
 		},
 	}
 }
-
-// func timeIsSetMatcher(t time.Time) bool {
-// 	return !t.IsZero()
-// }

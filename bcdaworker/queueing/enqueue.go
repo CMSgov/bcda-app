@@ -8,7 +8,6 @@ package queueing
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -29,38 +28,14 @@ type Enqueuer interface {
 	AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 }
 
-/* Creates a river client for the PrepareJob queue. If the client does not call .Start(), then it is insert only.*/
-// func NewPrepareEnqueuer() Enqueuer {
-// 	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
-// 		workers := river.NewWorkers()
-// 		prepareWorker, err := NewPrepareJobWorker()
-// 		if err != nil {
-// 			fmt.Printf("failed at newprepareworker()")
-// 			panic(err)
-// 		}
-// 		river.AddWorker(workers, prepareWorker)
-
-// 		riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
-// 			Workers: workers,
-// 		})
-// 		if err != nil {
-// 			panic(err)
-// 		}
-
-// 		return riverEnqueuer{riverClient}
-// 	}
-
-// 	return queEnqueuer{que.NewClient(database.QueueConnection)}
-// }
-
-/* Creates a river client for the Job queue. If the client does not call .Start(), then it is insert only.*/
+// Creates a river client for the Job queue. If the client does not call .Start(), then it is insert only
+// We still need the workers and the types of workers to insert them
 func NewEnqueuer() Enqueuer {
 	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
 		workers := river.NewWorkers()
 		river.AddWorker(workers, &JobWorker{})
 		prepareWorker, err := NewPrepareJobWorker()
 		if err != nil {
-			fmt.Printf("failed initializing NewEnqueuer()")
 			panic(err)
 		}
 		river.AddWorker(workers, prepareWorker)
