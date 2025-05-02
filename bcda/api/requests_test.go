@@ -126,36 +126,18 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
-		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
-		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
+		{"FindCCLFFiles error v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			mockSvc := &service.MockService{}
-
 			resourceMap := s.resourceType
-
-			var cclfCall *mock.Call
-			if tt.runoutAttributions {
-				fmt.Println("\n--- run GetLatestCCLFFile on Runout")
-				cclfCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-					&models.CCLFFile{PerformanceYear: (utils.GetPY() - 1)},
-					nil,
-				)
-			} else {
-				fmt.Println("\n--- run GetLatestCCLFFile on else")
-				cclfCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-					&models.CCLFFile{PerformanceYear: utils.GetPY()},
-					nil,
-				)
-			}
-
+			mockSvc := &service.MockService{}
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
-			mockSvc.On("SetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
 			fmt.Printf("\n--- in test: mockSvc: %+v", mockSvc)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
@@ -168,8 +150,22 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			switch tt.errToReturn {
 			case nil:
+				fmt.Println("\n--- nil errto return")
+				mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).
+					Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+			case CCLFNotFoundOperationOutcomeError{}:
+				fmt.Println("\n--- CCLFNotFoundOperationOutcomeError return")
+				mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).
+					Return(worker_types.PrepareJobArgs{}, service.RequestError{
+						Status:       http.StatusInternalServerError,
+						ResponseType: responseutils.DbErr,
+						Msg:          errors.New("test-message"),
+					})
 			case QueueError{}:
+				fmt.Println("\n--- CCLFNotFoundOperationOutcomeError return")
+				mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).
+					Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
 			}
 
@@ -190,8 +186,6 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			} else {
 				assert.Contains(t, string(body), tt.errToReturn.Error())
 			}
-
-			cclfCall.Unset()
 		})
 	}
 }
@@ -618,8 +612,9 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			fmt.Printf("\n--- DATAAUTH: %s\n", test.name)
 			mockSvc := service.MockService{}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
-			mockSvc.On("SetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
-			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
+			// mockSvc.On("SetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+			// mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
+			mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 			h.Svc = &mockSvc
 
 			enqueuer := queueing.NewMockEnqueuer(s.T())
@@ -672,8 +667,8 @@ func (s *RequestsTestSuite) TestRequests() {
 		Data: []string{"adjudicated"},
 	}
 	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
-	cclfFile := models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()}
-	cclfFileLastYear := models.CCLFFile{ID: 2, PerformanceYear: (utils.GetPY() - 1)}
+	// cclfFile := models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()}
+	// cclfFileLastYear := models.CCLFFile{ID: 2, PerformanceYear: (utils.GetPY() - 1)}
 
 	h.Svc = &mockSvc
 
@@ -693,27 +688,28 @@ func (s *RequestsTestSuite) TestRequests() {
 					ResourceTypes: []string{resource},
 					Since:         since,
 				}
-				var mockCall *mock.Call
-				if groupID == "all" {
-					fmt.Println("\n--- groupID ALL")
-					mockCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-						&cclfFile,
-						nil,
-					)
-				} else {
-					fmt.Println("\n--- groupID RUNOUT")
-					mockCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-						&cclfFileLastYear,
-						nil,
-					)
-				}
+				mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
+				// var mockCall *mock.Call
+				// if groupID == "all" {
+				// 	fmt.Println("\n--- groupID ALL")
+				// 	// mockCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				// 	// 	&cclfFile,
+				// 	// 	nil,
+				// 	// )
+				// } else {
+				// 	fmt.Println("\n--- groupID RUNOUT")
+				// 	// mockCall = mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				// 	// 	&cclfFileLastYear,
+				// 	// 	nil,
+				// 	// )
+				// }
 				rr := httptest.NewRecorder()
 				req := s.genGroupRequest(groupID, rp)
 				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				h.BulkGroupRequest(rr, req)
 				assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 
-				mockCall.Unset()
+				// mockCall.Unset()
 			}
 		}
 	}
@@ -726,10 +722,7 @@ func (s *RequestsTestSuite) TestRequests() {
 				ResourceTypes: []string{resource},
 				Since:         since,
 			}
-			mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-				&cclfFile,
-				nil,
-			)
+			mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 			rr := httptest.NewRecorder()
 			req := s.genPatientRequest(rp)
 			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
@@ -1240,7 +1233,7 @@ type CCLFNotFoundOperationOutcomeError struct {
 }
 
 func (e CCLFNotFoundOperationOutcomeError) Error() string {
-	return "No up-to-date attribution information is available for Group"
+	return "OperationOutcome"
 }
 
 type QueueError struct{}

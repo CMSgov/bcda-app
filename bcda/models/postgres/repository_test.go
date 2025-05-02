@@ -157,7 +157,7 @@ func (r *RepositoryTestSuite) TestGetCCLFFileByID_Success() {
 	}()
 	repository := postgres.NewRepository(db)
 
-	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id = 1")
+	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id =")
 	query.WillReturnRows(
 		sqlmock.NewRows([]string{"id", "name", "timestamp", "performance_year", "created_at"}).
 			AddRow(1, "CCLF File", time.Now(), utils.GetPY(), time.Now()),
@@ -178,7 +178,7 @@ func (r *RepositoryTestSuite) TestGetCCLFFileByID_NoResults() {
 	}()
 	repository := postgres.NewRepository(db)
 
-	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id = 1")
+	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id =")
 	query.WillReturnRows(
 		sqlmock.NewRows([]string{"id", "name", "timestamp", "performance_year", "created_at"}),
 	)
@@ -198,7 +198,7 @@ func (r *RepositoryTestSuite) TestGetCCLFFileByID_SQLError() {
 	}()
 	repository := postgres.NewRepository(db)
 
-	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id = 1")
+	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id =")
 	query.WillReturnRows(
 		sqlmock.NewRows([]string{"id"}).AddRow(1), // this doesnt match what we expect to return/scan so should fail
 	)

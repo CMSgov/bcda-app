@@ -98,7 +98,7 @@ func (_c *MockService_CancelJob_Call) RunAndReturn(run func(ctx context.Context,
 }
 
 // FindCCLFFiles provides a mock function for the type MockService
-func (_mock *MockService) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, requestError) {
+func (_mock *MockService) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError) {
 	ret := _mock.Called(ctx, cmsID, reqType, since)
 
 	if len(ret) == 0 {
@@ -106,8 +106,8 @@ func (_mock *MockService) FindCCLFFiles(ctx context.Context, cmsID string, reqTy
 	}
 
 	var r0 worker_types.PrepareJobArgs
-	var r1 requestError
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) (worker_types.PrepareJobArgs, requestError)); ok {
+	var r1 RequestError
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) (worker_types.PrepareJobArgs, RequestError)); ok {
 		return returnFunc(ctx, cmsID, reqType, since)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) worker_types.PrepareJobArgs); ok {
@@ -115,10 +115,10 @@ func (_mock *MockService) FindCCLFFiles(ctx context.Context, cmsID string, reqTy
 	} else {
 		r0 = ret.Get(0).(worker_types.PrepareJobArgs)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, constants.DataRequestType, time.Time) requestError); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, constants.DataRequestType, time.Time) RequestError); ok {
 		r1 = returnFunc(ctx, cmsID, reqType, since)
 	} else {
-		r1 = ret.Get(1).(requestError)
+		r1 = ret.Get(1).(RequestError)
 	}
 	return r0, r1
 }
@@ -144,12 +144,12 @@ func (_c *MockService_FindCCLFFiles_Call) Run(run func(ctx context.Context, cmsI
 	return _c
 }
 
-func (_c *MockService_FindCCLFFiles_Call) Return(prepareJobArgs worker_types.PrepareJobArgs, requestErrorMoqParam requestError) *MockService_FindCCLFFiles_Call {
-	_c.Call.Return(prepareJobArgs, requestErrorMoqParam)
+func (_c *MockService_FindCCLFFiles_Call) Return(prepareJobArgs worker_types.PrepareJobArgs, requestError RequestError) *MockService_FindCCLFFiles_Call {
+	_c.Call.Return(prepareJobArgs, requestError)
 	return _c
 }
 
-func (_c *MockService_FindCCLFFiles_Call) RunAndReturn(run func(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, requestError)) *MockService_FindCCLFFiles_Call {
+func (_c *MockService_FindCCLFFiles_Call) RunAndReturn(run func(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError)) *MockService_FindCCLFFiles_Call {
 	_c.Call.Return(run)
 	return _c
 }

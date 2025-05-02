@@ -29,7 +29,7 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, requestError)
+	FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError)
 	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error)
 	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
@@ -96,7 +96,7 @@ type runoutParameters struct {
 	CutoffDuration time.Duration
 }
 
-type requestError struct {
+type RequestError struct {
 	Status       int
 	ResponseType string
 	Msg          error
@@ -104,7 +104,7 @@ type requestError struct {
 
 // FindCCLFFiles finds new and old CCLF Files based on request ACO info, _since request param, ACO termination status,
 // performance year as compared to request type, as well as setting up various config that will be needed down the road
-func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, requestError) {
+func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError) {
 	var cutoffTime time.Time
 	var timeConstraints TimeConstraints
 	var cclfFileOldID uint
@@ -116,7 +116,7 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 	if err != nil {
 		fmt.Printf("\n--- time constraints err: %+v", err)
 		s.logger.Error(err)
-		return worker_types.PrepareJobArgs{}, requestError{
+		return worker_types.PrepareJobArgs{}, RequestError{
 			Status:       http.StatusInternalServerError,
 			ResponseType: responseutils.InternalErr,
 			Msg:          errors.New(""),
@@ -154,7 +154,7 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 		}
 	} else {
 		s.logger.Error("invalid complex data request type")
-		return worker_types.PrepareJobArgs{}, requestError{
+		return worker_types.PrepareJobArgs{}, RequestError{
 			Status:       http.StatusBadRequest,
 			ResponseType: responseutils.RequestErr,
 			Msg:          errors.New("invalid complex data request type"),
@@ -174,7 +174,7 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 	if err != nil {
 		fmt.Printf("\n--- get latest cclf file error: %+v", err)
 		s.logger.Error(err.Error())
-		return worker_types.PrepareJobArgs{}, requestError{
+		return worker_types.PrepareJobArgs{}, RequestError{
 			Status:       http.StatusInternalServerError,
 			ResponseType: responseutils.DbErr,
 			Msg:          errors.New(""),
@@ -193,7 +193,7 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 	// validate cclffile and PY
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
 		fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
-		return worker_types.PrepareJobArgs{}, requestError{
+		return worker_types.PrepareJobArgs{}, RequestError{
 			Status:       http.StatusInternalServerError,
 			ResponseType: responseutils.NotFoundErr,
 			Msg:          fmt.Errorf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", cmsID),
@@ -227,7 +227,7 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 		)
 		if err != nil {
 			s.logger.Error(err.Error())
-			return worker_types.PrepareJobArgs{}, requestError{
+			return worker_types.PrepareJobArgs{}, RequestError{
 				Status:       http.StatusInternalServerError,
 				ResponseType: responseutils.DbErr,
 				Msg:          errors.New(""),
@@ -248,7 +248,7 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 		CreationTime:           time.Now(),
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
-	}, requestError{}
+	}, RequestError{}
 }
 
 func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error) {
