@@ -29,8 +29,11 @@ func TestLoadConfig(t *testing.T) {
 	}
 	// Ensure that fields with the same name can be represented by different values
 	// NOTE: These values come from local.env
-	assert.Equal(t, cfg.CutoffDurationDays, 0)
-	assert.Equal(t, cfg.RunoutConfig.CutoffDurationDays, 180)
+	assert.Equal(t, 0, cfg.CutoffDurationDays)
+	assert.Equal(t, 180, cfg.RunoutConfig.CutoffDurationDays)
+	assert.Equal(t, false, cfg.RateLimitConfig.All)
+	assert.Equal(t, 1, len(cfg.RateLimitConfig.ACOs))
+	assert.Equal(t, "A4875", cfg.RateLimitConfig.ACOs[0])
 	t.Log(cfg.String())
 	t.Log(cfg.RunoutConfig.String())
 }

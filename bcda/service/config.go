@@ -40,6 +40,8 @@ type Config struct {
 
 	ACOConfigs []ACOConfig `conf:"aco_config"`
 
+	RateLimitConfig RateLimitConfig `conf:"rate_limit_config"`
+
 	// Un-exported fields that are computed using the exported ones above
 	cutoffDuration time.Duration
 }
@@ -73,6 +75,11 @@ type AttributionFile struct {
 	MetadataMatches int    `conf:"metadata_matches" `
 }
 
+type RateLimitConfig struct {
+	All  bool     `conf:"all"`  // rate-limit requests for all ACOs
+	ACOs []string `conf:"acos"` // rate-limit requests for specific ACOs
+}
+
 func (config Config) String() string {
 	return toJSON(config)
 }
@@ -82,6 +89,10 @@ func (config RunoutConfig) String() string {
 }
 
 func (config *ACOConfig) String() string {
+	return toJSON(config)
+}
+
+func (config RateLimitConfig) String() string {
 	return toJSON(config)
 }
 
