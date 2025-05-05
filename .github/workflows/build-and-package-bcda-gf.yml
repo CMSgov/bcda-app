@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   ci_checks:
-    uses: ./.github/workflows/ci-checks.yml
+    uses: ./.github/workflows/ci-checks-gf.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
     secrets: inherit
