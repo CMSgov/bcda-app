@@ -1,0 +1,56 @@
+name: Build and Package BCDA
+
+on:
+  push:
+    branches:
+      - "jscott/PLT-1052"
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  ci_checks:
+    uses: ./.github/workflows/ci-checks.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+    secrets: inherit
+
+  # build_and_package:
+  #   uses: ./.github/workflows/package-rpms.yml
+  #   with:
+  #     release_version: ${{ inputs.release_version || 'main' }}
+  #   secrets: inherit
+  
+  # post_build:
+  #   if: ${{ always() }}
+  #   name: Post Build (Cleanup, Alerts)
+  #   needs: [ci_checks, build_and_package]
+  #   runs-on: self-hosted
+  #   steps:
+  #     - name: Failure Alert
+  #       if: ${{ failure() || needs.ci_checks.result != 'success' || needs.build_and_package.result != 'success' }}
+  #       uses: slackapi/slack-github-action@v2.0.0
+  #       with:
+  #         method: chat.postMessage
+  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
+  #         # Sends to bcda-alerts
+  #         payload: |
+  #           channel: "C034CFU945C"
+  #           attachments:
+  #             - color: danger
+  #               text: "FAILURE: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+  #               mrkdown_in:
+  #                 - text
