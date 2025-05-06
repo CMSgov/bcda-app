@@ -49,14 +49,3 @@ jobs:
 
           docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
           docker run --add-host=host.docker.internal:host-gateway --rm -e BULK_URL="https://test.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://test.bcda.cms.gov/auth/token" fhir_testing
-
-          RESULT=$(docker logs fhir_testing --tail 6 | grep -o " - Tests Failed: [0-9]*" | cut -d ' ' -f3)
-          echo $RESULT
-
-          if [[ $RESULT -eq 0 ]]; then
-            exit 0
-          else
-            exit 1
-          fi
-
-

@@ -67,9 +67,9 @@ echo "
 ###
 "
 
-# Wait 10 seconds, check to see if the tests are done, repeat (up to 90 seconds)
-for i in {1..9}; do
-  echo "waiting for job... [$i/9]"
+# Wait 10 seconds, check to see if the tests are done, repeat (up to 150 seconds)
+for i in {1..15}; do
+  echo "waiting for job... [$i/15]"
   sleep 10
 
   TEST_RUN_STATUS_RESPONSE=$(curl -d "" -X GET "http://host.docker.internal/api/test_runs/$TEST_RUN_ID" \
@@ -137,9 +137,7 @@ for i in "${FAIL_RESULTS[@]}"; do
 done
 
 if [[ ${#FAIL_RESULTS[@]} == 0 ]]; then
-  echo "we gucci"
   exit 0
 else
-  echo "we failed at least 1"
   exit 1
 fi
