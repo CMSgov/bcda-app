@@ -37,23 +37,10 @@ if [[ "$CLIENT_SECRET" == "" ]]; then
   exit 1
 fi
 
-echo "
-### Config:
-$BULK_URL
-$TOKEN_URL
-$CLIENT_ID
-$CLIENT_SECRET z
-"
 # Get the Token
 AUTH_RESP=$(curl -d "" -X POST "$TOKEN_URL" \
 	--user "$CLIENT_ID:$CLIENT_SECRET" \
 	-H "accept: application/json")
-
-echo "
-###
-### AUTH RESPONSE: $AUTH_RESPONSE
-###
-"
 
 
 TOKEN=$(echo $AUTH_RESP | jq -r ".access_token")
