@@ -29,7 +29,6 @@ var _ Service = &service{}
 type Service interface {
 	GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)
 	FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)
-	// FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError)
 	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error)
 	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
@@ -94,12 +93,6 @@ type runoutParameters struct {
 	claimThruDate time.Time
 	// Amount of time the callers can retrieve runout data (relative to when runout data was ingested)
 	CutoffDuration time.Duration
-}
-
-type RequestError struct {
-	Status       int
-	ResponseType string
-	Msg          error
 }
 
 func (s *service) GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (cutoffTime time.Time, complexDataRequestType string) {

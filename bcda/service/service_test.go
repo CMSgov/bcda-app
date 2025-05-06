@@ -280,7 +280,6 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
 	args := worker_types.PrepareJobArgs{
 		CMSID: "cmsID",
 		Since: time.Now(),
-		// fileType: models.FileTypeDefault,
 	}
 	tests := []struct {
 		name          string
@@ -538,6 +537,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 			[]int{},
 			true,
 		},
+		// no longer relevant, we dont check these things anymore, they are done before
 		// {
 		// 	"LaterThanCreatedAtNoBenes",
 		// 	1,
@@ -573,7 +573,6 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 					Since:         since,
 					CCLFFileNewID: newCCLFID,
 					CCLFFileOldID: oldCCLFID,
-					// fileType: models.FileTypeDefault
 				},
 			)
 
@@ -667,7 +666,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			var benes []*models.CCLFBeneficiary
 			mbis := make(map[string]bool)
 			beneID := uint(1)
-			// Skip populating benes under certain test args
+			// Skip populating benes under certain test conditions
 			if tt.name != "NoBenesFound" {
 				for i := 0; i < 10; i++ {
 					mbi := fmt.Sprintf("MBI%d", i)
@@ -1734,7 +1733,6 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 					Since:         since,
 					CCLFFileNewID: newCCLFID,
 					CCLFFileOldID: oldCCLFID,
-					// fileType: models.FileTypeDefault,
 				},
 			)
 

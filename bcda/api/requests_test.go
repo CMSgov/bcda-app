@@ -138,37 +138,21 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			mockSvc := &service.MockService{}
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
-			fmt.Printf("\n--- in test: mockSvc: %+v", mockSvc)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
-
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
-
-			fmt.Printf("\n--- in test: mockSvc: %+v", mockSvc)
-			fmt.Printf("\n--- in test: h.Svc: %+v", h.Svc)
 
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 
 			switch tt.errToReturn {
 			case nil:
-				fmt.Println("\n--- nil errto return")
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 24}, nil)
-				// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).
-				// Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 			case CCLFNotFoundOperationOutcomeError{}:
-				fmt.Println("\n--- CCLFNotFoundOperationOutcomeError return")
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
-				// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).
-				// Return(worker_types.PrepareJobArgs{}, service.RequestError{
-				// 	Status:       http.StatusInternalServerError,
-				// 	ResponseType: responseutils.DbErr,
-				// 	Msg:          errors.New("test-message"),
-				// })
 			case QueueError{}:
-				fmt.Println("\n--- CCLFNotFoundOperationOutcomeError return")
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time"), mock.Anything).
 					Return(&models.CCLFFile{PerformanceYear: 24}, nil)
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
@@ -620,7 +604,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
-			// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 			mockSvc.On("FindOldCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(uint(1), nil)
 			h.Svc = &mockSvc
 
@@ -693,8 +676,6 @@ func (s *RequestsTestSuite) TestRequests() {
 				h.Svc = &mockSvc
 				mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 				mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
-				// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
-				// var mockCall *mock.Call
 				if groupID == "all" {
 					fmt.Println("\n--- groupID ALL")
 					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
@@ -713,8 +694,6 @@ func (s *RequestsTestSuite) TestRequests() {
 				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				h.BulkGroupRequest(rr, req)
 				assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-
-				// mockCall.Unset()
 			}
 		}
 	}
@@ -731,7 +710,6 @@ func (s *RequestsTestSuite) TestRequests() {
 			mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
-			// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 			mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 				&models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()},

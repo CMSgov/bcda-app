@@ -546,7 +546,6 @@ func (s *APITestSuite) TestResourceTypes() {
 	mockSvc := &service.MockService{}
 
 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
-	// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}

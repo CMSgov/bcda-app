@@ -76,7 +76,6 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
 	}
-	// h.cfg = cfg
 
 	repository := postgres.NewRepository(db)
 	h.db, h.r = db, repository
@@ -458,7 +457,6 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 // bulkRequest generates a job ID for a bulk export request. It will not queue a job
 // until auth, attribution, and request resources are validated.
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType constants.DataRequestType) {
-	fmt.Printf("\n-------- Start bulkRequest, reqType: %+v\n", reqType)
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -470,41 +468,28 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		err error
 	)
 
-	fmt.Println("\n--- start GetAuthDataFromCtx")
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
-	fmt.Printf("\n--- ad %+v\n", ad)
 
-	fmt.Println("\n--- start GetACOConfigForID")
 	if acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID); ok {
 		ctx = service.NewACOCfgCtx(ctx, acoCfg)
-		fmt.Printf("\n--- acoCfg %+v\n", acoCfg)
 	}
-
-	fmt.Println("\n--- start GetRequestParamsFromCtx")
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
 	}
-	fmt.Printf("\n--- rp %+v\n", rp)
 
-	fmt.Println("\n--- start getResourceTypes")
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
-	fmt.Printf("\n--- resourceTypes %+v\n", resourceTypes)
-
-	fmt.Println("\n--- start validateResources")
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
-	fmt.Println("\n--- start job stuff")
 	acoID := uuid.Parse(ad.ACOID)
-	fmt.Printf("\n--- acoId: %+v\n", acoID)
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -522,15 +507,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		fileType = models.FileTypeRunout
 	}
 
-	fmt.Println("\n--- Start GetTimeConstraints")
 	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
 	if err != nil {
-		fmt.Printf("\n--- time constraints err: %+v", err)
 		logger.Error(err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
-	fmt.Printf("\n--- GetTimeConstraints: %+v", timeConstraints)
 
 	cutoffTime, complexDataRequestType := h.Svc.GetCutoffTime(ctx, reqType, rp.Since, timeConstraints, fileType)
 	if complexDataRequestType == "" {
@@ -539,9 +521,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		return
 	}
 
-	fmt.Printf("\n--- cutOff, complexDataRequestType: %+v, %+v", cutoffTime, complexDataRequestType)
-
-	fmt.Printf("\n--- finding latest CCLF file based on: CMSID: %+v, cutoffTime: %+v, attributionDate: %+v, fileType: %+v", ad.CMSID, cutoffTime, timeConstraints.AttributionDate, fileType)
 	cclfFileNew, err := h.Svc.GetLatestCCLFFile(
 		ctx,
 		ad.CMSID,
@@ -550,25 +529,19 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		fileType,
 	)
 	if err != nil {
-		fmt.Printf("\n--- get latest cclf file error: %+v", err)
-		logger.Error(err.Error())
+		logger.Error("error finding latest cclf file")
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
-	fmt.Printf("\n--- cclfFileNew: %+v", cclfFileNew)
 
-	// set PY
-	// perfYear, err := h.Svc.GetPY(ctx, reqType)
 	performanceYear := utils.GetPY()
-	fmt.Printf("\n--- fileType: %+v, %+v, logic?: %+v", fileType, models.FileTypeRunout, (fileType == models.FileTypeRunout))
 	if fileType == models.FileTypeRunout {
 		performanceYear -= 1
 	}
-	fmt.Printf("\n--- performanceYear: %+v", performanceYear)
 
 	// validate cclffile and PY
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-		fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
+		logger.Error("failed to validate cclf file or performance year of found cclf file")
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
@@ -577,13 +550,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	if complexDataRequestType == constants.GetNewAndExistingBenes {
 		cclfFileOldID, err = h.Svc.FindOldCCLFFile(ctx, ad.CMSID, rp.Since, cclfFileNew.Timestamp)
 		if err != nil {
-			fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
+			logger.Error("error finding old cclf file")
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
 	}
 
-	fmt.Println("\n--- Start create job")
 	newJob.ID, err = h.r.CreateJob(ctx, newJob)
 	if err != nil {
 		logger.Error("failed to create job: %s", err)
@@ -596,7 +568,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		logger.Info("job id created")
 	}
 
-	fmt.Println("\n--- Start pjob")
 	// lots of things needed for downstream logic!
 	prepJob := worker_types.PrepareJobArgs{
 		Job:                    newJob,
@@ -614,17 +585,14 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		OptOutDate:             timeConstraints.OptOutDate,
 		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
 	}
-	fmt.Printf("\n--- ppreparejob data: %+v", prepJob)
+
 	logger.Infof("Adding jobs using %T", h.Enq)
 	err = h.Enq.AddPrepareJob(ctx, prepJob)
 	if err != nil {
-		fmt.Printf("\n--- AddPrepareJob err: %+v", err)
 		logger.Errorf("failed to add job to the queue: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
-	fmt.Printf("\n--- end of bulkrequest, status %+v", w)
-	fmt.Printf("\n--- end of bulkrequest, status %+v", r)
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
