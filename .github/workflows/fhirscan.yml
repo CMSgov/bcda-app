@@ -45,7 +45,7 @@ jobs:
           docker network ls
 
 
-          SESSION_RESP=$(curl -d "" -X POST "http://host.docker.internal/api/test_sessions?test_suite_id=bulk_data_v200" \
+          SESSION_RESP=$(curl -d "" -X POST "http://localhost/api/test_sessions?test_suite_id=bulk_data_v200" \
             -H "accept: application/json")
 
           tmp=${SESSION_RESP#*'"id":"'}
