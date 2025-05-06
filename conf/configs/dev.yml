@@ -53,3 +53,6 @@ aco_config:
         file_type: "csv"
         name_pattern: '(P|T)\.(BCD)\.(DA\d{4}).(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d'
         metadata_matches: 7
+rate_limit_config:
+  all: false
+  acos: []
