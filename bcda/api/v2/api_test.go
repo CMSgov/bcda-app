@@ -23,8 +23,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -545,13 +545,14 @@ func (s *APITestSuite) TestResourceTypes() {
 	h := api.NewHandler(resources, "/v2/fhir", "v2")
 	mockSvc := &service.MockService{}
 
-	// mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
-	mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
+	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
+	// mockSvc.On("FindCCLFFiles", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("constants.DataRequestType"), mock.AnythingOfType("time.Time")).Return(worker_types.PrepareJobArgs{}, service.RequestError{})
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
 	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
-	mockSvc.On("SetTimeConstraints", testUtils.CtxMatcher, mock.AnythingOfType("string")).Return(service.TimeConstraints{}, nil)
+	mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.AnythingOfType("string")).Return(service.TimeConstraints{}, nil)
+	mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 	h.Svc = mockSvc
 
 	for idx, handler := range []http.HandlerFunc{h.BulkGroupRequest, h.BulkPatientRequest} {

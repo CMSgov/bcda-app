@@ -205,19 +205,19 @@ func TestGetJobAndKeys(t *testing.T) {
 	}
 }
 
-func (s *ServiceTestSuiteWithDatabase) TestSetTimeConstraints() {
+func (s *ServiceTestSuiteWithDatabase) TestGetTimeConstraints() {
 	repository := &models.MockRepository{}
 	svc := NewService(repository, &Config{}, "")
 
 	repository.On("GetACOByCMSID", testUtils.CtxMatcher, mock.Anything).Return(&models.ACO{}, nil)
 
-	tC, err := svc.SetTimeConstraints(context.Background(), "A0000")
+	tC, err := svc.GetTimeConstraints(context.Background(), "A0000")
 
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), tC, TimeConstraints{})
 }
 
-func (s *ServiceTestSuiteWithDatabase) TestSetTimeConstraints_TerminatedACO() {
+func (s *ServiceTestSuiteWithDatabase) TestGetTimeConstraints_TerminatedACO() {
 	now := time.Now()
 	repository := &models.MockRepository{}
 	svc := NewService(repository, &Config{}, "")
@@ -232,7 +232,7 @@ func (s *ServiceTestSuiteWithDatabase) TestSetTimeConstraints_TerminatedACO() {
 		},
 	}, nil)
 
-	tC, err := svc.SetTimeConstraints(context.Background(), "A0000")
+	tC, err := svc.GetTimeConstraints(context.Background(), "A0000")
 
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), tC, TimeConstraints{
@@ -242,14 +242,14 @@ func (s *ServiceTestSuiteWithDatabase) TestSetTimeConstraints_TerminatedACO() {
 	})
 }
 
-func (s *ServiceTestSuite) TestSetTimeConstraints_ACOError() {
+func (s *ServiceTestSuite) TestGetTimeConstraints_ACOError() {
 	args := worker_types.PrepareJobArgs{ACOID: uuid.NewRandom(), CMSID: uuid.New()}
 	repository := &models.MockRepository{}
 	repository.On("GetACOByCMSID", testUtils.CtxMatcher, mock.AnythingOfType("string")).
 		Return(nil, context.DeadlineExceeded)
 	defer repository.AssertExpectations(s.T())
 	service := &service{repository: repository}
-	tC, err := service.SetTimeConstraints(context.Background(), args.CMSID)
+	tC, err := service.GetTimeConstraints(context.Background(), args.CMSID)
 	assert.Equal(s.T(), tC, TimeConstraints{})
 	assert.True(s.T(), errors.Is(err, context.DeadlineExceeded), "Root cause should be deadline exceeded")
 }
@@ -1356,7 +1356,210 @@ func (s *ServiceTestSuite) TestGetACOConfigForID_Integration() {
 	}
 }
 
-func (s *ServiceTestSuite) TestACOConfigurations_Integration() {
+func (s *ServiceTestSuite) TestGetCutoffTime() {
+	tests := []struct {
+		name            string
+		reqType         constants.DataRequestType
+		since           time.Time
+		timeConstraints TimeConstraints
+		fileType        models.CCLFFileType
+		serviceConfig   Config
+		expectedTime    time.Time
+		expectedType    string
+	}{
+		{
+			"GetExistingBenes, no match any blocks, should return null time",
+			constants.DefaultRequest,
+			time.Time{},
+			TimeConstraints{AttributionDate: time.Now()},
+			models.FileTypeDefault,
+			Config{},
+			time.Time{},
+			constants.GetExistingBenes,
+		},
+		{
+			"GetExistingBenes, AttrDate, FileTypeDefault, should set cutoffTime to ~cfg.CutoffDuration",
+			constants.DefaultRequest,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Now().Add((time.Hour * -24)),
+			constants.GetExistingBenes,
+		},
+		{
+			"Runout, AttrDate, FileTypeDefault, should set cutoffTime to ~cfg.CutoffDuration",
+			constants.Runout,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Now().Add((time.Hour * -24)),
+			constants.GetExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, but since after attr date, should set as GetExistingBenes, null cutoff",
+			constants.RetrieveNewBeneHistData,
+			time.Now(),
+			TimeConstraints{AttributionDate: time.Now().Add(time.Hour * -1)},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Time{},
+			constants.GetExistingBenes,
+		},
+		{
+			"GetExistingBenes, AttrDate, FileTypeRunout should set cutoffTime to ~cfg.Runout.CutoffDuration",
+			constants.DefaultRequest,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeRunout,
+			Config{RunoutConfig: RunoutConfig{CutoffDuration: (time.Hour * 24)}},
+			time.Now().Add((time.Hour * -24)),
+			constants.GetExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, Cutoff set, should set cutoff time to config",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Now().Add(time.Hour * -24),
+			constants.GetNewAndExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, Cutoff set, AttrDate set, should return null time",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{AttributionDate: time.Now()},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Time{},
+			constants.GetNewAndExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, should return null time",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{},
+			time.Time{},
+			constants.GetNewAndExistingBenes,
+		},
+
+		{
+			"RetrieveNewBeneHistData, AttrDate set, should return null time",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{AttributionDate: time.Now()},
+			models.FileTypeDefault,
+			Config{},
+			time.Time{},
+			constants.GetNewAndExistingBenes,
+		},
+	}
+
+	ctx := context.Background()
+	repository := &models.MockRepository{}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			service := NewService(repository, &tt.serviceConfig, "")
+
+			actualTime, actualType := service.GetCutoffTime(ctx, tt.reqType, tt.since, tt.timeConstraints, tt.fileType)
+
+			assert.WithinDuration(t, tt.expectedTime, actualTime, (time.Second * 10))
+			assert.Equal(t, tt.expectedType, actualType)
+		})
+	}
+}
+
+func (s *ServiceTestSuite) TestFindOldCCLFFile() {
+	now := time.Now()
+	dayOld := now.Add(time.Hour * -24)
+	dayOldOneSec := now.Add(time.Hour * -24).Add(time.Second * -1)
+
+	tests := []struct {
+		name          string
+		cmsID         string
+		since         time.Time
+		cclfTimestamp time.Time
+		expectedID    uint
+		expectedErr   error
+	}{
+		{
+			"No since",
+			"A0001",
+			time.Time{},
+			time.Time{},
+			uint(1),
+			nil,
+		},
+		{
+			"Since more recent than new CCLFFile timestamp",
+			"A0002",
+			now,
+			dayOld,
+			uint(2),
+			nil,
+		},
+		{
+			"Since older than CCLFFile timestamp",
+			"A0003",
+			dayOld,
+			now,
+			uint(3),
+			nil,
+		},
+		{
+			"SQL error",
+			"A0004",
+			time.Time{},
+			time.Time{},
+			uint(0),
+			errors.New("db error"),
+		},
+		{
+			"No CCLF found",
+			"A0005",
+			time.Time{},
+			time.Time{},
+			uint(0),
+			CCLFNotFoundError{8, "A0005", 0, time.Time{}},
+		},
+	}
+
+	ctx := context.Background()
+	repository := &models.MockRepository{}
+
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0001", mock.Anything, mock.Anything, time.Time{}, time.Time{}, mock.Anything).
+		Return(&models.CCLFFile{ID: 1}, nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0002", mock.Anything, mock.Anything, time.Time{}, dayOldOneSec, mock.Anything).
+		Return(&models.CCLFFile{ID: 2}, nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0003", mock.Anything, mock.Anything, time.Time{}, dayOld, mock.Anything).
+		Return(&models.CCLFFile{ID: 3}, nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0004", mock.Anything, mock.Anything, time.Time{}, time.Time{}, mock.Anything).
+		Return(nil, errors.New("db error"))
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0005", mock.Anything, mock.Anything, time.Time{}, time.Time{}, mock.Anything).
+		Return(nil, nil)
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			service := NewService(repository, &Config{}, "")
+
+			id, err := service.FindOldCCLFFile(ctx, tt.cmsID, tt.since, tt.cclfTimestamp)
+
+			assert.Equal(t, tt.expectedID, id)
+			if tt.expectedErr != nil {
+				assert.Equal(t, tt.expectedErr, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+
+	repository.AssertExpectations(s.T())
 }
 
 type ServiceTestSuiteWithDatabase struct {

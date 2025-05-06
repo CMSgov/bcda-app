@@ -517,140 +517,71 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		Status:     models.JobStatusPending,
 	}
 
-	prepWork, errObj := h.Svc.FindCCLFFiles(ctx, ad.CMSID, reqType, rp.Since)
-	if errObj.Status != 0 {
+	fileType := models.FileTypeDefault
+	if reqType == constants.Runout {
+		fileType = models.FileTypeRunout
+	}
+
+	fmt.Println("\n--- Start GetTimeConstraints")
+	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
+	if err != nil {
+		fmt.Printf("\n--- time constraints err: %+v", err)
 		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, errObj.Status, errObj.ResponseType, errObj.Msg.Error())
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	}
+	fmt.Printf("\n--- GetTimeConstraints: %+v", timeConstraints)
+
+	cutoffTime, complexDataRequestType := h.Svc.GetCutoffTime(ctx, reqType, rp.Since, timeConstraints, fileType)
+	if complexDataRequestType == "" {
+		logger.Error("invalid complex data request type")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
 		return
 	}
 
-	// var cutoffTime time.Time
-	// var timeConstraints service.TimeConstraints
-	// var cclfFileOldID uint
-	// var complexDataRequestType string
-	// var fileType models.CCLFFileType
+	fmt.Printf("\n--- cutOff, complexDataRequestType: %+v, %+v", cutoffTime, complexDataRequestType)
 
-	// fmt.Println("\n--- Start setTimeConstraints")
-	// timeConstraints, err = h.Svc.SetTimeConstraints(ctx, ad.CMSID)
-	// if err != nil {
-	// 	fmt.Printf("\n--- time constraints err: %+v", err)
-	// 	logger.Error(err)
-	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-	// 	return
-	// }
-	// fmt.Printf("\n--- setTimeConstraints: %+v", timeConstraints)
+	fmt.Printf("\n--- finding latest CCLF file based on: CMSID: %+v, cutoffTime: %+v, attributionDate: %+v, fileType: %+v", ad.CMSID, cutoffTime, timeConstraints.AttributionDate, fileType)
+	cclfFileNew, err := h.Svc.GetLatestCCLFFile(
+		ctx,
+		ad.CMSID,
+		cutoffTime,
+		timeConstraints.AttributionDate,
+		fileType,
+	)
+	if err != nil {
+		fmt.Printf("\n--- get latest cclf file error: %+v", err)
+		logger.Error(err.Error())
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+		return
+	}
+	fmt.Printf("\n--- cclfFileNew: %+v", cclfFileNew)
 
-	// hasAttributionDate := !timeConstraints.AttributionDate.IsZero()
-	// fmt.Printf("\n--- hasAttributionDate: %+v", hasAttributionDate)
-	// if reqType == constants.Runout {
-	// 	fileType = models.FileTypeRunout
-	// } else {
-	// 	fileType = models.FileTypeDefault
-	// }
-	// fmt.Printf("\n--- fileType: %+v", fileType)
-	// // for default requests, runouts, or any requests where the Since parameter is
-	// // after a terminated ACO's attribution date, we should only retrieve exisiting benes
-	// if reqType == constants.DefaultRequest ||
-	// 	reqType == constants.Runout ||
-	// 	(hasAttributionDate && rp.Since.After(timeConstraints.AttributionDate)) {
-	// 	complexDataRequestType = constants.GetExistingBenes
-	// 	// only set a cutoffTime if there is no attributionDate set
-	// 	if timeConstraints.AttributionDate.IsZero() {
-	// 		if fileType == models.FileTypeDefault && h.cfg.CutoffDuration > 0 {
-	// 			cutoffTime = time.Now().Add(-1 * h.cfg.CutoffDuration)
-	// 		} else if fileType == models.FileTypeRunout && h.cfg.RunoutConfig.CutoffDuration > 0 {
-	// 			cutoffTime = time.Now().Add(-1 * h.cfg.RunoutConfig.CutoffDuration)
-	// 		}
-	// 	}
-	// } else if reqType == constants.RetrieveNewBeneHistData {
-	// 	complexDataRequestType = constants.GetNewAndExistingBenes
-	// 	// only set cutoffTime if there is no attributionDate set
-	// 	if h.cfg.CutoffDuration > 0 && timeConstraints.AttributionDate.IsZero() {
-	// 		cutoffTime = time.Now().Add(-1 * h.cfg.CutoffDuration)
-	// 	}
-	// } else {
-	// 	logger.Error("invalid complex data request type")
-	// 	h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
-	// 	return
-	// }
-	// fmt.Printf("\n--- complexDataRequestType %+v, cutoffTime: %+v", complexDataRequestType, cutoffTime)
+	// set PY
+	// perfYear, err := h.Svc.GetPY(ctx, reqType)
+	performanceYear := utils.GetPY()
+	fmt.Printf("\n--- fileType: %+v, %+v, logic?: %+v", fileType, models.FileTypeRunout, (fileType == models.FileTypeRunout))
+	if fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+	fmt.Printf("\n--- performanceYear: %+v", performanceYear)
 
-	// fmt.Printf("\n--- finding latest CCLF file based on: CMSID: %+v, cutoffTime: %+v, attributionDate: %+v, fileType: %+v", ad.CMSID, cutoffTime, timeConstraints.AttributionDate, fileType)
-	// // get latest cclf file
-	// fmt.Printf("\n--- h.Svc: %+v", h.Svc)
-	// cclfFileNew, err := h.Svc.GetLatestCCLFFile(
-	// 	ctx,
-	// 	ad.CMSID,
-	// 	// constants.CCLF8FileNum,
-	// 	// constants.ImportComplete,
-	// 	cutoffTime,
-	// 	timeConstraints.AttributionDate,
-	// 	fileType,
-	// )
-	// if err != nil {
-	// 	fmt.Printf("\n--- get latest cclf file error: %+v", err)
-	// 	logger.Error(err.Error())
-	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
-	// 	return
-	// }
-	// fmt.Printf("\n--- cclfFileNew: %+v", cclfFileNew)
+	// validate cclffile and PY
+	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
+		fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
+		return
+	}
 
-	// // set PY
-	// performanceYear := utils.GetPY()
-	// fmt.Printf("\n--- fileType: %+v, %+v, logic?: %+v", fileType, models.FileTypeRunout, (fileType == models.FileTypeRunout))
-	// if fileType == models.FileTypeRunout {
-	// 	performanceYear -= 1
-	// }
-	// fmt.Printf("\n--- performanceYear: %+v", performanceYear)
-
-	// // validate cclffile and PY
-	// if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-	// 	fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
-	// 	h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
-	// 	return
-	// }
-
-	// if complexDataRequestType == "GetNewAndExistingBenes" {
-	// 	fmt.Println("\n--- start GetNewAndExistingBenes")
-	// 	// Retrieve an older CCLF file for beneficiary comparison.
-	// 	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
-	// 	//
-	// 	// e.g.
-	// 	// - If it’s October 2023
-	// 	// - and they request all beneficiary data “since January 1st, 2023"
-	// 	// - any beneficiaries added in 2023 are considered "new."
-	// 	//
-	// 	oldFileUpperBound := rp.Since
-
-	// 	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
-	// 	// for the older file to be prior to the newest file's timestamp.
-	// 	if !rp.Since.IsZero() && cclfFileNew.Timestamp.Sub(rp.Since) < 0 {
-	// 		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
-	// 	}
-
-	// 	cclfFileOld, err := h.Svc.GetLatestCCLFFile(
-	// 		ctx,
-	// 		ad.CMSID,
-	// 		// constants.CCLF8FileNum,
-	// 		// constants.ImportComplete,
-	// 		time.Time{},
-	// 		oldFileUpperBound,
-	// 		models.FileTypeDefault,
-	// 	)
-	// 	if err != nil {
-	// 		logger.Error(err.Error())
-	// 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
-	// 		return
-	// 	}
-	// 	if cclfFileOld == nil {
-	// 		logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", ad.CMSID, rp.Since)
-	// 	} else {
-	// 		cclfFileOldID = cclfFileOld.ID
-	// 	}
-	// }
-	// fmt.Printf("\n--- cclfFileOldID: %+v", cclfFileOldID)
-
-	// ----------------------------------------------------------------------------------------
+	var cclfFileOldID uint
+	if complexDataRequestType == constants.GetNewAndExistingBenes {
+		cclfFileOldID, err = h.Svc.FindOldCCLFFile(ctx, ad.CMSID, rp.Since, cclfFileNew.Timestamp)
+		if err != nil {
+			fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
+			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+			return
+		}
+	}
 
 	fmt.Println("\n--- Start create job")
 	newJob.ID, err = h.r.CreateJob(ctx, newJob)
@@ -671,16 +602,16 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		Job:                    newJob,
 		ACOID:                  acoID,
 		CMSID:                  ad.CMSID,
-		CCLFFileNewID:          prepWork.CCLFFileNewID,
-		CCLFFileOldID:          prepWork.CCLFFileOldID,
+		CCLFFileNewID:          cclfFileNew.ID,
+		CCLFFileOldID:          cclfFileOldID,
 		BFDPath:                h.bbBasePath,
 		RequestType:            reqType,
-		ComplexDataRequestType: prepWork.ComplexDataRequestType,
+		ComplexDataRequestType: complexDataRequestType,
 		ResourceTypes:          resourceTypes,
 		Since:                  rp.Since,
 		CreationTime:           time.Now(),
-		ClaimsDate:             prepWork.ClaimsDate,
-		OptOutDate:             prepWork.OptOutDate,
+		ClaimsDate:             timeConstraints.ClaimsDate,
+		OptOutDate:             timeConstraints.OptOutDate,
 		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
 	}
 	fmt.Printf("\n--- ppreparejob data: %+v", prepJob)

@@ -4,7 +4,6 @@ import (
 	"context"
 	goerrors "errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -29,7 +27,9 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError)
+	GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)
+	FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)
+	// FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError)
 	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error)
 	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
@@ -39,7 +39,7 @@ type Service interface {
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
-	SetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
+	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
 }
 
 type service struct {
@@ -102,36 +102,8 @@ type RequestError struct {
 	Msg          error
 }
 
-// FindCCLFFiles finds new and old CCLF Files based on request ACO info, _since request param, ACO termination status,
-// performance year as compared to request type, as well as setting up various config that will be needed down the road
-func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError) {
-	var cutoffTime time.Time
-	var timeConstraints TimeConstraints
-	var cclfFileOldID uint
-	var complexDataRequestType string
-	var fileType models.CCLFFileType
-
-	fmt.Println("\n--- Start setTimeConstraints")
-	timeConstraints, err := s.SetTimeConstraints(ctx, cmsID)
-	if err != nil {
-		fmt.Printf("\n--- time constraints err: %+v", err)
-		s.logger.Error(err)
-		return worker_types.PrepareJobArgs{}, RequestError{
-			Status:       http.StatusInternalServerError,
-			ResponseType: responseutils.InternalErr,
-			Msg:          errors.New(""),
-		}
-	}
-	fmt.Printf("\n--- setTimeConstraints: %+v", timeConstraints)
-
+func (s *service) GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (cutoffTime time.Time, complexDataRequestType string) {
 	hasAttributionDate := !timeConstraints.AttributionDate.IsZero()
-	fmt.Printf("\n--- hasAttributionDate: %+v", hasAttributionDate)
-	if reqType == constants.Runout {
-		fileType = models.FileTypeRunout
-	} else {
-		fileType = models.FileTypeDefault
-	}
-	fmt.Printf("\n--- fileType: %+v", fileType)
 	// for default requests, runouts, or any requests where the Since parameter is
 	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
 	if reqType == constants.DefaultRequest ||
@@ -152,103 +124,46 @@ func (s *service) FindCCLFFiles(ctx context.Context, cmsID string, reqType const
 		if s.stdCutoffDuration > 0 && timeConstraints.AttributionDate.IsZero() {
 			cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 		}
-	} else {
-		s.logger.Error("invalid complex data request type")
-		return worker_types.PrepareJobArgs{}, RequestError{
-			Status:       http.StatusBadRequest,
-			ResponseType: responseutils.RequestErr,
-			Msg:          errors.New("invalid complex data request type"),
-		}
 	}
-	fmt.Printf("\n--- complexDataRequestType %+v, cutoffTime: %+v", complexDataRequestType, cutoffTime)
 
-	fmt.Printf("\n--- finding latest CCLF file based on: CMSID: %+v, cutoffTime: %+v, attributionDate: %+v, fileType: %+v", cmsID, cutoffTime, timeConstraints.AttributionDate, fileType)
-	// get latest cclf file
-	cclfFileNew, err := s.GetLatestCCLFFile(
+	return cutoffTime, complexDataRequestType
+}
+
+// FindOldCCLFFile finds an older CCLF file depending on passed in timestamps
+func (s *service) FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (cclfFileOldID uint, err error) {
+	// Retrieve an older CCLF file for beneficiary comparison.
+	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
+	//
+	// e.g.
+	// - If it’s October 2023
+	// - and they request all beneficiary data “since January 1st, 2023"
+	// - any beneficiaries added in 2023 are considered "new."
+	//
+	oldFileUpperBound := since
+
+	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
+	// for the older file to be prior to the newest file's timestamp.
+	if !since.IsZero() && cclfTimestamp.Sub(since) < 0 {
+		oldFileUpperBound = cclfTimestamp.Add(-1 * time.Second)
+	}
+
+	cclfFileOld, err := s.GetLatestCCLFFile(
 		ctx,
 		cmsID,
-		cutoffTime,
-		timeConstraints.AttributionDate,
-		fileType,
+		time.Time{},
+		oldFileUpperBound,
+		models.FileTypeDefault,
 	)
 	if err != nil {
-		fmt.Printf("\n--- get latest cclf file error: %+v", err)
-		s.logger.Error(err.Error())
-		return worker_types.PrepareJobArgs{}, RequestError{
-			Status:       http.StatusInternalServerError,
-			ResponseType: responseutils.DbErr,
-			Msg:          errors.New(""),
-		}
-	}
-	fmt.Printf("\n--- cclfFileNew: %+v", cclfFileNew)
-
-	// set PY
-	performanceYear := utils.GetPY()
-	fmt.Printf("\n--- fileType: %+v, %+v, logic?: %+v", fileType, models.FileTypeRunout, (fileType == models.FileTypeRunout))
-	if fileType == models.FileTypeRunout {
-		performanceYear -= 1
-	}
-	fmt.Printf("\n--- performanceYear: %+v", performanceYear)
-
-	// validate cclffile and PY
-	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-		fmt.Printf("\n--- failed on validate cclfile/PY, cclfFile: %+v, logic?: %+v", cclfFileNew, (performanceYear != cclfFileNew.PerformanceYear))
-		return worker_types.PrepareJobArgs{}, RequestError{
-			Status:       http.StatusInternalServerError,
-			ResponseType: responseutils.NotFoundErr,
-			Msg:          fmt.Errorf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", cmsID),
-		}
+		return 0, err
 	}
 
-	if complexDataRequestType == constants.GetNewAndExistingBenes {
-		fmt.Println("\n--- start GetNewAndExistingBenes")
-		// Retrieve an older CCLF file for beneficiary comparison.
-		// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
-		//
-		// e.g.
-		// - If it’s October 2023
-		// - and they request all beneficiary data “since January 1st, 2023"
-		// - any beneficiaries added in 2023 are considered "new."
-		//
-		oldFileUpperBound := since
-
-		// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
-		// for the older file to be prior to the newest file's timestamp.
-		if !since.IsZero() && cclfFileNew.Timestamp.Sub(since) < 0 {
-			oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
-		}
-
-		cclfFileOld, err := s.GetLatestCCLFFile(
-			ctx,
-			cmsID,
-			time.Time{},
-			oldFileUpperBound,
-			models.FileTypeDefault,
-		)
-		if err != nil {
-			s.logger.Error(err.Error())
-			return worker_types.PrepareJobArgs{}, RequestError{
-				Status:       http.StatusInternalServerError,
-				ResponseType: responseutils.DbErr,
-				Msg:          errors.New(""),
-			}
-		}
-		if cclfFileOld == nil {
-			s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
-		} else {
-			cclfFileOldID = cclfFileOld.ID
-		}
+	if cclfFileOld == nil {
+		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
+		return 0, nil
+	} else {
+		return cclfFileOld.ID, nil
 	}
-	fmt.Printf("\n--- cclfFileOldID: %+v", cclfFileOldID)
-
-	return worker_types.PrepareJobArgs{
-		CCLFFileNewID:          cclfFileNew.ID,
-		CCLFFileOldID:          cclfFileOldID,
-		ComplexDataRequestType: complexDataRequestType,
-		CreationTime:           time.Now(),
-		ClaimsDate:             timeConstraints.ClaimsDate,
-		OptOutDate:             timeConstraints.OptOutDate,
-	}, RequestError{}
 }
 
 func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error) {
@@ -689,8 +604,8 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBoun
 	return cclfFile, nil
 }
 
-// SetTimeConstraints searches for any time bounds that we should apply on the associated ACO
-func (s *service) SetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
+// GetTimeConstraints searches for any time bounds that we should apply on the associated ACO
+func (s *service) GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
 	var constraint TimeConstraints
 	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
 	fmt.Printf("\n--- aco, err: %+v, %+v", aco, err)

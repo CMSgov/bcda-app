@@ -97,59 +97,59 @@ func (_c *MockService_CancelJob_Call) RunAndReturn(run func(ctx context.Context,
 	return _c
 }
 
-// FindCCLFFiles provides a mock function for the type MockService
-func (_mock *MockService) FindCCLFFiles(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError) {
-	ret := _mock.Called(ctx, cmsID, reqType, since)
+// FindOldCCLFFile provides a mock function for the type MockService
+func (_mock *MockService) FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error) {
+	ret := _mock.Called(ctx, cmsID, since, cclfTimestamp)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindCCLFFiles")
+		panic("no return value specified for FindOldCCLFFile")
 	}
 
-	var r0 worker_types.PrepareJobArgs
-	var r1 RequestError
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) (worker_types.PrepareJobArgs, RequestError)); ok {
-		return returnFunc(ctx, cmsID, reqType, since)
+	var r0 uint
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time) (uint, error)); ok {
+		return returnFunc(ctx, cmsID, since, cclfTimestamp)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, constants.DataRequestType, time.Time) worker_types.PrepareJobArgs); ok {
-		r0 = returnFunc(ctx, cmsID, reqType, since)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time) uint); ok {
+		r0 = returnFunc(ctx, cmsID, since, cclfTimestamp)
 	} else {
-		r0 = ret.Get(0).(worker_types.PrepareJobArgs)
+		r0 = ret.Get(0).(uint)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, constants.DataRequestType, time.Time) RequestError); ok {
-		r1 = returnFunc(ctx, cmsID, reqType, since)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, time.Time, time.Time) error); ok {
+		r1 = returnFunc(ctx, cmsID, since, cclfTimestamp)
 	} else {
-		r1 = ret.Get(1).(RequestError)
+		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockService_FindCCLFFiles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindCCLFFiles'
-type MockService_FindCCLFFiles_Call struct {
+// MockService_FindOldCCLFFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindOldCCLFFile'
+type MockService_FindOldCCLFFile_Call struct {
 	*mock.Call
 }
 
-// FindCCLFFiles is a helper method to define mock.On call
+// FindOldCCLFFile is a helper method to define mock.On call
 //   - ctx
 //   - cmsID
-//   - reqType
 //   - since
-func (_e *MockService_Expecter) FindCCLFFiles(ctx interface{}, cmsID interface{}, reqType interface{}, since interface{}) *MockService_FindCCLFFiles_Call {
-	return &MockService_FindCCLFFiles_Call{Call: _e.mock.On("FindCCLFFiles", ctx, cmsID, reqType, since)}
+//   - cclfTimestamp
+func (_e *MockService_Expecter) FindOldCCLFFile(ctx interface{}, cmsID interface{}, since interface{}, cclfTimestamp interface{}) *MockService_FindOldCCLFFile_Call {
+	return &MockService_FindOldCCLFFile_Call{Call: _e.mock.On("FindOldCCLFFile", ctx, cmsID, since, cclfTimestamp)}
 }
 
-func (_c *MockService_FindCCLFFiles_Call) Run(run func(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time)) *MockService_FindCCLFFiles_Call {
+func (_c *MockService_FindOldCCLFFile_Call) Run(run func(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time)) *MockService_FindOldCCLFFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(constants.DataRequestType), args[3].(time.Time))
+		run(args[0].(context.Context), args[1].(string), args[2].(time.Time), args[3].(time.Time))
 	})
 	return _c
 }
 
-func (_c *MockService_FindCCLFFiles_Call) Return(prepareJobArgs worker_types.PrepareJobArgs, requestError RequestError) *MockService_FindCCLFFiles_Call {
-	_c.Call.Return(prepareJobArgs, requestError)
+func (_c *MockService_FindOldCCLFFile_Call) Return(v uint, err error) *MockService_FindOldCCLFFile_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
-func (_c *MockService_FindCCLFFiles_Call) RunAndReturn(run func(ctx context.Context, cmsID string, reqType constants.DataRequestType, since time.Time) (worker_types.PrepareJobArgs, RequestError)) *MockService_FindCCLFFiles_Call {
+func (_c *MockService_FindOldCCLFFile_Call) RunAndReturn(run func(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)) *MockService_FindOldCCLFFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -254,6 +254,64 @@ func (_c *MockService_GetAlrJobs_Call) Return(jobAlrEnqueueArgss []*models.JobAl
 }
 
 func (_c *MockService_GetAlrJobs_Call) RunAndReturn(run func(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs) *MockService_GetAlrJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetCutoffTime provides a mock function for the type MockService
+func (_mock *MockService) GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string) {
+	ret := _mock.Called(ctx, reqType, since, timeConstraints, fileType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCutoffTime")
+	}
+
+	var r0 time.Time
+	var r1 string
+	if returnFunc, ok := ret.Get(0).(func(context.Context, constants.DataRequestType, time.Time, TimeConstraints, models.CCLFFileType) (time.Time, string)); ok {
+		return returnFunc(ctx, reqType, since, timeConstraints, fileType)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, constants.DataRequestType, time.Time, TimeConstraints, models.CCLFFileType) time.Time); ok {
+		r0 = returnFunc(ctx, reqType, since, timeConstraints, fileType)
+	} else {
+		r0 = ret.Get(0).(time.Time)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, constants.DataRequestType, time.Time, TimeConstraints, models.CCLFFileType) string); ok {
+		r1 = returnFunc(ctx, reqType, since, timeConstraints, fileType)
+	} else {
+		r1 = ret.Get(1).(string)
+	}
+	return r0, r1
+}
+
+// MockService_GetCutoffTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCutoffTime'
+type MockService_GetCutoffTime_Call struct {
+	*mock.Call
+}
+
+// GetCutoffTime is a helper method to define mock.On call
+//   - ctx
+//   - reqType
+//   - since
+//   - timeConstraints
+//   - fileType
+func (_e *MockService_Expecter) GetCutoffTime(ctx interface{}, reqType interface{}, since interface{}, timeConstraints interface{}, fileType interface{}) *MockService_GetCutoffTime_Call {
+	return &MockService_GetCutoffTime_Call{Call: _e.mock.On("GetCutoffTime", ctx, reqType, since, timeConstraints, fileType)}
+}
+
+func (_c *MockService_GetCutoffTime_Call) Run(run func(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType)) *MockService_GetCutoffTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(constants.DataRequestType), args[2].(time.Time), args[3].(TimeConstraints), args[4].(models.CCLFFileType))
+	})
+	return _c
+}
+
+func (_c *MockService_GetCutoffTime_Call) Return(time1 time.Time, s string) *MockService_GetCutoffTime_Call {
+	_c.Call.Return(time1, s)
+	return _c
+}
+
+func (_c *MockService_GetCutoffTime_Call) RunAndReturn(run func(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)) *MockService_GetCutoffTime_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -611,12 +669,12 @@ func (_c *MockService_GetQueJobs_Call) RunAndReturn(run func(ctx context.Context
 	return _c
 }
 
-// SetTimeConstraints provides a mock function for the type MockService
-func (_mock *MockService) SetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
+// GetTimeConstraints provides a mock function for the type MockService
+func (_mock *MockService) GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
 	ret := _mock.Called(ctx, cmsID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetTimeConstraints")
+		panic("no return value specified for GetTimeConstraints")
 	}
 
 	var r0 TimeConstraints
@@ -637,31 +695,31 @@ func (_mock *MockService) SetTimeConstraints(ctx context.Context, cmsID string) 
 	return r0, r1
 }
 
-// MockService_SetTimeConstraints_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTimeConstraints'
-type MockService_SetTimeConstraints_Call struct {
+// MockService_GetTimeConstraints_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTimeConstraints'
+type MockService_GetTimeConstraints_Call struct {
 	*mock.Call
 }
 
-// SetTimeConstraints is a helper method to define mock.On call
+// GetTimeConstraints is a helper method to define mock.On call
 //   - ctx
 //   - cmsID
-func (_e *MockService_Expecter) SetTimeConstraints(ctx interface{}, cmsID interface{}) *MockService_SetTimeConstraints_Call {
-	return &MockService_SetTimeConstraints_Call{Call: _e.mock.On("SetTimeConstraints", ctx, cmsID)}
+func (_e *MockService_Expecter) GetTimeConstraints(ctx interface{}, cmsID interface{}) *MockService_GetTimeConstraints_Call {
+	return &MockService_GetTimeConstraints_Call{Call: _e.mock.On("GetTimeConstraints", ctx, cmsID)}
 }
 
-func (_c *MockService_SetTimeConstraints_Call) Run(run func(ctx context.Context, cmsID string)) *MockService_SetTimeConstraints_Call {
+func (_c *MockService_GetTimeConstraints_Call) Run(run func(ctx context.Context, cmsID string)) *MockService_GetTimeConstraints_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockService_SetTimeConstraints_Call) Return(timeConstraints TimeConstraints, err error) *MockService_SetTimeConstraints_Call {
+func (_c *MockService_GetTimeConstraints_Call) Return(timeConstraints TimeConstraints, err error) *MockService_GetTimeConstraints_Call {
 	_c.Call.Return(timeConstraints, err)
 	return _c
 }
 
-func (_c *MockService_SetTimeConstraints_Call) RunAndReturn(run func(ctx context.Context, cmsID string) (TimeConstraints, error)) *MockService_SetTimeConstraints_Call {
+func (_c *MockService_GetTimeConstraints_Call) RunAndReturn(run func(ctx context.Context, cmsID string) (TimeConstraints, error)) *MockService_GetTimeConstraints_Call {
 	_c.Call.Return(run)
 	return _c
 }
