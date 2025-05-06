@@ -42,6 +42,13 @@ AUTH_RESP=$(curl -d "" -X POST "$TOKEN_URL" \
 	--user "$CLIENT_ID:$CLIENT_SECRET" \
 	-H "accept: application/json")
 
+echo "
+###
+### AUTH RESPONSE: $AUTH_RESPONSE
+###
+"
+
+
 TOKEN=$(echo $AUTH_RESP | jq -r ".access_token")
 
 # Create a session
