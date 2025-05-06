@@ -151,19 +151,19 @@ jobs:
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
           export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
-      - run: sleep 240 # Give plenty of time for api and worker instances to refresh
+      - run: sleep 300 # Give plenty of time for api and worker instances to refresh
       - name: Verify API version
         run: |
           export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
           if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-            echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
+            echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
             exit 1
           fi
       - name: Verify SSAS version
         run: |
           export BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -r .version`
           if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
-            echo "SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
+            echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
             exit 1
           fi
       - name: Verify Worker version
@@ -175,7 +175,7 @@ jobs:
           }
           export BCDA_WORKER_VERSION=`get_image_version`
           if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-            echo "SSAS expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
+            echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
             exit 1
           fi
       - name: Upload notify script
