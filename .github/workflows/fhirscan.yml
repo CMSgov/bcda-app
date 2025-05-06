@@ -27,7 +27,7 @@ jobs:
           params: |
             CLIENT_ID=/bcda/dev/api/DEV_CLIENT_ID
             CLIENT_SECRET=/bcda/dev/api/DEV_CLIENT_SECRET
-      - name: Run BDT
+      - name: Run Inferno
         id: run
         run: |
           echo "Running FHIR scan against https://dev.bcda.cms.gov"
@@ -36,12 +36,19 @@ jobs:
           cd ${GITHUB_WORKSPACE} 
           pwd
           ls 
-          docker build --no-cache -t bdt -f /opt/actions-runner/_work/bcda-app/bcda-app/Dockerfiles/Dockerfile.bdt .
+          
+          docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
+          docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
+          docker compose -f fhir_testing/docker-compose.inferno.yml up -d
+          sleep 10
+          docker stop fhir_testing-hl7_validator_service-1
 
-          docker rm -f bdt || echo "BDT container already cleaned up."
-          docker run --name bdt -e BASE_URL="https://dev.bcda.cms.gov" -e CLIENT_ID="$CLIENT_ID" -e SECRET="$CLIENT_SECRET" bdt 2>&1
-          RESULT=$(docker logs bdt --tail 6 | grep -o "failed tests: [0-9]*" | cut -d ' ' -f3)
-          docker rm -f bdt || echo "BDT container already cleaned up."
+          docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
+          @docker run --rm -e BULK_URL="https://dev.bcda.cms.gov/api/v2/" -e TOKEN_URL="https://dev.bcda.cms.gov/auth/token" -e CLIENT_ID="$CLIENT_ID" -e SECRET="$CLIENT_SECRET" fhir_testing
+
+          RESULT=$(docker logs fhir_testing --tail 6 | grep -o " - Tests Failed: [0-9]*" | cut -d ' ' -f3)
+          echo $RESULT
+
           if [[ $RESULT -eq 0 ]]; then
             exit 0
           else
