@@ -25,11 +25,11 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CLIENT_CREDENTIALS_PARAMS=/bcda/dev/dev_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/test/small_client_credentials
       - name: Run Inferno
         id: run
         run: |
-          echo "Running FHIR scan against https://dev.bcda.cms.gov"
+          echo "Running FHIR scan against https://test.bcda.cms.gov"
           echo ${GITHUB_WORKSPACE}
           echo ${{ github.workspace }}
           cd ${GITHUB_WORKSPACE} 
@@ -46,7 +46,7 @@ jobs:
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
 
           docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
-          docker run --rm -e BULK_URL="https://dev.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://dev.bcda.cms.gov/auth/token" fhir_testing
+          docker run --rm -e BULK_URL="https://test.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://test.bcda.cms.gov/auth/token" fhir_testing
 
           RESULT=$(docker logs fhir_testing --tail 6 | grep -o " - Tests Failed: [0-9]*" | cut -d ' ' -f3)
           echo $RESULT
