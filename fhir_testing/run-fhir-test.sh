@@ -9,20 +9,6 @@ CONFIG=`cat config.json`
 # CLIENT_SECRET=$(echo $CONFIG | jq -r ".auth.client_secret")
 TESTS=$(echo $CONFIG | jq -r ".required_tests[]")
 
-if [[ "$CLIENT_ID" == "" ]]; then
-  echo "
-  client_id not set. exiting...
-  "
-  exit 1
-fi
-
-if [[ "$CLIENT_SECRET" == "" ]]; then
-  echo "
-  client_secret not set. exiting...
-  "
-  exit 1
-fi
-
 if [[ "$TOKEN_URL" == "" ]]; then
   echo "
   token_url not set. exiting...
@@ -33,6 +19,20 @@ fi
 if [[ "$BULK_URL" == "" ]]; then
   echo "
   bulk_url not set. exiting...
+  "
+  exit 1
+fi
+
+if [[ "$CLIENT_ID" == "" ]]; then
+  echo "
+  client_id not set. exiting...
+  "
+  exit 1
+fi
+
+if [[ "$CLIENT_SECRET" == "" ]]; then
+  echo "
+  client_secret not set. exiting...
   "
   exit 1
 fi
