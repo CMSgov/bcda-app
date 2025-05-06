@@ -29,14 +29,12 @@ jobs:
       - name: Run Inferno
         id: run
         run: |
-          echo "Running FHIR scan against https://test.bcda.cms.gov"
+          echo "Running FHIR inferno against https://test.bcda.cms.gov"
           echo ${GITHUB_WORKSPACE}
           echo ${{ github.workspace }}
           cd ${GITHUB_WORKSPACE} 
           pwd
           ls 
-
-          docker network ls
           
           docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
           docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
@@ -46,28 +44,11 @@ jobs:
 
           docker network ls
 
-
-          SESSION_RESP=$(curl -d "" -X POST "http://localhost/api/test_sessions?test_suite_id=bulk_data_v200" \
-            -H "accept: application/json")
-
-          tmp=${SESSION_RESP#*'"id":"'}
-          SESSION_ID=${tmp%'","suite_options":'*}
-
-          echo "
-          ###
-          ### TEST Session ID: $SESSION_ID
-          ###
-          "
-
-
-
-
-
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
 
           docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
-          docker run --rm -e BULK_URL="https://test.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://test.bcda.cms.gov/auth/token" fhir_testing
+          docker run --add-host=host.docker.internal:host-gateway --rm -e BULK_URL="https://test.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://test.bcda.cms.gov/auth/token" fhir_testing
 
           RESULT=$(docker logs fhir_testing --tail 6 | grep -o " - Tests Failed: [0-9]*" | cut -d ' ' -f3)
           echo $RESULT

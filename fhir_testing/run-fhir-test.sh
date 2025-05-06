@@ -3,10 +3,6 @@ set -eo pipefail
 
 # Get Config
 CONFIG=`cat config.json`
-# BULK_URL=$(echo $CONFIG | jq -r ".bulk_url")
-# TOKEN_URL=$(echo $CONFIG | jq -r ".auth.token_endpoint")
-# CLIENT_ID=$(echo $CONFIG | jq -r ".auth.client_id")
-# CLIENT_SECRET=$(echo $CONFIG | jq -r ".auth.client_secret")
 TESTS=$(echo $CONFIG | jq -r ".required_tests[]")
 
 if [[ "$TOKEN_URL" == "" ]]; then
@@ -92,10 +88,6 @@ if [[ "$TEST_STATUS" != "done" ]]; then
   echo "
   --- Job Timed Out ---
   "
-
-  cd ..
-  rm -rf bulk-data-test-kit
-
   exit 1
 fi
 
