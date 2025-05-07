@@ -29,20 +29,13 @@ jobs:
       - name: Run Inferno
         id: run
         run: |
-          echo "Running FHIR inferno against https://sandbox.bcda.cms.gov"
-          echo ${GITHUB_WORKSPACE}
-          echo ${{ github.workspace }}
           cd ${GITHUB_WORKSPACE} 
-          pwd
-          ls 
           
           docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
           docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
           docker compose -f fhir_testing/docker-compose.inferno.yml up -d
           sleep 20
           docker stop fhir_testing-hl7_validator_service-1
-
-          docker network ls
 
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
