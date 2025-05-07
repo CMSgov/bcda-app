@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - "jscott/PLT-1052"
+      - jscott/PLT-1052
   pull_request:
   workflow_dispatch:
   workflow_call:
