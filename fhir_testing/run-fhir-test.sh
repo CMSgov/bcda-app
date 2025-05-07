@@ -67,10 +67,10 @@ echo "
 ###
 "
 
-# Wait 10 seconds, check to see if the tests are done, repeat (up to 150 seconds)
+# Wait 20 seconds, check to see if the tests are done, repeat (up to 300 seconds)
 for i in {1..15}; do
   echo "waiting for job... [$i/15]"
-  sleep 10
+  sleep 20
 
   TEST_RUN_STATUS_RESPONSE=$(curl -d "" -X GET "http://host.docker.internal/api/test_runs/$TEST_RUN_ID" \
 	-H "accept: application/json" )
