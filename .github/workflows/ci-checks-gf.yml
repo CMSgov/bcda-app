@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - jscott/PLT-1052
   pull_request:
   workflow_call:
     inputs:
@@ -56,12 +55,10 @@ jobs:
           go-version: '>=1.23.1'
       - name: Install docker compose manually
         run: |
-          echo "Attempt to start docker"
-          sudo systemctl start docker
-          DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-          mkdir -p $DOCKER_CONFIG/cli-plugins
-          curl -SL https://github.com/docker/compose/releases/download/v2.35.1/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-          chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+          sudo mkdir -p /usr/local/lib/docker/cli-plugins
+          sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+          sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
+          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
       - name: Checkout code
         uses: actions/checkout@v4
         with:
