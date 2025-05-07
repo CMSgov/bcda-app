@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - jscott/PLT-1052
   pull_request:
   workflow_call:
     inputs:
@@ -77,11 +78,8 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
         run: make docker-bootstrap
-
-      # TODO: fix tests that are failing
-      # - name: Lint and Test
-      #   run: make test
-
+      - name: Lint and Test
+        run: make test
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:
