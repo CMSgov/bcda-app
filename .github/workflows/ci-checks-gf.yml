@@ -1,9 +1,10 @@
-name: CI Checks
+name: CI Checks GF
 
 on:
   push:
     branches:
       - main
+      - "jscott/PLT-1052"
   pull_request:
   workflow_call:
     inputs:
