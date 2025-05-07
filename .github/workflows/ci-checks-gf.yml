@@ -122,3 +122,4 @@ jobs:
             -Dsonar.branch.name=${{ env.RELEASE_VERSION }}
             -Dsonar.projectVersion=${{ github.sha }}
             -Dsonar.qualitygate.wait=true
+            -Dsonar.ci.autoconfig.disabled=true 
