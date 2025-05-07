@@ -598,7 +598,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
-			fmt.Printf("\n--- DATAAUTH: %s\n", test.name)
 			mockSvc := service.MockService{}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
@@ -635,7 +634,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}))
 
 			h.bulkRequest(w, r, constants.DefaultRequest)
-			fmt.Printf("\n--- expected status: %+v, result status: %+v\n", test.expectedCode, w.Code)
+
 			assert.Equal(s.T(), test.expectedCode, w.Code)
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
 		})
@@ -677,13 +676,11 @@ func (s *RequestsTestSuite) TestRequests() {
 				mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 				mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 				if groupID == "all" {
-					fmt.Println("\n--- groupID ALL")
 					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 						&models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()},
 						nil,
 					)
 				} else {
-					fmt.Println("\n--- groupID RUNOUT")
 					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 						&models.CCLFFile{ID: 2, PerformanceYear: (utils.GetPY() - 1)},
 						nil,
@@ -1056,7 +1053,6 @@ func TestBulkRequest_Integration(t *testing.T) {
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
-	fmt.Printf("\n--- h.db: %+v, %+v", &h.db, h.db)
 
 	cfg, err := database.LoadConfig()
 	if err != nil {
@@ -1073,7 +1069,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 
 	acoID := "A0002"
 	repo := postgres.NewRepository(h.db)
-	fmt.Printf("\n--- repo : %+v", &repo)
+
 	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
 	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
 	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{                   // nolint:errcheck

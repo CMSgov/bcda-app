@@ -601,7 +601,6 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBoun
 func (s *service) GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
 	var constraint TimeConstraints
 	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
-	fmt.Printf("\n--- aco, err: %+v, %+v", aco, err)
 	if err != nil {
 		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
 	}
