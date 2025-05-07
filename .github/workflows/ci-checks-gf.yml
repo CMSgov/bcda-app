@@ -6,6 +6,7 @@ on:
       - main
       - "jscott/PLT-1052"
   pull_request:
+  workflow_dispatch:
   workflow_call:
     inputs:
       release_version:
