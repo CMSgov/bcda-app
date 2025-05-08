@@ -3,4 +3,6 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app/test/postman_test
 COPY ./test/postman_test .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/
 ENV NODE_OPTIONS "--max-old-space-size=2048"
-ENTRYPOINT ["newman", "run", "--timeout-script", "99999"]
+
+# timeout individual scripts after 5m, timeout entire run after 30m
+ENTRYPOINT ["newman", "run", "--timeout-script", "300000", "--timeout", "1800000"]
