@@ -8,6 +8,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
@@ -47,7 +48,7 @@ type ValidateJobConfig struct {
 	Repository     repository.Repository
 	JobID          int64
 	QJobID         int64
-	Args           models.JobEnqueueArgs
+	Args           worker_types.JobEnqueueArgs
 	ErrorCount     int
 }
 

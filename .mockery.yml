@@ -20,3 +20,6 @@ packages:
   github.com/CMSgov/bcda-app/bcdaworker/queueing:
     interfaces:
       Enqueuer:
+  github.com/CMSgov/bcda-app/bcdaworker/worker:
+    interfaces:
+      Worker:

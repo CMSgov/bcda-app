@@ -23,7 +23,7 @@ import (
 
 // Enqueuer only handles inserting job entries into the appropriate table
 type Enqueuer interface {
-	AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error
+	AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error
 	AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error
 	AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 }
@@ -59,7 +59,7 @@ type queEnqueuer struct {
 }
 
 // Deprecated: User River Queue instead.
-func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
+func (q queEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
 	args, err := json.Marshal(job)
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, prio
 	}
 
 	j := &que.Job{
-		Type:     models.QUE_PROCESS_JOB,
+		Type:     worker_types.QUE_PROCESS_JOB,
 		Args:     args,
 		Priority: int16(p),
 	}
@@ -92,7 +92,7 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 	}
 
 	j := &que.Job{
-		Type:     models.ALR_JOB,
+		Type:     worker_types.ALR_JOB,
 		Args:     args,
 		Priority: int16(p),
 	}
@@ -110,7 +110,7 @@ type riverEnqueuer struct {
 	*river.Client[pgxv5.Tx]
 }
 
-func (q riverEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
+func (q riverEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
 	// TODO: convert this to use transactions (q.InsertTx), likely only possible after removal of que-go AND upgrade to pgxv5
 	// This could also be refactored to a batch insert: riverClient.InsertManyTx or riverClient.InsertMany
 	_, err := q.Insert(ctx, job, &river.InsertOpts{

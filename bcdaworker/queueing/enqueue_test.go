@@ -10,6 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
 	_ "github.com/jackc/pgx"
@@ -56,7 +57,7 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 	if e != nil {
 		t.Fatalf("failed to generate job ID: %v", e)
 	}
-	jobArgs := models.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 	alrJobArgs := models.JobAlrEnqueueArgs{
 		ID:         1,
 		CMSID:      "A1234",
@@ -105,7 +106,7 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	if e != nil {
 		t.Fatalf("failed to generate job ID: %v\n", e)
 	}
-	jobArgs := models.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))

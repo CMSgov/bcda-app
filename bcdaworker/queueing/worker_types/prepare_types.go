@@ -8,6 +8,8 @@ import (
 	"github.com/pborman/uuid"
 )
 
+const PrepareJobKind = "PrepareJob"
+
 type PrepareJobArgs struct {
 	Job                    models.Job
 	ACOID                  uuid.UUID
@@ -26,5 +28,5 @@ type PrepareJobArgs struct {
 }
 
 func (args PrepareJobArgs) Kind() string {
-	return constants.PrepareJobKind
+	return PrepareJobKind
 }

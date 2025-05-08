@@ -484,7 +484,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
-		logger.Error(err)
+		logger.Error("error validating resources: %+v", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -509,7 +509,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
 	if err != nil {
-		logger.Error(err)
+		logger.Error("error setting time constraints: %+v", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
@@ -529,7 +529,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		fileType,
 	)
 	if err != nil {
-		logger.Error("error finding latest cclf file")
+		logger.Error("error finding latest cclf file: %+v", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
@@ -550,7 +550,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	if complexDataRequestType == constants.GetNewAndExistingBenes {
 		cclfFileOldID, err = h.Svc.FindOldCCLFFile(ctx, ad.CMSID, rp.Since, cclfFileNew.Timestamp)
 		if err != nil {
-			logger.Error("error finding old cclf file")
+			logger.Error("error finding old cclf file: %+v", err)
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}

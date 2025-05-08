@@ -29,7 +29,7 @@ var _ Service = &service{}
 type Service interface {
 	GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)
 	FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)
-	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error)
+	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error)
 	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)
@@ -159,10 +159,10 @@ func (s *service) FindOldCCLFFile(ctx context.Context, cmsID string, since time.
 	}
 }
 
-func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*models.JobEnqueueArgs, err error) {
+func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error) {
 	var (
 		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
-		jobs                            []*models.JobEnqueueArgs
+		jobs                            []*worker_types.JobEnqueueArgs
 	)
 
 	// for default requests, runouts, or any requests where the Since parameter is
@@ -269,7 +269,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
+func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
 	if !since.IsZero() {
@@ -297,7 +297,6 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 						// data ingestion timelines don't line up, therefore for all
 						// partially-adjudicated jobs we will just use conditions.CreationTime as an
 						// upper bound
-						// fmt.Printf("\n--- setting transaction time: %+v, %+v, %+v", dataType, args.CreationTime, args.Job.TransactionTime)
 						var transactionTime time.Time
 						if dataType == constants.PartiallyAdjudicated {
 							transactionTime = args.CreationTime
@@ -310,7 +309,7 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 								if err != nil {
 									log.API.Errorln(err)
 								}
-								enqueueArgs := models.JobEnqueueArgs{
+								enqueueArgs := worker_types.JobEnqueueArgs{
 									ID:              jobId,
 									ACOID:           args.ACOID.String(),
 									CMSID:           args.CMSID,
@@ -469,7 +468,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 }
 
 // setClaimsDate computes the claims window to apply on the args
-func (s *service) setClaimsDate(args *models.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) {
+func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) {
 	// If the caller made a request for runout data
 	// it takes precedence over any other claims date
 	// that may be applied

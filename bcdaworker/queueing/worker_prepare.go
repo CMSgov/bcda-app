@@ -93,10 +93,10 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 }
 
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
-func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*models.JobEnqueueArgs, time.Time, error) {
+func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, time.Time, error) {
 
 	var err error
-	exports := []*models.JobEnqueueArgs{}
+	exports := []*worker_types.JobEnqueueArgs{}
 	logger := log.GetCtxLogger(ctx)
 
 	defer func() {
@@ -115,7 +115,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		return exports, args.Since, err
 	}
 
-	jobData := models.JobEnqueueArgs{
+	jobData := worker_types.JobEnqueueArgs{
 		ID:              id,
 		ACOID:           args.Job.ACOID.String(),
 		Since:           args.Since.String(),
@@ -143,7 +143,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 }
 
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
-func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData models.JobEnqueueArgs) (time.Time, error) {
+func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
 	switch basepath {
 	case constants.BFDV1Path:
 		b, err := p.v1Client.GetPatient(jobData, "0")
@@ -156,7 +156,7 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData models.
 	}
 }
 
-func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, q Enqueuer, args worker_types.PrepareJobArgs, exports []*models.JobEnqueueArgs, since time.Time) error {
+func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs, since time.Time) error {
 	for _, j := range exports {
 		sinceParam := !since.IsZero() || args.RequestType == constants.RetrieveNewBeneHistData
 		jobPriority := p.svc.GetJobPriority(args.CMSID, j.ResourceType, sinceParam)

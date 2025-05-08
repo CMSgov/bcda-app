@@ -110,9 +110,9 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 			if tt.bfdErr {
 				// code returns before GetQueJobs
 			} else if tt.qErr {
-				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*models.JobEnqueueArgs{}, errors.New("an error occurred"))
+				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, errors.New("an error occurred"))
 			} else {
-				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 52}}, nil)
+				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*worker_types.JobEnqueueArgs{{ID: 52}}, nil)
 			}
 
 			if tt.bfdErr {
@@ -201,7 +201,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	clientID := uuid.New()
 	aco := &models.ACO{Name: "ACO Test Name", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: clientID, TerminationDetails: nil}
 	svc.On("GetACOByCMSID", mock.Anything, mock.Anything).Return(aco, nil)
-	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: 2}}, nil)
+	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{{ID: 2}}, nil)
 	svc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	j := &river.Job[worker_types.PrepareJobArgs]{
@@ -315,7 +315,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
-	_, err := worker.GetBundleLastUpdated(basepath, models.JobEnqueueArgs{})
+	_, err := worker.GetBundleLastUpdated(basepath, worker_types.JobEnqueueArgs{})
 	assert.Nil(s.T(), err)
 }
 
@@ -326,7 +326,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
 	q := NewEnqueuer()
-	a := &models.JobEnqueueArgs{
+	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}
 
@@ -334,9 +334,9 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	assert.Nil(s.T(), err)
 
-	err = worker.queueExportJobs(context.Background(), q, prepArgs, []*models.JobEnqueueArgs{a}, time.Time{})
+	err = worker.queueExportJobs(context.Background(), q, prepArgs, []*worker_types.JobEnqueueArgs{a}, time.Time{})
 	assert.Nil(s.T(), err)
-	re := rivertest.RequireInserted(s.ctx, s.T(), driver, models.JobEnqueueArgs{}, nil)
+	re := rivertest.RequireInserted(s.ctx, s.T(), driver, worker_types.JobEnqueueArgs{}, nil)
 	assert.Equal(s.T(), re.State, rivertype.JobState("available"))
 
 	// Cleanup the queue data

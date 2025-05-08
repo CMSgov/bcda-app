@@ -86,7 +86,7 @@ func (_c *MockEnqueuer_AddAlrJob_Call) RunAndReturn(run func(job models.JobAlrEn
 }
 
 // AddJob provides a mock function for the type MockEnqueuer
-func (_mock *MockEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
+func (_mock *MockEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
 	ret := _mock.Called(ctx, job, priority)
 
 	if len(ret) == 0 {
@@ -94,7 +94,7 @@ func (_mock *MockEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, models.JobEnqueueArgs, int) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, worker_types.JobEnqueueArgs, int) error); ok {
 		r0 = returnFunc(ctx, job, priority)
 	} else {
 		r0 = ret.Error(0)
@@ -115,9 +115,9 @@ func (_e *MockEnqueuer_Expecter) AddJob(ctx interface{}, job interface{}, priori
 	return &MockEnqueuer_AddJob_Call{Call: _e.mock.On("AddJob", ctx, job, priority)}
 }
 
-func (_c *MockEnqueuer_AddJob_Call) Run(run func(ctx context.Context, job models.JobEnqueueArgs, priority int)) *MockEnqueuer_AddJob_Call {
+func (_c *MockEnqueuer_AddJob_Call) Run(run func(ctx context.Context, job worker_types.JobEnqueueArgs, priority int)) *MockEnqueuer_AddJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(models.JobEnqueueArgs), args[2].(int))
+		run(args[0].(context.Context), args[1].(worker_types.JobEnqueueArgs), args[2].(int))
 	})
 	return _c
 }
@@ -127,7 +127,7 @@ func (_c *MockEnqueuer_AddJob_Call) Return(err error) *MockEnqueuer_AddJob_Call 
 	return _c
 }
 
-func (_c *MockEnqueuer_AddJob_Call) RunAndReturn(run func(ctx context.Context, job models.JobEnqueueArgs, priority int) error) *MockEnqueuer_AddJob_Call {
+func (_c *MockEnqueuer_AddJob_Call) RunAndReturn(run func(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error) *MockEnqueuer_AddJob_Call {
 	_c.Call.Return(run)
 	return _c
 }
