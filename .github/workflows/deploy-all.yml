@@ -136,7 +136,7 @@ jobs:
             -var 'app_db_pw=${APP_DB_PW}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
-            -var 'instance_type=m6i.large' \
+            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: Terraform Apply
