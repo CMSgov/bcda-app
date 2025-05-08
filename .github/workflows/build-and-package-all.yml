@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ inputs.ops_release_version}}
+          ref: ${{ inputs.ops_release_version || 'main'}}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Get platinum AMI ID
         run: |
