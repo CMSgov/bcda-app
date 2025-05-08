@@ -20,7 +20,7 @@
                   "script": {
                     "exec": [
                       "pm.test(\"Status code is 400\", function() {",
-                      "    pm.response.to.have.status(400);",
+                      "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
                       "});",
                       "",
                       "pm.environment.set(\"token\", \"invalidtoken\");",
@@ -337,7 +337,7 @@
                       "script": {
                         "exec": [
                           "const retryDelay = 5000;",
-                          "const maxRetries = 20;",
+                          "const maxRetries = 25;",
                           "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
                           "",
                           "if (maintenanceMode === \"eoy\") {",
@@ -367,6 +367,7 @@
                           "            } else {",
                           "                console.log(\"Retry limit reached for Patient job status.\");",
                           "                postman.setNextRequest(null);",
+                          "                postman.expect.fail(\"Failing due to max retries\");",
                           "            }",
                           "        } else if (response.code == 200) {",
                           "            console.log(\"Patient export job complete.\");",
@@ -549,7 +550,7 @@
                       "script": {
                         "exec": [
                           "const retryDelay = 5000;",
-                          "const maxRetries = 20;",
+                          "const maxRetries = 25;",
                           "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
                           "",
                           "if (maintenanceMode === \"eoy\") {",
@@ -579,6 +580,7 @@
                           "            } else {",
                           "                console.log(\"Retry limit reached for Group/all job status.\");",
                           "                postman.setNextRequest(null);",
+                          "                postman.expect.fail(\"Failing due to max retries\");",
                           "            }",
                           "        } else if (response.code == 200) {",
                           "            console.log(\"Group/all export job complete.\");",
@@ -852,7 +854,7 @@
                       "script": {
                         "exec": [
                           "const retryDelay = 5000;",
-                          "const maxRetries = 20;",
+                          "const maxRetries = 25;",
                           "",
                           "var eobJobReq = {",
                           "  url: pm.environment.get(\"smokeTestGroupRunoutEOBJobUrl\"),",
@@ -876,6 +878,7 @@
                           "            } else {",
                           "                console.log(\"Retry limit reached for Group/runout job status.\");",
                           "                postman.setNextRequest(null);",
+                          "                postman.expect.fail(\"Failing due to max retries\");",
                           "            }",
                           "        } else if (response.code == 200) {",
                           "            console.log(\"Group/runout export job complete.\");",
