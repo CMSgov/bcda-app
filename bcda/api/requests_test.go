@@ -998,6 +998,7 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 		{"TEST123", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage", "Claim", "ClaimResponse"}},
 		{"A0000", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage"}},
 		{"DA0000", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage", "Claim", "ClaimResponse"}},
+		{"CT000000", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage", "Claim", "ClaimResponse"}},
 	}
 	for _, test := range testCases {
 		h := newHandler(s.resourceType, "/"+test.apiVersion+"/fhir", test.apiVersion, s.db)
