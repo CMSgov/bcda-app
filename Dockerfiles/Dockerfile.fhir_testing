@@ -1,0 +1,9 @@
+FROM ruby:3.1.2
+
+RUN apt update -y && apt install curl -y && apt install jq -y 
+
+COPY fhir_testing/config.json .
+COPY fhir_testing/run-fhir-test.sh .
+
+RUN chmod +x run-fhir-test.sh
+ENTRYPOINT ["./run-fhir-test.sh"]

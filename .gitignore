@@ -19,7 +19,7 @@ bcda/pending_delete_dir/*
 shared_files/decrypted/*
 !shared_files/decrypted/README.md
 log/*
-fhir_testing/bulk-data-test-kit/
+fhir_testing/data/
 
 # Localstack volume
 .localstack_volume/
