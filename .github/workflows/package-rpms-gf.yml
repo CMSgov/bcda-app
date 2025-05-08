@@ -56,7 +56,7 @@ jobs:
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             BCDA_GPG_SEC_KEY=/bcda/gpg/sec-key
             BCDA_GPG_RPM_PASSPHRASE=/bcda/gpg/passphrase
-            BCDA_RPMS_BUCKET=	/bcda/rpms_bucket
+            BCDA_RPMS_BUCKET=/bcda/rpms_bucket
       - name: Build and package RPMs
         env: 
           GPG_RPM_USER: "Beneficiary Claims Data API (for signing RPMs)"
