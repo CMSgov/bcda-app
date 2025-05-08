@@ -84,7 +84,7 @@ jobs:
   #       run: |
   #         sudo yum update -y
   #         sudo yum install python3-pip -y
-  #         python3 -m pip install ansible==6.5.0
+  #         sudo dnf install ansible-8.3.0 -y
   #     - uses: aws-actions/configure-aws-credentials@v3
   #       with:
   #         aws-region: ${{ vars.AWS_REGION }}
