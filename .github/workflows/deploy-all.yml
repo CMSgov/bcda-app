@@ -172,7 +172,11 @@ jobs:
             if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
               echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
               TRY=$(($TRY + 1))
-              sleep $VERIFICATION_SLEEP
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $SLEEP_TIME
+              fi
             else
               break
             fi
@@ -193,7 +197,11 @@ jobs:
             if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
               echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
               TRY=$(($TRY + 1))
-              sleep $VERIFICATION_SLEEP
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $SLEEP_TIME
+              fi
             else
               break
             fi
@@ -219,7 +227,11 @@ jobs:
             if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
               echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
               TRY=$(($TRY + 1))
-              sleep $VERIFICATION_SLEEP
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $SLEEP_TIME
+              fi
             else
               break
             fi
