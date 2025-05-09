@@ -27,6 +27,7 @@ jobs:
         vars:
           - account_id: NON_PROD_ACCOUNT_ID
             role_to_assume: bcda-dev-github-actions
+          # TODO: Uncomment this once the bcda-ops TF has been run against PROD to create the bcda-rpms-xxx bucket.
           # - account_id: PROD_ACCOUNT_ID
           #   role_to_assume: bcda-prod-github-actions
     steps:
