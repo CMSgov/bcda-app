@@ -20,10 +20,10 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pkg/errors"
@@ -62,12 +62,12 @@ type ClaimsWindow struct {
 }
 
 type APIClient interface {
-	GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
-	GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error)
-	GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error)
-	GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error)
-	GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
-	GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error)
+	GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error)
+	GetPatientByMbi(jobData worker_types.JobEnqueueArgs, mbi string) (string, error)
+	GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
 }
 
 type BlueButtonClient struct {
@@ -77,7 +77,7 @@ type BlueButtonClient struct {
 	retryInterval time.Duration
 
 	bbServer   string
-	bbBasePath string
+	BBBasePath string
 }
 
 // Ensure BlueButtonClient satisfies the interface
@@ -146,7 +146,7 @@ func SetLogger(log logrus.FieldLogger) {
 	logger = log
 }
 
-func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeAddressFields", "true")
 	params := GetDefaultParams()
@@ -161,7 +161,7 @@ func (bbc *BlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID
 	return bbc.makeBundleDataRequest("GET", u, jobData, header, nil)
 }
 
-func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientByMbi(jobData worker_types.JobEnqueueArgs, mbi string) (string, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	params.Set("identifier", fmt.Sprintf("http://hl7.org/fhir/sid/us-mbi|%s", mbi))
@@ -174,7 +174,7 @@ func (bbc *BlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi 
 	return bbc.getRawData("POST", jobData, u, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
@@ -187,7 +187,7 @@ func (bbc *BlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, benefici
 	return bbc.makeBundleDataRequest("GET", u, jobData, nil, nil)
 }
 
-func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	updateParamsWithClaimsDefaults(&params, mbi)
@@ -202,7 +202,7 @@ func (bbc *BlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string,
 	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	updateParamsWithClaimsDefaults(&params, mbi)
@@ -217,7 +217,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi
 	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
@@ -240,12 +240,12 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	jobData := models.JobEnqueueArgs{}
+	jobData := worker_types.JobEnqueueArgs{}
 
 	return bbc.getRawData("GET", jobData, u, nil, nil)
 }
 
-func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
 	var b *fhirModels.Bundle
 	for ok := true; ok; {
 		result, nextURL, err := bbc.tryBundleRequest(method, u, jobData, headers, body)
@@ -266,7 +266,7 @@ func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jo
 	return b, nil
 }
 
-func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData models.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, *url.URL, error) {
+func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, *url.URL, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
@@ -314,7 +314,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 	return result, nextURL, nil
 }
 
-func (bbc *BlueButtonClient) getRawData(method string, jobData models.JobEnqueueArgs, u *url.URL, headers http.Header, body io.Reader) (string, error) {
+func (bbc *BlueButtonClient) getRawData(method string, jobData worker_types.JobEnqueueArgs, u *url.URL, headers http.Header, body io.Reader) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
@@ -360,7 +360,7 @@ func (bbc *BlueButtonClient) getRawData(method string, jobData models.JobEnqueue
 }
 
 func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, error) {
-	u, err := url.Parse(fmt.Sprintf("%s%s/%s/", bbc.bbServer, bbc.bbBasePath, path))
+	u, err := url.Parse(fmt.Sprintf("%s%s/%s/", bbc.bbServer, bbc.BBBasePath, path))
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +369,7 @@ func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, e
 	return u, nil
 }
 
-func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData models.JobEnqueueArgs) {
+func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData worker_types.JobEnqueueArgs) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("keep-alive", "")
 	req.Header.Add(constants.BBHeaderTS, time.Now().String())

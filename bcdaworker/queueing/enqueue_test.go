@@ -3,7 +3,6 @@ package queueing
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
 	_ "github.com/jackc/pgx"
@@ -26,6 +26,7 @@ func TestEnqueuerImplementation(t *testing.T) {
 	}(conf.GetEnv("QUEUE_LIBRARY"))
 
 	// Test que-go implementation (default)
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	enq := NewEnqueuer()
 	var expectedEnq queEnqueuer
 	assert.IsType(t, expectedEnq, enq)
@@ -43,6 +44,10 @@ func TestEnqueuerImplementation(t *testing.T) {
 }
 
 func TestQueEnqueuer_Integration(t *testing.T) {
+	defer func(origEnqueuer string) {
+		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
+	}(conf.GetEnv("QUEUE_LIBRARY"))
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	// Need access to the queue database to ensure we've enqueued the job successfully
 	db := database.QueueConnection
 
@@ -52,7 +57,7 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 	if e != nil {
 		t.Fatalf("failed to generate job ID: %v", e)
 	}
-	jobArgs := models.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 	alrJobArgs := models.JobAlrEnqueueArgs{
 		ID:         1,
 		CMSID:      "A1234",
@@ -60,7 +65,7 @@ func TestQueEnqueuer_Integration(t *testing.T) {
 		LowerBound: time.Now(),
 		UpperBound: time.Now(),
 	}
-	fmt.Printf("Que Test Job args: %+v", jobArgs)
+
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, priority))
 	assert.NoError(t, enqueuer.AddAlrJob(alrJobArgs, priority))
@@ -101,7 +106,7 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	if e != nil {
 		t.Fatalf("failed to generate job ID: %v\n", e)
 	}
-	jobArgs := models.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 
 	ctx := context.Background()
 	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))

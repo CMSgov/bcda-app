@@ -1,3 +1,8 @@
+/*
+Enqueue.go has an interface and a method for instantiating a new River Client that satisfies the Enqueuer interface.
+This allows the River client to be mocked for testing.
+*/
+
 package queueing
 
 import (
@@ -6,6 +11,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
@@ -17,14 +23,22 @@ import (
 
 // Enqueuer only handles inserting job entries into the appropriate table
 type Enqueuer interface {
-	AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error
+	AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error
+	AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error
 	AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 }
 
+// Creates a river client for the Job queue. If the client does not call .Start(), then it is insert only
+// We still need the workers and the types of workers to insert them
 func NewEnqueuer() Enqueuer {
 	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
 		workers := river.NewWorkers()
 		river.AddWorker(workers, &JobWorker{})
+		prepareWorker, err := NewPrepareJobWorker()
+		if err != nil {
+			panic(err)
+		}
+		river.AddWorker(workers, prepareWorker)
 
 		riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 			Workers: workers,
@@ -39,12 +53,13 @@ func NewEnqueuer() Enqueuer {
 	return queEnqueuer{que.NewClient(database.QueueConnection)}
 }
 
-// QUE-GO implementation https://github.com/bgentry/que-go
+// Deprecated: User River Queue instead.
 type queEnqueuer struct {
 	*que.Client
 }
 
-func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
+// Deprecated: User River Queue instead.
+func (q queEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
 	args, err := json.Marshal(job)
 	if err != nil {
 		return err
@@ -56,7 +71,7 @@ func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, prio
 	}
 
 	j := &que.Job{
-		Type:     models.QUE_PROCESS_JOB,
+		Type:     worker_types.QUE_PROCESS_JOB,
 		Args:     args,
 		Priority: int16(p),
 	}
@@ -64,7 +79,7 @@ func (q queEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, prio
 	return q.Enqueue(j)
 }
 
-// ALR ENQ...
+// Deprecated: User River Queue instead.
 func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error {
 	args, err := json.Marshal(job)
 	if err != nil {
@@ -77,7 +92,7 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 	}
 
 	j := &que.Job{
-		Type:     models.ALR_JOB,
+		Type:     worker_types.ALR_JOB,
 		Args:     args,
 		Priority: int16(p),
 	}
@@ -85,12 +100,17 @@ func (q queEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error
 	return q.Enqueue(j)
 }
 
+// Deprecated: User River Queue instead.
+func (q queEnqueuer) AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error {
+	return nil
+}
+
 // RIVER implementation https://github.com/riverqueue/river
 type riverEnqueuer struct {
 	*river.Client[pgxv5.Tx]
 }
 
-func (q riverEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, priority int) error {
+func (q riverEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
 	// TODO: convert this to use transactions (q.InsertTx), likely only possible after removal of que-go AND upgrade to pgxv5
 	// This could also be refactored to a batch insert: riverClient.InsertManyTx or riverClient.InsertMany
 	_, err := q.Insert(ctx, job, &river.InsertOpts{
@@ -105,4 +125,13 @@ func (q riverEnqueuer) AddJob(ctx context.Context, job models.JobEnqueueArgs, pr
 
 func (q riverEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error {
 	return nil
+}
+
+func (q riverEnqueuer) AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error {
+	_, err := q.Insert(ctx, job, nil)
+	if err != nil {
+		return err
+	}
+
+	return err
 }

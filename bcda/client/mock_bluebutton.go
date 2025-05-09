@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -18,7 +18,7 @@ type MockBlueButtonClient struct {
 	MBI  *string
 }
 
-func (bbc *MockBlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnqueueArgs, patientID string, serviceDate ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, serviceDate ClaimsWindow) (*fhirModels.Bundle, error) {
 	args := bbc.Called(jobData, patientID, serviceDate)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -26,27 +26,27 @@ func (bbc *MockBlueButtonClient) GetExplanationOfBenefit(jobData models.JobEnque
 	return args.Get(0).(*fhirModels.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetPatientByMbi(jobData models.JobEnqueueArgs, mbi string) (string, error) {
+func (bbc *MockBlueButtonClient) GetPatientByMbi(jobData worker_types.JobEnqueueArgs, mbi string) (string, error) {
 	args := bbc.Called(mbi)
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetPatient(jobData models.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
 	args := bbc.Called(jobData, patientID)
 	return args.Get(0).(*fhirModels.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetCoverage(jobData models.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
 	args := bbc.Called(jobData, beneficiaryID)
 	return args.Get(0).(*fhirModels.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetClaim(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	args := bbc.Called(jobData, mbi, claimsWindow)
 	return args.Get(0).(*fhirModels.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetClaimResponse(jobData models.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
 	args := bbc.Called(jobData, mbi, claimsWindow)
 	return args.Get(0).(*fhirModels.Bundle), args.Error(1)
 }

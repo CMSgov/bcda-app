@@ -18,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 
@@ -145,6 +146,67 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			}
 		})
 	}
+}
+
+func (r *RepositoryTestSuite) TestGetCCLFFileByID_Success() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id =")
+	query.WillReturnRows(
+		sqlmock.NewRows([]string{"id", "name", "timestamp", "performance_year", "created_at"}).
+			AddRow(1, "CCLF File", time.Now(), utils.GetPY(), time.Now()),
+	)
+
+	cclfFile, err := repository.GetCCLFFileByID(context.Background(), uint(1))
+
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), cclfFile.ID, uint(1))
+}
+
+func (r *RepositoryTestSuite) TestGetCCLFFileByID_NoResults() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id =")
+	query.WillReturnRows(
+		sqlmock.NewRows([]string{"id", "name", "timestamp", "performance_year", "created_at"}),
+	)
+
+	cclfFile, err := repository.GetCCLFFileByID(context.Background(), uint(1))
+
+	assert.NoError(r.T(), err)
+	assert.Nil(r.T(), cclfFile)
+}
+
+func (r *RepositoryTestSuite) TestGetCCLFFileByID_SQLError() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	query := mock.ExpectQuery("SELECT id, name, timestamp, performance_year, created_at FROM cclf_files WHERE id =")
+	query.WillReturnRows(
+		sqlmock.NewRows([]string{"id"}).AddRow(1), // this doesnt match what we expect to return/scan so should fail
+	)
+
+	cclfFile, err := repository.GetCCLFFileByID(context.Background(), uint(1))
+
+	assert.Error(r.T(), err)
+	assert.Nil(r.T(), cclfFile)
 }
 
 func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {

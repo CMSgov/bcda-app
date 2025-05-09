@@ -10,26 +10,32 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-testfixtures/testfixtures/v3"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-
-	mockEnq "github.com/CMSgov/bcda-app/bcdaworker/queueing/mocks"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -111,41 +117,51 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "true")
 	assert.Empty(s.T(), err)
 
-	qj := []*models.JobEnqueueArgs{}
 	tests := []struct {
-		name string
-
-		errToReturn error
-		respCode    int
-		apiVersion  string
+		name               string
+		errToReturn        error
+		respCode           int
+		apiVersion         string
+		runoutAttributions bool
 	}{
-		{"Successful", nil, http.StatusAccepted, apiVersionOne},
-		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo},
-		{"No up-to-date attribution information", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne},
-		{"No up-to-date attribution information v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo},
-		{constants.DefaultError, errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionOne},
-		{constants.DefaultError + " v2", errors.New(constants.DefaultError), http.StatusInternalServerError, apiVersionTwo},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
+		{"FindCCLFFiles error v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
+		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			mockSvc := &service.MockService{}
-			var jobs []*models.JobEnqueueArgs
-			if tt.errToReturn == nil {
-				jobs = qj
-			}
-
 			resourceMap := s.resourceType
-
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
+			mockSvc := &service.MockService{}
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
+			enqueuer := queueing.NewMockEnqueuer(s.T())
+			h.Enq = enqueuer
+
+			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+
+			switch tt.errToReturn {
+			case nil:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 24}, nil)
+				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+			case CCLFNotFoundOperationOutcomeError{}:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
+			case QueueError{}:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time"), mock.Anything).
+					Return(&models.CCLFFile{PerformanceYear: 24}, nil)
+				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
+			}
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			w := httptest.NewRecorder()
 			h.BulkGroupRequest(w, req)
 
@@ -421,7 +437,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 				switch name {
 				case "":
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
 						nil,
 						service.CCLFNotFoundError{
 							FileNumber: 8,
@@ -431,17 +447,17 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 					)
 
 				case "InduceError_Default": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, models.FileTypeDefault).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
 						nil,
 						errors.New("Database connection closed."),
 					)
 				case "InduceError_Runout": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, models.FileTypeRunout).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
 						nil,
 						errors.New("Database connection closed."),
 					)
 				default:
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
 						&models.CCLFFile{
 							ID:        1,
 							Name:      tt.fileNames[i],
@@ -549,59 +565,56 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	}
 
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
-
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := mockEnq.NewEnqueuer(s.T())
-	enqueuer.On("AddJob", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
-	h.Enq = enqueuer
 	h.supportedDataTypes = dataTypeMap
-
 	client.SetLogger(log.API) // Set logger so we don't get errors later
-
 	jsonBytes, _ := json.Marshal("{}")
 
 	tests := []struct {
-		name string
-
-		cmsId           string
-		resources       []string
-		expectedCode    int
-		acoConfig       *service.ACOConfig
-		supplyAuthData  bool
-		breakBB         bool
-		mockQueueFilled bool
-		closeDB         bool
-		breakBBInit     bool
+		name           string
+		cmsId          string
+		resources      []string
+		expectedCode   int
+		acoConfig      *service.ACOConfig
+		supplyAuthData bool
+		mockQueue      bool
+		closeDB        bool
+		mockAddJob     bool
 	}{
-		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, false, false, false, false},
-		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, false, false, false, false},
-		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, false, false},
-		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, false, false},
-		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, false, false, false, false},
-		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, false, false},
-		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, false, false},
-		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, false, false},
-		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false, false},
-		{"Break Blue Button Patient call", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, false, false},
-		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, false, true, false},
-		{"Break Blue button client init", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, false, false, true},
+		// aco requesting accessable data
+		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, true, false, false},
+		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, true, false, false},
+		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, true, false, false},
+		// aco requesting non accessable data
+		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, true},
+		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, true},
+		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, true},
+		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, true},
+		// other errors
+		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
+		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
+		// no longer running in transaction, test no longer relevant
+		// {"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
 	}
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
-
 			mockSvc := service.MockService{}
-			if test.mockQueueFilled {
-				mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{{ID: int(15), ACOID: uuid.New()}}, nil)
-				mockSvc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1), nil)
-
-			} else {
-				mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
-
-			}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
-
+			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
+			mockSvc.On("FindOldCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(uint(1), nil)
 			h.Svc = &mockSvc
+
+			enqueuer := queueing.NewMockEnqueuer(s.T())
+			h.Enq = enqueuer
+			if test.mockQueue {
+				if test.mockAddJob {
+					enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("Unable to unmarshal json."))
+				} else {
+					enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+				}
+			}
 
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
@@ -613,37 +626,18 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			}
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
 			}))
 
-			if test.breakBB {
-				h.bbBasePath = "\n"
-			}
-			if test.breakBBInit {
-				t.Setenv("BB_CLIENT_CA_FILE", "ex,124234,1234")
-				t.Setenv("BB_CHECK_CERT", "true")
-			}
-			temp_db := &h.db
-			if test.closeDB {
-				h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-				h.db.Close()
-			}
-
-			h.bulkRequest(w, r, service.DefaultRequest)
-			if test.breakBB {
-				h.bbBasePath = v2BasePath
-			}
-			if h.db == nil {
-				h.db = *temp_db
-			}
+			h.bulkRequest(w, r, constants.DefaultRequest)
 
 			assert.Equal(s.T(), test.expectedCode, w.Code)
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, nil)
 		})
-
 	}
 }
 
@@ -655,16 +649,6 @@ func (s *RequestsTestSuite) TestRequests() {
 	resourceMap := s.resourceType
 
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
-
-	mockSvc := service.MockService{}
-
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
-	mockAco := service.ACOConfig{
-		Data: []string{"adjudicated"},
-	}
-	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
-
-	h.Svc = &mockSvc
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit
@@ -682,8 +666,29 @@ func (s *RequestsTestSuite) TestRequests() {
 					ResourceTypes: []string{resource},
 					Since:         since,
 				}
+
+				mockSvc := service.MockService{}
+				mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+				mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
+				mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+
+				h.Svc = &mockSvc
+				mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+				mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+				if groupID == "all" {
+					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						&models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()},
+						nil,
+					)
+				} else {
+					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						&models.CCLFFile{ID: 2, PerformanceYear: (utils.GetPY() - 1)},
+						nil,
+					)
+				}
 				rr := httptest.NewRecorder()
 				req := s.genGroupRequest(groupID, rp)
+				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				h.BulkGroupRequest(rr, req)
 				assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 			}
@@ -698,8 +703,21 @@ func (s *RequestsTestSuite) TestRequests() {
 				ResourceTypes: []string{resource},
 				Since:         since,
 			}
+			mockSvc := service.MockService{}
+			mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
+			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+			mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				&models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()},
+				nil,
+			)
+			h.Svc = &mockSvc
+
 			rr := httptest.NewRecorder()
-			h.BulkPatientRequest(rr, s.genPatientRequest(rp))
+			req := s.genPatientRequest(rp)
+			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+			h.BulkPatientRequest(rr, req)
 			assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 		}
 	}
@@ -1014,6 +1032,103 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 
 }
 
+func TestBulkRequest_Integration(t *testing.T) {
+	acoA := &service.ACOConfig{
+		Model:              "Model A",
+		Pattern:            "A\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated"},
+	}
+
+	dataTypeMap := map[string]service.DataType{
+		"Coverage":             {Adjudicated: true},
+		"Patient":              {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PartiallyAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
+	}
+
+	os.Setenv("QUEUE_LIBRARY", "river")
+
+	client.SetLogger(log.API) // Set logger so we don't get errors later
+
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
+
+	cfg, err := database.LoadConfig()
+	if err != nil {
+		t.FailNow()
+	}
+	d, err := database.CreatePgxv5DB(cfg)
+	if err != nil {
+		t.FailNow()
+	}
+	driver := riverpgxv5.New(d)
+	// start from clean river_job slate
+	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	assert.Nil(t, err)
+
+	acoID := "A0002"
+	repo := postgres.NewRepository(h.db)
+
+	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
+	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
+	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{                   // nolint:errcheck
+		Name:            "testfilename",
+		ACOCMSID:        acoID,
+		PerformanceYear: utils.GetPY(),
+		Type:            models.FileTypeDefault,
+		Timestamp:       (time.Now()),
+		CCLFNum:         constants.CCLF8FileNum,
+		ImportStatus:    constants.ImportComplete,
+	})
+
+	jsonBytes, _ := json.Marshal("{}")
+
+	tests := []struct {
+		name         string
+		cmsId        string
+		resources    []string
+		expectedCode int
+		acoConfig    *service.ACOConfig
+	}{
+		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, http.StatusAccepted, acoA},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
+			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
+				ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+				CMSID: test.cmsId,
+			}))
+			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
+			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
+			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
+				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+				ResourceTypes: test.resources,
+				Version:       apiVersionTwo,
+			}))
+
+			ctx := context.Background()
+			os.Unsetenv("QUEUE_LIBRARY")
+			h.bulkRequest(w, r, constants.DefaultRequest)
+			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{
+				Args: worker_types.PrepareJobArgs{},
+				Opts: nil,
+			}})
+			assert.Greater(t, len(jobs), 0)
+			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+			if err != nil {
+				t.Log("failed to cleanup river jobs during tests")
+			}
+		})
+	}
+}
+
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 
@@ -1108,5 +1223,11 @@ type CCLFNotFoundOperationOutcomeError struct {
 }
 
 func (e CCLFNotFoundOperationOutcomeError) Error() string {
-	return "No up-to-date attribution information is available for Group"
+	return "OperationOutcome"
+}
+
+type QueueError struct{}
+
+func (e QueueError) Error() string {
+	return "error"
 }

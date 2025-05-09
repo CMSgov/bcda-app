@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
@@ -57,7 +58,7 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			jobArgs := models.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
+			jobArgs := worker_types.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
 
 			queJob := que.Job{ID: 1}
 			queJob.Args, err = json.Marshal(jobArgs)
@@ -115,7 +116,7 @@ func TestCheckIfCancelled(t *testing.T) {
 	q.repository = &mockRepo
 
 	ctx, cancel := context.WithCancel(context.Background())
-	jobs := models.JobEnqueueArgs{}
+	jobs := worker_types.JobEnqueueArgs{}
 
 	jobID, err := safecast.ToInt64(jobs.ID)
 	assert.NoError(t, err)

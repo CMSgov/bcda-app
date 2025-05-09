@@ -20,6 +20,7 @@ import (
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
@@ -33,8 +34,8 @@ import (
 )
 
 type Worker interface {
-	ValidateJob(ctx context.Context, queJobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error)
-	ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs models.JobEnqueueArgs) error
+	ValidateJob(ctx context.Context, queJobID int64, jobArgs worker_types.JobEnqueueArgs) (*models.Job, error)
+	ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs) error
 }
 
 type worker struct {
@@ -45,7 +46,7 @@ func NewWorker(db *sql.DB) Worker {
 	return &worker{postgres.NewRepository(db)}
 }
 
-func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
+func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_types.JobEnqueueArgs) (*models.Job, error) {
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
@@ -82,7 +83,7 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs models.J
 	}
 }
 
-func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs models.JobEnqueueArgs) error {
+func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs) error {
 
 	t := metrics.GetTimer()
 	defer t.Close()
@@ -242,7 +243,7 @@ func CloseOrLogError(logger logrus.FieldLogger, f *os.File) {
 // A list of JobKeys are returned, containing the names of files that were created.
 // Filesnames can be "blank.ndjson", "<uuid>.ndjson", or "<uuid>-error.ndjson".
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, queJobID int64, jobArgs models.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
+	cmsID string, queJobID int64, jobArgs worker_types.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
 
 	id, err := safecast.ToUint(jobArgs.ID)
 	if err != nil {
@@ -387,7 +388,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
-func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData models.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
+func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
 	bene, err := r.GetCCLFBeneficiaryByID(ctx, beneID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Error retrieving cclfBeneficiary record by cclfBeneficiaryId %d", beneID))

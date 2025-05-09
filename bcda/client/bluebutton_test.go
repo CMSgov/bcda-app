@@ -16,9 +16,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -53,7 +53,7 @@ var (
 	since        = "gt2020-02-14"
 	claimsDate   = client.ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
 		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
-	jobData = models.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionID: uuid.New(), TransactionTime: now}
+	jobData = worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionID: uuid.New(), TransactionTime: now}
 )
 
 func (s *BBTestSuite) SetupSuite() {
@@ -329,7 +329,7 @@ func (s *BBRequestTestSuite) TestGetMetadata_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetPatientByMbi() {
-	p, err := s.bbClient.GetPatientByMbi(models.JobEnqueueArgs{}, "mbi")
+	p, err := s.bbClient.GetPatientByMbi(worker_types.JobEnqueueArgs{}, "mbi")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `"id": "20000000000001"`)
 }
@@ -337,7 +337,7 @@ func (s *BBRequestTestSuite) TestGetPatientByMbi() {
 func (s *BBRequestTestSuite) TestGetPatientByMbi_500() {
 	var cms_id, job_id bool
 	hook := test.NewLocal(logrus.StandardLogger())
-	jobData := models.JobEnqueueArgs{
+	jobData := worker_types.JobEnqueueArgs{
 		ID:    1,
 		CMSID: "A0000",
 	}
@@ -364,7 +364,7 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
-	jobDataNoSince := models.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
+	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
 	defer conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", old)
 	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0") // Need to ensure that requests do not have the _count parameter
 
@@ -566,7 +566,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatientByMbi",
 			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetPatientByMbi(models.JobEnqueueArgs{}, "mbi")
+				return bbClient.GetPatientByMbi(worker_types.JobEnqueueArgs{}, "mbi")
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(string)

@@ -7,7 +7,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
-	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
@@ -66,8 +66,8 @@ func StartQue(log logrus.FieldLogger, numWorkers int) *MasterQueue {
 
 	qc := que.NewClient(q.queDB)
 	wm := que.WorkMap{
-		models.QUE_PROCESS_JOB: q.processJob,
-		models.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
+		worker_types.QUE_PROCESS_JOB: q.processJob,
+		worker_types.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
 	}
 
 	q.quePool = que.NewWorkerPool(qc, wm, numWorkers)
@@ -89,7 +89,7 @@ func (q *queue) processJob(queJob *que.Job) error {
 	defer q.updateJobQueueCountCloudwatchMetric()
 	defer cancel()
 
-	var jobArgs models.JobEnqueueArgs
+	var jobArgs worker_types.JobEnqueueArgs
 	err := json.Unmarshal(queJob.Args, &jobArgs)
 	if err != nil {
 		// ACK the job because retrying it won't help us be able to deserialize the data
