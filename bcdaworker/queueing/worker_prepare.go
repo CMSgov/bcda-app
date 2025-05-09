@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
-	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/CMSgov/bcda-app/bcdaworker/constants"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -25,26 +25,11 @@ import (
 	"github.com/riverqueue/river"
 )
 
-type PrepareJobArgs struct {
-	Job             models.Job
-	CMSID           string
-	BFDPath         string
-	RequestType     service.RequestType
-	ResourceTypes   []string
-	RequestParamter middleware.RequestParameters
-	Since           time.Time
-	TransactionID   string
-}
-
-func (args PrepareJobArgs) Kind() string {
-	return constants.PrepareJobKind
-}
-
 // PrepareJobWorker has two BFD clients because it depends on a configuration variable that is not available until Work() is called.
 // There were other discussed methods of injecting the client and overwriting the the basepath but ruled out due to the risk and time constraints.
 // Many of the Service's functionality is used solely in this PrepareJob functionality and should eventually be migrated when time allows.
 type PrepareJobWorker struct {
-	river.WorkerDefaults[PrepareJobArgs]
+	river.WorkerDefaults[worker_types.PrepareJobArgs]
 	svc      service.Service
 	v1Client client.APIClient
 	v2Client client.APIClient
@@ -79,7 +64,7 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 
 }
 
-func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[PrepareJobArgs]) error {
+func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.PrepareJobArgs]) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -108,10 +93,10 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[PrepareJobA
 }
 
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
-func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJobArgs) ([]*models.JobEnqueueArgs, time.Time, error) {
+func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, time.Time, error) {
 
 	var err error
-	exports := []*models.JobEnqueueArgs{}
+	exports := []*worker_types.JobEnqueueArgs{}
 	logger := log.GetCtxLogger(ctx)
 
 	defer func() {
@@ -124,13 +109,13 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 		}
 	}()
 
-	id, err := safecast.ToInt(args.Job.ID) // NOSONAR
-	if err != nil {                        // NOSONAR
-		logger.Error(err)               // NOSONAR
-		return exports, args.Since, err // NOSONAR
-	} // NOSONAR
+	id, err := safecast.ToInt(args.Job.ID)
+	if err != nil {
+		logger.Error(err)
+		return exports, args.Since, err
+	}
 
-	jobData := models.JobEnqueueArgs{
+	jobData := worker_types.JobEnqueueArgs{
 		ID:              id,
 		ACOID:           args.Job.ACOID.String(),
 		Since:           args.Since.String(),
@@ -143,21 +128,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 		return exports, args.Since, err
 	}
 
-	conditions := service.RequestConditions{
-		ReqType:    args.RequestType,
-		Resources:  args.ResourceTypes,
-		BBBasePath: args.BFDPath,
-
-		CMSID: args.CMSID,
-		ACOID: args.Job.ACOID,
-
-		JobID:           args.Job.ID,
-		Since:           args.Since,
-		TransactionTime: args.Job.TransactionTime,
-		CreationTime:    time.Now(),
-	}
-
-	exports, err = p.svc.GetQueJobs(ctx, conditions)
+	exports, err = p.svc.GetQueJobs(ctx, args)
 	if err != nil {
 		logger.Error(err)
 		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok {
@@ -172,7 +143,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args PrepareJo
 }
 
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
-func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData models.JobEnqueueArgs) (time.Time, error) {
+func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
 	switch basepath {
 	case constants.BFDV1Path:
 		b, err := p.v1Client.GetPatient(jobData, "0")
@@ -185,9 +156,9 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData models.
 	}
 }
 
-func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, q Enqueuer, args PrepareJobArgs, exports []*models.JobEnqueueArgs, since time.Time) error {
+func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs, since time.Time) error {
 	for _, j := range exports {
-		sinceParam := !since.IsZero() || args.RequestType == service.RetrieveNewBeneHistData
+		sinceParam := !since.IsZero() || args.RequestType == constants.RetrieveNewBeneHistData
 		jobPriority := p.svc.GetJobPriority(args.CMSID, j.ResourceType, sinceParam)
 
 		if err := q.AddJob(ctx, *j, int(jobPriority)); err != nil {

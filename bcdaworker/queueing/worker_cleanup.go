@@ -8,6 +8,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/cleanup"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/google/uuid"
@@ -16,15 +17,8 @@ import (
 	"github.com/slack-go/slack"
 )
 
-type CleanupJobArgs struct {
-}
-
-func (args CleanupJobArgs) Kind() string {
-	return "CleanupJob"
-}
-
 type CleanupJobWorker struct {
-	river.WorkerDefaults[CleanupJobArgs]
+	river.WorkerDefaults[worker_types.CleanupJobArgs]
 	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
 	archiveExpiring func(time.Time) error
 }
@@ -36,7 +30,7 @@ func NewCleanupJobWorker() *CleanupJobWorker {
 	}
 }
 
-func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[CleanupJobArgs]) error {
+func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.CleanupJobArgs]) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

@@ -27,12 +27,15 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -115,45 +118,44 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	assert.Empty(s.T(), err)
 
 	tests := []struct {
-		name string
-
-		errToReturn   error
-		respCode      int
-		apiVersion    string
-		noAttribution bool
+		name               string
+		errToReturn        error
+		respCode           int
+		apiVersion         string
+		runoutAttributions bool
 	}{
-		{"Successful", nil, http.StatusAccepted, apiVersionOne, false},
-		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, false},
-		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, false},
-		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
+		{"FindCCLFFiles error v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
+		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			mockSvc := &service.MockService{}
-
 			resourceMap := s.resourceType
-
-			// if tt.noAttribution {
-			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, service.CCLFNotFoundError{})
-			// } else {
-			// 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
-			// }
-
+			mockSvc := &service.MockService{}
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
-
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
 
+			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+
 			switch tt.errToReturn {
 			case nil:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 24}, nil)
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
+			case CCLFNotFoundOperationOutcomeError{}:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 			case QueueError{}:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time"), mock.Anything).
+					Return(&models.CCLFFile{PerformanceYear: 24}, nil)
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
-
 			}
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
@@ -578,24 +580,30 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		closeDB        bool
 		mockAddJob     bool
 	}{
+		// aco requesting accessable data
 		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA, true, true, false, false},
 		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB, true, true, false, false},
+		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, true, false, false},
+		// aco requesting non accessable data
 		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB, true, false, false, true},
 		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC, true, false, false, true},
-		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC, true, true, false, false},
 		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD, true, false, false, true},
 		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD, true, false, false, true},
+		// other errors
 		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
 		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
-		{"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
+		// no longer running in transaction, test no longer relevant
+		// {"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
 	}
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
-
 			mockSvc := service.MockService{}
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
-			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
+			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
+			mockSvc.On("FindOldCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(uint(1), nil)
 			h.Svc = &mockSvc
 
 			enqueuer := queueing.NewMockEnqueuer(s.T())
@@ -625,21 +633,11 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 				Version:       apiVersionTwo,
 			}))
 
-			temp_db := &h.db
-			if test.closeDB {
-				h.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-				h.db.Close()
-			}
-
-			h.bulkRequest(w, r, service.DefaultRequest)
-			if h.db == nil {
-				h.db = *temp_db
-			}
+			h.bulkRequest(w, r, constants.DefaultRequest)
 
 			assert.Equal(s.T(), test.expectedCode, w.Code)
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, nil)
 		})
-
 	}
 }
 
@@ -651,15 +649,6 @@ func (s *RequestsTestSuite) TestRequests() {
 	resourceMap := s.resourceType
 
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
-
-	mockSvc := service.MockService{}
-	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, nil)
-	mockAco := service.ACOConfig{
-		Data: []string{"adjudicated"},
-	}
-	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
-
-	h.Svc = &mockSvc
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit
@@ -676,6 +665,26 @@ func (s *RequestsTestSuite) TestRequests() {
 					Version:       apiVersionOne,
 					ResourceTypes: []string{resource},
 					Since:         since,
+				}
+
+				mockSvc := service.MockService{}
+				mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+				mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
+				mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+
+				h.Svc = &mockSvc
+				mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
+				mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+				if groupID == "all" {
+					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						&models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()},
+						nil,
+					)
+				} else {
+					mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						&models.CCLFFile{ID: 2, PerformanceYear: (utils.GetPY() - 1)},
+						nil,
+					)
 				}
 				rr := httptest.NewRecorder()
 				req := s.genGroupRequest(groupID, rp)
@@ -694,6 +703,17 @@ func (s *RequestsTestSuite) TestRequests() {
 				ResourceTypes: []string{resource},
 				Since:         since,
 			}
+			mockSvc := service.MockService{}
+			mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
+			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+			mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				&models.CCLFFile{ID: 1, PerformanceYear: utils.GetPY()},
+				nil,
+			)
+			h.Svc = &mockSvc
+
 			rr := httptest.NewRecorder()
 			req := s.genPatientRequest(rp)
 			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
@@ -1034,6 +1054,34 @@ func TestBulkRequest_Integration(t *testing.T) {
 
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
 
+	cfg, err := database.LoadConfig()
+	if err != nil {
+		t.FailNow()
+	}
+	d, err := database.CreatePgxv5DB(cfg)
+	if err != nil {
+		t.FailNow()
+	}
+	driver := riverpgxv5.New(d)
+	// start from clean river_job slate
+	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	assert.Nil(t, err)
+
+	acoID := "A0002"
+	repo := postgres.NewRepository(h.db)
+
+	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
+	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
+	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{                   // nolint:errcheck
+		Name:            "testfilename",
+		ACOCMSID:        acoID,
+		PerformanceYear: utils.GetPY(),
+		Type:            models.FileTypeDefault,
+		Timestamp:       (time.Now()),
+		CCLFNum:         constants.CCLF8FileNum,
+		ImportStatus:    constants.ImportComplete,
+	})
+
 	jsonBytes, _ := json.Marshal("{}")
 
 	tests := []struct {
@@ -1043,7 +1091,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 		expectedCode int
 		acoConfig    *service.ACOConfig
 	}{
-		{"Test Insert PrepareJob", "A9994", []string{"Patient"}, http.StatusAccepted, acoA},
+		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, http.StatusAccepted, acoA},
 	}
 
 	for _, test := range tests {
@@ -1063,45 +1111,19 @@ func TestBulkRequest_Integration(t *testing.T) {
 				Version:       apiVersionTwo,
 			}))
 
-			cfg, err := database.LoadConfig()
-			if err != nil {
-				t.FailNow()
-			}
-			d, err := database.CreatePgxv5DB(cfg)
-			if err != nil {
-				t.FailNow()
-			}
-			driver := riverpgxv5.New(d)
 			ctx := context.Background()
-			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-
 			os.Unsetenv("QUEUE_LIBRARY")
-			h.bulkRequest(w, r, service.DefaultRequest)
-			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: queueing.PrepareJobArgs{}, Opts: nil}})
+			h.bulkRequest(w, r, constants.DefaultRequest)
+			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{
+				Args: worker_types.PrepareJobArgs{},
+				Opts: nil,
+			}})
 			assert.Greater(t, len(jobs), 0)
-
+			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 			if err != nil {
 				t.Log("failed to cleanup river jobs during tests")
 			}
 		})
-	}
-
-	cfg, err := database.LoadConfig()
-	if err != nil {
-		t.Log()
-	}
-	d, err := database.CreatePgxv5DB(cfg)
-	if err != nil {
-		t.Log()
-	}
-	driver := riverpgxv5.New(d)
-	ctx := context.Background()
-	os.Unsetenv("QUEUE_LIBRARY")
-	jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{Args: queueing.PrepareJobArgs{}, Opts: nil}})
-	assert.Greater(t, len(jobs), 0)
-	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-	if err != nil {
-		t.Log("failed to cleanup river jobs during tests")
 	}
 }
 
@@ -1199,7 +1221,7 @@ type CCLFNotFoundOperationOutcomeError struct {
 }
 
 func (e CCLFNotFoundOperationOutcomeError) Error() string {
-	return "No up-to-date attribution information is available for Group"
+	return "OperationOutcome"
 }
 
 type QueueError struct{}

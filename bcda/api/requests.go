@@ -31,6 +31,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
@@ -38,28 +39,22 @@ import (
 
 type Handler struct {
 	JobTimeout time.Duration
+	Enq        queueing.Enqueuer
+	Svc        service.Service
 
-	Enq queueing.Enqueuer
-
-	Svc service.Service
+	supportedDataTypes     map[string]service.DataType
+	supportedResourceTypes []string
+	supportedStatuses      map[models.JobStatus]struct{}
+	bbBasePath             string
+	apiVersion             string
+	RespWriter             fhirResponseWriter
+	// cfg                    *service.Config
 
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 	// logic into a service method.
 	r  models.Repository
 	db *sql.DB
-
-	supportedDataTypes map[string]service.DataType
-
-	supportedResourceTypes []string
-
-	supportedStatuses map[models.JobStatus]struct{}
-
-	bbBasePath string
-
-	apiVersion string
-
-	RespWriter fhirResponseWriter
 }
 
 type fhirResponseWriter interface {
@@ -75,7 +70,7 @@ func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewPrepareEnqueuer()
+	h.Enq = queueing.NewEnqueuer()
 
 	cfg, err := service.LoadConfig()
 	if err != nil {
@@ -116,7 +111,7 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 }
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	reqType := constants.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
 	h.bulkRequest(w, r, reqType)
 }
 
@@ -130,7 +125,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		groupRunout = "runout"
 	)
 
-	reqType := service.DefaultRequest
+	reqType := constants.DefaultRequest
 	groupID := chi.URLParam(r, "groupId")
 	switch groupID {
 	case groupAll:
@@ -138,11 +133,11 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 
 		_, ok := r.URL.Query()["_since"]
 		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
-			reqType = service.RetrieveNewBeneHistData
+			reqType = constants.RetrieveNewBeneHistData
 		}
 	case groupRunout:
 		if utils.GetEnvBool("BCDA_ENABLE_RUNOUT", true) {
-			reqType = service.Runout
+			reqType = constants.Runout
 			break
 		}
 		fallthrough
@@ -461,7 +456,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 
 // bulkRequest generates a job ID for a bulk export request. It will not queue a job
 // until auth, attribution, and request resources are validated.
-func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
+func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType constants.DataRequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -479,19 +474,17 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		return
 	}
 
-	if cfg, ok := h.Svc.GetACOConfigForID(ad.CMSID); ok {
-		ctx = service.NewACOCfgCtx(ctx, cfg)
+	if acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID); ok {
+		ctx = service.NewACOCfgCtx(ctx, acoCfg)
 	}
-
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
-
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
-		logger.Error(err)
+		logger.Error("error validating resources: %+v", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -509,37 +502,61 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		Status:     models.JobStatusPending,
 	}
 
-	tx, err := h.db.BeginTx(ctx, nil)
+	fileType := models.FileTypeDefault
+	if reqType == constants.Runout {
+		fileType = models.FileTypeRunout
+	}
+
+	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
 	if err != nil {
-		err = fmt.Errorf("failed to start transaction: %w", err)
-		logger.Error(err)
+		logger.Error("error setting time constraints: %+v", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
-	// Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
-	rtx := postgres.NewRepositoryTx(tx)
 
-	defer func() {
+	cutoffTime, complexDataRequestType := h.Svc.GetCutoffTime(ctx, reqType, rp.Since, timeConstraints, fileType)
+	if complexDataRequestType == "" {
+		logger.Error("invalid complex data request type")
+		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
+		return
+	}
+
+	cclfFileNew, err := h.Svc.GetLatestCCLFFile(
+		ctx,
+		ad.CMSID,
+		cutoffTime,
+		timeConstraints.AttributionDate,
+		fileType,
+	)
+	if err != nil {
+		logger.Error("error finding latest cclf file: %+v", err)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+		return
+	}
+
+	performanceYear := utils.GetPY()
+	if fileType == models.FileTypeRunout {
+		performanceYear -= 1
+	}
+
+	// validate cclffile and PY
+	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
+		logger.Error("failed to validate cclf file or performance year of found cclf file")
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
+		return
+	}
+
+	var cclfFileOldID uint
+	if complexDataRequestType == constants.GetNewAndExistingBenes {
+		cclfFileOldID, err = h.Svc.FindOldCCLFFile(ctx, ad.CMSID, rp.Since, cclfFileNew.Timestamp)
 		if err != nil {
-			if err1 := tx.Rollback(); err1 != nil {
-				logger.Warnf("Failed to rollback transaction %s", err.Error())
-			}
-			// We've already written out the HTTP response so we can return after we've rolled back the transaction
-			return
-		}
-
-		if err = tx.Commit(); err != nil {
-			logger.Error(err.Error())
+			logger.Error("error finding old cclf file: %+v", err)
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
+	}
 
-		// We've successfully created the job
-		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
-		w.WriteHeader(http.StatusAccepted)
-	}()
-
-	newJob.ID, err = rtx.CreateJob(ctx, newJob)
+	newJob.ID, err = h.r.CreateJob(ctx, newJob)
 	if err != nil {
 		logger.Error("failed to create job: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
@@ -551,23 +568,34 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		logger.Info("job id created")
 	}
 
-	pjob := queueing.PrepareJobArgs{
-		Job:           newJob,
-		CMSID:         ad.CMSID,
-		BFDPath:       h.bbBasePath,
-		RequestType:   reqType,
-		ResourceTypes: resourceTypes,
-		Since:         rp.Since,
-		TransactionID: r.Context().Value(m.CtxTransactionKey).(string),
+	// lots of things needed for downstream logic!
+	prepJob := worker_types.PrepareJobArgs{
+		Job:                    newJob,
+		ACOID:                  acoID,
+		CMSID:                  ad.CMSID,
+		CCLFFileNewID:          cclfFileNew.ID,
+		CCLFFileOldID:          cclfFileOldID,
+		BFDPath:                h.bbBasePath,
+		RequestType:            reqType,
+		ComplexDataRequestType: complexDataRequestType,
+		ResourceTypes:          resourceTypes,
+		Since:                  rp.Since,
+		CreationTime:           time.Now(),
+		ClaimsDate:             timeConstraints.ClaimsDate,
+		OptOutDate:             timeConstraints.OptOutDate,
+		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
 	}
+
 	logger.Infof("Adding jobs using %T", h.Enq)
-	err = h.Enq.AddPrepareJob(ctx, pjob)
+	err = h.Enq.AddPrepareJob(ctx, prepJob)
 	if err != nil {
 		logger.Errorf("failed to add job to the queue: %s", err)
 		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
+	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {

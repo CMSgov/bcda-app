@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
@@ -14,10 +14,10 @@ import (
 )
 
 type JobWorker struct {
-	river.WorkerDefaults[models.JobEnqueueArgs]
+	river.WorkerDefaults[worker_types.JobEnqueueArgs]
 }
 
-func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[models.JobEnqueueArgs]) error {
+func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEnqueueArgs]) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

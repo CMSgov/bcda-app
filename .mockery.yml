@@ -1,0 +1,25 @@
+all: false
+dir: '{{.InterfaceDir}}'
+filename: 'mock_{{.InterfaceName}}.go'
+force-file-write: true
+formatter: goimports
+log-level: debug
+structname: '{{.Mock}}{{.InterfaceName}}'
+pkgname: '{{.SrcPackageName}}'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  github.com/CMSgov/bcda-app/bcda/service:
+    interfaces:
+      Service:
+  github.com/CMSgov/bcda-app/bcda/models:
+    interfaces:
+      Repository:
+  github.com/CMSgov/bcda-app/bcdaworker/queueing:
+    interfaces:
+      Enqueuer:
+  github.com/CMSgov/bcda-app/bcdaworker/worker:
+    interfaces:
+      Worker:

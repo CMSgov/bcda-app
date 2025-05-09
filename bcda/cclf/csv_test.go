@@ -130,8 +130,7 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 				id, _ := safecast.ToInt(cclfRecords[0].ID)
 				beneRecords, _ := postgrestest.GetCCLFBeneficiaries(s.db, id)
 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
-				for i, v := range beneRecords {
-					fmt.Println(i, v)
+				for _, v := range beneRecords {
 					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v, " ", "")))
 				}
 			} else {
@@ -194,8 +193,7 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 				beneRecords, _ := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(context.Background(), cclfRecord[0].ID)
 				sort.Strings(beneRecords)
 				assert.Equal(s.T(), 3, len(beneRecords))
-				for i, v := range beneRecords {
-					fmt.Println(i, v)
+				for _, v := range beneRecords {
 					assert.Contains(s.T(), []string{"MBI000001", "MBI000002", "MBI000003"}, (strings.ReplaceAll(v, " ", "")))
 				}
 			}

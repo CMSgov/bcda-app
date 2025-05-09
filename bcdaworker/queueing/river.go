@@ -29,6 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
@@ -67,7 +68,7 @@ func StartRiver(numWorkers int) *queue {
 		river.NewPeriodicJob(
 			schedule,
 			func() (river.JobArgs, *river.InsertOpts) {
-				return CleanupJobArgs{}, &river.InsertOpts{}
+				return worker_types.CleanupJobArgs{}, &river.InsertOpts{}
 			},
 			&river.PeriodicJobOpts{},
 		),
