@@ -48,7 +48,8 @@ jobs:
   #   secrets: inherit
 
   build_and_package_ssas:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
+    # uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@jscott/PLT-1052
     with:
       ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
     secrets: inherit
