@@ -31,7 +31,8 @@ then
 fi
 
 cd ../bcda
-go clean
+go clean -cache -modcache -i -r
+export GOPROXY=direct
 echo "Building bcda binary Version=$VERSION..."
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."

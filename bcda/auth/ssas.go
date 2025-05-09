@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
@@ -44,7 +45,7 @@ func (s SSASPlugin) FindAndCreateACOCredentials(ACOID string, ips []string) (str
 		return "", errors.Wrapf(err, "could not register system for %s", ACOID)
 	}
 
-	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+	msg := strings.Join([]string{creds.ClientName, creds.ClientID, creds.ClientSecret, creds.ExpiresAt.String()}, "\n")
 
 	return msg, nil
 }

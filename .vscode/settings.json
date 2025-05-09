@@ -15,7 +15,7 @@
         "BB_CLIENT_CERT_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-cert.pem",
         "BB_CLIENT_KEY_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-key.pem",
         "FHIR_PAYLOAD_DIR": "${workspaceFolder}/bcdaworker/data",
-        "FHIR_STAGING_DIR": "${workspaceFolder}/bcdaworker/tmpdata",
+        "FHIR_STAGING_DIR": "${workspaceFolder}/bcdaworker/data/tmpdata",
         "FHIR_TEMP_DIR": "${workspaceFolder}/bcdaworker/TEMP",
         "FHIR_ARCHIVE_DIR": "${workspaceFolder}/bcdaworker/archive",
     },
