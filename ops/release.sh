@@ -78,27 +78,37 @@ if [ -n "$MANUAL_TAGS" ]; then
   NEWTAG="$2"
   PREVRELEASENUM=${PREVTAG//^r/}
   NEWRELEASENUM=${NEWTAG//^r/}
+  echo "Manual tags set: PREVRELEASENUM:${PREVRELEASENUM}, NEWRELEASENUM:${NEWRELEASENUM}, PREVTAG:${PREVTAG}, NEWTAG:${NEWTAG}"
 else
   PREVRELEASENUM=$(git tag | grep '^r[0-9]' | sed 's/^r//' | sort -n | tail -1)
   NEWRELEASENUM=$(($PREVRELEASENUM + 1))
   PREVTAG="r$PREVRELEASENUM"
   NEWTAG="r$NEWRELEASENUM"
+  echo "No manual tags: PREVRELEASENUM:${PREVRELEASENUM}, NEWRELEASENUM:${NEWRELEASENUM}, PREVTAG:${PREVTAG}, NEWTAG:${NEWTAG}"
 fi
 
 TMPFILE=$(mktemp /tmp/$(basename $0).XXXXXX) || exit 1
 
 if [ -n $PREVTAG ]
 then
+  echo "Get all commits between ${PREVTAG} and HEAD"
   commits=$(git log --pretty=format:"- %s" $PREVTAG..HEAD)
 else
+  echo "Get latest commit"
   commits=$(git log --pretty=format:"- %s" HEAD)
 fi
+
+echo "Commits found:"
+echo $commits
 
 echo "$NEWTAG - $(date +%Y-%m-%d)" > $TMPFILE
 echo "================" >> $TMPFILE
 echo "" >> $TMPFILE
 echo "$commits" >> $TMPFILE
 echo "" >> $TMPFILE
+
+echo "Release notes created:"
+cat $TMPFILE
 
 #git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
