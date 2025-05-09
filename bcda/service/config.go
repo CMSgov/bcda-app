@@ -27,12 +27,12 @@ func LoadConfig() (cfg *Config, err error) {
 }
 
 type Config struct {
-	SuppressionLookbackDays int             `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
-	CutoffDurationDays      int             `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
-	AlrJobSize              uint            `conf:"alr_job_size" conf_default:"1000"` // Number of entries to put in a single ALR job
-	ACOConfigs              []ACOConfig     `conf:"aco_config"`
+	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
+	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
+	AlrJobSize              uint        `conf:"alr_job_size" conf_default:"1000"` // Number of entries to put in a single ALR job
+	ACOConfigs              []ACOConfig `conf:"aco_config"`
 	CutoffDuration          time.Duration
-  RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
+	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
 	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
 	// to be defined as a child of RunoutConfig.
 	// Ex: Without the ,squash, we would have to have RunoutConfig.RUNOUT_CUTOFF_DATE_DAYS
