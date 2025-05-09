@@ -2,8 +2,6 @@
 name: Deploy All
 
 on:
-  push:
-    branches: [carl/BCDA-8967-adjust-deploy-verifications]
   schedule:
     - cron: 0 12 * * 1-5 # every workday at 8am EST
   workflow_dispatch:
