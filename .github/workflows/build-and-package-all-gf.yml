@@ -104,7 +104,7 @@ jobs:
         run: |
           sudo yum update -y
           sudo yum install python3-pip -y
-          sudo dnf install ansible-8.3.0 -y
+          python3 -m pip install ansible==6.5.0
       - name: Install AWS Session Manager Plugin
         run: |
           sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
