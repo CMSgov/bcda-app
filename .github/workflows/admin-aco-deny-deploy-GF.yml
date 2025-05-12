@@ -44,7 +44,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.account_id] }}:role/delegatedadmin/developer/bcda-dev-github-actions # update this for prod later
+          role-to-assume: arn:aws:iam::${{ secrets.account_id }}:role/delegatedadmin/developer/bcda-dev-github-actions # update this for prod later
       - name: Upload and reload
         run: |
           ENVIRONMENT=${{ inputs.env }}
