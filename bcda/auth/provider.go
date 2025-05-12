@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -89,7 +90,7 @@ type Provider interface {
 	RevokeAccessToken(tokenString string) error
 
 	// VerifyToken decodes a base64 encoded token string into a structured token
-	VerifyToken(tokenString string) (*jwt.Token, error)
+	VerifyToken(ctx context.Context, tokenString string) (*jwt.Token, error)
 
 	// GetVersion gets the version of the provider
 	GetVersion() (string, error)

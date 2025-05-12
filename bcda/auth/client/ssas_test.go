@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -348,7 +349,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospect() {
 
 	const tokenString = "totallyfake.tokenstringfor.testing"
 
-	bytes, err := client.CallSSASIntrospect(tokenString)
+	bytes, err := client.CallSSASIntrospect(context.Background(), tokenString)
 	if err != nil {
 		s.FailNow("unexpected failure", err.Error())
 	}
@@ -406,7 +407,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectEnvironmentVariables() {
 			conf.SetEnv(t, "SSAS_URL", tt.envVariableSSASPublicURL)        //using test variable for gathering env variables
 			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.envVariableSSASPublicURL) //using test variable for gathering env variables
 
-			bytes, err := client.CallSSASIntrospect(tt.tokenString)
+			bytes, err := client.CallSSASIntrospect(context.Background(), tt.tokenString)
 			assert.Equal(t, tt.bytesToReturn, bytes)
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
@@ -450,7 +451,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
 				s.FailNow("Failed to create SSAS client", err.Error())
 			}
 
-			bytes, err := client.CallSSASIntrospect(tt.tokenString)
+			bytes, err := client.CallSSASIntrospect(context.Background(), tt.tokenString)
 			assert.Equal(t, tt.bytesToReturn, bytes)
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})

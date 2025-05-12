@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -309,6 +311,7 @@ func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, 
 		return "", &customErrors.InternalParsingError{Err: err, Msg: constants.RequestStructErr}
 	}
 
+	req.Header.Add(client.TransactionIDHeader, r.Context().Value(middleware.CtxTransactionKey).(string))
 	req.Header.Add("transaction-id", r.Context().Value(middleware.CtxTransactionKey).(string))
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
@@ -390,11 +393,15 @@ func (c *SSASClient) Ping() error {
 
 // CallSSASIntrospect verifies that the tokenString presented was issued by the public server.
 // It does so using the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
-func (c *SSASClient) CallSSASIntrospect(tokenString string) ([]byte, error) {
-
+func (c *SSASClient) CallSSASIntrospect(ctx context.Context, tokenString string) ([]byte, error) {
 	request, err := constructIntrospectRequest(tokenString)
 	if err != nil {
 		return nil, err
+	}
+
+	tid := ctx.Value(middleware.CtxTransactionKey)
+	if tid != nil {
+		request.Header.Add(client.TransactionIDHeader, tid.(string))
 	}
 
 	resp, err := c.Do(request)
