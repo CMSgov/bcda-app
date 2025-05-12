@@ -3,7 +3,6 @@
 
 # JSCOTT: trigger
 
-
 name: Build and Package All GF
 
 on:
@@ -45,22 +44,22 @@ permissions:
   contents: read
 
 jobs:
-  build_and_package_bcda:
-    uses: ./.github/workflows/build-and-package-bcda-gf.yml
-    with:
-      release_version: ${{ inputs.release_version || 'main' }}
-    secrets: inherit
+  # build_and_package_bcda:
+  #   uses: ./.github/workflows/build-and-package-bcda-gf.yml
+  #   with:
+  #     release_version: ${{ inputs.release_version || 'main' }}
+  #   secrets: inherit
 
-  build_and_package_ssas:
-    # uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@jscott/PLT-1052
-    with:
-      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
-    secrets: inherit
+  # build_and_package_ssas:
+  #   # uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
+  #   uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@jscott/PLT-1052
+  #   with:
+  #     ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+  #   secrets: inherit
   
   create_amis:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    needs: [build_and_package_bcda, build_and_package_ssas]
+    # needs: [build_and_package_bcda, build_and_package_ssas]
     strategy:
       matrix:
         vars:
@@ -119,14 +118,14 @@ jobs:
           packer init packer/api_gf.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api_gf.json.pkr.hcl 2>&1
       
-      - name: Create Worker AMI
-        env:
-          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TMPDIR: /tmp/
-        run: |
-          set -euo pipefail
-          packer init packer/worker_gf.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker_gf.json.pkr.hcl 2>&1
+      # - name: Create Worker AMI
+      #   env:
+      #     PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     TMPDIR: /tmp/
+      #   run: |
+      #     set -euo pipefail
+      #     packer init packer/worker_gf.json.pkr.hcl 2>&1
+      #     packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/worker_gf.json.pkr.hcl 2>&1
 
       # - name: Success Alert
       #   if: ${{ success() && needs.build_and_package_bcda.result == 'success' && needs.build_and_package_ssas.result == 'success' }}
