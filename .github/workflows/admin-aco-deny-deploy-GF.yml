@@ -50,7 +50,7 @@ jobs:
       - name: Upload and reload
         run: |
           ENVIRONMENT=${{ inputs.env }}
-          if [[ -z ENVIRONMENT ]]; then
+          if [[ -z $ENVIRONMENT ]]; then
             ENVIRONMENT="dev"
           fi
           echo $ENVIRONMENT
