@@ -2,7 +2,6 @@ module github.com/CMSgov/bcda-app
 
 go 1.23
 
-toolchain go1.23.2
 
 require (
 	github.com/BurntSushi/toml v0.4.1
