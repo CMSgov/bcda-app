@@ -16,7 +16,7 @@ on:
           - prod
   push:
     branches:
-      - main
+      - lauren/BCDA-9002
     paths:
       - bcda/lambda/admin_aco_deny/**
       - .github/workflows/admin-aco-deny-deploy-GF.yml
