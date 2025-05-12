@@ -1,7 +1,7 @@
 # Build and Package will build and package BCDA and SSAS APIs onto one platinum AMI 
 # and BCDA Worker onto another platinum AMI
 
-# JSCOTT: trigger
+# JSCOTT: trigger update
 
 name: Build and Package All GF
 
@@ -101,8 +101,8 @@ jobs:
         run: echo "RELEASE_TYPE=release" >> $GITHUB_ENV
       - name: Install Ansible
         run: |
-          sudo yum update -y
-          sudo yum install ansible -y
+          sudo dnf update -y
+          sudo dnf install ansible-8.3.0 -y
       - name: Install AWS Session Manager Plugin
         run: |
           sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
