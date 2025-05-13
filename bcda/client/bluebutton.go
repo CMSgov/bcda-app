@@ -38,7 +38,7 @@ var logger logrus.FieldLogger
 const (
 	clientIDHeader      = "BULK-CLIENTID"
 	jobIDHeader         = "BULK-JOBID"
-	transactionIDHeader = "TRANSACTIONID"
+	TransactionIDHeader = "TRANSACTIONID"
 )
 
 // BlueButtonConfig holds the configuration settings needed to create a BlueButtonClient
@@ -379,7 +379,7 @@ func addDefaultRequestHeaders(req *http.Request, reqID uuid.UUID, jobData worker
 	req.Header.Add("IncludeIdentifiers", "mbi")
 	req.Header.Add(jobIDHeader, strconv.Itoa(jobData.ID))
 	req.Header.Add(clientIDHeader, jobData.CMSID)
-	req.Header.Add(transactionIDHeader, jobData.TransactionID)
+	req.Header.Add(TransactionIDHeader, jobData.TransactionID)
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
 	// If we specify this header at the client level, then we must be responsible for decompressing the response.
@@ -469,6 +469,6 @@ func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
 		"bb_uri":         req.URL.String(),
 		"job_id":         req.Header.Get(jobIDHeader),
 		"cms_id":         req.Header.Get(clientIDHeader),
-		"transaction_id": req.Header.Get(transactionIDHeader),
+		"transaction_id": req.Header.Get(TransactionIDHeader),
 	}).Infoln("response")
 }
