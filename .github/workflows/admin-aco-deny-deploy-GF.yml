@@ -35,9 +35,9 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    if: ${{ inputs.env != '' }}
-    env:
-      environment: ${{ inputs.env }}
+    # if: ${{ inputs.env != '' }}
+    # env:
+    #   environment: ${{ inputs.env }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
