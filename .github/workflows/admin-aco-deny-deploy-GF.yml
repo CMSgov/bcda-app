@@ -56,7 +56,7 @@ jobs:
             ENVIRONMENT="dev"
           fi
           echo $ENVIRONMENT
-          # aws s3 cp --no-progress function.zip \
-          #   s3://bcda-$ENVIRONMENT-admin-aco-deny-function/function-${{ github.sha }}.zip
-          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
-          #   --s3-bucket bcda-$ENVIRONMENT-admin-aco-deny-function --s3-key function-${{ github.sha }}.zip
+          aws s3 cp --no-progress function.zip \
+            s3://bcda-$ENVIRONMENT-admin-aco-deny-function/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
+            --s3-bucket bcda-$ENVIRONMENT-admin-aco-deny-function --s3-key function-${{ github.sha }}.zip
