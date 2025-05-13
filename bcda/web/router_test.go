@@ -21,6 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -346,10 +347,10 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 	return configs
 }
 
-func setExpectedMockCalls(s *RouterTestSuite, mock *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
-	auth.SetMockProvider(s.T(), mock)
+func setExpectedMockCalls(s *RouterTestSuite, mockP *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
+	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
+	auth.SetMockProvider(s.T(), mockP)
 }
 
 // integration test, requires connection to postgres db

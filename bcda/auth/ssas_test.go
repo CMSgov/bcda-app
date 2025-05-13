@@ -295,7 +295,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
-	_, _, err = AuthorizeAccess(tokenString)
+	_, _, err = AuthorizeAccess(context.Background(), tokenString)
 	require.Nil(s.T(), err)
 }
 
@@ -310,7 +310,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 	s.p = SSASPlugin{client: c, repository: s.r}
 
 	invalidTokenString := ""
-	_, _, err = AuthorizeAccess(invalidTokenString)
+	_, _, err = AuthorizeAccess(context.Background(), invalidTokenString)
 	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token contains an invalid number of segments")
 }
 
@@ -346,7 +346,7 @@ func (s *SSASPluginTestSuite) TestVerifyTokenErrorHandling() {
 			require.NotNil(t, c, sSasClientErrorMsg, err)
 			s.p = SSASPlugin{client: c, repository: s.r}
 
-			_, err = s.p.VerifyToken(tt.tokenString)
+			_, err = s.p.VerifyToken(context.Background(), tt.tokenString)
 			assert.IsType(t, tt.errTypeToReturn, err)
 			assert.Contains(t, err.Error(), tt.errMsgStringExpected)
 		})
@@ -381,7 +381,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFro
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	_, _, err = AuthorizeAccess(ts)
+	_, _, err = AuthorizeAccess(context.Background(), ts)
 	assert.EqualError(s.T(), err, "can't decode data claim ac; invalid character 'a' looking for beginning of value")
 }
 
@@ -492,7 +492,7 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	t, err := s.p.VerifyToken(tokenString)
+	t, err := s.p.VerifyToken(context.Background(), tokenString)
 	assert.NotEmpty(s.T(), t)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), &jwt.Token{}, t, "expected jwt token")

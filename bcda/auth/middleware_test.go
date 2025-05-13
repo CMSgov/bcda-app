@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -137,10 +138,10 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 		Raw:   uuid.New(),
 		Valid: true}
 
-	mock := &auth.MockProvider{}
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, nil)
-	auth.SetMockProvider(s.T(), mock)
+	mockP := &auth.MockProvider{}
+	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(authData, nil)
+	auth.SetMockProvider(s.T(), mockP)
 
 	client := s.server.Client()
 
@@ -158,7 +159,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 	}
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
-	mock.AssertExpectations(s.T())
+	mockP.AssertExpectations(s.T())
 }
 
 func setupDataForAuthMiddlewareTest() (bearerString string, authData auth.AuthData, token *jwt.Token, cmsID string) {
@@ -219,9 +220,9 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 
 			//setup mocks
-			mock := &auth.MockProvider{}
-			mock.On("VerifyToken", bearerString).Return(nil, tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mock)
+			mockP := &auth.MockProvider{}
+			mockP.On("VerifyToken", mock.Anything, bearerString).Return(nil, tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mockP)
 
 			//Act
 			resp, err := client.Do(req)
@@ -233,7 +234,7 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 			assert.Equal(s.T(), tt.StatusCode, resp.StatusCode)
 			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
 			assert.Contains(s.T(), testUtils.ReadResponseBody(resp), tt.ResponseBodyString)
-			mock.AssertExpectations(s.T())
+			mockP.AssertExpectations(s.T())
 		})
 	}
 
@@ -247,10 +248,10 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 	entityNotFoundError := &customErrors.EntityNotFoundError{Err: dbErr, CMSID: cmsID}
 
 	//setup mocks
-	mock := &auth.MockProvider{}
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, entityNotFoundError)
-	auth.SetMockProvider(s.T(), mock)
+	mockP := &auth.MockProvider{}
+	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(authData, entityNotFoundError)
+	auth.SetMockProvider(s.T(), mockP)
 
 	//fill http request
 	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
@@ -273,7 +274,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 	assert.Equal(s.T(), 403, resp.StatusCode)
 	assert.Contains(s.T(), testUtils.ReadResponseBody(resp), responseutils.UnauthorizedErr)
 
-	mock.AssertExpectations(s.T())
+	mockP.AssertExpectations(s.T())
 }
 
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundError() {
@@ -284,10 +285,10 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 	thrownErr := errors.New("error123")
 
 	//setup mocks
-	mock := &auth.MockProvider{}
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(authData, thrownErr)
-	auth.SetMockProvider(s.T(), mock)
+	mockP := &auth.MockProvider{}
+	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(authData, thrownErr)
+	auth.SetMockProvider(s.T(), mockP)
 
 	//fill http request
 	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
@@ -308,7 +309,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 	// Assert
 	assert.Equal(s.T(), 401, resp.StatusCode)
 
-	mock.AssertExpectations(s.T())
+	mockP.AssertExpectations(s.T())
 }
 
 // integration test: makes HTTP request & asserts HTTP response

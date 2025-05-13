@@ -23,6 +23,7 @@ import (
 	bcdaLog "github.com/CMSgov/bcda-app/log"
 
 	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -167,7 +168,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 
 func (s *AuthAPITestSuite) TestWelcome() {
 	goodToken, badToken := uuid.New(), uuid.New()
-	mock := &auth.MockProvider{}
+	mockP := &auth.MockProvider{}
 
 	var ad auth.AuthData
 	token := &jwt.Token{Raw: goodToken, Valid: true, Claims: &auth.CommonClaims{
@@ -179,10 +180,10 @@ func (s *AuthAPITestSuite) TestWelcome() {
 		Data:     `{"cms_ids":["A9994"]}`,
 	}}
 
-	mock.On("VerifyToken", goodToken).Return(token, nil)
-	mock.On("VerifyToken", badToken).Return(nil, errors.New("bad token"))
-	mock.On("getAuthDataFromClaims", token.Claims).Return(ad, nil)
-	auth.SetMockProvider(s.T(), mock)
+	mockP.On("VerifyToken", mock.Anything, goodToken).Return(token, nil)
+	mockP.On("VerifyToken", mock.Anything, badToken).Return(nil, errors.New("bad token"))
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(ad, nil)
+	auth.SetMockProvider(s.T(), mockP)
 
 	// Expect failure with invalid token
 	router := chi.NewRouter()
@@ -215,7 +216,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.NotEmpty(s.T(), respMap)
 	assert.Equal(s.T(), "Welcome to the Beneficiary Claims Data API!", respMap["success"])
 
-	mock.AssertExpectations(s.T())
+	mockP.AssertExpectations(s.T())
 }
 
 func TestAuthAPITestSuite(t *testing.T) {

@@ -30,7 +30,7 @@ var commonAuth = []func(http.Handler) http.Handler{
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), auth.ParseToken, middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))

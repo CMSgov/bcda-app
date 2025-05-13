@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -348,7 +350,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospect() {
 
 	const tokenString = "totallyfake.tokenstringfor.testing"
 
-	bytes, err := client.CallSSASIntrospect(tokenString)
+	bytes, err := client.CallSSASIntrospect(context.Background(), tokenString)
 	if err != nil {
 		s.FailNow("unexpected failure", err.Error())
 	}
@@ -406,7 +408,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectEnvironmentVariables() {
 			conf.SetEnv(t, "SSAS_URL", tt.envVariableSSASPublicURL)        //using test variable for gathering env variables
 			conf.SetEnv(t, "SSAS_PUBLIC_URL", tt.envVariableSSASPublicURL) //using test variable for gathering env variables
 
-			bytes, err := client.CallSSASIntrospect(tt.tokenString)
+			bytes, err := client.CallSSASIntrospect(context.Background(), tt.tokenString)
 			assert.Equal(t, tt.bytesToReturn, bytes)
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
@@ -450,7 +452,7 @@ func (s *SSASClientTestSuite) TestCallSSASIntrospectResponseHandling() {
 				s.FailNow("Failed to create SSAS client", err.Error())
 			}
 
-			bytes, err := client.CallSSASIntrospect(tt.tokenString)
+			bytes, err := client.CallSSASIntrospect(context.Background(), tt.tokenString)
 			assert.Equal(t, tt.bytesToReturn, bytes)
 			assert.IsType(t, tt.errTypeToReturn, err)
 		})
@@ -510,6 +512,9 @@ func (s *SSASClientTestSuite) TestGetTokenHeaders() {
 		}
 		if r.Header.Get("transaction-id") == "" {
 			s.T().Errorf("Expected transaction-id header value, got empty string")
+		}
+		if r.Header.Get(client.TransactionIDHeader) == "" {
+			s.T().Errorf("Expected TransactionIDHeader header value, got empty string")
 		}
 	})
 	server := httptest.NewServer(router)

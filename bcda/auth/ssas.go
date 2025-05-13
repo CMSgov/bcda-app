@@ -186,20 +186,21 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 
 // VerifyToken decodes a base64-encoded token string into a structured token,
 // verifies token with SSAS and calls check for token expiration.
-func (sSASPlugin SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
+func (sSASPlugin SSASPlugin) VerifyToken(ctx context.Context, tokenString string) (*jwt.Token, error) {
 	token, err := confirmTokenStringLegitimacy(tokenString)
 	if err != nil {
 		log.SSAS.Errorf("Failed to confirm token string structure/contents; %s", err.Error())
 		return token, err
 	}
 
-	bytes, err := sSASPlugin.client.CallSSASIntrospect(tokenString)
+	bytes, err := sSASPlugin.client.CallSSASIntrospect(ctx, tokenString)
 	if err != nil {
 		log.SSAS.Errorf("Failed to verify token; %s", err.Error())
 		return nil, err
 	}
 
 	if err := checkTokenExpiration(bytes); err != nil {
+		log.SSAS.Errorf("token is inactive; %s", err.Error())
 		return nil, err
 	}
 

@@ -59,7 +59,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 		tokenString := authSubmatches[1]
 
-		token, ad, err := AuthorizeAccess(tokenString)
+		token, ad, err := AuthorizeAccess(r.Context(), tokenString)
 		if err != nil {
 			handleTokenVerificationError(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, rw, err)
 			return
@@ -72,10 +72,10 @@ func ParseToken(next http.Handler) http.Handler {
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
+func AuthorizeAccess(ctx context.Context, tokenString string) (*jwt.Token, AuthData, error) {
 	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
-	token, err := GetProvider().VerifyToken(tokenString)
+	token, err := GetProvider().VerifyToken(ctx, tokenString)
 
 	var ad AuthData
 
