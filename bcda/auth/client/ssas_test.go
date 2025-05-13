@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -511,6 +512,9 @@ func (s *SSASClientTestSuite) TestGetTokenHeaders() {
 		}
 		if r.Header.Get("transaction-id") == "" {
 			s.T().Errorf("Expected transaction-id header value, got empty string")
+		}
+		if r.Header.Get(client.TransactionIDHeader) == "" {
+			s.T().Errorf("Expected TransactionIDHeader header value, got empty string")
 		}
 	})
 	server := httptest.NewServer(router)

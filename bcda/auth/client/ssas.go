@@ -312,6 +312,8 @@ func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, 
 	}
 
 	req.Header.Add(client.TransactionIDHeader, r.Context().Value(middleware.CtxTransactionKey).(string))
+	// the following is more or less a duplicate of the above, however it does not match what SSAS is expecting
+	// leaving it in in the offchance that it is actually used somewhere that I am unaware of
 	req.Header.Add("transaction-id", r.Context().Value(middleware.CtxTransactionKey).(string))
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
