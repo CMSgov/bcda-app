@@ -54,7 +54,7 @@ jobs:
         run: |
           input=${{ inputs.env }}
           echo input: $input
-          if [[ ${{ inputs.env != '' }} ]]; then
+          if [[ -z $input ]]; then
             echo foo
             echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
             echo "TESTER=foo" >> $GITHUB_ENV
