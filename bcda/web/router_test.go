@@ -249,9 +249,9 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 
 func (s *RouterTestSuite) TestV3EndpointsDisabled() {
 	// Set the V3 endpoints to be off and restart the router so the test router has the correct configuration
-	v3Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v3Active)
-	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "false")
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
 	s.apiRouter = NewAPIRouter()
 
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
@@ -268,9 +268,9 @@ func (s *RouterTestSuite) TestV3EndpointsDisabled() {
 
 func (s *RouterTestSuite) TestV3EndpointsEnabled() {
 	// Set the V3 endpoints to be on and restart the router so the test router has the correct configuration
-	v3Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v3Active)
-	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
 	s.apiRouter = NewAPIRouter()
 
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
