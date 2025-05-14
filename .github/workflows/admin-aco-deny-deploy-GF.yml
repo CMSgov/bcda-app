@@ -60,7 +60,7 @@ jobs:
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
-          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          ENVIRONMENT: dev
         with:
           params: | # update this to correspond to the correct environment
             BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket 
