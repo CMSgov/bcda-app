@@ -27,7 +27,6 @@ env:
 
 jobs:
   build_and_zip:
-    #if: ${{ github.event_name == 'merge' }} || ${{ inputs.env == "dev" }} || || ${{ inputs.env == "test" }}
     permissions:
       contents: read
       id-token: write
@@ -46,33 +45,118 @@ jobs:
         run: |
           go build -o bin/bootstrap ./lambda/admin_aco_deny/*.go
           zip -j function.zip bin/bootstrap
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions # update this for prod later
-      - name: Verify Environment
-        run: |
-          input=${{ inputs.env }}
-          echo input: $input
-          if [[ -z $input ]]; then
-            echo foo
-            echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
-            echo "TESTER=foo" >> $GITHUB_ENV
-          fi
-          echo $ENVIRONMENT
-          echo ${{ env.ENVIRONMENT }}
 
-      - name: Get Bucket
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: | # update this to correspond to the correct environment
-            BUCKET=/bcda/bcda-${{ env.TESTER }}-admin-aco-deny-zip-bucket 
-      - name: Upload and reload
-        run: |
-          echo $ENVIRONMENT
-          # aws s3 cp --no-progress function.zip \
-          #   s3://$BUCKET/function-${{ github.sha }}.zip 
-          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
-          #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
+      - name: Set FOO - no inputs
+        if: ${{ inputs.env == '' }}
+        run: echo "FOO=dev" >> $GITHUB_ENV
+      - name: Set FOO - inputs
+        if: ${{ inputs.env != '' }}
+        run: echo "FOO=${{ inputs.env }}" >> $GITHUB_ENV
+      - name: Test
+        run: echo FOO is $FOO
+        
+        # run on merge
+      #   if: ${{ inputs.env == '' }}
+      # - uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-region: ${{ vars.AWS_REGION }}
+      #     role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+      # - name: Get Bucket
+      #   uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+      #   env:
+      #     AWS_REGION: ${{ vars.AWS_REGION }}
+      #   with:
+      #     params: | 
+      #       BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket
+      # - name: Upload and reload
+      #   run: |
+      #     echo $ENVIRONMENT
+      #     aws s3 cp --no-progress function.zip \
+      #       s3://$BUCKET/function-${{ github.sha }}.zip 
+      #     aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
+      #       --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
+
+
+# jobs:
+#   build_and_zip:
+#     permissions:
+#       contents: read
+#       id-token: write
+#     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+#     defaults:
+#       run:
+#         working-directory: bcda
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-go@v5
+#         with:
+#           go-version: '1.23.1'
+#       - name: Build admin-aco-deny zip file
+#         env:
+#           CGO_ENABLED: 0
+#         run: |
+#           go build -o bin/bootstrap ./lambda/admin_aco_deny/*.go
+#           zip -j function.zip bin/bootstrap
+
+#         # run on merge
+#         if: ${{ inputs.env == '' }}
+#       - uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ${{ vars.AWS_REGION }}
+#           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+#       - name: Get Bucket
+#         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+#         env:
+#           AWS_REGION: ${{ vars.AWS_REGION }}
+#         with:
+#           params: | 
+#             BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket
+#       - name: Upload and reload
+#         run: |
+#           echo $ENVIRONMENT
+#           aws s3 cp --no-progress function.zip \
+#             s3://$BUCKET/function-${{ github.sha }}.zip 
+#           aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
+#             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
+
+#         # run on dispatch non-prod
+#         if: ${{ inputs.env = 'test' }} || ${{ inputs.env = 'dev' }} 
+#       - uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ${{ vars.AWS_REGION }}
+#           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+#       - name: Get Bucket
+#         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+#         env:
+#           AWS_REGION: ${{ vars.AWS_REGION }}
+#         with:
+#           params: | 
+#             BUCKET=/bcda/bcda-${{ inputs.env }}-admin-aco-deny-zip-bucket
+#       - name: Upload and reload - non prod dispatch
+#         run: |
+#           echo ${{ inputs.env }}
+#           # aws s3 cp --no-progress function.zip \
+#           #   s3://$BUCKET/function-${{ github.sha }}.zip 
+#           # aws lambda update-function-code --function-name bcda-${{ inputs.env }}-admin-aco-deny \
+#           #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
+
+#         # run on dispatch non-prod
+#         if: ${{ inputs.env = 'opensbx' }} || ${{ inputs.env = 'prod' }} 
+#       - uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ${{ vars.AWS_REGION }}
+#           role-to-assume: arn:aws:iam::${{ secrets.PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions 
+#       - name: Get Bucket
+#         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+#         env:
+#           AWS_REGION: ${{ vars.AWS_REGION }}
+#         with:
+#           params: | 
+#             BUCKET=/bcda/bcda-${{ inputs.env }}-admin-aco-deny-zip-bucket
+#       - name: Upload and reload - prod dispatch
+#         run: |
+#           echo ${{ inputs.env }}
+#           # aws s3 cp --no-progress function.zip \
+#           #   s3://$BUCKET/function-${{ github.sha }}.zip 
+#           # aws lambda update-function-code --function-name bcda-${{ inputs.env }}-admin-aco-deny \
+#           #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
