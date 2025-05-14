@@ -175,13 +175,11 @@ jobs:
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
               else
-                sleep $SLEEP_TIME
+                sleep $VERIFICATION_SLEEP
               fi
             else
               break
             fi
-
-            exit 1
           done
 
   verify_ssas_version:
@@ -200,13 +198,11 @@ jobs:
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
               else
-                sleep $SLEEP_TIME
+                sleep $VERIFICATION_SLEEP
               fi
             else
               break
             fi
-
-            exit 1
           done
 
   verify_worker_version:
@@ -230,13 +226,11 @@ jobs:
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
               else
-                sleep $SLEEP_TIME
+                sleep $VERIFICATION_SLEEP
               fi
             else
               break
             fi
-
-            exit 1
           done
 
   smoketests:
