@@ -23,7 +23,7 @@ on:
   pull_request:
 
 env:
-  environment: dev # default is always dev
+  ENVIRONMENT: dev # default is always dev
 
 jobs:
   build_and_zip:
@@ -60,7 +60,6 @@ jobs:
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
-          ENVIRONMENT: dev
         with:
           params: | # update this to correspond to the correct environment
             BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket 
