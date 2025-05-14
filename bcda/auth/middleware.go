@@ -211,6 +211,8 @@ func getRespWriter(path string) fhirResponseWriter {
 		return responseutils.NewResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewResponseWriter()
+	} else if strings.Contains(path, "/v3/") {
+		return responseutilsv2.NewResponseWriter() // TODO: V3
 	} else {
 		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
 		// In the cases we cannot discern a version we default to v1
