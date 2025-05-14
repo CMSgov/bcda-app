@@ -23,7 +23,7 @@ on:
   pull_request:
 
 env:
-  environment: dev
+  environment: dev # default is always dev
 
 jobs:
   build_and_zip:
@@ -35,9 +35,6 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    # if: ${{ inputs.env != '' }}
-    # env:
-    #   environment: ${{ inputs.env }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -62,11 +59,14 @@ jobs:
             BUCKET=/bcda/bcda-dev-admin-aco-deny-zip-bucket 
       - name: Upload and reload
         run: |
+          if [[ ${{ inputs.env == '' }} ]]; then
+            echo foo bar
+          fi
           # if [[ -z $environment ]]; then
           #   ENVIRONMENT="dev"
           # fi
           echo $ENVIRONMENT
           aws s3 cp --no-progress function.zip \
-            s3://bcda-$ENVIRONMENT-admin-aco-deny-function/function-${{ github.sha }}.zip 2>error.txt
+            s3://$BUCKET/function-${{ github.sha }}.zip 2>/tmp/error.txt
           aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 2>error.txt
