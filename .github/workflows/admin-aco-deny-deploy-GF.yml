@@ -57,6 +57,7 @@ jobs:
           if [[ ${{ inputs.env != '' }} ]]; then
             echo foo
             echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+            echo "TESTER=foo" >> $GITHUB_ENV
           fi
           echo $ENVIRONMENT
           echo ${{ env.ENVIRONMENT }}
@@ -67,7 +68,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | # update this to correspond to the correct environment
-            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket 
+            BUCKET=/bcda/bcda-${{ env.TESTER }}-admin-aco-deny-zip-bucket 
       - name: Upload and reload
         run: |
           echo $ENVIRONMENT
