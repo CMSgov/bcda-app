@@ -60,6 +60,7 @@ jobs:
       - name: Set ACCOUNT - prod
         if: ${{ inputs.env == 'opensbx' }} || ${{ inputs.env == 'prod' }}
         run: | 
+          echo foo bar
           echo "ACCOUNT=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=prod" >> $GITHUB_ENV
 
