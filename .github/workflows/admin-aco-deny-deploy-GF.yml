@@ -52,9 +52,9 @@ jobs:
         run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - non prod
-        if: ${{ inputs.env == '' }} || ${{ inputs.env == 'test' }} || ${{ inputs.env == 'dev' }}
+        if: ${{ env.ENVIRONMENT == 'dev' }} || ${{ inputs.env == 'test' }} || ${{ inputs.env == 'dev' }}
         run: | 
-          echo "ACCOUNT=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ACC=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=dev" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - prod
@@ -62,13 +62,13 @@ jobs:
         run: | 
           echo foo bar
           echo ${{ inputs.env }}
-          echo "ACCOUNT=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=prod" >> $GITHUB_ENV
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
+          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
       - name: Get Bucket
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
