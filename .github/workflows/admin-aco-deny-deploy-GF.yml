@@ -62,7 +62,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | # update this to correspond to the correct environment
-            BUCKET=/bcda/bcda-${ENVIRONMENT}-admin-aco-deny-zip-bucket 
+            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket 
       - name: Upload and reload
         run: |
           echo $ENVIRONMENT
