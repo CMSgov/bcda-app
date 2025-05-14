@@ -11,12 +11,15 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  github.com/CMSgov/bcda-app/bcda/service:
+  github.com/CMSgov/bcda-app/bcda/auth:
     interfaces:
-      Service:
+      Provider:
   github.com/CMSgov/bcda-app/bcda/models:
     interfaces:
       Repository:
+  github.com/CMSgov/bcda-app/bcda/service:
+    interfaces:
+      Service:
   github.com/CMSgov/bcda-app/bcdaworker/queueing:
     interfaces:
       Enqueuer:
