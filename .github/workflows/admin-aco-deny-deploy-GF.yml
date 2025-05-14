@@ -50,23 +50,23 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions # update this for prod later
+      - name: Verify Environment
+        run: |
+          if [[ ${{ inputs.env != '' }} ]]; then
+            ENVIRONMENT=${{ inputs.env }}
+          fi
+          echo $ENVIRONMENT
       - name: Get Bucket
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | # update this to correspond to the correct environment
-            BUCKET=/bcda/bcda-dev-admin-aco-deny-zip-bucket 
+            BUCKET=/bcda/bcda-$ENVIRONMENT-admin-aco-deny-zip-bucket 
       - name: Upload and reload
         run: |
-          if [[ ${{ inputs.env == '' }} ]]; then
-            echo foo bar
-          fi
-          # if [[ -z $environment ]]; then
-          #   ENVIRONMENT="dev"
-          # fi
           echo $ENVIRONMENT
           aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip 2>/tmp/error.txt
+            s3://$BUCKET/function-${{ github.sha }}.zip 
           aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 2>error.txt
+            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
