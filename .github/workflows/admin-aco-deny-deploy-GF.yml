@@ -22,8 +22,6 @@ on:
       - .github/workflows/admin-aco-deny-deploy-GF.yml
   pull_request:
 
-
-
 jobs:
   build_and_zip:
     permissions:
@@ -45,33 +43,44 @@ jobs:
           go build -o bin/bootstrap ./lambda/admin_aco_deny/*.go
           zip -j function.zip bin/bootstrap
 
-      - name: Set FOO - no inputs
+      - name: Set ENVIRONMENT - no inputs
         if: ${{ inputs.env == '' }}
-        run: echo "FOO=dev" >> $GITHUB_ENV
-      - name: Set FOO - inputs
-        if: ${{ inputs.env != '' }}
-        run: echo "FOO=${{ inputs.env }}" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
-        
-        # run on merge
+      - name: Set ENVIRONMENT - inputs
+        if: ${{ inputs.env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+
+      - name: Set ACCOUNT - non prod
+        if: ${{ inputs.env == '' }} || ${{ inputs.env == 'test' }} || ${{ inputs.env == 'dev' }}
+        run: | 
+          echo "ACCOUNT=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ROLE=dev" >> $GITHUB_ENV
+
+      - name: Set ACCOUNT - prod
+        if: ${{ inputs.env == 'opensbx' }} || ${{ inputs.env == 'prod' }}
+        run: | 
+          echo "ACCOUNT=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ROLE=prod" >> $GITHUB_ENV
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+          role-to-assume: arn:aws:iam::${{ ACCOUNT }}:role/delegatedadmin/developer/bcda-${{ ROLE }}-github-actions 
       - name: Get Bucket
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/bcda-${{ env.FOO }}-admin-aco-deny-zip-bucket
+            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket
       - name: Upload and reload
         run: |
-          echo Foo is $FOO
-          aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-$FOO-admin-aco-deny \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
+          echo ENVIRONMENT is $ENVIRONMENT
+          # aws s3 cp --no-progress function.zip \
+          #   s3://$BUCKET/function-${{ github.sha }}.zip 
+          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
+          #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
 
 
 # jobs:
