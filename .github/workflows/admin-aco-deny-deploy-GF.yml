@@ -58,7 +58,7 @@ jobs:
           echo "ROLE=dev" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - prod
-        if: ${{ env.ENVIRONMENT == 'foo' }} || ${{ env.ENVIRONMENT == 'bar' }}
+        if: ${{ env.ENVIRONMENT == 'foo' || env.ENVIRONMENT == 'bar' }}
         run: | 
           echo foo bar
           echo ${{ inputs.env }}
