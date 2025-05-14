@@ -52,18 +52,15 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions # update this for prod later
       - name: Verify Environment
         run: |
+          input=${{ inputs.env }}
+          echo input: $input
           if [[ ${{ inputs.env != '' }} ]]; then
             echo foo
             echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
           fi
           echo $ENVIRONMENT
           echo ${{ env.ENVIRONMENT }}
-          if [[ ${{ inputs.env }} -ne '' ]]; then
-            echo bar
-            echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
-          fi
-          echo $ENVIRONMENT
-          echo ${{ env.ENVIRONMENT }}
+
       - name: Get Bucket
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
