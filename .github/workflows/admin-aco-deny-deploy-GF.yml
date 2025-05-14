@@ -53,7 +53,7 @@ jobs:
       - name: Verify Environment
         run: |
           if [[ ${{ inputs.env != '' }} ]]; then
-            ENVIRONMENT=${{ inputs.env }}
+            echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
           fi
           echo $ENVIRONMENT
       - name: Get Bucket
@@ -62,7 +62,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | # update this to correspond to the correct environment
-            BUCKET=/bcda/bcda-$ENVIRONMENT-admin-aco-deny-zip-bucket 
+            BUCKET=/bcda/bcda-${ENVIRONMENT}-admin-aco-deny-zip-bucket 
       - name: Upload and reload
         run: |
           echo $ENVIRONMENT
