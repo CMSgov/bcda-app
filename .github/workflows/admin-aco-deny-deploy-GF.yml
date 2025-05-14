@@ -58,7 +58,7 @@ jobs:
           echo "ROLE=dev" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - prod
-        if: ${{ env.ENVIRONMENT == 'opensbx' }} || ${{ env.ENVIRONMENT == 'prod' }}
+        if: ${{ env.ENVIRONMENT == 'opensbx' }}
         run: | 
           echo foo bar
           echo ${{ inputs.env }}
