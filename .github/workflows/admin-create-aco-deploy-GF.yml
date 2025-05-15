@@ -77,5 +77,5 @@ jobs:
         run: |
           aws s3 cp --no-progress function.zip \
             s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-dev-admin-create-aco \
-            --s3-bucket bcda-dev-admin-create-aco-function --s3-key function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco \
+            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
