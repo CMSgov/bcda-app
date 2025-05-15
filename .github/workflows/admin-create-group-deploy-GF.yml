@@ -1,4 +1,4 @@
-name: Admin Create ACO deploy
+name: Admin Create Group Dev Deploy
 
 on:
   workflow_call:
@@ -18,11 +18,13 @@ on:
     branches:
       - main
     paths:
-      - bcda/lambda/admin_create_aco/**
-      - .github/workflows/admin-create-aco-dev-deploy.yml # update
+      - bcda/lambda/create_group/**
+      - .github/workflows/admin-create-group-dev-deploy.yml
+  pull_request:
+    
 
 jobs:
-  build_and_zip:
+  test:
     permissions:
       contents: read
       id-token: write
@@ -34,13 +36,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-      - name: Build admin_create_aco zip file
+      - name: Build create-group zip file
         env:
           CGO_ENABLED: 0
         run: |
-          pwd
-          go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
+          go build -o bin/bootstrap ./lambda/admin_create_group/*.go
           zip -j function.zip bin/bootstrap
+
       - name: Set ENVIRONMENT - no inputs
         if: ${{ inputs.env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
@@ -71,10 +73,10 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-zip-bucket
+            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-create-group-zip-bucket
       - name: Upload and reload
         run: |
-          aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+          # aws s3 cp --no-progress function.zip \
+          #   s3://$BUCKET/function-${{ github.sha }}.zip
+          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-group \
+          #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
