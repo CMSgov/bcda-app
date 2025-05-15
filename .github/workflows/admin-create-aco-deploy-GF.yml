@@ -1,4 +1,4 @@
-name: Admin ACO Deny deploy
+name: Admin Create ACO deploy
 
 on:
   workflow_call:
@@ -18,30 +18,30 @@ on:
     branches:
       - main
     paths:
-      - bcda/lambda/admin_aco_deny/**
-      - .github/workflows/admin-aco-deny-deploy-GF.yml
+      - bcda/lambda/admin_create_aco/**
+      - .github/workflows/admin-create-aco-dev-deploy.yml
+  pull_request:
 
 jobs:
   build_and_zip:
     permissions:
       contents: read
       id-token: write
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: bcda
+    environment: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.1'
-      - name: Build admin-aco-deny zip file
+      - name: Build admin_create_aco zip file
         env:
           CGO_ENABLED: 0
         run: |
-          go build -o bin/bootstrap ./lambda/admin_aco_deny/*.go
+          pwd
+          go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
           zip -j function.zip bin/bootstrap
-
       - name: Set ENVIRONMENT - no inputs
         if: ${{ inputs.env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
@@ -72,11 +72,10 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket
+            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-zip-bucket
       - name: Upload and reload
         run: |
-          aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
-
+          # aws s3 cp --no-progress function.zip \
+          #   s3://$BUCKET/function-${{ github.sha }}.zip 
+          # aws lambda update-function-code --function-name bcda-dev-admin-create-aco \
+          #   --s3-bucket bcda-dev-admin-create-aco-function --s3-key function-${{ github.sha }}.zip
