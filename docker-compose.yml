@@ -26,6 +26,11 @@ services:
     command: ["bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
+    environment:
+      # these should be set in your local env, however they have to match the fhir_payload_dir volume we set below
+      # theses two specifically also must be nested due to the inability of go file.cp between file systems
+      - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
+      - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data/tmpdata
     volumes:
       - fhir_payload_dir:/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
     ports:
@@ -54,6 +59,9 @@ services:
     command: ["bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
+    environment:
+      - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
+      - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data/tmpdata
     volumes:
       - fhir_payload_dir:/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
     depends_on:

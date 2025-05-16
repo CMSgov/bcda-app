@@ -89,9 +89,9 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//setup mocks
-			mock := &auth.MockProvider{}
-			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return("", tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mock)
+			mockP := &auth.MockProvider{}
+			mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return("", tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mockP)
 
 			//Act
 			resp, err := client.Do(req)
@@ -104,7 +104,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 			responseBody := testUtils.ReadResponseBody(resp)
 			assert.Equal(s.T(), http.StatusText(tt.StatusCode), (strings.TrimSuffix(responseBody, "\n")))
 			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
-			mock.AssertExpectations(s.T())
+			mockP.AssertExpectations(s.T())
 
 			//assert the correct log message wording was logged to API log
 			assert.Equal(t, 1, len(testLogger.Entries))
@@ -137,9 +137,9 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 
 			//setup mocks
-			mock := &auth.MockProvider{}
-			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mock)
+			mockP := &auth.MockProvider{}
+			mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mockP)
 
 			//Act
 			resp, err := client.Do(req)
@@ -160,7 +160,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 			assert.Equal(s.T(), resp.Header.Get("Pragma"), "no-cache")
 			assert.Equal(s.T(), "goodToken", respMap["access_token"])
 			assert.Equal(s.T(), constants.ExpiresInDefault, respMap["expires_in"])
-			mock.AssertExpectations(s.T())
+			mockP.AssertExpectations(s.T())
 		})
 	}
 

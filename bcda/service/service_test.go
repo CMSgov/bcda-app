@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -174,7 +175,7 @@ func TestGetJobAndKeys(t *testing.T) {
 	key := models.JobKey{ID: 101, FileName: "goodFile.ndjson"}
 	emptyKey := models.JobKey{ID: 155, FileName: models.BlankFileName}
 
-	repository := &models.MockRepository{}
+	repository := models.NewMockRepository(t)
 	configureMockRepo := func(job models.Job, jobKeys []*models.JobKey) {
 		repository.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
 		repository.On("GetJobKeys", testUtils.CtxMatcher, job.ID).Return(jobKeys, nil)
@@ -204,6 +205,55 @@ func TestGetJobAndKeys(t *testing.T) {
 	}
 }
 
+func (s *ServiceTestSuiteWithDatabase) TestGetTimeConstraints() {
+	repository := &models.MockRepository{}
+	svc := NewService(repository, &Config{}, "")
+
+	repository.On("GetACOByCMSID", testUtils.CtxMatcher, mock.Anything).Return(&models.ACO{}, nil)
+
+	tC, err := svc.GetTimeConstraints(context.Background(), "A0000")
+
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), tC, TimeConstraints{})
+}
+
+func (s *ServiceTestSuiteWithDatabase) TestGetTimeConstraints_TerminatedACO() {
+	now := time.Now()
+	repository := &models.MockRepository{}
+	svc := NewService(repository, &Config{}, "")
+
+	repository.On("GetACOByCMSID", testUtils.CtxMatcher, mock.Anything).Return(&models.ACO{
+		ID: 2,
+		TerminationDetails: &models.Termination{
+			TerminationDate:     now,
+			AttributionStrategy: models.AttributionHistorical,
+			ClaimsStrategy:      models.ClaimsHistorical,
+			OptOutStrategy:      models.OptOutHistorical,
+		},
+	}, nil)
+
+	tC, err := svc.GetTimeConstraints(context.Background(), "A0000")
+
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), tC, TimeConstraints{
+		AttributionDate: now,
+		ClaimsDate:      now,
+		OptOutDate:      now,
+	})
+}
+
+func (s *ServiceTestSuite) TestGetTimeConstraints_ACOError() {
+	args := worker_types.PrepareJobArgs{ACOID: uuid.NewRandom(), CMSID: uuid.New()}
+	repository := &models.MockRepository{}
+	repository.On("GetACOByCMSID", testUtils.CtxMatcher, mock.AnythingOfType("string")).
+		Return(nil, context.DeadlineExceeded)
+	defer repository.AssertExpectations(s.T())
+	service := &service{repository: repository}
+	tC, err := service.GetTimeConstraints(context.Background(), args.CMSID)
+	assert.Equal(s.T(), tC, TimeConstraints{})
+	assert.True(s.T(), errors.Is(err, context.DeadlineExceeded), "Root cause should be deadline exceeded")
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /////////////////////////// INTEGRATION TESTS /////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -227,10 +277,9 @@ func (s *ServiceTestSuite) TearDownTest() {
 }
 
 func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
-	conditions := RequestConditions{
-		CMSID:    "cmsID",
-		Since:    time.Now(),
-		fileType: models.FileTypeDefault,
+	args := worker_types.PrepareJobArgs{
+		CMSID: "cmsID",
+		Since: time.Now(),
 	}
 	tests := []struct {
 		name          string
@@ -243,7 +292,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
 			getCCLFFile(1, false, false),
 			getCCLFFile(2, false, false),
 			func(serv *service) error {
-				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), conditions)
+				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), args)
 				return err
 			},
 		},
@@ -252,7 +301,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
 			getCCLFFile(3, false, false),
 			nil,
 			func(serv *service) error {
-				_, err := serv.getBeneficiaries(context.Background(), conditions)
+				_, err := serv.getBeneficiaries(context.Background(), args)
 				return err
 			},
 		},
@@ -263,14 +312,14 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
 			lookbackDays := int(8)
 			sp := suppressionParameters{true, lookbackDays}
 			repository := &models.MockRepository{}
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, models.FileTypeDefault).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), models.FileTypeDefault).Return(tt.cclfFileOld, nil)
+			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFileNew, nil)
 			if tt.cclfFileOld != nil {
-				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
+				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return(tt.cclfFileOld, nil)
+				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return([]string{"1", "2", "3"}, nil)
 			}
 
 			var suppressedMBIs []string
-			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, suppressedMBIs).Return([]*models.CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
+			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.AnythingOfType("uint"), suppressedMBIs).Return([]*models.CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
 			serviceInstance := &service{repository: repository, sp: sp, stdCutoffDuration: 1 * time.Hour}
 
 			err := tt.funcUnderTest(serviceInstance)
@@ -283,13 +332,10 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries_Integration() {
 
 func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 	tests := []struct {
-		name string
-
+		name        string
 		cclfFileNew *models.CCLFFile
 		cclfFileOld *models.CCLFFile
-
-		oldMBIs []string
-
+		oldMBIs     []string
 		expectedErr error
 	}{
 		{
@@ -318,7 +364,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			getCCLFFile(4, false, false),
 			nil,
 			nil,
-			fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID"),
+			fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"NoBenesFoundNewAndOld",
@@ -334,21 +380,20 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			nil,
 			nil,
 		},
-		{
-			"NoCCLFPerfYearIncompatible",
-			getCCLFFile(7, false, true),
-			getCCLFFile(8, false, false),
-			nil,
-			fmt.Errorf("no CCLF8 file found for cmsID"),
-		},
+		// no longer validating CCLF files in this function, test no longer relevant
+		// {
+		// 	"NoCCLFPerfYearIncompatible",
+		// 	getCCLFFile(7, false, true),
+		// 	getCCLFFile(8, false, false),
+		// 	nil,
+		// 	fmt.Errorf("no CCLF8 file found for cmsID"),
+		// },
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(30)
-			fileNum := int(8)
 			repository := &models.MockRepository{}
-			cutoffDuration := 1 * time.Hour
 			cmsID := "A0000"
 			since := time.Now().Add(-1 * time.Hour)
 			now := time.Now().Round(time.Millisecond)
@@ -368,7 +413,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 				beneID++
 			}
 
-			// Skip populating new benes under certain test conditions
+			// Skip populating new benes under certain test args
 			if tt.name != "NoBenesFoundNew" && tt.name != "NoBenesFoundNewAndOld" {
 				for i := 0; i < 10; i++ {
 					mbi := fmt.Sprintf("NewMBI%d", i)
@@ -378,23 +423,11 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 				}
 			}
 
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete,
-				// Verify our cutoffTime is bsed on our provided duration
-				mock.MatchedBy(func(t time.Time) bool {
-					// Since we're using time.Now() within the service call, we can't compare directly.
-					// Make sure we're close enough.
-					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
-				}),
-				time.Time{},
-				models.FileTypeDefault).Return(tt.cclfFileNew, nil)
-
+			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFileNew, nil)
 			if tt.cclfFileNew != nil {
-				repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, tt.cclfFileNew.Timestamp.Add(-1*time.Second), models.FileTypeDefault).Return(tt.cclfFileOld, nil)
+				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFileOld, nil)
 			}
-
-			if tt.cclfFileOld != nil {
-				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
-			}
+			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.oldMBIs, nil)
 			suppressedMBI := "suppressedMBI"
 			if tt.cclfFileNew != nil {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
@@ -404,10 +437,10 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			acoConfigs, _ := LoadConfig()
 
 			cfg := &Config{
-				cutoffDuration:          time.Hour,
+				CutoffDuration:          time.Hour,
 				SuppressionLookbackDays: lookbackDays,
 				RunoutConfig: RunoutConfig{
-					cutoffDuration: defaultRunoutCutoff,
+					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
 				ACOConfigs: acoConfigs.ACOConfigs,
@@ -415,8 +448,13 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			serviceInstance := NewService(repository, cfg, "").(*service)
 			acoConfig, _ := serviceInstance.GetACOConfigForID(cmsID)
 			ctxACOCfg := NewACOCfgCtx(context.Background(), acoConfig)
-			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(ctxACOCfg,
-				RequestConditions{CMSID: "A0000", Since: since, fileType: models.FileTypeDefault})
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(
+				ctxACOCfg,
+				worker_types.PrepareJobArgs{
+					CMSID: "A0000",
+					Since: since,
+				},
+			)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -440,7 +478,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 // * Live database test *
 //
 // Given the following example scenario:
-// - CCLF File 1 (June 1 timestamp)
+// - CCLF File 1 (July 1 timestamp)
 // - CCLF File 2 (July 1 timestamp, July 3rd created at)
 //
 // This tests two scenarios:
@@ -449,13 +487,13 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 //
 // We should diff between the correct files:
 // - Diff between CCLF File 1 and CCLF File 2
-// - No diff - consider all beneficiaries at pre-existing
+// - No diff - consider all beneficiaries as pre-existing
 func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParameter_Integration() {
 	db := database.Connection
 	acoID := "A0005"
 
 	// Test Setup
-	testSetup := func(t *testing.T, populateBenes bool) ([]string, func()) {
+	testSetup := func(t *testing.T, populateBenes bool) (uint, uint, []string, func()) {
 		postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
 
 		performanceYear := time.Now().Year() % 100
@@ -472,9 +510,9 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 			postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
 			postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
 			postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
-			return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+			return cclfFileNew.ID, cclfFileOld.ID, []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
 		} else {
-			return []string{}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+			return 0, 0, []string{}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
 		}
 	}
 
@@ -499,26 +537,27 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 			[]int{},
 			true,
 		},
-		{
-			"LaterThanCreatedAtNoBenes",
-			1,
-			[]int{},
-			[]int{},
-			false,
-		},
+		// no longer relevant, we dont check these things anymore, they are done before
+		// {
+		// 	"LaterThanCreatedAtNoBenes",
+		// 	1,
+		// 	[]int{},
+		// 	[]int{},
+		// 	false,
+		// },
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			generatedMbis, cleanup := testSetup(t, tt.populateBenes)
+			newCCLFID, oldCCLFID, generatedMbis, cleanup := testSetup(t, tt.populateBenes)
 			defer cleanup()
 
 			cfg := &Config{
-				cutoffDuration:          -50 * time.Hour,
+				CutoffDuration:          -50 * time.Hour,
 				SuppressionLookbackDays: int(30),
 				RunoutConfig: RunoutConfig{
-					cutoffDuration: defaultRunoutCutoff,
+					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
 			}
@@ -527,8 +566,15 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 
 			repository := postgres.NewRepository(db)
 			serviceInstance := NewService(repository, cfg, "").(*service)
-			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
-				RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(
+				context.Background(),
+				worker_types.PrepareJobArgs{
+					CMSID:         acoID,
+					Since:         since,
+					CCLFFileNewID: newCCLFID,
+					CCLFFileOldID: oldCCLFID,
+				},
+			)
 
 			// Assert
 			if !tt.populateBenes {
@@ -590,26 +636,25 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			getCCLFFile(3, true, false),
 			nil,
 		},
-		{
-			"NoBenesReturnedOld",
-			models.FileTypeRunout,
-			getCCLFFile(4, false, true),
-			fmt.Errorf("no CCLF8 file found for cmsID"),
-		},
-		{
-			"NoBenesReturnedOldRunout",
-			models.FileTypeRunout,
-			getCCLFFile(4, true, true),
-			fmt.Errorf("no CCLF8 file found for cmsID"),
-		},
+		// function no longer does various logic trying to find a specific cclf file, these tests are no longer relevant
+		// {
+		// 	"NoBenesReturnedOld",
+		// 	models.FileTypeRunout,
+		// 	getCCLFFile(4, false, true),
+		// 	fmt.Errorf("no CCLF8 file found for cmsID"),
+		// },
+		// {
+		// 	"NoBenesReturnedOldRunout",
+		// 	models.FileTypeRunout,
+		// 	getCCLFFile(4, true, true),
+		// 	fmt.Errorf("no CCLF8 file found for cmsID"),
+		// },
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(30)
-			fileNum := int(8)
 			repository := &models.MockRepository{}
-			cutoffDuration := 1 * time.Hour
 			cmsID := "A0000"
 			now := time.Now().Round(time.Millisecond)
 			// Since we're using time.Now() within the service call, we can't compare directly.
@@ -630,22 +675,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 					beneID++
 				}
 			}
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete,
-				// Verify our cutoffTime is based on our provided duration
-				mock.MatchedBy(func(t time.Time) bool {
-					// Since we're using time.Now() within the service call, we can't compare directly.
-					// Make sure we're close enough.
-					switch tt.fileType {
-					case models.FileTypeDefault:
-						return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
-					case models.FileTypeRunout:
-						return time.Now().Add(-1*120*24*time.Hour).Sub(t) < time.Second
-					default:
-						return false // We do not understand this fileType
-					}
-				}),
-				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
-
+			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.AnythingOfType("uint")).Return(tt.cclfFile, nil)
 			suppressedMBI := "suppressedMBI"
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, mockUpperBound).Return([]string{suppressedMBI}, nil)
 			if tt.cclfFile != nil {
@@ -655,10 +685,10 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			acoConfigs, _ := LoadConfig()
 
 			cfg := &Config{
-				cutoffDuration:          time.Hour,
+				CutoffDuration:          time.Hour,
 				SuppressionLookbackDays: lookbackDays,
 				RunoutConfig: RunoutConfig{
-					cutoffDuration: defaultRunoutCutoff,
+					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
 				ACOConfigs: acoConfigs.ACOConfigs,
@@ -666,8 +696,12 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			serviceInstance := NewService(repository, cfg, "").(*service)
 			acoConfig, _ := serviceInstance.GetACOConfigForID(cmsID)
 			ctxACOCfg := NewACOCfgCtx(context.Background(), acoConfig)
-			benes, err := serviceInstance.getBeneficiaries(ctxACOCfg,
-				RequestConditions{CMSID: "A0000", fileType: tt.fileType})
+			benes, err := serviceInstance.getBeneficiaries(
+				ctxACOCfg,
+				worker_types.PrepareJobArgs{
+					CMSID: "A0000",
+				},
+			)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -745,7 +779,8 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	type test struct {
 		name               string
 		acoID              string
-		reqType            RequestType
+		RequestType        constants.DataRequestType
+		ComplexRequestType string
 		expSince           time.Time
 		expClaimsWindow    claimsWindow
 		expBenes           []*models.CCLFBeneficiary
@@ -754,30 +789,30 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	}
 
 	baseTests := []test{
-		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, nil, nil},
-		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, claimsWindow{}, benes1, nil, nil},
-		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, claimsWindow{}, append(benes1, benes2...), nil, nil},
-		{"RunoutRequest", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
-		{"RunoutRequest with Since", defaultACOID, Runout, since, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
+		{"BasicRequest (non-Group)", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, nil, nil},
+		{"BasicRequest with Since (non-Group) ", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, since, claimsWindow{}, benes1, nil, nil},
+		{"GroupAll", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, since, claimsWindow{}, append(benes1, benes2...), nil, nil},
+		{"RunoutRequest", defaultACOID, constants.Runout, constants.GetExistingBenes, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
+		{"RunoutRequest with Since", defaultACOID, constants.Runout, constants.GetExistingBenes, since, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
 
 		// Terminated ACOs: historical
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, append(benes1, benes2...), nil, terminationHistorical},
+		{"Since After Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"Since Before Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"New Benes With Since After Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"New Benes With Since Before Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, append(benes1, benes2...), nil, terminationHistorical},
 		// Runout cutoff takes precedence over termination cutoff
-		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, terminationHistorical},
+		{"TerminatedACORunout", defaultACOID, constants.Runout, constants.GetExistingBenes, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, terminationHistorical},
 
 		// Terminated ACOs: latest
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, claimsWindow{}, benes1, nil, terminationLatest},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, claimsWindow{}, benes1, nil, terminationLatest},
+		{"Since After Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceAfterTermination, claimsWindow{}, benes1, nil, terminationLatest},
+		{"Since Before Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceBeforeTermination, claimsWindow{}, benes1, nil, terminationLatest},
 		// should still receive full benes since Attribution is set to latest
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
+		{"New Benes With Since After Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceAfterTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
+		{"New Benes With Since Before Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceBeforeTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
 
 		// ACO with lookback period
-		{"ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime()}, benes1, nil, nil},
-		{"Terminated ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime()}, benes1, nil, nil},
+		{"Terminated ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 	}
 
 	// Add all combinations of resource types
@@ -795,21 +830,24 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	basePath := "/v2/fhir"
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			conditions := RequestConditions{
-				CMSID:     tt.acoID,
-				ACOID:     uuid.NewUUID(),
-				Resources: tt.resourceTypes,
-				Since:     tt.expSince,
-				ReqType:   tt.reqType,
+			args := worker_types.PrepareJobArgs{
+				CMSID:                  tt.acoID,
+				ACOID:                  uuid.NewUUID(),
+				ResourceTypes:          tt.resourceTypes,
+				Since:                  tt.expSince,
+				RequestType:            tt.RequestType,
+				ComplexDataRequestType: tt.ComplexRequestType,
+				BFDPath:                basePath,
+				ClaimsDate:             tt.expClaimsWindow.UpperBound,
 			}
 
 			repository := &models.MockRepository{}
-			repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
-				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
-			if tt.reqType == Runout {
-				repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, true, false), nil)
+			repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).
+				Return(&models.ACO{UUID: args.ACOID, TerminationDetails: tt.terminationDetails}, nil)
+			if tt.RequestType == constants.Runout {
+				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.Anything).Return(getCCLFFile(1, true, false), nil)
 			} else {
-				repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
+				repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 			}
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
@@ -817,17 +855,17 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
 
 			cfg := &Config{
-				cutoffDuration:          time.Hour,
+				CutoffDuration:          time.Hour,
 				SuppressionLookbackDays: 0,
 				RunoutConfig: RunoutConfig{
-					cutoffDuration: defaultRunoutCutoff,
+					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
-			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -895,10 +933,10 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 	}
 
 	cfg := &Config{
-		cutoffDuration:          time.Hour,
+		CutoffDuration:          time.Hour,
 		SuppressionLookbackDays: 0,
 		RunoutConfig: RunoutConfig{
-			cutoffDuration: defaultRunoutCutoff,
+			CutoffDuration: defaultRunoutCutoff,
 			claimThru:      defaultRunoutClaimThru,
 		},
 	}
@@ -907,66 +945,66 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 	basePath := "/v2/fhir"
 
 	s.T().Run("Unexpected request type", func(t *testing.T) {
-		conditions := RequestConditions{
-			CMSID:   defaultACOID,
-			ACOID:   uuid.NewUUID(),
-			ReqType: 22,
+		args := worker_types.PrepareJobArgs{
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: 22,
 		}
 		repository := &models.MockRepository{}
-		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("Unsupported RequestType 22"))
 	})
 
 	s.T().Run("s.getBeneficiaries failure", func(t *testing.T) {
-		conditions := RequestConditions{
-			CMSID:   defaultACOID,
-			ACOID:   uuid.NewUUID(),
-			ReqType: DefaultRequest,
+		args := worker_types.PrepareJobArgs{
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: constants.DefaultRequest,
 		}
 		repository := &models.MockRepository{}
-		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("forced failure"))
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("forced failure"))
 	})
 
 	s.T().Run("s.getNewAndExistingBeneficiaries failure", func(t *testing.T) {
-		conditions := RequestConditions{
-			CMSID:   defaultACOID,
-			ACOID:   uuid.NewUUID(),
-			ReqType: RetrieveNewBeneHistData,
+		args := worker_types.PrepareJobArgs{
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: constants.RetrieveNewBeneHistData,
 		}
 		repository := &models.MockRepository{}
-		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("forced failure"))
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("forced failure"))
 	})
 
 	s.T().Run("s.createQueueJobs failure", func(t *testing.T) {
-		conditions := RequestConditions{
-			CMSID:   defaultACOID,
-			ACOID:   uuid.NewUUID(),
-			ReqType: RetrieveNewBeneHistData,
+		args := worker_types.PrepareJobArgs{
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: constants.RetrieveNewBeneHistData,
 		}
 		repository := &models.MockRepository{}
-		repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: nil}, nil)
+		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 		repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 		repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return([]string{"old"}, nil)
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("forced failure"))
 	})
@@ -1012,7 +1050,8 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 	tests := []struct {
 		name               string
 		acoID              string
-		reqType            RequestType
+		RequestType        constants.DataRequestType
+		ComplexRequestType string
 		expSince           time.Time
 		expClaimsWindow    claimsWindow
 		expBenes           []*models.CCLFBeneficiary
@@ -1020,43 +1059,45 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 		resourceTypes      []string
 		terminationDetails *models.Termination
 	}{
-		{"Adjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil},
-		{"PartiallyAdjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
+		{"Adjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil},
+		{"PartiallyAdjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			conditions := RequestConditions{
-				CMSID:           tt.acoID,
-				ACOID:           uuid.NewUUID(),
-				Resources:       tt.resourceTypes,
-				Since:           tt.expSince,
-				ReqType:         tt.reqType,
-				CreationTime:    timeA,
-				TransactionTime: timeB,
+			args := worker_types.PrepareJobArgs{
+				Job:                    models.Job{TransactionTime: tt.expTxTime},
+				CMSID:                  tt.acoID,
+				ACOID:                  uuid.NewUUID(),
+				ResourceTypes:          tt.resourceTypes,
+				Since:                  tt.expSince,
+				RequestType:            tt.RequestType,
+				CreationTime:           tt.expTxTime,
+				BFDPath:                basePath,
+				ComplexDataRequestType: tt.ComplexRequestType,
 			}
 
 			repository := &models.MockRepository{}
-			repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
-				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
+			repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).
+				Return(&models.ACO{UUID: args.ACOID, TerminationDetails: tt.terminationDetails}, nil)
+			repository.On("GetCCLFFileByID", testUtils.CtxMatcher, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
 
 			cfg := &Config{
-				cutoffDuration:          time.Hour,
+				CutoffDuration:          time.Hour,
 				SuppressionLookbackDays: 0,
 				RunoutConfig: RunoutConfig{
-					cutoffDuration: defaultRunoutCutoff,
+					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
-			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), conditions)
+			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -1113,18 +1154,6 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 	}
 }
 
-func (s *ServiceTestSuite) TestGetQueJobsFailedACOLookup_Integration() {
-	conditions := RequestConditions{ACOID: uuid.NewRandom(), CMSID: uuid.New()}
-	repository := &models.MockRepository{}
-	repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
-		Return(nil, context.DeadlineExceeded)
-	defer repository.AssertExpectations(s.T())
-	service := &service{repository: repository}
-	queJobs, err := service.GetQueJobs(context.Background(), conditions)
-	assert.Nil(s.T(), queJobs)
-	assert.True(s.T(), errors.Is(err, context.DeadlineExceeded), "Root cause should be deadline exceeded")
-}
-
 func (s *ServiceTestSuite) TestCancelJob_Integration() {
 	ctx := context.Background()
 	synthErr := fmt.Errorf("Synthetic error for testing.")
@@ -1176,18 +1205,18 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 		acoID        string
 		resourceType string
 		expSince     string
-		reqType      RequestType
+		RequestType  constants.DataRequestType
 	}{
-		{"Patient with Since", defaultACOID, "Patient", constants.TestSomeTime, DefaultRequest},
-		{"Patient without Since", defaultACOID, "Patient", "", DefaultRequest},
-		{"Patient Runout", defaultACOID, "Patient", constants.TestSomeTime, Runout},
-		{"Patient with Historic Benes", defaultACOID, "Patient", "", RetrieveNewBeneHistData},
-		{"Priority ACO", priorityACOID, "Patient", constants.TestSomeTime, DefaultRequest},
-		{"Group with Since", defaultACOID, "Coverage", constants.TestSomeTime, DefaultRequest},
-		{"Group without Since", defaultACOID, "Coverage", "", DefaultRequest},
-		{"EOB with Since", defaultACOID, "ExplanationOfBenefit", constants.TestSomeTime, DefaultRequest},
-		{"EOB without Since", defaultACOID, "ExplanationOfBenefit", "", DefaultRequest},
-		{"EOB with Historic Benes", defaultACOID, "ExplanationOfBenefit", "", RetrieveNewBeneHistData},
+		{"Patient with Since", defaultACOID, "Patient", constants.TestSomeTime, constants.DefaultRequest},
+		{"Patient without Since", defaultACOID, "Patient", "", constants.DefaultRequest},
+		{"Patient Runout", defaultACOID, "Patient", constants.TestSomeTime, constants.Runout},
+		{"Patient with Historic Benes", defaultACOID, "Patient", "", constants.RetrieveNewBeneHistData},
+		{"Priority ACO", priorityACOID, "Patient", constants.TestSomeTime, constants.DefaultRequest},
+		{"Group with Since", defaultACOID, "Coverage", constants.TestSomeTime, constants.DefaultRequest},
+		{"Group without Since", defaultACOID, "Coverage", "", constants.DefaultRequest},
+		{"EOB with Since", defaultACOID, "ExplanationOfBenefit", constants.TestSomeTime, constants.DefaultRequest},
+		{"EOB without Since", defaultACOID, "ExplanationOfBenefit", "", constants.DefaultRequest},
+		{"EOB with Historic Benes", defaultACOID, "ExplanationOfBenefit", "", constants.RetrieveNewBeneHistData},
 	}
 
 	svc := &service{}
@@ -1201,11 +1230,11 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 				expectedPriority = 1
 			} else if tt.resourceType == "Patient" || tt.resourceType == "Coverage" {
 				expectedPriority = 2
-			} else if len(tt.expSince) > 0 || tt.reqType == RetrieveNewBeneHistData {
+			} else if len(tt.expSince) > 0 || tt.RequestType == constants.RetrieveNewBeneHistData {
 				expectedPriority = 3
 			}
 
-			sinceParam := (len(tt.expSince) > 0) || tt.reqType == RetrieveNewBeneHistData
+			sinceParam := (len(tt.expSince) > 0) || tt.RequestType == constants.RetrieveNewBeneHistData
 			jobPriority := svc.GetJobPriority(tt.acoID, tt.resourceType, sinceParam)
 
 			assert.Equal(t, expectedPriority, jobPriority)
@@ -1248,7 +1277,7 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFile_Integration() {
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
-	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), uint(1), cclfFile.ID)
 }
@@ -1259,7 +1288,7 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound_Integration() {
 
 	serviceInstance := NewService(repository, &Config{}, "").(*service)
 
-	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.Nil(s.T(), cclfFile)
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), 8, err.(CCLFNotFoundError).FileNumber)
@@ -1326,7 +1355,210 @@ func (s *ServiceTestSuite) TestGetACOConfigForID_Integration() {
 	}
 }
 
-func (s *ServiceTestSuite) TestACOConfigurations_Integration() {
+func (s *ServiceTestSuite) TestGetCutoffTime() {
+	tests := []struct {
+		name            string
+		reqType         constants.DataRequestType
+		since           time.Time
+		timeConstraints TimeConstraints
+		fileType        models.CCLFFileType
+		serviceConfig   Config
+		expectedTime    time.Time
+		expectedType    string
+	}{
+		{
+			"GetExistingBenes, no match any blocks, should return null time",
+			constants.DefaultRequest,
+			time.Time{},
+			TimeConstraints{AttributionDate: time.Now()},
+			models.FileTypeDefault,
+			Config{},
+			time.Time{},
+			constants.GetExistingBenes,
+		},
+		{
+			"GetExistingBenes, AttrDate, FileTypeDefault, should set cutoffTime to ~cfg.CutoffDuration",
+			constants.DefaultRequest,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Now().Add((time.Hour * -24)),
+			constants.GetExistingBenes,
+		},
+		{
+			"Runout, AttrDate, FileTypeDefault, should set cutoffTime to ~cfg.CutoffDuration",
+			constants.Runout,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Now().Add((time.Hour * -24)),
+			constants.GetExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, but since after attr date, should set as GetExistingBenes, null cutoff",
+			constants.RetrieveNewBeneHistData,
+			time.Now(),
+			TimeConstraints{AttributionDate: time.Now().Add(time.Hour * -1)},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Time{},
+			constants.GetExistingBenes,
+		},
+		{
+			"GetExistingBenes, AttrDate, FileTypeRunout should set cutoffTime to ~cfg.Runout.CutoffDuration",
+			constants.DefaultRequest,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeRunout,
+			Config{RunoutConfig: RunoutConfig{CutoffDuration: (time.Hour * 24)}},
+			time.Now().Add((time.Hour * -24)),
+			constants.GetExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, Cutoff set, should set cutoff time to config",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Now().Add(time.Hour * -24),
+			constants.GetNewAndExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, Cutoff set, AttrDate set, should return null time",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{AttributionDate: time.Now()},
+			models.FileTypeDefault,
+			Config{CutoffDuration: (time.Hour * 24)},
+			time.Time{},
+			constants.GetNewAndExistingBenes,
+		},
+		{
+			"RetrieveNewBeneHistData, should return null time",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{},
+			models.FileTypeDefault,
+			Config{},
+			time.Time{},
+			constants.GetNewAndExistingBenes,
+		},
+
+		{
+			"RetrieveNewBeneHistData, AttrDate set, should return null time",
+			constants.RetrieveNewBeneHistData,
+			time.Time{},
+			TimeConstraints{AttributionDate: time.Now()},
+			models.FileTypeDefault,
+			Config{},
+			time.Time{},
+			constants.GetNewAndExistingBenes,
+		},
+	}
+
+	ctx := context.Background()
+	repository := &models.MockRepository{}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			service := NewService(repository, &tt.serviceConfig, "")
+
+			actualTime, actualType := service.GetCutoffTime(ctx, tt.reqType, tt.since, tt.timeConstraints, tt.fileType)
+
+			assert.WithinDuration(t, tt.expectedTime, actualTime, (time.Second * 10))
+			assert.Equal(t, tt.expectedType, actualType)
+		})
+	}
+}
+
+func (s *ServiceTestSuite) TestFindOldCCLFFile() {
+	now := time.Now()
+	dayOld := now.Add(time.Hour * -24)
+	dayOldOneSec := now.Add(time.Hour * -24).Add(time.Second * -1)
+
+	tests := []struct {
+		name          string
+		cmsID         string
+		since         time.Time
+		cclfTimestamp time.Time
+		expectedID    uint
+		expectedErr   error
+	}{
+		{
+			"No since",
+			"A0001",
+			time.Time{},
+			time.Time{},
+			uint(1),
+			nil,
+		},
+		{
+			"Since more recent than new CCLFFile timestamp",
+			"A0002",
+			now,
+			dayOld,
+			uint(2),
+			nil,
+		},
+		{
+			"Since older than CCLFFile timestamp",
+			"A0003",
+			dayOld,
+			now,
+			uint(3),
+			nil,
+		},
+		{
+			"SQL error",
+			"A0004",
+			time.Time{},
+			time.Time{},
+			uint(0),
+			errors.New("db error"),
+		},
+		{
+			"No CCLF found",
+			"A0005",
+			time.Time{},
+			time.Time{},
+			uint(0),
+			CCLFNotFoundError{8, "A0005", 0, time.Time{}},
+		},
+	}
+
+	ctx := context.Background()
+	repository := &models.MockRepository{}
+
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0001", mock.Anything, mock.Anything, time.Time{}, time.Time{}, mock.Anything).
+		Return(&models.CCLFFile{ID: 1}, nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0002", mock.Anything, mock.Anything, time.Time{}, dayOldOneSec, mock.Anything).
+		Return(&models.CCLFFile{ID: 2}, nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0003", mock.Anything, mock.Anything, time.Time{}, dayOld, mock.Anything).
+		Return(&models.CCLFFile{ID: 3}, nil)
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0004", mock.Anything, mock.Anything, time.Time{}, time.Time{}, mock.Anything).
+		Return(nil, errors.New("db error"))
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, "A0005", mock.Anything, mock.Anything, time.Time{}, time.Time{}, mock.Anything).
+		Return(nil, nil)
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			service := NewService(repository, &Config{}, "")
+
+			id, err := service.FindOldCCLFFile(ctx, tt.cmsID, tt.since, tt.cclfTimestamp)
+
+			assert.Equal(t, tt.expectedID, id)
+			if tt.expectedErr != nil {
+				assert.Equal(t, tt.expectedErr, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+
+	repository.AssertExpectations(s.T())
 }
 
 type ServiceTestSuiteWithDatabase struct {
@@ -1402,7 +1634,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 			}
 			acoConfig, _ := service.GetACOConfigForID(test.cmsID)
 			newCtx := NewACOCfgCtx(context.Background(), acoConfig)
-			rc := RequestConditions{
+			rc := worker_types.PrepareJobArgs{
 				CMSID: test.cmsID,
 			}
 			actualBeneCount, err := service.getBenesByFileID(newCtx, 1, rc)
@@ -1423,7 +1655,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 	acoID := "A0005"
 
 	// Test Setup
-	testSetup := func(t *testing.T, populateBenes bool) ([]string, func()) {
+	testSetup := func(t *testing.T, populateBenes bool) (uint, uint, []string, func()) {
 		postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005")
 
 		performanceYear := time.Now().Year() % 100
@@ -1440,9 +1672,9 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 			postgrestest.CreateCCLFBeneficiary(t, db, bene1OldRecord)
 			postgrestest.CreateCCLFBeneficiary(t, db, bene1NewRecord)
 			postgrestest.CreateCCLFBeneficiary(t, db, bene2NewRecord)
-			return []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+			return cclfFileNew.ID, cclfFileOld.ID, []string{bene1OldRecord.MBI, bene2NewRecord.MBI}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
 		} else {
-			return []string{}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
+			return 0, 0, []string{}, func() { postgrestest.DeleteCCLFFilesByCMSID(t, db, "A0005") }
 		}
 	}
 
@@ -1479,14 +1711,14 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			generatedMbis, cleanup := testSetup(t, tt.populateBenes)
+			newCCLFID, oldCCLFID, generatedMbis, cleanup := testSetup(t, tt.populateBenes)
 			defer cleanup()
 
 			cfg := &Config{
-				cutoffDuration:          -50 * time.Hour,
+				CutoffDuration:          -50 * time.Hour,
 				SuppressionLookbackDays: int(30),
 				RunoutConfig: RunoutConfig{
-					cutoffDuration: defaultRunoutCutoff,
+					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
 			}
@@ -1496,11 +1728,17 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 			repository := postgres.NewRepository(db)
 			serviceInstance := NewService(repository, cfg, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
-				RequestConditions{CMSID: acoID, Since: since, fileType: models.FileTypeDefault})
+				worker_types.PrepareJobArgs{
+					CMSID:         acoID,
+					Since:         since,
+					CCLFFileNewID: newCCLFID,
+					CCLFFileOldID: oldCCLFID,
+				},
+			)
 
 			// Assert
 			if !tt.populateBenes {
-				assert.ErrorContains(err, "found 0 new or existing beneficiaries from CCLF8 file for cmsID A0005")
+				assert.ErrorContains(err, "no CCLF8 file found for cmsID A0005")
 			} else {
 				assert.NoError(err)
 				assert.Len(oldBenes, len(tt.expectedOldMBIIndexes))
@@ -1555,8 +1793,4 @@ func getJobs(id uint) []*models.Job {
 			ID: id,
 		},
 	}
-}
-
-func timeIsSetMatcher(t time.Time) bool {
-	return !t.IsZero()
 }

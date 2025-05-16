@@ -248,13 +248,7 @@ In a FILENAME_test.go file, there will be a green arrow to the left of the metho
 
 ### **Auto-generating mock implementations**
 
-Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md). Mockery uses interfaces to generate the mocks. In the example below, the Repository interface in `repository.go` will be used to generate the mocks.
-
-Example:
-
-```sh
-mockery --name Repository --inpackage --case snake
-```
+Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md). Mockery uses the `/.mockery.yml` file to define configuration including which interfaces to build.  To regenerate mocks simply run `mockery`.
 
 ## **Environment variables**
 
