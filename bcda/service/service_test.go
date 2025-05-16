@@ -839,7 +839,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 				ComplexDataRequestType: tt.ComplexRequestType,
 				BFDPath:                basePath,
 				ClaimsDate:             tt.expClaimsWindow.UpperBound,
-				ACOConfigDataTypes:     []string{"adjudicated", "partially-adjudicated"},
+				ACOConfigDataTypes:     []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 			}
 
 			repository := &models.MockRepository{}
@@ -950,7 +950,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 			CMSID:              defaultACOID,
 			ACOID:              uuid.NewUUID(),
 			RequestType:        22,
-			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
+			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -966,7 +966,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 			CMSID:              defaultACOID,
 			ACOID:              uuid.NewUUID(),
 			RequestType:        constants.DefaultRequest,
-			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
+			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -983,7 +983,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 			CMSID:              defaultACOID,
 			ACOID:              uuid.NewUUID(),
 			RequestType:        constants.RetrieveNewBeneHistData,
-			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
+			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -1000,7 +1000,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 			CMSID:              defaultACOID,
 			ACOID:              uuid.NewUUID(),
 			RequestType:        constants.RetrieveNewBeneHistData,
-			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
+			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -1065,8 +1065,8 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 		terminationDetails *models.Termination
 		dataTypes          []string
 	}{
-		{"Adjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil, []string{"adjudicated"}},
-		{"PartiallyAdjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil, []string{"partially-adjudicated"}},
+		{constants.Adjudicated, defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil, []string{constants.Adjudicated}},
+		{"PartiallyAdjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil, []string{constants.PartiallyAdjudicated}},
 	}
 
 	for _, tt := range tests {
@@ -1643,7 +1643,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 			newCtx := NewACOCfgCtx(context.Background(), acoConfig)
 			rc := worker_types.PrepareJobArgs{
 				CMSID:              test.cmsID,
-				ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
+				ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 			}
 			actualBeneCount, err := service.getBenesByFileID(newCtx, 1, rc)
 			if err != nil {
