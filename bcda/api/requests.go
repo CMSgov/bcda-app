@@ -474,9 +474,11 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		return
 	}
 
-	if acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID); ok {
+	acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID)
+	if ok {
 		ctx = service.NewACOCfgCtx(ctx, acoCfg)
 	}
+
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
@@ -584,6 +586,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
 		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
+		ACOConfigDataTypes:     acoCfg.Data,
 	}
 
 	logger.Infof("Adding jobs using %T", h.Enq)

@@ -839,6 +839,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 				ComplexDataRequestType: tt.ComplexRequestType,
 				BFDPath:                basePath,
 				ClaimsDate:             tt.expClaimsWindow.UpperBound,
+				ACOConfigDataTypes:     []string{"adjudicated", "partially-adjudicated"},
 			}
 
 			repository := &models.MockRepository{}
@@ -946,9 +947,10 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("Unexpected request type", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:       defaultACOID,
-			ACOID:       uuid.NewUUID(),
-			RequestType: 22,
+			CMSID:              defaultACOID,
+			ACOID:              uuid.NewUUID(),
+			RequestType:        22,
+			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -961,9 +963,10 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("s.getBeneficiaries failure", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:       defaultACOID,
-			ACOID:       uuid.NewUUID(),
-			RequestType: constants.DefaultRequest,
+			CMSID:              defaultACOID,
+			ACOID:              uuid.NewUUID(),
+			RequestType:        constants.DefaultRequest,
+			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -977,9 +980,10 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("s.getNewAndExistingBeneficiaries failure", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:       defaultACOID,
-			ACOID:       uuid.NewUUID(),
-			RequestType: constants.RetrieveNewBeneHistData,
+			CMSID:              defaultACOID,
+			ACOID:              uuid.NewUUID(),
+			RequestType:        constants.RetrieveNewBeneHistData,
+			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -993,9 +997,10 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("s.createQueueJobs failure", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:       defaultACOID,
-			ACOID:       uuid.NewUUID(),
-			RequestType: constants.RetrieveNewBeneHistData,
+			CMSID:              defaultACOID,
+			ACOID:              uuid.NewUUID(),
+			RequestType:        constants.RetrieveNewBeneHistData,
+			ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -1058,9 +1063,10 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 		expTxTime          time.Time
 		resourceTypes      []string
 		terminationDetails *models.Termination
+		dataTypes          []string
 	}{
-		{"Adjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil},
-		{"PartiallyAdjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
+		{"Adjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil, []string{"adjudicated"}},
+		{"PartiallyAdjudicated", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil, []string{"partially-adjudicated"}},
 	}
 
 	for _, tt := range tests {
@@ -1075,6 +1081,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 				CreationTime:           tt.expTxTime,
 				BFDPath:                basePath,
 				ComplexDataRequestType: tt.ComplexRequestType,
+				ACOConfigDataTypes:     tt.dataTypes,
 			}
 
 			repository := &models.MockRepository{}
@@ -1302,7 +1309,7 @@ func (s *ServiceTestSuite) TestGetACOConfigForID_Integration() {
 
 	specificACOPattern, _ := regexp.Compile(`A9999`)
 
-	validACOPattern, _ := regexp.Compile(`A\d{4}`)
+	validACOPattern, _ := regexp.Compile(`^A\d{4}`)
 
 	validACO := ACOConfig{
 		Model:      "Model A",
@@ -1635,7 +1642,8 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 			acoConfig, _ := service.GetACOConfigForID(test.cmsID)
 			newCtx := NewACOCfgCtx(context.Background(), acoConfig)
 			rc := worker_types.PrepareJobArgs{
-				CMSID: test.cmsID,
+				CMSID:              test.cmsID,
+				ACOConfigDataTypes: []string{"adjudicated", "partially-adjudicated"},
 			}
 			actualBeneCount, err := service.getBenesByFileID(newCtx, 1, rc)
 			if err != nil {
