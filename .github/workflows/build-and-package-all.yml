@@ -64,12 +64,12 @@ jobs:
           params: |
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
+            BCDA_PLATINUM_AMI=/bcda/workflows/al2_platinum_image_id
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-#          ref: ${{ inputs.ops_release_version || 'main'}}
-          ref: 'al2_revert_2'
+          ref: ${{ inputs.ops_release_version || 'main'}}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Get platinum AMI ID
         run: |
