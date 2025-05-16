@@ -90,15 +90,15 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
-#      - name: Create API AMI
-#        env:
-#          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          TMPDIR: /home/ec2-user/
-#        run: |
-#          set -euo pipefail
-#          packer plugins install "github.com/hashicorp/ansible" "v1.1.3"
-#          packer init packer/api.json.pkr.hcl 2>&1
-#          packer build -color=false -var "source_ami=ami-0f5b459292fee7889" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
+      - name: Create API AMI
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: /home/ec2-user/
+        run: |
+          set -euo pipefail
+          packer plugins install "github.com/hashicorp/ansible" "v1.1.3"
+          packer init packer/api.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=ami-0f5b459292fee7889" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" packer/api.json.pkr.hcl 2>&1
       - name: Create Worker AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
