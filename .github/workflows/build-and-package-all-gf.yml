@@ -1,8 +1,6 @@
 # Build and Package will build and package BCDA and SSAS APIs onto one platinum AMI 
 # and BCDA Worker onto another platinum AMI
 
-# JSCOTT: trigger build
-
 name: Build and Package All GF
 
 on:
@@ -106,17 +104,14 @@ jobs:
       - name: Install AWS Session Manager Plugin
         run: |
           sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
-
       - name: Create API AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /tmp/
         run: |
-          # set -euo pipefail to ensure internal packer/ansible failures get passed to the jenkins pipeline and fails that jobstep
           set -euo pipefail
           packer init packer/api_gf.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version  || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "version=${{ inputs.release_version }}" -var "s3_bucket=${{ env.S3_BUCKET }}" packer/api_gf.json.pkr.hcl 2>&1
-      
       - name: Create Worker AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -154,3 +149,4 @@ jobs:
                 text: "FAILURE: Build and Package BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
+                  
