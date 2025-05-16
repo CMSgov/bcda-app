@@ -168,7 +168,7 @@ jobs:
           TRY=1
 
           until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line'`
+            BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
 
             if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
               echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
@@ -192,7 +192,7 @@ jobs:
           TRY=1
 
           until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line'`
+            BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
 
             if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
               echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
