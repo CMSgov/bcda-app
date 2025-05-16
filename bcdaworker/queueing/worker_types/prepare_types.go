@@ -25,6 +25,7 @@ type PrepareJobArgs struct {
 	ClaimsDate             time.Time
 	OptOutDate             time.Time
 	TransactionID          string
+	ACOConfigDataTypes     []string
 }
 
 func (args PrepareJobArgs) Kind() string {

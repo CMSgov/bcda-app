@@ -288,55 +288,50 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				if acoConfig, ok := s.GetACOConfigForID(args.CMSID); ok {
-					// Create separate jobs for each data type if needed
-					for _, dataType := range acoConfig.Data {
-						// conditions.TransactionTime references the last time adjudicated data
-						// was updated in the BB client. If we are queuing up a partially-adjudicated
-						// data job, we need to assume that the adjudicated and partially-adjudicated
-						// data ingestion timelines don't line up, therefore for all
-						// partially-adjudicated jobs we will just use conditions.CreationTime as an
-						// upper bound
-						var transactionTime time.Time
-						if dataType == constants.PartiallyAdjudicated {
-							transactionTime = args.CreationTime
-						} else {
-							transactionTime = args.Job.TransactionTime
-						}
-						if resource, ok := GetDataType(rt); ok {
-							if resource.SupportsDataType(dataType) {
-								jobId, err := safecast.ToInt(args.Job.ID)
-								if err != nil {
-									log.API.Errorln(err)
-								}
-								enqueueArgs := worker_types.JobEnqueueArgs{
-									ID:              jobId,
-									ACOID:           args.ACOID.String(),
-									CMSID:           args.CMSID,
-									BeneficiaryIDs:  jobIDs,
-									ResourceType:    rt,
-									Since:           sinceArg,
-									TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
-									TransactionTime: transactionTime,
-									BBBasePath:      args.BFDPath,
-									DataType:        dataType,
-								}
-
-								s.setClaimsDate(&enqueueArgs, args)
-
-								jobs = append(jobs, &enqueueArgs)
-							}
-						} else {
-							// This should never be possible, would have returned earlier
-							return nil, errors.New("Invalid resource type: " + rt)
-						}
+				// Create separate jobs for each data type if needed
+				for _, dataType := range args.ACOConfigDataTypes {
+					// conditions.TransactionTime references the last time adjudicated data
+					// was updated in the BB client. If we are queuing up a partially-adjudicated
+					// data job, we need to assume that the adjudicated and partially-adjudicated
+					// data ingestion timelines don't line up, therefore for all
+					// partially-adjudicated jobs we will just use conditions.CreationTime as an
+					// upper bound
+					var transactionTime time.Time
+					if dataType == constants.PartiallyAdjudicated {
+						transactionTime = args.CreationTime
+					} else {
+						transactionTime = args.Job.TransactionTime
 					}
+					if resource, ok := GetDataType(rt); ok {
+						if resource.SupportsDataType(dataType) {
+							jobId, err := safecast.ToInt(args.Job.ID)
+							if err != nil {
+								log.API.Errorln(err)
+							}
+							enqueueArgs := worker_types.JobEnqueueArgs{
+								ID:              jobId,
+								ACOID:           args.ACOID.String(),
+								CMSID:           args.CMSID,
+								BeneficiaryIDs:  jobIDs,
+								ResourceType:    rt,
+								Since:           sinceArg,
+								TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
+								TransactionTime: transactionTime,
+								BBBasePath:      args.BFDPath,
+								DataType:        dataType,
+							}
 
-					jobIDs = make([]string, 0, maxBeneficiaries)
-				} else {
-					// This should never be possible, would have returned earlier
-					return nil, errors.New("Invalid ACO")
+							s.setClaimsDate(&enqueueArgs, args)
+
+							jobs = append(jobs, &enqueueArgs)
+						}
+					} else {
+						// This should never be possible, would have returned earlier
+						return nil, errors.New("Invalid resource type: " + rt)
+					}
 				}
+
+				jobIDs = make([]string, 0, maxBeneficiaries)
 			}
 		}
 	}
