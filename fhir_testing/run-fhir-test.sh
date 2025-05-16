@@ -58,7 +58,7 @@ echo "
 TEST_RUN_RESP=$(curl -X POST "http://host.docker.internal/api/test_runs" \
 	-H "accept: application/json" \
 	-H "Content-Type:application/json" \
-	-d '{"test_session_id": "'$SESSION_ID'","test_group_id": "bulk_data_v200-bulk_data_export_tests_v200","inputs": [{"name": "bulk_server_url","value": "'$BULK_URL'"},{"name": "smart_auth_info","value": "{\"access_token\":\"'$TOKEN'\",\"auth_type\":\"backend_services\"}"},{"name": "group_id","value": "all"},{"name": "since_timestamp","value": "2022-10-03T16:03:17-04:00"},{"name": "bulk_timeout","value": "180"}]}')
+	-d '{"test_session_id": "'$SESSION_ID'","test_group_id": "bulk_data_v200-bulk_data_export_tests_v200","inputs": [{"name": "bulk_server_url","value": "'$BULK_URL'"},{"name": "smart_auth_info","value": "{\"access_token\":\"'$TOKEN'\",\"auth_type\":\"backend_services\"}"},{"name": "group_id","value": "all"},{"name": "since_timestamp","value": "2022-10-03T16:03:17-04:00"},{"name": "bulk_timeout","value": "300"}]}')
 
 TEST_RUN_ID=$(echo $TEST_RUN_RESP | jq -r ".id")
 echo "
