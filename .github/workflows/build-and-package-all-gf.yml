@@ -1,8 +1,6 @@
 # Build and Package will build and package BCDA and SSAS APIs onto one platinum AMI 
 # and BCDA Worker onto another platinum AMI
 
-# Build trigger
-
 name: Build and Package All GF
 
 on:
