@@ -74,22 +74,26 @@ func StartRiver(numWorkers int) *queue {
 		),
 	}
 
+	logger := getSlogLogger()
+
 	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
 		// TODO: whats an appropriate timeout?
 		JobTimeout:   -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
-		Logger:       getSlogLogger(),
+		Logger:       logger,
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,
 	})
 
 	if err != nil {
+		logger.Error("failed to init river client", "error", err)
 		panic(err)
 	}
 
 	if err := riverClient.Start(context.Background()); err != nil {
+		logger.Error("failed to start river client", "error", err)
 		panic(err)
 	}
 
