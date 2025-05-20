@@ -20,7 +20,6 @@ on:
     paths:
       - bcda/lambda/create_group/**
       - .github/workflows/admin-create-group-dev-deploy.yml
-  pull_request:
     
 
 jobs:

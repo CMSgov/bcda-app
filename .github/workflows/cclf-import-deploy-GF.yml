@@ -60,7 +60,10 @@ jobs:
         run: | 
           echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=prod" >> $GITHUB_ENV
-
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
       - name: Get Bucket
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
