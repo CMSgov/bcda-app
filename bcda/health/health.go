@@ -18,6 +18,16 @@ func IsDatabaseOK() (result string, ok bool) {
 	return "ok", true
 }
 
+func IsWorkerDatabaseOK() (result string, ok bool) {
+	db := database.Connection
+	if err := db.Ping(); err != nil {
+		log.Worker.Error("Health check: database ping error: ", err.Error())
+		return "database ping error", false
+	}
+
+	return "ok", true
+}
+
 func IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
 	if err != nil {
