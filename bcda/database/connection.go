@@ -41,7 +41,7 @@ func init() {
 		logrus.Fatalf("Failed to create queue %s", err.Error())
 	}
 
-	Pgxv5Pool, err = createPgxv5DB(cfg)
+	Pgxv5Pool, err = CreatePgxv5DB(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create pgxv5 DB connection %s", err.Error())
 	}
@@ -107,7 +107,7 @@ func createQueue(cfg *Config) (*pgx.ConnPool, error) {
 	return pool, err
 }
 
-func createPgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
+func CreatePgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 	ctx := context.Background()
 
 	pgxv5PoolConfig, err := pgxv5Pool.ParseConfig(cfg.DatabaseURL)
