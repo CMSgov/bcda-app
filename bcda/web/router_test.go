@@ -260,9 +260,9 @@ func (s *RouterTestSuite) TestV3EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute("/api/v3/jobs/{jobID}")
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute("/api/v3/metadata")
+	res = s.getAPIRoute(constants.V3Path + "metadata")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
@@ -279,13 +279,13 @@ func (s *RouterTestSuite) TestV3EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute("/api/v3/jobs/{jobID}")
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute("/api/v3/jobs")
+	res = s.getAPIRoute(constants.V3Path + "jobs")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute("/api/v3/attribution_status")
+	res = s.getAPIRoute(constants.V3Path + "attribution_status")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute("/api/v3/metadata")
+	res = s.getAPIRoute(constants.V3Path + "metadata")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
