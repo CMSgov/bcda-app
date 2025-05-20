@@ -21,13 +21,13 @@ func IsDatabaseOK() (result string, ok bool) {
 func IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
 	if err != nil {
-		log.API.Error("Health check: Blue Button client error: ", err.Error())
+		log.Worker.Error("Health check: Blue Button client error: ", err.Error())
 		return false
 	}
 
 	_, err = bbc.GetMetadata()
 	if err != nil {
-		log.API.Error("Health check: Blue Button connection error: ", err.Error())
+		log.Worker.Error("Health check: Blue Button connection error: ", err.Error())
 		return false
 	}
 
