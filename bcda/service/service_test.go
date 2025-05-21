@@ -1861,6 +1861,118 @@ func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
+func TestSetClaimsDate_Runout(t *testing.T) {
+	pArgs := worker_types.PrepareJobArgs{
+		CMSID:       "A0000",
+		RequestType: constants.Runout,
+	}
+	jArgs := worker_types.JobEnqueueArgs{
+		CMSID: "A0000",
+	}
+	acoConfigs, err := LoadConfig()
+	assert.Nil(t, err)
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: acoConfigs.ACOConfigs,
+	}
+
+	repository := models.NewMockRepository(t)
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
+	assert.True(t, ok)
+
+	acoCfg, ok := serviceInstance.GetACOConfigForID("A0000")
+	assert.True(t, ok)
+	assert.Equal(t, jArgs.ClaimsWindow.UpperBound, defaultRunoutClaimThru)
+	assert.Equal(t, jArgs.ClaimsWindow.LowerBound, acoCfg.LookbackTime())
+}
+
+func TestSetClaimsDate_ClaimsDateSet(t *testing.T) {
+	now := time.Now()
+	pArgs := worker_types.PrepareJobArgs{
+		CMSID:       "A0000",
+		RequestType: constants.DefaultRequest,
+		ClaimsDate:  now,
+	}
+	jArgs := worker_types.JobEnqueueArgs{
+		CMSID: "A0000",
+	}
+	acoConfigs, err := LoadConfig()
+	assert.Nil(t, err)
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: acoConfigs.ACOConfigs,
+	}
+
+	repository := models.NewMockRepository(t)
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
+	assert.True(t, ok)
+
+	acoCfg, ok := serviceInstance.GetACOConfigForID("A0000")
+	assert.True(t, ok)
+	assert.Equal(t, jArgs.ClaimsWindow.UpperBound, now)
+	assert.Equal(t, jArgs.ClaimsWindow.LowerBound, acoCfg.LookbackTime())
+}
+
+func TestSetClaimsDate_Fail_NoACOConfig(t *testing.T) {
+	pArgs := worker_types.PrepareJobArgs{
+		CMSID: "A0000",
+	}
+	jArgs := worker_types.JobEnqueueArgs{
+		CMSID: "A0000",
+	}
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: []ACOConfig{},
+	}
+
+	repository := models.NewMockRepository(t)
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
+	assert.False(t, ok)
+}
+
+func TestSetClaimsDate_Fail_ACOConfigMismatch(t *testing.T) {
+	pArgs := worker_types.PrepareJobArgs{
+		CMSID: "zxy00",
+	}
+	jArgs := worker_types.JobEnqueueArgs{
+		CMSID: "zxy00",
+	}
+	acoConfigs, err := LoadConfig()
+	assert.Nil(t, err)
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: acoConfigs.ACOConfigs,
+	}
+
+	repository := models.NewMockRepository(t)
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
+	assert.False(t, ok)
+}
+
 func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
 	performanceYear := time.Now().Year() % 100
 	if isRunout {

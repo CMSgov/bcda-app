@@ -326,7 +326,10 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 								DataType:        dataType,
 							}
 
-							s.setClaimsDate(&enqueueArgs, args)
+							ok := s.setClaimsDate(&enqueueArgs, args)
+							if !ok {
+								return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+							}
 
 							jobs = append(jobs, &enqueueArgs)
 						}
@@ -470,7 +473,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 }
 
 // setClaimsDate computes the claims window to apply on the args
-func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) {
+func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) bool {
 	// If the caller made a request for runout data
 	// it takes precedence over any other claims date
 	// that may be applied
@@ -484,9 +487,9 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
 	if ok {
 		args.ClaimsWindow.LowerBound = cfg.LookbackTime()
-	} else {
-		log.API.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
 	}
+
+	return ok
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
