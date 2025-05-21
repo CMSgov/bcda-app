@@ -250,6 +250,16 @@ In a FILENAME_test.go file, there will be a green arrow to the left of the metho
 
 Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md). Mockery uses the `/.mockery.yml` file to define configuration including which interfaces to build.  To regenerate mocks simply run `mockery`.
 
+### **FHIR Conformance Testing**
+
+Run FHIR Conformance tests against your local deployment:
+
+```sh
+make fhir_testing
+```
+
+See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tests and the FHIR Scan workflow.
+
 ## **Environment variables**
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
