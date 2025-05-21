@@ -76,6 +76,9 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
 	}
+	if len(cfg.ACOConfigs) == 0 {
+		log.API.Fatalf("no ACO configs found, these are required for processing logic")
+	}
 
 	repository := postgres.NewRepository(db)
 	h.db, h.r = db, repository
@@ -474,11 +477,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		return
 	}
 
-	acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID)
-	if ok {
-		ctx = service.NewACOCfgCtx(ctx, acoCfg)
-	}
-
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
@@ -586,7 +584,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
 		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
-		ACOConfigDataTypes:     acoCfg.Data,
 	}
 
 	logger.Infof("Adding jobs using %T", h.Enq)
