@@ -446,12 +446,10 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 				ACOConfigs: acoConfigs.ACOConfigs,
 			}
 			serviceInstance := NewService(repository, cfg, "").(*service)
-			acoConfig, _ := serviceInstance.GetACOConfigForID(cmsID)
-			ctxACOCfg := NewACOCfgCtx(context.Background(), acoConfig)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(
-				ctxACOCfg,
+				context.Background(),
 				worker_types.PrepareJobArgs{
-					CMSID: "A0000",
+					CMSID: cmsID,
 					Since: since,
 				},
 			)
@@ -553,6 +551,9 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 			newCCLFID, oldCCLFID, generatedMbis, cleanup := testSetup(t, tt.populateBenes)
 			defer cleanup()
 
+			acoCfgs, err := LoadConfig()
+			assert.Nil(err)
+
 			cfg := &Config{
 				CutoffDuration:          -50 * time.Hour,
 				SuppressionLookbackDays: int(30),
@@ -560,6 +561,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
+				ACOConfigs: acoCfgs.ACOConfigs,
 			}
 
 			since := time.Now().Add(tt.sinceOffset * time.Hour)
@@ -694,12 +696,10 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 				ACOConfigs: acoConfigs.ACOConfigs,
 			}
 			serviceInstance := NewService(repository, cfg, "").(*service)
-			acoConfig, _ := serviceInstance.GetACOConfigForID(cmsID)
-			ctxACOCfg := NewACOCfgCtx(context.Background(), acoConfig)
 			benes, err := serviceInstance.getBeneficiaries(
-				ctxACOCfg,
+				context.Background(),
 				worker_types.PrepareJobArgs{
-					CMSID: "A0000",
+					CMSID: cmsID,
 				},
 			)
 
@@ -839,7 +839,6 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 				ComplexDataRequestType: tt.ComplexRequestType,
 				BFDPath:                basePath,
 				ClaimsDate:             tt.expClaimsWindow.UpperBound,
-				ACOConfigDataTypes:     []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 			}
 
 			repository := &models.MockRepository{}
@@ -866,6 +865,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
+
 			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
@@ -947,10 +947,9 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("Unexpected request type", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:              defaultACOID,
-			ACOID:              uuid.NewUUID(),
-			RequestType:        22,
-			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: 22,
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -963,10 +962,9 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("s.getBeneficiaries failure", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:              defaultACOID,
-			ACOID:              uuid.NewUUID(),
-			RequestType:        constants.DefaultRequest,
-			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: constants.DefaultRequest,
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -980,10 +978,9 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("s.getNewAndExistingBeneficiaries failure", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:              defaultACOID,
-			ACOID:              uuid.NewUUID(),
-			RequestType:        constants.RetrieveNewBeneHistData,
-			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: constants.RetrieveNewBeneHistData,
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -997,10 +994,9 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 
 	s.T().Run("s.createQueueJobs failure", func(t *testing.T) {
 		args := worker_types.PrepareJobArgs{
-			CMSID:              defaultACOID,
-			ACOID:              uuid.NewUUID(),
-			RequestType:        constants.RetrieveNewBeneHistData,
-			ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
+			CMSID:       defaultACOID,
+			ACOID:       uuid.NewUUID(),
+			RequestType: constants.RetrieveNewBeneHistData,
 		}
 		repository := &models.MockRepository{}
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
@@ -1081,7 +1077,6 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 				CreationTime:           tt.expTxTime,
 				BFDPath:                basePath,
 				ComplexDataRequestType: tt.ComplexRequestType,
-				ACOConfigDataTypes:     tt.dataTypes,
 			}
 
 			repository := &models.MockRepository{}
@@ -1639,13 +1634,11 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 			if err := tf.Load(); err != nil {
 				assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 			}
-			acoConfig, _ := service.GetACOConfigForID(test.cmsID)
-			newCtx := NewACOCfgCtx(context.Background(), acoConfig)
+
 			rc := worker_types.PrepareJobArgs{
-				CMSID:              test.cmsID,
-				ACOConfigDataTypes: []string{constants.Adjudicated, constants.PartiallyAdjudicated},
+				CMSID: test.cmsID,
 			}
-			actualBeneCount, err := service.getBenesByFileID(newCtx, 1, rc)
+			actualBeneCount, err := service.getBenesByFileID(context.Background(), 1, rc)
 			if err != nil {
 				s.T().Fatal(err)
 			}
@@ -1722,6 +1715,8 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 			newCCLFID, oldCCLFID, generatedMbis, cleanup := testSetup(t, tt.populateBenes)
 			defer cleanup()
 
+			acoConfigs, _ := LoadConfig()
+
 			cfg := &Config{
 				CutoffDuration:          -50 * time.Hour,
 				SuppressionLookbackDays: int(30),
@@ -1729,6 +1724,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 					CutoffDuration: defaultRunoutCutoff,
 					claimThru:      defaultRunoutClaimThru,
 				},
+				ACOConfigs: acoConfigs.ACOConfigs,
 			}
 
 			since := time.Now().Add(tt.sinceOffset * time.Hour)
@@ -1771,6 +1767,98 @@ func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_Recent
 			}
 		})
 	}
+}
+
+func TestGetBenesByFileID_Fail_NoACOConfig(t *testing.T) {
+	args := worker_types.PrepareJobArgs{
+		CMSID: "A0000",
+	}
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: []ACOConfig{},
+	}
+
+	repository := models.NewMockRepository(t)
+	ctx := context.Background()
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	benes, err := serviceInstance.getBenesByFileID(ctx, uint(1), args)
+	assert.Nil(t, benes)
+	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+}
+
+func TestGetBenesByFileID_Fail_ACOConfigMismatch(t *testing.T) {
+	args := worker_types.PrepareJobArgs{
+		CMSID: "zxy00",
+	}
+	acoConfigs, err := LoadConfig()
+	assert.Nil(t, err)
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: acoConfigs.ACOConfigs,
+	}
+
+	repository := models.NewMockRepository(t)
+	ctx := context.Background()
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	benes, err := serviceInstance.getBenesByFileID(ctx, uint(1), args)
+	assert.Nil(t, benes)
+	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+}
+
+func TestCreateQueueJobs_Fail_NoACOConfig(t *testing.T) {
+	args := worker_types.PrepareJobArgs{
+		CMSID: "A0000",
+	}
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: []ACOConfig{},
+	}
+
+	repository := models.NewMockRepository(t)
+	ctx := context.Background()
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	jobArgs, err := serviceInstance.createQueueJobs(ctx, args, time.Now(), nil)
+	assert.Nil(t, jobArgs)
+	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+}
+
+func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
+	args := worker_types.PrepareJobArgs{
+		CMSID: "zxy00",
+	}
+	acoConfigs, err := LoadConfig()
+	assert.Nil(t, err)
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig: RunoutConfig{
+			CutoffDuration: defaultRunoutCutoff,
+			claimThru:      defaultRunoutClaimThru,
+		},
+		ACOConfigs: acoConfigs.ACOConfigs,
+	}
+
+	repository := models.NewMockRepository(t)
+	ctx := context.Background()
+	serviceInstance := NewService(repository, cfg, "").(*service)
+	jobArgs, err := serviceInstance.createQueueJobs(ctx, args, time.Now(), nil)
+	assert.Nil(t, jobArgs)
+	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
 }
 
 func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
