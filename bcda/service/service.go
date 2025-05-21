@@ -456,7 +456,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 				}
 			}
 		} else {
-			return nil, errors.New("failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+			return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
 		}
 
 	}
@@ -481,11 +481,11 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 	}
 
 	// Applies the lower bound from the first matching ACOConfig
-	for _, cfg := range s.acoConfigs {
-		if cfg.patternExp.MatchString(prepareArgs.CMSID) {
-			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
-			break
-		}
+	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
+	if ok {
+		args.ClaimsWindow.LowerBound = cfg.LookbackTime()
+	} else {
+		log.API.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
 	}
 }
 

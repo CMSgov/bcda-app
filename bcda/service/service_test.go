@@ -1788,7 +1788,7 @@ func TestGetBenesByFileID_Fail_NoACOConfig(t *testing.T) {
 	serviceInstance := NewService(repository, cfg, "").(*service)
 	benes, err := serviceInstance.getBenesByFileID(ctx, uint(1), args)
 	assert.Nil(t, benes)
-	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
 func TestGetBenesByFileID_Fail_ACOConfigMismatch(t *testing.T) {
@@ -1812,7 +1812,7 @@ func TestGetBenesByFileID_Fail_ACOConfigMismatch(t *testing.T) {
 	serviceInstance := NewService(repository, cfg, "").(*service)
 	benes, err := serviceInstance.getBenesByFileID(ctx, uint(1), args)
 	assert.Nil(t, benes)
-	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
 func TestCreateQueueJobs_Fail_NoACOConfig(t *testing.T) {
@@ -1834,7 +1834,7 @@ func TestCreateQueueJobs_Fail_NoACOConfig(t *testing.T) {
 	serviceInstance := NewService(repository, cfg, "").(*service)
 	jobArgs, err := serviceInstance.createQueueJobs(ctx, args, time.Now(), nil)
 	assert.Nil(t, jobArgs)
-	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
 func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
@@ -1858,7 +1858,7 @@ func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
 	serviceInstance := NewService(repository, cfg, "").(*service)
 	jobArgs, err := serviceInstance.createQueueJobs(ctx, args, time.Now(), nil)
 	assert.Nil(t, jobArgs)
-	assert.ErrorContains(t, err, "failed to access ACO Config, possibly failing to ignore suppressed MBIs")
+	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
 func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
