@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
@@ -540,7 +541,7 @@ func (s *APITestSuite) TestResourceTypes() {
 	h := api.NewHandler(resources, "/v3/fhir", "v3")
 	mockSvc := &service.MockService{}
 
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, nil)
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
