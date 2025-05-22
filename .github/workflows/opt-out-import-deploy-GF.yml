@@ -1,0 +1,82 @@
+name: opt-out-import dev deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - optout/**
+      - .github/workflows/opt-out-import-dev-deploy.yml
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - opensbx
+          - prod
+  pull_request:
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bcda
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - name: Build opt-out-import zip file
+        env:
+          CGO_ENABLED: 0
+        run: |
+          go build -o bin/bootstrap ./lambda/optout/main.go
+          zip -j function.zip bin/bootstrap
+
+
+      - name: Set ENVIRONMENT - no inputs
+        if: ${{ inputs.env == '' }}
+        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+
+      - name: Set ENVIRONMENT - inputs
+        if: ${{ inputs.env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+
+      - name: Set ACCOUNT - non prod
+        if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
+        run: | 
+          echo "ACC=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ROLE=dev" >> $GITHUB_ENV
+
+      - name: Set ACCOUNT - prod
+        if: ${{ env.ENVIRONMENT == 'opensbx' || env.ENVIRONMENT == 'prod' }}
+        run: | 
+          echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ROLE=prod" >> $GITHUB_ENV
+
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
+      - name: Get Bucket
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: | 
+            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-zip-bucket
+      # - name: Upload and reload
+        # run: |
+        #   aws s3 cp --no-progress function.zip \
+        #     s3://$BUCKET/function-${{ github.sha }}.zip
+        #   aws lambda update-function-code --function-name bcda-$ENVIRONMENT-opt-out-import \
+        #     --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
