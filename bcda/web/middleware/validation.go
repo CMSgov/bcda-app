@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/log"
@@ -219,7 +220,7 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 		return responseutils.NewResponseWriter(), nil
 	case "v2":
 		return responseutilsv2.NewResponseWriter(), nil
-	case "v3":
+	case constants.V3Version:
 		return responseutilsv2.NewResponseWriter(), nil // TODO: V3
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)

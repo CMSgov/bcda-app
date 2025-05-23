@@ -570,7 +570,7 @@ func (s *APITestSuite) TestResourceTypes() {
 				assert.NoError(t, err)
 
 				rp := middleware.RequestParameters{
-					Version:       "v3",
+					Version:       constants.V3Version,
 					ResourceTypes: tt.resourceTypes,
 				}
 
