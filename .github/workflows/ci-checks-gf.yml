@@ -23,8 +23,8 @@ env:
 
 jobs:
   go_mod_tidy:
-    name: Modules Lint
-    runs-on: self-hosted
+    name: Go Mod Tidy
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
