@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -211,6 +212,8 @@ func getRespWriter(path string) fhirResponseWriter {
 		return responseutils.NewResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewResponseWriter()
+	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
+		return responseutilsv2.NewResponseWriter() // TODO: V3
 	} else {
 		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
 		// In the cases we cannot discern a version we default to v1

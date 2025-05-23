@@ -7,6 +7,7 @@ import (
 
 	v1 "github.com/CMSgov/bcda-app/bcda/api/v1"
 	v2 "github.com/CMSgov/bcda-app/bcda/api/v2"
+	v3 "github.com/CMSgov/bcda-app/bcda/api/v3"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -78,6 +79,21 @@ func NewAPIRouter() http.Handler {
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler(constants.JOBIDPath, v2.DeleteJob))
 			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v2.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
+		})
+	}
+
+	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
+		r.Route("/api/demo", func(r chi.Router) {
+			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v3.BulkPatientRequest))
+			if conf.GetEnv("ENABLE_ALR_ENDPOINTS") == "true" {
+				r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v3.ALRRequest))
+			}
+			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v3.BulkGroupRequest))
+			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v3.JobStatus))
+			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v3.JobsStatus))
+			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler(constants.JOBIDPath, v3.DeleteJob))
+			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v3.AttributionStatus))
+			r.Get(m.WrapHandler("/metadata", v3.Metadata))
 		})
 	}
 

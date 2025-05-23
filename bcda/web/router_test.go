@@ -247,6 +247,48 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestV3EndpointsDisabled() {
+	// Set the V3 endpoints to be off and restart the router so the test router has the correct configuration
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "metadata")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestV3EndpointsEnabled() {
+	// Set the V3 endpoints to be on and restart the router so the test router has the correct configuration
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "attribution_status")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "metadata")
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestJobStatusRoute() {
 	res := s.getAPIRoute(constants.V1Path + constants.JobsFilePath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
