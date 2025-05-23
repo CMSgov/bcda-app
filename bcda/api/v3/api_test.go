@@ -95,7 +95,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", fmt.Sprintf("/api/v3/jobs/%s", tt.jobID), nil)
+			req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs/%s", constants.V3Path, tt.jobID), nil)
 			rr := httptest.NewRecorder()
 
 			rctx := chi.NewRouteContext()
@@ -301,7 +301,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 }
 
 func (s *APITestSuite) TestJobsStatus() {
-	req := httptest.NewRequest("GET", "/api/v3/jobs", nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs", constants.V3Path), nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
@@ -310,7 +310,7 @@ func (s *APITestSuite) TestJobsStatus() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: fmt.Sprintf("%sPatient/$export?_type=ExplanationOfBenefit", constants.V3Path),
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -321,7 +321,7 @@ func (s *APITestSuite) TestJobsStatus() {
 }
 
 func (s *APITestSuite) TestJobsStatusNotFound() {
-	req := httptest.NewRequest("GET", "/api/v3/jobs", nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs", constants.V3Path), nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
@@ -333,7 +333,7 @@ func (s *APITestSuite) TestJobsStatusNotFound() {
 }
 
 func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
-	req := httptest.NewRequest("GET", "/api/v3/jobs?_status=Failed", nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs?_status=Failed", constants.V3Path), nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
@@ -342,7 +342,7 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: fmt.Sprintf("%sPatient/$export?_type=ExplanationOfBenefit", constants.V3Path),
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -353,7 +353,7 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 }
 
 func (s *APITestSuite) TestJobsStatusWithStatus() {
-	req := httptest.NewRequest("GET", "/api/v3/jobs?_status=Failed", nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs?_status=Failed", constants.V3Path), nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
@@ -362,7 +362,7 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: fmt.Sprintf("%sPatient/$export?_type=ExplanationOfBenefit", constants.V3Path),
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -373,7 +373,7 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 }
 
 func (s *APITestSuite) TestJobsStatusWithStatuses() {
-	req := httptest.NewRequest("GET", "/api/v3/jobs?_status=Completed,Failed", nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs?_status=Completed,Failed", constants.V3Path), nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
@@ -382,7 +382,7 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 
 	j := models.Job{
 		ACOID:      acoUnderTest,
-		RequestURL: "/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: fmt.Sprintf("%sPatient/$export?_type=ExplanationOfBenefit", constants.V3Path),
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -405,7 +405,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v3/jobs/%s", tt.jobID), nil)
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("%sjobs/%s", constants.V3Path, tt.jobID), nil)
 			rr := httptest.NewRecorder()
 
 			rctx := chi.NewRouteContext()
@@ -445,7 +445,7 @@ func (s *APITestSuite) TestDeleteJob() {
 		s.T().Run(string(tt.status), func(t *testing.T) {
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-				RequestURL: "/api/v3/Patient/$export?_type=Patient,Coverage",
+				RequestURL: fmt.Sprintf("%sPatient/$export?_type=Patient,Coverage", constants.V3Path),
 				Status:     tt.status,
 			}
 			postgrestest.CreateJobs(t, s.db, &j)
@@ -544,7 +544,7 @@ func (s *APITestSuite) TestResourceTypes() {
 		"ClaimResponse",
 	}...)
 
-	h := api.NewHandler(resources, "/v3/fhir", "v3")
+	h := api.NewHandler(resources, constants.BFDV3Path, "v3")
 	mockSvc := &service.MockService{}
 
 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
@@ -566,7 +566,7 @@ func (s *APITestSuite) TestResourceTypes() {
 					ep = "Patient"
 				}
 
-				u, err := url.Parse(fmt.Sprintf("/api/v3/%s/$export", ep))
+				u, err := url.Parse(fmt.Sprintf("%s%s/$export", constants.V3Path, ep))
 				assert.NoError(t, err)
 
 				rp := middleware.RequestParameters{
@@ -597,7 +597,7 @@ func (s *APITestSuite) TestResourceTypes() {
 }
 
 func (s *APITestSuite) TestGetAttributionStatus() {
-	req := httptest.NewRequest("GET", "/api/v3/attribution_status", nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sattribution_status", constants.V3Path), nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
@@ -629,7 +629,7 @@ func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {
 }
 
 func (s *APITestSuite) createJobStatusRequest(acoID uuid.UUID, jobID uint) *http.Request {
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v3/jobs/%d", jobID), nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("%sjobs/%d", constants.V3Path, jobID), nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(jobID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
