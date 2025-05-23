@@ -19,7 +19,7 @@ on:
       - main
     paths:
       - bcda/lambda/create_group/**
-      - .github/workflows/admin-create-group-dev-deploy.yml
+      - .github/workflows/admin-create-group-deploy.yml
     
 
 jobs:

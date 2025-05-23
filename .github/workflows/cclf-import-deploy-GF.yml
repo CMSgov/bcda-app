@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - cclf-import/**
-      - .github/workflows/cclf-import-dev-deploy.yml
+      - .github/workflows/cclf-import-deploy-GF.yml
   workflow_dispatch:
     inputs:
       env:

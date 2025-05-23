@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - optout/**
-      - .github/workflows/opt-out-import-dev-deploy.yml
+      - .github/workflows/opt-out-import-deploy-GF.yml
   workflow_dispatch:
     inputs:
       env:
@@ -74,9 +74,9 @@ jobs:
         with:
           params: | 
             BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-opt-out-import-zip-bucket
-      # - name: Upload and reload
-        # run: |
-        #   aws s3 cp --no-progress function.zip \
-        #     s3://$BUCKET/function-${{ github.sha }}.zip
-        #   aws lambda update-function-code --function-name bcda-$ENVIRONMENT-opt-out-import \
-        #     --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+      - name: Upload and reload
+        run: |
+          aws s3 cp --no-progress function.zip \
+            s3://$BUCKET/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-opt-out-import \
+            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
