@@ -22,8 +22,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
       - name: Install Ansible
         run: |
-          sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
+          sudo dnf install ansible
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
