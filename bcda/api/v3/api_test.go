@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,9 +28,9 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
+	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -161,123 +163,124 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 }
 
 // TODO: V3
-// This and the next test seem to rely on existing non-cleaned up state.  As in these two tests
-// fail when run as part of the whole unit-test suite, however succeed when run independently.
-// These two tests also cause failures in api/v2 tests as well when run as part of the whole suite.
+// Some of the JobStatus tests seem to rely on existing non-cleaned up state.
+// They are failing when run as part of the whole unit-test suite however succeed when run independently.
+// These tests also cause failures in api/v2 tests when run as part of the whole suite.
+
 // https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
-// func (s *APITestSuite) TestJobStatusCompleted() {
-// 	j := models.Job{
-// 		ACOID:      acoUnderTest,
-// 		RequestURL: constants.V3Path + constants.PatientEOBPath,
-// 		Status:     models.JobStatusCompleted,
-// 	}
-// 	postgrestest.CreateJobs(s.T(), s.db, &j)
+func (s *APITestSuite) TestJobStatusCompleted() {
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: constants.V3Path + constants.PatientEOBPath,
+		Status:     models.JobStatusCompleted,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-// 	var expectedUrls []string
-// 	for i := 1; i <= 10; i++ {
-// 		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
-// 		expectedurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
-// 		expectedUrls = append(expectedUrls, expectedurl)
-// 		postgrestest.CreateJobKeys(s.T(), s.db,
-// 			models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"})
-// 	}
+	var expectedUrls []string
+	for i := 1; i <= 10; i++ {
+		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+		expectedurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
+		expectedUrls = append(expectedUrls, expectedurl)
+		postgrestest.CreateJobKeys(s.T(), s.db,
+			models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"})
+	}
 
-// 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
-// 	rr := httptest.NewRecorder()
+	req := s.createJobStatusRequest(acoUnderTest, j.ID)
+	rr := httptest.NewRecorder()
 
-// 	JobStatus(rr, req)
+	JobStatus(rr, req)
 
-// 	assert.Equal(s.T(), http.StatusOK, rr.Code)
-// 	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
-// 	str := rr.Header().Get("Expires")
-// 	fmt.Println(str)
-// 	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
+	str := rr.Header().Get("Expires")
+	fmt.Println(str)
+	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
 
-// 	var rb api.BulkResponseBody
-// 	err := json.Unmarshal(rr.Body.Bytes(), &rb)
-// 	if err != nil {
-// 		s.T().Error(err)
-// 	}
+	var rb api.BulkResponseBody
+	err := json.Unmarshal(rr.Body.Bytes(), &rb)
+	if err != nil {
+		s.T().Error(err)
+	}
 
-// 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
-// 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
-// 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-// 	assert.Equal(s.T(), len(expectedUrls), len(rb.Files))
-// 	// Order of these values is impossible to know so this is the only way
-// 	for _, fileItem := range rb.Files {
-// 		inOutput := false
-// 		for _, expectedUrl := range expectedUrls {
-// 			if fileItem.URL == expectedUrl {
-// 				inOutput = true
-// 				break
-// 			}
-// 		}
-// 		assert.True(s.T(), inOutput)
+	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
+	assert.Equal(s.T(), true, rb.RequiresAccessToken)
+	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
+	assert.Equal(s.T(), len(expectedUrls), len(rb.Files))
+	// Order of these values is impossible to know so this is the only way
+	for _, fileItem := range rb.Files {
+		inOutput := false
+		for _, expectedUrl := range expectedUrls {
+			if fileItem.URL == expectedUrl {
+				inOutput = true
+				break
+			}
+		}
+		assert.True(s.T(), inOutput)
 
-// 	}
-// 	assert.Empty(s.T(), rb.Errors)
-// }
+	}
+	assert.Empty(s.T(), rb.Errors)
+}
 
-// func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
-// 	j := models.Job{
-// 		ACOID:      acoUnderTest,
-// 		RequestURL: constants.V3Path + constants.PatientEOBPath,
-// 		Status:     models.JobStatusCompleted,
-// 	}
-// 	postgrestest.CreateJobs(s.T(), s.db, &j)
+func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: constants.V3Path + constants.PatientEOBPath,
+		Status:     models.JobStatusCompleted,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-// 	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
-// 	jobKey := models.JobKey{
-// 		JobID:        j.ID,
-// 		FileName:     fileName,
-// 		ResourceType: "ExplanationOfBenefit",
-// 	}
-// 	postgrestest.CreateJobKeys(s.T(), s.db, jobKey)
+	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+	jobKey := models.JobKey{
+		JobID:        j.ID,
+		FileName:     fileName,
+		ResourceType: "ExplanationOfBenefit",
+	}
+	postgrestest.CreateJobKeys(s.T(), s.db, jobKey)
 
-// 	f := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
-// 	if _, err := os.Stat(f); os.IsNotExist(err) {
-// 		err = os.MkdirAll(f, os.ModePerm)
-// 		if err != nil {
-// 			s.T().Error(err)
-// 		}
-// 	}
+	f := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
+	if _, err := os.Stat(f); os.IsNotExist(err) {
+		err = os.MkdirAll(f, os.ModePerm)
+		if err != nil {
+			s.T().Error(err)
+		}
+	}
 
-// 	errFileName := strings.Split(jobKey.FileName, ".")[0]
-// 	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
-// 	_, err := os.Create(errFilePath)
-// 	if err != nil {
-// 		s.T().Error(err)
-// 	}
+	errFileName := strings.Split(jobKey.FileName, ".")[0]
+	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
+	_, err := os.Create(errFilePath)
+	if err != nil {
+		s.T().Error(err)
+	}
 
-// 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
-// 	rr := httptest.NewRecorder()
+	req := s.createJobStatusRequest(acoUnderTest, j.ID)
+	rr := httptest.NewRecorder()
 
-// 	JobStatus(rr, req)
+	JobStatus(rr, req)
 
-// 	assert.Equal(s.T(), http.StatusOK, rr.Code)
-// 	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
 
-// 	var rb api.BulkResponseBody
-// 	err = json.Unmarshal(rr.Body.Bytes(), &rb)
-// 	if err != nil {
-// 		s.T().Error(err)
-// 	}
+	var rb api.BulkResponseBody
+	err = json.Unmarshal(rr.Body.Bytes(), &rb)
+	if err != nil {
+		s.T().Error(err)
+	}
 
-// 	dataurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
-// 	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", constants.ExpectedTestUrl, fmt.Sprint(j.ID), errFileName)
+	dataurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
+	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", constants.ExpectedTestUrl, fmt.Sprint(j.ID), errFileName)
 
-// 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
-// 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
-// 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-// 	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
-// 	for _, file := range rb.Files {
-// 		assert.NotContains(s.T(), file.URL, "-error.ndjson")
-// 	}
-// 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
-// 	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
+	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
+	assert.Equal(s.T(), true, rb.RequiresAccessToken)
+	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
+	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
+	for _, file := range rb.Files {
+		assert.NotContains(s.T(), file.URL, "-error.ndjson")
+	}
+	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
+	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
-// 	os.Remove(errFilePath)
-// }
+	os.Remove(errFilePath)
+}
 
 // This job is old, but has not yet been marked as expired.
 func (s *APITestSuite) TestJobStatusNotExpired() {
@@ -490,7 +493,7 @@ func (s *APITestSuite) TestMetadataResponse() {
 	assert.Equal(s.T(), 1, len(cs.Rest))
 	assert.Equal(s.T(), 2, len(cs.Rest[0].Resource))
 	assert.Len(s.T(), cs.Instantiates, 2)
-	assert.Contains(s.T(), cs.Instantiates[0].Value, "/v3/fhir/metadata")
+	assert.Contains(s.T(), cs.Instantiates[0].Value, fmt.Sprintf("%s/metadata", constants.BFDV3Path))
 	resourceData := []struct {
 		rt           fhircodes.ResourceTypeCode_Value
 		opName       string
@@ -540,11 +543,9 @@ func (s *APITestSuite) TestResourceTypes() {
 		"Patient",
 		"Coverage",
 		"ExplanationOfBenefit",
-		"Claim",
-		"ClaimResponse",
 	}...)
 
-	h := api.NewHandler(resources, constants.BFDV3Path, "v3")
+	h := api.NewHandler(resources, constants.BFDV3Path, constants.V3Version)
 	mockSvc := &service.MockService{}
 
 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
