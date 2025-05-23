@@ -22,7 +22,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
       - name: Install Ansible
         run: |
-          sudo dnf install ansible
+          sudo dnf install ansible -y
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
