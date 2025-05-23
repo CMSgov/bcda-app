@@ -19,7 +19,6 @@ on:
           - test
           - opensbx
           - prod
-  pull_request:
 
 jobs:
   test:
