@@ -1,0 +1,49 @@
+name: Admin ACO Deny Integration Tests
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/admin-aco-deny-integration-test.yml
+      - .github/workflows/admin-aco-deny-deploy-GF.yml
+      - bcda/lambda/admin_aco_deny/**
+  workflow_dispatch:
+
+# Ensure we have only one integration test running at a time
+concurrency:
+  group: admin-aco-deny-integration-test
+
+jobs:
+  # Deploy first if triggered by pull_request
+  # deploy:
+  #   if: ${{ github.event_name == 'pull_request' }}
+  #   uses: ./.github/workflows/admin-aco-deny-deploy.yml
+  #   secrets: inherit
+
+  trigger:
+    if: ${{ always() }}
+    needs: deploy
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    defaults:
+      run:
+        working-directory: ./bcda/lambda/admin_aco_deny
+    outputs:
+      start_time: ${{ steps.invoke-lambda.outputs.STARTTIME }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+      - name: Send event to trigger lambda function
+        id: invoke-lambda
+        run: |
+          echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
+          aws lambda invoke --function-name bcda-dev-admin-aco-deny \
+            --cli-binary-format raw-in-base64-out \
+            --payload '{"deny_aco_ids":["foo001","bar002"]}' test-result.txt
+      - name: Verify result
+        run: |
+          if grep -q "errorType" test-result.txt; then echo "Failed: check lambda logs."; exit 1; else echo "Success"; fi
