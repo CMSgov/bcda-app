@@ -106,6 +106,8 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 		h.RespWriter = responseutils.NewResponseWriter()
 	case "v2":
 		h.RespWriter = responseutilsv2.NewResponseWriter()
+	case constants.V3Version:
+		h.RespWriter = responseutilsv2.NewResponseWriter() // TODO: V3
 	default:
 		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
 	}
@@ -608,7 +610,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
 
-			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) && h.apiVersion != "v1" {
+			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) && h.apiVersion == "v2" {
 				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
 			}
 		}

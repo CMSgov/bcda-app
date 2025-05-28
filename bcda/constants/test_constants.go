@@ -18,6 +18,7 @@ const TestRouter = "Test router"
 // Path Constants
 const V1Path = "/api/v1/"
 const V2Path = "/api/v2/"
+const V3Path = "/api/demo/"
 const EOBExportPath = "ExplanationOfBenefit/$export"
 const PatientEOBPath = "Patient/$export?_type=ExplanationOfBenefit"
 const GroupExportPath = "Group/all/$export"

@@ -181,7 +181,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 		expected_err string
 	}{
 		{"Not Enough Parts", "/Patient", "not enough parts"},
-		{"Invalid Version", "/api/v3/Patient", "unexpected API version"},
+		{"Invalid Version", "/api/v9/Patient", "unexpected API version"},
 	}
 
 	for _, tt := range tests {
