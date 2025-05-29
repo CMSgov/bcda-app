@@ -4,7 +4,7 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      env:
+      deploy_env:
         description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
         required: true
         default: dev
@@ -20,6 +20,7 @@ on:
     paths:
       - bcda/lambda/create_group/**
       - .github/workflows/admin-create-group-deploy.yml
+  pull_request:
     
 
 jobs:
@@ -31,7 +32,6 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    environment: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -43,12 +43,12 @@ jobs:
           zip -j function.zip bin/bootstrap
 
       - name: Set ENVIRONMENT - no inputs
-        if: ${{ inputs.env == '' }}
+        if: ${{ inputs.deploy_env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
       - name: Set ENVIRONMENT - inputs
-        if: ${{ inputs.env != '' }}
-        run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+        if: ${{ inputs.deploy_env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - non prod
         if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
@@ -72,7 +72,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-create-group-zip-bucket
+            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-admin-create-group-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
