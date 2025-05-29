@@ -4,7 +4,7 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      env:
+      deploy_env:
         description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
         required: true
         default: dev
@@ -30,7 +30,6 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    environment: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -42,12 +41,12 @@ jobs:
           go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
           zip -j function.zip bin/bootstrap
       - name: Set ENVIRONMENT - no inputs
-        if: ${{ inputs.env == '' }}
+        if: ${{ inputs.deploy_env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
       - name: Set ENVIRONMENT - inputs
-        if: ${{ inputs.env != '' }}
-        run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+        if: ${{ inputs.deploy_env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - non prod
         if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
@@ -74,7 +73,7 @@ jobs:
             BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-zip-bucket
       - name: Upload and reload
         run: |
-          aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+          # aws s3 cp --no-progress function.zip \
+          #   s3://$BUCKET/function-${{ github.sha }}.zip 
+          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco \
+          #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
