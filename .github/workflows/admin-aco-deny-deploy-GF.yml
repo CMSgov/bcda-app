@@ -4,7 +4,7 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      env:
+      deploy_env:
         description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
         required: true
         default: dev
@@ -20,6 +20,7 @@ on:
     paths:
       - bcda/lambda/admin_aco_deny/**
       - .github/workflows/admin-aco-deny-deploy-GF.yml
+  pull_request:
 
 jobs:
   build_and_zip:
@@ -43,12 +44,12 @@ jobs:
           zip -j function.zip bin/bootstrap
 
       - name: Set ENVIRONMENT - no inputs
-        if: ${{ inputs.env == '' }}
+        if: ${{ inputs.deploy_env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
       - name: Set ENVIRONMENT - inputs
-        if: ${{ inputs.env != '' }}
-        run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+        if: ${{ inputs.deploy_env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - non prod
         if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}

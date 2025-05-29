@@ -1,4 +1,4 @@
-name: Admin Create Group Dev Deploy
+name: Admin Create Group Deploy
 
 on:
   workflow_call:
@@ -20,7 +20,6 @@ on:
     paths:
       - bcda/lambda/create_group/**
       - .github/workflows/admin-create-group-deploy.yml
-  pull_request:
     
 
 jobs:
