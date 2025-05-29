@@ -21,7 +21,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/admin-create-group-deploy-GF.yml
     with:
-      env: 'dev'
+      deploy_env: 'dev'
     secrets: inherit
 
   trigger:

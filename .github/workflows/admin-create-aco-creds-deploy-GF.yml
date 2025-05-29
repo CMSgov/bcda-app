@@ -1,0 +1,72 @@
+name: Admin Create ACO Credentials deploy
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - sandbox
+          - prod
+  push:
+    branches:
+      - main
+    paths:
+      - bcda/lambda/admin_create_aco_creds/**
+      - .github/workflows/admin-create-aco-creds-deploy-GF.yml
+  pull_request:
+
+jobs:
+  test:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    defaults:
+      run:
+        working-directory: bcda
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - name: Build admin-create-aco-creds zip file
+        env:
+          CGO_ENABLED: 0
+          SSAS_USE_TLS: true
+        run: |
+          go build -o bin/bootstrap ./lambda/admin_create_aco_creds/*.go
+          zip -j function.zip bin/bootstrap
+      - name: Set ENVIRONMENT - no inputs
+        if: ${{ inputs.deploy_env == '' }}
+        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+
+      - name: Set ENVIRONMENT - inputs
+        if: ${{ inputs.deploy_env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
+
+      - name: Set ACCOUNT - non prod
+        if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
+        run: | 
+          echo "ACC=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ROLE=dev" >> $GITHUB_ENV
+
+      - name: Set ACCOUNT - prod
+        if: ${{ env.ENVIRONMENT == 'opensbx' || env.ENVIRONMENT == 'prod' }}
+        run: | 
+          echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "ROLE=prod" >> $GITHUB_ENV
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
+      - name: Upload and reload
+        run: |
+          # aws s3 cp --no-progress function.zip \
+          #   s3://$BUCKET/function-${{ github.sha }}.zip
+          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco-creds \
+          #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
