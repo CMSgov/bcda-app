@@ -14,10 +14,12 @@ concurrency:
 
 jobs:
   # Deploy first if triggered by pull_request
-  # deploy:
-  #   if: ${{ github.event_name == 'pull_request' }}
-  #   uses: ./.github/workflows/admin-create-group-dev-deploy.yml
-  #   secrets: inherit
+  deploy:
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/admin-create-group-deploy-GF.yml
+    with:
+      release_version: ${{ inputs.env || 'dev' }}
+    secrets: inherit
 
   trigger:
     if: ${{ always() }}
