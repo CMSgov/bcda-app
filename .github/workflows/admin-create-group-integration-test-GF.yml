@@ -18,7 +18,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     uses: ./.github/workflows/admin-create-group-deploy-GF.yml
     with:
-      release_version: ${{ inputs.env || 'dev' }}
+      env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
   trigger:
