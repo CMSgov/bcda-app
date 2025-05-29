@@ -69,7 +69,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/bcda-${{ env.ENVIRONMENT }}-cclf-import-zip-bucket
+            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-cclf-import-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
