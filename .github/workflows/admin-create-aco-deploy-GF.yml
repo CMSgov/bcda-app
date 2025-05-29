@@ -20,6 +20,7 @@ on:
     paths:
       - bcda/lambda/admin_create_aco/**
       - .github/workflows/admin-create-aco-deploy.yml
+  pull_request:
 
 jobs:
   build_and_zip:
