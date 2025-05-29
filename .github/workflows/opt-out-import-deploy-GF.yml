@@ -9,15 +9,15 @@ on:
       - .github/workflows/opt-out-import-deploy-GF.yml
   workflow_dispatch:
     inputs:
-      env:
-        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+      deploy_env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
   pull_request:
 
@@ -30,7 +30,6 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    environment: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -43,12 +42,12 @@ jobs:
 
 
       - name: Set ENVIRONMENT - no inputs
-        if: ${{ inputs.env == '' }}
+        if: ${{ inputs.deploy_env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
 
       - name: Set ENVIRONMENT - inputs
-        if: ${{ inputs.env != '' }}
-        run: echo "ENVIRONMENT=${{ inputs.env }}" >> $GITHUB_ENV
+        if: ${{ inputs.deploy_env != '' }}
+        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - non prod
         if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}

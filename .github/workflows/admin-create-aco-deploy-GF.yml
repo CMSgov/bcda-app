@@ -5,14 +5,14 @@ on:
   workflow_dispatch:
     inputs:
       deploy_env:
-        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
   push:
     branches:
