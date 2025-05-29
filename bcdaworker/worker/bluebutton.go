@@ -6,12 +6,13 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	models "github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/pkg/errors"
 )
 
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
-func getBlueButtonID(bb client.APIClient, mbi string, jobData models.JobEnqueueArgs) (blueButtonID string, err error) {
+func getBlueButtonID(bb client.APIClient, mbi string, jobData worker_types.JobEnqueueArgs) (blueButtonID string, err error) {
 	jsonData, err := bb.GetPatientByMbi(jobData, mbi)
 	if err != nil {
 		return "", err

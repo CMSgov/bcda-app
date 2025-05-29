@@ -3,7 +3,7 @@ name: Deploy All
 
 on:
   schedule:
-    - cron: 0 8 * * 1-5 # every workday at 8am
+    - cron: 0 12 * * 1-5 # every workday at 8am EST
   workflow_dispatch:
     inputs:
       release_version:
@@ -63,6 +63,8 @@ env:
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
   ENV_MODIFIER: ${{ (inputs.env == 'opensbx' && 'sbx') || inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
+  VERIFICATION_RETRIES: 90 # 90 retries with 10s sleep = max 900s or 15m.  Verification jobs run in parallel.
+  VERIFICATION_SLEEP: 10
 
 jobs:
   migrate_db:
@@ -151,41 +153,91 @@ jobs:
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
           export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
-      - run: sleep 300 # Give plenty of time for api and worker instances to refresh
-      - name: Verify API version
-        run: |
-          export BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -r .version`
-          if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-            echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
-            exit 1
-          fi
-      - name: Verify SSAS version
-        run: |
-          export BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -r .version`
-          if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
-            echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
-            exit 1
-          fi
-      - name: Verify Worker version
-        run: |
-          export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-          # Was unable to escape the backticks (`), creating this function seems to get around that
-          get_image_version () {
-              aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
-          }
-          export BCDA_WORKER_VERSION=`get_image_version`
-          if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-            echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_WORKER_VERSION}."
-            exit 1
-          fi
       - name: Upload notify script
         uses: actions/upload-artifact@v4
         with:
           name: notify-script
           path: ./scripts/mark_deployment.py
+  
+  verify_api_version:
+    needs: [deploy]
+    runs-on: self-hosted
+    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    steps:
+      - run: |
+          TRY=1
+
+          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+            BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
+
+            if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+              echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
+              TRY=$(($TRY + 1))
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $VERIFICATION_SLEEP
+              fi
+            else
+              break
+            fi
+          done
+
+  verify_ssas_version:
+    needs: [deploy]
+    runs-on: self-hosted
+    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    steps:
+      - run: |
+          TRY=1
+
+          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+            BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
+
+            if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
+              echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
+              TRY=$(($TRY + 1))
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $VERIFICATION_SLEEP
+              fi
+            else
+              break
+            fi
+          done
+
+  verify_worker_version:
+    needs: [deploy]
+    runs-on: self-hosted
+    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    steps:
+      - run: |
+          TRY=1
+
+          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+            export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+            # Was unable to escape the backticks (`), creating this function seems to get around that
+            get_image_version () {
+                aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
+            }
+            export BCDA_WORKER_VERSION=`get_image_version`
+
+            if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+              echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match aws version found: ${BCDA_WORKER_VERSION}."
+              TRY=$(($TRY + 1))
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $VERIFICATION_SLEEP
+              fi
+            else
+              break
+            fi
+          done
 
   smoketests:
-    needs: [migrate_db, deploy]
+    needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
@@ -197,7 +249,7 @@ jobs:
     secrets: inherit
 
   notify_newrelic:
-    needs: [deploy]
+    needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     runs-on: self-hosted
     steps:
       - name: Set env vars from AWS params

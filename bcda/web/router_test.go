@@ -21,6 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -246,6 +247,48 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestV3EndpointsDisabled() {
+	// Set the V3 endpoints to be off and restart the router so the test router has the correct configuration
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "metadata")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestV3EndpointsEnabled() {
+	// Set the V3 endpoints to be on and restart the router so the test router has the correct configuration
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "attribution_status")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "metadata")
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestJobStatusRoute() {
 	res := s.getAPIRoute(constants.V1Path + constants.JobsFilePath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -346,10 +389,10 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 	return configs
 }
 
-func setExpectedMockCalls(s *RouterTestSuite, mock *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
-	auth.SetMockProvider(s.T(), mock)
+func setExpectedMockCalls(s *RouterTestSuite, mockP *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
+	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
+	auth.SetMockProvider(s.T(), mockP)
 }
 
 // integration test, requires connection to postgres db

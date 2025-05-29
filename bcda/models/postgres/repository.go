@@ -96,6 +96,26 @@ func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAnd
 	return nil
 }
 
+func (r *Repository) GetCCLFFileByID(ctx context.Context, ID uint) (*models.CCLFFile, error) {
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
+	sb.From("cclf_files")
+	sb.Where(sb.Equal("id", ID))
+
+	cclfFile := models.CCLFFile{}
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear, &cclfFile.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &cclfFile, nil
+}
+
 func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (bool, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("COUNT(*)")
