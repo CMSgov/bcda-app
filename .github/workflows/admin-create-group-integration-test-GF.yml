@@ -20,8 +20,6 @@ jobs:
       contents: read
       id-token: write
     uses: ./.github/workflows/admin-create-group-deploy-GF.yml
-    with:
-      deploy_env: 'dev'
     secrets: inherit
 
   trigger:
