@@ -16,9 +16,12 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/admin-create-group-deploy-GF.yml
     with:
-      env: ${{ inputs.env || 'dev' }}
+      env: 'dev'
     secrets: inherit
 
   trigger:
