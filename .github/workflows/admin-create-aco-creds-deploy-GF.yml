@@ -67,7 +67,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
       - name: Upload and reload
         run: |
-          # aws s3 cp --no-progress function.zip \
-          #   s3://$BUCKET/function-${{ github.sha }}.zip
-          # aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco-creds \
-          #   --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+          aws s3 cp --no-progress function.zip \
+            s3://$BUCKET/function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco-creds \
+            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
