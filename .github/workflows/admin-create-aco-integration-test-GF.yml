@@ -14,10 +14,13 @@ concurrency:
 
 jobs:
   # Deploy first if triggered by pull_request
-  # deploy:
-  #   if: ${{ github.event_name == 'pull_request' }}
-  #   uses: ./.github/workflows/admin-create-aco-dev-deploy.yml
-  #   secrets: inherit
+  deploy:
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/admin-create-aco-dev-deploy.yml
+    secrets: inherit
 
   trigger:
     if: ${{ always() }}
