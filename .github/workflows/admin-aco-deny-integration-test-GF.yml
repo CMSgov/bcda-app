@@ -2,10 +2,10 @@ name: Admin ACO Deny Integration Tests
 
 on:
   pull_request:
-    paths:
-      - .github/workflows/admin-aco-deny-integration-test.yml
-      - .github/workflows/admin-aco-deny-deploy-GF.yml
-      - bcda/lambda/admin_aco_deny/**
+    # paths:
+    #   - .github/workflows/admin-aco-deny-integration-test.yml
+    #   - .github/workflows/admin-aco-deny-deploy-GF.yml
+    #   - bcda/lambda/admin_aco_deny/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
@@ -14,10 +14,10 @@ concurrency:
 
 jobs:
   # Deploy first if triggered by pull_request
-  # deploy:
-  #   if: ${{ github.event_name == 'pull_request' }}
-  #   uses: ./.github/workflows/admin-aco-deny-deploy.yml
-  #   secrets: inherit
+  deploy:
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/admin-aco-deny-deploy-GF.yml
+    secrets: inherit
 
   trigger:
     if: ${{ always() }}
@@ -36,7 +36,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
       - name: Send event to trigger lambda function
         id: invoke-lambda
         run: |

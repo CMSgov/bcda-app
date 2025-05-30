@@ -19,7 +19,6 @@ on:
           - test
           - sandbox
           - prod
-  pull_request:
 
 jobs:
   test:
