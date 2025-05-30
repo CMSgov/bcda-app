@@ -20,6 +20,7 @@ on:
     paths:
       - bcda/lambda/admin_create_aco_creds/**
       - .github/workflows/admin-create-aco-creds-deploy-GF.yml
+  pull_request:
 
 jobs:
   test:
