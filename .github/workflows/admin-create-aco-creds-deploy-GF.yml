@@ -34,6 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.1'
       - name: Build admin-create-aco-creds zip file
         env:
           CGO_ENABLED: 0
