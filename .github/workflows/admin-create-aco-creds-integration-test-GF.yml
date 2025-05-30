@@ -2,10 +2,10 @@ name: Admin Create ACO Credentials Integration Tests
 
 on:
   pull_request:
-    paths:
-      - .github/workflows/admin-create-aco-creds-integration-test-GF.yml
-      - .github/workflows/admin-create-aco-creds-deploy.yml
-      - bcda/lambda/admin_create_aco_creds/**
+    # paths:
+    #   - .github/workflows/admin-create-aco-creds-integration-test-GF.yml
+    #   - .github/workflows/admin-create-aco-creds-deploy.yml
+    #   - bcda/lambda/admin_create_aco_creds/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
