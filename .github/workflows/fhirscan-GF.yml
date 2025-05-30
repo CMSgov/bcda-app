@@ -8,13 +8,14 @@ on:
 
 jobs:
   fhirscan:
+    permissions:
+      contents: read
+      id-token: write
     name: run fhir scan
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
