@@ -4,11 +4,11 @@ name: cclf-import test integration
 
 on:
   pull_request:
-    # paths:
-    #   - .github/workflows/cclf-import-test-integration.yml
-    #   - .github/workflows/cclf-import-test-deploy.yml
-    #   - bcda/cclf/**
-    #   - bcda/lambda/cclf/**
+    paths:
+      - .github/workflows/cclf-import-test-integration.yml
+      - .github/workflows/cclf-import-test-deploy.yml
+      - bcda/cclf/**
+      - bcda/lambda/cclf/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time

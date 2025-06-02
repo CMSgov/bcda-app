@@ -1,11 +1,11 @@
 name: Admin Create ACO Integration Tests
 
 on:
-  pull_request:
-    paths:
-      - .github/workflows/admin-create-aco-integration-test-GF.yml
-      - .github/workflows/admin-create-aco-deploy.yml
-      - bcda/lambda/admin_create_aco/**
+  # pull_request:
+  #   paths:
+  #     - .github/workflows/admin-create-aco-integration-test-GF.yml
+  #     - .github/workflows/admin-create-aco-deploy.yml
+  #     - bcda/lambda/admin_create_aco/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
