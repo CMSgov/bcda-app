@@ -2,8 +2,8 @@ name: 'Smoke Tests'
 
 on:
   pull_request:
-    paths:
-      - .github/workflows/smoke_tests.yml
+    # paths:
+    #   - .github/workflows/smoke-tests-GF.yml
   workflow_dispatch:
     inputs:
       release_version:
