@@ -93,7 +93,7 @@ env:
 jobs:
   smoke_tests:
     name: run smoke tests
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
