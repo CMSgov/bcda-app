@@ -40,17 +40,18 @@ permissions:
   contents: read
 
 jobs:
-  build_and_package_bcda:
-    uses: ./.github/workflows/build-and-package-bcda-gf.yml
-    with:
-      release_version: ${{ inputs.release_version || 'main' }}
-    secrets: inherit
-
-  # build_and_package_ssas:
-  #   uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml
+  # build_and_package_bcda:
+  #   uses: ./.github/workflows/build-and-package-bcda-gf.yml
   #   with:
-  #     ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+  #     release_version: ${{ inputs.release_version || 'main' }}
   #   secrets: inherit
+
+  build_and_package_ssas:
+    # uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@jscott/PLT-1052
+    with:
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+    secrets: inherit
   
   # create_amis:
   #   runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
