@@ -17,6 +17,9 @@ concurrency:
 jobs:
   # Deploy first if triggered by pull_request
   deploy:
+    permissions:
+      contents: read
+      id-token: write
     if: ${{ github.event_name == 'pull_request' }}
     uses: ./.github/workflows/admin-create-aco-creds-dev-deploy.yml
     secrets: inherit
