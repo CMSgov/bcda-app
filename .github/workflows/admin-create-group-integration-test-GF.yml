@@ -1,7 +1,7 @@
 name: Admin Create Group Integration Tests
 
 on:
-  pull_request:
+  # pull_request:
   #   paths:
   #     - .github/workflows/admin-create-group-integration-test-GF.yml
   #     - .github/workflows/admin-create-group-deploy.yml
