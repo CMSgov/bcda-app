@@ -1,7 +1,7 @@
 name: Admin Create ACO Credentials Integration Tests
 
 on:
-  # pull_request:
+  pull_request:
     # paths:
     #   - .github/workflows/admin-create-aco-creds-integration-test-GF.yml
     #   - .github/workflows/admin-create-aco-creds-deploy.yml

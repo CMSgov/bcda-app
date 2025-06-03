@@ -1,7 +1,7 @@
 name: FHIR Scan
 
 on:
-  pull_request:
+  #pull_request:
     # paths:
     #   - .github/workflows/fhirscan.yml
   workflow_dispatch:
