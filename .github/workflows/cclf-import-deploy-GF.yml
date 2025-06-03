@@ -19,6 +19,7 @@ on:
           - test
           - sandbox
           - prod
+  workflow_call:
 
 jobs:
   test:
