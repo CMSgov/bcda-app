@@ -44,11 +44,18 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
+      - name: Get BFD Account
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: | 
+            BFD_ACCOUNT_ID=/bfd/account-id
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
-          role-to-assume: arn:aws:iam::${{ secrets.BFD_ACCOUNT_ID }}:role/bfd-test-eft-bcda-bucket-role
+          role-to-assume: arn:aws:iam::${{ env.BFD_ACCOUNT_ID }}:role/bfd-test-eft-bcda-bucket-role
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
