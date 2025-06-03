@@ -115,7 +115,12 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            TEST=/bcda/dev/api/DEBUG
+            SSAS_CREDENTIALS=/bcda/workflows/${{ inputs.env }}/ssas_admin_credentials
+            ASSERTION_AUD=/bcda/workflows/${{ inputs.env }}/ssas_assertion_aud
+            HOST=/bcda/workflows/${{ inputs.env }}/ssas_elb
+            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/${{ env.creds }}_client_credentials
+            DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/denylisted_client_credentials
+            PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ inputs.env }}/paca_client_credentials
       - name: Install docker compose manually
         run: |
           sudo mkdir -p /usr/local/lib/docker/cli-plugins
