@@ -144,9 +144,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Ansible
         run: |
-          #sudo yum update -y
-          sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
+          sudo dnf install ansible -y
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
