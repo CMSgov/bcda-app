@@ -9,7 +9,7 @@ on:
     #   - .github/workflows/cclf-import-test-deploy.yml
     #   - bcda/cclf/**
     #   - bcda/lambda/cclf/**
-  workflow_dispatch:
+  # workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
 concurrency:
@@ -31,7 +31,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
