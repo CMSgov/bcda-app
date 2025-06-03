@@ -1,13 +1,13 @@
-FROM ubuntu:jammy
+FROM alpine:3.22
 
-RUN apt update -y && apt install curl -y && apt install jq -y 
+RUN apk add --no-cache curl jq bash
 
 COPY fhir_testing/config.json .
 COPY fhir_testing/run-fhir-test.sh .
 
 RUN chmod +x run-fhir-test.sh
 
-RUN useradd -ms /bin/bash inferno
+RUN addgroup fhir && adduser -D inferno -G fhir
 USER inferno
 
 ENTRYPOINT ["./run-fhir-test.sh"]
