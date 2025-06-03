@@ -1,4 +1,4 @@
-FROM ubuntu:25.04
+FROM ubuntu:jammy
 
 RUN apt update -y && apt install curl -y && apt install jq -y 
 
