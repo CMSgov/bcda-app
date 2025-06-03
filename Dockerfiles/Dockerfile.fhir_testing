@@ -1,4 +1,4 @@
-FROM ruby:3.1.2
+FROM ubuntu:25.10
 
 RUN apt update -y && apt install curl -y && apt install jq -y 
 
@@ -6,4 +6,8 @@ COPY fhir_testing/config.json .
 COPY fhir_testing/run-fhir-test.sh .
 
 RUN chmod +x run-fhir-test.sh
+
+RUN useradd -ms /bin/bash inferno
+USER inferno
+
 ENTRYPOINT ["./run-fhir-test.sh"]
