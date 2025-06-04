@@ -19,11 +19,11 @@ permissions:
   contents: read
 
 jobs:
-  # ci_checks:
-  #   uses: ./.github/workflows/ci-checks-gf.yml
-  #   with:
-  #     release_version: ${{ inputs.release_version || 'main' }}
-  #   secrets: inherit
+  ci_checks:
+    uses: ./.github/workflows/ci-checks-gf.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+    secrets: inherit
 
   build_and_package:
     uses: ./.github/workflows/package-rpms-gf.yml
