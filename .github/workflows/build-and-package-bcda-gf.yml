@@ -24,13 +24,15 @@ jobs:
   ci_checks:
     uses: ./.github/workflows/ci-checks-gf.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
+#      release_version: ${{ inputs.release_version || 'main' }}
+      release_version: ${{ al2023_test || 'main' }}
     secrets: inherit
 
   build_and_package:
     uses: ./.github/workflows/package-rpms-gf.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
+#      release_version: ${{ inputs.release_version || 'main' }}
+      release_version: ${{ al2023_test || 'main' }}
     secrets: inherit
   
   # post_build:
