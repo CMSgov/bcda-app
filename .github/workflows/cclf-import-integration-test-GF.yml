@@ -1,12 +1,12 @@
 # Integration test that triggers a CCLF import in the test environment and
 # verifies the imported data in the test database for ACO A0001.
-name: cclf-import test integration
+name: cclf-import test integration GF
 
 on:
   pull_request:
     paths:
-      - .github/workflows/cclf-import-test-integration.yml
-      - .github/workflows/cclf-import-test-deploy.yml
+      - .github/workflows/cclf-import-integration-test-GF.yml
+      - .github/workflows/cclf-import-deploy-GF.yml
       - bcda/cclf/**
       - bcda/lambda/cclf/**
   workflow_dispatch:

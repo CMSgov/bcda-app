@@ -1,11 +1,11 @@
-name: Admin ACO Deny Integration Tests
+name: Admin ACO Deny Integration Tests GF
 
 on:
-  # pull_request:
-  #   paths:
-  #     - .github/workflows/admin-aco-deny-integration-test.yml
-  #     - .github/workflows/admin-aco-deny-deploy-GF.yml
-  #     - bcda/lambda/admin_aco_deny/**
+  pull_request:
+    paths:
+      - .github/workflows/admin-aco-deny-integration-test.yml
+      - .github/workflows/admin-aco-deny-deploy-GF.yml
+      - bcda/lambda/admin_aco_deny/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time

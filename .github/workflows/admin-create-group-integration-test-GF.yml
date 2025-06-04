@@ -1,11 +1,11 @@
-name: Admin Create Group Integration Tests
+name: Admin Create Group Integration Tests GF
 
 on:
-  # pull_request:
-  #   paths:
-  #     - .github/workflows/admin-create-group-integration-test-GF.yml
-  #     - .github/workflows/admin-create-group-deploy.yml
-  #     - bcda/lambda/create_group/**
+  pull_request:
+    paths:
+      - .github/workflows/admin-create-group-integration-test-GF.yml
+      - .github/workflows/admin-create-group-deploy-GF.yml
+      - bcda/lambda/create_group/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time

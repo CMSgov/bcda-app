@@ -1,11 +1,11 @@
 # This workflow generates database documentation and ERD files.
 #
-name: Generate dbdocs
+name: Generate dbdocs GF
 
 on:
   pull_request:
     paths:
-      - .github/workflows/dbdocs.yml
+      - .github/workflows/dbdocs-GF.yml
       - db/migrations/bcda
       - db/migrations/bcda_queue
 

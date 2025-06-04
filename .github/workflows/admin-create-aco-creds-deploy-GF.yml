@@ -1,7 +1,6 @@
-name: Admin Create ACO Credentials deploy
+name: Admin Create ACO Credentials deploy GF
 
 on:
-  # pull_request:
   workflow_call:
   workflow_dispatch:
     inputs:

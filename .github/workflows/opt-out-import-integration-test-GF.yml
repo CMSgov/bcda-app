@@ -4,12 +4,12 @@ name: opt-out-import test integration GF
 
 on:
   pull_request:
-  #   paths:
-  #     - .github/workflows/opt-out-import-test-integration.yml
-  #     - .github/workflows/opt-out-import-test-deploy.yml
-  #     - optout/**
-  #     - bcda/suppression/**
-  #     - bcda/lambda/optout/**
+    paths:
+      - .github/workflows/opt-out-import-integration-test-GF.yml
+      - .github/workflows/opt-out-import-test-deploy-GF.yml
+      - optout/**
+      - bcda/suppression/**
+      - bcda/lambda/optout/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time

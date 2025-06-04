@@ -1,9 +1,9 @@
-name: FHIR Scan
+name: FHIR Scan GF
 
 on:
-  #pull_request:
-    # paths:
-    #   - .github/workflows/fhirscan.yml
+  pull_request:
+    paths:
+      - .github/workflows/fhirscan.yml
   workflow_dispatch:
 
 jobs:
