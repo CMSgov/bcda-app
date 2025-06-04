@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'jscott/PLT-891'
+          ref: 'jjr/plt-1074'
           token: ${{ env.GITHUB_TOKEN }}
       - name: Install Ansible
         run: |
