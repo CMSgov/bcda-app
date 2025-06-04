@@ -51,6 +51,11 @@ jobs:
       - name: Install AWS Session Manager Plugin
         run: |
           sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+      - name: Set Packer temporary directory
+        run: |
+          mkdir ~/.tmp/packer-temp
+          chmod 777 ~/.tmp/packer-temp
+          echo "TMPDIR=$HOME/.tmp/packer-temp" >> $GITHUB_ENV
       - name: packer build
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
