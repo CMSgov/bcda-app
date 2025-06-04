@@ -1,6 +1,6 @@
 # Integration test that triggers an Opt Out import in the test environment and
 # verifies the imported data in the test database.
-name: opt-out-import test integration
+name: opt-out-import test integration GF
 
 on:
   pull_request:
