@@ -23,7 +23,7 @@ on:
         options:
           - 'dev'
           - 'test'
-          - 'opensbx'
+          - 'sandbox'
           - 'prod'
         default: 'dev'
       test_aco:
