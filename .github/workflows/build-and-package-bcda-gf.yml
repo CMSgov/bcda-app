@@ -7,12 +7,14 @@ on:
         description: 'Release version (or branch name)'
         required: true
         type: string
+        default: test
   workflow_dispatch:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
         required: true
         type: string
+        default: test
 
 permissions:
   id-token: write
