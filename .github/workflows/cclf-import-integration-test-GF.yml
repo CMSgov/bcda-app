@@ -55,7 +55,7 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
-          role-to-assume: arn:aws:iam::${{ env.BFD_ACCOUNT_ID }}:role/bfd-test-eft-bcda-ct-bucket-role
+          role-to-assume: arn:aws:iam::${{ env.BFD_ACCOUNT_ID }}:role/delegatedadmin/developer/bfd-test-eft-bcda-ct-bucket-role
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
