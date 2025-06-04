@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'jjr_al2023'
+          ref: 'jjr_al2023_plt_891'
           token: ${{ env.GITHUB_TOKEN }}
       - name: Install Ansible
         run: |
