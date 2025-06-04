@@ -57,5 +57,5 @@ jobs:
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/platinum_gf.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum_gf.json.pkr.hcl 2>&1
+          packer init packer/platinum.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${GOLD_IMAGE}" -var "subnet_id=${SUBNET_ID}" packer/platinum.json.pkr.hcl 2>&1
