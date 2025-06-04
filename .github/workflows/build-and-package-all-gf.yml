@@ -106,7 +106,7 @@ jobs:
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/api_gf.json.pkr.hcl 2>&1
+          packer init packer/api.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version  || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "version=${{ inputs.release_version }}" -var "s3_bucket=${{ env.S3_BUCKET }}" packer/api_gf.json.pkr.hcl 2>&1
       - name: Create Worker AMI
         env:
@@ -114,7 +114,7 @@ jobs:
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/worker_gf.json.pkr.hcl 2>&1
+          packer init packer/worker.json.pkr.hcl 2>&1
           packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "version=${{ inputs.release_version }}" -var "s3_bucket=${{ env.S3_BUCKET }}" packer/worker_gf.json.pkr.hcl 2>&1
 
       # - name: Success Alert
