@@ -4,6 +4,52 @@ name: Deploy All - GF
 on:
   schedule:
     - cron: 0 12 * * 1-5 # every workday at 8am EST
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ops_release_version:
+        description: 'Release version/tag for bcda-ops (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version/tag for bcda-ssas (or branch name)'
+        required: true
+        type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - opensbx
+          - prod
+      confirm_env:
+        description: 'Confirm the environment you want to deploy to'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - opensbx
+          - prod
+      test_aco:
+        description: Run the smoke tests using the selected ACO
+        required: true
+        type: choice
+        options:
+          - 'dev'
+          - 'small'
+          - 'medium'
+          - 'large'
+          - 'extra-large'
+          - 'paca'
+        default: 'dev'
   workflow_dispatch:
     inputs:
       release_version:
