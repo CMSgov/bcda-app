@@ -92,7 +92,7 @@ env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
   VAULT_PW: ${{ secrets.VAULT_PW }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
-  TEST_ACO: ${{ inputs.test_aco || 'dev '}}
+  TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
   smoke_tests:
