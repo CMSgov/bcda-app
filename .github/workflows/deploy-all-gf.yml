@@ -149,11 +149,8 @@ jobs:
           export TF_CLI_ARGS="-no-color"
           terraform init
           terraform plan \
-            -var 'vpc_id=${{ secrets.VPC_GF_ID }}' \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'gdit_security_group_ids=[${{ secrets.GDIT_SECURITY_GROUP_GF_IDS }}]' \
             -var 'key_name=bcda-api-${{ env.RELEASE_ENV }}-${{ vars.KEY_ID }}' \
-            -var 'app_db_pw=${APP_DB_PW}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
