@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/log"
@@ -23,7 +24,10 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
+	// TypeFilter    string
 }
+
+// const BBSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Adjudication-Status"
 
 // requestkey is an unexported context key to avoid collisions
 type requestkey int
@@ -122,6 +126,27 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			rp.ResourceTypes = resourceTypes
 		}
 
+		// TODO: V3 _typeFilter
+		// params, ok = r.URL.Query()["_typeFilter"]
+		// if ok {
+		// 	allowedQueryParams := []string{
+		// 		"ExplanationOfBenefit?",
+		// 		"ExplanationOfBenefit?tag=PartiallyAdjudicated",
+		// 		"ExplanationOfBenefit?_tag=Adjudicated",
+		// 		"ExplanationOfBenefit?_tag=PartiallyAdjudicated,Adjudicated",
+		// 		"ExplanationOfBenefit?_source=FISS",
+		// 		"ExplanationOfBenefit?_source=MCS",
+		// 	}
+		// 	if utils.ContainsString(allowedQueryParams, params[0]) {
+		// 		rp.TypeFilter = params[0]
+		// 	} else {
+		// 		errMsg := fmt.Sprintf("invalid _typeFilter (or currently unimplemented query) %s", params[0])
+		// 		log.API.Error(errMsg)
+		// 		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		// 		return
+		// 	}
+		// }
+
 		ctx := SetRequestParamsCtx(r.Context(), rp)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -174,7 +199,7 @@ func getKeys(kv map[string]struct{}) []string {
 	return keys
 }
 
-var versionExp = regexp.MustCompile(`\/api\/(v\d+)\/`)
+var versionExp = regexp.MustCompile(`\/api\/(v\d+|demo)\/`) // TODO: V3
 
 func getVersion(path string) (string, error) {
 	parts := versionExp.FindStringSubmatch(path)
@@ -195,6 +220,8 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 		return responseutils.NewResponseWriter(), nil
 	case "v2":
 		return responseutilsv2.NewResponseWriter(), nil
+	case constants.V3Version:
+		return responseutilsv2.NewResponseWriter(), nil // TODO: V3
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}

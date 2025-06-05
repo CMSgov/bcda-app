@@ -76,6 +76,9 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
 	}
+	if len(cfg.ACOConfigs) == 0 {
+		log.API.Fatalf("no ACO configs found, these are required for processing logic")
+	}
 
 	repository := postgres.NewRepository(db)
 	h.db, h.r = db, repository
@@ -103,6 +106,8 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 		h.RespWriter = responseutils.NewResponseWriter()
 	case "v2":
 		h.RespWriter = responseutilsv2.NewResponseWriter()
+	case constants.V3Version:
+		h.RespWriter = responseutilsv2.NewResponseWriter() // TODO: V3
 	default:
 		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
 	}
@@ -474,11 +479,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		return
 	}
 
-	acoCfg, ok := h.Svc.GetACOConfigForID(ad.CMSID)
-	if ok {
-		ctx = service.NewACOCfgCtx(ctx, acoCfg)
-	}
-
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
@@ -586,7 +586,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
 		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
-		ACOConfigDataTypes:     acoCfg.Data,
 	}
 
 	logger.Infof("Adding jobs using %T", h.Enq)
@@ -611,7 +610,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
 
-			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) && h.apiVersion != "v1" {
+			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) && h.apiVersion == "v2" {
 				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
 			}
 		}

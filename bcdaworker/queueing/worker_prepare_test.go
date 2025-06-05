@@ -105,7 +105,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 				CCLFFileNewID:          uint(1),
 				CCLFFileOldID:          uint(2),
 				ResourceTypes:          []string{"Coverage"},
-				ACOConfigDataTypes:     []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 			}
 
 			if tt.bfdErr {
@@ -162,7 +161,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 		CCLFFileNewID:          uint(1),
 		CCLFFileOldID:          uint(2),
 		ResourceTypes:          []string{"Coverage"},
-		ACOConfigDataTypes:     []string{constants.Adjudicated},
 	}
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
@@ -216,7 +214,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 			CCLFFileNewID:          uint(1),
 			CCLFFileOldID:          uint(2),
 			ResourceTypes:          []string{"Claim"},
-			ACOConfigDataTypes:     []string{constants.PartiallyAdjudicated},
 		},
 	}
 
@@ -276,7 +273,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 			CCLFFileNewID:          uint(1),
 			CCLFFileOldID:          uint(2),
 			ResourceTypes:          []string{"Coverage"},
-			ACOConfigDataTypes:     []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 		},
 	}
 

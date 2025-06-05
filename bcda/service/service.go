@@ -276,6 +276,11 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 		sinceArg = "gt" + since.Format(time.RFC3339Nano)
 	}
 
+	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
+	if !ok {
+		return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+	}
+
 	for _, rt := range args.ResourceTypes {
 		maxBeneficiaries, err := getMaxBeneCount(rt)
 		if err != nil {
@@ -289,7 +294,7 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 				// Create separate jobs for each data type if needed
-				for _, dataType := range args.ACOConfigDataTypes {
+				for _, dataType := range acoCfg.Data {
 					// conditions.TransactionTime references the last time adjudicated data
 					// was updated in the BB client. If we are queuing up a partially-adjudicated
 					// data job, we need to assume that the adjudicated and partially-adjudicated
@@ -321,7 +326,10 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 								DataType:        dataType,
 							}
 
-							s.setClaimsDate(&enqueueArgs, args)
+							ok := s.setClaimsDate(&enqueueArgs, args)
+							if !ok {
+								return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+							}
 
 							jobs = append(jobs, &enqueueArgs)
 						}
@@ -443,13 +451,15 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 			upperBound = time.Now()
 		}
 
-		if cfg, ok := SetACOCfgFromCtx(ctx); ok {
+		if cfg, ok := s.GetACOConfigForID(args.CMSID); ok {
 			if !cfg.IgnoreSuppressions {
 				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
 				if err != nil {
 					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
 				}
 			}
+		} else {
+			return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
 		}
 
 	}
@@ -463,7 +473,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 }
 
 // setClaimsDate computes the claims window to apply on the args
-func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) {
+func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) bool {
 	// If the caller made a request for runout data
 	// it takes precedence over any other claims date
 	// that may be applied
@@ -474,12 +484,12 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 	}
 
 	// Applies the lower bound from the first matching ACOConfig
-	for _, cfg := range s.acoConfigs {
-		if cfg.patternExp.MatchString(prepareArgs.CMSID) {
-			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
-			break
-		}
+	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
+	if ok {
+		args.ClaimsWindow.LowerBound = cfg.LookbackTime()
 	}
+
+	return ok
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
@@ -626,19 +636,3 @@ var (
 	ErrJobNotCancelled   = goerrors.New("job was not cancelled due to internal server error")
 	ErrJobNotCancellable = goerrors.New("job was not cancelled because it is not Pending or In Progress")
 )
-
-type CtxACOCfgType string
-
-const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
-
-// TODO: this should live within middleware, models, or another common package.
-//
-//	We should move this when we do package cleanup.
-func NewACOCfgCtx(ctx context.Context, cfg *ACOConfig) context.Context {
-	return context.WithValue(ctx, CtxACOCfg, cfg)
-}
-
-func SetACOCfgFromCtx(ctx context.Context) (*ACOConfig, bool) {
-	cfg, ok := ctx.Value(CtxACOCfg).(*ACOConfig)
-	return cfg, ok
-}

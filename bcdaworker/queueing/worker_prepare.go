@@ -45,6 +45,9 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 	if err != nil {
 		logger.Fatalf("failed to load service config. Err: %v", err)
 	}
+	if len(cfg.ACOConfigs) == 0 {
+		logger.Fatalf("no ACO configs found, these are required for downstream processing")
+	}
 
 	repository := postgres.NewRepository(database.Connection)
 	svc := service.NewService(repository, cfg, "")
