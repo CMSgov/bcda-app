@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   build_ami:
+    environment: ${{ inputs.env || 'dev' }}
     name: build the platinum ami
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:

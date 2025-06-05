@@ -94,6 +94,7 @@ env:
 
 jobs:
   smoke_tests:
+    environment: ${{ inputs.env || 'dev' }}
     name: run smoke tests
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:

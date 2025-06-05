@@ -20,6 +20,7 @@ permissions:
 
 jobs:
   package_bcda_rpms:
+    environment: ${{ inputs.env || 'dev' }}
     name: Package BCDA, Worker RPMs
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:

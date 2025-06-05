@@ -53,6 +53,7 @@ jobs:
     secrets: inherit
   
   create_amis:
+    environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     needs: [build_and_package_bcda, build_and_package_ssas]
     steps:
