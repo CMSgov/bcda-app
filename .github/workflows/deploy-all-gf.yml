@@ -79,13 +79,6 @@ jobs:
   deploy:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: self-hosted
-    # strategy:
-    #   matrix:
-    #     vars:
-    #       - account_id: NON_PROD_ACCOUNT_ID
-    #         role_to_assume: bcda-dev-github-actions
-    #       - account_id: PROD_ACCOUNT_ID
-    #         role_to_assume: bcda-prod-github-actions
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3

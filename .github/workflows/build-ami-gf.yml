@@ -16,19 +16,12 @@ jobs:
   build_ami:
     name: build the platinum ami
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    strategy:
-      matrix:
-        vars:
-          - account_id: NON_PROD_ACCOUNT_ID
-            role_to_assume: bcda-dev-github-actions
-          - account_id: PROD_ACCOUNT_ID
-            role_to_assume: bcda-prod-github-actions
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
