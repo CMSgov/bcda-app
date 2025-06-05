@@ -4,8 +4,8 @@
 name: Build and Package All GF
 
 on:
-  push:
-    branches: [jscott/PLT-1052] # autodeploy to dev
+  # push:
+  #   branches: [jscott/PLT-1052] # autodeploy to dev
   workflow_call:
     inputs:
       release_version:
