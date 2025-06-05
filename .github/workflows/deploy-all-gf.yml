@@ -296,48 +296,48 @@ jobs:
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
   
-  # slack_alerts:
-  #   if: ${{ always() }}
-  #   runs-on: self-hosted
-  #   needs: [migrate_db, deploy, notify_newrelic]
-  #   steps:
-  #     - name: Publish Build Info
-  #       if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
-  #       uses: slackapi/slack-github-action@v2.0.0
-  #       with:
-  #         method: chat.postMessage
-  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
-  #         # Sends to bcda-deploy
-  #         payload: |
-  #           channel: "C03S23MJFJS"
-  #           attachments:
-  #             - color: good
-  #               pretext: "Deployment information for BCDA environment *${{ env.RELEASE_ENV }}*"
-  #               footer: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|BCDA - Publish Release Information - Build ${{ github.run_id }}>)."
-  #               fields:
-  #                 - title: 'API'
-  #                   short: true
-  #                   value: ${{ env.RELEASE_VERSION }}
-  #                 - title: 'SSAS'
-  #                   short: true
-  #                   value: ${{ env.SSAS_RELEASE_VERSION }}
-  #                 - title: 'Worker'
-  #                   short: true
-  #                   value: ${{ env.RELEASE_VERSION }}
-  #               mrkdown_in:
-  #                 - pretext
-  #                 - footer
-  #     - name: Failure Alert
-  #       if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
-  #       uses: slackapi/slack-github-action@v2.0.0
-  #       with:
-  #         method: chat.postMessage
-  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
-  #         # Sends to bcda-alerts
-  #         payload: |
-  #           channel: "C034CFU945C"
-  #           attachments:
-  #             - color: danger
-  #               text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-  #               mrkdown_in:
-  #                 - text
+  slack_alerts:
+    if: ${{ always() }}
+    runs-on: self-hosted
+    needs: [migrate_db, deploy, notify_newrelic]
+    steps:
+      - name: Publish Build Info
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                pretext: "Deployment information for BCDA environment *${{ env.RELEASE_ENV }}*"
+                footer: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|BCDA - Publish Release Information - Build ${{ github.run_id }}>)."
+                fields:
+                  - title: 'API'
+                    short: true
+                    value: ${{ env.RELEASE_VERSION }}
+                  - title: 'SSAS'
+                    short: true
+                    value: ${{ env.SSAS_RELEASE_VERSION }}
+                  - title: 'Worker'
+                    short: true
+                    value: ${{ env.RELEASE_VERSION }}
+                mrkdown_in:
+                  - pretext
+                  - footer
+      - name: Failure Alert
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
