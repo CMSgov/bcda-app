@@ -64,10 +64,11 @@ jobs:
         with:
           repository: CMSgov/bcda-app
           ref: ${{ env.RELEASE_VERSION }}
-      - name: Set up Ansible
+      - name: Install Ansible
         run: |
-          sudo dnf -y install python3 python3-pip
-          pip install ansible
+          sudo yum update -y
+          sudo yum install python3-pip -y
+          sudo dnf install ansible-8.3.0 -y      
       - name: Decrypt secrets
         env:
           VAULT_PW: ${{ secrets.VAULT_PW }}

@@ -90,7 +90,6 @@ permissions:
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
-  VAULT_PW: ${{ secrets.VAULT_PW }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
@@ -149,12 +148,14 @@ jobs:
         uses: actions/checkout@v2
       - name: Install Ansible
         run: |
-          #sudo yum update -y
+          sudo yum update -y
           sudo yum install python3-pip -y
-          python3 -m pip install ansible==6.5.0
+          sudo dnf install ansible-8.3.0 -y      
       - name: Decrypt secrets
+        env:
+          VAULT_PW: ${{ secrets.VAULT_PW }}
         run: |
-          echo $VAULT_PW > .vault_password
+          echo "$VAULT_PW" > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
