@@ -1,6 +1,8 @@
 name: 'Smoke Tests GF' 
 
 on:
+  push:
+    branches: [ jscott/PLT-1052 ]
   pull_request:
     paths:
       - .github/workflows/smoke-test-GF.yml
