@@ -158,7 +158,7 @@ jobs:
             -out 'bcda-release-api-worker.tfplan'
       - name: Terraform Apply
         run: |
-          cd terraform/${{ env.RELEASE_ENV }}
+          cd terraform_gf/${{ env.RELEASE_ENV }}
           export TF_CLI_ARGS="-no-color"
           terraform init
           terraform apply bcda-release-api-worker.tfplan
