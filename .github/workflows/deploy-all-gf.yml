@@ -5,7 +5,7 @@ on:
   push:
     branches: [ jscott/PLT-1052 ]
   schedule:
-    - cron: 0 12 * * 1-5 # every workday at 8am EST
+    - cron: 0 12 * * 1-5 # every workday at 8am EST (autodeploy to dev)
   workflow_dispatch:
     inputs:
       release_version:
@@ -256,7 +256,7 @@ jobs:
 
   smoketests:
     needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    uses: ./.github/workflows/smoke-tests.yml
+    uses: ./.github/workflows/smoke-test-GF.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
       ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
