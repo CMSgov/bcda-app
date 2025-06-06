@@ -62,7 +62,6 @@ jobs:
           - account_id: PROD_ACCOUNT_ID
             role_to_assume: bcda-prod-github-actions
             rpm_bucket: bcda-rpms-20250602223806538400000001
-
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
