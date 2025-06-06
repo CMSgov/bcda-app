@@ -20,6 +20,17 @@ on:
           - sandbox
           - prod
   workflow_call:
+    inputs:
+      deploy_env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - sandbox
+          - prod
 
 jobs:
   test:
