@@ -1,0 +1,45 @@
+name: FHIR Scan GF
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/fhirscan.yml
+  workflow_dispatch:
+
+jobs:
+  fhirscan:
+    permissions:
+      contents: read
+      id-token: write
+    name: run fhir scan
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
+      - name: Get client credentials
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            CLIENT_CREDENTIALS_PARAMS=/bcda/dev/dev_client_credentials
+      - name: Run Inferno
+        id: run
+        run: |
+          cd ${GITHUB_WORKSPACE} 
+          
+          docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
+          docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
+          docker compose -f fhir_testing/docker-compose.inferno.yml up -d
+          sleep 20
+          docker stop fhir_testing-hl7_validator_service-1
+
+          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+
+          docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
+          docker run --add-host=host.docker.internal:host-gateway --rm -e BULK_URL="https://dev.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://dev.bcda.cms.gov/auth/token" fhir_testing

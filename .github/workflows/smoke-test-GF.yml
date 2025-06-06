@@ -111,6 +111,17 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }} 
+        if: ${{ inputs.test_aco == 'dev' }}
+        run: |
+          echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
+      - name: Set creds (dev)
+        if: ${{ inputs.test_aco != 'dev' }}
+        run: |
+          echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -216,4 +227,3 @@ jobs:
                 text: "FAILURE: Smoketests in ${{ inputs.env }} for ${{ inputs.release_version }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
- 
