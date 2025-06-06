@@ -3,8 +3,8 @@
 name: Build and Package All
 
 on:
-  push:
-    branches: [main] # autodeploy to dev
+  # push:
+  #   branches: [main] # autodeploy to dev
   workflow_call:
     inputs:
       release_version:
