@@ -24,8 +24,10 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/opt-out-import-test-deploy.yml
+    uses: ./.github/workflows/opt-out-import-deploy-GF.yml
     secrets: inherit
+    with:
+      deploy_env: test
 
   trigger:
     if: ${{ always() }}
