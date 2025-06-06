@@ -112,7 +112,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }} 
         if: ${{ inputs.test_aco == 'dev' }}
-        run: |
+      - run: |
           echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
       - name: Set creds (dev)
         if: ${{ inputs.test_aco != 'dev' }}
