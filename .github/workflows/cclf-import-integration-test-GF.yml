@@ -11,6 +11,10 @@ on:
       - bcda/lambda/cclf/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 # Ensure we have only one integration test running at a time
 concurrency:
   group: cclf-import-test-integration
@@ -19,18 +23,12 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    permissions:
-      contents: read
-      id-token: write
     uses: ./.github/workflows/cclf-import-deploy-GF.yml
     secrets: inherit
 
   trigger:
     if: ${{ always() }}
     needs: deploy
-    permissions:
-      contents: read
-      id-token: write
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
@@ -93,9 +91,6 @@ jobs:
   verify:
     needs: trigger
     runs-on: self-hosted
-    permissions:
-      contents: read
-      id-token: write
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
