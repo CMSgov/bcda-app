@@ -65,8 +65,6 @@ jobs:
           echo "${{ env.BCDA_GPG_SEC_KEY }}" > ops/${{ env.GPG_SEC_KEY_FILE }}
           # Remove any slashes - we don't want RPM to contain slash
           BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
-          
-          strategy:
 
       - name: Upload BCDA RPM to s3 prod
         # TODO: should we be checking blank release_version or should we be checking inputs.release_env == 'dev' ?
