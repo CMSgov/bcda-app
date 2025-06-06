@@ -93,6 +93,9 @@ jobs:
   verify:
     needs: trigger
     runs-on: self-hosted
+    permissions:
+      contents: read
+      id-token: write
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
