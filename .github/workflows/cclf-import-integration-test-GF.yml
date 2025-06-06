@@ -25,6 +25,8 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     uses: ./.github/workflows/cclf-import-deploy-GF.yml
     secrets: inherit
+    with:
+      deploy_env: test
 
   trigger:
     if: ${{ always() }}
