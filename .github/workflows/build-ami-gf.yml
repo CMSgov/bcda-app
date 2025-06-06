@@ -2,6 +2,8 @@
 name: Build AMI GF
 
 on:
+  push: # TODO
+    branches: [r260]
   workflow_call:
   workflow_dispatch:
   pull_request:
@@ -21,8 +23,8 @@ jobs:
         vars:
           - account_id: NON_PROD_ACCOUNT_ID
             role_to_assume: bcda-dev-github-actions
-          - account_id: PROD_ACCOUNT_ID
-            role_to_assume: bcda-prod-github-actions
+          # - account_id: PROD_ACCOUNT_ID
+          #   role_to_assume: bcda-prod-github-actions
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
