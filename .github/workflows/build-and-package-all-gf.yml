@@ -4,8 +4,6 @@
 name: Build and Package All GF
 
 on:
-  # push:
-  #   branches: [jscott/PLT-1052] # autodeploy to dev
   workflow_call:
     inputs:
       release_version:
@@ -47,7 +45,7 @@ jobs:
     secrets: inherit
 
   build_and_package_ssas:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@jscott/PLT-1052
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@main
     with:
       ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
     secrets: inherit
