@@ -2,8 +2,8 @@
 name: Build AMI GF
 
 on:
-  push: # TODO
-    branches: [r260]
+  # push: # TODO
+  #   branches: [r260]
   workflow_call:
   workflow_dispatch:
   pull_request:
