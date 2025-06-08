@@ -122,7 +122,7 @@ jobs:
           HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
           echo $HOST | cut -c -10
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          echo $CONNECTION_URL | cut -c 5
+          echo $CONNECTION_URL | cut -c -5
 
           # Verify that we have a record of the CCLF file in the database
           CCLF_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CCLFFILENAME' LIMIT 1" 2>&1`
