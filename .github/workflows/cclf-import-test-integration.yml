@@ -95,7 +95,7 @@ jobs:
         run: |
           sudo dnf install postgresql15 -y
       - name: Get database credentials
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:

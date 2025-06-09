@@ -57,7 +57,7 @@ jobs:
     steps:
       - uses: hashicorp/setup-packer@v2.0.1
       - name: Get AWS params
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
