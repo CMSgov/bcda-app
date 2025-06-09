@@ -130,7 +130,7 @@ jobs:
             SSAS_CREDENTIALS=/bcda/workflows/${{ env.RELEASE_ENV }}/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/${{ env.RELEASE_ENV }}/ssas_assertion_aud
             HOST=/bcda/workflows/${{ env.RELEASE_ENV }}/ssas_elb
-            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.TEST_ACO }}_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.RELEASE_ENV }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
       - name: Install docker compose manually
