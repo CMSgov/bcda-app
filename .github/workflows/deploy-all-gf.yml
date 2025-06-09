@@ -76,7 +76,7 @@ jobs:
 
   deploy:
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v3
@@ -174,7 +174,7 @@ jobs:
   
   verify_api_version:
     needs: [deploy]
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - run: |
@@ -198,7 +198,7 @@ jobs:
 
   verify_ssas_version:
     needs: [deploy]
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - run: |
@@ -222,7 +222,7 @@ jobs:
 
   verify_worker_version:
     needs: [deploy]
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - run: |
@@ -263,7 +263,7 @@ jobs:
 
   notify_newrelic:
     needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Set env vars from AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
@@ -296,7 +296,7 @@ jobs:
   
   slack_alerts:
     if: ${{ always() }}
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info
