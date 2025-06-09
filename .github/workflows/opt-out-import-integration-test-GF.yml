@@ -69,7 +69,7 @@ jobs:
 
   verify:
     needs: trigger
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
