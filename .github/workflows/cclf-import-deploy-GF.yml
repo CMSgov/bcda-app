@@ -50,7 +50,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           go build -o bin/bootstrap ./lambda/cclf/main.go
-          zip -j function.zip bin/bootstrap
+          zip -j function.zip bin/bootstrap ../conf/configs/dev.yml ../conf/configs/test.yml ../conf/configs/prod.yml
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
