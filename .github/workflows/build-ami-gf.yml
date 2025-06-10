@@ -2,8 +2,6 @@
 name: Build AMI GF
 
 on:
-  # push: # TODO
-  #   branches: [r260]
   workflow_dispatch:
     inputs:
       ops_release_version:
