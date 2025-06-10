@@ -22,7 +22,7 @@ jobs:
     uses: ./.github/workflows/admin-create-aco-creds-deploy-GF.yml
     secrets: inherit    
     with:
-      deploy_env: test
+      deploy_env: dev
 
   trigger:
     if: ${{ always() }}
