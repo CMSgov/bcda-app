@@ -20,9 +20,19 @@ on:
           - sandbox
           - prod
   workflow_call:
+    inputs:
+      deploy_env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        default: dev
+        type: string
+
+env:
+  DEPLOY_ENV: ${{ inputs.deploy_env || 'dev' }}
 
 jobs:
   test:
+    environment: ${{ inputs.deploy_env || 'dev' }}
     permissions:
       contents: read
       id-token: write
@@ -40,41 +50,22 @@ jobs:
           CGO_ENABLED: 0
         run: |
           go build -o bin/bootstrap ./lambda/cclf/main.go
-          zip -j function.zip bin/bootstrap
+          zip -j function.zip bin/bootstrap ../conf/configs/dev.yml ../conf/configs/test.yml ../conf/configs/prod.yml
 
-      - name: Set ENVIRONMENT - no inputs
-        if: ${{ inputs.deploy_env == '' }}
-        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-
-      - name: Set ENVIRONMENT - inputs
-        if: ${{ inputs.deploy_env != '' }}
-        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
-
-      - name: Set ACCOUNT - non prod
-        if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
-        run: | 
-          echo "ACC=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
-          echo "ROLE=dev" >> $GITHUB_ENV
-
-      - name: Set ACCOUNT - prod
-        if: ${{ env.ENVIRONMENT == 'sandbox' || env.ENVIRONMENT == 'prod' }}
-        run: | 
-          echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
-          echo "ROLE=prod" >> $GITHUB_ENV
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Get Bucket
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-cclf-import-bucket
+            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/bcda-${{ env.DEPLOY_ENV }}-cclf-import-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
             s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-cclf-import \
+          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-cclf-import \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip

@@ -11,6 +11,10 @@ on:
       - bcda/lambda/cclf/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 # Ensure we have only one integration test running at a time
 concurrency:
   group: cclf-import-test-integration
@@ -19,18 +23,14 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    permissions:
-      contents: read
-      id-token: write
     uses: ./.github/workflows/cclf-import-deploy-GF.yml
     secrets: inherit
+    with:
+      deploy_env: test
 
   trigger:
     if: ${{ always() }}
     needs: deploy
-    permissions:
-      contents: read
-      id-token: write
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
@@ -92,7 +92,7 @@ jobs:
 
   verify:
     needs: trigger
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
@@ -103,7 +103,8 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
       - name: Install psql
         run: |
-          sudo dnf install postgresql15 -y
+          sudo dnf -y update
+          sudo dnf install postgresql16 -y
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -113,16 +114,19 @@ jobs:
             CONNECTION_INFO=/bcda/test/api/DATABASE_URL
       - name: Verify CCLF file was ingested
         env:
-          CCLFFILENAME: ${{needs.trigger.outputs.cclffilename}}
-          CSVFILENAME: ${{needs.trigger.outputs.csvfilename}}
+          CCLFFILENAME: ${{ needs.trigger.outputs.cclffilename }}
+          CSVFILENAME: ${{ needs.trigger.outputs.csvfilename }}
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          echo $HOST | cut -c -10
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+          echo $CONNECTION_URL | cut -c -5
 
           # Verify that we have a record of the CCLF file in the database
           CCLF_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CCLFFILENAME' LIMIT 1" 2>&1`
+          echo "CCLF_FILE: $CCLF_FILE"
           if [[ $? -ne 0 || -z $CCLF_FILE ]]; then
             echo "cclf_file query returned zero results or command failed"
             exit 1
@@ -130,18 +134,20 @@ jobs:
             
             # Verify that the correct number of benes were imported into the database.
             CCLF_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
-              if [[ $? -ne 0 || -z $CCLF_BENES ]]; then
-                echo "CCLF beneficiaries query returned zero results or command failed"
-                exit 1
-              fi
-              if [[ $(echo $CCLF_BENES | xargs) != "6" ]]; then
-                echo "expected 6 beneficiaries imported from file, received $CCLF_BENES".
-                exit 1
-              fi
+            echo "CCLF_BENES: $CCLF_BENES"
+            if [[ $? -ne 0 || -z $CCLF_BENES ]]; then
+              echo "CCLF beneficiaries query returned zero results or command failed"
+              exit 1
+            fi
+            if [[ $(echo $CCLF_BENES | xargs) != "6" ]]; then
+              echo "expected 6 beneficiaries imported from file, received $CCLF_BENES".
+              exit 1
+            fi
           fi
 
           # Verify that we have a record of the CSV file in the database
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
+          echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
             echo "csv_file query returned zero results or command failed"
             exit 1
@@ -149,14 +155,15 @@ jobs:
             
             # Verify that the correct number of benes were imported into the database.
             CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
-              if [[ $? -ne 0 || -z $CSV_BENES ]]; then
-                echo "CSV beneficiaries query returned zero results or command failed"
-                exit 1
-              fi
-              if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
-                echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
-                exit 1
-              fi
+            echo "CSV_BENES: $CSV_BENES"
+            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+              echo "CSV beneficiaries query returned zero results or command failed"
+              exit 1
+            fi
+            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
+              exit 1
+            fi
           fi
 
 
