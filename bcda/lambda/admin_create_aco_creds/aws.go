@@ -18,7 +18,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 )
 
-var destBucket = "bcda-aco-credentials"
 var kmsAliasName = "alias/bcda-aco-creds-kms"
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
@@ -54,7 +53,12 @@ func getAWSParams(session *session.Session) (awsParams, error) {
 		return awsParams{}, err
 	}
 
-	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM}, nil
+	credsBucket, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
 }
 
 func setupEnvironment(params awsParams) error {
@@ -137,13 +141,11 @@ func getKMSID(service kmsiface.KMSAPI) (string, error) {
 	return id, nil
 }
 
-func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) (string, error) {
-	bucketSuffix := adjustedEnv()
-
+func putObject(service s3iface.S3API, acoID string, creds string, kmsID string, credsBucket string) (string, error) {
 	s3Input := &s3.PutObjectInput{
 		Body:                 aws.ReadSeekCloser(strings.NewReader(creds)),
-		Bucket:               aws.String(destBucket),
-		Key:                  aws.String(fmt.Sprintf("%s/%s-creds", bucketSuffix, acoID)),
+		Bucket:               aws.String(credsBucket),
+		Key:                  aws.String(fmt.Sprintf("%s-creds", acoID)),
 		ServerSideEncryption: aws.String("aws:kms"),
 		SSEKMSKeyId:          aws.String(kmsID),
 	}
