@@ -47,7 +47,7 @@ func TestGetKMSID(t *testing.T) {
 func TestPutObject(t *testing.T) {
 	mock := &mockS3{}
 
-	result, err := putObject(mock, "test-filename", "test-creds", "kms-id")
+	result, err := putObject(mock, "test-filename", "test-creds", "kms-id", "test-bucket")
 	assert.Nil(t, err)
 	assert.Equal(t, result, "{\n\n}")
 }
