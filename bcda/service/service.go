@@ -320,6 +320,7 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 								BeneficiaryIDs:  jobIDs,
 								ResourceType:    rt,
 								Since:           sinceArg,
+								TypeFilter:      args.TypeFilter,
 								TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
 								TransactionTime: transactionTime,
 								BBBasePath:      args.BFDPath,
