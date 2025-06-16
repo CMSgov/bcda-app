@@ -15,8 +15,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
@@ -76,11 +74,10 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	kmsService := kms.New(session)
 	s3Service := s3.New(session)
 	slackClient := slack.New(params.slackToken)
 
-	s3Path, err := handleCreateACOCreds(ctx, data, kmsService, s3Service, slackClient, params.credsBucket)
+	s3Path, err := handleCreateACOCreds(ctx, data, s3Service, slackClient, params.credsBucket)
 	if err != nil {
 		log.Errorf("Failed to handle Create ACO creds: %+v", err)
 		return "", err
@@ -94,7 +91,6 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 func handleCreateACOCreds(
 	ctx context.Context,
 	data payload,
-	kmsService kmsiface.KMSAPI,
 	s3Service s3iface.S3API,
 	notifier Notifier,
 	credsBucket string,
@@ -120,21 +116,7 @@ func handleCreateACOCreds(
 		return "", err
 	}
 
-	kmsID, err := getKMSID(kmsService)
-	if err != nil {
-		log.Errorf("Error getting kms ID: %+v", err)
-
-		_, _, slackErr := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: Create ACO Creds lambda in %s env.", os.Getenv("ENV")), false),
-		)
-		if slackErr != nil {
-			log.Errorf("Error sending notifier failure message: %+v", slackErr)
-		}
-
-		return "", err
-	}
-
-	s3Path, err := putObject(s3Service, data.ACOID, creds, kmsID, credsBucket)
+	s3Path, err := putObject(s3Service, data.ACOID, creds, credsBucket)
 	if err != nil {
 		log.Errorf("Error putting object: %+v", err)
 
