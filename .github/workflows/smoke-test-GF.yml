@@ -99,6 +99,9 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
+      # env.TEST_ACO is being set here and should be used when grabbing CLIENT_CREDENTIALS_PARAMS below
+      # however it was failing in all envs besides dev.  Swapped this to just use RELEASE_ENV for now but
+      # this will likely not work if we wanted to run smoketests against non default ACOs.
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
         run: |
@@ -107,7 +110,7 @@ jobs:
         if: ${{ env.TEST_ACO != 'dev' }}
         run: |
           echo "creds=${{ env.TEST_ACO }}" >> $GITHUB_ENV
-      - uses: aws-actions/configure-aws-credentials@v3
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }} 
@@ -118,10 +121,6 @@ jobs:
         if: ${{ inputs.test_aco != 'dev' }}
         run: |
           echo "creds=${{ inputs.test_aco }}" >> $GITHUB_ENV
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -130,7 +129,7 @@ jobs:
             SSAS_CREDENTIALS=/bcda/workflows/${{ env.RELEASE_ENV }}/ssas_admin_credentials
             ASSERTION_AUD=/bcda/workflows/${{ env.RELEASE_ENV }}/ssas_assertion_aud
             HOST=/bcda/workflows/${{ env.RELEASE_ENV }}/ssas_elb
-            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.TEST_ACO }}_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.RELEASE_ENV }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
       - name: Install docker compose manually

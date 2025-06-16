@@ -74,7 +74,7 @@ jobs:
           params: |
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
-            S3_BUCKET=/bcda/rpms_bucket
+            RPM_BUCKET=/bcda/rpms_bucket
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
@@ -104,16 +104,16 @@ jobs:
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/api.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version  || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "version=${{ inputs.release_version }}" packer/api.json.pkr.hcl 2>&1
+          packer init packer/api_gf.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version  || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "rpm_bucket=${{ env.RPM_BUCKET }}" packer/api_gf.json.pkr.hcl 2>&1
       - name: Create Worker AMI
         env:
           PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: /tmp/
         run: |
           set -euo pipefail
-          packer init packer/worker.json.pkr.hcl 2>&1
-          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "version=${{ inputs.release_version }}" packer/worker.json.pkr.hcl 2>&1
+          packer init packer/worker_gf.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "rpm_bucket=${{ env.RPM_BUCKET }}" packer/worker_gf.json.pkr.hcl 2>&1
 
       - name: Success Alert
         if: ${{ success() && needs.build_and_package_bcda.result == 'success' && needs.build_and_package_ssas.result == 'success' }}

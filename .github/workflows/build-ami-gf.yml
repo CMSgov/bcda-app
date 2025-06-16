@@ -2,11 +2,18 @@
 name: Build AMI GF
 
 on:
-  workflow_call:
   workflow_dispatch:
+    inputs:
+      ops_release_version:
+        description: 'Release version/tag for bcda-ops (or branch name)'
+        required: true
+        type: string
   pull_request:
     types:
       - closed
+
+env:
+  OPS_REF: ${{ inputs.ops_release_version || 'main' }}
 
 permissions:
   id-token: write
@@ -41,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: 'main'
+          ref: ${{ env.OPS_REF }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Install Ansible
         run: |

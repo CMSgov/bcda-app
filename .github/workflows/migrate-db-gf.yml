@@ -34,9 +34,9 @@ permissions:
 
 jobs:
   migrate_db:
-    environment: ${{ inputs.env }}
+    environment: ${{ inputs.env || 'dev' }}
     name: Migrate DB
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout BCDA
         uses: actions/checkout@v4
