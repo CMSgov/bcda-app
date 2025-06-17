@@ -79,13 +79,13 @@ jobs:
         run: |
           HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-dev 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          GROUP_COUNT=`psql -tA "$CONNECTION_URL" -c "SELECT COUNT(*) FROM groups WHERE group_id = '${{ env.GROUP }}'" 2>&1`
+          GROUP_COUNT=`psql -tA "$CONNECTION_URL" -c "SELECT COUNT(*) FROM groups WHERE group_id='${{ env.GROUP }}' AND deleted_at IS NULL" 2>&1`
           if [[ $? -ne 0 || $GROUP_COUNT -ne 1 ]]; then
             echo "number of groups with group_id = ${{ env.GROUP }} not equal to 1"
             echo "matching number of groups: $GROUP_COUNT"
             exit 1
           fi
-          DELETED_COUNT=`psql -tA "$CONNECTION_URL" -c "DELETE FROM groups WHERE group_id = '${{ env.GROUP }}'" 2>&1`
+          DELETED_COUNT=`psql -tA "$CONNECTION_URL" -c "UPDATE groups SET deleted_at=NOW() WHERE group_id = '${{ env.GROUP }}' AND deleted_at IS NULL" 2>&1`
           if [[ $? -ne 0 || $DELETED_COUNT != "DELETE 1" ]]; then
             echo "group deletion command failed"
             echo "deletion command results: $DELETED_COUNT"
