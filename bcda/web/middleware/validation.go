@@ -130,7 +130,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 
 		// validate _typeFilter params
 		params, ok = r.URL.Query()["_typeFilter"]
-		if ok {
+		if (version == "demo") && ok {
 			var typeFilterParams [][]string
 			for _, subQuery := range params {
 
