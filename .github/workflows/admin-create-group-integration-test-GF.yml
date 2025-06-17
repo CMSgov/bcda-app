@@ -85,9 +85,9 @@ jobs:
             echo "matching number of groups: $GROUP_COUNT"
             exit 1
           fi
-          DELETED_COUNT=`psql -tA "$CONNECTION_URL" -c "UPDATE groups SET deleted_at=NOW() WHERE group_id = '${{ env.GROUP }}' AND deleted_at IS NULL" 2>&1`
-          if [[ $? -ne 0 || $DELETED_COUNT != "DELETE 1" ]]; then
+          UPDATED_COUNT=`psql -tA "$CONNECTION_URL" -c "UPDATE groups SET deleted_at=NOW() WHERE group_id = '${{ env.GROUP }}' AND deleted_at IS NULL" 2>&1`
+          if [[ $? -ne 0 || $UPDATED_COUNT != "UPDATE 1" ]]; then
             echo "group deletion command failed"
-            echo "deletion command results: $DELETED_COUNT"
+            echo "deletion command results: $UPDATED_COUNT"
             exit 1
           fi
