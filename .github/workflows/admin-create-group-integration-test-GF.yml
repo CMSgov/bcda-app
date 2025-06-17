@@ -8,6 +8,10 @@ on:
       - bcda/lambda/create_group/**
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 # Ensure we have only one integration test running at a time
 concurrency:
   group: create-group-integration-test
@@ -20,18 +24,12 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    permissions:
-      contents: read
-      id-token: write
     uses: ./.github/workflows/admin-create-group-deploy-GF.yml
     secrets: inherit
 
   trigger:
     if: ${{ always() }}
     needs: deploy
-    permissions:
-      contents: read
-      id-token: write
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
