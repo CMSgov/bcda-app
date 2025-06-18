@@ -582,6 +582,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		ComplexDataRequestType: complexDataRequestType,
 		ResourceTypes:          resourceTypes,
 		Since:                  rp.Since,
+		TypeFilter:             rp.TypeFilter,
 		CreationTime:           time.Now(),
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
