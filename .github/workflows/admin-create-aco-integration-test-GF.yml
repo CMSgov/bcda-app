@@ -19,8 +19,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/admin-create-aco-dev-deploy.yml
+    uses: ./.github/workflows/admin-create-aco-deploy-GF.yml
     secrets: inherit
+    with:
+      deploy_env: dev
 
   trigger:
     if: ${{ always() }}

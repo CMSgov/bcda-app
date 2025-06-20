@@ -1,7 +1,6 @@
 name: Admin Create ACO deploy GF
 
 on:
-  workflow_call:
   workflow_dispatch:
     inputs:
       deploy_env:
@@ -14,6 +13,13 @@ on:
           - test
           - sandbox
           - prod
+  workflow_call:
+    inputs:
+      deploy_env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        default: dev
+        type: string
   push:
     branches:
       - main
