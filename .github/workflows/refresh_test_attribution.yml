@@ -57,7 +57,7 @@ jobs:
           fi
 
           CONNECTION_URL=$(echo ${{ env.DB_URL }} 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
+          ./scripts_gf/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
 
           if [ $? -ne 0 ]; then
               echo "Error: Refresh failed; run script locally for more details."
