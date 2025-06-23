@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  refresh_attribution_non_prod:
+  refresh_attribution:
     name: Refresh Attribution
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     strategy:
