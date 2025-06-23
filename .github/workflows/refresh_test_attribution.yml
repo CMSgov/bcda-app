@@ -57,7 +57,7 @@ jobs:
               echo "Error: failed to retrieve database host."
               exit 1
           fi
-          
+
           CONNECTION_URL=$(echo ${{ env.DB_URL }} 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
           ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
 
@@ -67,7 +67,6 @@ jobs:
           else 
               echo "Success: refresh complete."
           fi
-          done
       - name: Failure Alert
         if: ${{ failure() }}
         uses: slackapi/slack-github-action@v2.0.0
