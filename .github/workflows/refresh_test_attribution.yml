@@ -2,8 +2,6 @@
 name: Refresh Attribution For Test ACOs
 
 on:
-  push:
-    branches: [carl/BCDA-9010-update-attr-file-workflow]
   workflow_call:
   schedule:
     - cron: "0 12 * * 1" 
