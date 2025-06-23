@@ -1,4 +1,4 @@
-name: Admin ACO Deny deploy GF
+name: Admin ACO Deny deploy
 
 on:
   workflow_call:

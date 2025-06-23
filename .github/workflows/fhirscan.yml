@@ -1,4 +1,4 @@
-name: FHIR Scan GF
+name: FHIR Scan
 
 on:
   pull_request:

@@ -1,5 +1,5 @@
-# Build AMI GF will create a 'platinum ami' using packer and ansible that is based off of the CMS monthly Gold Image.
-name: Build AMI GF
+# Build AMI will create a 'platinum ami' using packer and ansible that is based off of the CMS monthly Gold Image.
+name: Build AMI
 
 on:
   workflow_dispatch:

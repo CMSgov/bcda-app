@@ -1,4 +1,4 @@
-name: Build and Package BCDA GF
+name: Build and Package BCDA
 
 on:
   workflow_call:
@@ -48,6 +48,6 @@ jobs:
             channel: "C034CFU945C"
             attachments:
               - color: danger
-                text: "FAILURE: Build and Package GF BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                text: "FAILURE: Build and Package BCDA/Worker (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text

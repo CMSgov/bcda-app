@@ -1,4 +1,4 @@
-name: CI Checks GF
+name: CI Checks
 
 on:
   push:

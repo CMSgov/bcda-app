@@ -1,4 +1,4 @@
-name: Migrate DB GF
+name: Migrate DB
 
 on:
   workflow_call:

@@ -1,4 +1,4 @@
-name: Admin ACO Deny Integration Tests GF
+name: Admin ACO Deny Integration Tests
 
 on:
   pull_request:

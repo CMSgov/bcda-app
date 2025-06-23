@@ -1,6 +1,6 @@
 # This workflow generates database documentation and ERD files.
 #
-name: Generate dbdocs GF
+name: Generate dbdocs
 
 on:
   pull_request:

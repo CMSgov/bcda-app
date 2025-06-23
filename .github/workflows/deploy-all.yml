@@ -1,5 +1,5 @@
 # Deploy BCDA/SSAS and Worker ec2 instances
-name: Deploy All - GF
+name: Deploy All
 
 on:
   schedule:

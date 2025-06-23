@@ -1,4 +1,4 @@
-name: Admin Create ACO deploy GF
+name: Admin Create ACO deploy
 
 on:
   workflow_dispatch:

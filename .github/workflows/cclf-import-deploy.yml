@@ -1,4 +1,4 @@
-name: cclf-import dev deploy GF
+name: cclf-import dev deploy
 
 on:
   push:

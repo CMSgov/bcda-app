@@ -1,4 +1,4 @@
-name: Admin Create Group Deploy GF
+name: Admin Create Group Deploy
 
 on:
   workflow_call:

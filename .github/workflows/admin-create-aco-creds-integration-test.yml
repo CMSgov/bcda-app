@@ -1,4 +1,4 @@
-name: Admin Create ACO Credentials Integration Tests GF
+name: Admin Create ACO Credentials Integration Tests
 
 on:
   pull_request:

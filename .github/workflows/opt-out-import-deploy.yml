@@ -1,4 +1,4 @@
-name: opt-out-import dev deploy GF
+name: opt-out-import dev deploy
 
 on:
   push:

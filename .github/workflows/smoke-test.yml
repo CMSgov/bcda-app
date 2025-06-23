@@ -1,4 +1,4 @@
-name: 'Smoke Tests GF' 
+name: Smoke Tests
 
 on:
   pull_request:

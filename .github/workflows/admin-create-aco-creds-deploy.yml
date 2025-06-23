@@ -1,4 +1,4 @@
-name: Admin Create ACO Credentials deploy GF
+name: Admin Create ACO Credentials deploy
 
 on:
   workflow_dispatch:
