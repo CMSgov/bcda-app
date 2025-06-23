@@ -2,6 +2,7 @@
 name: Refresh Attribution For Test ACOs
 
 on:
+  workflow_call:
   schedule:
     - cron: "0 12 * * 1" 
 
@@ -12,22 +13,30 @@ permissions:
 jobs:
   refresh_attribution:
     name: Refresh Attribution
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    strategy:
+      matrix:
+        vars:
+          - env: dev
+            account_id: NON_PROD_ACCOUNT_ID
+          - env: test
+            account_id: NON_PROD_ACCOUNT_ID
+          - env: sandbox
+            account_id: PROD_ACCOUNT_ID
+          - env: prod
+            account_id: PROD_ACCOUNT_ID
     steps:
       - uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/bcda-${{ matrix.vars.env }}-github-actions
       - uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
-            DEV_DB=/bcda/dev/api/DATABASE_URL
-            TEST_DB=/bcda/test/api/DATABASE_URL
-            SBX_DB=/bcda/opensbx/api/DATABASE_URL
-            PROD_DB=/bcda/prod/api/DATABASE_URL
+            DB_URL=/bcda/${{ matrix.vars.env }}/api/DATABASE_URL
       - name: Install psql
         run: |
           sudo dnf install postgresql16 -y
@@ -40,31 +49,22 @@ jobs:
       - name: Refresh all environments
         run: |
           set -euo pipefail
-          declare -A environments
 
-          environments["dev"]=$DEV_DB
-          environments["test"]=$TEST_DB
-          environments["opensbx"]=$SBX_DB
-          environments["prod"]=$PROD_DB
+          HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[Endpoint.Address]' --output text | grep bcda-${{ matrix.vars.env }} 2>&1)
+          if [ $? -ne 0 ]; then
+              echo "Error: failed to retrieve database host."
+              exit 1
+          fi
 
-          for key in "${!environments[@]}"; do
-              value="${environments[$key]}"
+          CONNECTION_URL=$(echo ${{ env.DB_URL }} 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+          ./scripts_gf/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
 
-              HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[Endpoint.Address]' --output text | grep bcda-$key 2>&1)
-              if [ $? -ne 0 ]; then
-                  echo "Error: failed to retrieve database host."
-                  exit 1
-              fi
-              CONNECTION_URL=$(echo $value 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-              ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
-
-              if [ $? -ne 0 ]; then
-                  echo "Error: Refresh failed; run script locally for more details."
-                  exit 1
-              else 
-                  echo "Success: refresh complete."
-              fi
-              done
+          if [ $? -ne 0 ]; then
+              echo "Error: Refresh failed; run script locally for more details."
+              exit 1
+          else 
+              echo "Success: refresh complete."
+          fi
       - name: Failure Alert
         if: ${{ failure() }}
         uses: slackapi/slack-github-action@v2.0.0
