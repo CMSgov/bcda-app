@@ -19,7 +19,7 @@ on:
       - main
     paths:
       - bcda/lambda/admin_aco_deny/**
-      - .github/workflows/admin-aco-deny-deploy-GF.yml
+      - .github/workflows/admin-aco-deny-deploy.yml
 
 jobs:
   build_and_zip:

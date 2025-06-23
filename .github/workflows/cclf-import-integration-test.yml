@@ -5,8 +5,8 @@ name: cclf-import test integration GF
 on:
   pull_request:
     paths:
-      - .github/workflows/cclf-import-integration-test-GF.yml
-      - .github/workflows/cclf-import-deploy-GF.yml
+      - .github/workflows/cclf-import-integration-test.yml
+      - .github/workflows/cclf-import-deploy.yml
       - bcda/cclf/**
       - bcda/lambda/cclf/**
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/cclf-import-deploy-GF.yml
+    uses: ./.github/workflows/cclf-import-deploy.yml
     secrets: inherit
     with:
       deploy_env: test

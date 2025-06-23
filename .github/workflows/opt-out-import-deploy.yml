@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - optout/**
-      - .github/workflows/opt-out-import-deploy-GF.yml
+      - .github/workflows/opt-out-import-deploy.yml
   workflow_dispatch:
     inputs:
       deploy_env:

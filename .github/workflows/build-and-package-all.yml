@@ -39,13 +39,13 @@ permissions:
 
 jobs:
   build_and_package_bcda:
-    uses: ./.github/workflows/build-and-package-bcda-gf.yml
+    uses: ./.github/workflows/build-and-package-bcda.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
     secrets: inherit
 
   build_and_package_ssas:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@main
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package.yml@main
     with:
       ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
     secrets: inherit

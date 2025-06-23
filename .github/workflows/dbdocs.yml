@@ -5,7 +5,7 @@ name: Generate dbdocs GF
 on:
   pull_request:
     paths:
-      - .github/workflows/dbdocs-GF.yml
+      - .github/workflows/dbdocs.yml
       - db/migrations/bcda
       - db/migrations/bcda_queue
 
