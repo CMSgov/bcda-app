@@ -68,7 +68,7 @@ env:
 
 jobs:
   migrate_db:
-    uses: ./.github/workflows/migrate-db.yml
+    uses: ./.github/workflows/migrate-db-gf.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
       env: ${{ inputs.env || 'dev' }}
