@@ -23,6 +23,7 @@ import (
 	bcdaLog "github.com/CMSgov/bcda-app/log"
 
 	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -88,9 +89,9 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//setup mocks
-			mock := &auth.MockProvider{}
-			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return("", tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mock)
+			mockP := &auth.MockProvider{}
+			mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return("", tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mockP)
 
 			//Act
 			resp, err := client.Do(req)
@@ -103,7 +104,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 			responseBody := testUtils.ReadResponseBody(resp)
 			assert.Equal(s.T(), http.StatusText(tt.StatusCode), (strings.TrimSuffix(responseBody, "\n")))
 			assert.Equal(s.T(), tt.HeaderRetryAfterValue, resp.Header.Get("Retry-After"))
-			mock.AssertExpectations(s.T())
+			mockP.AssertExpectations(s.T())
 
 			//assert the correct log message wording was logged to API log
 			assert.Equal(t, 1, len(testLogger.Entries))
@@ -136,9 +137,9 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 
 			//setup mocks
-			mock := &auth.MockProvider{}
-			mock.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mock)
+			mockP := &auth.MockProvider{}
+			mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
+			auth.SetMockProvider(s.T(), mockP)
 
 			//Act
 			resp, err := client.Do(req)
@@ -159,7 +160,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 			assert.Equal(s.T(), resp.Header.Get("Pragma"), "no-cache")
 			assert.Equal(s.T(), "goodToken", respMap["access_token"])
 			assert.Equal(s.T(), constants.ExpiresInDefault, respMap["expires_in"])
-			mock.AssertExpectations(s.T())
+			mockP.AssertExpectations(s.T())
 		})
 	}
 
@@ -167,7 +168,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 
 func (s *AuthAPITestSuite) TestWelcome() {
 	goodToken, badToken := uuid.New(), uuid.New()
-	mock := &auth.MockProvider{}
+	mockP := &auth.MockProvider{}
 
 	var ad auth.AuthData
 	token := &jwt.Token{Raw: goodToken, Valid: true, Claims: &auth.CommonClaims{
@@ -179,10 +180,10 @@ func (s *AuthAPITestSuite) TestWelcome() {
 		Data:     `{"cms_ids":["A9994"]}`,
 	}}
 
-	mock.On("VerifyToken", goodToken).Return(token, nil)
-	mock.On("VerifyToken", badToken).Return(nil, errors.New("bad token"))
-	mock.On("getAuthDataFromClaims", token.Claims).Return(ad, nil)
-	auth.SetMockProvider(s.T(), mock)
+	mockP.On("VerifyToken", mock.Anything, goodToken).Return(token, nil)
+	mockP.On("VerifyToken", mock.Anything, badToken).Return(nil, errors.New("bad token"))
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(ad, nil)
+	auth.SetMockProvider(s.T(), mockP)
 
 	// Expect failure with invalid token
 	router := chi.NewRouter()
@@ -215,7 +216,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.NotEmpty(s.T(), respMap)
 	assert.Equal(s.T(), "Welcome to the Beneficiary Claims Data API!", respMap["success"])
 
-	mock.AssertExpectations(s.T())
+	mockP.AssertExpectations(s.T())
 }
 
 func TestAuthAPITestSuite(t *testing.T) {

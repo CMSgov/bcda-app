@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
@@ -31,40 +33,53 @@ func init() {
 	retrySeconds = utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)
 }
 
-func CheckConcurrentJobs(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
-		if !ok {
-			panic("AuthData should be set before calling this handler")
-		}
+func CheckConcurrentJobs(cfg *service.Config) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+			if !ok {
+				panic("AuthData should be set before calling this handler")
+			}
 
-		rp, ok := GetRequestParamsFromCtx(r.Context())
-		if !ok {
-			panic("RequestParameters should be set before calling this handler")
-		}
+			rp, ok := GetRequestParamsFromCtx(r.Context())
+			if !ok {
+				panic("RequestParameters should be set before calling this handler")
+			}
 
-		rw, _ := getResponseWriterFromRequestPath(w, r)
-		if rw == nil {
-			return
-		}
-
-		acoID := uuid.Parse(ad.ACOID)
-		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
-		if err != nil {
-			logger := log.GetCtxLogger(r.Context())
-			logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
-			rw.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
-			return
-		}
-		if len(pendingAndInProgressJobs) > 0 {
-			if hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
-				w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
-				w.WriteHeader(http.StatusTooManyRequests)
+			rw, _ := getResponseWriterFromRequestPath(w, r)
+			if rw == nil {
 				return
 			}
+
+			acoID := uuid.Parse(ad.ACOID)
+
+			if shouldRateLimit(cfg.RateLimitConfig, ad.CMSID) {
+				pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
+				if err != nil {
+					logger := log.GetCtxLogger(r.Context())
+					logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
+					rw.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+					return
+				}
+				if len(pendingAndInProgressJobs) > 0 {
+					if hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
+						w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
+						w.WriteHeader(http.StatusTooManyRequests)
+						return
+					}
+				}
+			}
+			next.ServeHTTP(w, r)
 		}
-		next.ServeHTTP(w, r)
-	})
+		return http.HandlerFunc(fn)
+	}
+}
+
+func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
+	if config.All || slices.Contains(config.ACOs, cmsID) {
+		return true
+	}
+	return false
 }
 
 func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {

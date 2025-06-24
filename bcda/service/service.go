@@ -16,41 +16,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/middleware"
-)
-
-type RequestConditions struct {
-	ReqType   RequestType
-	Resources []string
-
-	CMSID string
-	ACOID uuid.UUID
-
-	JobID           uint
-	Since           time.Time
-	TransactionTime time.Time
-	CreationTime    time.Time
-
-	// Fields set in the service
-	fileType models.CCLFFileType
-
-	timeConstraint
-}
-
-type timeConstraint struct {
-	attributionDate time.Time
-	optOutDate      time.Time
-	claimsDate      time.Time
-}
-
-type RequestType uint8
-
-const (
-	DefaultRequest          RequestType = iota
-	RetrieveNewBeneHistData             // Allows caller to retrieve all of the data for newly attributed beneficiaries
-	Runout                              // Allows caller to retrieve claims data for beneficiaries no longer attributed to the ACO
 )
 
 // Ensure service satisfies the interface
@@ -58,47 +27,18 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error)
-
+	GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)
+	FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)
+	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error)
 	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
-
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
-
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)
-
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
-
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
-
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
-
-	GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error)
-
+	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
-}
-
-const (
-	cclf8FileNum = int(8)
-)
-
-func NewService(r models.Repository, cfg *Config, basePath string) Service {
-	return &service{
-		repository:        r,
-		logger:            log.API,
-		stdCutoffDuration: cfg.cutoffDuration,
-		sp: suppressionParameters{
-			includeSuppressedBeneficiaries: false,
-			lookbackDays:                   cfg.SuppressionLookbackDays,
-		},
-		rp: runoutParameters{
-			// Runouts apply to claims data for the previous year.
-			claimThruDate:  cfg.RunoutConfig.claimThru,
-			cutoffDuration: cfg.RunoutConfig.cutoffDuration,
-		},
-		bbBasePath:    basePath,
-		acoConfigs:    cfg.ACOConfigs,
-		alrMBIsPerJob: cfg.AlrJobSize,
-	}
+	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
 }
 
 type service struct {
@@ -117,6 +57,32 @@ type service struct {
 	alrMBIsPerJob uint
 }
 
+func NewService(r models.Repository, cfg *Config, basePath string) Service {
+	return &service{
+		repository:        r,
+		logger:            log.API,
+		stdCutoffDuration: cfg.CutoffDuration,
+		sp: suppressionParameters{
+			includeSuppressedBeneficiaries: false,
+			lookbackDays:                   cfg.SuppressionLookbackDays,
+		},
+		rp: runoutParameters{
+			// Runouts apply to claims data for the previous year.
+			claimThruDate:  cfg.RunoutConfig.claimThru,
+			CutoffDuration: cfg.RunoutConfig.CutoffDuration,
+		},
+		bbBasePath:    basePath,
+		acoConfigs:    cfg.ACOConfigs,
+		alrMBIsPerJob: cfg.AlrJobSize,
+	}
+}
+
+type TimeConstraints struct {
+	AttributionDate time.Time
+	OptOutDate      time.Time
+	ClaimsDate      time.Time
+}
+
 type suppressionParameters struct {
 	includeSuppressedBeneficiaries bool
 	lookbackDays                   int
@@ -126,55 +92,105 @@ type runoutParameters struct {
 	// All claims data occur at or before this date
 	claimThruDate time.Time
 	// Amount of time the callers can retrieve runout data (relative to when runout data was ingested)
-	cutoffDuration time.Duration
+	CutoffDuration time.Duration
 }
 
-func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error) {
-	if conditions.timeConstraint, err = s.timeConstraints(ctx, conditions.CMSID); err != nil {
-		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
+func (s *service) GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (cutoffTime time.Time, complexDataRequestType string) {
+	hasAttributionDate := !timeConstraints.AttributionDate.IsZero()
+	// for default requests, runouts, or any requests where the Since parameter is
+	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
+	if reqType == constants.DefaultRequest ||
+		reqType == constants.Runout ||
+		(hasAttributionDate && since.After(timeConstraints.AttributionDate)) {
+		complexDataRequestType = constants.GetExistingBenes
+		// only set a cutoffTime if there is no attributionDate set
+		if timeConstraints.AttributionDate.IsZero() {
+			if fileType == models.FileTypeDefault && s.stdCutoffDuration > 0 {
+				cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
+			} else if fileType == models.FileTypeRunout && s.rp.CutoffDuration > 0 {
+				cutoffTime = time.Now().Add(-1 * s.rp.CutoffDuration)
+			}
+		}
+	} else if reqType == constants.RetrieveNewBeneHistData {
+		complexDataRequestType = constants.GetNewAndExistingBenes
+		// only set cutoffTime if there is no attributionDate set
+		if s.stdCutoffDuration > 0 && timeConstraints.AttributionDate.IsZero() {
+			cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
+		}
 	}
 
+	return cutoffTime, complexDataRequestType
+}
+
+// FindOldCCLFFile finds an older CCLF file depending on passed in timestamps
+func (s *service) FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (cclfFileOldID uint, err error) {
+	// Retrieve an older CCLF file for beneficiary comparison.
+	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
+	//
+	// e.g.
+	// - If it’s October 2023
+	// - and they request all beneficiary data “since January 1st, 2023"
+	// - any beneficiaries added in 2023 are considered "new."
+	//
+	oldFileUpperBound := since
+
+	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
+	// for the older file to be prior to the newest file's timestamp.
+	if !since.IsZero() && cclfTimestamp.Sub(since) < 0 {
+		oldFileUpperBound = cclfTimestamp.Add(-1 * time.Second)
+	}
+
+	cclfFileOld, err := s.GetLatestCCLFFile(
+		ctx,
+		cmsID,
+		time.Time{},
+		oldFileUpperBound,
+		models.FileTypeDefault,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	if cclfFileOld == nil {
+		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
+		return 0, nil
+	} else {
+		return cclfFileOld.ID, nil
+	}
+}
+
+func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error) {
 	var (
 		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
-		jobs                            []*models.JobEnqueueArgs
+		jobs                            []*worker_types.JobEnqueueArgs
 	)
-
-	if conditions.ReqType == Runout {
-		conditions.fileType = models.FileTypeRunout
-	} else {
-		conditions.fileType = models.FileTypeDefault
-	}
-
-	hasAttributionDate := !conditions.attributionDate.IsZero()
 
 	// for default requests, runouts, or any requests where the Since parameter is
 	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
-	if conditions.ReqType == DefaultRequest ||
-		conditions.ReqType == Runout ||
-		hasAttributionDate && conditions.Since.After(conditions.attributionDate) {
-
-		beneficiaries, err = s.getBeneficiaries(ctx, conditions)
+	switch args.ComplexDataRequestType {
+	case constants.GetExistingBenes:
+		beneficiaries, err = s.getBeneficiaries(ctx, args)
 		if err != nil {
 			return nil, err
 		}
-	} else if conditions.ReqType == RetrieveNewBeneHistData {
-		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, conditions)
+	case constants.GetNewAndExistingBenes:
+		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, args)
 		if err != nil {
 			return nil, err
 		}
 		// add new beneficiaries to the job queue; use a default time value to ensure
 		// that we retrieve the full history for these beneficiaries
-		jobs, err = s.createQueueJobs(ctx, conditions, time.Time{}, newBeneficiaries)
+		jobs, err = s.createQueueJobs(ctx, args, time.Time{}, newBeneficiaries)
 		if err != nil {
 			return nil, err
 		}
 		queJobs = append(queJobs, jobs...)
-	} else {
-		return nil, fmt.Errorf("unsupported RequestType %d", conditions.ReqType)
+	default:
+		return nil, fmt.Errorf("unsupported RequestType %d", args.RequestType)
 	}
 
 	// add existiing beneficiaries to the job queue
-	jobs, err = s.createQueueJobs(ctx, conditions, conditions.Since, beneficiaries)
+	jobs, err = s.createQueueJobs(ctx, args, args.Since, beneficiaries)
 	if err != nil {
 		return nil, err
 	}
@@ -253,14 +269,19 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
+func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
 	if !since.IsZero() {
 		sinceArg = "gt" + since.Format(time.RFC3339Nano)
 	}
 
-	for _, rt := range conditions.Resources {
+	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
+	if !ok {
+		return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+	}
+
+	for _, rt := range args.ResourceTypes {
 		maxBeneficiaries, err := getMaxBeneCount(rt)
 		if err != nil {
 			return nil, err
@@ -272,55 +293,53 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				if acoConfig, ok := s.GetACOConfigForID(conditions.CMSID); ok {
-					// Create separate jobs for each data type if needed
-					for _, dataType := range acoConfig.Data {
-						// conditions.TransactionTime references the last time adjudicated data
-						// was updated in the BB client. If we are queuing up a partially-adjudicated
-						// data job, we need to assume that the adjudicated and partially-adjudicated
-						// data ingestion timelines don't line up, therefore for all
-						// partially-adjudicated jobs we will just use conditions.CreationTime as an
-						// upper bound
-						var transactionTime time.Time
-						if dataType == constants.PartiallyAdjudicated {
-							transactionTime = conditions.CreationTime
-						} else {
-							transactionTime = conditions.TransactionTime
-						}
-						if resource, ok := GetDataType(rt); ok {
-							if resource.SupportsDataType(dataType) {
-								jobId, err := safecast.ToInt(conditions.JobID)
-								if err != nil {
-									log.API.Errorln(err)
-								}
-								enqueueArgs := models.JobEnqueueArgs{
-									ID:              jobId,
-									ACOID:           conditions.ACOID.String(),
-									CMSID:           conditions.CMSID,
-									BeneficiaryIDs:  jobIDs,
-									ResourceType:    rt,
-									Since:           sinceArg,
-									TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
-									TransactionTime: transactionTime,
-									BBBasePath:      s.bbBasePath,
-									DataType:        dataType,
-								}
-
-								s.setClaimsDate(&enqueueArgs, conditions)
-
-								jobs = append(jobs, &enqueueArgs)
-							}
-						} else {
-							// This should never be possible, would have returned earlier
-							return nil, errors.New("Invalid resource type: " + rt)
-						}
+				// Create separate jobs for each data type if needed
+				for _, dataType := range acoCfg.Data {
+					// conditions.TransactionTime references the last time adjudicated data
+					// was updated in the BB client. If we are queuing up a partially-adjudicated
+					// data job, we need to assume that the adjudicated and partially-adjudicated
+					// data ingestion timelines don't line up, therefore for all
+					// partially-adjudicated jobs we will just use conditions.CreationTime as an
+					// upper bound
+					var transactionTime time.Time
+					if dataType == constants.PartiallyAdjudicated {
+						transactionTime = args.CreationTime
+					} else {
+						transactionTime = args.Job.TransactionTime
 					}
+					if resource, ok := GetDataType(rt); ok {
+						if resource.SupportsDataType(dataType) {
+							jobId, err := safecast.ToInt(args.Job.ID)
+							if err != nil {
+								log.API.Errorln(err)
+							}
+							enqueueArgs := worker_types.JobEnqueueArgs{
+								ID:              jobId,
+								ACOID:           args.ACOID.String(),
+								CMSID:           args.CMSID,
+								BeneficiaryIDs:  jobIDs,
+								ResourceType:    rt,
+								Since:           sinceArg,
+								TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
+								TransactionTime: transactionTime,
+								BBBasePath:      args.BFDPath,
+								DataType:        dataType,
+							}
 
-					jobIDs = make([]string, 0, maxBeneficiaries)
-				} else {
-					// This should never be possible, would have returned earlier
-					return nil, errors.New("Invalid ACO")
+							ok := s.setClaimsDate(&enqueueArgs, args)
+							if !ok {
+								return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+							}
+
+							jobs = append(jobs, &enqueueArgs)
+						}
+					} else {
+						// This should never be possible, would have returned earlier
+						return nil, errors.New("Invalid resource type: " + rt)
+					}
 				}
+
+				jobIDs = make([]string, 0, maxBeneficiaries)
 			}
 		}
 	}
@@ -330,99 +349,59 @@ func (s *service) createQueueJobs(ctx context.Context, conditions RequestConditi
 
 // Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
 // split between existing beneficiaries and newly-attributed beneficiaries.
-func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
-	var cutoffTime time.Time
-
-	// only set cutoffTime if there is no attributionDate set
-	if s.stdCutoffDuration > 0 && conditions.attributionDate.IsZero() {
-		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
-	}
-
-	// Retrieve beneficiaries from either:
-	// - The newest CCLF file in the last X days (where X is the environment's configured cutoff duration)
-	// - OR the newest CCLF file prior to the requested attributionDate
-	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		cutoffTime, conditions.attributionDate, conditions.fileType)
+func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, args worker_types.PrepareJobArgs) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
+	cclfFileNew, err := s.repository.GetCCLFFileByID(ctx, args.CCLFFileNewID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
+		return nil, nil, err
 	}
-	performanceYear := time.Now().Year() % 100
-	if conditions.fileType == models.FileTypeRunout {
-		performanceYear -= 1
-	}
-	// Note, we only compare performanceYear for the new CCLF file since the old file will only be used for identifying new ones.
-	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
+	if cclfFileNew == nil {
+		return nil, nil, fmt.Errorf("no CCLF8 file found for cmsID %s", args.CMSID)
 	}
 
-	// If the _since parameter is more recent than the latest CCLF file processing date,
-	// all beneficiaries should be considered pre-existing benes.
-	if !conditions.Since.IsZero() && cclfFileNew.CreatedAt.Sub(conditions.Since) < 0 {
+	if !args.Since.IsZero() && cclfFileNew.CreatedAt.Sub(args.Since) < 0 {
 		// Retrieve all of the benes associated with this CCLF file.
-		benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
+		benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, args)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		if len(benes) == 0 {
-			return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-				conditions.CMSID, cclfFileNew.ID)
+			return nil, nil, fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", args.CMSID, cclfFileNew.ID)
 		}
 
 		return newBeneficiaries, benes, nil
 	}
 
-	// Retrieve an older CCLF file for beneficiary comparison.
-	// This should be older than cclfFileNew AND prior to the "since" parameter, if provided.
-	//
-	// e.g.
-	// - If it’s October 2023
-	// - and they request all beneficiary data “since January 1st, 2023"
-	// - any beneficiaries added in 2023 are considered "new."
-	//
-	oldFileUpperBound := conditions.Since
-
-	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
-	// for the older file to be prior to the newest file's timestamp.
-	if !conditions.Since.IsZero() && cclfFileNew.Timestamp.Sub(conditions.Since) < 0 {
-		oldFileUpperBound = cclfFileNew.Timestamp.Add(-1 * time.Second)
-	}
-
-	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		time.Time{}, oldFileUpperBound, models.FileTypeDefault)
+	cclfFileOld, err := s.repository.GetCCLFFileByID(ctx, args.CCLFFileOldID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
+		return nil, nil, err
 	}
 
 	if cclfFileOld == nil {
-		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
-			conditions.CMSID, conditions.Since)
+		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", args.CMSID, args.Since)
 
-		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
+		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID, args)
 		if err != nil {
 			return nil, nil, err
 		}
 		if len(newBeneficiaries) == 0 {
-			return nil, nil, fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-				conditions.CMSID, cclfFileNew.ID)
+			return nil, nil, fmt.Errorf("found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", args.CMSID, cclfFileNew.ID)
 		}
 		return newBeneficiaries, nil, nil
 	}
 
 	oldMBIs, err := s.repository.GetCCLFBeneficiaryMBIs(ctx, cclfFileOld.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s cclfFileID %d %s",
-			conditions.CMSID, cclfFileOld.ID, err.Error())
+		return nil, nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s cclfFileID %d %s", args.CMSID, cclfFileOld.ID, err.Error())
 	}
 
 	// Retrieve all of the benes associated with this CCLF file.
-	benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
+	benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, args)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(benes) == 0 {
-		return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-			conditions.CMSID, cclfFileNew.ID)
+		return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", args.CMSID, cclfFileNew.ID)
 	}
 
 	// Split the results beteween new and old benes based on the existence of the bene in the old map
@@ -441,62 +420,46 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	return newBeneficiaries, beneficiaries, nil
 }
 
-func (s *service) getBeneficiaries(ctx context.Context, conditions RequestConditions) ([]*models.CCLFBeneficiary, error) {
-	var cutoffTime time.Time
-
-	// only set a cutoffTime if there is no attributionDate set
-	if conditions.attributionDate.IsZero() {
-		if conditions.fileType == models.FileTypeDefault && s.stdCutoffDuration > 0 {
-			cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
-		} else if conditions.fileType == models.FileTypeRunout && s.rp.cutoffDuration > 0 {
-			cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
-		}
-	}
-	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum,
-		constants.ImportComplete, cutoffTime, conditions.attributionDate, conditions.fileType)
+func (s *service) getBeneficiaries(ctx context.Context, args worker_types.PrepareJobArgs) ([]*models.CCLFBeneficiary, error) {
+	cclfFile, err := s.repository.GetCCLFFileByID(ctx, args.CCLFFileNewID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
-			conditions.CMSID, conditions.fileType, err.Error())
+		return nil, err
 	}
-	performanceYear := time.Now().Year() % 100
-	if conditions.fileType == models.FileTypeRunout {
-		performanceYear -= 1
+	if cclfFile == nil {
+		return nil, fmt.Errorf("no CCLF8 file found for cmsID %s", args.CMSID)
 	}
 
-	if cclfFile == nil || performanceYear != cclfFile.PerformanceYear {
-		return nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
-	}
-
-	benes, err := s.getBenesByFileID(ctx, cclfFile.ID, conditions)
+	benes, err := s.getBenesByFileID(ctx, cclfFile.ID, args)
 	if err != nil {
 		return nil, err
 	}
 	if len(benes) == 0 {
-		return nil, fmt.Errorf("found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-			conditions.CMSID, cclfFile.ID)
+		return nil, fmt.Errorf("found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", args.CMSID, cclfFile.ID)
 	}
 
 	return benes, nil
 }
 
-func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditions RequestConditions) ([]*models.CCLFBeneficiary, error) {
+func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args worker_types.PrepareJobArgs) ([]*models.CCLFBeneficiary, error) {
 	var (
 		ignoredMBIs []string
 		err         error
 	)
 	if !s.sp.includeSuppressedBeneficiaries {
-		upperBound := conditions.optOutDate
-		if conditions.optOutDate.IsZero() {
+		upperBound := args.OptOutDate
+		if args.OptOutDate.IsZero() {
 			upperBound = time.Now()
 		}
 
-		if cfg, ok := SetACOCfgFromCtx(ctx); ok {
+		if cfg, ok := s.GetACOConfigForID(args.CMSID); ok {
 			if !cfg.IgnoreSuppressions {
 				ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
 				if err != nil {
 					return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
 				}
 			}
+		} else {
+			return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
 		}
 
 	}
@@ -509,43 +472,24 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 	return benes, nil
 }
 
-// timeConstraints searches for any time bounds that we should apply on the associated ACO
-func (s *service) timeConstraints(ctx context.Context, cmsID string) (timeConstraint, error) {
-	var constraint timeConstraint
-	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
-	if err != nil {
-		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
-	}
-
-	// If aco is not terminated, then we should not apply any time constraints
-	if aco.TerminationDetails == nil {
-		return constraint, nil
-	}
-
-	constraint.attributionDate = aco.TerminationDetails.AttributionDate()
-	constraint.claimsDate = aco.TerminationDetails.ClaimsDate()
-	constraint.optOutDate = aco.TerminationDetails.OptOutDate()
-	return constraint, nil
-}
-
 // setClaimsDate computes the claims window to apply on the args
-func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestConditions) {
+func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs worker_types.PrepareJobArgs) bool {
 	// If the caller made a request for runout data
 	// it takes precedence over any other claims date
 	// that may be applied
-	if conditions.ReqType == Runout {
+	if prepareArgs.RequestType == constants.Runout {
 		args.ClaimsWindow.UpperBound = s.rp.claimThruDate
-	} else if !conditions.claimsDate.IsZero() {
-		args.ClaimsWindow.UpperBound = conditions.claimsDate
+	} else if !prepareArgs.ClaimsDate.IsZero() {
+		args.ClaimsWindow.UpperBound = prepareArgs.ClaimsDate
 	}
 
 	// Applies the lower bound from the first matching ACOConfig
-	for _, cfg := range s.acoConfigs {
-		if cfg.patternExp.MatchString(conditions.CMSID) {
-			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
-			break
-		}
+	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
+	if ok {
+		args.ClaimsWindow.LowerBound = cfg.LookbackTime()
 	}
+
+	return ok
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
@@ -644,8 +588,8 @@ func IsSupportedACO(cmsID string) bool {
 	return regexp.MustCompile(pattern).MatchString(cmsID)
 }
 
-func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, time.Time{}, fileType)
+func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, constants.CCLF8FileNum, constants.ImportComplete, lowerBound, upperBound, fileType)
 	if err != nil {
 		return nil, err
 	}
@@ -655,6 +599,25 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType 
 	}
 
 	return cclfFile, nil
+}
+
+// GetTimeConstraints searches for any time bounds that we should apply on the associated ACO
+func (s *service) GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error) {
+	var constraint TimeConstraints
+	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
+	if err != nil {
+		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
+	}
+
+	// If aco is not terminated, then we should not apply any time constraints
+	if aco.TerminationDetails == nil {
+		return constraint, nil
+	}
+
+	constraint.AttributionDate = aco.TerminationDetails.AttributionDate()
+	constraint.ClaimsDate = aco.TerminationDetails.ClaimsDate()
+	constraint.OptOutDate = aco.TerminationDetails.OptOutDate()
+	return constraint, nil
 }
 
 type CCLFNotFoundError struct {
@@ -673,19 +636,3 @@ var (
 	ErrJobNotCancelled   = goerrors.New("job was not cancelled due to internal server error")
 	ErrJobNotCancellable = goerrors.New("job was not cancelled because it is not Pending or In Progress")
 )
-
-type CtxACOCfgType string
-
-const CtxACOCfg CtxACOCfgType = "ctxACOCfg"
-
-// TODO: this should live within middleware, models, or another common package.
-//
-//	We should move this when we do package cleanup.
-func NewACOCfgCtx(ctx context.Context, cfg *ACOConfig) context.Context {
-	return context.WithValue(ctx, CtxACOCfg, cfg)
-}
-
-func SetACOCfgFromCtx(ctx context.Context) (*ACOConfig, bool) {
-	cfg, ok := ctx.Value(CtxACOCfg).(*ACOConfig)
-	return cfg, ok
-}

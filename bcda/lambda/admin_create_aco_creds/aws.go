@@ -8,8 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	log "github.com/sirupsen/logrus"
@@ -18,12 +16,10 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 )
 
-var destBucket = "bcda-aco-credentials"
-var kmsAliasName = "alias/bcda-aco-creds-kms"
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
 func getAWSParams(session *session.Session) (awsParams, error) {
-	env := conf.GetEnv("ENV")
+	env := adjustedEnv()
 
 	if env == "local" {
 		return awsParams{}, nil
@@ -54,7 +50,12 @@ func getAWSParams(session *session.Session) (awsParams, error) {
 		return awsParams{}, err
 	}
 
-	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM}, nil
+	credsBucket, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env))
+	if err != nil {
+		return awsParams{}, err
+	}
+
+	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
 }
 
 func setupEnvironment(params awsParams) error {
@@ -100,52 +101,11 @@ func setupEnvironment(params awsParams) error {
 	return nil
 }
 
-func getKMSID(service kmsiface.KMSAPI) (string, error) {
-	kmsInput := &kms.ListAliasesInput{}
-	kmsResult, err := service.ListAliases(kmsInput)
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case kms.ErrCodeDependencyTimeoutException:
-				log.Error(kms.ErrCodeDependencyTimeoutException, aerr.Error())
-			case kms.ErrCodeInvalidMarkerException:
-				log.Error(kms.ErrCodeInvalidMarkerException, aerr.Error())
-			case kms.ErrCodeInternalException:
-				log.Error(kms.ErrCodeInternalException, aerr.Error())
-			case kms.ErrCodeInvalidArnException:
-				log.Error(kms.ErrCodeInvalidArnException, aerr.Error())
-			case kms.ErrCodeNotFoundException:
-				log.Error(kms.ErrCodeNotFoundException, aerr.Error())
-			default:
-				log.Error(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
-			log.Error(err.Error())
-		}
-		return "", err
-	}
-
-	var id string
-	for _, alias := range kmsResult.Aliases {
-		if *alias.AliasName == kmsAliasName {
-			id = *alias.TargetKeyId
-			break
-		}
-	}
-
-	return id, nil
-}
-
-func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) (string, error) {
-	bucketSuffix := conf.GetEnv("ENV")
-
+func putObject(service s3iface.S3API, acoID string, creds string, credsBucket string) (string, error) {
 	s3Input := &s3.PutObjectInput{
-		Body:                 aws.ReadSeekCloser(strings.NewReader(creds)),
-		Bucket:               aws.String(destBucket),
-		Key:                  aws.String(fmt.Sprintf("%s/%s-creds", bucketSuffix, acoID)),
-		ServerSideEncryption: aws.String("aws:kms"),
-		SSEKMSKeyId:          aws.String(kmsID),
+		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
+		Bucket: aws.String(credsBucket),
+		Key:    aws.String(fmt.Sprintf("%s-creds", acoID)),
 	}
 
 	result, err := service.PutObject(s3Input)
@@ -163,4 +123,12 @@ func putObject(service s3iface.S3API, acoID string, creds string, kmsID string) 
 	}
 
 	return result.String(), nil
+}
+
+func adjustedEnv() string {
+	env := conf.GetEnv("ENV")
+	if env == "sbx" {
+		env = "opensbx"
+	}
+	return env
 }

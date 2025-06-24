@@ -97,7 +97,7 @@ func waitForSig() {
 func main() {
 	fmt.Println("Starting bcdaworker...")
 	if conf.GetEnv("QUEUE_LIBRARY") == "river" {
-		queue := queueing.StartRiver(utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+		queue := queueing.StartRiver(utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 		defer queue.StopRiver()
 	} else {
 		queue := queueing.StartQue(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
@@ -130,7 +130,7 @@ func logHealth() {
 	logFields["type"] = "health"
 	logFields["id"] = uuid.NewRandom()
 
-	if _, ok := health.IsDatabaseOK(); ok {
+	if _, ok := health.IsWorkerDatabaseOK(); ok {
 		logFields["db"] = "ok"
 	} else {
 		logFields["db"] = "error"

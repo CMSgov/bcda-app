@@ -1,0 +1,26 @@
+version: '3'
+services:
+  hl7_validator_service:
+    image: infernocommunity/inferno-resource-validator
+    environment:
+      # Defines how long validator sessions last if unused, in minutes:
+      # Negative values mean sessions never expire, 0 means sessions immediately expire
+      SESSION_CACHE_DURATION: -1
+    volumes:
+      - ./data/igs:/app/igs
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx/nginx.background.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    command: [nginx, '-g', 'daemon off;']
+    depends_on:
+      - hl7_validator_service
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    command: redis-server --appendonly yes

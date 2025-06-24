@@ -27,29 +27,25 @@ func LoadConfig() (cfg *Config, err error) {
 }
 
 type Config struct {
-	SuppressionLookbackDays int `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
-	CutoffDurationDays      int `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
-
-	AlrJobSize uint `conf:"alr_job_size" conf_default:"1000"` // Number of entries to put in a single ALR job
-
+	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
+	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
+	AlrJobSize              uint        `conf:"alr_job_size" conf_default:"1000"` // Number of entries to put in a single ALR job
+	ACOConfigs              []ACOConfig `conf:"aco_config"`
+	CutoffDuration          time.Duration
+	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
 	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
 	// to be defined as a child of RunoutConfig.
 	// Ex: Without the ,squash, we would have to have RunoutConfig.RUNOUT_CUTOFF_DATE_DAYS
 	// With the ,squash, we would have RUNOUT_CUTOFF_DATE_DAYS.
 	RunoutConfig RunoutConfig `conf:",squash"`
-
-	ACOConfigs []ACOConfig `conf:"aco_config"`
-
-	// Un-exported fields that are computed using the exported ones above
-	cutoffDuration time.Duration
 }
 
 type RunoutConfig struct {
 	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
 	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2024-12-31"`
+	CutoffDuration     time.Duration
 	// Un-exported fields that are computed using the exported ones above
-	cutoffDuration time.Duration
-	claimThru      time.Time
+	claimThru time.Time
 }
 
 type ACOConfig struct {
@@ -73,6 +69,11 @@ type AttributionFile struct {
 	MetadataMatches int    `conf:"metadata_matches" `
 }
 
+type RateLimitConfig struct {
+	All  bool     `conf:"all"`  // rate-limit requests for all ACOs
+	ACOs []string `conf:"acos"` // rate-limit requests for specific ACOs
+}
+
 func (config Config) String() string {
 	return toJSON(config)
 }
@@ -82,6 +83,10 @@ func (config RunoutConfig) String() string {
 }
 
 func (config *ACOConfig) String() string {
+	return toJSON(config)
+}
+
+func (config RateLimitConfig) String() string {
 	return toJSON(config)
 }
 
@@ -102,8 +107,8 @@ func (cfg *Config) ComputeFields() (err error) {
 		perfYearLayout = "01/02"
 	)
 
-	cfg.cutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
-	cfg.RunoutConfig.cutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
+	cfg.CutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
+	cfg.RunoutConfig.CutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
 	if cfg.RunoutConfig.claimThru, err = time.Parse(claimThruLayout, cfg.RunoutConfig.ClaimThruDate); err != nil {
 		return fmt.Errorf("failed to parse runout claim thru date: %w", err)
 	}

@@ -22,9 +22,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 	"github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
@@ -542,12 +545,13 @@ func (s *APITestSuite) TestResourceTypes() {
 	h := api.NewHandler(resources, "/v2/fhir", "v2")
 	mockSvc := &service.MockService{}
 
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
 	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
-
+	mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.AnythingOfType("string")).Return(service.TimeConstraints{}, nil)
+	mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 	h.Svc = mockSvc
 
 	for idx, handler := range []http.HandlerFunc{h.BulkGroupRequest, h.BulkPatientRequest} {
@@ -572,7 +576,7 @@ func (s *APITestSuite) TestResourceTypes() {
 				rctx := chi.NewRouteContext()
 				rctx.URLParams.Add("groupId", "all")
 				req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-
+				req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 				ad := s.getAuthData()
 				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 				req = req.WithContext(middleware.SetRequestParamsCtx(req.Context(), rp))

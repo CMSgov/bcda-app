@@ -8,6 +8,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
@@ -29,8 +30,8 @@ type queue struct {
 	worker worker.Worker
 
 	// Resources associated with the underlying Que client library
-	quePool *que.WorkerPool
-	queDB   *pgx.ConnPool
+	quePool *que.WorkerPool // Decprecated: use river instead.
+	queDB   *pgx.ConnPool   // Decprecated: use river instead.
 
 	// Resources associated with River library
 	client *river.Client[pgxv5.Tx]
@@ -47,7 +48,7 @@ type ValidateJobConfig struct {
 	Repository     repository.Repository
 	JobID          int64
 	QJobID         int64
-	Args           models.JobEnqueueArgs
+	Args           worker_types.JobEnqueueArgs
 	ErrorCount     int
 }
 

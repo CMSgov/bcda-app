@@ -120,30 +120,3 @@ type CCLFBeneficiary struct {
 	MBI          string
 	BlueButtonID string
 }
-
-const (
-	QUE_PROCESS_JOB = "ProcessJob"
-	ALR_JOB         = "AlrJob"
-)
-
-type JobEnqueueArgs struct {
-	ID              int // parent Job ID
-	ACOID           string
-	CMSID           string
-	BeneficiaryIDs  []string
-	ResourceType    string
-	Since           string
-	TransactionID   string
-	TransactionTime time.Time
-	BBBasePath      string
-	ClaimsWindow    struct {
-		LowerBound time.Time
-		UpperBound time.Time
-	}
-	DataType string
-}
-
-// Needed by River (queue library)
-func (jobargs JobEnqueueArgs) Kind() string {
-	return QUE_PROCESS_JOB
-}

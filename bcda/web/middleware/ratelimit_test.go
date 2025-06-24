@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -19,6 +20,7 @@ import (
 )
 
 func TestNoConcurrentJobs(t *testing.T) {
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	tests := []struct {
 		name string
 		rp   RequestParameters
@@ -34,22 +36,25 @@ func TestNoConcurrentJobs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		mockRepo := &models.MockRepository{}
-		// ctx, acoID, inprogress, pending
-		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			tt.jobs, //jobs
-			nil,     //error
-		)
-		repository = mockRepo
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &models.MockRepository{}
+			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				tt.jobs,
+				nil,
+			)
+			repository = mockRepo
 
-		rr := httptest.NewRecorder()
-		CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			// Conncurrent job test route check, blank return for overrides
-		})).ServeHTTP(rr, getRequest(tt.rp))
-		assert.Equal(t, http.StatusOK, rr.Code)
+			rr := httptest.NewRecorder()
+			middleware := CheckConcurrentJobs(cfg)
+			middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				// Conncurrent job test route check, blank return for overrides
+			})).ServeHTTP(rr, getRequest(tt.rp))
+			assert.Equal(t, http.StatusOK, rr.Code)
+		})
 	}
 }
 func TestHasConcurrentJobs(t *testing.T) {
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	// These jobs are not considered when determine duplicate jobs
 	ignoredJobs := []*models.Job{
 		{RequestURL: "http://a{b"},                           // InvalidURL
@@ -72,33 +77,36 @@ func TestHasConcurrentJobs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		mockRepo := &models.MockRepository{}
-		// ctx, acoID, inprogress, pending
-		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			append(ignoredJobs, tt.additionalJobs...), //jobs
-			nil, //error
-		)
-		repository = mockRepo
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &models.MockRepository{}
+			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				append(ignoredJobs, tt.additionalJobs...),
+				nil,
+			)
+			repository = mockRepo
 
-		rr := httptest.NewRecorder()
-		CheckConcurrentJobs(nil).ServeHTTP(rr, getRequest(tt.rp))
-		assert.Equal(t, http.StatusTooManyRequests, rr.Code)
-		assert.NotEmpty(t, rr.Header().Get("Retry-After"))
+			rr := httptest.NewRecorder()
+			middleware := CheckConcurrentJobs(cfg)
+			middleware(nil).ServeHTTP(rr, getRequest(tt.rp))
+			assert.Equal(t, http.StatusTooManyRequests, rr.Code)
+			assert.NotEmpty(t, rr.Header().Get("Retry-After"))
+		})
 	}
 }
 
 func TestFailedToGetJobs(t *testing.T) {
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
 	mockRepo := &models.MockRepository{}
-	// ctx, acoID, inprogress, pending
 	mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 		nil,
 		errors.New("FORCING SOME ERROR"),
-		nil, //error
+		nil,
 	)
 	repository = mockRepo
 
 	rr := httptest.NewRecorder()
-	CheckConcurrentJobs(nil).ServeHTTP(rr, getRequest(RequestParameters{}))
+	middleware := CheckConcurrentJobs(cfg)
+	middleware(nil).ServeHTTP(rr, getRequest(RequestParameters{}))
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	assert.Contains(t, rr.Body.String(), "code\":\"exception\"")
 }
@@ -131,9 +139,34 @@ func TestHasDuplicatesFullString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
-		responseBool := hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
-		assert.Equal(t, tt.expectedValue, responseBool)
+		t.Run(tt.name, func(t *testing.T) {
+			responseBool := hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
+			assert.Equal(t, tt.expectedValue, responseBool)
+		})
 	}
 
+}
+
+func TestShouldRateLimit(t *testing.T) {
+	cmsID := "MyFavoriteACO"
+	otherCMSID := "OtherCMSID"
+
+	tests := []struct {
+		name          string
+		cmsID         string
+		config        service.RateLimitConfig
+		expectedValue bool
+	}{
+		{"Apply rate limit for all requests", cmsID, service.RateLimitConfig{All: true, ACOs: []string{}}, true},
+		{"Apply rate limit for no requests", cmsID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
+		{"Apply rate limit for ACO in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{cmsID, otherCMSID}}, true},
+		{"Dont apply rate limit for ACO not in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{otherCMSID}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualValue := shouldRateLimit(tt.config, tt.cmsID)
+			assert.Equal(t, tt.expectedValue, actualValue, tt.name)
+		})
+	}
 }

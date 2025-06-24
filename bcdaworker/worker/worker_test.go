@@ -32,6 +32,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
@@ -149,7 +150,7 @@ func (s *WorkerTestSuite) TestGetBlueButtonID_NonHappyPaths() {
 	bbc := &client.MockBlueButtonClient{}
 	beneficiaryID := "abcdef12000"
 	var cclfBeneficiaryIDs []string
-	jobArgs := models.JobEnqueueArgs{
+	jobArgs := worker_types.JobEnqueueArgs{
 		ID:              s.jobID,
 		ResourceType:    "ExplanationOfBenefit",
 		BeneficiaryIDs:  cclfBeneficiaryIDs,
@@ -236,11 +237,11 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 	}
 }
 
-func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Context, models.JobEnqueueArgs, *client.MockBlueButtonClient) {
+func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Context, worker_types.JobEnqueueArgs, *client.MockBlueButtonClient) {
 	bbc := client.MockBlueButtonClient{}
 	since, transactionTime := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now()
 	claimsWindow := client.ClaimsWindow{LowerBound: time.Now().Add(-365 * 24 * time.Hour), UpperBound: time.Now().Add(-180 * 24 * time.Hour)}
-	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: resource, Since: since, TransactionTime: transactionTime, ClaimsWindow: claimsWindow}
+	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: resource, Since: since, TransactionTime: transactionTime, ClaimsWindow: claimsWindow}
 	var cclfBeneficiaryIDs []string
 	beneID := "a1000050699"
 	bbc.MBI = &beneID
@@ -316,7 +317,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 
 	bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneficiaryID))
 
-	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
@@ -342,7 +343,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneficiaryID))
 	}
 
-	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
@@ -382,7 +383,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	bbc := client.MockBlueButtonClient{}
 	// Set up the mock function to return the expected values
 
@@ -439,7 +440,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
@@ -539,7 +540,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	assert.False(s.T(), complete)
 
 	id, _ := safecast.ToInt(j.ID)
-	jobArgs := models.JobEnqueueArgs{
+	jobArgs := worker_types.JobEnqueueArgs{
 		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
@@ -579,7 +580,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	}
 
 	id, _ := safecast.ToInt(j.ID)
-	jobArgs := models.JobEnqueueArgs{
+	jobArgs := worker_types.JobEnqueueArgs{
 		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
@@ -609,7 +610,7 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	}
 
 	id, _ := safecast.ToInt(j.ID)
-	jobArgs := models.JobEnqueueArgs{
+	jobArgs := worker_types.JobEnqueueArgs{
 		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
@@ -702,7 +703,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	id, _ := safecast.ToInt(j.ID)
-	jobArgs := models.JobEnqueueArgs{
+	jobArgs := worker_types.JobEnqueueArgs{
 		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
@@ -728,7 +729,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	id, _ := safecast.ToInt(j.ID)
-	jobArgs := models.JobEnqueueArgs{
+	jobArgs := worker_types.JobEnqueueArgs{
 		ID:             id,
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
@@ -794,7 +795,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 			postgrestest.CreateJobs(s.T(), s.db, &j)
 
 			id, _ := safecast.ToInt(j.ID)
-			jobArgs := models.JobEnqueueArgs{
+			jobArgs := worker_types.JobEnqueueArgs{
 				ID:             id,
 				ACOID:          j.ACOID.String(),
 				BeneficiaryIDs: []string{"10000", "11000"},
@@ -902,12 +903,12 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	r := &repository.MockRepository{}
 	w := &worker{r}
 
-	noBasePath := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31())}
-	jobNotFound := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
-	dbErr := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
-	jobCancelled := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
-	jobFailed := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
-	validJob := models.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	noBasePath := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31())}
+	jobNotFound := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	dbErr := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	jobCancelled := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	jobFailed := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
+	validJob := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
 
 	jobNotFoundId, err := safecast.ToUint(jobNotFound.ID)
 	assert.NoError(s.T(), err)

@@ -1,0 +1,146 @@
+# Build and Package will build and package BCDA and SSAS APIs onto one platinum AMI 
+# and BCDA Worker onto another platinum AMI
+
+name: Build and Package All GF
+
+on:
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ops_release_version:
+        description: 'Release version/tag bcda-ops (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+          description: 'Release version/tag for bcda-ssas (or branch name)'
+          required: true
+          type: string
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ops_release_version:
+        description: 'Release version/tag for bcda-ops (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version/tag for bcda-ssas (or branch name)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build_and_package_bcda:
+    uses: ./.github/workflows/build-and-package-bcda-gf.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+    secrets: inherit
+
+  build_and_package_ssas:
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-package-gf.yml@main
+    with:
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+    secrets: inherit
+  
+  create_amis:
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    needs: [build_and_package_bcda, build_and_package_ssas]
+    strategy:
+      matrix:
+        vars:
+          - account_id: NON_PROD_ACCOUNT_ID
+            role_to_assume: bcda-dev-github-actions
+          - account_id: PROD_ACCOUNT_ID
+            role_to_assume: bcda-prod-github-actions
+    steps:
+      - uses: hashicorp/setup-packer@v3.1.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
+      - name: Get AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            GITHUB_TOKEN=/ci/github/token
+            SUBNET_ID=/bcda/workflows/packer_subnet_id
+            RPM_BUCKET=/bcda/rpms_bucket
+      - name: Checkout bcda-ops
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: ${{ inputs.ops_release_version || 'main' }}
+          token: ${{ env.GITHUB_TOKEN }}
+      - name: Get platinum AMI ID
+        run: |
+          export BCDA_PLATINUM_AMI=`aws --region us-east-1 ec2 describe-images --filters Name=name,Values='bcda-platinum-??????????????' --query 'sort_by(Images,&CreationDate)[-1]' --output json | jq -r .ImageId`
+          echo "BCDA_PLATINUM_AMI=$BCDA_PLATINUM_AMI" >> $GITHUB_ENV
+      - name: Set release type (dev)
+        if: ${{ inputs.release_version == 'main' || inputs.release_version == '' }}
+        run: echo "RELEASE_TYPE=dev" >> $GITHUB_ENV
+      - name: Set release type (release)
+        if: ${{ inputs.release_version != 'main' && inputs.release_version != '' }}
+        run: echo "RELEASE_TYPE=release" >> $GITHUB_ENV
+      - name: Install Ansible
+        run: |
+          sudo dnf update -y
+          sudo dnf install ansible-8.3.0 -y
+      - name: Install AWS Session Manager Plugin
+        run: |
+          sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+      - name: Create API AMI
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: /tmp/
+        run: |
+          set -euo pipefail
+          packer init packer/api_gf.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version  || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "rpm_bucket=${{ env.RPM_BUCKET }}" packer/api_gf.json.pkr.hcl 2>&1
+      - name: Create Worker AMI
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: /tmp/
+        run: |
+          set -euo pipefail
+          packer init packer/worker_gf.json.pkr.hcl 2>&1
+          packer build -color=false -var "source_ami=${{ env.BCDA_PLATINUM_AMI }}" -var "subnet_id=${{ env.SUBNET_ID }}" -var "version=${{ inputs.release_version || 'main' }}" -var "release_type=${{ env.RELEASE_TYPE }}" -var "rpm_bucket=${{ env.RPM_BUCKET }}" packer/worker_gf.json.pkr.hcl 2>&1
+
+      - name: Success Alert
+        if: ${{ success() && needs.build_and_package_bcda.result == 'success' && needs.build_and_package_ssas.result == 'success' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                text: "SUCCESS: Build and Package BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
+      - name: Failure Alert
+        if: ${{ failure() || needs.build_and_package_bcda.result != 'success' || needs.build_and_package_ssas.result != 'success' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-alerts
+          payload: |
+            channel: "C034CFU945C"
+            attachments:
+              - color: danger
+                text: "FAILURE: Build and Package BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
+                  

@@ -1,9 +1,9 @@
 name: CI Checks
 
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   pull_request:
   workflow_call:
     inputs:
@@ -53,13 +53,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '>=1.23.1'
-      # TODO: TEMP (can remove this step once PLT-905 is implemented)
-      - name: Install docker compose manually
-        run: |
-          sudo mkdir -p /usr/local/lib/docker/cli-plugins
-          sudo curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-          sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
-          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -94,11 +87,6 @@ jobs:
     needs: lint_and_test
     runs-on: self-hosted
     steps:
-      - name: Download code coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: code-coverage-report
-          path: testcoverage.out
       - name: Set env vars from AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -112,13 +100,17 @@ jobs:
         with:
           repository: CMSgov/bcda-app
           fetch-depth: 0
+      - name: Download code coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: code-coverage-report
       - name: Run quality gate scan
         uses: sonarsource/sonarqube-scan-action@master
         with:
           args:
             -Dsonar.projectKey=bcda-aco-api
             -Dsonar.sources=.
-            -Dsonar.go.coverage.reportPaths=./testcoverage.out
+            -Dsonar.go.coverage.reportPaths=testcoverage.out
             -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
             -Dsonar.branch.name=${{ env.RELEASE_VERSION }}
             -Dsonar.projectVersion=${{ github.sha }}

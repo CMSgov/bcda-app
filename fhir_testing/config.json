@@ -1,10 +1,4 @@
 {
-  "bulk_url": "https://sandbox.bcda.cms.gov/api/v2/",
-  "auth": {
-    "token_endpoint": "https://sandbox.bcda.cms.gov/auth/token",
-    "client_id": "",
-    "client_secret": ""
-  },
   "required_tests": [
     "bulk_data_v200-bulk_data_export_tests_v200-bulk_data_server_tests_stu2-bulk_data_server_tls_version_stu2",
     "bulk_data_v200-bulk_data_export_tests_v200-bulk_data_group_export_v200-bulk_data_group_export_group_stu2-bulk_data_group_export_operation_support",

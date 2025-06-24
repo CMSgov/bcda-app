@@ -1,0 +1,29 @@
+version: '3'
+services:
+  inferno:
+    image: inferno:1
+    volumes:
+      - ./data:/opt/inferno/data
+    depends_on:
+      - hl7_validator_service
+  worker:
+    image: inferno:1
+    volumes:
+      - ./data:/opt/inferno/data
+    command: bundle exec sidekiq -r ./worker.rb
+    depends_on:
+      - redis
+  hl7_validator_service:
+    extends:
+      file: docker-compose.inferno-background.yml
+      service: hl7_validator_service
+  nginx:
+    extends:
+      file: docker-compose.inferno-background.yml
+      service: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  redis:
+    extends:
+      file: docker-compose.inferno-background.yml
+      service: redis

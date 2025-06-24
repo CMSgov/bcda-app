@@ -196,7 +196,32 @@ bdt:
 	-e SECRET='${CLIENT_SECRET}' \
 	bdt
 
-.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot reset-db dbdocs
+fhir_testing:
+	# Set up inferno server
+	docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
+	docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
+	docker compose -f fhir_testing/docker-compose.inferno.yml up -d
+	sleep 10
+	docker stop fhir_testing-hl7_validator_service-1
+
+	# Get config
+	$(eval ACO_CMS_ID = A9994)
+	$(eval CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
+	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
+	$(eval BULK_URL = 'http://host.docker.internal:3000/api/v2/')
+	$(eval TOKEN_URL = 'http://host.docker.internal:3000/auth/token')
+	
+	# Run the tests
+	docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
+	@docker run --network=bridge --rm \
+	-e BULK_URL='${BULK_URL}' \
+	-e TOKEN_URL='${TOKEN_URL}' \
+	-e CLIENT_ID='${CLIENT_ID}' \
+	-e CLIENT_SECRET='${CLIENT_SECRET}' \
+	fhir_testing
+
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 credentials:
 	$(eval ACO_CMS_ID = A9994)

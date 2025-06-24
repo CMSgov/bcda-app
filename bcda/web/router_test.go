@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 
@@ -15,15 +14,14 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -249,6 +247,48 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestV3EndpointsDisabled() {
+	// Set the V3 endpoints to be off and restart the router so the test router has the correct configuration
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "metadata")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestV3EndpointsEnabled() {
+	// Set the V3 endpoints to be on and restart the router so the test router has the correct configuration
+	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
+	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
+	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "jobs")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "attribution_status")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute(constants.V3Path + "metadata")
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestJobStatusRoute() {
 	res := s.getAPIRoute(constants.V1Path + constants.JobsFilePath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -349,10 +389,10 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 	return configs
 }
 
-func setExpectedMockCalls(s *RouterTestSuite, mock *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
-	mock.On("VerifyToken", bearerString).Return(token, nil)
-	mock.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
-	auth.SetMockProvider(s.T(), mock)
+func setExpectedMockCalls(s *RouterTestSuite, mockP *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
+	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
+	mockP.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
+	auth.SetMockProvider(s.T(), mockP)
 }
 
 // integration test, requires connection to postgres db
@@ -454,91 +494,6 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 	mock.AssertExpectations(s.T())
 }
 
-// Verifies that we have the rate limiting handlers in place for the correct environments
-func (s *RouterTestSuite) TestRateLimitRoutes() {
-	// patterns := []string{"/Group/{groupId}/$export", "/Patient/$export"}
-
-	env := conf.GetEnv("DEPLOYMENT_TARGET")
-	defer conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", env)
-
-	tests := []struct {
-		target       string
-		hasRateLimit bool
-	}{
-		{"dev", false},
-		{"test", true},
-		{"prod", true},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(tt.target, func(t *testing.T) {
-			conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", tt.target)
-			conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
-			router := NewAPIRouter().(chi.Router)
-			assert.NotNil(s.T(), router)
-
-			v1Router := getRouterForVersion("v1", router)
-			assert.NotNil(t, v1Router)
-			v2Router := getRouterForVersion("v2", router)
-			assert.NotNil(t, v2Router)
-
-			// Test all requests for all versions of the our API
-			for _, versionRouter := range []chi.Router{v1Router, v2Router} {
-				for _, ep := range []string{"/Group/{groupId}/$export", "/Patient/$export"} {
-					middlewares := getMiddlewareForHandler(ep, versionRouter)
-					assert.NotNil(t, middlewares)
-					var hasRateLimit bool
-					for _, mw := range middlewares {
-						assert.NotNil(t, mw)
-						// Use the pointer values of the middleware to check if we're
-						// using the rate limit functions.
-						// If the pointer value of the middleware matches the rate limit function, then
-						// we know that the middleware function used is the rate limit function
-						if reflect.ValueOf(mw) == reflect.ValueOf(middleware.CheckConcurrentJobs) {
-							hasRateLimit = true
-						}
-					}
-					assert.Equal(t, tt.hasRateLimit, hasRateLimit)
-				}
-			}
-		})
-	}
-}
-
-func getMiddlewareForHandler(pattern string, router chi.Router) chi.Middlewares {
-	for _, route := range router.Routes() {
-		if route.Pattern == pattern {
-			return route.Handlers["GET"].(*chi.ChainHandler).Middlewares
-		}
-		// Go through all of the children
-		if route.SubRoutes != nil {
-			middleware := getMiddlewareForHandler(pattern, route.SubRoutes.(chi.Router))
-			if middleware != nil {
-				return middleware
-			}
-		}
-	}
-	// No matches
-	return nil
-}
-
-// getRouterForVersion retrives the underlying router associated with a particular versioned endpoint
-func getRouterForVersion(version string, router chi.Router) chi.Router {
-	for _, route := range router.Routes() {
-		if route.Pattern == fmt.Sprintf("/api/%s/*", version) {
-			return route.SubRoutes.(chi.Router)
-		}
-		// Go through all of the children
-		if route.SubRoutes != nil {
-			router := getRouterForVersion(version, route.SubRoutes.(chi.Router))
-			if router != nil {
-				return router
-			}
-		}
-	}
-
-	return nil
-}
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
 }

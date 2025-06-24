@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -59,7 +60,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 		tokenString := authSubmatches[1]
 
-		token, ad, err := AuthorizeAccess(tokenString)
+		token, ad, err := AuthorizeAccess(r.Context(), tokenString)
 		if err != nil {
 			handleTokenVerificationError(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, rw, err)
 			return
@@ -72,10 +73,10 @@ func ParseToken(next http.Handler) http.Handler {
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func AuthorizeAccess(tokenString string) (*jwt.Token, AuthData, error) {
+func AuthorizeAccess(ctx context.Context, tokenString string) (*jwt.Token, AuthData, error) {
 	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
-	token, err := GetProvider().VerifyToken(tokenString)
+	token, err := GetProvider().VerifyToken(ctx, tokenString)
 
 	var ad AuthData
 
@@ -211,6 +212,8 @@ func getRespWriter(path string) fhirResponseWriter {
 		return responseutils.NewResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewResponseWriter()
+	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
+		return responseutilsv2.NewResponseWriter() // TODO: V3
 	} else {
 		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
 		// In the cases we cannot discern a version we default to v1

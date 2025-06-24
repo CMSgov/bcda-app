@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 
@@ -148,6 +149,8 @@ func getRespWriter(path string) fhirResponseWriter {
 		return responseutils.NewResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewResponseWriter()
+	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
+		return responseutilsv2.NewResponseWriter() // TODO: V3
 	} else {
 		return responseutils.NewResponseWriter()
 	}

@@ -406,7 +406,6 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	}
 
 	for _, tc := range tests {
-		fmt.Printf("\n-----path %+v,\n   expected: %+v\n", tc.path, tc.expectedLogs)
 		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 		path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tc.path)
@@ -419,18 +418,14 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 		var success, failed bool
 		for _, entry := range hook.AllEntries() {
-			fmt.Printf("\n-----entry %+v,\n   expected: %+v\n", entry.Message, tc.expectedLogs[0])
 			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
-				fmt.Print("\n--setting success to true\n")
 				success = true
 			}
 			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
-				fmt.Print("\n--setting failed to true\n")
 				failed = true
 			}
 		}
 
-		fmt.Printf("\n-----end result, success: %+v, failed: %+v\n", success, failed)
 		assert.True(success)
 		assert.True(failed)
 	}

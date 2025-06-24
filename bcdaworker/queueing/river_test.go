@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
@@ -27,6 +28,7 @@ import (
 // TestWork acts as an end-to-end verification of the entire process:
 // adding a job, picking up the job, processing the job, and closing the client
 func TestWork_Integration(t *testing.T) {
+	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
 
@@ -78,7 +80,7 @@ func TestWork_Integration(t *testing.T) {
 	defer q.StopRiver()
 
 	id, _ := safecast.ToInt(job.ID)
-	jobArgs := models.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
 	enqueuer := NewEnqueuer()
 	assert.NoError(t, enqueuer.AddJob(context.Background(), jobArgs, 1))
@@ -155,8 +157,8 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	}
 
 	// Create a mock river.Job
-	mockJob := &river.Job[CleanupJobArgs]{
-		Args: CleanupJobArgs{},
+	mockJob := &river.Job[worker_types.CleanupJobArgs]{
+		Args: worker_types.CleanupJobArgs{},
 	}
 
 	// Call the Work function
