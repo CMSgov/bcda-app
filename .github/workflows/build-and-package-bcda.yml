@@ -5,13 +5,13 @@ on:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
-        required: false
+        required: true
         type: string
   workflow_dispatch:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
-        required: false
+        required: true
         type: string
 
 permissions:
