@@ -255,7 +255,7 @@ jobs:
 
   smoketests:
     needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    uses: ./.github/workflows/smoke-test.yml
+    uses: ./.github/workflows/smoke-tests.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
       ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
