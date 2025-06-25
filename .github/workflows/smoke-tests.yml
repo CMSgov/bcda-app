@@ -3,7 +3,7 @@ name: Smoke Tests
 on:
   pull_request:
     paths:
-      - .github/workflows/smoke-test.yml
+      - .github/workflows/smoke-tests.yml
   workflow_dispatch:
     inputs:
       release_version:
