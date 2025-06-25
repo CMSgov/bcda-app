@@ -105,7 +105,7 @@ jobs:
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
         run: |
-          echo "creds=${{ inputs.env }}" >> $GITHUB_ENV
+          echo "creds=${{ env.RELEASE_ENV }}" >> $GITHUB_ENV
       - name: Set creds (dev)
         if: ${{ env.TEST_ACO != 'dev' }}
         run: |
