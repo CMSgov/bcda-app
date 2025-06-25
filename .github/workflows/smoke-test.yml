@@ -99,9 +99,6 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      # env.TEST_ACO is being set here and should be used when grabbing CLIENT_CREDENTIALS_PARAMS below
-      # however it was failing in all envs besides dev.  Swapped this to just use RELEASE_ENV for now but
-      # this will likely not work if we wanted to run smoketests against non default ACOs.
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
         run: |
