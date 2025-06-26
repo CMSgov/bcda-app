@@ -36,7 +36,7 @@ func init() {
 	}...)
 
 	if ok {
-		h = api.NewHandler(resources, "/v2/fhir", constants.V3Version)
+		h = api.NewHandler(resources, constants.BFDV3Path, constants.V3Version)
 	} else {
 		panic("Failed to configure resource DataTypes")
 	}
