@@ -70,15 +70,20 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	for _, v := range acos {
-		filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
-		parts := filenameRegexp.FindStringSubmatch(path)
-		if len(parts) == v.AttributionFile.MetadataMatches {
-			metadata, err = validateCSVMetadata(parts)
-			if err != nil {
-				return csvFileMetadata{}, err
+		if v.AttributionFile.FileType == "csv" {
+			filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
+			parts := filenameRegexp.FindStringSubmatch(path)
+			if len(parts) >= 2 {
+				if v.AttributionFile.ModelIdentifier == parts[2] {
+					metadata, err = validateCSVMetadataV2(v.AttributionFile, parts)
+					if err != nil {
+						return csvFileMetadata{}, err
+					}
+					break
+				}
 			}
-			break
 		}
+
 	}
 
 	if metadata == (csvFileMetadata{}) {
@@ -90,41 +95,18 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	return metadata, nil
 }
 
-// Validate the csv attribution filename contains the required values.
-// Ingestion of the file fails if the validation fails.
-// This also sets various parts of metadata.
-func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
+func validateCSVMetadataV2(attributionFile service.AttributionFile, subMatches []string) (csvFileMetadata, error) {
 	var metadata csvFileMetadata
 	var err error
 
-	var mapper csvMetadataFileNameMap
-	switch subMatches[2] {
-	case "PCPB": // MD TCoC
-		mapper = csvMetadataFileNameMap{
-			PerformanceYear: 4,
-			DateTime:        6,
-			ACOID:           "CT000000",
-		}
-	case "BCD": // CDAC
-		mapper = csvMetadataFileNameMap{
-			PerformanceYear: 5,
-			DateTime:        6,
-			ACOID:           "3",
-		}
-	default:
-		err = errors.Wrapf(err, "failed to parse Model of csv file")
-		log.API.Error(err)
-		return csvFileMetadata{}, err
-	}
-
-	metadata.perfYear, err = strconv.Atoi(subMatches[mapper.PerformanceYear])
+	metadata.perfYear, err = strconv.Atoi(subMatches[attributionFile.PerformanceYear])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse performance year from file")
 		log.API.Error(err)
 		return csvFileMetadata{}, err
 	}
 
-	filenameDate := subMatches[mapper.DateTime]
+	filenameDate := subMatches[attributionFile.FileDate]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file", filenameDate)
@@ -138,7 +120,7 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 		refDate = time.Now()
 	}
 
-	// Files must not be too old
+	// File must not be older than 45 days
 	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
 	filesNotAfter := refDate
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
@@ -154,15 +136,96 @@ func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
 		metadata.env = "production"
 	}
 
-	switch mapper.ACOID {
-	case "CT000000":
+	// if attributionFile.model_identifier == PCPB
+	switch attributionFile.ModelIdentifier {
+	case "PCPB":
 		metadata.acoID = "CT000000"
-	case "3":
+	default:
 		metadata.acoID = subMatches[3]
 	}
 
 	return metadata, nil
 }
+
+// Validate the csv attribution filename contains the required values.
+// Ingestion of the file fails if the validation fails.
+// This also sets various parts of metadata.
+// func validateCSVMetadata(subMatches []string) (csvFileMetadata, error) {
+// 	var metadata csvFileMetadata
+// 	var err error
+
+// 	var mapper csvMetadataFileNameMap
+// 	switch subMatches[2] {
+// 	case "PCPB": // MD TCoC
+// 		mapper = csvMetadataFileNameMap{
+// 			PerformanceYear: 4,
+// 			DateTime:        6,
+// 			ACOID:           "CT000000",
+// 		}
+// 	case "BCD": // CDAC
+// 		mapper = csvMetadataFileNameMap{
+// 			PerformanceYear: 5,
+// 			DateTime:        6,
+// 			ACOID:           "3",
+// 		}
+// 	case "GUIDE": // GUIDE
+// 		mapper = csvMetadataFileNameMap{
+// 			PerformanceYear: 4,
+// 			DateTime:        5,
+// 			ACOID:           "3",
+// 		}
+// 	default:
+// 		err = errors.Wrapf(err, "failed to parse Model of csv file")
+// 		log.API.Error(err)
+// 		return csvFileMetadata{}, err
+// 	}
+
+// 	metadata.perfYear, err = strconv.Atoi(subMatches[mapper.PerformanceYear])
+// 	if err != nil {
+// 		err = errors.Wrapf(err, "failed to parse performance year from file")
+// 		log.API.Error(err)
+// 		return csvFileMetadata{}, err
+// 	}
+
+// 	filenameDate := subMatches[mapper.DateTime]
+// 	t, err := time.Parse("D060102.T150405", filenameDate)
+// 	if err != nil || t.IsZero() {
+// 		err = errors.Wrapf(err, "failed to parse date '%s' from file", filenameDate)
+// 		return csvFileMetadata{}, err
+// 	}
+
+// 	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
+// 	refDateString := conf.GetEnv("CCLF_REF_DATE")
+// 	refDate, err := time.Parse("060102", refDateString)
+// 	if err != nil {
+// 		refDate = time.Now()
+// 	}
+
+// 	// Files must not be too old
+// 	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
+// 	filesNotAfter := refDate
+// 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
+// 		err = errors.New(fmt.Sprintf("date '%s' out of range; comparison date %s", filenameDate, refDate.Format("060102")))
+// 		return csvFileMetadata{}, err
+// 	}
+
+// 	metadata.timestamp = t
+// 	switch subMatches[1] {
+// 	case "T":
+// 		metadata.env = "test"
+// 	case "P":
+// 		metadata.env = "production"
+// 	}
+
+// 	switch mapper.ACOID {
+// 	case "CT000000":
+// 		metadata.acoID = "CT000000"
+// 	case "3":
+// 		metadata.acoID = subMatches[3]
+// 	}
+
+// 	return metadata, nil
+// }
 
 // getCCLFFileMetadata takes an attribution file name and converts it to a cclfFileMetadata entry.
 // The cclfFileMetadat entry will be insert into the database as a record in the cclf_files table.
