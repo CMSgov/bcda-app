@@ -76,10 +76,22 @@ func TestGetCSVMetadata(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
+		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-00001.Y25." + fileDateTime, "", csvFileMetadata{
+			env:       "production",
+			name:      "P.GUIDE.GUIDE-00001.Y25." + fileDateTime,
+			cclfNum:   8,
+			acoID:     "GUIDE-00001",
+			timestamp: validTime,
+			perfYear:  25,
+			fileType:  models.FileTypeDefault,
+		},
+		},
 		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.P.GUIDE.GUIDE-.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "T.GUIDE.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -149,6 +161,14 @@ func TestValidateCSVFileName(t *testing.T) {
 		},
 		{"invalid CDAC csv - file date too old", "P.BCD.DA0000.MBIY11.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
 		{"invalid CDAC csv - file date in the future", "P.BCD.DA0000.MBIY11." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
+		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-00001.Y25." + fileDateTime, nil, csvFileMetadata{
+			env:       "production",
+			acoID:     "GUIDE-00001",
+			timestamp: validTime,
+			perfYear:  25,
+			fileType:  models.FileTypeDefault,
+		},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -157,9 +177,12 @@ func TestValidateCSVFileName(t *testing.T) {
 			for _, v := range acos {
 				filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
 				parts := filenameRegexp.FindStringSubmatch(test.fileName)
-				if len(parts) == v.AttributionFile.MetadataMatches {
-					actualmetadata, err = validateCSVMetadata(parts)
+				if len(parts) >= 2 {
+					if v.AttributionFile.ModelIdentifier == parts[2] {
+						actualmetadata, err = validateCSVMetadataV2(v.AttributionFile, parts)
+					}
 				}
+
 			}
 			if test.err != nil {
 				assert.Contains(t, err.Error(), test.err.Error())
