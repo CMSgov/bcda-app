@@ -1,9 +1,9 @@
 name: CI Checks
 
 on:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
   pull_request:
   workflow_call:
     inputs:
@@ -24,7 +24,7 @@ env:
 jobs:
   go_mod_tidy:
     name: Modules Lint
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
 
   lint_and_test:
     name: Lint and Test
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Get Go
         uses: actions/setup-go@v5
@@ -58,10 +58,11 @@ jobs:
         with:
           repository: CMSgov/bcda-app
           ref: ${{ env.RELEASE_VERSION }}
-      - name: Set up Ansible
+      - name: Install Ansible
         run: |
-          sudo dnf -y install python3 python3-pip
-          pip install ansible
+          sudo yum update -y
+          sudo yum install python3-pip -y
+          sudo dnf install ansible-8.3.0 -y      
       - name: Decrypt secrets
         env:
           VAULT_PW: ${{ secrets.VAULT_PW }}
@@ -85,7 +86,7 @@ jobs:
   sonar-quality-gate:
     name: Sonarqube Quality Gate
     needs: lint_and_test
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Set env vars from AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
@@ -115,3 +116,4 @@ jobs:
             -Dsonar.branch.name=${{ env.RELEASE_VERSION }}
             -Dsonar.projectVersion=${{ github.sha }}
             -Dsonar.qualitygate.wait=true
+            -Dsonar.ci.autoconfig.disabled=true 

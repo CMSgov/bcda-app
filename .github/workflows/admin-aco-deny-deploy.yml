@@ -1,6 +1,7 @@
-name: Admin Create ACO deploy GF
+name: Admin ACO Deny deploy
 
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       deploy_env:
@@ -13,19 +14,12 @@ on:
           - test
           - sandbox
           - prod
-  workflow_call:
-    inputs:
-      deploy_env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
-        required: true
-        default: dev
-        type: string
   push:
     branches:
       - main
     paths:
-      - bcda/lambda/admin_create_aco/**
-      - .github/workflows/admin-create-aco-deploy.yml
+      - bcda/lambda/admin_aco_deny/**
+      - .github/workflows/admin-aco-deny-deploy.yml
 
 jobs:
   build_and_zip:
@@ -41,13 +35,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.1'
-      - name: Build admin_create_aco zip file
+      - name: Build admin-aco-deny zip file
         env:
           CGO_ENABLED: 0
         run: |
-          pwd
-          go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
+          go build -o bin/bootstrap ./lambda/admin_aco_deny/*.go
           zip -j function.zip bin/bootstrap
+
       - name: Set ENVIRONMENT - no inputs
         if: ${{ inputs.deploy_env == '' }}
         run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
@@ -78,10 +72,11 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: | 
-            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-bucket
+            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-admin-aco-deny-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
             s3://$BUCKET/function-${{ github.sha }}.zip 
-          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-aco-deny \
+            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip 
+

@@ -14,13 +14,15 @@ env:
 
 jobs:
   generate-docs:
-    runs-on: ubuntu-latest
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
-
+      - name: Install Ansible
+        run: |
+          sudo dnf install ansible -y
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password

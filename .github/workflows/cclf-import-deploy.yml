@@ -1,4 +1,4 @@
-name: cclf-import dev deploy GF
+name: cclf-import dev deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - cclf-import/**
-      - .github/workflows/cclf-import-deploy-GF.yml
+      - .github/workflows/cclf-import-deploy.yml
   workflow_dispatch:
     inputs:
       deploy_env:

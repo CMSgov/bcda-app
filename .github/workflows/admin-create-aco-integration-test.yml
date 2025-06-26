@@ -1,16 +1,16 @@
-name: Admin ACO Deny Integration Tests GF
+name: Admin Create ACO Integration Tests
 
 on:
   pull_request:
     paths:
-      - .github/workflows/admin-aco-deny-integration-test.yml
-      - .github/workflows/admin-aco-deny-deploy-GF.yml
-      - bcda/lambda/admin_aco_deny/**
+      - .github/workflows/admin-create-aco-integration-test.yml
+      - .github/workflows/admin-create-aco-deploy.yml
+      - bcda/lambda/admin_create_aco/**
   workflow_dispatch:
 
 # Ensure we have only one integration test running at a time
 concurrency:
-  group: admin-aco-deny-integration-test
+  group: admin-create-aco-integration-test
 
 jobs:
   # Deploy first if triggered by pull_request
@@ -19,8 +19,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/admin-aco-deny-deploy-GF.yml
+    uses: ./.github/workflows/admin-create-aco-deploy.yml
     secrets: inherit
+    with:
+      deploy_env: dev
 
   trigger:
     if: ${{ always() }}
@@ -31,7 +33,7 @@ jobs:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
-        working-directory: ./bcda/lambda/admin_aco_deny
+        working-directory: ./bcda/lambda/admin_create_aco
     outputs:
       start_time: ${{ steps.invoke-lambda.outputs.STARTTIME }}
     steps:
@@ -39,14 +41,14 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
       - name: Send event to trigger lambda function
         id: invoke-lambda
         run: |
           echo "STARTTIME=`date +%s`" >> "$GITHUB_OUTPUT"
-          aws lambda invoke --function-name bcda-dev-admin-aco-deny \
+          aws lambda invoke --function-name bcda-dev-admin-create-aco \
             --cli-binary-format raw-in-base64-out \
-            --payload '{"deny_aco_ids":["foo001","bar002"]}' test-result.txt
+            --payload '{"name":"TESTACO","cms_id":"TEST623", "clean_up": "yes"}' test-result.txt
       - name: Verify result
         run: |
-          if grep -q "errorType" test-result.txt; then echo "Failed: check lambda logs."; exit 1; else echo "Success"; fi
+          if grep -q "errorType" test-result.txt; then cat test-result.txt; exit 1; else echo "Success"; fi
