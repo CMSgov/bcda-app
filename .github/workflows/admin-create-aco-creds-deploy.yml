@@ -1,4 +1,4 @@
-name: Admin Create ACO Credentials deploy GF
+name: Admin Create ACO Credentials deploy
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ on:
       - main
     paths:
       - bcda/lambda/admin_create_aco_creds/**
-      - .github/workflows/admin-create-aco-creds-deploy-GF.yml
+      - .github/workflows/admin-create-aco-creds-deploy.yml
 
 jobs:
   test:

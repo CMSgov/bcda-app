@@ -5,11 +5,15 @@ name: cclf-import test integration
 on:
   pull_request:
     paths:
-      - .github/workflows/cclf-import-test-integration.yml
-      - .github/workflows/cclf-import-test-deploy.yml
+      - .github/workflows/cclf-import-integration-test.yml
+      - .github/workflows/cclf-import-deploy.yml
       - bcda/cclf/**
       - bcda/lambda/cclf/**
   workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 # Ensure we have only one integration test running at a time
 concurrency:
@@ -19,16 +23,15 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/cclf-import-test-deploy.yml
+    uses: ./.github/workflows/cclf-import-deploy.yml
     secrets: inherit
+    with:
+      deploy_env: test
 
   trigger:
     if: ${{ always() }}
     needs: deploy
-    permissions:
-      contents: read
-      id-token: write
-    runs-on: ubuntu-latest
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
@@ -40,12 +43,19 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-cclf-import-function
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-cclf-import-function
+      - name: Get BFD Account
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: | 
+            BFD_ACCOUNT_ID=/bfd/account-id
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
-          role-to-assume: arn:aws:iam::${{ secrets.BFD_ACCOUNT_ID }}:role/bfd-test-eft-bcda-bucket-role
+          role-to-assume: arn:aws:iam::${{ env.BFD_ACCOUNT_ID }}:role/delegatedadmin/developer/bfd-test-eft-bcda-ct-bucket-role
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
@@ -82,18 +92,19 @@ jobs:
 
   verify:
     needs: trigger
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
       - uses: actions/checkout@v3
-      - uses: aws-actions/configure-aws-credentials@v3
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
       - name: Install psql
         run: |
-          sudo dnf install postgresql15 -y
+          sudo dnf -y update
+          sudo dnf install postgresql16 -y
       - name: Get database credentials
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -103,16 +114,19 @@ jobs:
             CONNECTION_INFO=/bcda/test/api/DATABASE_URL
       - name: Verify CCLF file was ingested
         env:
-          CCLFFILENAME: ${{needs.trigger.outputs.cclffilename}}
-          CSVFILENAME: ${{needs.trigger.outputs.csvfilename}}
+          CCLFFILENAME: ${{ needs.trigger.outputs.cclffilename }}
+          CSVFILENAME: ${{ needs.trigger.outputs.csvfilename }}
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test-rds 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-test 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          echo $HOST | cut -c -10
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+          echo $CONNECTION_URL | cut -c -5
 
           # Verify that we have a record of the CCLF file in the database
           CCLF_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CCLFFILENAME' LIMIT 1" 2>&1`
+          echo "CCLF_FILE: $CCLF_FILE"
           if [[ $? -ne 0 || -z $CCLF_FILE ]]; then
             echo "cclf_file query returned zero results or command failed"
             exit 1
@@ -120,18 +134,20 @@ jobs:
             
             # Verify that the correct number of benes were imported into the database.
             CCLF_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
-              if [[ $? -ne 0 || -z $CCLF_BENES ]]; then
-                echo "CCLF beneficiaries query returned zero results or command failed"
-                exit 1
-              fi
-              if [[ $(echo $CCLF_BENES | xargs) != "6" ]]; then
-                echo "expected 6 beneficiaries imported from file, received $CCLF_BENES".
-                exit 1
-              fi
+            echo "CCLF_BENES: $CCLF_BENES"
+            if [[ $? -ne 0 || -z $CCLF_BENES ]]; then
+              echo "CCLF beneficiaries query returned zero results or command failed"
+              exit 1
+            fi
+            if [[ $(echo $CCLF_BENES | xargs) != "6" ]]; then
+              echo "expected 6 beneficiaries imported from file, received $CCLF_BENES".
+              exit 1
+            fi
           fi
 
           # Verify that we have a record of the CSV file in the database
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
+          echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
             echo "csv_file query returned zero results or command failed"
             exit 1
@@ -139,14 +155,15 @@ jobs:
             
             # Verify that the correct number of benes were imported into the database.
             CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
-              if [[ $? -ne 0 || -z $CSV_BENES ]]; then
-                echo "CSV beneficiaries query returned zero results or command failed"
-                exit 1
-              fi
-              if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
-                echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
-                exit 1
-              fi
+            echo "CSV_BENES: $CSV_BENES"
+            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+              echo "CSV beneficiaries query returned zero results or command failed"
+              exit 1
+            fi
+            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
+              exit 1
+            fi
           fi
 
 

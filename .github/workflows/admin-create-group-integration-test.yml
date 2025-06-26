@@ -1,10 +1,10 @@
-name: Admin Create Group Integration Tests GF
+name: Admin Create Group Integration Tests
 
 on:
   pull_request:
     paths:
-      - .github/workflows/admin-create-group-integration-test-GF.yml
-      - .github/workflows/admin-create-group-deploy-GF.yml
+      - .github/workflows/admin-create-group-integration-test.yml
+      - .github/workflows/admin-create-group-deploy.yml
       - bcda/lambda/create_group/**
   workflow_dispatch:
 
@@ -24,7 +24,7 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/admin-create-group-deploy-GF.yml
+    uses: ./.github/workflows/admin-create-group-deploy.yml
     secrets: inherit
 
   trigger:

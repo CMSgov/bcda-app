@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to migrate for (dev, test, opensbx, prod)'
+        description: 'Environment you want to migrate for (dev, test, sandbox, prod)'
         required: true
         type: string
   workflow_dispatch:
@@ -18,18 +18,15 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to migrate for (dev, test, opensbx, prod)'
+        description: 'Environment you want to migrate for (dev, test, sandbox, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
-
-env:
-  ENV_MODIFIER: ${{ inputs.env == 'opensbx' && 'sbx' || inputs.env }}
 
 permissions:
   id-token: write
@@ -37,14 +34,19 @@ permissions:
 
 jobs:
   migrate_db:
+    environment: ${{ inputs.env || 'dev' }}
     name: Migrate DB
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout BCDA
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
           ref: ${{ inputs.release_version }}
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Get AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -58,28 +60,12 @@ jobs:
           go-version: '>=1.23.6'
       - name: Get golang-migrate
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-      - name: Set DB name
-        if: ${{ inputs.env == 'dev' }}
-        run: echo "DB_NAME=bcda-dev-rds" >> "$GITHUB_ENV"
-      - name: Set DB name
-        if: ${{ inputs.env == 'test' }}
-        run: echo "DB_NAME=bcda-test-rds" >> "$GITHUB_ENV"
-      - name: Set DB name
-        if: ${{ inputs.env == 'opensbx' }}
-        run: echo "DB_NAME=bcda-opensbx-rds-20190311" >> "$GITHUB_ENV"
-      - name: Set DB name
-        if: ${{ inputs.env == 'prod' }}
-        run: echo "DB_NAME=bcda-prod-rds-20190201" >> "$GITHUB_ENV"
-      - uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
       - name: Migrate DB
         env:
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-instances --db-instance-identifier ${{ env.DB_NAME }} 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-${{ inputs.env }} 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
           migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
       - name: Success Alert

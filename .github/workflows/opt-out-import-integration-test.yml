@@ -1,12 +1,12 @@
 # Integration test that triggers an Opt Out import in the test environment and
 # verifies the imported data in the test database.
-name: opt-out-import test integration GF
+name: opt-out-import test integration
 
 on:
   pull_request:
     paths:
-      - .github/workflows/opt-out-import-integration-test-GF.yml
-      - .github/workflows/opt-out-import-test-deploy-GF.yml
+      - .github/workflows/opt-out-import-integration-test.yml
+      - .github/workflows/opt-out-import-test-deploy.yml
       - optout/**
       - bcda/suppression/**
       - bcda/lambda/optout/**
@@ -24,7 +24,7 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/opt-out-import-deploy-GF.yml
+    uses: ./.github/workflows/opt-out-import-deploy.yml
     secrets: inherit
     with:
       deploy_env: test
