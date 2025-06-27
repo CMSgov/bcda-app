@@ -74,6 +74,12 @@ jobs:
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
+  migrate_ssas_db:
+    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml
+    with:
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+    secrets: inherit
+
   deploy:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
