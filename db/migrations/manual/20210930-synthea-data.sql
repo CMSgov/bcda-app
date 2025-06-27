@@ -1,5 +1,5 @@
 -- This SQL script is for bookkeeping and auditing purposes
--- This script can be used to add the improved synthea data to opensbx
+-- This script can be used to add the improved synthea data to sandbox
 
 BEGIN;
 DO $$
@@ -14,7 +14,7 @@ INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, time
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.A9999.ZC8Y89.D210201.T1834180', 'A9999', '2021-02-01', 21, 'Completed', 0) RETURNING id INTO Large;
 
 -- Adding rows into cclf_beneficiaries for A9989
-INSERT INTO cclf_beneficiaries (file_id, mbi) 
+INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
 (Dev, '1S00E00FZ00'),
 (Dev, '1S00E00AA02'),
@@ -53,7 +53,7 @@ VALUES
 (Dev, '1S00E00AA34');
 
 -- Adding 'rows 'into cclf_beneficiaries for A9998
-INSERT INTO cclf_beneficiaries (file_id, mbi) 
+INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
 (Small, '1S00E00FZ00'),
 (Small, '1S00E00AA02'),
@@ -147,7 +147,7 @@ VALUES
 (Small, '1S00E00AA89');
 
 -- 'Adding 'rows into cclf_beneficiaries for A9999
-INSERT INTO cclf_beneficiaries (file_id, mbi) 
+INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
 
 (Large, '1S00E00FZ00'),
