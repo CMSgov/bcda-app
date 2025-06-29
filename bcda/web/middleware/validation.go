@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,7 +26,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	// TypeFilter    string
+	TypeFilter    [][]string
 }
 
 // const BBSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Adjudication-Status"
@@ -126,26 +128,60 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			rp.ResourceTypes = resourceTypes
 		}
 
-		// TODO: V3 _typeFilter
-		// params, ok = r.URL.Query()["_typeFilter"]
-		// if ok {
-		// 	allowedQueryParams := []string{
-		// 		"ExplanationOfBenefit?",
-		// 		"ExplanationOfBenefit?tag=PartiallyAdjudicated",
-		// 		"ExplanationOfBenefit?_tag=Adjudicated",
-		// 		"ExplanationOfBenefit?_tag=PartiallyAdjudicated,Adjudicated",
-		// 		"ExplanationOfBenefit?_source=FISS",
-		// 		"ExplanationOfBenefit?_source=MCS",
-		// 	}
-		// 	if utils.ContainsString(allowedQueryParams, params[0]) {
-		// 		rp.TypeFilter = params[0]
-		// 	} else {
-		// 		errMsg := fmt.Sprintf("invalid _typeFilter (or currently unimplemented query) %s", params[0])
-		// 		log.API.Error(errMsg)
-		// 		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-		// 		return
-		// 	}
-		// }
+		// validate _typeFilter params
+		params, ok = r.URL.Query()["_typeFilter"]
+		if (version == "demo") && ok {
+			var typeFilterParams [][]string
+			for _, subQuery := range params {
+
+				// The subquery is url-encoded. So we will first decode so we can parse it
+				decodedQuery, err := url.QueryUnescape(subQuery)
+				if err != nil {
+					errMsg := fmt.Sprintf("failed to unescape %s", subQuery)
+					log.API.Error(errMsg)
+					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+					return
+				}
+
+				// Expected format is: <resourceType>?<paramList>
+				resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
+				if !ok {
+					errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
+					log.API.Error(errMsg)
+					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				}
+
+				// Right now, we are only accepting ExplanationOfBenefit subqueries
+				if resourceType != "ExplanationOfBenefit" {
+					errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
+					log.API.Error(errMsg)
+					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				}
+
+				// Loop through the param list from the subquery
+				paramAry := strings.Split(queryParams, "&")
+				for _, paramPair := range paramAry {
+
+					paramName, paramValue, ok := strings.Cut(paramPair, "=")
+					if !ok {
+						errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
+						log.API.Error(errMsg)
+						rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+					}
+
+					if slices.Contains([]string{"service-date", "_tag", "_profile"}, paramName) {
+						typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
+					} else {
+						errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
+						log.API.Error(errMsg)
+						rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+						return
+					}
+				}
+
+				rp.TypeFilter = typeFilterParams
+			}
+		}
 
 		ctx := SetRequestParamsCtx(r.Context(), rp)
 

@@ -226,6 +226,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
+	updateParamWithTypeFilter(&params, jobData.TypeFilter)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)
 	if err != nil {
@@ -420,6 +421,12 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	// only set the lower bound parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)
 	if len(since) > 0 && strings.HasPrefix(since, "gt") {
 		params.Add("_lastUpdated", since)
+	}
+}
+
+func updateParamWithTypeFilter(params *url.Values, typeFilter [][]string) {
+	for _, paramPair := range typeFilter {
+		params.Add(paramPair[0], paramPair[1])
 	}
 }
 
