@@ -423,9 +423,9 @@ func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
 		delFiles     int
 		baseFiles    int
 	}{
-		{"Not imported and expired", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", expiredTime, false, 1, 2},
-		{"Not imported and not expired", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", time.Now(), false, 0, 3},
-		{"Successfully imported", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", time.Now(), true, 1, 2},
+		{"Not imported and expired", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", expiredTime, false, 1, 3},
+		{"Not imported and not expired", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", time.Now(), false, 0, 4},
+		{"Successfully imported", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", time.Now(), true, 1, 3},
 	}
 
 	runcount := 0
