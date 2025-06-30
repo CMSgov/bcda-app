@@ -74,6 +74,12 @@ jobs:
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
+  migrate_ssas_db:
+    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml
+    with:
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+    secrets: inherit
+
   deploy:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
@@ -254,7 +260,7 @@ jobs:
           done
 
   smoketests:
-    needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
@@ -266,7 +272,7 @@ jobs:
     secrets: inherit
 
   notify_newrelic:
-    needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
