@@ -77,6 +77,8 @@ jobs:
 
           mv ../shared_files/cclf/archives/csv/P.PCPB.M2411.D181120.T1000000 ${csvname}
 
+          mv ../shared_files/cclf/archives/csv/T.GUIDE.GUIDE-00001.Y25.D250630.T1632351 ${guidecsvname}
+
           unzip ../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000
 
           # Clone the synthetic zip file with updated years
