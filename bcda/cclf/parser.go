@@ -39,13 +39,6 @@ type CSVParser struct {
 	FilePath string
 }
 
-// maps field to regexp submatches position
-type csvMetadataFileNameMap struct {
-	PerformanceYear int
-	DateTime        int
-	ACOID           string
-}
-
 func getACOConfigs() ([]service.ACOConfig, error) {
 	configs, err := service.LoadConfig()
 	if err != nil {
