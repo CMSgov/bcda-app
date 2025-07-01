@@ -365,6 +365,7 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
 	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
+	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: [][]string{{"service-date", "gt2022-06-26"}}, TransactionTime: now}
 	defer conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", old)
 	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0") // Need to ensure that requests do not have the _count parameter
 
@@ -743,6 +744,25 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				hasClaimRequiredURLEncodedBody,
 			},
 		},
+		{
+			"GetExplanationOfBenefitWithTypeFilterServiceDate",
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", client.ClaimsWindow{})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*fhirModels.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				excludeSAMHSAChecker,
+				ServiceDateChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -859,6 +879,9 @@ func nowChecker(t *testing.T, req *http.Request) {
 }
 func noServiceDateChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.URL.Query()[constants.TestSvcDate])
+}
+func ServiceDateChecker(t *testing.T, req *http.Request) {
+	assert.Contains(t, req.URL.String(), constants.TestSvcDate)
 }
 func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
