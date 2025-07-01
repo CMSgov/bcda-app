@@ -49,15 +49,15 @@ jobs:
     name: Lint and Test
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - name: Get Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
           ref: ${{ env.RELEASE_VERSION }}
+      - name: Get Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
       - name: Install Ansible
         run: |
           sudo yum update -y
