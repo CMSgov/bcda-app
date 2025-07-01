@@ -179,7 +179,7 @@ func TestValidateCSVFileName(t *testing.T) {
 				parts := filenameRegexp.FindStringSubmatch(test.fileName)
 				if len(parts) >= 2 {
 					if v.AttributionFile.ModelIdentifier == parts[2] {
-						actualmetadata, err = validateCSVMetadataV2(v.AttributionFile, parts)
+						actualmetadata, err = validateCSVMetadata(v.AttributionFile, parts)
 					}
 				}
 
