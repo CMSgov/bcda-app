@@ -881,7 +881,7 @@ func noServiceDateChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.URL.Query()[constants.TestSvcDate])
 }
 func ServiceDateChecker(t *testing.T, req *http.Request) {
-	assert.Contains(t, req.URL.String(), constants.TestSvcDate)
+	assert.Contains(t, req.URL.String(), "service-date=gt2022-06-26")
 }
 func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
