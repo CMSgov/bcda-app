@@ -46,6 +46,7 @@ func TestValidRequestURL(t *testing.T) {
 func TestInvalidRequestURL(t *testing.T) {
 
 	base := "/api/v1/Patient/$export?"
+	baseV3 := "/api/v1/Patient/$export?"
 	tests := []struct {
 		name   string
 		url    string
@@ -59,11 +60,11 @@ func TestInvalidRequestURL(t *testing.T) {
 			"Date must be a date that has already passed"},
 		{"repeatedType", fmt.Sprintf("%s_type=Patient,Patient", base), "Repeated resource type Patient"},
 		{"noVersion", "/api/Patient$export", "cannot retrieve version"},
-		{"invalidTypeFilterResourceType", fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", base),
+		{"invalidTypeFilterResourceType", fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", baseV3),
 			"Invalid _typeFilter Resource Type (Only EOBs valid): MedicationRequest"},
-		{"invalidTypeFilterSubquery", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", base),
+		{"invalidTypeFilterSubquery", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
 			"Invalid _typeFilter parameter/value: service-dateactive"},
-		{"invalidTypeFilterSubqueryParam", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", base),
+		{"invalidTypeFilterSubqueryParam", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", baseV3),
 			"Invalid _typeFilter subquery parameter: status"},
 	}
 
