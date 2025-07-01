@@ -46,7 +46,7 @@ func TestValidRequestURL(t *testing.T) {
 func TestInvalidRequestURL(t *testing.T) {
 
 	base := "/api/v1/Patient/$export?"
-	baseV3 := "/api/v1/Patient/$export?"
+	baseV3 := constants.V3Path + "Patient/$export?"
 	tests := []struct {
 		name   string
 		url    string
