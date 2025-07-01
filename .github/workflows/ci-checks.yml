@@ -34,7 +34,7 @@ jobs:
       - name: Get Go # TEMP
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.23.1'
+          go-version-file: 'go.mod'
       - name: Tidy modules
         run: |
           go mod tidy -v
@@ -52,7 +52,7 @@ jobs:
       - name: Get Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.23.1'
+          go-version-file: 'go.mod'
       - name: Checkout code
         uses: actions/checkout@v4
         with:
