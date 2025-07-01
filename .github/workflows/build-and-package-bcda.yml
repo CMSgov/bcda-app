@@ -35,7 +35,7 @@ jobs:
     if: ${{ always() }}
     name: Post Build (Cleanup, Alerts)
     needs: [ci_checks, build_and_package]
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Failure Alert
         if: ${{ failure() || needs.ci_checks.result != 'success' || needs.build_and_package.result != 'success' }}

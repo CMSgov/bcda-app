@@ -3,7 +3,7 @@ name: Deploy All
 
 on:
   schedule:
-    - cron: 0 12 * * 1-5 # every workday at 8am EST
+    - cron: 0 12 * * 1-5 # every workday at 8am EST (autodeploy to dev)
   workflow_dispatch:
     inputs:
       release_version:
@@ -19,14 +19,14 @@ on:
         required: true
         type: string
       env:
-        description: 'Environment you want to deploy to (dev, test, opensbx, prod)'
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
         required: true
         default: dev
         type: choice
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
       confirm_env:
         description: 'Confirm the environment you want to deploy to'
@@ -36,7 +36,7 @@ on:
         options:
           - dev
           - test
-          - opensbx
+          - sandbox
           - prod
       test_aco:
         description: Run the smoke tests using the selected ACO
@@ -61,7 +61,7 @@ env:
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-  ENV_MODIFIER: ${{ (inputs.env == 'opensbx' && 'sbx') || inputs.env || 'dev' }}
+  ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
   VERIFICATION_RETRIES: 90 # 90 retries with 10s sleep = max 900s or 15m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
@@ -74,10 +74,36 @@ jobs:
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
+  migrate_ssas_db:
+    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml
+    with:
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+    secrets: inherit
+
   deploy:
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
-    runs-on: self-hosted
+    environment: ${{ inputs.env || 'dev' }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
+      - uses: hashicorp/setup-packer@v3.1.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Get AWS params
+        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            GITHUB_TOKEN=/ci/github/token
+            SUBNET_ID=/bcda/workflows/packer_subnet_id
+            S3_BUCKET=/bcda/rpms_bucket
+      - name: Checkout bcda-ops
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ops
+          ref: ${{ inputs.ops_release_version || 'main' }}
+          token: ${{ env.GITHUB_TOKEN }}
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
         run: |
@@ -118,24 +144,17 @@ jobs:
           token: ${{ env.OPS_GITHUB_TOKEN }}
       - name: Install terraform
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform@main
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV_MODIFIER }}-github-actions
-          aws-region: ${{ vars.AWS_REGION }}
       - name: Init, Plan Terraform
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          cd terraform/${{ env.RELEASE_ENV }}
+          cd terraform_gf/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
           export TF_CLI_ARGS="-no-color"
           terraform init
           terraform plan \
-            -var 'vpc_id=${{ secrets.VPC_ID }}' \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'gdit_security_group_ids=[${{ secrets.GDIT_SECURITY_GROUP_IDS }}]' \
-            -var 'key_name=bcda-api-${{ env.RELEASE_ENV }}-${{ vars.KEY_ID }}' \
-            -var 'app_db_pw=${APP_DB_PW}' \
+            -var 'key_name=${{ vars.KEY_ID }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
@@ -143,7 +162,7 @@ jobs:
             -out 'bcda-release-api-worker.tfplan'
       - name: Terraform Apply
         run: |
-          cd terraform/${{ env.RELEASE_ENV }}
+          cd terraform_gf/${{ env.RELEASE_ENV }}
           export TF_CLI_ARGS="-no-color"
           terraform init
           terraform apply bcda-release-api-worker.tfplan
@@ -161,8 +180,8 @@ jobs:
   
   verify_api_version:
     needs: [deploy]
-    runs-on: self-hosted
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - run: |
           TRY=1
@@ -185,8 +204,8 @@ jobs:
 
   verify_ssas_version:
     needs: [deploy]
-    runs-on: self-hosted
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - run: |
           TRY=1
@@ -209,9 +228,13 @@ jobs:
 
   verify_worker_version:
     needs: [deploy]
-    runs-on: self-hosted
-    environment: ${{ inputs.env == 'opensbx' && 'sbx' || (inputs.env != '0' && inputs.env || 'dev') }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
           TRY=1
 
@@ -237,7 +260,7 @@ jobs:
           done
 
   smoketests:
-    needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
@@ -249,9 +272,14 @@ jobs:
     secrets: inherit
 
   notify_newrelic:
-    needs: [migrate_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    runs-on: self-hosted
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    environment: ${{ inputs.env || 'dev' }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Set env vars from AWS params
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
         env:
@@ -266,7 +294,7 @@ jobs:
           name: notify-script
           path: scripts
       - name: Notify NewRelic
-        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'opensbx' || env.RELEASE_ENV == 'test' }}
+        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'sandbox' || env.RELEASE_ENV == 'test' }}
         run: |
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
@@ -283,7 +311,7 @@ jobs:
   
   slack_alerts:
     if: ${{ always() }}
-    runs-on: self-hosted
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info

@@ -1,12 +1,12 @@
 -- This is a manual migration to attribute existing synthetic MBIs to a new ACO to be used for PACA smoke tests (BCDA-6873)
--- We will be copying the MBIs from ACO A9994 (opensbx) runout CCLF file to ACO TEST993 since those are also used for smoke tests 
+-- We will be copying the MBIs from ACO A9994 (sandbox) runout CCLF file to ACO TEST993 since those are also used for smoke tests
 
 BEGIN;
 DO $$
 DECLARE PACA cclf_files.id%TYPE;
 
 
--- Adding one row into cclf_files for one new CCLF file (runtout) associated to synthea 
+-- Adding one row into cclf_files for one new CCLF file (runtout) associated to synthea
 BEGIN
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST993.ZC8Y23.D230601.T1322310', 'TEST993', CURRENT_DATE, 23, 'Completed', 1) RETURNING id INTO PACA;
 
