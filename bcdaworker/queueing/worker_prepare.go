@@ -122,6 +122,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		ID:              id,
 		ACOID:           args.Job.ACOID.String(),
 		Since:           args.Since.String(),
+		TypeFilter:      args.TypeFilter,
 		TransactionTime: time.Now(),
 		CMSID:           args.CMSID,
 	}
