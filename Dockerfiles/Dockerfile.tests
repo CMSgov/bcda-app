@@ -5,7 +5,7 @@ RUN apk update upgrade
 
 RUN apk add bash build-base curl
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.2.1
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
