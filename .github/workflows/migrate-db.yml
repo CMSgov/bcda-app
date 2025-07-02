@@ -57,7 +57,7 @@ jobs:
       - name: Get Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.23.6'
+          go-version-file: 'go.mod'
       - name: Get golang-migrate
         run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
       - name: Migrate DB
