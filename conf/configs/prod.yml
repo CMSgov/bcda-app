@@ -1,32 +1,32 @@
 aco_config:
-    - model: "CKCC"
+    - model: "CKCC" # 4i
       name_pattern: "C\\d{4}"
       performance_year_transition: "01/01"
       lookback_period: 2
       data:
         - "adjudicated"
-    - model: "KCF"
+    - model: "KCF" # 4i
       name_pattern: "K\\d{4}"
       performance_year_transition: "01/01"
       lookback_period: 2
       data:
         - "adjudicated"
-    - model: "DC"
+    - model: "DC" # 4i
       name_pattern: "D\\d{4}"
       performance_year_transition: "04/01"
       lookback_period: 3
       data:
         - "partially-adjudicated"
         - "adjudicated"
-    - model: "SSP"
+    - model: "SSP" # ACO-MS
       name_pattern: "^A\\d{4}"
       data:
         - "adjudicated"
-    - model: "CEC"
+    - model: "CEC" # inactive
       name_pattern: "E\\d{4}"
       data:
         - "adjudicated"
-    - model: "NGACO"
+    - model: "NGACO" # inactive
       name_pattern: "V\\d{3}"
       data:
         - "adjudicated"
@@ -35,7 +35,7 @@ aco_config:
       data:
         - "adjudicated"
         - "partially-adjudicated"
-    - model: "TCOCMD"
+    - model: "TCOCMD" # BCDA Admin
       name_pattern: "CT\\d{6}"
       data:
         - "adjudicated"
@@ -45,7 +45,7 @@ aco_config:
         name_pattern: '(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d'
         metadata_matches: 7
       ignore_suppressions: true 
-    - model: "CDAC"
+    - model: "CDAC" # IHP
       name_pattern: "DA\\d{4}"
       data:
         - "adjudicated"
@@ -57,3 +57,4 @@ aco_config:
 rate_limit_config:
   all: true
   acos: []
+  
