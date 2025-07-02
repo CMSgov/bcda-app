@@ -67,6 +67,9 @@ type AttributionFile struct {
 	FileType        string `conf:"file_type"`
 	NamePattern     string `conf:"name_pattern" `
 	MetadataMatches int    `conf:"metadata_matches" `
+	ModelIdentifier string `conf:"model_identifier"`
+	PerformanceYear int    `conf:"file_performance_year"`
+	FileDate        int    `conf:"file_date"`
 }
 
 type RateLimitConfig struct {

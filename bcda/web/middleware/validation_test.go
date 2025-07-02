@@ -27,7 +27,7 @@ func TestValidRequestURL(t *testing.T) {
 
 	now := time.Now().Add(-24 * time.Hour).Round(time.Millisecond)
 	req, err := http.NewRequest("GET",
-		fmt.Sprintf("/api/v1/Patient/$export?_type=Patient&_since=%s&_outputFormat=ndjson",
+		fmt.Sprintf("/api/v1/Patient/$export?_type=Patient&_since=%s&_outputFormat=ndjson&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dgt2001-04-01",
 			now.Format(time.RFC3339Nano)),
 		nil)
 	assert.NoError(t, err)
@@ -46,6 +46,7 @@ func TestValidRequestURL(t *testing.T) {
 func TestInvalidRequestURL(t *testing.T) {
 
 	base := "/api/v1/Patient/$export?"
+	baseV3 := constants.V3Path + "Patient/$export?"
 	tests := []struct {
 		name   string
 		url    string
@@ -59,6 +60,12 @@ func TestInvalidRequestURL(t *testing.T) {
 			"Date must be a date that has already passed"},
 		{"repeatedType", fmt.Sprintf("%s_type=Patient,Patient", base), "Repeated resource type Patient"},
 		{"noVersion", "/api/Patient$export", "cannot retrieve version"},
+		{"invalidTypeFilterResourceType", fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", baseV3),
+			"Invalid _typeFilter Resource Type (Only EOBs valid): MedicationRequest"},
+		{"invalidTypeFilterSubquery", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
+			"Invalid _typeFilter parameter/value: service-dateactive"},
+		{"invalidTypeFilterSubqueryParam", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", baseV3),
+			"Invalid _typeFilter subquery parameter: status"},
 	}
 
 	for _, tt := range tests {

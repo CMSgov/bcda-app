@@ -72,7 +72,12 @@ jobs:
           csvname=T.PCPB.M${year}11.D${date}.T${time}1
           echo "CSVFILENAME=$csvname" >> "$GITHUB_OUTPUT"
 
+          guidecsvname=T.GUIDE.GUIDE-00001.Y${year}.D${date}.T${time}1
+          echo "GUIDEFILENAME=$guidecsvname" >> "$GITHUB_OUTPUT"
+
           mv ../shared_files/cclf/archives/csv/P.PCPB.M2411.D181120.T1000000 ${csvname}
+
+          mv ../shared_files/cclf/archives/csv/T.GUIDE.GUIDE-00001.Y25.D250630.T1000000 ${guidecsvname}
 
           unzip ../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000
 
@@ -89,6 +94,11 @@ jobs:
 
           aws s3 cp --no-progress ${csvname} \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/${csvname}
+
+          aws s3 cp --no-progress ${guidecsvname} \
+            s3://bfd-test-eft/bfdeft01/bcda/in/test/${guidecsvname}
+
+            
 
   verify:
     needs: trigger
@@ -116,6 +126,7 @@ jobs:
         env:
           CCLFFILENAME: ${{ needs.trigger.outputs.cclffilename }}
           CSVFILENAME: ${{ needs.trigger.outputs.csvfilename }}
+          GUIDEFILENAME: ${{ needs.trigger.outputs.guidefilename }}
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
@@ -146,6 +157,27 @@ jobs:
           fi
 
           # Verify that we have a record of the CSV file in the database
+          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
+          echo "CSV_FILE: $CSV_FILE"
+          if [[ $? -ne 0 || -z $CSV_FILE ]]; then
+            echo "csv_file query returned zero results or command failed"
+            exit 1
+          else
+            
+            # Verify that the correct number of benes were imported into the database.
+            CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
+            echo "CSV_BENES: $CSV_BENES"
+            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+              echo "CSV beneficiaries query returned zero results or command failed"
+              exit 1
+            fi
+            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
+              exit 1
+            fi
+          fi
+
+          # Verify that we have a record of the GUIDE CSV file in the database
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then

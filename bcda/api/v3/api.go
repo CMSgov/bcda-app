@@ -291,7 +291,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 		Publisher: &fhirdatatypes.String{Value: "Centers for Medicare & Medicaid Services"},
 		Kind:      &fhircapabilitystatement.CapabilityStatement_KindCode{Value: fhircodes.CapabilityStatementKindCode_INSTANCE},
 		Instantiates: []*fhirdatatypes.Canonical{
-			{Value: bbServer + "/v3/fhir/metadata"},
+			{Value: bbServer + constants.BFDV3Path + "/metadata"},
 			{Value: "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		},
 		Software: &fhircapabilitystatement.CapabilityStatement_Software{
