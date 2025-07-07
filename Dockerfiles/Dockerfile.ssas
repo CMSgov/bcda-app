@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1-experimental
-FROM golang:1.23.1-alpine3.20 AS base
+FROM golang:1.24-alpine AS base
 
 RUN apk update upgrade
 RUN apk add git
@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go install -v ./ssas/service/main
 
-FROM golang:1.23.1-alpine3.20 AS prod
+FROM golang:1.24-alpine AS prod
 
 RUN apk update upgrade
 RUN apk add openssl

@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1-experimental
-FROM golang:1.23.1-alpine3.20
+FROM golang:1.24-alpine
 
 RUN apk update upgrade
 
