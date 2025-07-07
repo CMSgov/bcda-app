@@ -510,7 +510,7 @@ func (c *SSASClient) GetVersion() (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("SSAS server failed to return version ")
+		return "", errors.New("SSAS server failed to return version")
 	}
 
 	type ssasVersion struct {
@@ -524,4 +524,22 @@ func (c *SSASClient) GetVersion() (string, error) {
 		return "", errors.New("Unable to parse version from response")
 	}
 	return versionInfo.Version, nil
+}
+
+func (c *SSASClient) GetHealth() error {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/_health", c.baseURL), nil)
+	if err != nil {
+		return err
+	}
+	if err := c.setAuthHeader(req); err != nil {
+		return err
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("SSAS server health check failed")
+	}
+	return nil
 }
