@@ -99,11 +99,12 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             SUBNET_ID=/bcda/workflows/packer_subnet_id
             S3_BUCKET=/bcda/rpms_bucket
+            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ inputs.ops_release_version || 'main' }}
+          ref: ${{ env.OPS_RELEASE_VERSION }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
@@ -129,21 +130,9 @@ jobs:
           echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
           export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
-      - name: Get AWS params
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
-            OPS_GITHUB_TOKEN=/ci/github/token
-      - name: Checkout BCDA OPS
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-ops
-          ref: ${{ env.OPS_RELEASE_VERSION }}
-          token: ${{ env.OPS_GITHUB_TOKEN }}
       - name: Install terraform
+        with:
+          directory: ./terraform_gf
         uses: cmsgov/ab2d-bcda-dpc-platform/actions/setup-tfenv-terraform@main
       - name: Init, Plan Terraform
         run: |
@@ -155,7 +144,6 @@ jobs:
           terraform init
           terraform plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'key_name=${{ vars.KEY_ID }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
