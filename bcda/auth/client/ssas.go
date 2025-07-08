@@ -356,43 +356,6 @@ func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, 
 	return fmt.Sprintf(`{"access_token": "%s", "expires_in": "%s", "token_type":"bearer"}`, t.AccessToken, t.ExpiresIn), nil
 }
 
-func (c *SSASClient) Ping() error {
-
-	tokenString := "None"
-	public := conf.GetEnv("SSAS_PUBLIC_URL")
-	url := fmt.Sprintf("%s/introspect", public)
-	body, err := json.Marshal(struct {
-		Token string `json:"token"`
-	}{Token: tokenString})
-	if err != nil {
-		return errors.Wrap(err, constants.RequestStructErr)
-	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil {
-		return errors.Wrap(err, constants.RequestStructErr)
-	}
-
-	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
-	secret := conf.GetEnv("BCDA_SSAS_SECRET")
-	if clientID == "" || secret == "" {
-		return errors.New(constants.MissingIDSecretErr)
-	}
-	req.SetBasicAuth(clientID, secret)
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return errors.Wrap(err, "introspect request failed")
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("introspect request failed; %v", resp.StatusCode)
-	}
-
-	return nil
-}
-
 // CallSSASIntrospect verifies that the tokenString presented was issued by the public server.
 // It does so using the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
 func (c *SSASClient) CallSSASIntrospect(ctx context.Context, tokenString string) ([]byte, error) {

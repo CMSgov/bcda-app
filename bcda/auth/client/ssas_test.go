@@ -584,38 +584,6 @@ func TestSSASClientTestSuite(t *testing.T) {
 	suite.Run(t, new(SSASClientTestSuite))
 }
 
-func (s *SSASClientTestSuite) TestPingTable() {
-	tests := []struct {
-		fnInput       []string
-		env           EnvVars
-		errorExpected bool
-		message       string
-	}{
-		{fnInput: []string{}, env: EnvVars{}, errorExpected: false},
-		{fnInput: []string{}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "fake"}, errorExpected: true, message: "introspect request failed; 401"},
-		{fnInput: []string{}, env: EnvVars{SSAS_PUBLIC_URL: "localhost"}, errorExpected: true, message: "introspect request failed: Post \"localhost/introspect\": unsupported protocol scheme \"\""},
-		{fnInput: []string{}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
-	}
-
-	for _, tc := range tests {
-
-		s.setEnvVars(tc.env)
-		client, err := authclient.NewSSASClient()
-
-		if err != nil {
-			s.FailNow(constants.CreateSsasErr, err.Error())
-		}
-		err = client.Ping()
-
-		if tc.errorExpected {
-			assert.EqualError(s.T(), err, tc.message)
-		} else {
-			assert.Nil(s.T(), err)
-		}
-
-	}
-}
-
 func (s *SSASClientTestSuite) TestGetPublicKeyTable() {
 	tests := []struct {
 		fnInput       []string
