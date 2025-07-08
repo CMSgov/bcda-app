@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -1050,7 +1049,6 @@ func TestBulkRequest_Integration(t *testing.T) {
 		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
 	}
 
-	os.Setenv("QUEUE_LIBRARY", "river")
 
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
@@ -1114,7 +1112,6 @@ func TestBulkRequest_Integration(t *testing.T) {
 			}))
 
 			ctx := context.Background()
-			os.Unsetenv("QUEUE_LIBRARY")
 			h.bulkRequest(w, r, constants.DefaultRequest)
 			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{
 				Args: worker_types.PrepareJobArgs{},
