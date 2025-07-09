@@ -30,8 +30,8 @@ type queue struct {
 	// Resources associated with River library
 	client *river.Client[pgxv5.Tx]
 
-	ctx           context.Context
-	repository    repository.Repository
+	ctx        context.Context
+	repository repository.Repository
 }
 
 type ValidateJobConfig struct {
