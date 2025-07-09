@@ -210,18 +210,6 @@ func (_c *MockService_GetACOConfigForID_Call) RunAndReturn(run func(cmsID string
 	return _c
 }
 
-// MockService_GetAlrJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAlrJobs'
-type MockService_GetAlrJobs_Call struct {
-	*mock.Call
-}
-
-// GetAlrJobs is a helper method to define mock.On call
-//   - ctx
-//   - alrMBI
-func (_e *MockService_Expecter) GetAlrJobs(ctx interface{}, alrMBI interface{}) *MockService_GetAlrJobs_Call {
-	return &MockService_GetAlrJobs_Call{Call: _e.mock.On("GetAlrJobs", ctx, alrMBI)}
-}
-
 // GetCutoffTime provides a mock function for the type MockService
 func (_mock *MockService) GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string) {
 	ret := _mock.Called(ctx, reqType, since, timeConstraints, fileType)

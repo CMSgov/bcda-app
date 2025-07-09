@@ -40,7 +40,6 @@ postman:
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
-	# to test alrEnabled, include --global-var alrEnabled=true below
 	docker compose -f docker-compose.test.yml build postman_test
 	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
@@ -71,13 +70,6 @@ unit-test-db:
 	# Perform migrations to ensure matching schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
-
-	# Load ALR data into the unit-test-DB for local and github actions unit-test
-	# TODO: once we finalize on synthetic ALR data, we should take a snapshot of the unit-test-db
-	docker compose run \
-	-e DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable \
-	-e QUEUE_DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable \
-	api sh -c 'bcda generate-synthetic-alr-data --cms-id=A9994 --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
 
 unit-test-localstack:
 	# Clean up any existing data to ensure we spin up container in a known state.
@@ -115,12 +107,6 @@ load-fixtures: reset-db
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
-
-	# Add ALR data for ACOs under test. Must have attribution already set.
-	$(eval ACO_CMS_IDS := A9994 A9996)
-	for acoId in $(ACO_CMS_IDS) ; do \
-		docker compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id='$$acoId' --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv' ; \
-	done
 
 	# Ensure components are started as expected
 	docker compose up -d api worker ssas
@@ -211,7 +197,7 @@ fhir_testing:
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 	$(eval BULK_URL = 'http://host.docker.internal:3000/api/v2/')
 	$(eval TOKEN_URL = 'http://host.docker.internal:3000/auth/token')
-	
+
 	# Run the tests
 	docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
 	@docker run --network=bridge --rm \
