@@ -296,7 +296,7 @@ func (s *SSASClientTestSuite) TestGetVersionTable() {
 		{header: http.StatusOK, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "Get \"localhost/_version\": unsupported protocol scheme \"\"", versionString: "{\"version\":\"foo\"}\n"},
 		{header: http.StatusOK, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret", versionString: "{\"version\":\"foo\"}\n"},
 		{header: http.StatusOK, env: EnvVars{}, errorExpected: true, message: "Unable to parse version from response", versionString: "{\"foo\":\"foo\"}\n"},
-		{header: http.StatusBadGateway, env: EnvVars{}, errorExpected: true, message: "SSAS server failed to return version ", versionString: "{\"version\":\"foo\"}\n"},
+		{header: http.StatusBadGateway, env: EnvVars{}, errorExpected: true, message: "SSAS server failed to return version", versionString: "{\"version\":\"foo\"}\n"},
 	}
 
 	for _, tc := range tests {
@@ -331,6 +331,52 @@ func (s *SSASClientTestSuite) TestGetVersionTable() {
 			assert.Equal(s.T(), tc.message, version)
 		}
 
+	}
+}
+
+func (s *SSASClientTestSuite) TestHealthTable() {
+	tests := []struct {
+		header        int
+		env           EnvVars
+		errorExpected bool
+		message       string
+	}{
+		{header: http.StatusOK, env: EnvVars{}, errorExpected: false, message: "foo"},
+		{header: http.StatusOK, env: EnvVars{SSAS_URL: "localhost"}, errorExpected: true, message: "Get \"localhost/_health\": unsupported protocol scheme \"\""},
+		{header: http.StatusOK, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
+		{header: http.StatusBadGateway, env: EnvVars{}, errorExpected: true, message: "SSAS server health check failed"},
+	}
+
+	for _, tc := range tests {
+		router := chi.NewRouter()
+		router.Get("/_health", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(tc.header)
+
+			_, err := io.WriteString(w, "{\"database\":\"ok\"}")
+			if err != nil {
+				s.FailNow("Failed to create SSAS server", err.Error())
+			}
+		})
+		server := httptest.NewServer(router)
+
+		conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+		conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+		conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
+		conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", server.URL)
+		s.setEnvVars(tc.env)
+		client, err := authclient.NewSSASClient()
+
+		if err != nil {
+			s.FailNow(constants.CreateSsasErr, err.Error())
+		}
+		err = client.GetHealth()
+
+		if tc.errorExpected {
+			assert.EqualError(s.T(), err, tc.message)
+		} else {
+			assert.Nil(s.T(), err)
+		}
 	}
 }
 
@@ -536,38 +582,6 @@ func (s *SSASClientTestSuite) TestGetTokenHeaders() {
 
 func TestSSASClientTestSuite(t *testing.T) {
 	suite.Run(t, new(SSASClientTestSuite))
-}
-
-func (s *SSASClientTestSuite) TestPingTable() {
-	tests := []struct {
-		fnInput       []string
-		env           EnvVars
-		errorExpected bool
-		message       string
-	}{
-		{fnInput: []string{}, env: EnvVars{}, errorExpected: false},
-		{fnInput: []string{}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "fake"}, errorExpected: true, message: "introspect request failed; 401"},
-		{fnInput: []string{}, env: EnvVars{SSAS_PUBLIC_URL: "localhost"}, errorExpected: true, message: "introspect request failed: Post \"localhost/introspect\": unsupported protocol scheme \"\""},
-		{fnInput: []string{}, env: EnvVars{BCDA_SSAS_CLIENT_ID: "-1"}, errorExpected: true, message: "missing clientID or secret"},
-	}
-
-	for _, tc := range tests {
-
-		s.setEnvVars(tc.env)
-		client, err := authclient.NewSSASClient()
-
-		if err != nil {
-			s.FailNow(constants.CreateSsasErr, err.Error())
-		}
-		err = client.Ping()
-
-		if tc.errorExpected {
-			assert.EqualError(s.T(), err, tc.message)
-		} else {
-			assert.Nil(s.T(), err)
-		}
-
-	}
 }
 
 func (s *SSASClientTestSuite) TestGetPublicKeyTable() {
