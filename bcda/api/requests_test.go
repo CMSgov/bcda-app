@@ -1049,7 +1049,6 @@ func TestBulkRequest_Integration(t *testing.T) {
 		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
 	}
 
-
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
 	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
