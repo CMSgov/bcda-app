@@ -29,8 +29,8 @@ var nDJsonDataRoute string = "/data/test/test.ndjson"
 
 type RouterTestSuite struct {
 	suite.Suite
-	apiRouter        http.Handler
-	dataRouter       http.Handler
+	apiRouter  http.Handler
+	dataRouter http.Handler
 }
 
 func (s *RouterTestSuite) SetupTest() {
