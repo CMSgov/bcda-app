@@ -32,8 +32,6 @@ type queue struct {
 
 	ctx           context.Context
 	repository    repository.Repository
-	log           logrus.FieldLogger
-	cloudWatchEnv string
 }
 
 type ValidateJobConfig struct {
