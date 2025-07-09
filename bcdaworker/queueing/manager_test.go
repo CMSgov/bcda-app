@@ -2,7 +2,6 @@ package queueing
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"testing"
@@ -15,9 +14,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
+	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -41,12 +40,10 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
 			worker := &worker.MockWorker{}
 			defer worker.AssertExpectations(t)
 
 			repo := repository.NewMockRepository(t)
-			queue := &queue{worker: worker, repository: repo, log: logger}
 
 			id, err := safecast.ToUint(1)
 			if err != nil {
@@ -60,13 +57,14 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 			}
 			jobArgs := worker_types.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
 
-			queJob := que.Job{ID: 1}
-			queJob.Args, err = json.Marshal(jobArgs)
-			assert.NoError(t, err)
+			// Create a River job instead of que-go job
+			riverJob := &river.Job[worker_types.JobEnqueueArgs]{
+				Args: jobArgs,
+			}
 
 			// Set the error count to max to ensure that we've exceeded the retries
 			if tt.name == "NoParentJobRetriesExceeded" {
-				queJob.ErrorCount = testUtils.CryptoRandInt31()
+				riverJob.Attempt = int(testUtils.CryptoRandInt31())
 			}
 
 			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
@@ -76,7 +74,21 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 				repo.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
 			}
 
-			err = queue.processJob(&queJob)
+			jobID, err := safecast.ToInt64(job.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			exportJob, err, ackJob := validateJob(context.Background(), ValidateJobConfig{
+				WorkerInstance: worker,
+				Logger:         testUtils.GetLogger(log.Worker),
+				Repository:     repo,
+				JobID:          jobID,
+				QJobID:         1,
+				Args:           jobArgs,
+				ErrorCount:     riverJob.Attempt,
+			})
+
 			if tt.expectedErr == nil {
 				assert.NoError(t, err)
 			} else {
@@ -86,18 +98,18 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 			if tt.expLogMsg != "" {
 				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
 			}
+
+			// Check if job should be acknowledged
+			if ackJob {
+				assert.Nil(t, exportJob)
+			}
 		})
 	}
 }
 
 func TestCheckIfCancelled(t *testing.T) {
-	q := MasterQueue{
-		queue: &queue{
-			repository: nil,
-		},
-		StagingDir: "",
-		PayloadDir: "",
-		MaxRetry:   0,
+	q := queue{
+		repository: nil,
 	}
 
 	mockRepo := repository.MockRepository{}
@@ -121,7 +133,7 @@ func TestCheckIfCancelled(t *testing.T) {
 	jobID, err := safecast.ToInt64(jobs.ID)
 	assert.NoError(t, err)
 
-	// In produation we wait 15 second intervals, for test we do 1
+	// In production we wait 15 second intervals, for test we do 1
 	go checkIfCancelled(ctx, q.repository, cancel, jobID, 1)
 
 	// Check if the context has been cancelled

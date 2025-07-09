@@ -12,9 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
-	"github.com/jackc/pgx"
 	pgxv5 "github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
@@ -28,10 +26,6 @@ import (
 // to pick up and handle work
 type queue struct {
 	worker worker.Worker
-
-	// Resources associated with the underlying Que client library
-	quePool *que.WorkerPool // Decprecated: use river instead.
-	queDB   *pgx.ConnPool   // Decprecated: use river instead.
 
 	// Resources associated with River library
 	client *river.Client[pgxv5.Tx]
