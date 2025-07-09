@@ -42,6 +42,7 @@ require (
 require (
 	github.com/CMSgov/bcda-app/optout v0.0.0-20231214212912-50fa0a1c3c8a
 	github.com/ccoveille/go-safecast v1.1.0
+	github.com/go-gota/gota v0.12.0
 	github.com/pashagolub/pgxmock/v4 v4.5.0
 	github.com/riverqueue/river v0.20.2
 	github.com/riverqueue/river/rivertype v0.20.2
@@ -49,7 +50,6 @@ require (
 )
 
 require (
-	github.com/go-gota/gota v0.12.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
