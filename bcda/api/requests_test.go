@@ -1112,10 +1112,9 @@ func TestBulkRequest_Integration(t *testing.T) {
 
 			ctx := context.Background()
 			h.bulkRequest(w, r, constants.DefaultRequest)
-			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{{
-				Args: worker_types.PrepareJobArgs{},
-				Opts: nil,
-			}})
+			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{
+				{Args: worker_types.PrepareJobArgs{}, Opts: nil},
+			})
 			assert.Greater(t, len(jobs), 0)
 			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 			if err != nil {
