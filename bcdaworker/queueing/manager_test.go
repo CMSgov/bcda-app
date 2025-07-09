@@ -57,7 +57,6 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 			}
 			jobArgs := worker_types.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
 
-			// Create a River job instead of que-go job
 			riverJob := &river.Job[worker_types.JobEnqueueArgs]{
 				Args: jobArgs,
 			}

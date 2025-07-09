@@ -73,9 +73,6 @@ Responses:
 	429: tooManyRequestsResponse
 	500: errorResponse
 */
-func ALRRequest(w http.ResponseWriter, r *http.Request) {
-	h.ALRRequest(w, r)
-}
 
 /*
 swagger:route GET /api/v3/Patient/$export bulkDatav3 bulkPatientRequestv3
