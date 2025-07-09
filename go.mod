@@ -8,7 +8,6 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go v1.48.9
-	github.com/bgentry/que-go v1.0.1
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/dimchansky/utfbom v1.1.1
