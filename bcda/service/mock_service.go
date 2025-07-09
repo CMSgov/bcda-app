@@ -210,25 +210,6 @@ func (_c *MockService_GetACOConfigForID_Call) RunAndReturn(run func(cmsID string
 	return _c
 }
 
-// GetAlrJobs provides a mock function for the type MockService
-func (_mock *MockService) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
-	ret := _mock.Called(ctx, alrMBI)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAlrJobs")
-	}
-
-	var r0 []*models.JobAlrEnqueueArgs
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *models.AlrMBIs) []*models.JobAlrEnqueueArgs); ok {
-		r0 = returnFunc(ctx, alrMBI)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*models.JobAlrEnqueueArgs)
-		}
-	}
-	return r0
-}
-
 // MockService_GetAlrJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAlrJobs'
 type MockService_GetAlrJobs_Call struct {
 	*mock.Call
@@ -239,23 +220,6 @@ type MockService_GetAlrJobs_Call struct {
 //   - alrMBI
 func (_e *MockService_Expecter) GetAlrJobs(ctx interface{}, alrMBI interface{}) *MockService_GetAlrJobs_Call {
 	return &MockService_GetAlrJobs_Call{Call: _e.mock.On("GetAlrJobs", ctx, alrMBI)}
-}
-
-func (_c *MockService_GetAlrJobs_Call) Run(run func(ctx context.Context, alrMBI *models.AlrMBIs)) *MockService_GetAlrJobs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*models.AlrMBIs))
-	})
-	return _c
-}
-
-func (_c *MockService_GetAlrJobs_Call) Return(jobAlrEnqueueArgss []*models.JobAlrEnqueueArgs) *MockService_GetAlrJobs_Call {
-	_c.Call.Return(jobAlrEnqueueArgss)
-	return _c
-}
-
-func (_c *MockService_GetAlrJobs_Call) RunAndReturn(run func(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs) *MockService_GetAlrJobs_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // GetCutoffTime provides a mock function for the type MockService
