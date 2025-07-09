@@ -50,9 +50,9 @@ func IsSsasOK() (result string, ok bool) {
 		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
 		return "No client for SSAS. no provider set", false
 	}
-	if err := c.Ping(); err != nil {
-		log.API.Error("Health check: ssas ping error: ", err.Error())
-		return "Cannot authenticate with SSAS", false
+	if err := c.GetHealth(); err != nil {
+		log.API.Error("Health check: ssas health check error: ", err.Error())
+		return "Cannot connect to SSAS", false
 	}
 	return "ok", true
 }
