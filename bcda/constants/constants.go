@@ -49,7 +49,7 @@ const CCLF8FileNum = int(8)
 
 const BFDV1Path = "/v1/fhir"
 const BFDV2Path = "/v2/fhir"
-const BFDV3Path = "/v2/fhir" // TODO: V3
+const BFDV3Path = "/v3/fhir" // TODO: V3
 const V3Version = "demo"
 
 const GetExistingBenes = "GetExistingBenes"
