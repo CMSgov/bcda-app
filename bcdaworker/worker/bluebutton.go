@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	models "github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/pkg/errors"
@@ -36,6 +37,9 @@ func getBlueButtonID(bb client.APIClient, mbi string, jobData worker_types.JobEn
 		if strings.Contains(identifier.System, "us-mbi") {
 			if identifier.Value == mbi {
 				foundIdentifier = true
+				if jobData.BBBasePath == constants.BFDV3Path { // TODO: V3
+					foundBlueButtonID = true
+				}
 			}
 		} else if strings.Contains(identifier.System, "bene_id") && identifier.Value == blueButtonID {
 			foundBlueButtonID = true

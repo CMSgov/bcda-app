@@ -15,7 +15,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -329,7 +328,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			// before gathering EOB/Coverage results; however with partially-adjudicated data
 			// that is not yet possible because their are no Patient FHIR resources. This
 			// boolean indicates whether or not we need to skip that lookup step
-			fetchBBId := jobArgs.DataType != constants.PartiallyAdjudicated
+			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
 			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs

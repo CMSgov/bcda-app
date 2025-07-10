@@ -33,6 +33,7 @@ type PrepareJobWorker struct {
 	svc      service.Service
 	v1Client client.APIClient
 	v2Client client.APIClient
+	v3Client client.APIClient
 	r        models.Repository
 }
 
@@ -62,8 +63,13 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 		logger.Fatalf("failed to load bfd client. Err: %v", err)
 		return &PrepareJobWorker{}, err
 	}
+	v3, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV3Path))
+	if err != nil {
+		logger.Fatalf("failed to load bfd client. Err: %v", err)
+		return &PrepareJobWorker{}, err
+	}
 
-	return &PrepareJobWorker{svc: svc, v1Client: v1, v2Client: v2, r: repository}, nil
+	return &PrepareJobWorker{svc: svc, v1Client: v1, v2Client: v2, v3Client: v3, r: repository}, nil
 
 }
 
@@ -155,6 +161,8 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 	case constants.BFDV2Path:
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
+	case constants.BFDV3Path:
+		return jobData.TransactionTime, nil // TODO: V3
 	default:
 		return time.Time{}, errors.New("no BFD base path")
 	}

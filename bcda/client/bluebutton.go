@@ -222,7 +222,10 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
-	params.Set("excludeSAMHSA", "true")
+
+	if bbc.BBBasePath != constants.BFDV3Path { // TODO: V3
+		params.Set("excludeSAMHSA", "true")
+	}
 
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
