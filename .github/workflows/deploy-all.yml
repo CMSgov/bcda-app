@@ -144,7 +144,6 @@ jobs:
           terraform init
           terraform plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'key_name=${{ vars.KEY_ID }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
