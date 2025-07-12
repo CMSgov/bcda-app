@@ -16,7 +16,6 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
-	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -56,21 +55,12 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 				t.Fatal(e)
 			}
 			jobArgs := worker_types.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
-
-			riverJob := &river.Job[worker_types.JobEnqueueArgs]{
-				Args: jobArgs,
-			}
-
-			// Set the error count to max to ensure that we've exceeded the retries
-			if tt.name == "NoParentJobRetriesExceeded" {
-				riverJob.Attempt = int(testUtils.CryptoRandInt31())
-			}
-
-			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
+			qJobID := int64(1)
 
 			if tt.name == "QueJobAlreadyProcessed" {
 				job.Status = models.JobStatusCompleted
 				repo.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
+				// Note: GetJobKeyCount is not called when job status is already Completed
 			}
 
 			jobID, err := safecast.ToInt64(job.ID)
@@ -78,27 +68,53 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			exportJob, err, ackJob := validateJob(context.Background(), ValidateJobConfig{
+			worker.On("ValidateJob", testUtils.CtxMatcher, qJobID, jobArgs).Return(nil, tt.validateErr)
+
+			logger := testUtils.GetLogger(log.Worker)
+			if logger == nil {
+				t.Fatal("Logger is nil")
+			}
+
+			var exportJob *models.Job
+			var ackJob bool
+
+			errorCount := 0
+			if tt.name == "NoParentJobRetriesExceeded" {
+				errorCount = 10
+			}
+
+			config := ValidateJobConfig{
 				WorkerInstance: worker,
-				Logger:         testUtils.GetLogger(log.Worker),
+				Logger:         logger,
 				Repository:     repo,
 				JobID:          jobID,
-				QJobID:         1,
+				QJobID:         qJobID,
 				Args:           jobArgs,
-				ErrorCount:     riverJob.Attempt,
-			})
+				ErrorCount:     errorCount,
+			}
+
+			exportJob, err, ackJob = validateJob(context.Background(), config)
 
 			if tt.expectedErr == nil {
-				assert.NoError(t, err)
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
 			} else {
-				assert.Contains(t, err.Error(), tt.expectedErr.Error())
+				if err == nil {
+					t.Errorf("Expected error containing %q but got no error", tt.expectedErr.Error())
+				} else {
+					assert.Contains(t, err.Error(), tt.expectedErr.Error())
+				}
 			}
 
 			if tt.expLogMsg != "" {
-				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
+				if hook.LastEntry() != nil {
+					assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
+				} else {
+					t.Errorf("Expected log message but no log entry found")
+				}
 			}
 
-			// Check if job should be acknowledged
 			if ackJob {
 				assert.Nil(t, exportJob)
 			}

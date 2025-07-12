@@ -54,15 +54,15 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
 		cfg.Logger.Warnf("QJob %d associated with a cancelled parent Job %d. Removing job from queue.", cfg.Args.ID, cfg.JobID)
-		return nil, err, true
+		return nil, nil, true
 	} else if goerrors.Is(err, worker.ErrParentJobFailed) {
 		// ACK the job because we do not need to work on queue jobs associated with a failed parent job
 		cfg.Logger.Warnf("QJob %d associated with a failed parent Job %d. Removing job from queue.", cfg.Args.ID, cfg.JobID)
-		return nil, err, true
+		return nil, nil, true
 	} else if goerrors.Is(err, worker.ErrNoBasePathSet) {
 		// Data is corrupted, we cannot work on this job.
 		cfg.Logger.Warnf("QJob %d does not contain valid base path. Removing job from queue.", cfg.JobID)
-		return nil, err, true
+		return nil, nil, true
 	} else if goerrors.Is(err, worker.ErrParentJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
@@ -74,7 +74,7 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 
 		if cfg.ErrorCount >= maxNotFoundRetries {
 			cfg.Logger.Errorf("No job found for Job: %d acoID: %s. Retries exhausted. Removing job from queue.", cfg.JobID, cfg.Args.ACOID)
-			return nil, err, true
+			return nil, nil, true
 		}
 
 		cfg.Logger.Warnf("No job found for Job: %d acoID: %s. Will retry.", cfg.JobID, cfg.Args.ACOID)
@@ -94,7 +94,7 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 			return nil, errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for Job %d", cfg.JobID)), false
 		}
 
-		return nil, err, true
+		return nil, nil, true
 	} else if err != nil {
 		err := errors.Wrap(err, "Failed to validate job")
 		cfg.Logger.Error(err)
