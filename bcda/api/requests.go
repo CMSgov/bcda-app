@@ -120,10 +120,6 @@ func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	h.bulkRequest(w, r, reqType)
 }
 
-func (h *Handler) ALRRequest(w http.ResponseWriter, r *http.Request) {
-	h.alrRequest(w, r)
-}
-
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	const (
 		groupAll    = "all"

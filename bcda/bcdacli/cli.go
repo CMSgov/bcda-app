@@ -19,8 +19,6 @@ import (
 
 	"github.com/ccoveille/go-safecast"
 
-	"github.com/CMSgov/bcda-app/bcda/alr/csv"
-	"github.com/CMSgov/bcda-app/bcda/alr/gen"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 
@@ -71,7 +69,7 @@ func setUpApp() *cli.App {
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType, alrFile string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -371,70 +369,6 @@ func setUpApp() *cli.App {
 				}
 				fmt.Fprintf(app.Writer, "Completed CCLF runout file generation. Generated %d zip files.", rc)
 				return nil
-			},
-		},
-		{
-			Name:     "generate-synthetic-alr-data",
-			Category: constants.CliDataImpCategory,
-			Usage:    "Generate and ingest synthetic ALR data associated with a particular ACO",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        constants.CliCMSIDArg,
-					Usage:       constants.CliCMSIDDesc,
-					Destination: &acoCMSID,
-				},
-				cli.StringFlag{
-					Name:        "alr-template-file",
-					Usage:       "File path for ALR template file",
-					Destination: &alrFile,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				if alrFile == "" {
-					return errors.New("alr template file must be specified")
-				}
-
-				file, err := r.GetLatestCCLFFile(context.Background(), acoCMSID, 8, "Completed",
-					time.Time{}, time.Time{}, models.FileTypeDefault)
-				if err != nil {
-					return err
-				}
-				if file == nil {
-					return fmt.Errorf("no CCLF8 file found for CMS ID %s", acoCMSID)
-				}
-
-				tempFile, err := os.CreateTemp("", "*")
-				if err != nil {
-					return err
-				}
-				in, err := os.Open(filepath.Clean(alrFile))
-				if err != nil {
-					return err
-				}
-				defer utils.CloseFileAndLogError(in)
-
-				if _, err := io.Copy(tempFile, in); err != nil {
-					return err
-				}
-
-				mbiSupplier := func() ([]string, error) {
-					return r.GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
-				}
-				if err := gen.UpdateCSV(tempFile.Name(), mbiSupplier); err != nil {
-					return err
-				}
-
-				entries, err := csv.ToALR(tempFile.Name())
-				if err != nil {
-					return err
-				}
-
-				alrRepo := postgres.NewAlrRepo(database.Connection)
-				alrs := make([]models.Alr, 0, len(entries))
-				for idx := range entries {
-					alrs = append(alrs, *entries[idx])
-				}
-				return alrRepo.AddAlr(context.Background(), acoCMSID, time.Now(), alrs)
 			},
 		},
 		{

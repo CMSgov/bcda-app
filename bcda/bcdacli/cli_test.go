@@ -660,20 +660,6 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	}
 }
 
-func (s *CLITestSuite) TestGenerateAlrData() {
-	initialCount := postgrestest.GetALRCount(s.T(), s.db, "A9990")
-	args := []string{"bcda", "generate-synthetic-alr-data", constants.CMSIDArg, "A9990",
-		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"}
-	err := s.testApp.Run(args)
-	assert.NoError(s.T(), err)
-	assert.Greater(s.T(), postgrestest.GetALRCount(s.T(), s.db, "A9990"), initialCount)
-
-	// No CCLF file
-	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", constants.CMSIDArg, "UNKNOWN_ACO",
-		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"})
-	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
-}
-
 func createTestZipFile(zFile string, cclfFiles ...string) error {
 	zf, err := os.Create(zFile)
 	if err != nil {

@@ -21,23 +21,23 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// These are set in que_test.go
-// var logger = logrus.New()
-// var logHook = test.NewLocal(logger)
+var logger = logrus.New()
+
+func isTerminalStatus(status models.JobStatus) bool {
+	switch status {
+	case models.JobStatusCompleted,
+		models.JobStatusCancelled,
+		models.JobStatusFailed:
+		return true
+	}
+	return false
+}
 
 // TestWork acts as an end-to-end verification of the entire process:
 // adding a job, picking up the job, processing the job, and closing the client
 func TestWork_Integration(t *testing.T) {
-	conf.SetEnv(t, "QUEUE_LIBRARY", "que")
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
-
-	// Reset our environment variables to their original values once we've finished with the test.
-	defer func(origEnqueuer string) {
-		conf.SetEnv(t, "QUEUE_LIBRARY", origEnqueuer)
-	}(conf.GetEnv("QUEUE_LIBRARY"))
-
-	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 
 	defer func(payload, staging string) {
 		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)

@@ -55,9 +55,6 @@ func NewAPIRouter() http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
-		if conf.GetEnv("ENABLE_ALR_ENDPOINTS") == "true" {
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v1.ALRRequest))
-		}
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v1.JobStatus))
 		r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v1.JobsStatus))
@@ -70,9 +67,6 @@ func NewAPIRouter() http.Handler {
 		FileServer(r, "/api/v2/swagger", http.Dir("./swaggerui/v2"))
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
-			if conf.GetEnv("ENABLE_ALR_ENDPOINTS") == "true" {
-				r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v2.ALRRequest))
-			}
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v2.JobStatus))
 			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v2.JobsStatus))
@@ -85,9 +79,6 @@ func NewAPIRouter() http.Handler {
 	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
 		r.Route("/api/demo", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v3.BulkPatientRequest))
-			if conf.GetEnv("ENABLE_ALR_ENDPOINTS") == "true" {
-				r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v3.ALRRequest))
-			}
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v3.BulkGroupRequest))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler(constants.JOBIDPath, v3.JobStatus))
 			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", v3.JobsStatus))

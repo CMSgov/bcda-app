@@ -23,26 +23,19 @@ fi
 [  -z "$BCDA_GPG_RPM_PASSPHRASE" ] && echo "Please select the Passphrase to sign the RPMs" && exit 1 || echo "GPG Passphrase provided"
 [  -z "$GPG_RPM_EMAIL" ] && echo "Please enter the email for the GPG Key Signature" && exit 1 || echo "GPG Key Email provided"
 
-#TODO: This file should live in worker S3 mount dir. Perhaps remove this.
-if [ ! -f ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv ]
-then
-  echo "Crosswalk file must exist prior to creating package."
-  exit 1
-fi
-
 cd ../bcda
 go clean -cache -modcache -i -r
 export GOPROXY=direct
 echo "Building bcda binary Version=$VERSION..."
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/api/hcc_crosswalk.tsv ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/configs
+fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/configs
 cd ../bcdaworker
 go clean
 echo "Building bcdaworker Version=$VERSION..."
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcdaworker binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/configs/
+fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../conf/configs/=/go/src/github.com/CMSgov/bcda-app/conf/configs/
 
 #Sign RPMs
 echo "Importing GPG Key files"

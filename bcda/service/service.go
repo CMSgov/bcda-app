@@ -30,7 +30,6 @@ type Service interface {
 	GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)
 	FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)
 	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error)
-	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
@@ -53,8 +52,6 @@ type service struct {
 
 	// These are always searched in order and first matching config is used for any given ACO.
 	acoConfigs []ACOConfig
-
-	alrMBIsPerJob uint
 }
 
 func NewService(r models.Repository, cfg *Config, basePath string) Service {
@@ -71,9 +68,8 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 			claimThruDate:  cfg.RunoutConfig.claimThru,
 			CutoffDuration: cfg.RunoutConfig.CutoffDuration,
 		},
-		bbBasePath:    basePath,
-		acoConfigs:    cfg.ACOConfigs,
-		alrMBIsPerJob: cfg.AlrJobSize,
+		bbBasePath: basePath,
+		acoConfigs: cfg.ACOConfigs,
 	}
 }
 

@@ -223,7 +223,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 
 	for _, tt := range tests {
 		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
+		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 		if tt.err == nil {
 			assert.NoError(s.T(), err)
 		} else {
@@ -320,7 +320,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
@@ -348,7 +348,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Len(s.T(), jobKeys, 2)
@@ -398,7 +398,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err := createDir(s.tempDir)
 	assert.NoError(s.T(), err)
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
@@ -441,7 +441,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, cryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
@@ -553,7 +553,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
 	logHook = test.NewLocal(testUtils.GetLogger(logger))
 
-	err = s.w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
+	err = s.w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 
 	entries := logHook.AllEntries()
 	assert.Nil(s.T(), err)
@@ -595,7 +595,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 
 	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, rid, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
-	err := w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
+	err := w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -622,7 +622,7 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
 	w := &worker{r}
-	err := w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
+	err := w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -715,7 +715,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, cryptoRandInt63(), j, jobArgs).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
@@ -737,7 +737,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 		BBBasePath:     constants.TestFHIRPath,
 	}
 
-	processJobErr := s.w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
+	processJobErr := s.w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	completedJob, _ := s.r.GetJobByID(ctx, j.ID)
 
 	// cancelled parent job status should not update after failed queuejob
@@ -803,7 +803,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 				BBBasePath:     constants.TestFHIRPath,
 			}
 
-			processJobErr := s.w.ProcessJob(ctx, cryptoRandInt63(), j, jobArgs)
+			processJobErr := s.w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 
 			// cancelled parent job status should not update after failed queuejob
 			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {

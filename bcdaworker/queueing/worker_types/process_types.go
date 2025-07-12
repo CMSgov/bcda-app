@@ -3,7 +3,6 @@ package worker_types
 import "time"
 
 const QUE_PROCESS_JOB = "ProcessJob"
-const ALR_JOB = "AlrJob"
 
 type JobEnqueueArgs struct {
 	ID              int // parent Job ID

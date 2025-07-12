@@ -26,25 +26,17 @@ import (
 )
 
 var nDJsonDataRoute string = "/data/test/test.ndjson"
-var version1ALRExportURL string = "/api/v1/alr/$export"
 
 type RouterTestSuite struct {
 	suite.Suite
-	apiRouter        http.Handler
-	dataRouter       http.Handler
-	alrEnabledEnvVar string
+	apiRouter  http.Handler
+	dataRouter http.Handler
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
-	s.alrEnabledEnvVar = conf.GetEnv("ENABLE_ALR_ENDPOINTS")
-	conf.SetEnv(s.T(), "ENABLE_ALR_ENDPOINTS", "true")
 	s.apiRouter = NewAPIRouter()
 	s.dataRouter = NewDataRouter()
-}
-
-func (s *RouterTestSuite) TearDownTest() {
-	conf.SetEnv(s.T(), "ENABLE_ALR_ENDPOINTS", s.alrEnabledEnvVar)
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
@@ -130,15 +122,6 @@ func (s *RouterTestSuite) TestGroupEndpointDisabled() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *RouterTestSuite) TestALRExportRoute() {
-	// ALR
-	res := s.getAPIRoute(version1ALRExportURL)
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-
-	res = s.getAPIRoute("/api/v1/alrs/$export")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-}
-
 func (s *RouterTestSuite) TestEOBExportRoute() {
 	res := s.getAPIRoute("/api/v1/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -216,8 +199,6 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute(constants.V2Path + constants.GroupExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute(constants.V2Path + constants.ALRExportPath)
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/metadata")
@@ -234,8 +215,6 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute(constants.V2Path + constants.GroupExportPath)
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute(constants.V2Path + constants.ALRExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -258,8 +237,6 @@ func (s *RouterTestSuite) TestV3EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + "metadata")
@@ -276,8 +253,6 @@ func (s *RouterTestSuite) TestV3EndpointsEnabled() {
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-	res = s.getAPIRoute(constants.V3Path + constants.ALRExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -379,8 +354,8 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 		handler http.Handler
 		paths   []string
 	}{
-		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", version1ALRExportURL,
-			constants.V2Path + constants.PatientExportPath, constants.V2Path + constants.GroupExportPath, constants.V2Path + constants.ALRExportPath,
+		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export",
+			constants.V2Path + constants.PatientExportPath, constants.V2Path + constants.GroupExportPath,
 			constants.V1Path + constants.JobsFilePath}},
 		{s.dataRouter, []string{nDJsonDataRoute}},
 		{NewAuthRouter(), []string{"/auth/welcome"}},

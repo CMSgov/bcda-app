@@ -468,63 +468,6 @@ func (_c *MockRepository_GetACOByUUID_Call) RunAndReturn(run func(ctx context.Co
 	return _c
 }
 
-// GetAlrMBIs provides a mock function for the type MockRepository
-func (_mock *MockRepository) GetAlrMBIs(ctx context.Context, cmsID string) (*AlrMBIs, error) {
-	ret := _mock.Called(ctx, cmsID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAlrMBIs")
-	}
-
-	var r0 *AlrMBIs
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*AlrMBIs, error)); ok {
-		return returnFunc(ctx, cmsID)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *AlrMBIs); ok {
-		r0 = returnFunc(ctx, cmsID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*AlrMBIs)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, cmsID)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockRepository_GetAlrMBIs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAlrMBIs'
-type MockRepository_GetAlrMBIs_Call struct {
-	*mock.Call
-}
-
-// GetAlrMBIs is a helper method to define mock.On call
-//   - ctx
-//   - cmsID
-func (_e *MockRepository_Expecter) GetAlrMBIs(ctx interface{}, cmsID interface{}) *MockRepository_GetAlrMBIs_Call {
-	return &MockRepository_GetAlrMBIs_Call{Call: _e.mock.On("GetAlrMBIs", ctx, cmsID)}
-}
-
-func (_c *MockRepository_GetAlrMBIs_Call) Run(run func(ctx context.Context, cmsID string)) *MockRepository_GetAlrMBIs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockRepository_GetAlrMBIs_Call) Return(alrMBIs *AlrMBIs, err error) *MockRepository_GetAlrMBIs_Call {
-	_c.Call.Return(alrMBIs, err)
-	return _c
-}
-
-func (_c *MockRepository_GetAlrMBIs_Call) RunAndReturn(run func(ctx context.Context, cmsID string) (*AlrMBIs, error)) *MockRepository_GetAlrMBIs_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetCCLFBeneficiaries provides a mock function for the type MockRepository
 func (_mock *MockRepository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, ignoredMBIs []string) ([]*CCLFBeneficiary, error) {
 	ret := _mock.Called(ctx, cclfFileID, ignoredMBIs)

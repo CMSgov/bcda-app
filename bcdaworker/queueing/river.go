@@ -81,7 +81,7 @@ func StartRiver(numWorkers int) *queue {
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
 		// TODO: whats an appropriate timeout?
-		JobTimeout:   -1, // default for river is 1m, que-go had no timeout, mimicking que-go for now
+		JobTimeout:   -1, // default for river is 1m, using -1 for no timeout
 		Logger:       logger,
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,

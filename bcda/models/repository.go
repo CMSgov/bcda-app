@@ -19,7 +19,6 @@ type Repository interface {
 	suppressionFileRepository
 	jobRepository
 	JobKeyRepository
-	alr
 }
 
 type acoRepository interface {
@@ -88,8 +87,4 @@ type JobKeyRepository interface {
 	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
 
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*JobKey, error)
-}
-
-type alr interface {
-	GetAlrMBIs(ctx context.Context, cmsID string) (*AlrMBIs, error)
 }

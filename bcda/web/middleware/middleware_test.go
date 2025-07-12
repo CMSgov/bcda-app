@@ -146,7 +146,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 	}
 
 	for _, tt := range tests {
-		cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{tt.ACOconfig}}
+		cfg := &service.Config{RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{tt.ACOconfig}}
 		assert.NoError(s.T(), cfg.ComputeFields())
 
 		rr := httptest.NewRecorder()
@@ -162,7 +162,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 func (s *MiddlewareTestSuite) TestACOEnabled_NoContextKey() {
 	ctx := SetRequestParamsCtx(context.Background(), RequestParameters{})
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
-	cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
+	cfg := &service.Config{RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
 	assert.NoError(s.T(), cfg.ComputeFields())
 
 	rr := httptest.NewRecorder()
@@ -189,7 +189,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 		ctx = SetRequestParamsCtx(ctx, RequestParameters{})
 		ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 
-		cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
+		cfg := &service.Config{RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
 		assert.NoError(s.T(), cfg.ComputeFields())
 
 		rr := httptest.NewRecorder()

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
@@ -97,8 +96,6 @@ func createQueue(cfg *Config) (*pgx.ConnPool, error) {
 	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
 		ConnConfig:     pgxCfg,
 		MaxConnections: cfg.MaxOpenConns,
-		// Needed to ensure the prepared statements are available for each connection.
-		AfterConnect: que.PrepareStatements,
 	})
 	if err != nil {
 		return nil, err
@@ -135,9 +132,7 @@ func CreatePgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 
 // startHealthCheck verifies the liveliness of the connections found in the supplied pool
 //
-// With que-go locked to pgx v3, we need a mechanism that will allow us to
-// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
-// This implementation is based off of the "fix" that is present in v4
+// This implementation is based off of the "fix" that is present in pgx v4
 // (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
 //
 // startHealthCheck returns immediately with the health check running in a goroutine that
@@ -159,7 +154,7 @@ func startHealthCheck(ctx context.Context, db *sql.DB, pool *pgx.ConnPool, pgxv5
 					logrus.Warnf("Failed to ping %s", err.Error())
 				}
 
-				// Aquire and ping Queue DB
+				// Acquire and ping Queue DB
 				c, err := pool.Acquire()
 				if err != nil {
 					logrus.Warnf("Failed to acquire Queue DB connection %s", err.Error())
@@ -170,7 +165,7 @@ func startHealthCheck(ctx context.Context, db *sql.DB, pool *pgx.ConnPool, pgxv5
 				}
 				pool.Release(c)
 
-				// Aquire and ping pgxv5 connection to App DB
+				// Acquire and ping pgxv5 connection to App DB
 				pgxv5Conn, err := pgxv5Pool.Acquire(ctx)
 				if err != nil {
 					logrus.Warnf("Failed to acquire pgxv5 App DB connection: %s", err.Error())

@@ -2,7 +2,6 @@ package queueing
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"testing"
@@ -15,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/bgentry/que-go"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -41,12 +39,10 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 	hook := test.NewLocal(testUtils.GetLogger(log.Worker))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var err error
 			worker := &worker.MockWorker{}
 			defer worker.AssertExpectations(t)
 
 			repo := repository.NewMockRepository(t)
-			queue := &queue{worker: worker, repository: repo, log: logger}
 
 			id, err := safecast.ToUint(1)
 			if err != nil {
@@ -59,45 +55,76 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 				t.Fatal(e)
 			}
 			jobArgs := worker_types.JobEnqueueArgs{ID: jobid, ACOID: uuid.New()}
-
-			queJob := que.Job{ID: 1}
-			queJob.Args, err = json.Marshal(jobArgs)
-			assert.NoError(t, err)
-
-			// Set the error count to max to ensure that we've exceeded the retries
-			if tt.name == "NoParentJobRetriesExceeded" {
-				queJob.ErrorCount = testUtils.CryptoRandInt31()
-			}
-
-			worker.On("ValidateJob", testUtils.CtxMatcher, int64(1), jobArgs).Return(nil, tt.validateErr)
+			qJobID := int64(1)
 
 			if tt.name == "QueJobAlreadyProcessed" {
 				job.Status = models.JobStatusCompleted
 				repo.On("GetJobByID", testUtils.CtxMatcher, job.ID).Return(&job, nil)
+				// Note: GetJobKeyCount is not called when job status is already Completed
 			}
 
-			err = queue.processJob(&queJob)
+			jobID, err := safecast.ToInt64(job.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			worker.On("ValidateJob", testUtils.CtxMatcher, qJobID, jobArgs).Return(nil, tt.validateErr)
+
+			logger := testUtils.GetLogger(log.Worker)
+			if logger == nil {
+				t.Fatal("Logger is nil")
+			}
+
+			var exportJob *models.Job
+			var ackJob bool
+
+			errorCount := 0
+			if tt.name == "NoParentJobRetriesExceeded" {
+				errorCount = 10
+			}
+
+			config := ValidateJobConfig{
+				WorkerInstance: worker,
+				Logger:         logger,
+				Repository:     repo,
+				JobID:          jobID,
+				QJobID:         qJobID,
+				Args:           jobArgs,
+				ErrorCount:     errorCount,
+			}
+
+			exportJob, err, ackJob = validateJob(context.Background(), config)
+
 			if tt.expectedErr == nil {
-				assert.NoError(t, err)
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
 			} else {
-				assert.Contains(t, err.Error(), tt.expectedErr.Error())
+				if err == nil {
+					t.Errorf("Expected error containing %q but got no error", tt.expectedErr.Error())
+				} else {
+					assert.Contains(t, err.Error(), tt.expectedErr.Error())
+				}
 			}
 
 			if tt.expLogMsg != "" {
-				assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
+				if hook.LastEntry() != nil {
+					assert.Regexp(t, regexp.MustCompile(tt.expLogMsg), hook.LastEntry().Message)
+				} else {
+					t.Errorf("Expected log message but no log entry found")
+				}
+			}
+
+			if ackJob {
+				assert.Nil(t, exportJob)
 			}
 		})
 	}
 }
 
 func TestCheckIfCancelled(t *testing.T) {
-	q := MasterQueue{
-		queue: &queue{
-			repository: nil,
-		},
-		StagingDir: "",
-		PayloadDir: "",
-		MaxRetry:   0,
+	q := queue{
+		repository: nil,
 	}
 
 	mockRepo := repository.MockRepository{}
@@ -121,7 +148,7 @@ func TestCheckIfCancelled(t *testing.T) {
 	jobID, err := safecast.ToInt64(jobs.ID)
 	assert.NoError(t, err)
 
-	// In produation we wait 15 second intervals, for test we do 1
+	// In production we wait 15 second intervals, for test we do 1
 	go checkIfCancelled(ctx, q.repository, cancel, jobID, 1)
 
 	// Check if the context has been cancelled
