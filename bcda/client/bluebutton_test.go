@@ -208,6 +208,18 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 	assert.EqualError(err, "could not append CA certificate(s)")
 }
 
+func (s *BBTestSuite) TestNewBlueButtonConfigV3Server() {
+	conf.SetEnv(s.T(), "BB_SERVER_LOCATION", "v1-server-location")
+	conf.SetEnv(s.T(), "V3_BB_SERVER_LOCATION", "v3-server-location")
+	bbc := client.NewConfig(constants.BFDV1Path)
+	assert.Equal(s.T(), bbc.BBServer, "v1-server-location")
+
+	conf.SetEnv(s.T(), "BB_SERVER_LOCATION", "v1-server-location")
+	conf.SetEnv(s.T(), "V3_BB_SERVER_LOCATION", "v3-server-location")
+	bbc = client.NewConfig(constants.BFDV3Path)
+	assert.Equal(s.T(), bbc.BBServer, "v3-server-location")
+}
+
 func (s *BBTestSuite) TestNewBlueButtonClientMultipleCaFiles() {
 	origCertFile := conf.GetEnv("BB_CLIENT_CA_FILE")
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", origCertFile)
