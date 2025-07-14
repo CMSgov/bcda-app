@@ -50,8 +50,14 @@ type BlueButtonConfig struct {
 
 // NewConfig generates a new BlueButtonConfig using various environment variables.
 func NewConfig(basePath string) BlueButtonConfig {
+	var server string // TODO: V3
+	if basePath == constants.BFDV3Path {
+		server = conf.GetEnv("V3_BB_SERVER_LOCATION")
+	} else {
+		server = conf.GetEnv("BB_SERVER_LOCATION")
+	}
 	return BlueButtonConfig{
-		BBServer:   conf.GetEnv("BB_SERVER_LOCATION"),
+		BBServer:   server,
 		BBBasePath: basePath,
 	}
 }
