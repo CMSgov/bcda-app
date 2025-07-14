@@ -68,7 +68,7 @@ jobs:
           sudo dnf -y update
           sudo dnf install postgresql16 -y
       - name: Get database credentials
-        uses: cmsgov/ab2d-bcda-dpc-platform/actions/aws-params-env-action@main
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
