@@ -1,0 +1,78 @@
+{
+  "name": "bcda-app",
+  "description": "BCDA gives eligible model entities access to Medicare claims data via FHIR resources",
+  "longDescription": "The Beneficiary Claims Data API (BCDA) follows the Bulk FHIR Implementation Guide to provide eligible model entities access to their attributed enrollees’ Medicare Parts A, B, and D claims data, including data from any care received outside their organization.",
+  "status": "Production",
+  "permissions": {
+    "licenses": [
+      {
+        "name": "CC0-1.0",
+        "URL": "https://github.com/CMSgov/bcda-app/blob/main/LICENSE.md"
+      }
+    ],
+    "usageType": "openSource",
+    "exemptionText": ""
+  },
+  "organization": "Centers for Medicare & Medicaid Services",
+  "repositoryURL": "https://github.com/CMSgov/bcda-app",
+  "projectURL": "https://bcda.cms.gov/",
+  "repositoryHost": "github.com/CMSgov",
+  "repositoryVisibility": "public",
+  "vcs": "git",
+  "laborHours": null,
+  "reuseFrequency": {
+    "forks": 15
+  },
+  "platforms": [
+    "web"
+  ],
+  "categories": [
+    "healthcare"
+  ],
+  "softwareType": "standalone/backend",
+  "languages": [
+    "PLpgSQL",
+    "Go",
+    "Shell",
+    "Makefile",
+    "Python",
+    "JavaScript"
+  ],
+  "maintenance": "contract",
+  "contractNumber": "47QTCA18D008M:75FCMC23F0009",
+  "date": {
+    "created": "2018-07-20T15:04:55Z",
+    "lastModified": "2025-07-14T16:27:01Z",
+    "metaDataLastUpdated": "2025-07-15T20:46:17.032Z"
+  },
+  "tags": [
+    "BCDA",
+    "beneficiary claims data",
+    "FHIR"
+  ],
+  "contact": {
+    "email": "bcapi@cms.hhs.gov",
+    "name": "BCDA Team"
+  },
+  "feedbackMechanisms": [
+    "bcapi@cms.hhs.gov",
+    "https://groups.google.com/g/bc-api"
+  ],
+  "localisation": false,
+  "repositoryType": "APIs",
+  "userInput": true,
+  "fismaLevel": "Moderate",
+  "group": "CMS/OEDA/DASG",
+  "projects": [
+    "Beneficary Claims Data API (BCDA)"
+  ],
+  "systems": [],
+  "upstream": "https://github.com/CMSgov/bcda-app/network/dependencies",
+  "subsetInHealthcare": [
+    "Medicare"
+  ],
+  "userType": [
+    "Providers"
+  ],
+  "maturityModelTier": 3
+}
