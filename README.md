@@ -14,7 +14,7 @@ A list of core team members responsible for the code and documentation in this r
 
 <!-- TODO: Add repository structure -->
 
-## **Documentation**
+## Documentation
 
 [API documentation](https://bcda.cms.gov/sandbox/user-guide/)
 
@@ -24,7 +24,7 @@ A list of core team members responsible for the code and documentation in this r
 
 The steps below are necessary to run the project.
 
-### **Dependencies**
+### Dependencies
 
 To get started, install some dependencies:
 
@@ -36,16 +36,16 @@ To get started, install some dependencies:
 5. Install [Pre-commit](https://pre-commit.com/) with [Gitleaks](https://github.com/gitleaks/gitleaks)
 6. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
-### **Secrets**
+### Secrets
 
 The files committed in the `shared_files/encrypted` directory hold secret information, and are encrypted with [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html).
 
-#### **Ansible Vault**
+#### Ansible Vault
 
 - Create a file named `.vault_password` in the root directory of the repository.
 - You should have been given access to [Box](https://app.box.com).  In Box search for `vault_password.txt`, copy the text and paste it into your `.vault_password` file.
 
-#### **Decrypt/Encrypt Secrets**
+#### Decrypt/Encrypt Secrets
 
 You can now decrypt the encrypted secret files (found at `shared_files/encrypted`) by running the following command from the repository root directory:
 
@@ -59,9 +59,9 @@ Copy the decrypted files from `shared_files/encrypted` to the sibling directory 
 ./ops/secrets --encrypt <filename>
 ```
 
-#### **Using Secrets**
+#### Using Secrets
 
-**Never put passwords, keys, or secrets of any kind in application code. Instead, use the strategy outlined here:**
+>**Never put passwords, keys, or secrets of any kind in application code. Instead, use the strategy outlined here:**
 
 1. In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed:
 
@@ -92,9 +92,9 @@ source [src-path]/bcda-app/.env.sh
 
 `[src-path]` is your relative path to the bcda-app repo.
 
-### **Start the API**
+### Start the API
 
-#### **1. Build Images**
+#### 1. Build Images
 
 Before we can run the application locally, we need to build the docker images and load the fixtures:
 
@@ -108,7 +108,7 @@ After that has completed successfully, we can start the containers. Include the 
 docker compose up --watch
 ```
 
-#### **2. Get a token**
+#### 2. Get a token
 
 Once the containers are running, you will need to generate a set of credentials for an ACO so that you can get a token. The loaded fixtures will include some ACOs that have beneficiaries attributed to them already. The ACOs loaded in the previous step are A9994 and A9996, but you can also look in the application database to view and modify more.
 
@@ -124,16 +124,16 @@ curl --location --request POST 'http://localhost:3003/token' \
 --user '<clientid:secret>'
 ```
 
-#### **3. Make a request**
+#### 3. Make a request
 
 After we successfully retrieve a token, we can make a request to any of the available endpoints. The PostMan collections under `test/postman_test/...` can be imported into postman directly and used to make requests, or you can use any tool like `curl`.
 
 
-### **Run Tests**
+### Run Tests
 
 **Prerequisite**: Before running the tests and producing test metrics, you must complete the `Build Images` step from `Start the API` section.
 
-#### **1. Seed The Database**
+#### 1. Seed The Database
 
 >**Note:** `make unit-test` will automatically run the command below, so this step is not necessary if you'd like to just simply run the unit tests.
 
@@ -149,7 +149,7 @@ If you are running any tests that require localstack, spin up localstack as well
 $ make unit-test-localstack
 ```
 
-#### **2. Source Environment Variables**
+#### 2. Source Environment Variables
 
 Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
 
@@ -169,7 +169,7 @@ In order to keep the test feedback loop optimized, the following items must be h
 - Ensuring the database has been seeded
 - Managing images/containers (if Dockerfile changes have occurred, an image rebuild is required and won't occur as part of the test targets)
 
-#### **Test Containers**
+#### Test Containers
 
 1. Run golang linter and gosec:
 
@@ -207,7 +207,7 @@ make test
 make performance-test
 ```
 
-#### **Update Database Seed Data**
+#### Update Database Seed Data
 
 After the user has finished updating the Postgres database used for unit testing with the new data, the user can update
 the seed data by running the following command:
@@ -224,18 +224,18 @@ This script is executed when the Postgres container is launched.
 
 >**Note**: The updated `dump.pgdata` should be committed with the other associated changes.
 
-#### **Running Single / Single-file Unit Tests**
+#### Running Single / Single-file Unit Tests
 
 This step assumes that the user has installed VSCode, the Go language extension available [here](https://marketplace.visualstudio.com/items?itemName=golang.Go), and has successfully imported test data to their local database.
 
 To run tests from within VSCode:
 In a FILENAME_test.go file, there will be a green arrow to the left of the method name, and clicking this arrow will run a single test locally. Tests should not be dependent upon other tests, but if a known-good test is failing, the user can run all tests in a given file by going to View -> Command Palette -> Go: Test Package, which will run all tests in a given file. Alternatively, in some instances, the init() method can be commented out to enable testing of single functions.
 
-#### **Auto-generating mock implementations**
+#### Auto-generating mock implementations
 
 Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md). Mockery uses the `/.mockery.yml` file to define configuration including which interfaces to build.  To regenerate mocks simply run `mockery`.
 
-#### **FHIR Conformance Testing**
+#### FHIR Conformance Testing
 
 Run FHIR Conformance tests against your local deployment:
 
@@ -245,11 +245,11 @@ make fhir_testing
 
 See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tests and the FHIR Scan workflow.
 
-### **Environment variables**
+### Environment variables
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
 
-#### **bcda**
+#### bcda
 
 ```
 BCDA_ERROR_LOG <file_path>
@@ -262,7 +262,7 @@ FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```
 
-#### **bcdaworker**
+#### bcdaworker
 
 ```
 BCDA_WORKER_ERROR_LOG <file_path>
@@ -274,7 +274,7 @@ FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
 ```
 
-### **Container Interaction**
+### Container Interaction
 
 You can use docker to run commands against the running containers.
 
@@ -337,7 +337,7 @@ Once the containers are up, the program to debug will wait to be connected to dl
 
 Thank you for considering contributing to an Open Source project of the US Government! For more information about our contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### **Pre-commit**
+### Pre-commit
 
 Anyone committing to this repo must use the pre-commit hook to lower the likelihood that secrets will be exposed. You can install pre-commit using the MacOS package manager `Homebrew` below, or use installation options that can be found in the [pre-commit documentation](https://pre-commit.com/#install):
 
@@ -359,7 +359,7 @@ pre-commit install
 
 This will download and install the pre-commit hooks specified in `.pre-commit-config.yaml`, which includes gitleaks for secret scanning and go-imports to ensure that any added, copied, or modified go files are formatted properly.
 
-### **Go Modules**
+### Go Modules
 
 The project uses [Go Modules](https://golang.org/ref/mod) allowing you to clone the repo outside of the `$GOPATH`. This also means that running `go get` inside the repo will add the dependency to the project, not globally.
 ## Community
