@@ -7,7 +7,6 @@ package queueing
 import (
 	"context"
 
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -37,52 +36,6 @@ type MockEnqueuer_Expecter struct {
 
 func (_m *MockEnqueuer) EXPECT() *MockEnqueuer_Expecter {
 	return &MockEnqueuer_Expecter{mock: &_m.Mock}
-}
-
-// AddAlrJob provides a mock function for the type MockEnqueuer
-func (_mock *MockEnqueuer) AddAlrJob(job models.JobAlrEnqueueArgs, priority int) error {
-	ret := _mock.Called(job, priority)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AddAlrJob")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(models.JobAlrEnqueueArgs, int) error); ok {
-		r0 = returnFunc(job, priority)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockEnqueuer_AddAlrJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddAlrJob'
-type MockEnqueuer_AddAlrJob_Call struct {
-	*mock.Call
-}
-
-// AddAlrJob is a helper method to define mock.On call
-//   - job
-//   - priority
-func (_e *MockEnqueuer_Expecter) AddAlrJob(job interface{}, priority interface{}) *MockEnqueuer_AddAlrJob_Call {
-	return &MockEnqueuer_AddAlrJob_Call{Call: _e.mock.On("AddAlrJob", job, priority)}
-}
-
-func (_c *MockEnqueuer_AddAlrJob_Call) Run(run func(job models.JobAlrEnqueueArgs, priority int)) *MockEnqueuer_AddAlrJob_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(models.JobAlrEnqueueArgs), args[1].(int))
-	})
-	return _c
-}
-
-func (_c *MockEnqueuer_AddAlrJob_Call) Return(err error) *MockEnqueuer_AddAlrJob_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockEnqueuer_AddAlrJob_Call) RunAndReturn(run func(job models.JobAlrEnqueueArgs, priority int) error) *MockEnqueuer_AddAlrJob_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // AddJob provides a mock function for the type MockEnqueuer
