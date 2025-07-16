@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/dbdocs.yml
       - db/migrations/bcda
-      - db/migrations/bcda_queue
 
 env:
   VAULT_PW: ${{ secrets.VAULT_PW }}

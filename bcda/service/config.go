@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -29,7 +28,6 @@ func LoadConfig() (cfg *Config, err error) {
 type Config struct {
 	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
-	AlrJobSize              uint        `conf:"alr_job_size" conf_default:"1000"` // Number of entries to put in a single ALR job
 	ACOConfigs              []ACOConfig `conf:"aco_config"`
 	CutoffDuration          time.Duration
 	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
@@ -126,10 +124,6 @@ func (cfg *Config) ComputeFields() (err error) {
 				return fmt.Errorf("failed to parse perf year: %w", err)
 			}
 		}
-	}
-
-	if cfg.AlrJobSize == 0 {
-		return errors.New("invalid ALR job size supplied. Must be greater than zero")
 	}
 
 	return nil

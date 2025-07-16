@@ -43,32 +43,6 @@ func init() {
 }
 
 /*
-swagger:route GET /api/v1/alr/$export alrData alrRequest
-
-# Start FHIR STU3 data export for all supported resource types
-
-Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
-
-Produces:
-- application/fhir+json
-
-Security:
-
-	bearer_token:
-
-Responses:
-
-	202: BulkRequestResponse
-	400: badRequestResponse
-	401: invalidCredentials
-	429: tooManyRequestsResponse
-	500: errorResponse
-*/
-func ALRRequest(w http.ResponseWriter, r *http.Request) {
-	h.ALRRequest(w, r)
-}
-
-/*
 swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
 # Start FHIR STU3 data export for all supported resource types

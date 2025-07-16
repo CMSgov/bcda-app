@@ -16,7 +16,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	cm "github.com/CMSgov/bcda-app/middleware"
 	"github.com/go-testfixtures/testfixtures/v3"
@@ -188,7 +187,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
-	conf.SetEnv(s.T(), "QUEUE_LIBRARY", "river")
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
 
