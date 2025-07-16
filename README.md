@@ -1,4 +1,4 @@
-# Beneficiary Claims Data API
+# Beneficiary Claims Data API (BCDA)
 
 BCDA gives eligible model entities access to Medicare claims data via FHIR resources.
 
@@ -16,7 +16,7 @@ A list of core team members responsible for the code and documentation in this r
 
 ## Documentation
 
-[API documentation](https://bcda.cms.gov/sandbox/user-guide/)
+Find API documentation on the [BCDA website](https://bcda.cms.gov/sandbox/user-guide/)
 
 # Development and Software Delivery Lifecycle
 
@@ -116,7 +116,7 @@ Once the containers are running, you will need to generate a set of credentials 
 ACO_CMS_ID=<> make credentials
 ```
 
-This will generate a client ID and secret that can be used to acquire a token from the SSAS App:
+This will generate a client ID and secret that can be used to acquire a token from the [System-to-System Authentication Service (SSAS)](https://github.com/CMSgov/bcda-ssas-app):
 
 ```sh
 curl --location --request POST 'http://localhost:3003/token' \
@@ -362,6 +362,7 @@ This will download and install the pre-commit hooks specified in `.pre-commit-co
 ### Go Modules
 
 The project uses [Go Modules](https://golang.org/ref/mod) allowing you to clone the repo outside of the `$GOPATH`. This also means that running `go get` inside the repo will add the dependency to the project, not globally.
+
 ## Community
 
 The BCDA team is taking a community-first and open source approach to the product development of this tool. We believe government software should be made in the open and be built and licensed such that anyone can download the code, run it themselves without paying money to third parties or using proprietary software, and use it as they will.
