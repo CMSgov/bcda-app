@@ -368,8 +368,10 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
-	statement := responseutils.CreateCapabilityStatement(dt, constants.Version, host)
-	responseutils.WriteCapabilityStatement(r.Context(), statement, w)
+
+	rw := responseutils.NewResponseWriter()
+	statement := rw.CreateCapabilityStatement(dt, constants.Version, host)
+	rw.WriteCapabilityStatement(r.Context(), statement, w)
 }
 
 /*
