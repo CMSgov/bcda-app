@@ -430,7 +430,8 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	defer close()
 
 	logger := log.GetCtxLogger(ctx)
-	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
+	rw := responseutils.NewResponseWriter()
+	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
 	fileName := fmt.Sprintf("%s/%s-error.ndjson", tempDir, fileUUID)
 	/* #nosec -- opening file defined by variable */
@@ -443,7 +444,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	}
 
 	defer utils.CloseFileAndLogError(f)
-	if _, err := responseutils.WriteOperationOutcome(f, oo); err != nil {
+	if _, err := rw.WriteOperationOutcome(f, oo); err != nil {
 		err = errors.Wrap(err, "Issue during append error to file: Error encountered during WriteOperationalOutcome")
 		logger.Error(err)
 	}
