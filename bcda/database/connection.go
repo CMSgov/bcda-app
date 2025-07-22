@@ -23,24 +23,37 @@ var (
 	Pgxv5Pool       *pgxv5Pool.Pool
 )
 
+type Connections struct {
+	Connection      *sql.DB
+	QueueConnection *pgx.ConnPool
+	Pgxv5Pool       *pgxv5Pool.Pool
+}
+
 func init() {
+	c := Connect()
+	Connection = c.Connection
+	QueueConnection = c.QueueConnection
+	Pgxv5Pool = c.Pgxv5Pool
+}
+
+func Connect() *Connections {
 	cfg, err := LoadConfig()
 
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
 	}
 
-	Connection, err = createDB(cfg)
+	conn, err := createDB(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create db %s", err.Error())
 	}
 
-	QueueConnection, err = createQueue(cfg)
+	queue, err := createQueue(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create queue %s", err.Error())
 	}
 
-	Pgxv5Pool, err = CreatePgxv5DB(cfg)
+	pool, err := CreatePgxv5DB(cfg)
 	if err != nil {
 		logrus.Fatalf("Failed to create pgxv5 DB connection %s", err.Error())
 	}
@@ -50,11 +63,13 @@ func init() {
 
 	startHealthCheck(
 		ctx,
-		Connection,
-		QueueConnection,
-		Pgxv5Pool,
+		conn,
+		queue,
+		pool,
 		time.Duration(cfg.HealthCheckSec)*time.Second,
 	)
+
+	return &Connections{conn, queue, pool}
 }
 
 func createDB(cfg *Config) (*sql.DB, error) {
