@@ -1,13 +1,13 @@
 package v3
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
@@ -23,12 +23,12 @@ import (
 )
 
 type ApiV3 struct {
-	handler     *api.Handler
-	marshaller  *jsonformat.Marshaller
-	connections *database.Connections
+	handler    *api.Handler
+	marshaller *jsonformat.Marshaller
+	connection *sql.DB
 }
 
-func NewApiV3(connections *database.Connections) *ApiV3 {
+func NewApiV3(connection *sql.DB) *ApiV3 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -38,14 +38,14 @@ func NewApiV3(connections *database.Connections) *ApiV3 {
 	if !ok {
 		panic("Failed to configure resource DataTypes")
 	} else {
-		h := api.NewHandler(resources, constants.BFDV3Path, constants.V3Version, connections)
+		h := api.NewHandler(resources, constants.BFDV3Path, constants.V3Version, connection)
 		// Ensure that we write the serialized FHIR resources as a single line.
 		// Needed to comply with the NDJSON format that we are using.
 		marshaller, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
 		if err != nil {
 			log.API.Fatalf("Failed to create marshaller %s", err)
 		}
-		return &ApiV3{marshaller: marshaller, handler: h, connections: connections}
+		return &ApiV3{marshaller: marshaller, handler: h, connection: connection}
 	}
 }
 

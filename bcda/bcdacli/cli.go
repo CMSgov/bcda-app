@@ -3,6 +3,7 @@ package bcdacli
 import (
 	"archive/zip"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -46,8 +47,8 @@ const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
 var (
-	connections *database.Connections
-	r           models.Repository
+	connection *sql.DB
+	r          models.Repository
 )
 
 func GetApp() *cli.App {
@@ -60,8 +61,8 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
-		connections = database.Connect()
-		r = postgres.NewRepository(connections.Connection)
+		connection = database.GetConnection()
+		r = postgres.NewRepository(connection)
 		return nil
 	}
 	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
@@ -121,7 +122,7 @@ func setUpApp() *cli.App {
 				}
 
 				api := &http.Server{
-					Handler:           web.NewAPIRouter(connections),
+					Handler:           web.NewAPIRouter(connection),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,

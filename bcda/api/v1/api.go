@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -27,11 +27,11 @@ import (
 )
 
 type ApiV1 struct {
-	handler     *api.Handler
-	connections *database.Connections
+	handler    *api.Handler
+	connection *sql.DB
 }
 
-func NewApiV1(connections *database.Connections) *ApiV1 {
+func NewApiV1(connection *sql.DB) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -42,8 +42,8 @@ func NewApiV1(connections *database.Connections) *ApiV1 {
 	if !ok {
 		panic("Failed to configure resource DataTypes")
 	} else {
-		h := api.NewHandler(resources, "/v1/fhir", "v1", connections)
-		return &ApiV1{handler: h, connections: connections}
+		h := api.NewHandler(resources, "/v1/fhir", "v1", connection)
+		return &ApiV1{handler: h, connection: connection}
 	}
 }
 

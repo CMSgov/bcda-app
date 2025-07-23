@@ -23,19 +23,9 @@ var (
 	Pgxv5Pool       *pgxv5Pool.Pool
 )
 
-type Connections struct {
-	Connection      *sql.DB
-	QueueConnection *pgx.ConnPool
-	Pgxv5Pool       *pgxv5Pool.Pool
-}
-
 func init() {
 	Connection = GetConnection()
 	Pgxv5Pool = GetPool()
-}
-
-func Connect() *Connections {
-	return nil
 }
 
 func GetConnection() *sql.DB {

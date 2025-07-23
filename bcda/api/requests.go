@@ -21,7 +21,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -62,11 +61,11 @@ type fhirResponseWriter interface {
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connections *database.Connections) *Handler {
-	return newHandler(dataTypes, basePath, apiVersion, connections)
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, connection)
 }
 
-func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connections *database.Connections) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -79,7 +78,7 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 		log.API.Fatalf("no ACO configs found, these are required for processing logic")
 	}
 
-	repository := postgres.NewRepository(connections.Connection)
+	repository := postgres.NewRepository(connection)
 	h.r = repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
