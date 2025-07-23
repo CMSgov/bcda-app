@@ -459,7 +459,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	}
 	postgrestest.CreateJobs(s.T(), s.connection, &j)
 
-	handler := auth.RequireTokenJobMatch(http.HandlerFunc(s.apiV1.JobStatus))
+	handler := auth.RequireTokenJobMatch(s.connection)(http.HandlerFunc(s.apiV1.JobStatus))
 	req := s.createJobStatusRequest(uuid.Parse(constants.LargeACOUUID), j.ID)
 
 	handler.ServeHTTP(s.rr, req)

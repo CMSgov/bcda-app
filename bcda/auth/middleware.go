@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -13,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -163,43 +163,46 @@ func CheckBlacklist(next http.Handler) http.Handler {
 	})
 }
 
-func RequireTokenJobMatch(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+func RequireTokenJobMatch(connection *sql.DB) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			rw := getRespWriter(r.URL.Path)
 
-		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
-		if !ok {
-			log.Auth.Error("Auth data not found")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
-			return
+			ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
+			if !ok {
+				log.Auth.Error("Auth data not found")
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
+				return
+			}
+
+			//Throw an invalid request for non-unsigned integers
+			jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
+			if err != nil {
+				log.Auth.Error(err)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+				return
+			}
+
+			repository := postgres.NewRepository(connection)
+
+			job, err := repository.GetJobByID(r.Context(), uint(jobID))
+			if err != nil {
+				log.Auth.Error(err)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
+				return
+			}
+
+			// ACO did not create the job
+			if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
+				log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
+					ad.ACOID, job.ID, job.ACOID)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
+				return
+			}
+			next.ServeHTTP(w, r)
 		}
-
-		//Throw an invalid request for non-unsigned integers
-		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
-		if err != nil {
-			log.Auth.Error(err)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
-			return
-		}
-
-		repository := postgres.NewRepository(database.Connection)
-
-		job, err := repository.GetJobByID(r.Context(), uint(jobID))
-		if err != nil {
-			log.Auth.Error(err)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
-			return
-		}
-
-		// ACO did not create the job
-		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
-			log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
-				ad.ACOID, job.ID, job.ACOID)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+		return http.HandlerFunc(fn)
+	}
 }
 
 type fhirResponseWriter interface {
