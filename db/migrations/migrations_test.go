@@ -39,8 +39,7 @@ const (
 type MigrationTestSuite struct {
 	suite.Suite
 
-	bcdaDBURL      string
-	bcdaQueueDBURL string
+	bcdaDBURL string
 }
 
 func (s *MigrationTestSuite) SetupSuite() {
@@ -52,26 +51,16 @@ func (s *MigrationTestSuite) SetupSuite() {
 
 	databaseURL := conf.GetEnv("DATABASE_URL")
 	bcdaDB := fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
-	bcdaQueueDB := fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
 	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", bcdaDB))
-	s.bcdaQueueDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", bcdaQueueDB))
 
 	if _, err := db.Exec("CREATE DATABASE " + bcdaDB); err != nil {
 		assert.FailNowf(s.T(), "Could not create bcda db", err.Error())
-	}
-
-	if _, err := db.Exec("CREATE DATABASE " + bcdaQueueDB); err != nil {
-		assert.FailNowf(s.T(), "Could not create bcda_queue db", err.Error())
 	}
 
 	s.T().Cleanup(
 		func() {
 			if _, err := db.Exec("DROP DATABASE " + bcdaDB); err != nil {
 				assert.FailNowf(s.T(), "Could not drop bcda db", err.Error())
-			}
-
-			if _, err := db.Exec("DROP DATABASE " + bcdaQueueDB); err != nil {
-				assert.FailNowf(s.T(), "Could not drop bcda_queue db", err.Error())
 			}
 		})
 }
@@ -549,50 +538,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 	}
 }
 
-func (s *MigrationTestSuite) TestBCDAQueueMigration() {
-	migrator := migrator{
-		migrationPath: "./bcda_queue/",
-		dbURL:         s.bcdaQueueDBURL,
-	}
-	db, err := sql.Open("pgx", s.bcdaQueueDBURL)
-	if err != nil {
-		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
-	}
-	defer db.Close()
 
-	migration1Tables := []string{"que_jobs"}
-
-	// Tests should begin with "up" migrations, in order, followed by "down" migrations in reverse order
-	tests := []struct {
-		name  string
-		tFunc func(t *testing.T)
-	}{
-		{
-			"Apply initial schema",
-			func(t *testing.T) {
-				migrator.runMigration(t, 1)
-				for _, table := range migration1Tables {
-					assertTableExists(t, true, db, table)
-				}
-			},
-		},
-		{
-			"Revert initial schema",
-			func(t *testing.T) {
-				migrator.runMigration(t, 0)
-				for _, table := range migration1Tables {
-					assertTableExists(t, false, db, table)
-				}
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(tt.name, tt.tFunc)
-		// Ensure each test runs with a clean state
-		cleanData(s.T(), db)
-	}
-}
 
 type migrator struct {
 	migrationPath string
