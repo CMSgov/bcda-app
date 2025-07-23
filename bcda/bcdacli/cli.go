@@ -130,7 +130,7 @@ func setUpApp() *cli.App {
 				}
 
 				fileserver := &http.Server{
-					Handler:           web.NewDataRouter(),
+					Handler:           web.NewDataRouter(connection),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,

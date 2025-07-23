@@ -39,7 +39,7 @@ func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
 	s.connection = database.GetConnection()
 	s.apiRouter = NewAPIRouter(s.connection)
-	s.dataRouter = NewDataRouter()
+	s.dataRouter = NewDataRouter(s.connection)
 
 }
 

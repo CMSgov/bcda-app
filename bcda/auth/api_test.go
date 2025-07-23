@@ -46,7 +46,7 @@ func (s *AuthAPITestSuite) CreateRouter() http.Handler {
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
-	s.db = database.Connection
+	s.db = database.GetConnection()
 	s.r = postgres.NewRepository(s.db)
 }
 

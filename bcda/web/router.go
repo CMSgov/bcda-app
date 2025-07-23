@@ -11,7 +11,6 @@ import (
 	v3 "github.com/CMSgov/bcda-app/bcda/api/v3"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -102,11 +101,11 @@ func NewAuthRouter() http.Handler {
 	return auth.NewAuthRouter(gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 }
 
-func NewDataRouter() http.Handler {
+func NewDataRouter(connection *sql.DB) http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	resourceTypeLogger := &logging.ResourceTypeLogger{
-		Repository: postgres.NewRepository(database.Connection),
+		Repository: postgres.NewRepository(connection),
 	}
 	r.Use(auth.ParseToken, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 	r.With(append(
