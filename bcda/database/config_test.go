@@ -60,8 +60,9 @@ func (s *DatabaseConfigSuite) TestLoadConfigMissingQueueDatabaseUrl() {
 	defer cleanupEnvVars()
 
 	cfg, err := LoadConfig()
-	assert.Nil(cfg)
-	assert.Contains(err.Error(), "invalid config, QueueDatabaseURL must be set")
+	assert.Nil(err)
+	assert.Equal("my-super-secure-database-url", cfg.DatabaseURL)
+	assert.Equal("my-super-secure-database-url", cfg.QueueDatabaseURL)
 }
 
 func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreSuccess() {
@@ -77,14 +78,13 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreSuccess() {
 
 	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
 		{Name: fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), Value: "my-super-secure-database-url", Type: "SecureString"},
-		{Name: fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env), Value: "my-super-secure-queue-database-url", Type: "SecureString"},
 	})
 	defer cleanupParams()
 
 	cfg, err := LoadConfig()
 	assert.Nil(err)
 	assert.Equal("my-super-secure-database-url", cfg.DatabaseURL)
-	assert.Equal("my-super-secure-queue-database-url", cfg.QueueDatabaseURL)
+	assert.Equal("my-super-secure-database-url", cfg.QueueDatabaseURL)
 }
 
 func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingDatabaseUrl() {
@@ -125,6 +125,7 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingQueueDataba
 	defer cleanupParams()
 
 	cfg, err := LoadConfig()
-	assert.Nil(cfg)
-	assert.Contains(err.Error(), fmt.Sprintf("invalid parameters error: /bcda/%s/api/QUEUE_DATABASE_URL", env))
+	assert.Nil(err)
+	assert.Equal("my-super-secure-database-url", cfg.DatabaseURL)
+	assert.Equal("my-super-secure-database-url", cfg.QueueDatabaseURL)
 }
