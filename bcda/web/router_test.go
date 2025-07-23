@@ -29,14 +29,17 @@ var nDJsonDataRoute string = "/data/test/test.ndjson"
 
 type RouterTestSuite struct {
 	suite.Suite
-	apiRouter  http.Handler
-	dataRouter http.Handler
+	apiRouter   http.Handler
+	dataRouter  http.Handler
+	connections database.Connections
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
-	s.apiRouter = NewAPIRouter()
+	s.connections = *database.Connect()
+	s.apiRouter = NewAPIRouter(&s.connections)
 	s.dataRouter = NewDataRouter()
+
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
@@ -76,7 +79,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 		s.FailNow("err in setting env var", err)
 	}
 	// Need a new router because the one in the test setup does not use the environment variable set in this test.
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(&s.connections)
 	res := s.getAPIRoute("/v1/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
@@ -193,7 +196,7 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "false")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(&s.connections)
 
 	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
@@ -210,7 +213,7 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(&s.connections)
 
 	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -231,7 +234,7 @@ func (s *RouterTestSuite) TestV3EndpointsDisabled() {
 	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
 	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(&s.connections)
 
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
@@ -248,7 +251,7 @@ func (s *RouterTestSuite) TestV3EndpointsEnabled() {
 	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
 	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(&s.connections)
 
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -348,7 +351,7 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 	handler http.Handler
 	paths   []string
 }) {
-	apiRouter := NewAPIRouter()
+	apiRouter := NewAPIRouter(&s.connections)
 
 	configs = []struct {
 		handler http.Handler

@@ -17,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -25,9 +26,12 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
-var h *api.Handler
+type ApiV1 struct {
+	handler     *api.Handler
+	connections *database.Connections
+}
 
-func init() {
+func NewApiV1(connections *database.Connections) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -35,10 +39,11 @@ func init() {
 		"Observation",
 	}...)
 
-	if ok {
-		h = api.NewHandler(resources, "/v1/fhir", "v1")
-	} else {
+	if !ok {
 		panic("Failed to configure resource DataTypes")
+	} else {
+		h := api.NewHandler(resources, "/v1/fhir", "v1", connections)
+		return &ApiV1{handler: h, connections: connections}
 	}
 }
 
@@ -64,8 +69,8 @@ Responses:
 	429: tooManyRequestsResponse
 	500: errorResponse
 */
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkPatientRequest(w, r)
+func (a ApiV1) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkPatientRequest(w, r)
 }
 
 /*
@@ -92,8 +97,8 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 			429: tooManyRequestsResponse
 			500: errorResponse
 */
-func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkGroupRequest(w, r)
+func (a ApiV1) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkGroupRequest(w, r)
 }
 
 /*
@@ -122,8 +127,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobStatus(w, r)
+func (a ApiV1) JobStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobStatus(w, r)
 }
 
 /*
@@ -162,8 +167,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobsStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobsStatus(w, r)
+func (a ApiV1) JobsStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobsStatus(w, r)
 }
 
 type gzipResponseWriter struct {
@@ -204,8 +209,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func DeleteJob(w http.ResponseWriter, r *http.Request) {
-	h.DeleteJob(w, r)
+func (a ApiV1) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	a.handler.DeleteJob(w, r)
 }
 
 /*
@@ -229,8 +234,8 @@ Responses:
 	200: AttributionFileStatusResponse
 	404: notFoundResponse
 */
-func AttributionStatus(w http.ResponseWriter, r *http.Request) {
-	h.AttributionStatus(w, r)
+func (a ApiV1) AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.AttributionStatus(w, r)
 }
 
 /*

@@ -53,8 +53,7 @@ type Handler struct {
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 	// logic into a service method.
-	r  models.Repository
-	db *sql.DB
+	r models.Repository
 }
 
 type fhirResponseWriter interface {
@@ -63,11 +62,11 @@ type fhirResponseWriter interface {
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string) *Handler {
-	return newHandler(dataTypes, basePath, apiVersion, database.Connection)
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connections *database.Connections) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, connections)
 }
 
-func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connections *database.Connections) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -80,8 +79,8 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 		log.API.Fatalf("no ACO configs found, these are required for processing logic")
 	}
 
-	repository := postgres.NewRepository(db)
-	h.db, h.r = db, repository
+	repository := postgres.NewRepository(connections.Connection)
+	h.r = repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
 	h.supportedDataTypes = dataTypes
