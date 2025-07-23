@@ -30,15 +30,16 @@ type Connections struct {
 }
 
 func init() {
-	c := Connect()
-	Connection = c.Connection
-	QueueConnection = c.QueueConnection
-	Pgxv5Pool = c.Pgxv5Pool
+	Connection = GetConnection()
+	Pgxv5Pool = GetPool()
 }
 
 func Connect() *Connections {
-	cfg, err := LoadConfig()
+	return nil
+}
 
+func GetConnection() *sql.DB {
+	cfg, err := LoadConfig()
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
 	}
@@ -48,9 +49,22 @@ func Connect() *Connections {
 		logrus.Fatalf("Failed to create db %s", err.Error())
 	}
 
-	queue, err := createQueue(cfg)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startConnectionHealthCheck(
+		ctx,
+		conn,
+		time.Duration(cfg.HealthCheckSec)*time.Second,
+	)
+
+	return conn
+}
+
+func GetPool() *pgxv5Pool.Pool {
+	cfg, err := LoadConfig()
 	if err != nil {
-		logrus.Fatalf("Failed to create queue %s", err.Error())
+		logrus.Fatalf("Failed to load database config %s", err.Error())
 	}
 
 	pool, err := CreatePgxv5DB(cfg)
@@ -61,15 +75,13 @@ func Connect() *Connections {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	startHealthCheck(
+	startPoolHealthCheck(
 		ctx,
-		conn,
-		queue,
 		pool,
 		time.Duration(cfg.HealthCheckSec)*time.Second,
 	)
 
-	return &Connections{conn, queue, pool}
+	return pool
 }
 
 func createDB(cfg *Config) (*sql.DB, error) {
@@ -100,23 +112,6 @@ func createDB(cfg *Config) (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-func createQueue(cfg *Config) (*pgx.ConnPool, error) {
-	pgxCfg, err := pgx.ParseURI(strings.TrimSpace(cfg.QueueDatabaseURL))
-	if err != nil {
-		return nil, err
-	}
-
-	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:     pgxCfg,
-		MaxConnections: cfg.MaxOpenConns,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return pool, err
 }
 
 func CreatePgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
@@ -152,7 +147,7 @@ func CreatePgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 //
 // startHealthCheck returns immediately with the health check running in a goroutine that
 // can be stopped via the supplied context
-func startHealthCheck(ctx context.Context, db *sql.DB, pool *pgx.ConnPool, pgxv5Pool *pgxv5Pool.Pool, interval time.Duration) {
+func startConnectionHealthCheck(ctx context.Context, db *sql.DB, interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		for {
@@ -168,19 +163,23 @@ func startHealthCheck(ctx context.Context, db *sql.DB, pool *pgx.ConnPool, pgxv5
 				if err := db.Ping(); err != nil {
 					logrus.Warnf("Failed to ping %s", err.Error())
 				}
+			}
+		}
+	}()
+}
 
-				// Acquire and ping Queue DB
-				c, err := pool.Acquire()
-				if err != nil {
-					logrus.Warnf("Failed to acquire Queue DB connection %s", err.Error())
-					continue
-				}
-				if err := c.Ping(context.Background()); err != nil {
-					logrus.Warnf("Failed to ping Queue DB %s", err.Error())
-				}
-				pool.Release(c)
+func startPoolHealthCheck(ctx context.Context, pgxv5Pool *pgxv5Pool.Pool, interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				logrus.Debug("Stopping health checker")
+				return
+			case <-ticker.C:
+				logrus.StandardLogger().Debug("Sending ping")
 
-				// Acquire and ping pgxv5 connection to App DB
 				pgxv5Conn, err := pgxv5Pool.Acquire(ctx)
 				if err != nil {
 					logrus.Warnf("Failed to acquire pgxv5 App DB connection: %s", err.Error())

@@ -26,7 +26,7 @@ func TestConnections(t *testing.T) {
 // TestHealthCheck verifies that we are able to start the health check
 // and the checks do not cause a panic by waiting some amount of time
 // to ensure that health checks are being executed.
-func TestHealthCheck(t *testing.T) {
+func TestConnectionHealthCheck(t *testing.T) {
 	level, reporter := logrus.GetLevel(), logrus.StandardLogger().ReportCaller
 	t.Cleanup(func() {
 		logrus.SetLevel(level)
@@ -38,7 +38,7 @@ func TestHealthCheck(t *testing.T) {
 	hook := test.NewGlobal()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	startHealthCheck(ctx, Connection, QueueConnection, Pgxv5Pool, 100*time.Microsecond)
+	startConnectionHealthCheck(ctx, Connection, 100*time.Microsecond)
 	// Let some time elapse to ensure we've successfully ran health checks
 	time.Sleep(50 * time.Millisecond)
 	cancel()
