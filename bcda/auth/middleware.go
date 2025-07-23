@@ -31,9 +31,6 @@ var (
 	AuthDataContextKey = &contextKey{"ad"}
 )
 
-type Middleware struct {
-}
-
 // ParseToken puts the decoded token and AuthData value into the request context. Decoded values come from
 // tokens verified by our provider as correct and unexpired. Tokens may be presented in requests to
 // unauthenticated endpoints (mostly swagger?). We still want to extract the token data for logging purposes,
