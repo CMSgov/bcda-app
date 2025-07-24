@@ -399,8 +399,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				db := database.Connection
-				r := postgres.NewRepository(db)
+				r := postgres.NewRepository(connection)
 
 				var file_handler optout.OptOutFileHandler
 
