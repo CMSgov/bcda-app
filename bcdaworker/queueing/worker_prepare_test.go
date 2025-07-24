@@ -302,7 +302,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
-	w, err := NewPrepareJobWorker()
+	w, err := NewPrepareJobWorker(s.db)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)
 }
@@ -323,7 +323,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
-	q := NewEnqueuer()
+	q := NewEnqueuer(s.db, database.GetPool())
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}

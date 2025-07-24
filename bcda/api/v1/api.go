@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,11 +24,15 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
-var h *api.Handler
+type ApiV1 struct {
+	handler    *api.Handler
+	connection *sql.DB
+}
 
-func init() {
+func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -35,10 +40,11 @@ func init() {
 		"Observation",
 	}...)
 
-	if ok {
-		h = api.NewHandler(resources, "/v1/fhir", "v1")
-	} else {
+	if !ok {
 		panic("Failed to configure resource DataTypes")
+	} else {
+		h := api.NewHandler(resources, "/v1/fhir", "v1", connection, pool)
+		return &ApiV1{handler: h, connection: connection}
 	}
 }
 
@@ -64,8 +70,8 @@ Responses:
 	429: tooManyRequestsResponse
 	500: errorResponse
 */
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkPatientRequest(w, r)
+func (a ApiV1) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkPatientRequest(w, r)
 }
 
 /*
@@ -92,8 +98,8 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 			429: tooManyRequestsResponse
 			500: errorResponse
 */
-func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkGroupRequest(w, r)
+func (a ApiV1) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkGroupRequest(w, r)
 }
 
 /*
@@ -122,8 +128,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobStatus(w, r)
+func (a ApiV1) JobStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobStatus(w, r)
 }
 
 /*
@@ -162,8 +168,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobsStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobsStatus(w, r)
+func (a ApiV1) JobsStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobsStatus(w, r)
 }
 
 type gzipResponseWriter struct {
@@ -204,8 +210,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func DeleteJob(w http.ResponseWriter, r *http.Request) {
-	h.DeleteJob(w, r)
+func (a ApiV1) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	a.handler.DeleteJob(w, r)
 }
 
 /*
@@ -229,8 +235,8 @@ Responses:
 	200: AttributionFileStatusResponse
 	404: notFoundResponse
 */
-func AttributionStatus(w http.ResponseWriter, r *http.Request) {
-	h.AttributionStatus(w, r)
+func (a ApiV1) AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.AttributionStatus(w, r)
 }
 
 /*

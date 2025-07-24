@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -39,8 +40,13 @@ var bearerStringMsg string = "Bearer %s"
 
 type MiddlewareTestSuite struct {
 	suite.Suite
-	server *httptest.Server
-	rr     *httptest.ResponseRecorder
+	server     *httptest.Server
+	rr         *httptest.ResponseRecorder
+	connection *sql.DB
+}
+
+func (s *MiddlewareTestSuite) SetupSuite() {
+	s.connection = database.GetConnection()
 }
 
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
@@ -333,14 +339,13 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTok
 
 // integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDataProvided() {
-	db := database.Connection
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 
-	postgrestest.CreateJobs(s.T(), db, &j)
+	postgrestest.CreateJobs(s.T(), s.connection, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -358,7 +363,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 		{"Mismatching ACOID", jobID, uuid.New(), http.StatusUnauthorized},
 	}
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(s.connection)(mockHandler)
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
@@ -385,14 +390,12 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 
 // integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccountableCareOrganizationAndJob() {
-	db := database.Connection
-
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
-	postgrestest.CreateJobs(s.T(), db, &j)
+	postgrestest.CreateJobs(s.T(), s.connection, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -407,7 +410,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(s.connection)(mockHandler)
 
 	ad := auth.AuthData{
 		ACOID:   j.ACOID.String(),
@@ -422,15 +425,13 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 
 // integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataProvidedInContext() {
-	db := database.Connection
-
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 
-	postgrestest.CreateJobs(s.T(), db, &j)
+	postgrestest.CreateJobs(s.T(), s.connection, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -445,7 +446,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(s.connection)(mockHandler)
 
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)

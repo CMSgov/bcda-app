@@ -66,7 +66,8 @@ func TestWork_Integration(t *testing.T) {
 	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
 	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
 
-	db := database.Connection
+	db := database.GetConnection()
+	pool := database.GetPool()
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}
@@ -82,7 +83,7 @@ func TestWork_Integration(t *testing.T) {
 	id, _ := safecast.ToInt(job.ID)
 	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
-	enqueuer := NewEnqueuer()
+	enqueuer := NewEnqueuer(db, pool)
 	assert.NoError(t, enqueuer.AddJob(context.Background(), jobArgs, 1))
 
 	timeout := time.After(10 * time.Second)

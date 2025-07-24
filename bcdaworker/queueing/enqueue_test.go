@@ -20,7 +20,7 @@ import (
 
 func TestEnqueuerImplementation(t *testing.T) {
 	// Test river implementation
-	enq := NewEnqueuer()
+	enq := NewEnqueuer(nil, nil)
 	var expectedRiverEnq riverEnqueuer
 	assert.IsType(t, expectedRiverEnq, enq)
 }
@@ -33,9 +33,10 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 
 	// Need access to the queue database to ensure we've enqueued the job successfully
-	db := database.Connection
+	db := database.GetConnection()
+	pool := database.GetPool()
 
-	enqueuer := NewEnqueuer()
+	enqueuer := NewEnqueuer(db, pool)
 	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
 	if e != nil {
 		t.Fatalf("failed to generate job ID: %v\n", e)

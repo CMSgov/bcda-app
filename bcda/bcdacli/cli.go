@@ -37,6 +37,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -47,8 +48,9 @@ const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
 var (
-	db *sql.DB
-	r  models.Repository
+	connection *sql.DB
+	pool       *pgxv5Pool.Pool
+	r          models.Repository
 )
 
 func GetApp() *cli.App {
@@ -61,8 +63,9 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
-		db = database.Connection
-		r = postgres.NewRepository(db)
+		connection = database.GetConnection()
+		pool = database.GetPool()
+		r = postgres.NewRepository(connection)
 		return nil
 	}
 	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
@@ -122,7 +125,7 @@ func setUpApp() *cli.App {
 				}
 
 				api := &http.Server{
-					Handler:           web.NewAPIRouter(),
+					Handler:           web.NewAPIRouter(connection, pool),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
@@ -130,7 +133,7 @@ func setUpApp() *cli.App {
 				}
 
 				fileserver := &http.Server{
-					Handler:           web.NewDataRouter(),
+					Handler:           web.NewDataRouter(connection),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
@@ -399,8 +402,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				db := database.Connection
-				r := postgres.NewRepository(db)
+				r := postgres.NewRepository(connection)
 
 				var file_handler optout.OptOutFileHandler
 

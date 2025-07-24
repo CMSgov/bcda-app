@@ -2,8 +2,8 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -15,6 +15,7 @@ import (
 
 type JobWorker struct {
 	river.WorkerDefaults[worker_types.JobEnqueueArgs]
+	connection *sql.DB
 }
 
 func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEnqueueArgs]) error {
@@ -31,7 +32,7 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
 
 	// TODO: use pgxv5 when available
-	mainDB := database.Connection
+	mainDB := w.connection
 	workerInstance := worker.NewWorker(mainDB)
 	repo := postgres.NewRepository(mainDB)
 
