@@ -100,7 +100,10 @@ test:
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 
 load-fixtures: reset-db
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
+	# Ensure db service is running and ready
+	docker compose up -d db
+	sleep 3
+	docker compose exec -T db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@localhost:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
@@ -111,7 +114,7 @@ load-fixtures: reset-db
 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
 
 	# Additional fixtures for postman+ssas
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
+	docker compose exec -T db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@localhost:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
 
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
@@ -120,7 +123,7 @@ load-synthetic-cclf-data:
 		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
+	docker compose exec -T db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@localhost:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	for ACO_SIZE in $(ACO_SIZES) ; do \
 		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test-new-beneficiaries' --fileType='' " ; \
 		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='runout' " ; \
