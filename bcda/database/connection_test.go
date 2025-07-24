@@ -14,13 +14,7 @@ import (
 func TestConnections(t *testing.T) {
 	// Verify that we can initialize the package as expected
 	assert.NotNil(t, Connection)
-	assert.NotNil(t, QueueConnection)
-
 	assert.NoError(t, Connection.Ping())
-	c, err := QueueConnection.Acquire()
-	assert.NoError(t, err)
-	assert.NoError(t, c.Ping(context.Background()))
-	QueueConnection.Release(c)
 }
 
 // TestHealthCheck verifies that we are able to start the health check

@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ApiV2 struct {
@@ -28,7 +29,7 @@ type ApiV2 struct {
 	connection *sql.DB
 }
 
-func NewApiV2(connection *sql.DB) *ApiV2 {
+func NewApiV2(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -40,7 +41,7 @@ func NewApiV2(connection *sql.DB) *ApiV2 {
 	if !ok {
 		panic("Failed to configure resource DataTypes")
 	} else {
-		h := api.NewHandler(resources, "/v2/fhir", "v2", connection)
+		h := api.NewHandler(resources, "/v2/fhir", "v2", connection, pool)
 		// Ensure that we write the serialized FHIR resources as a single line.
 		// Needed to comply with the NDJSON format that we are using.
 		marshaller, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)

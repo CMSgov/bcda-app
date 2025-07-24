@@ -37,6 +37,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -48,6 +49,7 @@ const Usage = "Beneficiary Claims Data API CLI"
 
 var (
 	connection *sql.DB
+	pool       *pgxv5Pool.Pool
 	r          models.Repository
 )
 
@@ -62,6 +64,7 @@ func setUpApp() *cli.App {
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
 		connection = database.GetConnection()
+		pool = database.GetPool()
 		r = postgres.NewRepository(connection)
 		return nil
 	}
@@ -122,7 +125,7 @@ func setUpApp() *cli.App {
 				}
 
 				api := &http.Server{
-					Handler:           web.NewAPIRouter(connection),
+					Handler:           web.NewAPIRouter(connection, pool),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,

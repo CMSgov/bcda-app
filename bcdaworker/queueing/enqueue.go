@@ -7,11 +7,12 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 
 	pgxv5 "github.com/jackc/pgx/v5"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
@@ -24,16 +25,16 @@ type Enqueuer interface {
 
 // Creates a river client for the Job queue. If the client does not call .Start(), then it is insert only
 // We still need the workers and the types of workers to insert them
-func NewEnqueuer() Enqueuer {
+func NewEnqueuer(connection *sql.DB, pool *pgxv5Pool.Pool) Enqueuer {
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &JobWorker{})
-	prepareWorker, err := NewPrepareJobWorker()
+	river.AddWorker(workers, &JobWorker{connection: connection})
+	prepareWorker, err := NewPrepareJobWorker(connection)
 	if err != nil {
 		panic(err)
 	}
 	river.AddWorker(workers, prepareWorker)
 
-	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Workers: workers,
 	})
 	if err != nil {

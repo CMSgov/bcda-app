@@ -20,6 +20,7 @@ import (
 	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
 	fhircapabilitystatement "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/capability_statement_go_proto"
 	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ApiV3 struct {
@@ -28,7 +29,7 @@ type ApiV3 struct {
 	connection *sql.DB
 }
 
-func NewApiV3(connection *sql.DB) *ApiV3 {
+func NewApiV3(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV3 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -38,7 +39,7 @@ func NewApiV3(connection *sql.DB) *ApiV3 {
 	if !ok {
 		panic("Failed to configure resource DataTypes")
 	} else {
-		h := api.NewHandler(resources, constants.BFDV3Path, constants.V3Version, connection)
+		h := api.NewHandler(resources, constants.BFDV3Path, constants.V3Version, connection, pool)
 		// Ensure that we write the serialized FHIR resources as a single line.
 		// Needed to comply with the NDJSON format that we are using.
 		marshaller, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)

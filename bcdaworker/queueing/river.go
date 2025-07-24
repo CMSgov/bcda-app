@@ -49,12 +49,16 @@ type Notifier interface {
 
 // TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
 func StartRiver(numWorkers int) *queue {
+
+	connection := database.GetConnection()
+	pool := database.GetPool()
+
 	workers := river.NewWorkers()
-	prepareWorker, err := NewPrepareJobWorker()
+	prepareWorker, err := NewPrepareJobWorker(connection)
 	if err != nil {
 		panic(err)
 	}
-	river.AddWorker(workers, &JobWorker{})
+	river.AddWorker(workers, &JobWorker{connection: connection})
 	river.AddWorker(workers, NewCleanupJobWorker())
 	river.AddWorker(workers, prepareWorker)
 
@@ -76,7 +80,7 @@ func StartRiver(numWorkers int) *queue {
 
 	logger := getSlogLogger()
 
-	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},

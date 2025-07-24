@@ -36,6 +36,7 @@ import (
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
 	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
 	fhiroo "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/operation_outcome_go_proto"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -53,12 +54,14 @@ var (
 type APITestSuite struct {
 	suite.Suite
 	connection *sql.DB
+	pool       *pgxv5Pool.Pool
 	apiV2      *ApiV2
 }
 
 func (s *APITestSuite) SetupSuite() {
 	s.connection = database.GetConnection()
-	s.apiV2 = NewApiV2(s.connection)
+	s.pool = database.GetPool()
+	s.apiV2 = NewApiV2(s.connection, s.pool)
 
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
@@ -544,7 +547,7 @@ func (s *APITestSuite) TestResourceTypes() {
 		"ClaimResponse",
 	}...)
 
-	h := api.NewHandler(resources, "/v2/fhir", "v2", s.connection)
+	h := api.NewHandler(resources, "/v2/fhir", "v2", s.connection, s.pool)
 	mockSvc := &service.MockService{}
 
 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)

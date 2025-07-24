@@ -34,6 +34,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Handler struct {
@@ -61,14 +62,14 @@ type fhirResponseWriter interface {
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB) *Handler {
-	return newHandler(dataTypes, basePath, apiVersion, connection)
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB, pool *pgxv5Pool.Pool) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, connection, pool)
 }
 
-func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewEnqueuer()
+	h.Enq = queueing.NewEnqueuer(connection, pool)
 
 	cfg, err := service.LoadConfig()
 	if err != nil {

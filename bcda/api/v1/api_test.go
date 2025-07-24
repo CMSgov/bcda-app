@@ -33,6 +33,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -47,12 +48,13 @@ type APITestSuite struct {
 	suite.Suite
 	rr         *httptest.ResponseRecorder
 	connection *sql.DB
+	pool       *pgxv5Pool.Pool
 	apiV1      *ApiV1
 }
 
 func (s *APITestSuite) SetupSuite() {
 	s.connection = database.GetConnection()
-	s.apiV1 = NewApiV1(s.connection)
+	s.apiV1 = NewApiV1(s.connection, s.pool)
 
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))

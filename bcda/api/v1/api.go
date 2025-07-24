@@ -24,6 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ApiV1 struct {
@@ -31,7 +32,7 @@ type ApiV1 struct {
 	connection *sql.DB
 }
 
-func NewApiV1(connection *sql.DB) *ApiV1 {
+func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -42,7 +43,7 @@ func NewApiV1(connection *sql.DB) *ApiV1 {
 	if !ok {
 		panic("Failed to configure resource DataTypes")
 	} else {
-		h := api.NewHandler(resources, "/v1/fhir", "v1", connection)
+		h := api.NewHandler(resources, "/v1/fhir", "v1", connection, pool)
 		return &ApiV1{handler: h, connection: connection}
 	}
 }
