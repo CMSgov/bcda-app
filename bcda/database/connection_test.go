@@ -14,13 +14,14 @@ import (
 func TestConnections(t *testing.T) {
 	// Verify that we can initialize the package as expected
 	assert.NotNil(t, Connection)
-	assert.NotNil(t, QueueConnection)
+	assert.NotNil(t, Pgxv5Pool)
 
 	assert.NoError(t, Connection.Ping())
-	c, err := QueueConnection.Acquire()
+	ctx := context.Background()
+	conn, err := Pgxv5Pool.Acquire(ctx)
 	assert.NoError(t, err)
-	assert.NoError(t, c.Ping(context.Background()))
-	QueueConnection.Release(c)
+	assert.NoError(t, conn.Ping(ctx))
+	conn.Release()
 }
 
 // TestHealthCheck verifies that we are able to start the health check
@@ -38,7 +39,7 @@ func TestHealthCheck(t *testing.T) {
 	hook := test.NewGlobal()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	startHealthCheck(ctx, Connection, QueueConnection, Pgxv5Pool, 100*time.Microsecond)
+	startHealthCheck(ctx, Connection, Pgxv5Pool, 100*time.Microsecond)
 	// Let some time elapse to ensure we've successfully ran health checks
 	time.Sleep(50 * time.Millisecond)
 	cancel()

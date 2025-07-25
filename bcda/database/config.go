@@ -29,15 +29,14 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, err
 	}
 
-	if cfg.DatabaseURL == "" || cfg.QueueDatabaseURL == "" {
+	if cfg.DatabaseURL == "" {
 		// Attempt to load database config from parameter store if ENV var is set.
 		// This generally indicates that we are running within our lambda environment.
 		env := os.Getenv("ENV")
 
 		if env != "" {
 			cfg, err = LoadConfigFromParameterStore(
-				fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env),
-				fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env))
+				fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
 
 			if err != nil {
 				return nil, err
@@ -49,15 +48,15 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, errors.New("invalid config, DatabaseURL must be set")
 	}
 	if cfg.QueueDatabaseURL == "" {
-		return nil, errors.New("invalid config, QueueDatabaseURL must be set")
+		cfg.QueueDatabaseURL = cfg.DatabaseURL
 	}
 
 	log.API.Info("Successfully loaded configuration for Database.")
 	return cfg, nil
 }
 
-// Loads database URLs from parameter store instead of from environment variables.
-func LoadConfigFromParameterStore(dbUrlKey string, queueUrlKey string) (cfg *Config, err error) {
+// Loads database URL from parameter store instead of from environment variables.
+func LoadConfigFromParameterStore(dbUrlKey string) (cfg *Config, err error) {
 	cfg = &Config{}
 	if err := conf.Checkout(cfg); err != nil {
 		return nil, err
@@ -68,13 +67,13 @@ func LoadConfigFromParameterStore(dbUrlKey string, queueUrlKey string) (cfg *Con
 		return nil, err
 	}
 
-	params, err := bcdaaws.GetParameters(bcdaSession, []*string{&dbUrlKey, &queueUrlKey})
+	params, err := bcdaaws.GetParameters(bcdaSession, []*string{&dbUrlKey})
 	if err != nil {
 		return nil, err
 	}
 
 	cfg.DatabaseURL = params[dbUrlKey]
-	cfg.QueueDatabaseURL = params[queueUrlKey]
+	cfg.QueueDatabaseURL = cfg.DatabaseURL
 
 	return cfg, nil
 }

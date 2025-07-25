@@ -1,12 +1,5 @@
 ---
 services:
-  queue:
-    image: postgres:16
-    environment:
-      - POSTGRES_DB=bcda_queue
-      - POSTGRES_PASSWORD=toor
-    ports:
-      - "5433:5432"
   db:
     image: postgres:16
     environment:
@@ -39,7 +32,6 @@ services:
     depends_on:
       - ssas
       - db
-      - queue
     develop:
       watch:
         - action: rebuild
@@ -66,7 +58,6 @@ services:
       - fhir_payload_dir:/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
     depends_on:
       - db
-      - queue
     develop:
       watch:
         - action: rebuild
