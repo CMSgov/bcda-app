@@ -538,8 +538,6 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 	}
 }
 
-
-
 type migrator struct {
 	migrationPath string
 	dbURL         string
