@@ -15,12 +15,11 @@
 
 ## File Structure
 * `./bcda` contains migrations for the bcda database
-* `./bcda_queue` contains migrations for the bcda_queue database
 ## How-to
 * Create migration scripts
     * Follow the philosophy above.  For example: will this schema change break production systems?  Consider making a multi-stage migration/deployment.
     * Using [migrate CLI](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate) create a baseline SQL script for each schema change for the targeted database.
-      * Ex: `migrate create -ext sql -dir db/migrations/bcda_queue -seq initial_schema`
+      * Ex: `migrate create -ext sql -dir db/migrations/bcda -seq initial_schema`
     * Update the *.up.sql and *.down.sql files with schema changes. Be sure to perform these changes in a transaction `BEGIN;...COMMIT;`
     * Add tests for both scripts in `migrations_test.go`
 * A Note on creating new tables
