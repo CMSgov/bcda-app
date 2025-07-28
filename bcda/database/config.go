@@ -16,8 +16,7 @@ type Config struct {
 	ConnMaxLifetimeMin int `conf:"BCDA_DB_CONN_MAX_LIFETIME_MIN" conf_default:"5"`
 	ConnMaxIdleTime    int `conf:"BCDA_DB_CONN_MAX_IDLE_TIME" conf_default:"30"`
 
-	DatabaseURL      string `conf:"DATABASE_URL"`
-	QueueDatabaseURL string `conf:"QUEUE_DATABASE_URL"`
+	DatabaseURL string `conf:"DATABASE_URL"`
 
 	HealthCheckSec int `conf:"DB_HEALTH_CHECK_INTERVAL" conf_default:"5"`
 }
@@ -47,9 +46,6 @@ func LoadConfig() (cfg *Config, err error) {
 	if cfg.DatabaseURL == "" {
 		return nil, errors.New("invalid config, DatabaseURL must be set")
 	}
-	if cfg.QueueDatabaseURL == "" {
-		cfg.QueueDatabaseURL = cfg.DatabaseURL
-	}
 
 	log.API.Info("Successfully loaded configuration for Database.")
 	return cfg, nil
@@ -73,7 +69,6 @@ func LoadConfigFromParameterStore(dbUrlKey string) (cfg *Config, err error) {
 	}
 
 	cfg.DatabaseURL = params[dbUrlKey]
-	cfg.QueueDatabaseURL = cfg.DatabaseURL
 
 	return cfg, nil
 }
