@@ -46,8 +46,6 @@ func (s *DatabaseConfigSuite) TestLoadConfigMissingDatabaseUrl() {
 	assert.Contains(err.Error(), "invalid config, DatabaseURL must be set")
 }
 
-
-
 func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreSuccess() {
 	assert := assert.New(s.T())
 
@@ -85,5 +83,3 @@ func (s *DatabaseConfigSuite) TestLoadConfigFromParameterStoreMissingDatabaseUrl
 	assert.Nil(cfg)
 	assert.Contains(err.Error(), fmt.Sprintf("invalid parameters error: /bcda/%s/api/DATABASE_URL", env))
 }
-
-
