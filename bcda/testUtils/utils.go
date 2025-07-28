@@ -422,12 +422,14 @@ func SetParameters(t *testing.T, params []AwsParameter) func() {
 	}
 
 	cleanup := func() {
-		for _, paramInput := range paramKeys {
-			fmt.Printf("Deleting %s\n", *paramInput)
-		}
+		if len(paramKeys) > 0 {
+			for _, paramInput := range paramKeys {
+				fmt.Printf("Deleting %s\n", *paramInput)
+			}
 
-		err := DeleteParameters(t, &ssm.DeleteParametersInput{Names: paramKeys})
-		assert.Nil(t, err)
+			err := DeleteParameters(t, &ssm.DeleteParametersInput{Names: paramKeys})
+			assert.Nil(t, err)
+		}
 	}
 
 	return cleanup
