@@ -2,6 +2,7 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -19,14 +20,16 @@ import (
 
 type CleanupJobWorker struct {
 	river.WorkerDefaults[worker_types.CleanupJobArgs]
-	cleanupJob      func(time.Time, models.JobStatus, models.JobStatus, ...string) error
-	archiveExpiring func(time.Time) error
+	cleanupJob      func(*sql.DB, time.Time, models.JobStatus, models.JobStatus, ...string) error
+	archiveExpiring func(*sql.DB, time.Time) error
+	db              *sql.DB
 }
 
-func NewCleanupJobWorker() *CleanupJobWorker {
+func NewCleanupJobWorker(db *sql.DB) *CleanupJobWorker {
 	return &CleanupJobWorker{
 		cleanupJob:      cleanup.CleanupJob,
 		archiveExpiring: cleanup.ArchiveExpiring,
+		db:              db,
 	}
 }
 
@@ -59,7 +62,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	}
 
 	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
-	if err := w.cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
+	if err := w.cleanupJob(w.db, cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 
 		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
@@ -73,7 +76,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	}
 
 	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
-	if err := w.cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
+	if err := w.cleanupJob(w.db, cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 
 		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
@@ -87,7 +90,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	}
 
 	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
-	if err := w.cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
+	if err := w.cleanupJob(w.db, cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 
 		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
@@ -101,7 +104,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	}
 
 	// Archive expiring jobs: update job statuses and move files to an inaccessible location
-	if err := w.archiveExpiring(cutoff); err != nil {
+	if err := w.archiveExpiring(w.db, cutoff); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
 
 		_, _, slackErr := slackClient.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(

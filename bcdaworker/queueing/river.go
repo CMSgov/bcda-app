@@ -57,7 +57,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		panic(err)
 	}
 	river.AddWorker(workers, &JobWorker{connection: db})
-	river.AddWorker(workers, NewCleanupJobWorker())
+	river.AddWorker(workers, NewCleanupJobWorker(db))
 	river.AddWorker(workers, prepareWorker)
 
 	schedule, err := cron.ParseStandard("0 11,23 * * *")

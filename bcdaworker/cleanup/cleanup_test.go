@@ -39,7 +39,7 @@ func (s *CleanupTestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
-	s.db = database.Connection
+	s.db = database.GetConnection()
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	s.testACO = models.ACO{Name: uuid.New(), UUID: uuid.NewRandom(), ClientID: uuid.New(), CMSID: &cmsID}
@@ -120,7 +120,7 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 	}
 	defer f.Close()
 
-	if err := ArchiveExpiring(t); err != nil {
+	if err := ArchiveExpiring(s.db, t); err != nil {
 		s.T().Error(err)
 	}
 
@@ -158,7 +158,7 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithoutPayloadDir() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	if err := ArchiveExpiring(t); err != nil {
+	if err := ArchiveExpiring(s.db, t); err != nil {
 		s.T().Error(err)
 	}
 
@@ -197,7 +197,7 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	defer f.Close()
 
-	if err := ArchiveExpiring(time.Now().Add(-24 * time.Hour)); err != nil {
+	if err := ArchiveExpiring(s.db, time.Now().Add(-24*time.Hour)); err != nil {
 		s.T().Error(err)
 	}
 
@@ -226,20 +226,20 @@ func (s *CleanupTestSuite) TestCleanArchive() {
 
 	// condition: FHIR_ARCHIVE_DIR doesn't exist
 	conf.UnsetEnv(s.T(), "FHIR_ARCHIVE_DIR")
-	err := CleanupJob(now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
+	err := CleanupJob(s.db, now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
 		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
 	assert.Nil(err)
 	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", constants.TestArchivePath)
 
 	// condition: FHIR_STAGING_DIR doesn't exist
 	conf.UnsetEnv(s.T(), "FHIR_STAGING_DIR")
-	err = CleanupJob(now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
+	err = CleanupJob(s.db, now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
 		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
 	assert.Nil(err)
 	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", constants.TestStagingPath)
 
 	// // condition: no jobs exist
-	err = CleanupJob(now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
+	err = CleanupJob(s.db, now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
 		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
 	if err != nil {
 		s.T().Error(err)
@@ -257,7 +257,7 @@ func (s *CleanupTestSuite) TestCleanArchive() {
 	// condition: before < Threshold < after <= now
 	// a file created before the Threshold should be deleted; one created after should not
 	// we use last modified as a proxy for created, because these files should not be changed after creation
-	err = CleanupJob(now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
+	err = CleanupJob(s.db, now.Add(-Threshold*time.Hour), models.JobStatusArchived, models.JobStatusExpired,
 		conf.GetEnv("FHIR_ARCHIVE_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
 	assert.Nil(err)
 	assert.Nil(err)
@@ -306,7 +306,7 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 		}
 	}()
 
-	err := CleanupJob(time.Now().Add(-threshold*time.Hour), models.JobStatusFailed, models.JobStatusFailedExpired,
+	err := CleanupJob(s.db, time.Now().Add(-threshold*time.Hour), models.JobStatusFailed, models.JobStatusFailedExpired,
 		staging, payload)
 	assert.NoError(s.T(), err)
 
@@ -364,7 +364,7 @@ func (s *CleanupTestSuite) TestCleanupCancelled() {
 		}
 	}()
 
-	err := CleanupJob(modified, models.JobStatusCancelled, models.JobStatusCancelledExpired,
+	err := CleanupJob(s.db, modified, models.JobStatusCancelled, models.JobStatusCancelledExpired,
 		staging, payload)
 	assert.NoError(s.T(), err)
 

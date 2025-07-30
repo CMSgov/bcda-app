@@ -2,6 +2,7 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"testing"
 	"time"
@@ -112,13 +113,13 @@ type MockArchiveExpiring struct {
 	mock.Mock
 }
 
-func (m *MockCleanupJob) CleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
-	args := m.Called(maxDate, currentStatus, newStatus, rootDirsToClean)
+func (m *MockCleanupJob) CleanupJob(db *sql.DB, maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+	args := m.Called(db, maxDate, currentStatus, newStatus, rootDirsToClean)
 	return args.Error(0)
 }
 
-func (m *MockArchiveExpiring) ArchiveExpiring(maxDate time.Time) error {
-	args := m.Called(maxDate)
+func (m *MockArchiveExpiring) ArchiveExpiring(db *sql.DB, maxDate time.Time) error {
+	args := m.Called(db, maxDate)
 	return args.Error(0)
 }
 
@@ -146,15 +147,16 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	conf.SetEnv(t, "FHIR_STAGING_DIR", stagingPath)
 	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payloadPath)
 
-	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusArchived, models.JobStatusExpired, []string{archivePath, stagingPath}).Return(nil)
-	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusFailed, models.JobStatusFailedExpired, []string{stagingPath, payloadPath}).Return(nil)
-	mockCleanupJob.On("CleanupJob", mock.AnythingOfType("time.Time"), models.JobStatusCancelled, models.JobStatusCancelledExpired, []string{stagingPath, payloadPath}).Return(nil)
-	mockArchiveExpiring.On("ArchiveExpiring", mock.AnythingOfType("time.Time")).Return(nil)
+	mockCleanupJob.On("CleanupJob", mock.Anything, mock.AnythingOfType("time.Time"), models.JobStatusArchived, models.JobStatusExpired, []string{archivePath, stagingPath}).Return(nil)
+	mockCleanupJob.On("CleanupJob", mock.Anything, mock.AnythingOfType("time.Time"), models.JobStatusFailed, models.JobStatusFailedExpired, []string{stagingPath, payloadPath}).Return(nil)
+	mockCleanupJob.On("CleanupJob", mock.Anything, mock.AnythingOfType("time.Time"), models.JobStatusCancelled, models.JobStatusCancelledExpired, []string{stagingPath, payloadPath}).Return(nil)
+	mockArchiveExpiring.On("ArchiveExpiring", mock.Anything, mock.AnythingOfType("time.Time")).Return(nil)
 
 	// Create a worker instance
 	cleanupJobWorker := &CleanupJobWorker{
 		cleanupJob:      mockCleanupJob.CleanupJob,
 		archiveExpiring: mockArchiveExpiring.ArchiveExpiring,
+		db:              database.GetConnection(),
 	}
 
 	// Create a mock river.Job
@@ -211,7 +213,7 @@ func TestGetAWSParams(t *testing.T) {
 }
 
 func TestNewCleanupJobWorker(t *testing.T) {
-	worker := NewCleanupJobWorker()
+	worker := NewCleanupJobWorker(database.GetConnection())
 
 	assert.NotNil(t, worker)
 	assert.NotNil(t, worker.cleanupJob)
