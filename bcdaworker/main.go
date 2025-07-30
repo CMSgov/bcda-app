@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
@@ -96,6 +97,7 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
+	healthChecker := health.NewHealthChecker(database.Connection)
 	queue := queueing.StartRiver(utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 	defer queue.StopRiver()
 
@@ -106,7 +108,7 @@ func main() {
 			for {
 				select {
 				case <-ticker.C:
-					logHealth()
+					logHealth(healthChecker)
 				case <-quit:
 					ticker.Stop()
 					return
@@ -118,20 +120,20 @@ func main() {
 	waitForSig()
 }
 
-func logHealth() {
+func logHealth(healthChecker health.HealthChecker) {
 	entry := log.Health
 
 	logFields := logrus.Fields{}
 	logFields["type"] = "health"
 	logFields["id"] = uuid.NewRandom()
 
-	if _, ok := health.IsWorkerDatabaseOK(); ok {
+	if _, ok := healthChecker.IsWorkerDatabaseOK(); ok {
 		logFields["db"] = "ok"
 	} else {
 		logFields["db"] = "error"
 	}
 
-	if health.IsBlueButtonOK() {
+	if healthChecker.IsBlueButtonOK() {
 		logFields["bb"] = "ok"
 	} else {
 		logFields["bb"] = "error"

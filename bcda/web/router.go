@@ -53,9 +53,8 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
-
+	apiV1 := v1.NewApiV1(connection, pool)
 	r.Route("/api/v1", func(r chi.Router) {
-		apiV1 := v1.NewApiV1(connection, pool)
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV1.BulkPatientRequest))
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV1.JobStatus))
@@ -93,7 +92,7 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
 	}
 
 	r.Get(m.WrapHandler("/_version", v1.GetVersion))
-	r.Get(m.WrapHandler("/_health", v1.HealthCheck))
+	r.Get(m.WrapHandler("/_health", apiV1.HealthCheck))
 	r.Get(m.WrapHandler("/_auth", v1.GetAuthInfo))
 	return r
 }

@@ -39,10 +39,10 @@ type RouterTestSuite struct {
 
 func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
+	conf.SetEnv(s.T(), "BB_SERVER_LOCATION", "v1-server-location")
 	s.connection = database.GetConnection()
 	s.apiRouter = NewAPIRouter(s.connection, s.pool)
 	s.dataRouter = NewDataRouter(s.connection)
-
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {

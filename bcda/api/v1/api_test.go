@@ -563,7 +563,7 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 func (s *APITestSuite) TestHealthCheck() {
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(HealthCheck)
+	handler := http.HandlerFunc(s.apiV1.HealthCheck)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 }

@@ -28,8 +28,9 @@ import (
 )
 
 type ApiV1 struct {
-	handler    *api.Handler
-	connection *sql.DB
+	handler       *api.Handler
+	connection    *sql.DB
+	healthChecker health.HealthChecker
 }
 
 func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV1 {
@@ -42,10 +43,11 @@ func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV1 {
 
 	if !ok {
 		panic("Failed to configure resource DataTypes")
-	} else {
-		h := api.NewHandler(resources, "/v1/fhir", "v1", connection, pool)
-		return &ApiV1{handler: h, connection: connection}
 	}
+
+	hc := health.NewHealthChecker(connection)
+	h := api.NewHandler(resources, "/v1/fhir", "v1", connection, pool)
+	return &ApiV1{handler: h, connection: connection, healthChecker: hc}
 }
 
 /*
@@ -415,11 +417,11 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	m := make(map[string]string)
 
-	dbStatus, dbOK := health.IsDatabaseOK()
-	ssasStatus, ssasOK := health.IsSsasOK()
+	dbStatus, dbOK := a.healthChecker.IsDatabaseOK()
+	ssasStatus, ssasOK := a.healthChecker.IsSsasOK()
 
 	m["database"] = dbStatus
 	m["ssas"] = ssasStatus
