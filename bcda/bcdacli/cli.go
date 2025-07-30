@@ -332,10 +332,7 @@ func setUpApp() *cli.App {
 					}
 				}
 
-				importer := cclf.CclfImporter{
-					Logger:        log.API,
-					FileProcessor: file_processor,
-				}
+				importer := cclf.NewCclfImporter(log.API, file_processor, connection)
 
 				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
 				if err != nil {
@@ -464,7 +461,7 @@ func setUpApp() *cli.App {
 						return errors.New("Unsupported file type.")
 					}
 				}
-				err := cclfUtils.ImportCCLFPackage(acoSize, environment, ft)
+				err := cclfUtils.ImportCCLFPackage(connection, acoSize, environment, ft)
 				return err
 			},
 		},

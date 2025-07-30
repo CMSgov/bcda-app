@@ -2,10 +2,12 @@ package testutils
 
 import (
 	"archive/zip"
+	"database/sql"
 	"fmt"
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -16,12 +18,14 @@ import (
 
 type CCLFUtilTestSuite struct {
 	suite.Suite
+	db *sql.DB
 }
 
 var origDate string
 
 func (s *CCLFUtilTestSuite) SetupSuite() {
 	origDate = conf.GetEnv("CCLF_REF_DATE")
+	s.db = database.GetConnection()
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {
@@ -39,19 +43,19 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "D190617")
-	err := ImportCCLFPackage("NOTREAL", "test", models.FileTypeDefault)
+	err := ImportCCLFPackage(s.db, "NOTREAL", "test", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for ACO size")
 }
 
 func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("dev", "environment", models.FileTypeDefault)
+	err := ImportCCLFPackage(s.db, "dev", "environment", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for environment")
 }
 
 func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("improved-small", "test-partially-adjudicated", models.FileTypeRunout)
+	err := ImportCCLFPackage(s.db, "improved-small", "test-partially-adjudicated", models.FileTypeRunout)
 	assert.EqualError(err, "unable to locate ../../../../../../shared_files/cclf/files/synthetic/test-partially-adjudicated/small in file path")
 }
 
@@ -100,7 +104,7 @@ func (s *CCLFUtilTestSuite) TestImport() {
 		for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
 			s.T().Run(fmt.Sprintf("ACO Size %s - Env %s - File Type %s", tt.acoSize, tt.env, fileType),
 				func(t *testing.T) {
-					err := ImportCCLFPackage(tt.acoSize, tt.env, fileType)
+					err := ImportCCLFPackage(s.db, tt.acoSize, tt.env, fileType)
 					assert.NoError(t, err)
 				})
 		}
