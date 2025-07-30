@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"strings"
@@ -25,7 +26,7 @@ func main() {
 	// Localstack is a local-development server that mimics AWS. The endpoint variable
 	// should only be set in local development to avoid making external calls to a real AWS account.
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		res, err := handleOptOutImport(os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
+		res, err := handleOptOutImport(database.GetConnection(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
 		if err != nil {
 			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
 		} else {
@@ -40,6 +41,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
+	db := database.GetConnection()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 
@@ -60,7 +62,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
-			return handleOptOutImport(s3AssumeRoleArn, dir)
+			return handleOptOutImport(db, s3AssumeRoleArn, dir)
 		}
 	}
 
@@ -84,11 +86,11 @@ func loadBfdS3Params() (string, error) {
 	return param, nil
 }
 
-func handleOptOutImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleOptOutImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-	repo := postgres.NewRepository(database.Connection)
+	repo := postgres.NewRepository(db)
 
 	importer := suppression.OptOutImporter{
 		FileHandler: &optout.S3FileHandler{

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -16,6 +17,11 @@ import (
 
 type OptOutImportMainSuite struct {
 	suite.Suite
+	db *sql.DB
+}
+
+func (s *OptOutImportMainSuite) SetupSuite() {
+	s.db = database.GetConnection()
 }
 
 func TestOptOutImportMainSuite(t *testing.T) {
@@ -45,14 +51,14 @@ func (s *OptOutImportMainSuite) TestOptOutImportHandlerSuccess() {
 	assert.Contains(res, "Files failed: 0")
 	assert.Contains(res, "Files skipped: 0")
 
-	fs := postgrestest.GetSuppressionFileByName(s.T(), database.Connection,
+	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
 		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
 		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
 
 	assert.Len(fs, 2)
 
 	for _, f := range fs {
-		postgrestest.DeleteSuppressionFileByID(s.T(), database.Connection, f.ID)
+		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
 	}
 }
 
