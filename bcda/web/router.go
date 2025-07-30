@@ -42,8 +42,9 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
 		panic(fmt.Errorf("could not load service config file: %w", err))
 	}
 
+	rlm := middleware.NewRateLimitMiddleware(cfg, connection)
 	var requestValidators = []func(http.Handler) http.Handler{
-		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, middleware.CheckConcurrentJobs(cfg),
+		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
 	}
 	nonExportRequestValidators := []func(http.Handler) http.Handler{
 		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,

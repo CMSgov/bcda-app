@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	logAPI "github.com/CMSgov/bcda-app/log"
@@ -17,10 +19,23 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNoConcurrentJobs(t *testing.T) {
+type RateLimitMiddlewareTestSuite struct {
+	suite.Suite
+	db *sql.DB
+}
+
+func TestRateLimitMiddlewareTestSuite(t *testing.T) {
+	suite.Run(t, new(RateLimitMiddlewareTestSuite))
+}
+func (s *RateLimitMiddlewareTestSuite) SetupSuite() {
+	s.db = database.GetConnection()
+}
+func (s *RateLimitMiddlewareTestSuite) TestNoConcurrentJobs() {
 	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
+	middleware := NewRateLimitMiddleware(cfg, s.db)
 	tests := []struct {
 		name string
 		rp   RequestParameters
@@ -36,25 +51,24 @@ func TestNoConcurrentJobs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &models.MockRepository{}
-			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-				tt.jobs,
-				nil,
-			)
-			repository = mockRepo
+		mockRepo := &models.MockRepository{}
+		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+			tt.jobs,
+			nil,
+		)
+		middleware.repository = mockRepo
 
-			rr := httptest.NewRecorder()
-			middleware := CheckConcurrentJobs(cfg)
-			middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-				// Conncurrent job test route check, blank return for overrides
-			})).ServeHTTP(rr, getRequest(tt.rp))
-			assert.Equal(t, http.StatusOK, rr.Code)
-		})
+		rr := httptest.NewRecorder()
+		middleware.CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			// Conncurrent job test route check, blank return for overrides
+		})).ServeHTTP(rr, getRequest(tt.rp))
+
+		assert.Equal(s.T(), http.StatusOK, rr.Code)
 	}
 }
-func TestHasConcurrentJobs(t *testing.T) {
+func (s *RateLimitMiddlewareTestSuite) TestHasConcurrentJobs() {
 	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
+	middleware := NewRateLimitMiddleware(cfg, s.db)
 	// These jobs are not considered when determine duplicate jobs
 	ignoredJobs := []*models.Job{
 		{RequestURL: "http://a{b"},                           // InvalidURL
@@ -77,38 +91,40 @@ func TestHasConcurrentJobs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &models.MockRepository{}
-			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-				append(ignoredJobs, tt.additionalJobs...),
-				nil,
-			)
-			repository = mockRepo
+		mockRepo := &models.MockRepository{}
+		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+			append(ignoredJobs, tt.additionalJobs...),
+			nil,
+		)
+		middleware.repository = mockRepo
 
-			rr := httptest.NewRecorder()
-			middleware := CheckConcurrentJobs(cfg)
-			middleware(nil).ServeHTTP(rr, getRequest(tt.rp))
-			assert.Equal(t, http.StatusTooManyRequests, rr.Code)
-			assert.NotEmpty(t, rr.Header().Get("Retry-After"))
-		})
+		rr := httptest.NewRecorder()
+		middleware.CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			// Conncurrent job test route check, blank return for overrides
+		})).ServeHTTP(rr, getRequest(tt.rp))
+
+		assert.NotEmpty(s.T(), rr.Header().Get("Retry-After"))
 	}
 }
 
-func TestFailedToGetJobs(t *testing.T) {
+func (s *RateLimitMiddlewareTestSuite) TestFailedToGetJobs() {
 	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
+	middleware := NewRateLimitMiddleware(cfg, s.db)
 	mockRepo := &models.MockRepository{}
 	mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
 		nil,
 		errors.New("FORCING SOME ERROR"),
 		nil,
 	)
-	repository = mockRepo
+	middleware.repository = mockRepo
 
 	rr := httptest.NewRecorder()
-	middleware := CheckConcurrentJobs(cfg)
-	middleware(nil).ServeHTTP(rr, getRequest(RequestParameters{}))
-	assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	assert.Contains(t, rr.Body.String(), "code\":\"exception\"")
+	middleware.CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// Conncurrent job test route check, blank return for overrides
+	})).ServeHTTP(rr, getRequest(RequestParameters{}))
+
+	assert.Equal(s.T(), http.StatusInternalServerError, rr.Code)
+	assert.Contains(s.T(), rr.Body.String(), "code\":\"exception\"")
 }
 
 func getRequest(rp RequestParameters) *http.Request {
@@ -119,8 +135,10 @@ func getRequest(rp RequestParameters) *http.Request {
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
 }
 
-func TestHasDuplicatesFullString(t *testing.T) {
+func (s *RateLimitMiddlewareTestSuite) TestHasDuplicatesFullString() {
 	ctx := context.Background()
+	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}
+	middleware := NewRateLimitMiddleware(cfg, s.db)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	otherJobs := []*models.Job{
 		{ID: 1, RequestURL: "https://api.abcd.123.net/api/v2/Group/runout/$export?_since=2024-02-11T00%3A00%3A00.0000-00%3A00&_type=Patient%2CCoverage%2CExplanationOfBenefit", CreatedAt: time.Now(), Status: models.JobStatusPending},
@@ -139,15 +157,12 @@ func TestHasDuplicatesFullString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			responseBool := hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
-			assert.Equal(t, tt.expectedValue, responseBool)
-		})
+		responseBool := middleware.hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
+		assert.Equal(s.T(), tt.expectedValue, responseBool)
 	}
-
 }
 
-func TestShouldRateLimit(t *testing.T) {
+func (s *RateLimitMiddlewareTestSuite) TestShouldRateLimit() {
 	cmsID := "MyFavoriteACO"
 	otherCMSID := "OtherCMSID"
 
@@ -164,9 +179,7 @@ func TestShouldRateLimit(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actualValue := shouldRateLimit(tt.config, tt.cmsID)
-			assert.Equal(t, tt.expectedValue, actualValue, tt.name)
-		})
+		actualValue := shouldRateLimit(tt.config, tt.cmsID)
+		assert.Equal(s.T(), tt.expectedValue, actualValue, tt.name)
 	}
 }
