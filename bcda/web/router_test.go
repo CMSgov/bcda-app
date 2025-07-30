@@ -402,7 +402,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	mock := &auth.MockProvider{}
 	setExpectedMockCalls(s, mock, token, aco, bearerString, cmsID)
 
-	db := database.Connection
+	db := s.connection
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
@@ -447,7 +447,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 	mock := &auth.MockProvider{}
 	setExpectedMockCalls(s, mock, token, aco, bearerString, cmsID)
 
-	db := database.Connection
+	db := s.connection
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 

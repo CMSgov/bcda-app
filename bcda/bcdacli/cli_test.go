@@ -68,7 +68,7 @@ func (s *CLITestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
-	s.db = database.Connection
+	s.db = database.GetConnection()
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	s.testACO = models.ACO{Name: uuid.New(), UUID: uuid.NewRandom(), ClientID: uuid.New(), CMSID: &cmsID}

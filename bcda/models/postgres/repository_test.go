@@ -40,7 +40,7 @@ func TestRepositoryTestSuite(t *testing.T) {
 }
 
 func (r *RepositoryTestSuite) SetupSuite() {
-	r.db = database.Connection
+	r.db = database.GetConnection()
 	r.repository = postgres.NewRepository(r.db)
 }
 

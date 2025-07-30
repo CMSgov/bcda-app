@@ -23,7 +23,7 @@ func CreateDatabase(t *testing.T, migrationPath string, cleanup bool) (*sql.DB, 
 	cfg, err := database.LoadConfig()
 	assert.NoError(t, err)
 	dsn := cfg.DatabaseURL
-	db := database.Connection
+	db := database.GetConnection()
 
 	newDBName := strings.ReplaceAll(fmt.Sprintf("%s_%s", dbName(dsn), uuid.New()), "-", "_")
 	newDSN := dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}%s${options}", newDBName))
