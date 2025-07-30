@@ -97,8 +97,9 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	healthChecker := health.NewHealthChecker(database.Connection)
-	queue := queueing.StartRiver(utils.GetEnvInt("WORKER_POOL_SIZE", 4))
+	db := database.GetConnection()
+	healthChecker := health.NewHealthChecker(db)
+	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 	defer queue.StopRiver()
 
 	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
