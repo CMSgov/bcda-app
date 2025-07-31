@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[Endpoint.Address]' --output text | grep bcda-${{ matrix.vars.env }} 2>&1)
+          HOST=$(aws rds describe-db-instances --query 'DBInstances[*].[Endpoint.Address]' --output text | grep bcda-${{ matrix.vars.env }}-aurora-0 2>&1)
           if [ $? -ne 0 ]; then
               echo "Error: failed to retrieve database host."
               exit 1
