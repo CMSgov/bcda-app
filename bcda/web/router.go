@@ -29,7 +29,7 @@ var commonAuth = []func(http.Handler) http.Handler{
 	auth.RequireTokenAuth,
 	auth.CheckBlacklist}
 
-func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
+func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(gcmw.RequestID, appMiddleware.NewTransactionID, auth.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
@@ -54,7 +54,7 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
-	apiV1 := v1.NewApiV1(connection, pool)
+	apiV1 := v1.NewApiV1(connection, pool, provider)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV1.BulkPatientRequest))
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV1.BulkGroupRequest))
@@ -62,7 +62,7 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
 		r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", apiV1.JobsStatus))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV1.DeleteJob))
 		r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", apiV1.AttributionStatus))
-		r.Get(m.WrapHandler("/metadata", v1.Metadata))
+		r.Get(m.WrapHandler("/metadata", apiV1.Metadata))
 	})
 
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
@@ -92,14 +92,14 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool) http.Handler {
 		})
 	}
 
-	r.Get(m.WrapHandler("/_version", v1.GetVersion))
+	r.Get(m.WrapHandler("/_version", apiV1.GetVersion))
 	r.Get(m.WrapHandler("/_health", apiV1.HealthCheck))
-	r.Get(m.WrapHandler("/_auth", v1.GetAuthInfo))
+	r.Get(m.WrapHandler("/_auth", apiV1.GetAuthInfo))
 	return r
 }
 
-func NewAuthRouter() http.Handler {
-	return auth.NewAuthRouter(gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+func NewAuthRouter(provider auth.Provider) http.Handler {
+	return auth.NewAuthRouter(provider, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 }
 
 func NewDataRouter(connection *sql.DB) http.Handler {

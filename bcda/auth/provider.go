@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -18,7 +19,6 @@ const (
 	SSAS = "ssas"
 )
 
-var providerName = SSAS
 var repository models.Repository
 var provider Provider
 
@@ -34,11 +34,21 @@ func init() {
 }
 
 func GetProviderName() string {
-	return providerName
+	return SSAS
 }
 
 func GetProvider() Provider {
 	return provider
+}
+
+func NewProvider(db *sql.DB) Provider {
+	r := postgres.NewRepository(db)
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
+	}
+
+	return SSASPlugin{client: c, repository: r}
 }
 
 type AuthData struct {

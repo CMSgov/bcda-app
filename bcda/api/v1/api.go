@@ -28,12 +28,13 @@ import (
 )
 
 type ApiV1 struct {
-	handler       *api.Handler
 	connection    *sql.DB
+	handler       *api.Handler
+	provider      auth.Provider
 	healthChecker health.HealthChecker
 }
 
-func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV1 {
+func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -47,7 +48,7 @@ func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV1 {
 
 	hc := health.NewHealthChecker(connection)
 	h := api.NewHandler(resources, "/v1/fhir", "v1", connection, pool)
-	return &ApiV1{handler: h, connection: connection, healthChecker: hc}
+	return &ApiV1{connection: connection, handler: h, provider: provider, healthChecker: hc}
 }
 
 /*
@@ -368,7 +369,7 @@ Responses:
 
 	200: MetadataResponse
 */
-func Metadata(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) Metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 
 	scheme := "http"
@@ -398,7 +399,7 @@ Responses:
 
 	200: VersionResponse
 */
-func GetVersion(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) GetVersion(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["version"] = constants.Version
 	respBytes, err := json.Marshal(respMap)
@@ -462,10 +463,10 @@ Responses:
 
 	200: AuthResponse
 */
-func GetAuthInfo(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) GetAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["auth_provider"] = auth.GetProviderName()
-	version, err := auth.GetProvider().GetVersion()
+	version, err := a.provider.GetVersion()
 	if err == nil {
 		respMap["version"] = version
 	} else {

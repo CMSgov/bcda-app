@@ -18,6 +18,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	bcdaLog "github.com/CMSgov/bcda-app/log"
@@ -28,21 +29,13 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type AuthAPITestSuite struct {
 	suite.Suite
-	rr     *httptest.ResponseRecorder
-	db     *sql.DB
-	r      models.Repository
-	server *httptest.Server
-}
-
-func (s *AuthAPITestSuite) CreateRouter() http.Handler {
-	r := auth.NewAuthRouter()
-	return r
+	db *sql.DB
+	r  models.Repository
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
@@ -50,24 +43,9 @@ func (s *AuthAPITestSuite) SetupSuite() {
 	s.r = postgres.NewRepository(s.db)
 }
 
-func (s *AuthAPITestSuite) SetupTest() {
-	s.rr = httptest.NewRecorder()
-	s.server = httptest.NewServer(s.CreateRouter())
-}
-
 func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 	const errorHappened = "Error Happened!"
 	const errMsg = "Error Message"
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", s.server.URL), nil)
-	if err != nil {
-		assert.FailNow(s.T(), err.Error())
-	}
-	//req.Header.Add("Authorization", fmt.Sprintf("Basic %s", tt.authHeader))
-	req.Header.Add("Accept", constants.JsonContentType)
-	req.SetBasicAuth("good", "client")
-
-	client := s.server.Client()
 
 	tests := []struct {
 		ScenarioName          string
@@ -87,12 +65,23 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 		//setup logging hook for log message assertion
 		testLogger := test.NewLocal(testUtils.GetLogger(bcdaLog.API))
 
-		s.T().Run(tt.ScenarioName, func(t *testing.T) {
-			//setup mocks
-			mockP := &auth.MockProvider{}
-			mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return("", tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mockP)
+		//setup mocks
+		mockP := &auth.MockProvider{}
+		mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return("", tt.ErrorToReturn)
 
+		router := auth.NewAuthRouter(mockP)
+		server := httptest.NewServer(router)
+		req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", server.URL), nil)
+		if err != nil {
+			assert.FailNow(s.T(), err.Error())
+		}
+		//req.Header.Add("Authorization", fmt.Sprintf("Basic %s", tt.authHeader))
+		req.Header.Add("Accept", constants.JsonContentType)
+		req.SetBasicAuth("good", "client")
+
+		client := server.Client()
+
+		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//Act
 			resp, err := client.Do(req)
 			if err != nil {
@@ -115,15 +104,6 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 }
 
 func (s *AuthAPITestSuite) TestGetAuthToken() {
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", s.server.URL), nil)
-	if err != nil {
-		assert.FailNow(s.T(), err.Error())
-	}
-	req.Header.Add("Accept", constants.JsonContentType)
-	req.SetBasicAuth("good", "client")
-
-	client := s.server.Client()
-
 	tests := []struct {
 		ScenarioName          string
 		ErrorToReturn         error
@@ -134,15 +114,24 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 	}
 
 	for _, tt := range tests {
+		//setup mocks
+		mockP := &auth.MockProvider{}
+		mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
+		// auth.SetMockProvider(s.T(), mockP)
+
+		router := auth.NewAuthRouter(mockP)
+		server := httptest.NewServer(router)
+
+		req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/token", server.URL), nil)
+		if err != nil {
+			assert.FailNow(s.T(), err.Error())
+		}
+		req.Header.Add("Accept", constants.JsonContentType)
+		req.SetBasicAuth("good", "client")
+
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
-
-			//setup mocks
-			mockP := &auth.MockProvider{}
-			mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mockP)
-
 			//Act
-			resp, err := client.Do(req)
+			resp, err := server.Client().Do(req)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -188,7 +177,8 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	// Expect failure with invalid token
 	router := chi.NewRouter()
 	router.Use(auth.ParseToken)
-	router.With(auth.RequireTokenAuth).Get("/v1/", auth.Welcome)
+	baseApi := auth.NewBaseApi(mockP)
+	router.With(auth.RequireTokenAuth).Get("/v1/", baseApi.Welcome)
 	server := httptest.NewServer(router)
 	client := server.Client()
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", server.URL), nil)

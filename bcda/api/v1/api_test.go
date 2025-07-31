@@ -49,12 +49,14 @@ type APITestSuite struct {
 	rr         *httptest.ResponseRecorder
 	connection *sql.DB
 	pool       *pgxv5Pool.Pool
+	provider   auth.Provider
 	apiV1      *ApiV1
 }
 
 func (s *APITestSuite) SetupSuite() {
 	s.connection = database.GetConnection()
-	s.apiV1 = NewApiV1(s.connection, s.pool)
+	s.provider = auth.NewProvider(s.connection)
+	s.apiV1 = NewApiV1(s.connection, s.pool, s.provider)
 
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
@@ -430,7 +432,7 @@ func (s *APITestSuite) TestMetadata() {
 	req := httptest.NewRequest("GET", "/api/v1/metadata", nil)
 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(Metadata)
+	handler := http.HandlerFunc(s.apiV1.Metadata)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -439,7 +441,7 @@ func (s *APITestSuite) TestMetadata() {
 func (s *APITestSuite) TestGetVersion() {
 	req := httptest.NewRequest("GET", "/_version", nil)
 
-	handler := http.HandlerFunc(GetVersion)
+	handler := http.HandlerFunc(s.apiV1.GetVersion)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -570,7 +572,7 @@ func (s *APITestSuite) TestHealthCheck() {
 func (s *APITestSuite) TestAuthInfo() {
 	req, err := http.NewRequest("GET", "/_auth", nil)
 	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(GetAuthInfo)
+	handler := http.HandlerFunc(s.apiV1.GetAuthInfo)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 

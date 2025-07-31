@@ -51,6 +51,7 @@ var (
 	connection *sql.DB
 	pool       *pgxv5Pool.Pool
 	r          models.Repository
+	provider   auth.Provider
 )
 
 func GetApp() *cli.App {
@@ -66,6 +67,8 @@ func setUpApp() *cli.App {
 		connection = database.GetConnection()
 		pool = database.GetPool()
 		r = postgres.NewRepository(connection)
+		provider = auth.NewProvider(connection)
+		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 		return nil
 	}
 	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
@@ -117,7 +120,7 @@ func setUpApp() *cli.App {
 				go func() { log.API.Fatal(srv.ListenAndServe()) }()
 
 				auth := &http.Server{
-					Handler:           web.NewAuthRouter(),
+					Handler:           web.NewAuthRouter(provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
@@ -125,7 +128,7 @@ func setUpApp() *cli.App {
 				}
 
 				api := &http.Server{
-					Handler:           web.NewAPIRouter(connection, pool),
+					Handler:           web.NewAPIRouter(connection, pool, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
