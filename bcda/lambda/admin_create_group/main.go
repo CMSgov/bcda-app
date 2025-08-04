@@ -19,21 +19,16 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	slUtls "github.com/CMSgov/bcda-app/bcda/slack"
 	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var slackChannel = "C034CFU945C" // #bcda-alerts
-
 type payload struct {
 	GroupID   string `json:"group_id"`
 	GroupName string `json:"group_name"`
 	ACO_ID    string `json:"aco_id"` // CMS_ID or UUID
-}
-
-type Notifier interface {
-	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
 func main() {
@@ -69,15 +64,15 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		log.Errorf("failed to create SSAS client: %s", err)
 	}
 
-	sendSlackMessage(slackClient, fmt.Sprintf("Started Create Group lambda in %s env.", os.Getenv("ENV")))
+	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Started Create Group lambda in %s env.", os.Getenv("ENV")), "")
 	err = handleCreateGroup(ssas, r, data)
 	if err != nil {
-		sendSlackMessage(slackClient, fmt.Sprintf("Failed: Create Group lambda in %s env.", os.Getenv("ENV")))
+		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Failed: Create Group lambda in %s env.", os.Getenv("ENV")), slUtls.FailureIcon)
 		log.Errorf("Failed to Create Group: %+v", err)
 		return err
 	}
 
-	sendSlackMessage(slackClient, fmt.Sprintf("Success: Create Group lambda in %s env.", os.Getenv("ENV")))
+	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Success: Create Group lambda in %s env.", os.Getenv("ENV")), slUtls.SuccessIcon)
 	log.Info("Completed Create Group administrative task")
 
 	return nil
@@ -188,11 +183,4 @@ func setupEnv() (string, error) {
 	}
 
 	return slackToken, nil
-}
-
-func sendSlackMessage(sc *slack.Client, msg string) {
-	_, _, err := sc.PostMessageContext(context.Background(), slackChannel, slack.MsgOptionText(fmt.Sprint(msg), false))
-	if err != nil {
-		log.Errorf("Failed to send slack message: %+v", err)
-	}
 }

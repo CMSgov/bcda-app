@@ -13,11 +13,10 @@ import (
 	"github.com/slack-go/slack"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	slUtls "github.com/CMSgov/bcda-app/bcda/slack"
 
 	log "github.com/sirupsen/logrus"
 )
-
-var slackChannel = "C034CFU945C" // #bcda-alerts
 
 type payload struct {
 	DenyACOIDs []string `json:"deny_aco_ids"`
@@ -26,10 +25,6 @@ type payload struct {
 type awsParams struct {
 	DBURL      string
 	SlackToken string
-}
-
-type Notifier interface {
-	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
 func main() {
@@ -65,44 +60,30 @@ func handler(ctx context.Context, event json.RawMessage) error {
 
 	slackClient := slack.New(params.SlackToken)
 
-	err = handleACODenies(ctx, conn, data, slackClient)
+	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Started Deny ACO lambda in %s env.", os.Getenv("ENV")), "")
+
+	err = handleACODenies(ctx, conn, data)
 	if err != nil {
+		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Deny ACO lambda in %s env.", slUtls.FailureMsg, os.Getenv("ENV")), slUtls.FailureIcon)
+
 		log.Errorf("Failed to handle ACO denies: %+v", err)
 		return err
 	}
+
+	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Deny ACO lambda in %s env.", slUtls.SuccessMsg, os.Getenv("ENV")), slUtls.SuccessIcon)
 
 	log.Info("Completed ACO Deny administrative task")
 
 	return nil
 }
 
-func handleACODenies(ctx context.Context, conn PgxConnection, data payload, notifier Notifier) error {
-	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Started ACO Deny lambda in %s env.", os.Getenv("ENV")), false),
-	)
-	if err != nil {
-		log.Errorf("Error sending notifier start message: %+v", err)
-	}
+func handleACODenies(ctx context.Context, conn PgxConnection, data payload) error {
 
-	err = denyACOs(ctx, conn, data)
+	err := denyACOs(ctx, conn, data)
 	if err != nil {
 		log.Errorf("Error finding and denying ACOs: %+v", err)
 
-		_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-			fmt.Sprintf("Failed: ACO Deny List lambda in %s env.", os.Getenv("ENV")), false),
-		)
-		if err != nil {
-			log.Errorf("Error sending notifier failure message: %+v", err)
-		}
-
 		return err
-	}
-
-	_, _, err = notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Success: ACO Deny List lambda in %s env.", os.Getenv("ENV")), false),
-	)
-	if err != nil {
-		log.Errorf("Error sending notifier success message: %+v", err)
 	}
 
 	return nil
