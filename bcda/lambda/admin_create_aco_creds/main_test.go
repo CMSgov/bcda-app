@@ -23,11 +23,10 @@ func TestHandleCreateACOCreds(t *testing.T) {
 
 	data := payload{ACOID: "TEST1234", IPs: []string{"1.2.3.4", "1.2.3.5"}}
 
-	mock := &auth.MockProvider{}
-	mock.On("FindAndCreateACOCredentials", data.ACOID, data.IPs).Return("creds\nstring", nil)
-	auth.SetMockProvider(t, mock)
+	mockProvider := &auth.MockProvider{}
+	mockProvider.On("FindAndCreateACOCredentials", data.ACOID, data.IPs).Return("creds\nstring", nil)
 
-	s3Path, err := handleCreateACOCreds(ctx, data, &mockS3{}, &mockNotifier{}, "test-bucket")
+	s3Path, err := handleCreateACOCreds(ctx, data, mockProvider, &mockS3{}, &mockNotifier{}, "test-bucket")
 	assert.Nil(t, err)
 	assert.Equal(t, s3Path, "{\n\n}")
 }

@@ -32,7 +32,8 @@ var commonAuth = []func(http.Handler) http.Handler{
 func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(gcmw.RequestID, appMiddleware.NewTransactionID, auth.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	am := auth.NewAuthMiddleware(provider)
+	r.Use(gcmw.RequestID, appMiddleware.NewTransactionID, am.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
@@ -58,9 +59,9 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provid
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV1.BulkPatientRequest))
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV1.BulkGroupRequest))
-		r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV1.JobStatus))
+		r.With(append(commonAuth, am.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV1.JobStatus))
 		r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", apiV1.JobsStatus))
-		r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV1.DeleteJob))
+		r.With(append(commonAuth, am.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV1.DeleteJob))
 		r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", apiV1.AttributionStatus))
 		r.Get(m.WrapHandler("/metadata", apiV1.Metadata))
 	})
@@ -71,9 +72,9 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provid
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV2.BulkPatientRequest))
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV2.BulkGroupRequest))
-			r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV2.JobStatus))
+			r.With(append(commonAuth, am.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV2.JobStatus))
 			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", apiV2.JobsStatus))
-			r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV2.DeleteJob))
+			r.With(append(commonAuth, am.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV2.DeleteJob))
 			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", apiV2.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", apiV2.Metadata))
 		})
@@ -84,9 +85,9 @@ func NewAPIRouter(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provid
 		r.Route("/api/demo", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV3.BulkPatientRequest))
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV3.BulkGroupRequest))
-			r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV3.JobStatus))
+			r.With(append(commonAuth, am.RequireTokenJobMatch(connection))...).Get(m.WrapHandler(constants.JOBIDPath, apiV3.JobStatus))
 			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", apiV3.JobsStatus))
-			r.With(append(commonAuth, auth.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV3.DeleteJob))
+			r.With(append(commonAuth, am.RequireTokenJobMatch(connection))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV3.DeleteJob))
 			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", apiV3.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", apiV3.Metadata))
 		})
@@ -102,16 +103,17 @@ func NewAuthRouter(provider auth.Provider) http.Handler {
 	return auth.NewAuthRouter(provider, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 }
 
-func NewDataRouter(connection *sql.DB) http.Handler {
+func NewDataRouter(connection *sql.DB, provider auth.Provider) http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
+	am := auth.NewAuthMiddleware(provider)
 	resourceTypeLogger := &logging.ResourceTypeLogger{
 		Repository: postgres.NewRepository(connection),
 	}
-	r.Use(auth.ParseToken, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
+	r.Use(am.ParseToken, gcmw.RequestID, appMiddleware.NewTransactionID, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose, logging.NewCtxLogger)
 	r.With(append(
 		commonAuth,
-		auth.RequireTokenJobMatch(connection),
+		am.RequireTokenJobMatch(connection),
 		resourceTypeLogger.LogJobResourceType,
 	)...).Get(m.WrapHandler("/data/{jobID}/{fileName}", v1.ServeData))
 	return r

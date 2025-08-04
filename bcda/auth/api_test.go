@@ -172,11 +172,11 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	mockP.On("VerifyToken", mock.Anything, goodToken).Return(token, nil)
 	mockP.On("VerifyToken", mock.Anything, badToken).Return(nil, errors.New("bad token"))
 	mockP.On("getAuthDataFromClaims", token.Claims).Return(ad, nil)
-	auth.SetMockProvider(s.T(), mockP)
 
 	// Expect failure with invalid token
 	router := chi.NewRouter()
-	router.Use(auth.ParseToken)
+	am := auth.NewAuthMiddleware(mockP)
+	router.Use(am.ParseToken)
 	baseApi := auth.NewBaseApi(mockP)
 	router.With(auth.RequireTokenAuth).Get("/v1/", baseApi.Welcome)
 	server := httptest.NewServer(router)

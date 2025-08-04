@@ -17,6 +17,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -37,7 +38,8 @@ type SSASMiddlewareTestSuite struct {
 
 func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 	router := chi.NewRouter()
-	router.Use(auth.ParseToken)
+	am := auth.NewAuthMiddleware(auth.NewProvider(database.GetConnection()))
+	router.Use(am.ParseToken)
 	router.With(auth.RequireTokenAuth).Get("/v1/", func(w http.ResponseWriter, r *http.Request) {
 		ad := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 		render.JSON(w, r, ad)

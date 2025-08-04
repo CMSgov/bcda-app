@@ -44,7 +44,7 @@ func (s *RouterTestSuite) SetupTest() {
 	s.connection = database.GetConnection()
 	s.provider = auth.NewProvider(s.connection)
 	s.apiRouter = NewAPIRouter(s.connection, s.pool, s.provider)
-	s.dataRouter = NewDataRouter(s.connection)
+	s.dataRouter = NewDataRouter(s.connection, s.provider)
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
@@ -352,11 +352,11 @@ func createExpectedAuthData(cmsID string, aco models.ACO) auth.AuthData {
 	}
 }
 
-func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []struct {
+func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite, p auth.Provider) (configs []struct {
 	handler http.Handler
 	paths   []string
 }) {
-	apiRouter := NewAPIRouter(s.connection, s.pool, s.provider)
+	apiRouter := NewAPIRouter(s.connection, s.pool, p)
 
 	configs = []struct {
 		handler http.Handler
@@ -365,8 +365,8 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export",
 			constants.V2Path + constants.PatientExportPath, constants.V2Path + constants.GroupExportPath,
 			constants.V1Path + constants.JobsFilePath}},
-		{s.dataRouter, []string{nDJsonDataRoute}},
-		{NewAuthRouter(s.provider), []string{"/auth/welcome"}},
+		{NewDataRouter(s.connection, p), []string{nDJsonDataRoute}},
+		{NewAuthRouter(p), []string{"/auth/welcome"}},
 	}
 
 	return configs
@@ -375,7 +375,6 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 func setExpectedMockCalls(s *RouterTestSuite, mockP *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
 	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
 	mockP.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
-	auth.SetMockProvider(s.T(), mockP)
 }
 
 // integration test, requires connection to postgres db
@@ -408,7 +407,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := createConfigsForACOBlacklistingScenarios(s)
+	configs := createConfigsForACOBlacklistingScenarios(s, mock)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
@@ -453,7 +452,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := createConfigsForACOBlacklistingScenarios(s)
+	configs := createConfigsForACOBlacklistingScenarios(s, mock)
 
 	for _, config := range configs {
 		for _, path := range config.paths {

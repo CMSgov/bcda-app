@@ -11,8 +11,9 @@ func NewAuthRouter(provider Provider, middlewares ...func(http.Handler) http.Han
 	baseApi := NewBaseApi(provider)
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
+	am := NewAuthMiddleware(provider)
 	r.Use(middlewares...)
 	r.Post(m.WrapHandler("/auth/token", baseApi.GetAuthToken))
-	r.With(ParseToken, RequireTokenAuth, CheckBlacklist).Get(m.WrapHandler("/auth/welcome", baseApi.Welcome))
+	r.With(am.ParseToken, RequireTokenAuth, CheckBlacklist).Get(m.WrapHandler("/auth/welcome", baseApi.Welcome))
 	return r
 }

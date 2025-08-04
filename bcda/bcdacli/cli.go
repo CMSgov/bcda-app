@@ -68,7 +68,7 @@ func setUpApp() *cli.App {
 		pool = database.GetPool()
 		r = postgres.NewRepository(connection)
 		provider = auth.NewProvider(connection)
-		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
+		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
 	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
@@ -136,7 +136,7 @@ func setUpApp() *cli.App {
 				}
 
 				fileserver := &http.Server{
-					Handler:           web.NewDataRouter(connection),
+					Handler:           web.NewDataRouter(connection, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
@@ -272,17 +272,10 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+				msg, err := resetClientCredentials(acoCMSID)
 				if err != nil {
 					return err
 				}
-
-				// Generate new credentials
-				creds, err := auth.GetProvider().ResetSecret(aco.ClientID)
-				if err != nil {
-					return err
-				}
-				msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 				fmt.Fprintf(app.Writer, "%s\n", msg)
 				return nil
 			},
@@ -588,7 +581,7 @@ func createACO(name, cmsID string) (string, error) {
 
 func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	// The public key is optional for SSAS, and not used by the ACO API
-	creds, err := auth.GetProvider().FindAndCreateACOCredentials(acoCMSID, ips)
+	creds, err := provider.FindAndCreateACOCredentials(acoCMSID, ips)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}
@@ -596,12 +589,26 @@ func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	return creds, nil
 }
 
+func resetClientCredentials(acoCMSID string) (string, error) {
+	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+	if err != nil {
+		return "", err
+	}
+
+	// Generate new credentials
+	creds, err := provider.ResetSecret(aco.ClientID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret), nil
+}
+
 func revokeAccessToken(accessToken string) error {
 	if accessToken == "" {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	return auth.GetProvider().RevokeAccessToken(accessToken)
+	return provider.RevokeAccessToken(accessToken)
 }
 
 func setDenylistState(cmsID string, td *models.Termination) error {
