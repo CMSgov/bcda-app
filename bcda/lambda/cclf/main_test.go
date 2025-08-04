@@ -41,7 +41,6 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
 		{Name: fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env), Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
 		{Name: fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
-		{Name: fmt.Sprintf("/bcda/%s/api/QUEUE_DATABASE_URL", env), Value: "doesnt-matter", Type: "SecureString"},
 	})
 	defer cleanupParams()
 

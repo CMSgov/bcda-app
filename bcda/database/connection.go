@@ -18,9 +18,8 @@ import (
 )
 
 var (
-	Connection      *sql.DB
-	QueueConnection *pgx.ConnPool
-	Pgxv5Pool       *pgxv5Pool.Pool
+	Connection *sql.DB
+	Pgxv5Pool  *pgxv5Pool.Pool
 )
 
 func init() {
