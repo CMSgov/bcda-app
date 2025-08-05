@@ -77,7 +77,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{  secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions 
+          role-to-assume: arn:aws:iam::${{  secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions 
       - name: Install psql
         run: |
           sudo dnf -y update
@@ -95,7 +95,7 @@ jobs:
           FILENAME: ${{needs.trigger.outputs.filename}}
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-dev-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
+          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-test-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
           echo $FILENAME
           SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
