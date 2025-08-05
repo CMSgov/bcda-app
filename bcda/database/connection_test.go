@@ -13,7 +13,7 @@ import (
 
 func TestConnections(t *testing.T) {
 	// Verify that we can initialize the package as expected
-	c := GetConnection()
+	c := Connect()
 	assert.NotNil(t, c)
 	assert.NoError(t, c.Ping())
 }
@@ -33,7 +33,7 @@ func TestConnectionHealthCheck(t *testing.T) {
 	hook := test.NewGlobal()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	c := GetConnection()
+	c := Connect()
 	startConnectionHealthCheck(ctx, c, 100*time.Microsecond)
 	// Let some time elapse to ensure we've successfully ran health checks
 	time.Sleep(50 * time.Millisecond)

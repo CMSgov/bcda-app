@@ -97,7 +97,7 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	db := database.GetConnection()
+	db := database.Connect()
 	healthChecker := health.NewHealthChecker(db)
 	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 	defer queue.StopRiver()

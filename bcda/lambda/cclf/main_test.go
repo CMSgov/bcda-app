@@ -21,7 +21,7 @@ type AttributionImportMainSuite struct {
 }
 
 func (s *AttributionImportMainSuite) SetupSuite() {
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 }
 func TestAttributionImportMainSuite(t *testing.T) {
 	suite.Run(t, new(AttributionImportMainSuite))

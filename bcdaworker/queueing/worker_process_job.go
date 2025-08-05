@@ -15,7 +15,7 @@ import (
 
 type JobWorker struct {
 	river.WorkerDefaults[worker_types.JobEnqueueArgs]
-	connection *sql.DB
+	db *sql.DB
 }
 
 func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEnqueueArgs]) error {
@@ -32,7 +32,7 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
 
 	// TODO: use pgxv5 when available
-	mainDB := w.connection
+	mainDB := w.db
 	workerInstance := worker.NewWorker(mainDB)
 	repo := postgres.NewRepository(mainDB)
 

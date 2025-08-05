@@ -69,8 +69,8 @@ func (s *CLITestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
-	s.db = database.GetConnection()
-	connection = s.db
+	s.db = database.Connect()
+	db = s.db
 	r = postgres.NewRepository(s.db)
 
 	cmsID := testUtils.RandomHexID()[0:4]

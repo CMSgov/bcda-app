@@ -21,7 +21,7 @@ type OptOutImportMainSuite struct {
 }
 
 func (s *OptOutImportMainSuite) SetupSuite() {
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 }
 
 func TestOptOutImportMainSuite(t *testing.T) {

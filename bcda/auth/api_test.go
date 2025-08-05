@@ -39,7 +39,7 @@ type AuthAPITestSuite struct {
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 	s.r = postgres.NewRepository(s.db)
 }
 

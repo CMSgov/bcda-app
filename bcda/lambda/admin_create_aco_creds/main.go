@@ -75,7 +75,7 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	provider := auth.NewProvider(database.GetConnection())
+	provider := auth.NewProvider(database.Connect())
 	s3Service := s3.New(session)
 	slackClient := slack.New(params.slackToken)
 

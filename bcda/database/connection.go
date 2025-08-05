@@ -17,7 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func GetConnection() *sql.DB {
+func Connect() *sql.DB {
 	cfg, err := LoadConfig()
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())
@@ -40,7 +40,7 @@ func GetConnection() *sql.DB {
 	return conn
 }
 
-func GetPool() *pgxv5Pool.Pool {
+func ConnectPool() *pgxv5Pool.Pool {
 	cfg, err := LoadConfig()
 	if err != nil {
 		logrus.Fatalf("Failed to load database config %s", err.Error())

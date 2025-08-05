@@ -40,14 +40,12 @@ var bearerStringMsg string = "Bearer %s"
 
 type MiddlewareTestSuite struct {
 	suite.Suite
-	// server     *httptest.Server
 	rr *httptest.ResponseRecorder
-	// am         auth.AuthMiddleware
-	connection *sql.DB
+	db *sql.DB
 }
 
 func (s *MiddlewareTestSuite) SetupSuite() {
-	s.connection = database.GetConnection()
+	s.db = database.Connect()
 }
 
 func (s *MiddlewareTestSuite) CreateRouter(p auth.Provider) http.Handler {
@@ -79,7 +77,7 @@ func (s *MiddlewareTestSuite) SetupTest() {
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignature() {
-	server := s.CreateServer(auth.NewProvider(s.connection))
+	server := s.CreateServer(auth.NewProvider(s.db))
 	defer server.Close()
 	client := server.Client()
 	badT := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
@@ -100,7 +98,7 @@ func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignat
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
-	server := s.CreateServer(auth.NewProvider(s.connection))
+	server := s.CreateServer(auth.NewProvider(s.db))
 	defer server.Close()
 	client := server.Client()
 	expiredToken := jwt.NewWithClaims(jwt.SigningMethodRS512, &auth.CommonClaims{
@@ -330,7 +328,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTokenSupplied() {
-	server := s.CreateServer(auth.NewProvider(s.connection))
+	server := s.CreateServer(auth.NewProvider(s.db))
 	defer server.Close()
 	client := server.Client()
 
@@ -357,7 +355,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 		Status:     models.JobStatusFailed,
 	}
 
-	postgrestest.CreateJobs(s.T(), s.connection, &j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -375,9 +373,9 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 		{"Mismatching ACOID", jobID, uuid.New(), http.StatusUnauthorized},
 	}
 
-	p := auth.NewProvider(s.connection)
+	p := auth.NewProvider(s.db)
 	am := auth.NewAuthMiddleware(p)
-	handler := am.RequireTokenJobMatch(s.connection)(mockHandler)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
 	server := s.CreateServer(p)
 	defer server.Close()
 
@@ -411,16 +409,16 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
-	postgrestest.CreateJobs(s.T(), s.connection, &j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	jobID := strconv.Itoa(id)
 
-	p := auth.NewProvider(s.connection)
+	p := auth.NewProvider(s.db)
 	am := auth.NewAuthMiddleware(p)
-	handler := am.RequireTokenJobMatch(s.connection)(mockHandler)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
 	server := s.CreateServer(p)
 	defer server.Close()
 
@@ -451,16 +449,16 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 		Status:     models.JobStatusFailed,
 	}
 
-	postgrestest.CreateJobs(s.T(), s.connection, &j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	jobID := strconv.Itoa(id)
 
-	p := auth.NewProvider(s.connection)
+	p := auth.NewProvider(s.db)
 	am := auth.NewAuthMiddleware(p)
-	handler := am.RequireTokenJobMatch(s.connection)(mockHandler)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
 	server := s.CreateServer(p)
 	defer server.Close()
 

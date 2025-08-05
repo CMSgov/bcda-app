@@ -48,10 +48,10 @@ const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
 var (
-	connection *sql.DB
-	pool       *pgxv5Pool.Pool
-	r          models.Repository
-	provider   auth.Provider
+	db       *sql.DB
+	pool     *pgxv5Pool.Pool
+	r        models.Repository
+	provider auth.Provider
 )
 
 func GetApp() *cli.App {
@@ -64,10 +64,10 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
-		connection = database.GetConnection()
-		pool = database.GetPool()
-		r = postgres.NewRepository(connection)
-		provider = auth.NewProvider(connection)
+		db = database.Connect()
+		pool = database.ConnectPool()
+		r = postgres.NewRepository(db)
+		provider = auth.NewProvider(db)
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
@@ -128,7 +128,7 @@ func setUpApp() *cli.App {
 				}
 
 				api := &http.Server{
-					Handler:           web.NewAPIRouter(connection, pool, provider),
+					Handler:           web.NewAPIRouter(db, pool, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
@@ -136,7 +136,7 @@ func setUpApp() *cli.App {
 				}
 
 				fileserver := &http.Server{
-					Handler:           web.NewDataRouter(connection, provider),
+					Handler:           web.NewDataRouter(db, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
@@ -328,7 +328,7 @@ func setUpApp() *cli.App {
 					}
 				}
 
-				importer := cclf.NewCclfImporter(log.API, file_processor, connection)
+				importer := cclf.NewCclfImporter(log.API, file_processor, db)
 
 				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
 				if err != nil {
@@ -395,7 +395,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				r := postgres.NewRepository(connection)
+				r := postgres.NewRepository(db)
 
 				var file_handler optout.OptOutFileHandler
 
@@ -457,7 +457,7 @@ func setUpApp() *cli.App {
 						return errors.New("Unsupported file type.")
 					}
 				}
-				err := cclfUtils.ImportCCLFPackage(connection, acoSize, environment, ft)
+				err := cclfUtils.ImportCCLFPackage(db, acoSize, environment, ft)
 				return err
 			},
 		},

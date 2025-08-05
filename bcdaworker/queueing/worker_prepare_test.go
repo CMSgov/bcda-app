@@ -48,7 +48,7 @@ func TestCleanupTestSuite(t *testing.T) {
 
 func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	s.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	s.pool = database.GetPool()
+	s.pool = database.ConnectPool()
 	tf, err := testfixtures.New(
 		testfixtures.Database(s.db),
 		testfixtures.Dialect("postgres"),
@@ -326,7 +326,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
-	q := NewEnqueuer(s.db, database.GetPool())
+	q := NewEnqueuer(s.db, database.ConnectPool())
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}

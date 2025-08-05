@@ -24,7 +24,7 @@ import (
 
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
 // begin the import of those files and delete them from the place they were copied to after successful import.
-func ImportCCLFPackage(connection *sql.DB, acoSize, environment string, fileType models.CCLFFileType) (err error) {
+func ImportCCLFPackage(db *sql.DB, acoSize, environment string, fileType models.CCLFFileType) (err error) {
 
 	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -149,7 +149,7 @@ func ImportCCLFPackage(connection *sql.DB, acoSize, environment string, fileType
 		},
 	}
 
-	importer := cclf.NewCclfImporter(log.API, file_processor, connection)
+	importer := cclf.NewCclfImporter(log.API, file_processor, db)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(dir)
 	if err != nil {

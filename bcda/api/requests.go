@@ -62,14 +62,14 @@ type fhirResponseWriter interface {
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB, pool *pgxv5Pool.Pool) *Handler {
-	return newHandler(dataTypes, basePath, apiVersion, connection, pool)
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, db, pool)
 }
 
-func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, connection *sql.DB, pool *pgxv5Pool.Pool) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewEnqueuer(connection, pool)
+	h.Enq = queueing.NewEnqueuer(db, pool)
 
 	cfg, err := service.LoadConfig()
 	if err != nil {
@@ -79,7 +79,7 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 		log.API.Fatalf("no ACO configs found, these are required for processing logic")
 	}
 
-	repository := postgres.NewRepository(connection)
+	repository := postgres.NewRepository(db)
 	h.r = repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 

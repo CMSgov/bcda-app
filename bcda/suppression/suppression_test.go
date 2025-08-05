@@ -283,7 +283,7 @@ func (s *SuppressionTestSuite) TestLoadOptOutFiles_TimeChange() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
 	importer.Saver = &BCDASaver{
-		Repo: postgres.NewRepository(database.GetConnection()),
+		Repo: postgres.NewRepository(database.Connect()),
 	}
 
 	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
@@ -447,7 +447,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression_RenameFileError() {
 func (s *SuppressionTestSuite) TestImportSuppressionDirectoryTable() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
-	db := database.GetConnection()
+	db := database.Connect()
 
 	importer.Saver = &BCDASaver{
 		Repo: postgres.NewRepository(db),

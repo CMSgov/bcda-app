@@ -25,7 +25,7 @@ var origDate string
 
 func (s *CCLFUtilTestSuite) SetupSuite() {
 	origDate = conf.GetEnv("CCLF_REF_DATE")
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {

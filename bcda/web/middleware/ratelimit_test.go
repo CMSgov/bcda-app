@@ -31,7 +31,7 @@ func TestRateLimitMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(RateLimitMiddlewareTestSuite))
 }
 func (s *RateLimitMiddlewareTestSuite) SetupSuite() {
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 }
 func (s *RateLimitMiddlewareTestSuite) TestNoConcurrentJobs() {
 	cfg := &service.Config{RateLimitConfig: service.RateLimitConfig{All: true}}

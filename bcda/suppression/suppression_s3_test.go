@@ -292,7 +292,7 @@ func (s *SuppressionS3TestSuite) TestCleanupSuppression() {
 func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
-	db := database.GetConnection()
+	db := database.Connect()
 
 	importer.Saver = &BCDASaver{
 		Repo: postgres.NewRepository(db),

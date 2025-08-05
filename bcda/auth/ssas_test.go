@@ -71,7 +71,7 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 	origSSASClientID = conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	origSSASSecret = conf.GetEnv("BCDA_SSAS_SECRET")
 
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 	s.r = postgres.NewRepository(s.db)
 }
 

@@ -63,7 +63,7 @@ type WorkerTestSuite struct {
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 	s.r = postgres.NewRepository(s.db)
 	s.w = NewWorker(s.db)
 

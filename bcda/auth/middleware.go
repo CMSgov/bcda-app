@@ -171,7 +171,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 	})
 }
 
-func (m AuthMiddleware) RequireTokenJobMatch(connection *sql.DB) func(next http.Handler) http.Handler {
+func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rw := getRespWriter(r.URL.Path)
@@ -191,7 +191,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(connection *sql.DB) func(next http.
 				return
 			}
 
-			repository := postgres.NewRepository(connection)
+			repository := postgres.NewRepository(db)
 
 			job, err := repository.GetJobByID(r.Context(), uint(jobID))
 			if err != nil {

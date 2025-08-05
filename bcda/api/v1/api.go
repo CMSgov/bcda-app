@@ -28,13 +28,13 @@ import (
 )
 
 type ApiV1 struct {
-	connection    *sql.DB
+	db            *sql.DB
 	handler       *api.Handler
 	provider      auth.Provider
 	healthChecker health.HealthChecker
 }
 
-func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) *ApiV1 {
+func NewApiV1(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -46,9 +46,9 @@ func NewApiV1(connection *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) 
 		panic("Failed to configure resource DataTypes")
 	}
 
-	hc := health.NewHealthChecker(connection)
-	h := api.NewHandler(resources, "/v1/fhir", "v1", connection, pool)
-	return &ApiV1{connection: connection, handler: h, provider: provider, healthChecker: hc}
+	hc := health.NewHealthChecker(db)
+	h := api.NewHandler(resources, "/v1/fhir", "v1", db, pool)
+	return &ApiV1{db: db, handler: h, provider: provider, healthChecker: hc}
 }
 
 /*

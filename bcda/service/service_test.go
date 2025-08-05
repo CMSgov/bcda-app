@@ -492,7 +492,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 // - Diff between CCLF File 1 and CCLF File 2
 // - No diff - consider all beneficiaries as pre-existing
 func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParameter_Integration() {
-	db := database.GetConnection()
+	db := database.Connect()
 	acoID := "A0005"
 
 	// Test Setup
@@ -1657,7 +1657,7 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 }
 
 func (s *ServiceTestSuiteWithDatabase) TestGetNewAndExistingBeneficiaries_RecentSinceParameterDatabase_Integration() {
-	db := database.GetConnection()
+	db := database.Connect()
 	acoID := "A0005"
 
 	// Test Setup

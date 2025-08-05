@@ -13,8 +13,8 @@ type HealthChecker struct {
 	db *sql.DB
 }
 
-func NewHealthChecker(connection *sql.DB) HealthChecker {
-	return HealthChecker{db: connection}
+func NewHealthChecker(db *sql.DB) HealthChecker {
+	return HealthChecker{db: db}
 }
 
 func (h HealthChecker) IsDatabaseOK() (result string, ok bool) {

@@ -67,8 +67,8 @@ func TestWork_Integration(t *testing.T) {
 	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
 	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
 
-	db := database.GetConnection()
-	pool := database.GetPool()
+	db := database.Connect()
+	pool := database.ConnectPool()
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}
@@ -156,7 +156,7 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	cleanupJobWorker := &CleanupJobWorker{
 		cleanupJob:      mockCleanupJob.CleanupJob,
 		archiveExpiring: mockArchiveExpiring.ArchiveExpiring,
-		db:              database.GetConnection(),
+		db:              database.Connect(),
 	}
 
 	// Create a mock river.Job
@@ -213,7 +213,7 @@ func TestGetAWSParams(t *testing.T) {
 }
 
 func TestNewCleanupJobWorker(t *testing.T) {
-	worker := NewCleanupJobWorker(database.GetConnection())
+	worker := NewCleanupJobWorker(database.Connect())
 
 	assert.NotNil(t, worker)
 	assert.NotNil(t, worker.cleanupJob)

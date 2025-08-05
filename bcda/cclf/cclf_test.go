@@ -73,7 +73,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
-	s.db = database.GetConnection()
+	s.db = database.Connect()
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {

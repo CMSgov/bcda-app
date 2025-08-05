@@ -38,7 +38,7 @@ type SSASMiddlewareTestSuite struct {
 
 func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 	router := chi.NewRouter()
-	am := auth.NewAuthMiddleware(auth.NewProvider(database.GetConnection()))
+	am := auth.NewAuthMiddleware(auth.NewProvider(database.Connect()))
 	router.Use(am.ParseToken)
 	router.With(auth.RequireTokenAuth).Get("/v1/", func(w http.ResponseWriter, r *http.Request) {
 		ad := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)

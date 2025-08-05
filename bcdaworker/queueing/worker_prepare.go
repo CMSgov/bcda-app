@@ -37,7 +37,7 @@ type PrepareJobWorker struct {
 	r        models.Repository
 }
 
-func NewPrepareJobWorker(connection *sql.DB) (*PrepareJobWorker, error) {
+func NewPrepareJobWorker(db *sql.DB) (*PrepareJobWorker, error) {
 
 	logger := log.Worker
 	client.SetLogger(logger)
@@ -50,7 +50,7 @@ func NewPrepareJobWorker(connection *sql.DB) (*PrepareJobWorker, error) {
 		logger.Fatalf("no ACO configs found, these are required for downstream processing")
 	}
 
-	repository := postgres.NewRepository(connection)
+	repository := postgres.NewRepository(db)
 	svc := service.NewService(repository, cfg, "")
 
 	v1, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV1Path))

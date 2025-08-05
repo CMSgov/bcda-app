@@ -26,10 +26,10 @@ import (
 type ApiV2 struct {
 	handler    *api.Handler
 	marshaller *jsonformat.Marshaller
-	connection *sql.DB
+	db         *sql.DB
 }
 
-func NewApiV2(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
+func NewApiV2(db *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -41,14 +41,14 @@ func NewApiV2(connection *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
 	if !ok {
 		panic("Failed to configure resource DataTypes")
 	} else {
-		h := api.NewHandler(resources, "/v2/fhir", "v2", connection, pool)
+		h := api.NewHandler(resources, "/v2/fhir", "v2", db, pool)
 		// Ensure that we write the serialized FHIR resources as a single line.
 		// Needed to comply with the NDJSON format that we are using.
 		marshaller, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
 		if err != nil {
 			log.API.Fatalf("Failed to create marshaller %s", err)
 		}
-		return &ApiV2{marshaller: marshaller, handler: h, connection: connection}
+		return &ApiV2{marshaller: marshaller, handler: h, db: db}
 	}
 }
 

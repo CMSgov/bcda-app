@@ -33,8 +33,8 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	conf.SetEnv(t, "QUEUE_LIBRARY", "river")
 
 	// Need access to the queue database to ensure we've enqueued the job successfully
-	db := database.GetConnection()
-	pool := database.GetPool()
+	db := database.Connect()
+	pool := database.ConnectPool()
 
 	enqueuer := NewEnqueuer(db, pool)
 	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))

@@ -23,7 +23,7 @@ type AuthRouterTestSuite struct {
 
 func (s *AuthRouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
-	s.provider = NewProvider(database.GetConnection())
+	s.provider = NewProvider(database.Connect())
 	s.authRouter = NewAuthRouter(s.provider)
 }
 

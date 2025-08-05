@@ -28,7 +28,7 @@ func TestCreateDatabase(t *testing.T) {
 		assert.NoError(t, db.Close())
 	})
 
-	db := database.GetConnection()
+	db := database.Connect()
 
 	var count int
 	assert.NoError(t,
