@@ -2,7 +2,6 @@ package slack_utils
 
 import (
 	"context"
-	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
@@ -17,8 +16,20 @@ const (
 	FailureMsg        = "FAILURE"
 )
 
-func SendSlackMessage(sc *slack.Client, channel string, msg string, icon string) {
-	_, _, err := sc.PostMessageContext(context.Background(), channel, slack.MsgOptionText(fmt.Sprint(msg), false), slack.MsgOptionIconEmoji(icon))
+func SendSlackMessage(sc *slack.Client, channel string, msg string, status bool) {
+	var color string
+	switch status {
+	case false:
+		color = "danger"
+	case true:
+		color = "good"
+	}
+
+	a := slack.Attachment{
+		Color: color,
+		Text:  msg,
+	}
+	_, _, err := sc.PostMessageContext(context.Background(), channel, slack.MsgOptionAttachments(a))
 	if err != nil {
 		log.Errorf("Failed to send slack message: %+v", err)
 	}
