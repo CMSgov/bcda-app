@@ -71,7 +71,7 @@ func (s *CLITestSuite) SetupSuite() {
 
 	s.db = database.Connect()
 	db = s.db
-	r = postgres.NewRepository(s.db)
+	repository = postgres.NewRepository(s.db)
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	s.testACO = models.ACO{Name: uuid.New(), UUID: uuid.NewRandom(), ClientID: uuid.New(), CMSID: &cmsID}
@@ -151,14 +151,10 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 			m := &auth.MockProvider{}
 			m.On("FindAndCreateACOCredentials", *s.testACO.CMSID, ips).Return("mock\ncreds\ntest", nil)
 
-			oldProvider := provider
-			s.SetProvider(m)
-			defer s.SetProvider(oldProvider)
-
 			buf := new(bytes.Buffer)
 			s.testApp.Writer = buf
 
-			msg, err := generateClientCredentials(*s.testACO.CMSID, ips)
+			msg, err := generateClientCredentials(m, *s.testACO.CMSID, ips)
 			assert.Nil(t, err)
 			assert.Regexp(t, regexp.MustCompile(".+\n.+\n.+"), msg)
 			assert.Equal(t, "mock\ncreds\ntest", msg)
@@ -198,17 +194,14 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 		auth.Credentials{ClientName: *s.testACO.CMSID, ClientID: s.testACO.ClientID,
 			ClientSecret: uuid.New()},
 		nil)
-	oldProvider := provider
-	s.SetProvider(mock)
-	defer s.SetProvider(oldProvider)
 
 	// execute positive scenario
-	msg, err := resetClientCredentials(r, *s.testACO.CMSID)
+	msg, err := resetClientCredentials(repository, mock, *s.testACO.CMSID)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, msg)
 
 	// Execute with invalid ACO CMS ID
-	msg, err = resetClientCredentials(r, "BLAH")
+	msg, err = resetClientCredentials(repository, mock, "BLAH")
 	assert.Equal("no ACO record found for BLAH", err.Error())
 	assert.Equal(0, len(msg))
 
@@ -224,15 +217,12 @@ func (s *CLITestSuite) TestRevokeToken() {
 	accessToken := uuid.New()
 	mock := &auth.MockProvider{}
 	mock.On("RevokeAccessToken", accessToken).Return(nil)
-	oldProvider := provider
-	s.SetProvider(mock)
-	defer s.SetProvider(oldProvider)
 
-	err := revokeAccessToken(accessToken)
+	err := revokeAccessToken(mock, accessToken)
 	assert.Nil(err)
 
 	// Negative case - attempt to revoke a token passing in a blank token string
-	err = revokeAccessToken("")
+	err = revokeAccessToken(mock, "")
 	assert.Equal("Access token (--access-token) must be provided", err.Error())
 	mock.AssertExpectations(s.T())
 }

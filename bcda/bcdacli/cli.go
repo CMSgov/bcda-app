@@ -48,10 +48,10 @@ const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
 var (
-	db       *sql.DB
-	pool     *pgxv5Pool.Pool
-	r        models.Repository
-	provider auth.Provider
+	db         *sql.DB
+	pool       *pgxv5Pool.Pool
+	repository models.Repository
+	provider   auth.Provider
 )
 
 func GetApp() *cli.App {
@@ -66,7 +66,7 @@ func setUpApp() *cli.App {
 	app.Before = func(c *cli.Context) error {
 		db = database.Connect()
 		pool = database.ConnectPool()
-		r = postgres.NewRepository(db)
+		repository = postgres.NewRepository(db)
 		provider = auth.NewProvider(db)
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
@@ -174,7 +174,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				ssasID, err := createGroup(groupID, groupName, acoID)
+				ssasID, err := createGroup(repository, groupID, groupName, acoID)
 				if err != nil {
 					return err
 				}
@@ -199,7 +199,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID)
+				acoUUID, err := createACO(repository, acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -220,7 +220,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				err := revokeAccessToken(accessToken)
+				err := revokeAccessToken(provider, accessToken)
 				if err != nil {
 					return err
 				}
@@ -252,7 +252,7 @@ func setUpApp() *cli.App {
 				if len(ips) > 0 {
 					ipAddr = strings.Split(ips, ",")
 				}
-				msg, err := generateClientCredentials(acoCMSID, ipAddr)
+				msg, err := generateClientCredentials(provider, acoCMSID, ipAddr)
 				if err != nil {
 					return err
 				}
@@ -272,7 +272,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				msg, err := resetClientCredentials(r, acoCMSID)
+				msg, err := resetClientCredentials(repository, provider, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -478,7 +478,7 @@ func setUpApp() *cli.App {
 					CutoffDate:      time.Now(),
 					DenylistType:    models.Involuntary,
 				}
-				return setDenylistState(acoCMSID, td)
+				return setDenylistState(repository, acoCMSID, td)
 			},
 		},
 		{
@@ -493,14 +493,14 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return setDenylistState(acoCMSID, nil)
+				return setDenylistState(repository, acoCMSID, nil)
 			},
 		},
 	}
 	return app
 }
 
-func createGroup(id, name, acoID string) (string, error) {
+func createGroup(r models.Repository, id, name, acoID string) (string, error) {
 	if id == "" || name == "" || acoID == "" {
 		return "", errors.New("ID (--id), name (--name), and ACO ID (--aco-id) are required")
 	}
@@ -554,7 +554,7 @@ func createGroup(id, name, acoID string) (string, error) {
 	return ssasID, nil
 }
 
-func createACO(name, cmsID string) (string, error) {
+func createACO(r models.Repository, name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -579,9 +579,9 @@ func createACO(name, cmsID string) (string, error) {
 	return aco.UUID.String(), nil
 }
 
-func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
+func generateClientCredentials(p auth.Provider, acoCMSID string, ips []string) (string, error) {
 	// The public key is optional for SSAS, and not used by the ACO API
-	creds, err := provider.FindAndCreateACOCredentials(acoCMSID, ips)
+	creds, err := p.FindAndCreateACOCredentials(acoCMSID, ips)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}
@@ -589,29 +589,29 @@ func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	return creds, nil
 }
 
-func resetClientCredentials(repo models.Repository, acoCMSID string) (string, error) {
+func resetClientCredentials(r models.Repository, p auth.Provider, acoCMSID string) (string, error) {
 	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 	if err != nil {
 		return "", err
 	}
 
 	// Generate new credentials
-	creds, err := provider.ResetSecret(aco.ClientID)
+	creds, err := p.ResetSecret(aco.ClientID)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret), nil
 }
 
-func revokeAccessToken(accessToken string) error {
+func revokeAccessToken(p auth.Provider, accessToken string) error {
 	if accessToken == "" {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	return provider.RevokeAccessToken(accessToken)
+	return p.RevokeAccessToken(accessToken)
 }
 
-func setDenylistState(cmsID string, td *models.Termination) error {
+func setDenylistState(r models.Repository, cmsID string, td *models.Termination) error {
 	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
 	if err != nil {
 		return err
