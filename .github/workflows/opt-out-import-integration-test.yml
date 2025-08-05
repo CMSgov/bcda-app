@@ -97,6 +97,7 @@ jobs:
         run: |
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-dev-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+          echo $FILENAME
           SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
             echo "suppression_file query returned zero results or command failed"
