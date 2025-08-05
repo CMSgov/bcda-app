@@ -17,16 +17,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	Connection *sql.DB
-	Pgxv5Pool  *pgxv5Pool.Pool
-)
-
-func init() {
-	Connection = GetConnection()
-	Pgxv5Pool = GetPool()
-}
-
 func GetConnection() *sql.DB {
 	cfg, err := LoadConfig()
 	if err != nil {
