@@ -272,7 +272,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				msg, err := resetClientCredentials(acoCMSID)
+				msg, err := resetClientCredentials(r, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -589,7 +589,7 @@ func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	return creds, nil
 }
 
-func resetClientCredentials(acoCMSID string) (string, error) {
+func resetClientCredentials(repo models.Repository, acoCMSID string) (string, error) {
 	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 	if err != nil {
 		return "", err
