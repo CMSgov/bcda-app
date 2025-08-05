@@ -68,7 +68,6 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	id := uuid.NewRandom()
 
 	if data.CleanUp == nil {
-		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Started Create ACO lambda in %s env.", os.Getenv("ENV")), true)
 
 		// run the regular logic (non-rollback transaction)
 		err = handleCreateACO(ctx, conn, data, id)

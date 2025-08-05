@@ -64,15 +64,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		log.Errorf("failed to create SSAS client: %s", err)
 	}
 
-	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Started Create Group lambda in %s env.", os.Getenv("ENV")), "")
 	err = handleCreateGroup(ssas, r, data)
 	if err != nil {
-		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Failed: Create Group lambda in %s env.", os.Getenv("ENV")), slUtls.FailureIcon)
+		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slUtls.FailureMsg, os.Getenv("ENV")), false)
 		log.Errorf("Failed to Create Group: %+v", err)
 		return err
 	}
 
-	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Success: Create Group lambda in %s env.", os.Getenv("ENV")), slUtls.SuccessIcon)
+	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slUtls.SuccessMsg, os.Getenv("ENV")), true)
 	log.Info("Completed Create Group administrative task")
 
 	return nil

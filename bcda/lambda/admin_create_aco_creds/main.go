@@ -72,16 +72,14 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	s3Service := s3.New(session)
 	slackClient := slack.New(params.slackToken)
 
-	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("Started Create ACO Credentials lambda in %s env.", os.Getenv("ENV")), "")
-
 	s3Path, err := handleCreateACOCreds(ctx, data, s3Service, params.credsBucket)
 	if err != nil {
-		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slUtls.FailureMsg, os.Getenv("ENV")), slUtls.FailureIcon)
+		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slUtls.FailureMsg, os.Getenv("ENV")), false)
 		log.Errorf("Failed to handle Create ACO creds: %+v", err)
 		return "", err
 	}
 
-	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slUtls.SuccessMsg, os.Getenv("ENV")), slUtls.SuccessIcon)
+	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slUtls.SuccessMsg, os.Getenv("ENV")), true)
 
 	log.Info("Completed Create ACO Creds administrative task")
 
