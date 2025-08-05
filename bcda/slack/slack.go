@@ -10,18 +10,13 @@ import (
 const (
 	OperationsChannel = "C0992DK6Y01" // #bcda-operations
 	AlertsChannel     = "C034CFU945C" // #bcda-alerts
-	SuccessIcon       = "white_check_mark"
-	FailureIcon       = "rotating_light"
 	SuccessMsg        = "SUCCESS"
 	FailureMsg        = "FAILURE"
 )
 
 func SendSlackMessage(sc *slack.Client, channel string, msg string, status bool) {
-	var color string
-	switch status {
-	case false:
-		color = "danger"
-	case true:
+	color := "danger"
+	if status == true {
 		color = "good"
 	}
 
