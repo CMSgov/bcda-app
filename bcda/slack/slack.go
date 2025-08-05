@@ -16,7 +16,7 @@ const (
 
 func SendSlackMessage(sc *slack.Client, channel string, msg string, status bool) {
 	color := "danger"
-	if status == true {
+	if status {
 		color = "good"
 	}
 
