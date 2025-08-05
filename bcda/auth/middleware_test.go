@@ -67,13 +67,8 @@ func (s *MiddlewareTestSuite) CreateServer(p auth.Provider) *httptest.Server {
 }
 
 func (s *MiddlewareTestSuite) SetupTest() {
-	// s.server = httptest.NewServer(s.CreateRouter(auth.NewProvider(s.connection)))
 	s.rr = httptest.NewRecorder()
 }
-
-// func (s *MiddlewareTestSuite) TearDownTest() {
-// 	s.server.Close()
-// }
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignature() {
