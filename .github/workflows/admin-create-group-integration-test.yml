@@ -77,7 +77,7 @@ jobs:
       - name: Remove new group from database
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-instances --db-instance-identifier bcda-dev 2>&1 | jq -r '.DBInstances[0].Endpoint.Address' 2>&1)
+          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-dev-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
           GROUP_COUNT=`psql -tA "$CONNECTION_URL" -c "SELECT COUNT(*) FROM groups WHERE group_id='${{ env.GROUP }}' " 2>&1`
           if [[ $? -ne 0 || $GROUP_COUNT -ne 1 ]]; then
