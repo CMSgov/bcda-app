@@ -91,19 +91,21 @@ func (s *RateLimitMiddlewareTestSuite) TestHasConcurrentJobs() {
 	}
 
 	for _, tt := range tests {
-		mockRepo := &models.MockRepository{}
-		mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-			append(ignoredJobs, tt.additionalJobs...),
-			nil,
-		)
-		middleware.repository = mockRepo
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockRepo := &models.MockRepository{}
+			mockRepo.On("GetJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				append(ignoredJobs, tt.additionalJobs...),
+				nil,
+			)
+			middleware.repository = mockRepo
 
-		rr := httptest.NewRecorder()
-		middleware.CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			// Conncurrent job test route check, blank return for overrides
-		})).ServeHTTP(rr, getRequest(tt.rp))
+			rr := httptest.NewRecorder()
+			middleware.CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				// Conncurrent job test route check, blank return for overrides
+			})).ServeHTTP(rr, getRequest(tt.rp))
 
-		assert.NotEmpty(s.T(), rr.Header().Get("Retry-After"))
+			assert.NotEmpty(s.T(), rr.Header().Get("Retry-After"))
+		})
 	}
 }
 
@@ -157,8 +159,10 @@ func (s *RateLimitMiddlewareTestSuite) TestHasDuplicatesFullString() {
 	}
 
 	for _, tt := range tests {
-		responseBool := middleware.hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
-		assert.Equal(s.T(), tt.expectedValue, responseBool)
+		s.T().Run(tt.name, func(t *testing.T) {
+			responseBool := middleware.hasDuplicates(ctx, otherJobs, tt.rp.ResourceTypes, tt.rp.Version, tt.rp.RequestURL)
+			assert.Equal(s.T(), tt.expectedValue, responseBool)
+		})
 	}
 }
 
@@ -179,7 +183,9 @@ func (s *RateLimitMiddlewareTestSuite) TestShouldRateLimit() {
 	}
 
 	for _, tt := range tests {
-		actualValue := shouldRateLimit(tt.config, tt.cmsID)
-		assert.Equal(s.T(), tt.expectedValue, actualValue, tt.name)
+		s.T().Run(tt.name, func(t *testing.T) {
+			actualValue := shouldRateLimit(tt.config, tt.cmsID)
+			assert.Equal(s.T(), tt.expectedValue, actualValue, tt.name)
+		})
 	}
 }
