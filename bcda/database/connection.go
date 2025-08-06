@@ -31,7 +31,7 @@ func Connect() *sql.DB {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	startConnectionHealthCheck(
+	startDBHealthCheck(
 		ctx,
 		conn,
 		time.Duration(cfg.HealthCheckSec)*time.Second,
@@ -126,17 +126,17 @@ func CreatePgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 //
 // startHealthCheck returns immediately with the health check running in a goroutine that
 // can be stopped via the supplied context
-func startConnectionHealthCheck(ctx context.Context, db *sql.DB, interval time.Duration) {
+func startDBHealthCheck(ctx context.Context, db *sql.DB, interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		for {
 			select {
 			case <-ctx.Done():
 				ticker.Stop()
-				logrus.Debug("Stopping health checker")
+				logrus.Debug("Stopping DB health checker")
 				return
 			case <-ticker.C:
-				logrus.StandardLogger().Debug("Sending ping")
+				logrus.StandardLogger().Debug("Sending ping via DB connection")
 
 				// Handle acquiring connection, pinging, and releasing App DB connection
 				if err := db.Ping(); err != nil {
@@ -154,10 +154,10 @@ func startPoolHealthCheck(ctx context.Context, pgxv5Pool *pgxv5Pool.Pool, interv
 			select {
 			case <-ctx.Done():
 				ticker.Stop()
-				logrus.Debug("Stopping health checker")
+				logrus.Debug("Stopping pool health checker")
 				return
 			case <-ticker.C:
-				logrus.StandardLogger().Debug("Sending ping")
+				logrus.StandardLogger().Debug("Sending ping via pool connection")
 
 				pgxv5Conn, err := pgxv5Pool.Acquire(ctx)
 				if err != nil {
