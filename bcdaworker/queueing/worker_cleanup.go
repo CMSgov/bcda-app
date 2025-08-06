@@ -18,6 +18,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
+// TODO: Consider moving functions like cleanupJob and archiveExpiring to receiver methods of CleanupJobWorker
 type CleanupJobWorker struct {
 	river.WorkerDefaults[worker_types.CleanupJobArgs]
 	cleanupJob      func(*sql.DB, time.Time, models.JobStatus, models.JobStatus, ...string) error
