@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -149,14 +148,18 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	importer.Logger.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
 
-	conn, err := stdlib.AcquireConn(db)
-	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
+	conn, err := database.Pgxv5Pool.Acquire(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to acquire connection: %w", err)
+		importer.Logger.Error(err)
+		return err
+	}
+	defer conn.Release()
 
-	tx, err := conn.BeginEx(ctx, nil)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
 		importer.Logger.Error(err)
-
 		return err
 	}
 
@@ -164,7 +167,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	defer func() {
 		if err != nil {
-			if err1 := tx.Rollback(); err1 != nil {
+			if err1 := tx.Rollback(ctx); err1 != nil {
 				importer.Logger.Warnf("Failed to rollback transaction %s", err.Error())
 			}
 			return
@@ -218,7 +221,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 		importer.Logger.Error(err)
 	}
 
-	if err = tx.Commit(); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		importer.Logger.Error(err.Error())
 		failMsg := fmt.Sprintf("failed to commit transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
 		return errors.Wrap(err, failMsg)
