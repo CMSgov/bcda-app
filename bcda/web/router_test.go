@@ -324,8 +324,8 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 	assert.Equal(s.T(), http.StatusMethodNotAllowed, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
-func createACO(cmsID string, blackListValue *models.Termination) models.ACO {
-	return models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: blackListValue}
+func createACO(cmsID string, denyListValue *models.Termination) models.ACO {
+	return models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: denyListValue}
 }
 func createTestToken(cmsID string) (token *jwt.Token) {
 	token = &jwt.Token{
@@ -352,7 +352,7 @@ func createExpectedAuthData(cmsID string, aco models.ACO) auth.AuthData {
 	}
 }
 
-func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite, p auth.Provider) (configs []struct {
+func createConfigsForACODenylistingScenarios(s *RouterTestSuite, p auth.Provider) (configs []struct {
 	handler http.Handler
 	paths   []string
 }) {
@@ -378,8 +378,8 @@ func setExpectedMockCalls(s *RouterTestSuite, mockP *auth.MockProvider, token *j
 }
 
 // integration test, requires connection to postgres db
-// TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
-func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
+// TestDenylistedACOs ensures that we return 403 FORBIDDEN when a call is made from a denylisted ACO.
+func (s *RouterTestSuite) TestDenylistedACOReturn403WhenACODenylisted() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -388,14 +388,14 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	// Set up
 	cmsID := testUtils.RandomHexID()[0:4]
 
-	blackListValue := &models.Termination{
+	denyListValue := &models.Termination{
 
 		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 		DenylistType:    models.Involuntary,
 	}
 
-	aco := createACO(cmsID, blackListValue)
+	aco := createACO(cmsID, denyListValue)
 
 	bearerString := uuid.New()
 	token := createTestToken(cmsID)
@@ -407,12 +407,12 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := createConfigsForACOBlacklistingScenarios(s, mock)
+	configs := createConfigsForACODenylistingScenarios(s, mock)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
 
-			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blackListValue, path), func(t *testing.T) {
+			s.T().Run(fmt.Sprintf("denylist-value-%v-%s", denyListValue, path), func(t *testing.T) {
 				fmt.Println(aco.Denylisted())
 				fmt.Println(aco.UUID.String())
 				postgrestest.UpdateACO(t, db, aco)
@@ -431,7 +431,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	mock.AssertExpectations(s.T())
 }
 
-func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() {
+func (s *RouterTestSuite) TestDenylistedACOReturnNOT403WhenACONOTDenylisted() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -452,12 +452,12 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := createConfigsForACOBlacklistingScenarios(s, mock)
+	configs := createConfigsForACODenylistingScenarios(s, mock)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
 
-			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", nil, path), func(t *testing.T) {
+			s.T().Run(fmt.Sprintf("denylist-value-%v-%s", nil, path), func(t *testing.T) {
 				fmt.Println(aco.Denylisted())
 				fmt.Println(aco.UUID.String())
 				postgrestest.UpdateACO(t, db, aco)
