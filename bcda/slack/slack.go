@@ -12,13 +12,11 @@ const (
 	AlertsChannel     = "C034CFU945C" // #bcda-alerts
 	SuccessMsg        = "SUCCESS"
 	FailureMsg        = "FAILURE"
+	Danger            = "danger"
+	Good              = "good"
 )
 
-func SendSlackMessage(sc *slack.Client, channel string, msg string, status bool) {
-	color := "danger"
-	if status {
-		color = "good"
-	}
+func SendSlackMessage(sc *slack.Client, channel string, msg string, color string) {
 
 	a := slack.Attachment{
 		Color: color,

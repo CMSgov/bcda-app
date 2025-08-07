@@ -8,7 +8,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	slUtls "github.com/CMSgov/bcda-app/bcda/slack"
+	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
 	"github.com/CMSgov/bcda-app/bcdaworker/cleanup"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -68,7 +68,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	if err := w.cleanupJob(w.db, cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupArchArg)))
 
-		slUtls.SendSlackMessage(slackClient, slUtls.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slUtls.FailureMsg, environment), false)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slackUtils.FailureMsg, environment), slackUtils.Danger)
 
 		return err
 	}
@@ -77,7 +77,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	if err := w.cleanupJob(w.db, cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupFailedArg)))
 
-		slUtls.SendSlackMessage(slackClient, slUtls.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slUtls.FailureMsg, environment), false)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slackUtils.FailureMsg, environment), slackUtils.Danger)
 
 		return err
 	}
@@ -86,7 +86,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	if err := w.cleanupJob(w.db, cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.CleanupCancelledArg)))
 
-		slUtls.SendSlackMessage(slackClient, slUtls.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slUtls.FailureMsg, environment), false)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slackUtils.FailureMsg, environment), slackUtils.Danger)
 
 		return err
 	}
@@ -95,12 +95,12 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	if err := w.archiveExpiring(w.db, cutoff); err != nil {
 		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job: %s", constants.ArchiveJobFiles)))
 
-		slUtls.SendSlackMessage(slackClient, slUtls.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slUtls.FailureMsg, environment), false)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", slackUtils.FailureMsg, environment), slackUtils.Danger)
 
 		return err
 	}
 
-	slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Archive and Clean Job Data for %s env.", slUtls.SuccessMsg, environment), true)
+	slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Archive and Clean Job Data for %s env.", slackUtils.SuccessMsg, environment), slackUtils.Good)
 
 	return nil
 }

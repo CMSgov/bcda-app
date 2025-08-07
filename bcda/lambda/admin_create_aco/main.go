@@ -72,11 +72,11 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		// run the regular logic (non-rollback transaction)
 		err = handleCreateACO(ctx, conn, data, id)
 		if err != nil {
-			slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), false)
+			slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), slackUtils.Danger)
 			log.Errorf("Failed to handle Create ACO: %+v", err)
 			return err
 		}
-		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), true)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), slackUtils.Good)
 
 	} else {
 		// create a rollbackable transaction

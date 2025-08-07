@@ -66,12 +66,12 @@ func handler(ctx context.Context, event json.RawMessage) error {
 
 	err = handleCreateGroup(ssas, r, data)
 	if err != nil {
-		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), false)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), slackUtils.Danger)
 		log.Errorf("Failed to Create Group: %+v", err)
 		return err
 	}
 
-	slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), true)
+	slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), slackUtils.Good)
 	log.Info("Completed Create Group administrative task")
 
 	return nil
