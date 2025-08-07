@@ -1,16 +1,24 @@
 package health
 
 import (
+	"database/sql"
+
 	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/log"
 	_ "github.com/jackc/pgx"
 )
 
-func IsDatabaseOK() (result string, ok bool) {
-	db := database.Connection
-	if err := db.Ping(); err != nil {
+type HealthChecker struct {
+	db *sql.DB
+}
+
+func NewHealthChecker(db *sql.DB) HealthChecker {
+	return HealthChecker{db: db}
+}
+
+func (h HealthChecker) IsDatabaseOK() (result string, ok bool) {
+	if err := h.db.Ping(); err != nil {
 		log.API.Error("Health check: database ping error: ", err.Error())
 		return "database ping error", false
 	}
@@ -18,9 +26,8 @@ func IsDatabaseOK() (result string, ok bool) {
 	return "ok", true
 }
 
-func IsWorkerDatabaseOK() (result string, ok bool) {
-	db := database.Connection
-	if err := db.Ping(); err != nil {
+func (h HealthChecker) IsWorkerDatabaseOK() (result string, ok bool) {
+	if err := h.db.Ping(); err != nil {
 		log.Worker.Error("Health check: database ping error: ", err.Error())
 		return "database ping error", false
 	}
@@ -28,7 +35,7 @@ func IsWorkerDatabaseOK() (result string, ok bool) {
 	return "ok", true
 }
 
-func IsBlueButtonOK() bool {
+func (h HealthChecker) IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
 	if err != nil {
 		log.Worker.Error("Health check: Blue Button client error: ", err.Error())
@@ -44,7 +51,7 @@ func IsBlueButtonOK() bool {
 	return true
 }
 
-func IsSsasOK() (result string, ok bool) {
+func (h HealthChecker) IsSsasOK() (result string, ok bool) {
 	c, err := ssasClient.NewSSASClient()
 	if err != nil {
 		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())

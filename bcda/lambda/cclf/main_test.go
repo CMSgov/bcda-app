@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
@@ -16,8 +17,12 @@ import (
 
 type AttributionImportMainSuite struct {
 	suite.Suite
+	db *sql.DB
 }
 
+func (s *AttributionImportMainSuite) SetupSuite() {
+	s.db = database.Connect()
+}
 func TestAttributionImportMainSuite(t *testing.T) {
 	suite.Run(t, new(AttributionImportMainSuite))
 }
@@ -53,8 +58,8 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	}
 
 	for _, tc := range tests {
-		postgrestest.DeleteCCLFFilesByCMSID(s.T(), database.Connection, targetACO)
-		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), database.Connection, targetACO)
+		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 
 		path, cleanup := testUtils.CopyToS3(s.T(), tc.path)
 		defer cleanup()

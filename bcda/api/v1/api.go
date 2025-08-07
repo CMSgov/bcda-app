@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,11 +24,17 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
-var h *api.Handler
+type ApiV1 struct {
+	db            *sql.DB
+	handler       *api.Handler
+	provider      auth.Provider
+	healthChecker health.HealthChecker
+}
 
-func init() {
+func NewApiV1(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) *ApiV1 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -35,11 +42,13 @@ func init() {
 		"Observation",
 	}...)
 
-	if ok {
-		h = api.NewHandler(resources, "/v1/fhir", "v1")
-	} else {
+	if !ok {
 		panic("Failed to configure resource DataTypes")
 	}
+
+	hc := health.NewHealthChecker(db)
+	h := api.NewHandler(resources, "/v1/fhir", "v1", db, pool)
+	return &ApiV1{db: db, handler: h, provider: provider, healthChecker: hc}
 }
 
 /*
@@ -64,8 +73,8 @@ Responses:
 	429: tooManyRequestsResponse
 	500: errorResponse
 */
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkPatientRequest(w, r)
+func (a ApiV1) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkPatientRequest(w, r)
 }
 
 /*
@@ -92,8 +101,8 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 			429: tooManyRequestsResponse
 			500: errorResponse
 */
-func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkGroupRequest(w, r)
+func (a ApiV1) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkGroupRequest(w, r)
 }
 
 /*
@@ -122,8 +131,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobStatus(w, r)
+func (a ApiV1) JobStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobStatus(w, r)
 }
 
 /*
@@ -162,8 +171,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobsStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobsStatus(w, r)
+func (a ApiV1) JobsStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobsStatus(w, r)
 }
 
 type gzipResponseWriter struct {
@@ -204,8 +213,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func DeleteJob(w http.ResponseWriter, r *http.Request) {
-	h.DeleteJob(w, r)
+func (a ApiV1) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	a.handler.DeleteJob(w, r)
 }
 
 /*
@@ -229,8 +238,8 @@ Responses:
 	200: AttributionFileStatusResponse
 	404: notFoundResponse
 */
-func AttributionStatus(w http.ResponseWriter, r *http.Request) {
-	h.AttributionStatus(w, r)
+func (a ApiV1) AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.AttributionStatus(w, r)
 }
 
 /*
@@ -360,7 +369,7 @@ Responses:
 
 	200: MetadataResponse
 */
-func Metadata(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) Metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 
 	scheme := "http"
@@ -390,7 +399,7 @@ Responses:
 
 	200: VersionResponse
 */
-func GetVersion(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) GetVersion(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["version"] = constants.Version
 	respBytes, err := json.Marshal(respMap)
@@ -409,11 +418,11 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	m := make(map[string]string)
 
-	dbStatus, dbOK := health.IsDatabaseOK()
-	ssasStatus, ssasOK := health.IsSsasOK()
+	dbStatus, dbOK := a.healthChecker.IsDatabaseOK()
+	ssasStatus, ssasOK := a.healthChecker.IsSsasOK()
 
 	m["database"] = dbStatus
 	m["ssas"] = ssasStatus
@@ -454,10 +463,10 @@ Responses:
 
 	200: AuthResponse
 */
-func GetAuthInfo(w http.ResponseWriter, r *http.Request) {
+func (a ApiV1) GetAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["auth_provider"] = auth.GetProviderName()
-	version, err := auth.GetProvider().GetVersion()
+	version, err := a.provider.GetVersion()
 	if err == nil {
 		respMap["version"] = version
 	} else {

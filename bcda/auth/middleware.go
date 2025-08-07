@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -13,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -31,13 +31,21 @@ var (
 	AuthDataContextKey = &contextKey{"ad"}
 )
 
+type AuthMiddleware struct {
+	provider Provider
+}
+
+func NewAuthMiddleware(provider Provider) AuthMiddleware {
+	return AuthMiddleware{provider: provider}
+}
+
 // ParseToken puts the decoded token and AuthData value into the request context. Decoded values come from
 // tokens verified by our provider as correct and unexpired. Tokens may be presented in requests to
 // unauthenticated endpoints (mostly swagger?). We still want to extract the token data for logging purposes,
 // even when we don't use it for authorization. Authorization for protected endpoints occurs in RequireTokenAuth().
 // Only auth code should look at the token claims; API code should rely on the values in AuthData. We use AuthData
 // to insulate API code from the differences among Provider tokens.
-func ParseToken(next http.Handler) http.Handler {
+func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// ParseToken is called on every request, but not every request has a token
@@ -60,7 +68,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 		tokenString := authSubmatches[1]
 
-		token, ad, err := AuthorizeAccess(r.Context(), tokenString)
+		token, ad, err := m.AuthorizeAccess(r.Context(), tokenString)
 		if err != nil {
 			handleTokenVerificationError(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, rw, err)
 			return
@@ -73,10 +81,10 @@ func ParseToken(next http.Handler) http.Handler {
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
-func AuthorizeAccess(ctx context.Context, tokenString string) (*jwt.Token, AuthData, error) {
+func (m AuthMiddleware) AuthorizeAccess(ctx context.Context, tokenString string) (*jwt.Token, AuthData, error) {
 	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
-	token, err := GetProvider().VerifyToken(ctx, tokenString)
+	token, err := m.provider.VerifyToken(ctx, tokenString)
 
 	var ad AuthData
 
@@ -92,7 +100,7 @@ func AuthorizeAccess(ctx context.Context, tokenString string) (*jwt.Token, AuthD
 		return nil, ad, errors.New("invalid ssas claims")
 	}
 
-	ad, err = GetProvider().getAuthDataFromClaims(claims)
+	ad, err = m.provider.getAuthDataFromClaims(claims)
 	if err != nil {
 		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
@@ -163,43 +171,46 @@ func CheckBlacklist(next http.Handler) http.Handler {
 	})
 }
 
-func RequireTokenJobMatch(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			rw := getRespWriter(r.URL.Path)
 
-		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
-		if !ok {
-			log.Auth.Error("Auth data not found")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
-			return
+			ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
+			if !ok {
+				log.Auth.Error("Auth data not found")
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
+				return
+			}
+
+			//Throw an invalid request for non-unsigned integers
+			jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
+			if err != nil {
+				log.Auth.Error(err)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+				return
+			}
+
+			repository := postgres.NewRepository(db)
+
+			job, err := repository.GetJobByID(r.Context(), uint(jobID))
+			if err != nil {
+				log.Auth.Error(err)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
+				return
+			}
+
+			// ACO did not create the job
+			if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
+				log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
+					ad.ACOID, job.ID, job.ACOID)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
+				return
+			}
+			next.ServeHTTP(w, r)
 		}
-
-		//Throw an invalid request for non-unsigned integers
-		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
-		if err != nil {
-			log.Auth.Error(err)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
-			return
-		}
-
-		repository := postgres.NewRepository(database.Connection)
-
-		job, err := repository.GetJobByID(r.Context(), uint(jobID))
-		if err != nil {
-			log.Auth.Error(err)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
-			return
-		}
-
-		// ACO did not create the job
-		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
-			log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
-				ad.ACOID, job.ID, job.ACOID)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+		return http.HandlerFunc(fn)
+	}
 }
 
 type fhirResponseWriter interface {

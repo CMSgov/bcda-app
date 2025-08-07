@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -24,7 +25,7 @@ func main() {
 	// Localstack is a local-development server that mimics AWS. The endpoint variable
 	// should only be set in local development to avoid making external calls to a real AWS account.
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		res, err := handleCclfImport(os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
+		res, err := handleCclfImport(database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
 		if err != nil {
 			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
 		} else {
@@ -39,6 +40,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
+	db := database.Connect()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 
@@ -66,9 +68,9 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
-				return handleCSVImport(s3AssumeRoleArn, filepath)
+				return handleCSVImport(db, s3AssumeRoleArn, filepath)
 			} else {
-				return handleCclfImport(s3AssumeRoleArn, filepath)
+				return handleCclfImport(db, s3AssumeRoleArn, filepath)
 			}
 		}
 	}
@@ -77,7 +79,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	return "", nil
 }
 
-func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleCSVImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -85,7 +87,7 @@ func handleCSVImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
 
 	importer := cclf.CSVImporter{
 		Logger:   logger,
-		Database: database.Connection,
+		Database: db,
 		FileProcessor: &cclf.S3FileProcessor{
 			Handler: optout.S3FileHandler{
 				Logger:        logger,
@@ -128,22 +130,21 @@ func loadBCDAParams() error {
 	return nil
 }
 
-func handleCclfImport(s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleCclfImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
-	importer := cclf.CclfImporter{
-		Logger: logger,
-		FileProcessor: &cclf.S3FileProcessor{
-			Handler: optout.S3FileHandler{
-				Logger:        logger,
-				Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
-				AssumeRoleArn: s3AssumeRoleArn,
-			},
+	fileProcessor := cclf.S3FileProcessor{
+		Handler: optout.S3FileHandler{
+			Logger:        logger,
+			Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
+			AssumeRoleArn: s3AssumeRoleArn,
 		},
 	}
+
+	importer := cclf.NewCclfImporter(logger, &fileProcessor, db)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(s3ImportPath)
 

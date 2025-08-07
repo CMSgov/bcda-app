@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"testing"
@@ -16,12 +17,14 @@ import (
 
 type AuthRouterTestSuite struct {
 	suite.Suite
+	provider   Provider
 	authRouter http.Handler
 }
 
 func (s *AuthRouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
-	s.authRouter = NewAuthRouter()
+	s.provider = NewProvider(database.Connect())
+	s.authRouter = NewAuthRouter(s.provider)
 }
 
 func (s *AuthRouterTestSuite) reqAuthRoute(verb string, route string, body io.Reader) *http.Response {

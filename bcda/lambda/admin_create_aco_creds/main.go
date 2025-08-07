@@ -13,6 +13,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
+	"github.com/CMSgov/bcda-app/bcda/database"
+
 
 	log "github.com/sirupsen/logrus"
 
@@ -69,10 +71,12 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
+	provider := auth.NewProvider(database.Connect())
 	s3Service := s3.New(session)
 	slackClient := slack.New(params.slackToken)
 
-	s3Path, err := handleCreateACOCreds(ctx, data, s3Service, params.credsBucket)
+
+	s3Path, err := handleCreateACOCreds(ctx, data, provider, s3Service, params.credsBucket)
 	if err != nil {
 		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), false)
 		log.Errorf("Failed to handle Create ACO creds: %+v", err)
@@ -89,11 +93,12 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 func handleCreateACOCreds(
 	ctx context.Context,
 	data payload,
+	provider auth.Provider,
 	s3Service s3iface.S3API,
 	credsBucket string,
 ) (string, error) {
 
-	creds, err := auth.GetProvider().FindAndCreateACOCredentials(data.ACOID, data.IPs)
+	creds, err := provider.FindAndCreateACOCredentials(data.ACOID, data.IPs)
 	if err != nil {
 		log.Errorf("Error creating ACO creds: %+v", err)
 

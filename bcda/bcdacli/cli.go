@@ -37,6 +37,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -47,8 +48,10 @@ const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
 var (
-	db *sql.DB
-	r  models.Repository
+	db         *sql.DB
+	pool       *pgxv5Pool.Pool
+	repository models.Repository
+	provider   auth.Provider
 )
 
 func GetApp() *cli.App {
@@ -61,8 +64,11 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
-		db = database.Connection
-		r = postgres.NewRepository(db)
+		db = database.Connect()
+		pool = database.ConnectPool()
+		repository = postgres.NewRepository(db)
+		provider = auth.NewProvider(db)
+		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
 	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
@@ -114,7 +120,7 @@ func setUpApp() *cli.App {
 				go func() { log.API.Fatal(srv.ListenAndServe()) }()
 
 				auth := &http.Server{
-					Handler:           web.NewAuthRouter(),
+					Handler:           web.NewAuthRouter(provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
@@ -122,7 +128,7 @@ func setUpApp() *cli.App {
 				}
 
 				api := &http.Server{
-					Handler:           web.NewAPIRouter(),
+					Handler:           web.NewAPIRouter(db, pool, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
@@ -130,7 +136,7 @@ func setUpApp() *cli.App {
 				}
 
 				fileserver := &http.Server{
-					Handler:           web.NewDataRouter(),
+					Handler:           web.NewDataRouter(db, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
@@ -168,7 +174,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				ssasID, err := createGroup(groupID, groupName, acoID)
+				ssasID, err := createGroup(repository, groupID, groupName, acoID)
 				if err != nil {
 					return err
 				}
@@ -193,7 +199,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID)
+				acoUUID, err := createACO(repository, acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -214,7 +220,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				err := revokeAccessToken(accessToken)
+				err := revokeAccessToken(provider, accessToken)
 				if err != nil {
 					return err
 				}
@@ -246,7 +252,7 @@ func setUpApp() *cli.App {
 				if len(ips) > 0 {
 					ipAddr = strings.Split(ips, ",")
 				}
-				msg, err := generateClientCredentials(acoCMSID, ipAddr)
+				msg, err := generateClientCredentials(provider, acoCMSID, ipAddr)
 				if err != nil {
 					return err
 				}
@@ -266,17 +272,10 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+				msg, err := resetClientCredentials(repository, provider, acoCMSID)
 				if err != nil {
 					return err
 				}
-
-				// Generate new credentials
-				creds, err := auth.GetProvider().ResetSecret(aco.ClientID)
-				if err != nil {
-					return err
-				}
-				msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 				fmt.Fprintf(app.Writer, "%s\n", msg)
 				return nil
 			},
@@ -329,10 +328,7 @@ func setUpApp() *cli.App {
 					}
 				}
 
-				importer := cclf.CclfImporter{
-					Logger:        log.API,
-					FileProcessor: file_processor,
-				}
+				importer := cclf.NewCclfImporter(log.API, file_processor, db)
 
 				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
 				if err != nil {
@@ -399,7 +395,6 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
-				db := database.Connection
 				r := postgres.NewRepository(db)
 
 				var file_handler optout.OptOutFileHandler
@@ -462,7 +457,7 @@ func setUpApp() *cli.App {
 						return errors.New("Unsupported file type.")
 					}
 				}
-				err := cclfUtils.ImportCCLFPackage(acoSize, environment, ft)
+				err := cclfUtils.ImportCCLFPackage(db, acoSize, environment, ft)
 				return err
 			},
 		},
@@ -483,7 +478,7 @@ func setUpApp() *cli.App {
 					CutoffDate:      time.Now(),
 					DenylistType:    models.Involuntary,
 				}
-				return setDenylistState(acoCMSID, td)
+				return setDenylistState(repository, acoCMSID, td)
 			},
 		},
 		{
@@ -498,14 +493,14 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return setDenylistState(acoCMSID, nil)
+				return setDenylistState(repository, acoCMSID, nil)
 			},
 		},
 	}
 	return app
 }
 
-func createGroup(id, name, acoID string) (string, error) {
+func createGroup(r models.Repository, id, name, acoID string) (string, error) {
 	if id == "" || name == "" || acoID == "" {
 		return "", errors.New("ID (--id), name (--name), and ACO ID (--aco-id) are required")
 	}
@@ -559,7 +554,7 @@ func createGroup(id, name, acoID string) (string, error) {
 	return ssasID, nil
 }
 
-func createACO(name, cmsID string) (string, error) {
+func createACO(r models.Repository, name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -584,9 +579,9 @@ func createACO(name, cmsID string) (string, error) {
 	return aco.UUID.String(), nil
 }
 
-func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
+func generateClientCredentials(p auth.Provider, acoCMSID string, ips []string) (string, error) {
 	// The public key is optional for SSAS, and not used by the ACO API
-	creds, err := auth.GetProvider().FindAndCreateACOCredentials(acoCMSID, ips)
+	creds, err := p.FindAndCreateACOCredentials(acoCMSID, ips)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}
@@ -594,15 +589,29 @@ func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	return creds, nil
 }
 
-func revokeAccessToken(accessToken string) error {
+func resetClientCredentials(r models.Repository, p auth.Provider, acoCMSID string) (string, error) {
+	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+	if err != nil {
+		return "", err
+	}
+
+	// Generate new credentials
+	creds, err := p.ResetSecret(aco.ClientID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret), nil
+}
+
+func revokeAccessToken(p auth.Provider, accessToken string) error {
 	if accessToken == "" {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	return auth.GetProvider().RevokeAccessToken(accessToken)
+	return p.RevokeAccessToken(accessToken)
 }
 
-func setDenylistState(cmsID string, td *models.Termination) error {
+func setDenylistState(r models.Repository, cmsID string, td *models.Termination) error {
 	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
 	if err != nil {
 		return err

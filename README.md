@@ -10,10 +10,6 @@ The Beneficiary Claims Data API (BCDA) follows the Bulk FHIR Implementation Guid
 
 A list of core team members responsible for the code and documentation in this repository can be found in [COMMUNITY.md](COMMUNITY.md).
 
-## Repository Structure
-
-<!-- TODO: Add repository structure -->
-
 ## Documentation
 
 Find API documentation on the [BCDA website](https://bcda.cms.gov/sandbox/user-guide/)

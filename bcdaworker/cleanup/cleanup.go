@@ -2,13 +2,13 @@ package cleanup
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/conf"
@@ -16,10 +16,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func ArchiveExpiring(maxDate time.Time) error {
+func ArchiveExpiring(db *sql.DB, maxDate time.Time) error {
 	log.API.Info("Archiving expiring job files...")
 
-	db := database.Connection
 	r := postgres.NewRepository(db)
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
 		time.Time{}, maxDate, models.JobStatusCompleted)
@@ -56,8 +55,7 @@ func ArchiveExpiring(maxDate time.Time) error {
 	return lastJobError
 }
 
-func CleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
-	db := database.Connection
+func CleanupJob(db *sql.DB, maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
 	r := postgres.NewRepository(db)
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
 		time.Time{}, maxDate, currentStatus)

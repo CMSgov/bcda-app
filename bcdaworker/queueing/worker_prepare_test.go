@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	cm "github.com/CMSgov/bcda-app/middleware"
 	"github.com/go-testfixtures/testfixtures/v3"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
@@ -35,9 +36,10 @@ import (
 
 type PrepareWorkerIntegrationTestSuite struct {
 	suite.Suite
-	r   models.Repository
-	db  *sql.DB
-	ctx context.Context
+	r    models.Repository
+	db   *sql.DB
+	pool *pgxv5Pool.Pool
+	ctx  context.Context
 }
 
 func TestCleanupTestSuite(t *testing.T) {
@@ -46,6 +48,7 @@ func TestCleanupTestSuite(t *testing.T) {
 
 func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	s.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	s.pool = database.ConnectPool()
 	tf, err := testfixtures.New(
 		testfixtures.Database(s.db),
 		testfixtures.Dialect("postgres"),
@@ -215,7 +218,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 		},
 	}
 
-	driver := riverpgxv5.New(database.Pgxv5Pool)
+	driver := riverpgxv5.New(s.pool)
 	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
 		s.T().Log(err)
@@ -227,7 +230,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 		r:        r,
 	}
 	w := rivertest.NewWorker(s.T(), driver, &river.Config{}, worker)
-	d := database.Pgxv5Pool
+	d := s.pool
 	tx, err := d.Begin(s.ctx)
 	if err != nil {
 		s.T().Log(err)
@@ -275,13 +278,13 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	}
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
-	driver := riverpgxv5.New(database.Pgxv5Pool)
+	driver := riverpgxv5.New(s.pool)
 	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
 		s.T().Log(err)
 	}
 	w := rivertest.NewWorker(s.T(), driver, &river.Config{}, worker)
-	d := database.Pgxv5Pool
+	d := s.pool
 	tx, err := d.Begin(s.ctx)
 	if err != nil {
 		s.T().Log(err)
@@ -302,7 +305,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
-	w, err := NewPrepareJobWorker()
+	w, err := NewPrepareJobWorker(s.db)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)
 }
@@ -323,12 +326,12 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
-	q := NewEnqueuer()
+	q := NewEnqueuer(s.db, database.ConnectPool())
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}
 
-	driver := riverpgxv5.New(database.Pgxv5Pool)
+	driver := riverpgxv5.New(s.pool)
 	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	assert.Nil(s.T(), err)
 
