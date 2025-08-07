@@ -61,7 +61,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	}
 
 	slackClient := slack.New(slackToken)
-	db := database.Connection
+	db := database.Connect()
 	r := postgres.NewRepository(db)
 	ssas, err := client.NewSSASClient()
 

@@ -33,6 +33,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -45,11 +46,18 @@ var (
 
 type APITestSuite struct {
 	suite.Suite
-	rr *httptest.ResponseRecorder
-	db *sql.DB
+	rr       *httptest.ResponseRecorder
+	db       *sql.DB
+	pool     *pgxv5Pool.Pool
+	provider auth.Provider
+	apiV1    *ApiV1
 }
 
 func (s *APITestSuite) SetupSuite() {
+	s.db = database.Connect()
+	s.provider = auth.NewProvider(s.db)
+	s.apiV1 = NewApiV1(s.db, s.pool, s.provider)
+
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
@@ -66,7 +74,6 @@ func (s *APITestSuite) SetupSuite() {
 }
 
 func (s *APITestSuite) SetupTest() {
-	s.db = database.Connection
 	s.rr = httptest.NewRecorder()
 }
 
@@ -98,7 +105,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
-			JobStatus(rr, req)
+			s.apiV1.JobStatus(rr, req)
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
@@ -137,7 +144,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
 
-			JobStatus(rr, req)
+			s.apiV1.JobStatus(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
 			switch rr.Code {
 			case http.StatusAccepted:
@@ -146,7 +153,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			case http.StatusInternalServerError:
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(t, j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(t, j.CreatedAt.Add(s.apiV1.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
 	}
@@ -171,13 +178,13 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	}
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
-	JobStatus(s.rr, req)
+	s.apiV1.JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get(constants.ContentType))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV1.handler.JobTimeout), s.rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -236,7 +243,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	}
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
-	JobStatus(s.rr, req)
+	s.apiV1.JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get(constants.ContentType))
@@ -272,14 +279,14 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	j.UpdatedAt = time.Now().Add(-(h.JobTimeout + time.Second))
+	j.UpdatedAt = time.Now().Add(-(s.apiV1.handler.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
-	JobStatus(s.rr, req)
+	s.apiV1.JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.T(), j.UpdatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(s.apiV1.handler.JobTimeout), s.rr.Header().Get("Expires"))
 }
 
 func (s *APITestSuite) TestDeleteJobBadInputs() {
@@ -306,7 +313,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
-			JobStatus(rr, req)
+			s.apiV1.JobStatus(rr, req)
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
@@ -345,7 +352,7 @@ func (s *APITestSuite) TestDeleteJob() {
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
 
-			DeleteJob(rr, req)
+			s.apiV1.DeleteJob(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
 			if rr.Code == http.StatusGone {
 				assert.Contains(t, rr.Body.String(), "job was not cancelled because it is not Pending or In Progress")
@@ -425,7 +432,7 @@ func (s *APITestSuite) TestMetadata() {
 	req := httptest.NewRequest("GET", "/api/v1/metadata", nil)
 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(Metadata)
+	handler := http.HandlerFunc(s.apiV1.Metadata)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -434,7 +441,7 @@ func (s *APITestSuite) TestMetadata() {
 func (s *APITestSuite) TestGetVersion() {
 	req := httptest.NewRequest("GET", "/_version", nil)
 
-	handler := http.HandlerFunc(GetVersion)
+	handler := http.HandlerFunc(s.apiV1.GetVersion)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -455,8 +462,9 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 		Status:     models.JobStatusPending,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
+	am := auth.NewAuthMiddleware(s.provider)
 
-	handler := auth.RequireTokenJobMatch(http.HandlerFunc(JobStatus))
+	handler := am.RequireTokenJobMatch(s.db)(http.HandlerFunc(s.apiV1.JobStatus))
 	req := s.createJobStatusRequest(uuid.Parse(constants.LargeACOUUID), j.ID)
 
 	handler.ServeHTTP(s.rr, req)
@@ -479,7 +487,7 @@ func (s *APITestSuite) TestJobsStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV1.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
@@ -491,7 +499,7 @@ func (s *APITestSuite) TestJobsStatusNotFound() {
 	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
-	JobsStatus(rr, req)
+	s.apiV1.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 }
 
@@ -511,7 +519,7 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV1.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 }
 
@@ -531,7 +539,7 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV1.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
@@ -551,21 +559,21 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV1.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
 func (s *APITestSuite) TestHealthCheck() {
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(HealthCheck)
+	handler := http.HandlerFunc(s.apiV1.HealthCheck)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 }
 func (s *APITestSuite) TestAuthInfo() {
 	req, err := http.NewRequest("GET", "/_auth", nil)
 	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(GetAuthInfo)
+	handler := http.HandlerFunc(s.apiV1.GetAuthInfo)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 
@@ -583,7 +591,7 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
-	AttributionStatus(rr, req)
+	s.apiV1.AttributionStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 
 	var resp api.AttributionFileStatusResponse

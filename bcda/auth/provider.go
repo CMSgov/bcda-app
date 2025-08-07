@@ -2,14 +2,13 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -18,27 +17,18 @@ const (
 	SSAS = "ssas"
 )
 
-var providerName = SSAS
-var repository models.Repository
-var provider Provider
+func GetProviderName() string {
+	return SSAS
+}
 
-func init() {
-	repository = postgres.NewRepository(database.Connection)
-
+func NewProvider(db *sql.DB) Provider {
+	r := postgres.NewRepository(db)
 	c, err := client.NewSSASClient()
 	if err != nil {
 		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
 	}
-	provider = SSASPlugin{client: c, repository: repository}
 
-}
-
-func GetProviderName() string {
-	return providerName
-}
-
-func GetProvider() Provider {
-	return provider
+	return SSASPlugin{client: c, repository: r}
 }
 
 type AuthData struct {

@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
@@ -19,16 +20,16 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	h          *api.Handler
+type ApiV2 struct {
+	handler    *api.Handler
 	marshaller *jsonformat.Marshaller
-)
+	db         *sql.DB
+}
 
-func init() {
-	var err error
-
+func NewApiV2(db *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -37,17 +38,17 @@ func init() {
 		"ClaimResponse",
 	}...)
 
-	if ok {
-		h = api.NewHandler(resources, "/v2/fhir", "v2")
-	} else {
+	if !ok {
 		panic("Failed to configure resource DataTypes")
-	}
-
-	// Ensure that we write the serialized FHIR resources as a single line.
-	// Needed to comply with the NDJSON format that we are using.
-	marshaller, err = jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
-	if err != nil {
-		log.API.Fatalf("Failed to create marshaller %s", err)
+	} else {
+		h := api.NewHandler(resources, "/v2/fhir", "v2", db, pool)
+		// Ensure that we write the serialized FHIR resources as a single line.
+		// Needed to comply with the NDJSON format that we are using.
+		marshaller, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
+		if err != nil {
+			log.API.Fatalf("Failed to create marshaller %s", err)
+		}
+		return &ApiV2{marshaller: marshaller, handler: h, db: db}
 	}
 }
 
@@ -73,8 +74,8 @@ Responses:
 	429: tooManyRequestsResponse
 	500: errorResponse
 */
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkPatientRequest(w, r)
+func (a ApiV2) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkPatientRequest(w, r)
 }
 
 /*
@@ -101,8 +102,8 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 			429: tooManyRequestsResponse
 			500: errorResponse
 */
-func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkGroupRequest(w, r)
+func (a ApiV2) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	a.handler.BulkGroupRequest(w, r)
 }
 
 /*
@@ -131,8 +132,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobStatus(w, r)
+func (a ApiV2) JobStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobStatus(w, r)
 }
 
 /*
@@ -171,8 +172,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func JobsStatus(w http.ResponseWriter, r *http.Request) {
-	h.JobsStatus(w, r)
+func (a ApiV2) JobsStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.JobsStatus(w, r)
 }
 
 /*
@@ -200,8 +201,8 @@ Responses:
 	410: goneResponse
 	500: errorResponse
 */
-func DeleteJob(w http.ResponseWriter, r *http.Request) {
-	h.DeleteJob(w, r)
+func (a ApiV2) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	a.handler.DeleteJob(w, r)
 }
 
 /*
@@ -225,8 +226,8 @@ Responses:
 	200: AttributionFileStatusResponse
 	404: notFoundResponse
 */
-func AttributionStatus(w http.ResponseWriter, r *http.Request) {
-	h.AttributionStatus(w, r)
+func (a ApiV2) AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	a.handler.AttributionStatus(w, r)
 }
 
 /*
@@ -245,7 +246,7 @@ Responses:
 
 	200: MetadataResponse
 */
-func Metadata(w http.ResponseWriter, r *http.Request) {
+func (a ApiV2) Metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
 
@@ -354,7 +355,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 	resource := &fhirresources.ContainedResource{
 		OneofResource: &fhirresources.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
 	}
-	b, err := marshaller.Marshal(resource)
+	b, err := a.marshaller.Marshal(resource)
 	if err != nil {
 		log.API.Errorf("Failed to marshal Capability Statement %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

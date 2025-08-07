@@ -11,7 +11,7 @@ import (
 )
 
 func TestPgxTxOperations(t *testing.T) {
-	conn, err := stdlib.AcquireConn(Connection)
+	conn, err := stdlib.AcquireConn(Connect())
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, conn.Close())

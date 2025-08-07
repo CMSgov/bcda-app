@@ -13,21 +13,18 @@ import (
 
 func TestConnections(t *testing.T) {
 	// Verify that we can initialize the package as expected
-	assert.NotNil(t, Connection)
-	assert.NotNil(t, Pgxv5Pool)
-
-	assert.NoError(t, Connection.Ping())
-	ctx := context.Background()
-	conn, err := Pgxv5Pool.Acquire(ctx)
-	assert.NoError(t, err)
-	assert.NoError(t, conn.Ping(ctx))
-	conn.Release()
+	c := Connect()
+	p := ConnectPool()
+	assert.NotNil(t, c)
+	assert.NoError(t, c.Ping())
+	assert.NotNil(t, p)
+	assert.NoError(t, p.Ping(context.Background()))
 }
 
 // TestHealthCheck verifies that we are able to start the health check
 // and the checks do not cause a panic by waiting some amount of time
 // to ensure that health checks are being executed.
-func TestHealthCheck(t *testing.T) {
+func TestDBHealthCheck(t *testing.T) {
 	level, reporter := logrus.GetLevel(), logrus.StandardLogger().ReportCaller
 	t.Cleanup(func() {
 		logrus.SetLevel(level)
@@ -39,8 +36,9 @@ func TestHealthCheck(t *testing.T) {
 	hook := test.NewGlobal()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	startHealthCheck(ctx, Connection, Pgxv5Pool, 100*time.Microsecond)
-	// Let some time elapse to ensure we've successfully ran health checks
+	c := Connect()
+	startDBHealthCheck(ctx, c, 100*time.Microsecond)
+	// Let some time elapse to ensure we've successfully run health checks
 	time.Sleep(50 * time.Millisecond)
 	cancel()
 	time.Sleep(100 * time.Millisecond)
@@ -48,9 +46,43 @@ func TestHealthCheck(t *testing.T) {
 	var hasPing, hasClose bool
 	for _, entry := range hook.AllEntries() {
 		if strings.Contains(entry.Caller.File, "database/connection.go") {
-			if strings.Contains(entry.Message, "Sending ping") {
+			if strings.Contains(entry.Message, "Sending ping via DB connection") {
 				hasPing = true
-			} else if strings.Contains(entry.Message, "Stopping health checker") {
+			} else if strings.Contains(entry.Message, "Stopping DB health checker") {
+				hasClose = true
+			}
+		}
+	}
+
+	assert.True(t, hasPing, "Should've received a ping message in the logs.")
+	assert.True(t, hasClose, "Should've received a close message in the logs.")
+}
+
+func TestPoolHealthCheck(t *testing.T) {
+	level, reporter := logrus.GetLevel(), logrus.StandardLogger().ReportCaller
+	t.Cleanup(func() {
+		logrus.SetLevel(level)
+		logrus.SetReportCaller(reporter)
+	})
+
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetReportCaller(true)
+	hook := test.NewGlobal()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	p := ConnectPool()
+	startPoolHealthCheck(ctx, p, 100*time.Microsecond)
+	// Let some time elapse to ensure we've successfully run health checks
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+
+	var hasPing, hasClose bool
+	for _, entry := range hook.AllEntries() {
+		if strings.Contains(entry.Caller.File, "database/connection.go") {
+			if strings.Contains(entry.Message, "Sending ping via pool connection") {
+				hasPing = true
+			} else if strings.Contains(entry.Message, "Stopping pool health checker") {
 				hasClose = true
 			}
 		}

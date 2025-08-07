@@ -40,7 +40,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -61,11 +60,9 @@ func init() {
 	if isEtlMode != "true" {
 		log.API.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
-		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 	} else {
 		log.API.Info("BCDA application is running in ETL mode.")
 	}
-
 }
 
 func createAPIDirs() {

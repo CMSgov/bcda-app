@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -39,13 +40,18 @@ var bearerStringMsg string = "Bearer %s"
 
 type MiddlewareTestSuite struct {
 	suite.Suite
-	server *httptest.Server
-	rr     *httptest.ResponseRecorder
+	rr *httptest.ResponseRecorder
+	db *sql.DB
 }
 
-func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
+func (s *MiddlewareTestSuite) SetupSuite() {
+	s.db = database.Connect()
+}
+
+func (s *MiddlewareTestSuite) CreateRouter(p auth.Provider) http.Handler {
+	am := auth.NewAuthMiddleware(p)
 	router := chi.NewRouter()
-	router.Use(auth.ParseToken)
+	router.Use(am.ParseToken)
 	router.With(auth.RequireTokenAuth).Get("/v1/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
@@ -56,21 +62,22 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	return router
 }
 
-func (s *MiddlewareTestSuite) SetupTest() {
-	s.server = httptest.NewServer(s.CreateRouter())
-	s.rr = httptest.NewRecorder()
+func (s *MiddlewareTestSuite) CreateServer(p auth.Provider) *httptest.Server {
+	return httptest.NewServer(s.CreateRouter(p))
 }
 
-func (s *MiddlewareTestSuite) TearDownTest() {
-	s.server.Close()
+func (s *MiddlewareTestSuite) SetupTest() {
+	s.rr = httptest.NewRecorder()
 }
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignature() {
-	client := s.server.Client()
+	server := s.CreateServer(auth.NewProvider(s.db))
+	defer server.Close()
+	client := server.Client()
 	badT := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,7 +93,9 @@ func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignat
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
-	client := s.server.Client()
+	server := s.CreateServer(auth.NewProvider(s.db))
+	defer server.Close()
+	client := server.Client()
 	expiredToken := jwt.NewWithClaims(jwt.SigningMethodRS512, &auth.CommonClaims{
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    "ssas",
@@ -99,7 +108,7 @@ func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
 	pk, _ := rsa.GenerateKey(rand.Reader, 2048)
 	tokenString, _ := expiredToken.SignedString(pk)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -141,12 +150,13 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 	mockP := &auth.MockProvider{}
 	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
 	mockP.On("getAuthDataFromClaims", token.Claims).Return(authData, nil)
-	auth.SetMockProvider(s.T(), mockP)
 
-	client := s.server.Client()
+	server := s.CreateServer(mockP)
+	defer server.Close()
+	client := server.Client()
 
 	// Valid token should return a 200 response
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -192,14 +202,6 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 	const errorHappened = "Error Happened!"
 	const errMsg = "Error Message"
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
-
-	client := s.server.Client()
-
 	tests := []struct {
 		ScenarioName          string
 		ErrorToReturn         error
@@ -222,7 +224,15 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 			//setup mocks
 			mockP := &auth.MockProvider{}
 			mockP.On("VerifyToken", mock.Anything, bearerString).Return(nil, tt.ErrorToReturn)
-			auth.SetMockProvider(s.T(), mockP)
+			server := s.CreateServer(mockP)
+			defer server.Close()
+			client := server.Client()
+
+			req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
 			//Act
 			resp, err := client.Do(req)
@@ -251,18 +261,17 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 	mockP := &auth.MockProvider{}
 	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
 	mockP.On("getAuthDataFromClaims", token.Claims).Return(authData, entityNotFoundError)
-	auth.SetMockProvider(s.T(), mockP)
+
+	server := s.CreateServer(mockP)
+	client := server.Client()
+	s.rr = httptest.NewRecorder()
 
 	//fill http request
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
-
-	client := s.server.Client()
-	s.rr = httptest.NewRecorder()
 
 	//Act
 	resp, err := client.Do(req)
@@ -278,7 +287,6 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 }
 
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundError() {
-
 	bearerString, authData, token, _ := setupDataForAuthMiddlewareTest()
 
 	//custom error expected
@@ -288,17 +296,18 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 	mockP := &auth.MockProvider{}
 	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
 	mockP.On("getAuthDataFromClaims", token.Claims).Return(authData, thrownErr)
-	auth.SetMockProvider(s.T(), mockP)
+
+	server := s.CreateServer(mockP)
+	defer server.Close()
+	client := server.Client()
 
 	//fill http request
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
-
-	client := s.server.Client()
 
 	//Act
 	resp, err := client.Do(req)
@@ -314,9 +323,11 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 
 // integration test: makes HTTP request & asserts HTTP response
 func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTokenSupplied() {
-	client := s.server.Client()
+	server := s.CreateServer(auth.NewProvider(s.db))
+	defer server.Close()
+	client := server.Client()
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -333,14 +344,13 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTok
 
 // integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDataProvided() {
-	db := database.Connection
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 
-	postgrestest.CreateJobs(s.T(), db, &j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -358,7 +368,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 		{"Mismatching ACOID", jobID, uuid.New(), http.StatusUnauthorized},
 	}
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	p := auth.NewProvider(s.db)
+	am := auth.NewAuthMiddleware(p)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
+	server := s.CreateServer(p)
+	defer server.Close()
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
@@ -367,7 +381,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("jobID", tt.jobID)
 
-			req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+			req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 			assert.NoError(t, err)
 
 			ad := auth.AuthData{
@@ -385,29 +399,31 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenMismatchingDa
 
 // integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccountableCareOrganizationAndJob() {
-	db := database.Connection
-
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
-	postgrestest.CreateJobs(s.T(), db, &j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	jobID := strconv.Itoa(id)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	p := auth.NewProvider(s.db)
+	am := auth.NewAuthMiddleware(p)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
+	server := s.CreateServer(p)
+	defer server.Close()
+
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
-
-	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	ad := auth.AuthData{
 		ACOID:   j.ACOID.String(),
@@ -422,30 +438,32 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn200WhenCorrectAccoun
 
 // integration test: involves db connection to postgres
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataProvidedInContext() {
-	db := database.Connection
-
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
 		Status:     models.JobStatusFailed,
 	}
 
-	postgrestest.CreateJobs(s.T(), db, &j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 	id, err := safecast.ToInt(j.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	jobID := strconv.Itoa(id)
 
+	p := auth.NewProvider(s.db)
+	am := auth.NewAuthMiddleware(p)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
+	server := s.CreateServer(p)
+	defer server.Close()
+
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, s.server.URL), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)

@@ -48,14 +48,16 @@ type Notifier interface {
 }
 
 // TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
-func StartRiver(numWorkers int) *queue {
+func StartRiver(db *sql.DB, numWorkers int) *queue {
+	pool := database.ConnectPool()
+
 	workers := river.NewWorkers()
-	prepareWorker, err := NewPrepareJobWorker()
+	prepareWorker, err := NewPrepareJobWorker(db)
 	if err != nil {
 		panic(err)
 	}
-	river.AddWorker(workers, &JobWorker{})
-	river.AddWorker(workers, NewCleanupJobWorker())
+	river.AddWorker(workers, &JobWorker{db: db})
+	river.AddWorker(workers, NewCleanupJobWorker(db))
 	river.AddWorker(workers, prepareWorker)
 
 	schedule, err := cron.ParseStandard("0 11,23 * * *")
@@ -76,7 +78,7 @@ func StartRiver(numWorkers int) *queue {
 
 	logger := getSlogLogger()
 
-	riverClient, err := river.NewClient(riverpgxv5.New(database.Pgxv5Pool), &river.Config{
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
@@ -97,12 +99,11 @@ func StartRiver(numWorkers int) *queue {
 		panic(err)
 	}
 
-	mainDB := database.Connection
 	q := &queue{
 		ctx:        context.Background(),
 		client:     riverClient,
-		worker:     worker.NewWorker(mainDB),
-		repository: postgres.NewRepository(mainDB),
+		worker:     worker.NewWorker(db),
+		repository: postgres.NewRepository(db),
 	}
 
 	return q
