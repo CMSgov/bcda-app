@@ -15,6 +15,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
@@ -198,6 +199,10 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 				log.Auth.Error(err)
 				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
 				return
+			}
+
+			if job.Status == models.JobStatusExpired || job.Status == models.JobStatusArchived {
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.JobExpiredErr, "")
 			}
 
 			// ACO did not create the job

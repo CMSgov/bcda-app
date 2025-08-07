@@ -305,13 +305,20 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.API.Warnf("API request to serve data is being made without gzip for file %s for jobId %s", fileName, jobID)
 		if encoded {
-			//We'll do the following: 1. Open file, 2. De-compress it, 3. Serve it up.
+			// Check file exists
+			if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+				logger.Errorf("file not found: %s", err)
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+			// Open file
 			file, err := os.Open(filePath) // #nosec G304
 			if err != nil {
 				logger.Errorf("failed to open file: %s", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
+			// Decompress file
 			defer file.Close() //#nosec G307
 			gzipReader, err := gzip.NewReader(file)
 			if err != nil {

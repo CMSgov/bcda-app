@@ -12,6 +12,7 @@ const (
 	UnauthorizedErr = "Unauthorized Error"
 	NotFoundErr     = "Not Found Error"
 	DeletedErr      = "Deleted Error"
+	JobExpiredErr   = "Job Expired"
 )
 
 // External messaging: Messages that will be in response body
