@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -265,13 +264,12 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobID")
 	filePath := fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName)
 
-	ctx, _ := log.SetCtxLogger(r.Context(), "job_id", jobID)
-	logger := log.GetCtxLogger(ctx)
+	logger := log.GetCtxLogger(r.Context())
 
 	encoded, err := isGzipEncoded(filePath)
 	if err != nil {
-		errMsg := fmt.Errorf("failed when checking if file is gzip encoded: %s", err)
-		writeServeDataFailure(logger, errMsg, w)
+		logger.Errorf("failed when checking if file is gzip encoded: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 	}
 
@@ -301,34 +299,28 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 			//We'll do the following: 1. Open file, 2. De-compress it, 3. Serve it up.
 			file, err := os.Open(filePath) // #nosec G304
 			if err != nil {
-				errMsg := fmt.Errorf("failed to open file: %s", err)
-				writeServeDataFailure(logger, errMsg, w)
+				logger.Errorf("failed to open file: %s", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 			defer file.Close() //#nosec G307
 			gzipReader, err := gzip.NewReader(file)
 			if err != nil {
-				errMsg := fmt.Errorf("failed to create gzip reader: %s", err)
-				writeServeDataFailure(logger, errMsg, w)
+				logger.Errorf("failed to create gzip reader: %s", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 			defer gzipReader.Close()
 			_, err = io.Copy(w, gzipReader) // #nosec G110
 			if err != nil {
-				errMsg := fmt.Errorf("failed to copy file: %s", err)
-				writeServeDataFailure(logger, errMsg, w)
+				logger.Errorf("failed to copy file: %s", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 		} else {
 			http.ServeFile(w, r, filePath)
 		}
 	}
-}
-
-// This function is not necessary, but helps meet the sonarQube quality gates
-func writeServeDataFailure(logger logrus.FieldLogger, err error, w http.ResponseWriter) {
-	logger.Error(err)
-	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
 // This function reads a file's magic number, to determine if it is gzip-encoded or not.
