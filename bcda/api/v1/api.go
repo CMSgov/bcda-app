@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -258,14 +259,20 @@ Responses:
 	500: errorResponse
 */
 func ServeData(w http.ResponseWriter, r *http.Request) {
+
 	dataDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	filePath := fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName)
 
+	ctx, _ := log.SetCtxLogger(r.Context(), "job_id", jobID)
+	logger := log.GetCtxLogger(ctx)
+
 	encoded, err := isGzipEncoded(filePath)
 	if err != nil {
-		writeServeDataFailure(err, w)
+		errMsg := fmt.Errorf("failed when checking if file is gzip encoded: %s", err)
+		writeServeDataFailure(logger, errMsg, w)
+
 	}
 
 	var useGZIP bool
@@ -294,19 +301,22 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 			//We'll do the following: 1. Open file, 2. De-compress it, 3. Serve it up.
 			file, err := os.Open(filePath) // #nosec G304
 			if err != nil {
-				writeServeDataFailure(err, w)
+				errMsg := fmt.Errorf("failed to open file: %s", err)
+				writeServeDataFailure(logger, errMsg, w)
 				return
 			}
 			defer file.Close() //#nosec G307
 			gzipReader, err := gzip.NewReader(file)
 			if err != nil {
-				writeServeDataFailure(err, w)
+				errMsg := fmt.Errorf("failed to create gzip reader: %s", err)
+				writeServeDataFailure(logger, errMsg, w)
 				return
 			}
 			defer gzipReader.Close()
 			_, err = io.Copy(w, gzipReader) // #nosec G110
 			if err != nil {
-				writeServeDataFailure(err, w)
+				errMsg := fmt.Errorf("failed to copy file: %s", err)
+				writeServeDataFailure(logger, errMsg, w)
 				return
 			}
 		} else {
@@ -316,8 +326,8 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 }
 
 // This function is not necessary, but helps meet the sonarQube quality gates
-func writeServeDataFailure(err error, w http.ResponseWriter) {
-	log.API.Error(err)
+func writeServeDataFailure(logger logrus.FieldLogger, err error, w http.ResponseWriter) {
+	logger.Error(err)
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
