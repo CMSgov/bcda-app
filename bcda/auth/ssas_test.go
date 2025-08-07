@@ -71,7 +71,7 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 	origSSASClientID = conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	origSSASSecret = conf.GetEnv("BCDA_SSAS_SECRET")
 
-	s.db = database.Connection
+	s.db = database.Connect()
 	s.r = postgres.NewRepository(s.db)
 }
 
@@ -287,6 +287,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 }
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
+	am := NewAuthMiddleware(NewProvider(s.db))
 	_, tokenString, _, err := MockSSASToken()
 	require.NotNil(s.T(), tokenString, sSasTErrorMsg, err)
 	require.Nil(s.T(), err, unexpectedErrorMsg, err)
@@ -295,7 +296,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsNilWhenHappyPath() {
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
-	_, _, err = AuthorizeAccess(context.Background(), tokenString)
+	_, _, err = am.AuthorizeAccess(context.Background(), tokenString)
 	require.Nil(s.T(), err)
 }
 
@@ -309,8 +310,10 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
+	am := NewAuthMiddleware(NewProvider(s.db))
+
 	invalidTokenString := ""
-	_, _, err = AuthorizeAccess(context.Background(), invalidTokenString)
+	_, _, err = am.AuthorizeAccess(context.Background(), invalidTokenString)
 	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token contains an invalid number of segments")
 }
 
@@ -377,11 +380,13 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrIsReturnedWhenGetAuthDataFro
 
 	MockSSASServer(ts)
 
+	am := NewAuthMiddleware(NewProvider(s.db))
+
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
 	s.p = SSASPlugin{client: c, repository: s.r}
 
-	_, _, err = AuthorizeAccess(context.Background(), ts)
+	_, _, err = am.AuthorizeAccess(context.Background(), ts)
 	assert.EqualError(s.T(), err, "can't decode data claim ac; invalid character 'a' looking for beginning of value")
 }
 

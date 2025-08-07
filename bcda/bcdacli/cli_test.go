@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -68,7 +69,9 @@ func (s *CLITestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
-	s.db = database.Connection
+	s.db = database.Connect()
+	db = s.db
+	repository = postgres.NewRepository(s.db)
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	s.testACO = models.ACO{Name: uuid.New(), UUID: uuid.NewRandom(), ClientID: uuid.New(), CMSID: &cmsID}
@@ -87,6 +90,10 @@ func (s *CLITestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
 	os.RemoveAll(s.pendingDeletionDir)
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
+}
+
+func (s *CLITestSuite) SetProvider(p auth.Provider) {
+	provider = p
 }
 
 func TestCLITestSuite(t *testing.T) {
@@ -143,15 +150,14 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 			}
 			m := &auth.MockProvider{}
 			m.On("FindAndCreateACOCredentials", *s.testACO.CMSID, ips).Return("mock\ncreds\ntest", nil)
-			auth.SetMockProvider(t, m)
 
 			buf := new(bytes.Buffer)
 			s.testApp.Writer = buf
 
-			args := []string{"bcda", constants.GenClientCred, constants.CMSIDArg, *s.testACO.CMSID, "--ips", strings.Join(ips, ",")}
-			err := s.testApp.Run(args)
+			msg, err := generateClientCredentials(m, *s.testACO.CMSID, ips)
 			assert.Nil(t, err)
-			assert.Regexp(t, regexp.MustCompile(".+\n.+\n.+"), buf.String())
+			assert.Regexp(t, regexp.MustCompile(".+\n.+\n.+"), msg)
+			assert.Equal(t, "mock\ncreds\ntest", msg)
 			m.AssertExpectations(t)
 		})
 	}
@@ -188,27 +194,16 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 		auth.Credentials{ClientName: *s.testACO.CMSID, ClientID: s.testACO.ClientID,
 			ClientSecret: uuid.New()},
 		nil)
-	auth.SetMockProvider(s.T(), mock)
 
-	// execute positive scenarios via CLI
-	args := []string{"bcda", constants.ResetClientCred, constants.CMSIDArg, *s.testACO.CMSID}
-	err := s.testApp.Run(args)
+	// execute positive scenario
+	msg, err := resetClientCredentials(repository, mock, *s.testACO.CMSID)
 	assert.Nil(err)
-	assert.Regexp(outputPattern, buf.String())
-	buf.Reset()
+	assert.Regexp(outputPattern, msg)
 
-	// Execute CLI with invalid ACO CMS ID
-	args = []string{"bcda", constants.ResetClientCred, constants.CMSIDArg, "BLAH"}
-	err = s.testApp.Run(args)
+	// Execute with invalid ACO CMS ID
+	msg, err = resetClientCredentials(repository, mock, "BLAH")
 	assert.Equal("no ACO record found for BLAH", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Execute CLI with invalid inputs
-	args = []string{"bcda", constants.ResetClientCred, "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	assert.Equal(0, len(msg))
 
 	mock.AssertExpectations(s.T())
 }
@@ -222,17 +217,13 @@ func (s *CLITestSuite) TestRevokeToken() {
 	accessToken := uuid.New()
 	mock := &auth.MockProvider{}
 	mock.On("RevokeAccessToken", accessToken).Return(nil)
-	auth.SetMockProvider(s.T(), mock)
-	assert.NoError(s.testApp.Run([]string{"bcda", "revoke-token", "--access-token", accessToken}))
-	buf.Reset()
+
+	err := revokeAccessToken(mock, accessToken)
+	assert.Nil(err)
 
 	// Negative case - attempt to revoke a token passing in a blank token string
-	args := []string{"bcda", "revoke-token", "--access-token", ""}
-	err := s.testApp.Run(args)
+	err = revokeAccessToken(mock, "")
 	assert.Equal("Access token (--access-token) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
 	mock.AssertExpectations(s.T())
 }
 

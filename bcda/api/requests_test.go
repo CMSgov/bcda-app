@@ -51,6 +51,7 @@ import (
 	fhirmodelv2CR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
 	fhircodesv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirmodelsv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 const apiVersionOne = "v1"
@@ -67,6 +68,8 @@ type RequestsTestSuite struct {
 
 	db *sql.DB
 
+	pool *pgxv5Pool.Pool
+
 	acoID uuid.UUID
 
 	resourceType map[string]service.DataType
@@ -79,9 +82,11 @@ func TestRequestsTestSuite(t *testing.T) {
 func (s *RequestsTestSuite) SetupSuite() {
 	// See testdata/acos.yml
 	s.acoID = uuid.Parse("ba21d24d-cd96-4d7d-a691-b0e8c88e67a5")
-	s.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	s.db = db
+	s.pool = database.ConnectPool()
 	tf, err := testfixtures.New(
-		testfixtures.Database(s.db),
+		testfixtures.Database(db),
 		testfixtures.Dialect("postgres"),
 		testfixtures.Directory("testdata/"),
 	)
@@ -137,7 +142,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			mockSvc := &service.MockService{}
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
 			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
-			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
+			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db, s.pool)
 			h.Svc = mockSvc
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
@@ -239,7 +244,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
-			}, fhirPath, apiVersion, s.db)
+			}, fhirPath, apiVersion, s.db, s.pool)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
@@ -353,7 +358,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
-			}, v2BasePath, apiVersionTwo, s.db)
+			}, v2BasePath, apiVersionTwo, s.db, s.pool)
 			if tt.useMock {
 				h.Svc = mockSvc
 			}
@@ -472,7 +477,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 			fhirPath := "/" + apiVersion + "/fhir"
 
 			resourceMap := s.resourceType
-			h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
+			h := newHandler(resourceMap, fhirPath, apiVersion, s.db, s.pool)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
@@ -563,7 +568,11 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
 	}
 
-	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, s.db, s.pool)
+	r := models.NewMockRepository(s.T())
+	r.On("CreateJob", mock.Anything, mock.Anything).Return(uint(4), nil)
+	h.r = r
+
 	h.supportedDataTypes = dataTypeMap
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 	jsonBytes, _ := json.Marshal("{}")
@@ -647,7 +656,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	fhirPath := "/" + apiVersion + "/fhir"
 	resourceMap := s.resourceType
 
-	h := newHandler(resourceMap, fhirPath, apiVersion, s.db)
+	h := newHandler(resourceMap, fhirPath, apiVersion, s.db, s.pool)
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit
@@ -777,7 +786,7 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.testName, func(t *testing.T) {
-			h := newHandler(resourceMap, basePath, apiVersion, s.db)
+			h := newHandler(resourceMap, basePath, apiVersion, s.db, s.pool)
 			if tt.useMockService {
 				mockSrv := service.MockService{}
 				timestp := time.Now()
@@ -851,7 +860,7 @@ func (s *RequestsTestSuite) TestJobStatusProgress() {
 	apiVersion := apiVersionTwo
 	requestUrl := v2JobRequestUrl
 	resourceMap := s.resourceType
-	h := newHandler(resourceMap, basePath, apiVersion, s.db)
+	h := newHandler(resourceMap, basePath, apiVersion, s.db, s.pool)
 
 	req := httptest.NewRequest("GET", requestUrl, nil)
 	rctx := chi.NewRouteContext()
@@ -900,7 +909,7 @@ func (s *RequestsTestSuite) TestDeleteJob() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			handler := newHandler(s.resourceType, basePath, apiVersion, s.db)
+			handler := newHandler(s.resourceType, basePath, apiVersion, s.db, s.pool)
 
 			if tt.useMockService {
 				mockSrv := service.MockService{}
@@ -960,7 +969,7 @@ func (s *RequestsTestSuite) TestJobFailedStatus() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			h := newHandler(resourceMap, tt.basePath, tt.version, s.db)
+			h := newHandler(resourceMap, tt.basePath, tt.version, s.db, s.pool)
 			mockSrv := service.MockService{}
 			timestp := time.Now()
 			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
@@ -1018,7 +1027,7 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 		{"CT000000", "v2", []string{"Patient", "ExplanationOfBenefit", "Coverage", "Claim", "ClaimResponse"}},
 	}
 	for _, test := range testCases {
-		h := newHandler(s.resourceType, "/"+test.apiVersion+"/fhir", test.apiVersion, s.db)
+		h := newHandler(s.resourceType, "/"+test.apiVersion+"/fhir", test.apiVersion, s.db, s.pool)
 		rp := middleware.RequestParameters{
 			Version:       test.apiVersion,
 			ResourceTypes: []string{},
@@ -1051,23 +1060,17 @@ func TestBulkRequest_Integration(t *testing.T) {
 
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
-	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo)
+	db := database.Connect()
+	pool := database.ConnectPool()
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, db, pool)
 
-	cfg, err := database.LoadConfig()
-	if err != nil {
-		t.FailNow()
-	}
-	d, err := database.CreatePgxv5DB(cfg)
-	if err != nil {
-		t.FailNow()
-	}
-	driver := riverpgxv5.New(d)
+	driver := riverpgxv5.New(pool)
 	// start from clean river_job slate
-	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	assert.Nil(t, err)
 
 	acoID := "A0002"
-	repo := postgres.NewRepository(h.db)
+	repo := postgres.NewRepository(db)
 
 	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
 	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
@@ -1205,7 +1208,7 @@ func (s *RequestsTestSuite) TestValidateResources() {
 		"Patient":              {},
 		"Coverage":             {},
 		"ExplanationOfBenefit": {},
-	}, fhirPath, apiVersion, s.db)
+	}, fhirPath, apiVersion, s.db, s.pool)
 	err := h.validateResources([]string{"Vegetable"}, "1234")
 	assert.Contains(s.T(), err.Error(), "invalid resource type")
 }

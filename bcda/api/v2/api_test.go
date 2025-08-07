@@ -36,6 +36,7 @@ import (
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
 	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
 	fhiroo "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/operation_outcome_go_proto"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -52,10 +53,16 @@ var (
 
 type APITestSuite struct {
 	suite.Suite
-	db *sql.DB
+	db    *sql.DB
+	pool  *pgxv5Pool.Pool
+	apiV2 *ApiV2
 }
 
 func (s *APITestSuite) SetupSuite() {
+	s.db = database.Connect()
+	s.pool = database.ConnectPool()
+	s.apiV2 = NewApiV2(s.db, s.pool)
+
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
@@ -69,8 +76,6 @@ func (s *APITestSuite) SetupSuite() {
 		conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 		conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
 	})
-
-	s.db = database.Connection
 
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BBAPI)
@@ -108,7 +113,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
-			JobStatus(rr, req)
+			s.apiV2.JobStatus(rr, req)
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
@@ -147,7 +152,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
 
-			JobStatus(rr, req)
+			s.apiV2.JobStatus(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
 			switch rr.Code {
 			case http.StatusAccepted:
@@ -156,7 +161,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			case http.StatusInternalServerError:
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(t, j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(t, j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
 	}
@@ -183,13 +188,13 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
 	rr := httptest.NewRecorder()
 
-	JobStatus(rr, req)
+	s.apiV2.JobStatus(rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
 	str := rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err := json.Unmarshal(rr.Body.Bytes(), &rb)
@@ -250,7 +255,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
 	rr := httptest.NewRecorder()
 
-	JobStatus(rr, req)
+	s.apiV2.JobStatus(rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
@@ -286,16 +291,16 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	j.UpdatedAt = time.Now().Add(-(h.JobTimeout + time.Second))
+	j.UpdatedAt = time.Now().Add(-(s.apiV2.handler.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
 	rr := httptest.NewRecorder()
 
-	JobStatus(rr, req)
+	s.apiV2.JobStatus(rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, rr.Code)
-	assertExpiryEquals(s.T(), j.UpdatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 }
 
 func (s *APITestSuite) TestJobsStatus() {
@@ -314,7 +319,7 @@ func (s *APITestSuite) TestJobsStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
@@ -326,7 +331,7 @@ func (s *APITestSuite) TestJobsStatusNotFound() {
 	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
-	JobsStatus(rr, req)
+	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 }
 
@@ -346,7 +351,7 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 }
 
@@ -366,7 +371,7 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
@@ -386,7 +391,7 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	JobsStatus(rr, req)
+	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
@@ -413,7 +418,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
-			JobStatus(rr, req)
+			s.apiV2.JobStatus(rr, req)
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
@@ -455,7 +460,7 @@ func (s *APITestSuite) TestDeleteJob() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
-			DeleteJob(rr, req)
+			s.apiV2.DeleteJob(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
 			if rr.Code == http.StatusGone {
 				assert.Contains(t, rr.Body.String(), "job was not cancelled because it is not Pending or In Progress")
@@ -464,7 +469,7 @@ func (s *APITestSuite) TestDeleteJob() {
 	}
 }
 func (s *APITestSuite) TestMetadataResponse() {
-	ts := httptest.NewServer(http.HandlerFunc(Metadata))
+	ts := httptest.NewServer(http.HandlerFunc(s.apiV2.Metadata))
 	defer ts.Close()
 
 	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
@@ -542,7 +547,7 @@ func (s *APITestSuite) TestResourceTypes() {
 		"ClaimResponse",
 	}...)
 
-	h := api.NewHandler(resources, "/v2/fhir", "v2")
+	h := api.NewHandler(resources, "/v2/fhir", "v2", s.db, s.pool)
 	mockSvc := &service.MockService{}
 
 	mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
@@ -602,7 +607,7 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 	rr := httptest.NewRecorder()
 
-	AttributionStatus(rr, req)
+	s.apiV2.AttributionStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 
 	var resp api.AttributionFileStatusResponse
