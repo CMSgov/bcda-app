@@ -17,7 +17,7 @@ import (
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/service"
-	slUtls "github.com/CMSgov/bcda-app/bcda/slack"
+	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -72,11 +72,11 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		// run the regular logic (non-rollback transaction)
 		err = handleCreateACO(ctx, conn, data, id)
 		if err != nil {
-			slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slUtls.FailureMsg, os.Getenv("ENV")), false)
+			slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), false)
 			log.Errorf("Failed to handle Create ACO: %+v", err)
 			return err
 		}
-		slUtls.SendSlackMessage(slackClient, slUtls.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slUtls.SuccessMsg, os.Getenv("ENV")), true)
+		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), true)
 
 	} else {
 		// create a rollbackable transaction
