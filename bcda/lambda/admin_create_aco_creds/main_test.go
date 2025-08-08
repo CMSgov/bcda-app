@@ -16,7 +16,6 @@ func TestHandleCreateACOCreds(t *testing.T) {
 	mockProvider := &auth.MockProvider{}
 	mockProvider.On("FindAndCreateACOCredentials", data.ACOID, data.IPs).Return("creds\nstring", nil)
 
-
 	s3Path, err := handleCreateACOCreds(ctx, data, mockProvider, &mockS3{}, "test-bucket")
 	assert.Nil(t, err)
 	assert.Equal(t, s3Path, "{\n\n}")

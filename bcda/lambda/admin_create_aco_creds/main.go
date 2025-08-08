@@ -12,9 +12,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
 	"github.com/CMSgov/bcda-app/bcda/database"
-
+	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
 
 	log "github.com/sirupsen/logrus"
 
@@ -74,7 +73,6 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	provider := auth.NewProvider(database.Connect())
 	s3Service := s3.New(session)
 	slackClient := slack.New(params.slackToken)
-
 
 	s3Path, err := handleCreateACOCreds(ctx, data, provider, s3Service, params.credsBucket)
 	if err != nil {
