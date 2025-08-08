@@ -1,4 +1,4 @@
-package slack_utils
+package slackmessenger
 
 import (
 	"context"

@@ -13,7 +13,7 @@ import (
 	"github.com/slack-go/slack"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
+	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -62,13 +62,13 @@ func handler(ctx context.Context, event json.RawMessage) error {
 
 	err = handleACODenies(ctx, conn, data)
 	if err != nil {
-		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Deny ACO lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), slackUtils.Danger)
+		msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Deny ACO lambda in %s env.", msgr.FailureMsg, os.Getenv("ENV")), msgr.Danger)
 
 		log.Errorf("Failed to handle ACO denies: %+v", err)
 		return err
 	}
 
-	slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Deny ACO lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), slackUtils.Good)
+	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Deny ACO lambda in %s env.", msgr.SuccessMsg, os.Getenv("ENV")), msgr.Good)
 
 	log.Info("Completed ACO Deny administrative task")
 

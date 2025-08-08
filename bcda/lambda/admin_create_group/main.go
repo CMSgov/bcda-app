@@ -19,7 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
-	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
+	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
@@ -66,12 +66,12 @@ func handler(ctx context.Context, event json.RawMessage) error {
 
 	err = handleCreateGroup(ssas, r, data)
 	if err != nil {
-		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), slackUtils.Danger)
+		msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", msgr.FailureMsg, os.Getenv("ENV")), msgr.Danger)
 		log.Errorf("Failed to Create Group: %+v", err)
 		return err
 	}
 
-	slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), slackUtils.Good)
+	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", msgr.SuccessMsg, os.Getenv("ENV")), msgr.Good)
 	log.Info("Completed Create Group administrative task")
 
 	return nil

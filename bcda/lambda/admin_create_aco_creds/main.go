@@ -13,7 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	slackUtils "github.com/CMSgov/bcda-app/bcda/slack"
+	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
 	log "github.com/sirupsen/logrus"
 
@@ -76,12 +76,12 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 
 	s3Path, err := handleCreateACOCreds(ctx, data, provider, s3Service, params.credsBucket)
 	if err != nil {
-		slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slackUtils.FailureMsg, os.Getenv("ENV")), slackUtils.Danger)
+		msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", msgr.FailureMsg, os.Getenv("ENV")), msgr.Danger)
 		log.Errorf("Failed to handle Create ACO creds: %+v", err)
 		return "", err
 	}
 
-	slackUtils.SendSlackMessage(slackClient, slackUtils.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", slackUtils.SuccessMsg, os.Getenv("ENV")), slackUtils.Good)
+	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create ACO Credentials lambda in %s env.", msgr.SuccessMsg, os.Getenv("ENV")), msgr.Good)
 
 	log.Info("Completed Create ACO Creds administrative task")
 
