@@ -17,11 +17,10 @@ import (
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
 	log "github.com/sirupsen/logrus"
 )
-
-var slackChannel = "C034CFU945C" // #bcda-alerts
 
 type payload struct {
 	Name    string  `json:"name"`
@@ -32,10 +31,6 @@ type payload struct {
 type awsParams struct {
 	dbURL      string
 	slackToken string
-}
-
-type Notifier interface {
-	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
 func main() {
@@ -73,12 +68,16 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	id := uuid.NewRandom()
 
 	if data.CleanUp == nil {
+
 		// run the regular logic (non-rollback transaction)
-		err = handleCreateACO(ctx, conn, data, id, slackClient)
+		err = handleCreateACO(ctx, conn, data, id)
 		if err != nil {
+			msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", msgr.FailureMsg, os.Getenv("ENV")), msgr.Danger)
 			log.Errorf("Failed to handle Create ACO: %+v", err)
 			return err
 		}
+		msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create ACO lambda in %s env.", msgr.SuccessMsg, os.Getenv("ENV")), msgr.Good)
+
 	} else {
 		// create a rollbackable transaction
 		tx, cErr := conn.Begin(ctx)
@@ -87,7 +86,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 			return err
 		}
 
-		err = handleCreateACO(ctx, tx, data, id, slackClient)
+		err = handleCreateACO(ctx, tx, data, id)
 		if err != nil {
 			log.Errorf("Failed to handle Create ACO: %+v", err)
 			return err
@@ -105,13 +104,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	return nil
 }
 
-func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id uuid.UUID, notifier Notifier) error {
-	_, _, err := notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Started Create ACO lambda in %s env.", os.Getenv("ENV")), false),
-	)
-	if err != nil {
-		log.Errorf("Error sending notifier start message: %+v", err)
-	}
+func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id uuid.UUID) error {
 
 	if data.Name == "" {
 		return errors.New("ACO name must be provided")
@@ -132,16 +125,9 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 
 	aco := models.ACO{Name: data.Name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err = createACO(context.Background(), conn, aco)
+	err := createACO(context.Background(), conn, aco)
 	if err != nil {
 		return err
-	}
-
-	_, _, err = notifier.PostMessageContext(ctx, slackChannel, slack.MsgOptionText(
-		fmt.Sprintf("Success: Create ACO lambda in %s env.", os.Getenv("ENV")), false),
-	)
-	if err != nil {
-		log.Errorf("Error sending notifier success message: %+v", err)
 	}
 
 	return nil

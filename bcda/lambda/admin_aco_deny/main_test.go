@@ -3,20 +3,10 @@ package main
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/pashagolub/pgxmock/v4"
-	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 )
-
-type mockNotifier struct {
-	Notifier
-}
-
-func (m *mockNotifier) PostMessageContext(ctx context.Context, channelID string, options ...slack.MsgOption) (string, string, error) {
-	return channelID, time.Now().String(), nil
-}
 
 func TestHandleACODenies(t *testing.T) {
 	ctx := context.Background()
@@ -29,6 +19,6 @@ func TestHandleACODenies(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
 
-	err = handleACODenies(ctx, mockConn, payload{testACODenies}, &mockNotifier{})
+	err = handleACODenies(ctx, mockConn, payload{testACODenies})
 	assert.Nil(t, err)
 }
