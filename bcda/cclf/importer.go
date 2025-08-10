@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/pgtype"
+	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 )
 
@@ -76,15 +76,9 @@ func (importer *cclf8Importer) Values() ([]interface{}, error) {
 	}
 
 	// Use Int4 because we store file_id as an integer
-	fileID := &pgtype.Int4{}
-	if err := fileID.Set(importer.cclfFileID); err != nil {
-		return nil, err
-	}
+	fileID := int32(importer.cclfFileID)
 
-	mbi := &pgtype.BPChar{}
-	if err := mbi.Set(importer.getMBI()); err != nil {
-		return nil, err
-	}
+	mbi := importer.getMBI()
 
 	importer.importCount++
 	if importer.importCount%importer.reportInterval == 0 {
@@ -114,7 +108,7 @@ func (importer *cclf8Importer) getMBI() string {
 
 // CopyFrom writes all of the beneficiary data captured in the scanner to the beneficiaries table.
 // It returns the number of rows written along with any error that occurred.
-func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int, logger logrus.FieldLogger, expectedRecordLength int) (int, int, error) {
+func CopyFrom(ctx context.Context, tx pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int, logger logrus.FieldLogger, expectedRecordLength int) (int, int, error) {
 	importer := &cclf8Importer{
 		scanner:    scanner,
 		ctx:        ctx,
@@ -125,7 +119,49 @@ func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID ui
 		logger:               logger,
 		expectedRecordLength: expectedRecordLength,
 	}
-	tableName := pgx.Identifier([]string{"cclf_beneficiaries"})
-	importedCount, err := tx.CopyFrom(tableName, []string{"file_id", "mbi"}, importer)
-	return importedCount, importer.recordCount, err
+	tableName := pgx.Identifier{"cclf_beneficiaries"}
+	importedCount, err := tx.CopyFrom(ctx, tableName, []string{"file_id", "mbi"}, importer)
+	return int(importedCount), importer.recordCount, err
+}
+
+// CopyFromSql writes all of the beneficiary data captured in the scanner to the beneficiaries table using standard sql.
+// It returns the number of rows written along with any error that occurred.
+func CopyFromSql(ctx context.Context, tx *sql.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int, logger logrus.FieldLogger, expectedRecordLength int) (int, int, error) {
+	importer := &cclf8Importer{
+		scanner:    scanner,
+		ctx:        ctx,
+		cclfFileID: fileID,
+
+		reportInterval:       reportInterval,
+		processedMBIs:        make(map[string]struct{}),
+		logger:               logger,
+		expectedRecordLength: expectedRecordLength,
+	}
+
+	// Prepare bulk insert statement
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO cclf_beneficiaries (file_id, mbi) VALUES ($1, $2)")
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	var importedCount int
+	for importer.Next() {
+		values, err := importer.Values()
+		if err != nil {
+			return importedCount, importer.recordCount, err
+		}
+
+		_, err = stmt.ExecContext(ctx, values[0], values[1])
+		if err != nil {
+			return importedCount, importer.recordCount, fmt.Errorf("failed to insert row: %w", err)
+		}
+		importedCount++
+
+		if importedCount%reportInterval == 0 {
+			logger.Infof("CCLF8 records imported: %d\n", importedCount)
+		}
+	}
+
+	return importedCount, importer.recordCount, nil
 }
