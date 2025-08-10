@@ -1,6 +1,7 @@
 package web
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -31,12 +33,18 @@ type RouterTestSuite struct {
 	suite.Suite
 	apiRouter  http.Handler
 	dataRouter http.Handler
+	provider   auth.Provider
+	db         *sql.DB
+	pool       *pgxv5Pool.Pool
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "DEBUG", "true")
-	s.apiRouter = NewAPIRouter()
-	s.dataRouter = NewDataRouter()
+	conf.SetEnv(s.T(), "BB_SERVER_LOCATION", "v1-server-location")
+	s.db = database.Connect()
+	s.provider = auth.NewProvider(s.db)
+	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
+	s.dataRouter = NewDataRouter(s.db, s.provider)
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
@@ -76,7 +84,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 		s.FailNow("err in setting env var", err)
 	}
 	// Need a new router because the one in the test setup does not use the environment variable set in this test.
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
 	res := s.getAPIRoute("/v1/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
@@ -193,7 +201,7 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "false")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
 
 	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
@@ -210,7 +218,7 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
 
 	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -231,7 +239,7 @@ func (s *RouterTestSuite) TestV3EndpointsDisabled() {
 	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
 	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
 
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
@@ -248,7 +256,7 @@ func (s *RouterTestSuite) TestV3EndpointsEnabled() {
 	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
 	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
-	s.apiRouter = NewAPIRouter()
+	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
 
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -316,8 +324,8 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 	assert.Equal(s.T(), http.StatusMethodNotAllowed, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
-func createACO(cmsID string, blackListValue *models.Termination) models.ACO {
-	return models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: blackListValue}
+func createACO(cmsID string, denyListValue *models.Termination) models.ACO {
+	return models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New(), TerminationDetails: denyListValue}
 }
 func createTestToken(cmsID string) (token *jwt.Token) {
 	token = &jwt.Token{
@@ -344,11 +352,11 @@ func createExpectedAuthData(cmsID string, aco models.ACO) auth.AuthData {
 	}
 }
 
-func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []struct {
+func createConfigsForACODenylistingScenarios(s *RouterTestSuite, p auth.Provider) (configs []struct {
 	handler http.Handler
 	paths   []string
 }) {
-	apiRouter := NewAPIRouter()
+	apiRouter := NewAPIRouter(s.db, s.pool, p)
 
 	configs = []struct {
 		handler http.Handler
@@ -357,8 +365,8 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export",
 			constants.V2Path + constants.PatientExportPath, constants.V2Path + constants.GroupExportPath,
 			constants.V1Path + constants.JobsFilePath}},
-		{s.dataRouter, []string{nDJsonDataRoute}},
-		{NewAuthRouter(), []string{"/auth/welcome"}},
+		{NewDataRouter(s.db, p), []string{nDJsonDataRoute}},
+		{NewAuthRouter(p), []string{"/auth/welcome"}},
 	}
 
 	return configs
@@ -367,12 +375,11 @@ func createConfigsForACOBlacklistingScenarios(s *RouterTestSuite) (configs []str
 func setExpectedMockCalls(s *RouterTestSuite, mockP *auth.MockProvider, token *jwt.Token, aco models.ACO, bearerString string, cmsID string) {
 	mockP.On("VerifyToken", mock.Anything, bearerString).Return(token, nil)
 	mockP.On("getAuthDataFromClaims", token.Claims).Return(createExpectedAuthData(cmsID, aco), nil)
-	auth.SetMockProvider(s.T(), mockP)
 }
 
 // integration test, requires connection to postgres db
-// TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
-func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
+// TestDenylistedACOs ensures that we return 403 FORBIDDEN when a call is made from a denylisted ACO.
+func (s *RouterTestSuite) TestDenylistedACOReturn403WhenACODenylisted() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -381,14 +388,14 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	// Set up
 	cmsID := testUtils.RandomHexID()[0:4]
 
-	blackListValue := &models.Termination{
+	denyListValue := &models.Termination{
 
 		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 		DenylistType:    models.Involuntary,
 	}
 
-	aco := createACO(cmsID, blackListValue)
+	aco := createACO(cmsID, denyListValue)
 
 	bearerString := uuid.New()
 	token := createTestToken(cmsID)
@@ -396,16 +403,16 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	mock := &auth.MockProvider{}
 	setExpectedMockCalls(s, mock, token, aco, bearerString, cmsID)
 
-	db := database.Connection
+	db := s.db
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := createConfigsForACOBlacklistingScenarios(s)
+	configs := createConfigsForACODenylistingScenarios(s, mock)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
 
-			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blackListValue, path), func(t *testing.T) {
+			s.T().Run(fmt.Sprintf("denylist-value-%v-%s", denyListValue, path), func(t *testing.T) {
 				fmt.Println(aco.Denylisted())
 				fmt.Println(aco.UUID.String())
 				postgrestest.UpdateACO(t, db, aco)
@@ -424,7 +431,7 @@ func (s *RouterTestSuite) TestBlacklistedACOReturn403WhenACOBlacklisted() {
 	mock.AssertExpectations(s.T())
 }
 
-func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() {
+func (s *RouterTestSuite) TestDenylistedACOReturnNOT403WhenACONOTDenylisted() {
 	// Use a new router to ensure that v2 endpoints are active
 	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
@@ -441,16 +448,16 @@ func (s *RouterTestSuite) TestBlacklistedACOReturnNOT403WhenACONOTBlacklisted() 
 	mock := &auth.MockProvider{}
 	setExpectedMockCalls(s, mock, token, aco, bearerString, cmsID)
 
-	db := database.Connection
+	db := s.db
 	postgrestest.CreateACO(s.T(), db, aco)
 	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	configs := createConfigsForACOBlacklistingScenarios(s)
+	configs := createConfigsForACODenylistingScenarios(s, mock)
 
 	for _, config := range configs {
 		for _, path := range config.paths {
 
-			s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", nil, path), func(t *testing.T) {
+			s.T().Run(fmt.Sprintf("denylist-value-%v-%s", nil, path), func(t *testing.T) {
 				fmt.Println(aco.Denylisted())
 				fmt.Println(aco.UUID.String())
 				postgrestest.UpdateACO(t, db, aco)

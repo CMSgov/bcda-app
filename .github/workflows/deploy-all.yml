@@ -335,9 +335,8 @@ jobs:
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-alerts
           payload: |
-            channel: "C034CFU945C"
+            channel: "C03S23MJFJS"
             attachments:
               - color: danger
                 text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."

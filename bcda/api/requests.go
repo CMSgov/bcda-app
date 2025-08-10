@@ -21,7 +21,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -35,6 +34,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Handler struct {
@@ -53,8 +53,7 @@ type Handler struct {
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 	// logic into a service method.
-	r  models.Repository
-	db *sql.DB
+	r models.Repository
 }
 
 type fhirResponseWriter interface {
@@ -63,14 +62,14 @@ type fhirResponseWriter interface {
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string) *Handler {
-	return newHandler(dataTypes, basePath, apiVersion, database.Connection)
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, db, pool)
 }
 
-func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewEnqueuer()
+	h.Enq = queueing.NewEnqueuer(db, pool)
 
 	cfg, err := service.LoadConfig()
 	if err != nil {
@@ -81,7 +80,7 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 	}
 
 	repository := postgres.NewRepository(db)
-	h.db, h.r = db, repository
+	h.r = repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
 	h.supportedDataTypes = dataTypes
@@ -238,10 +237,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	job, jobKeys, err := h.Svc.GetJobAndKeys(r.Context(), uint(jobID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.API.Info("Requested job not found.", err.Error())
+			logger.Infof("Requested job not found.", err.Error())
 			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
 		} else {
-			log.API.Error("Error attempting to request job. Error:", err.Error())
+			logger.Errorf("Error attempting to request job. Error:", err.Error())
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "Error trying to fetch job. Please try again.")
 		}
 

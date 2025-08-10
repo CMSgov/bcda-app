@@ -7,11 +7,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewAuthRouter(middlewares ...func(http.Handler) http.Handler) http.Handler {
+func NewAuthRouter(provider Provider, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	baseApi := NewBaseApi(provider)
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
+	am := NewAuthMiddleware(provider)
 	r.Use(middlewares...)
-	r.Post(m.WrapHandler("/auth/token", GetAuthToken))
-	r.With(ParseToken, RequireTokenAuth, CheckBlacklist).Get(m.WrapHandler("/auth/welcome", Welcome))
+	r.Post(m.WrapHandler("/auth/token", baseApi.GetAuthToken))
+	r.With(am.ParseToken, RequireTokenAuth, CheckBlacklist).Get(m.WrapHandler("/auth/welcome", baseApi.Welcome))
 	return r
 }

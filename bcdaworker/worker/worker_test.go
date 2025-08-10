@@ -63,7 +63,7 @@ type WorkerTestSuite struct {
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
-	s.db = database.Connection
+	s.db = database.Connect()
 	s.r = postgres.NewRepository(s.db)
 	s.w = NewWorker(s.db)
 
@@ -193,15 +193,17 @@ func (s *WorkerTestSuite) TestGetBlueButtonID_NonHappyPaths() {
 	}
 
 	for _, tt := range tests {
-		mockCall := bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(tt.patientJSON, nil)
-		bbID, err := getBlueButtonID(bbc, beneficiaryID, jobArgs)
-		if tt.err != nil {
-			assert.Error(s.T(), err)
-			assert.Equal(s.T(), fmt.Sprint(tt.err), fmt.Sprint(err))
-		} else {
-			assert.Equal(s.T(), tt.expectedID, bbID)
-		}
-		mockCall.Unset()
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockCall := bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(tt.patientJSON, nil)
+			bbID, err := getBlueButtonID(bbc, beneficiaryID, jobArgs)
+			if tt.err != nil {
+				assert.Error(s.T(), err)
+				assert.Equal(s.T(), fmt.Sprint(tt.err), fmt.Sprint(err))
+			} else {
+				assert.Equal(s.T(), tt.expectedID, bbID)
+			}
+			mockCall.Unset()
+		})
 	}
 }
 
@@ -222,18 +224,20 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 	}
 
 	for _, tt := range tests {
-		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
-		if tt.err == nil {
+		s.T().Run(tt.resource, func(t *testing.T) {
+			ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
+			jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+			if tt.err == nil {
+				assert.NoError(s.T(), err)
+			} else {
+				assert.Error(s.T(), err)
+			}
+			files, err := os.ReadDir(s.tempDir)
 			assert.NoError(s.T(), err)
-		} else {
-			assert.Error(s.T(), err)
-		}
-		files, err := os.ReadDir(s.tempDir)
-		assert.NoError(s.T(), err)
-		assert.Len(s.T(), jobKeys, tt.jobKeysCount)
-		assert.Len(s.T(), files, tt.fileCount)
-		VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.tempDir)
+			assert.Len(s.T(), jobKeys, tt.jobKeysCount)
+			assert.Len(s.T(), files, tt.fileCount)
+			VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.tempDir)
+		})
 	}
 }
 

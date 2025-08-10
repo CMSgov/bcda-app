@@ -19,21 +19,16 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var slackChannel = "C034CFU945C" // #bcda-alerts
-
 type payload struct {
 	GroupID   string `json:"group_id"`
 	GroupName string `json:"group_name"`
 	ACO_ID    string `json:"aco_id"` // CMS_ID or UUID
-}
-
-type Notifier interface {
-	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
 func main() {
@@ -61,7 +56,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	}
 
 	slackClient := slack.New(slackToken)
-	db := database.Connection
+	db := database.Connect()
 	r := postgres.NewRepository(db)
 	ssas, err := client.NewSSASClient()
 
@@ -69,15 +64,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		log.Errorf("failed to create SSAS client: %s", err)
 	}
 
-	sendSlackMessage(slackClient, fmt.Sprintf("Started Create Group lambda in %s env.", os.Getenv("ENV")))
 	err = handleCreateGroup(ssas, r, data)
 	if err != nil {
-		sendSlackMessage(slackClient, fmt.Sprintf("Failed: Create Group lambda in %s env.", os.Getenv("ENV")))
+		msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", msgr.FailureMsg, os.Getenv("ENV")), msgr.Danger)
 		log.Errorf("Failed to Create Group: %+v", err)
 		return err
 	}
 
-	sendSlackMessage(slackClient, fmt.Sprintf("Success: Create Group lambda in %s env.", os.Getenv("ENV")))
+	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Create Group lambda in %s env.", msgr.SuccessMsg, os.Getenv("ENV")), msgr.Good)
 	log.Info("Completed Create Group administrative task")
 
 	return nil
@@ -188,11 +182,4 @@ func setupEnv() (string, error) {
 	}
 
 	return slackToken, nil
-}
-
-func sendSlackMessage(sc *slack.Client, msg string) {
-	_, _, err := sc.PostMessageContext(context.Background(), slackChannel, slack.MsgOptionText(fmt.Sprint(msg), false))
-	if err != nil {
-		log.Errorf("Failed to send slack message: %+v", err)
-	}
 }

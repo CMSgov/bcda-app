@@ -9,8 +9,9 @@ import (
 )
 
 func TestDBOperations(t *testing.T) {
-	var q Queryable = &DB{Connection}
-	var e Executable = &DB{Connection}
+	c := Connect()
+	var q Queryable = &DB{c}
+	var e Executable = &DB{c}
 	rows, err := q.QueryContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 
@@ -31,7 +32,8 @@ func TestDBOperations(t *testing.T) {
 }
 
 func TestTxOperations(t *testing.T) {
-	tx, err := Connection.Begin()
+	c := Connect()
+	tx, err := c.Begin()
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, tx.Rollback())

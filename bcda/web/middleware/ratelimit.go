@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -21,58 +21,57 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
+type RateLimitMiddleware struct {
+	config       *service.Config
 	repository   models.Repository
 	jobTimeout   time.Duration
 	retrySeconds int
-)
-
-func init() {
-	repository = postgres.NewRepository(database.Connection)
-	jobTimeout = time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
-	retrySeconds = utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)
 }
 
-func CheckConcurrentJobs(cfg *service.Config) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
-			if !ok {
-				panic("AuthData should be set before calling this handler")
-			}
+func NewRateLimitMiddleware(config *service.Config, db *sql.DB) RateLimitMiddleware {
+	r := postgres.NewRepository(db)
+	jt := time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+	rs := utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)
+	return RateLimitMiddleware{config: config, repository: r, jobTimeout: jt, retrySeconds: rs}
+}
 
-			rp, ok := GetRequestParamsFromCtx(r.Context())
-			if !ok {
-				panic("RequestParameters should be set before calling this handler")
-			}
+func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+		if !ok {
+			panic("AuthData should be set before calling this handler")
+		}
 
-			rw, _ := getResponseWriterFromRequestPath(w, r)
-			if rw == nil {
+		rp, ok := GetRequestParamsFromCtx(r.Context())
+		if !ok {
+			panic("RequestParameters should be set before calling this handler")
+		}
+
+		rw, _ := getResponseWriterFromRequestPath(w, r)
+		if rw == nil {
+			return
+		}
+
+		acoID := uuid.Parse(ad.ACOID)
+
+		if shouldRateLimit(m.config.RateLimitConfig, ad.CMSID) {
+			pendingAndInProgressJobs, err := m.repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
+			if err != nil {
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
+				rw.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
 				return
 			}
-
-			acoID := uuid.Parse(ad.ACOID)
-
-			if shouldRateLimit(cfg.RateLimitConfig, ad.CMSID) {
-				pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
-				if err != nil {
-					logger := log.GetCtxLogger(r.Context())
-					logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
-					rw.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			if len(pendingAndInProgressJobs) > 0 {
+				if m.hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
+					w.Header().Set("Retry-After", strconv.Itoa(m.retrySeconds))
+					w.WriteHeader(http.StatusTooManyRequests)
 					return
 				}
-				if len(pendingAndInProgressJobs) > 0 {
-					if hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
-						w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
-						w.WriteHeader(http.StatusTooManyRequests)
-						return
-					}
-				}
 			}
-			next.ServeHTTP(w, r)
 		}
-		return http.HandlerFunc(fn)
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
@@ -82,7 +81,7 @@ func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
 	return false
 }
 
-func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {
+func (m RateLimitMiddleware) hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, types []string, version string, newRequestUrl string) bool {
 	logger := log.GetCtxLogger(ctx)
 
 	typeSet := make(map[string]struct{}, len(types))
@@ -116,7 +115,7 @@ func hasDuplicates(ctx context.Context, pendingAndInProgressJobs []*models.Job, 
 		}
 
 		// If the job has timed-out we will allow new job to be created
-		if time.Now().After(job.CreatedAt.Add(jobTimeout)) {
+		if time.Now().After(job.CreatedAt.Add(m.jobTimeout)) {
 			logger.Info("Existing job timed out -- ignoring existing job")
 			continue
 		}

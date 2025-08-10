@@ -34,7 +34,15 @@ import (
 		500: serverError
 */
 
-func GetAuthToken(w http.ResponseWriter, r *http.Request) {
+type BaseApi struct {
+	provider Provider
+}
+
+func NewBaseApi(provider Provider) BaseApi {
+	return BaseApi{provider: provider}
+}
+
+func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := log.API.WithFields(logrus.Fields{"transaction_id": r.Context().Value(middleware.CtxTransactionKey)})
 
 	clientId, secret, ok := r.BasicAuth()
@@ -44,7 +52,7 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenInfo, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret}, r)
+	tokenInfo, err := a.provider.MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret}, r)
 	if err != nil {
 		switch err.(type) {
 		case *customErrors.RequestTimeoutError:
@@ -102,7 +110,7 @@ Responses:
 	200: welcome
 	401: invalidCredentials
 */
-func Welcome(w http.ResponseWriter, r *http.Request) {
+func (a BaseApi) Welcome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(`{"success":"Welcome to the Beneficiary Claims Data API!"}`))
 }

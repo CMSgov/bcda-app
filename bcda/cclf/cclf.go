@@ -5,16 +5,17 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -61,13 +62,18 @@ type CclfFileProcessor interface {
 
 // Manages the import process for CCLF files from a given source
 type CclfImporter struct {
-	Logger        logrus.FieldLogger
-	FileProcessor CclfFileProcessor
+	logger        logrus.FieldLogger
+	fileProcessor CclfFileProcessor
+	db            *sql.DB
+}
+
+func NewCclfImporter(logger logrus.FieldLogger, fileProcessor CclfFileProcessor, db *sql.DB) CclfImporter {
+	return CclfImporter{logger: logger, fileProcessor: fileProcessor, db: db}
 }
 
 func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
 	fileMetadata := zipMetadata.cclf0Metadata
-	importer.Logger.Infof("Importing CCLF0 file %s...", fileMetadata)
+	importer.logger.Infof("Importing CCLF0 file %s...", fileMetadata)
 
 	const (
 		fileNumStart, fileNumEnd           = 0, 7
@@ -81,7 +87,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, zipMetadata.filePath)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 		return nil, err
 	}
 	defer rc.Close()
@@ -97,20 +103,20 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 			if filetype == "CCLF8" {
 				if validator != nil {
 					err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
-					importer.Logger.Error(err)
+					importer.logger.Error(err)
 					return nil, err
 				}
 
 				count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
 				if err != nil {
 					err = errors.Wrapf(err, "failed to parse %s record count from CCLF0 file", filetype)
-					importer.Logger.Error(err)
+					importer.logger.Error(err)
 					return nil, err
 				}
 				length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
 				if err != nil {
 					err = errors.Wrapf(err, "failed to parse %s record length from CCLF0 file", filetype)
-					importer.Logger.Error(err)
+					importer.logger.Error(err)
 					return nil, err
 				}
 
@@ -120,46 +126,41 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 	}
 
 	if validator != nil {
-		importer.Logger.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
+		importer.logger.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
 		return validator, nil
 	}
 
 	err = fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata.name)
-	importer.Logger.Error(err)
+	importer.logger.Error(err)
 	return nil, err
 }
 
 func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
 	fileMetadata := zipMetadata.cclf8Metadata
 
-	db := database.Connection
-	repository := postgres.NewRepository(db)
+	repository := postgres.NewRepository(importer.db)
 	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 		return err
 	}
 
 	if exists {
-		importer.Logger.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
+		importer.logger.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
 		return nil
 	}
 
-	importer.Logger.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
+	importer.logger.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
 
-	conn, err := database.Pgxv5Pool.Acquire(ctx)
-	if err != nil {
-		err = fmt.Errorf("failed to acquire connection: %w", err)
-		importer.Logger.Error(err)
-		return err
-	}
-	defer conn.Release()
+	conn, err := stdlib.AcquireConn(importer.db)
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(importer.db, conn) })
 
-	tx, err := conn.Begin(ctx)
+	tx, err := conn.BeginEx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
+
 		return err
 	}
 
@@ -167,8 +168,8 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	defer func() {
 		if err != nil {
-			if err1 := tx.Rollback(ctx); err1 != nil {
-				importer.Logger.Warnf("Failed to rollback transaction %s", err.Error())
+			if err1 := tx.Rollback(); err1 != nil {
+				importer.logger.Warnf("Failed to rollback transaction %s", err.Error())
 			}
 			return
 		}
@@ -189,7 +190,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	cclfFile.ID, err = rtx.CreateCCLFFile(ctx, cclfFile)
 	if err != nil {
 		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 		return err
 	}
 
@@ -198,37 +199,37 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	rc, err := zipMetadata.cclf8File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, zipMetadata.filePath)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 		return err
 	}
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
 
-	importedCount, recordCount, err := CopyFrom(ctx, tx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.Logger, validator.maxRecordLength)
+	importedCount, recordCount, err := CopyFrom(ctx, tx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.logger, validator.maxRecordLength)
 	if err != nil {
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
 
 	if recordCount > validator.totalRecordCount {
 		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 		return err
 	}
 
 	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata.name)
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		importer.Logger.Error(err.Error())
+	if err = tx.Commit(); err != nil {
+		importer.logger.Error(err.Error())
 		failMsg := fmt.Sprintf("failed to commit transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
 		return errors.Wrap(err, failMsg)
 	}
 
 	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata.name)
-	importer.Logger.WithFields(logrus.Fields{"imported_count": importedCount}).Info(successMsg)
+	importer.logger.WithFields(logrus.Fields{"imported_count": importedCount}).Info(successMsg)
 
 	return nil
 }
@@ -241,7 +242,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
 	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
-	cclfMap, skipped, failure, err := importer.FileProcessor.LoadCclfFiles(filePath)
+	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(filePath)
 	c()
 
 	if err != nil {
@@ -249,7 +250,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	if len(cclfMap) == 0 {
-		importer.Logger.Info("Did not find any CCLF files in directory -- returning safely.")
+		importer.logger.Info("Did not find any CCLF files in directory -- returning safely.")
 		return 0, failure, skipped, err
 	}
 
@@ -262,7 +263,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 
 				cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
 				if err != nil {
-					importer.Logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata)
+					importer.logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata)
 					failure++
 					skipped += 2
 				} else {
@@ -270,7 +271,7 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 				}
 
 				if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
-					importer.Logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
+					importer.logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
 					failure++
 				} else {
 					zipMetadata.imported = true
@@ -283,15 +284,15 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	if err = func() error {
 		ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
 		defer c()
-		_, err := importer.FileProcessor.CleanUpCCLF(ctx, cclfMap)
+		_, err := importer.fileProcessor.CleanUpCCLF(ctx, cclfMap)
 		return err
 	}(); err != nil {
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 	}
 
 	if failure > 0 {
 		err = errors.New(fmt.Sprintf("Failed to import %d files", failure))
-		importer.Logger.Error(err)
+		importer.logger.Error(err)
 	} else {
 		err = nil
 	}

@@ -7,13 +7,13 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -37,7 +37,7 @@ type PrepareJobWorker struct {
 	r        models.Repository
 }
 
-func NewPrepareJobWorker() (*PrepareJobWorker, error) {
+func NewPrepareJobWorker(db *sql.DB) (*PrepareJobWorker, error) {
 
 	logger := log.Worker
 	client.SetLogger(logger)
@@ -50,7 +50,7 @@ func NewPrepareJobWorker() (*PrepareJobWorker, error) {
 		logger.Fatalf("no ACO configs found, these are required for downstream processing")
 	}
 
-	repository := postgres.NewRepository(database.Connection)
+	repository := postgres.NewRepository(db)
 	svc := service.NewService(repository, cfg, "")
 
 	v1, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV1Path))

@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/pborman/uuid"
-	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -54,14 +52,6 @@ func TestHandleCreateACOTestSuite(t *testing.T) {
 	suite.Run(t, new(HandleCreateACOTestSuite))
 }
 
-type mockNotifier struct {
-	Notifier
-}
-
-func (m *mockNotifier) PostMessageContext(ctx context.Context, channelID string, options ...slack.MsgOption) (string, string, error) {
-	return channelID, time.Now().String(), nil
-}
-
 type mockString struct{}
 
 func (ms mockString) Match(v any) bool {
@@ -98,7 +88,7 @@ func TestHandleCreateACOSuccess(t *testing.T) {
 	data := payload{"TESTACO", "TEST002", nil}
 	id := uuid.NewRandom()
 
-	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
+	err = handleCreateACO(ctx, mockConn, data, id)
 	assert.Nil(t, err)
 }
 
@@ -124,7 +114,7 @@ func TestHandleCreateACOFailure(t *testing.T) {
 	data := payload{"TESTACO", "TEST002", nil}
 	id := uuid.NewRandom()
 
-	err = handleCreateACO(ctx, mockConn, data, id, &mockNotifier{})
+	err = handleCreateACO(ctx, mockConn, data, id)
 	assert.ErrorContains(t, err, "test error")
 }
 
@@ -132,7 +122,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOInvalidCMSID() {
 	data := payload{"TESTACO", "12345678", nil}
 	id := uuid.NewRandom()
 
-	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
+	err := handleCreateACO(c.ctx, c.tx, data, id)
 	assert.ErrorContains(c.T(), err, "invalid")
 }
 
@@ -140,7 +130,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingName() {
 	data := payload{"", "TEST510", nil}
 	id := uuid.NewRandom()
 
-	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
+	err := handleCreateACO(c.ctx, c.tx, data, id)
 	assert.ErrorContains(c.T(), err, "ACO name must be provided")
 }
 
@@ -148,6 +138,6 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 	data := payload{"Test ACO 5", "", nil}
 	id := uuid.NewRandom()
 
-	err := handleCreateACO(c.ctx, c.tx, data, id, &mockNotifier{})
+	err := handleCreateACO(c.ctx, c.tx, data, id)
 	assert.ErrorContains(c.T(), err, "CMSID must be provided")
 }
