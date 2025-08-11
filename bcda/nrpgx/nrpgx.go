@@ -300,7 +300,11 @@ func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, strin
 				cc.Port, ppoid = parsePort(ip6parts[2])
 			}
 		} else {
-			if colon := strings.IndexRune(cc.Host, ':'); colon >= 0 {
+			// Only process colon-separated host:port if it's not an IPv6 address
+			// Check if this looks like an IPv6 address (contains multiple colons)
+			if strings.Count(cc.Host, ":") > 1 {
+				// This is likely an IPv6 address, don't split on colons
+			} else if colon := strings.IndexRune(cc.Host, ':'); colon >= 0 {
 				// This host had an explicit port number attached to it.
 				// Use that in preference to what's in cc.Port.
 				if colon+1 < len(cc.Host) {
