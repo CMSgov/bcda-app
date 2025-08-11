@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
+	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 )
@@ -76,7 +77,10 @@ func (importer *cclf8Importer) Values() ([]interface{}, error) {
 	}
 
 	// Use Int4 because we store file_id as an integer
-	fileID := int32(importer.cclfFileID)
+	fileID, err := safecast.ToInt32(importer.cclfFileID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert fileID to int32: %w", err)
+	}
 
 	mbi := importer.getMBI()
 

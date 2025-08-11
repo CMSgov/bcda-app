@@ -37,7 +37,7 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 }
 
 func NewRepositoryPgxTx(tx *sql.Tx) *Repository {
-	return &Repository{&database.PgxTx{tx}, &database.PgxTx{tx}}
+	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
 }
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
