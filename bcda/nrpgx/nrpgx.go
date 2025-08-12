@@ -327,7 +327,23 @@ func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, strin
 		}
 
 		// Unix sockets are handled a little differently
-		if strings.HasPrefix(cc.Host, "/") {
+		// Check if this is a default pgx Unix socket path (like /tmp or /private/tmp)
+		if cc.Host == "/tmp" || cc.Host == "/private/tmp" {
+			// This is pgx's default Unix socket path
+			// If environment variables are set, use them instead
+			if envHost := getenv("PGHOST"); envHost != "" {
+				cc.Host = envHost
+			} else {
+				// No environment variable, treat it as localhost with default port
+				cc.Host = "localhost"
+			}
+			if cc.Port == 0 {
+				cc.Port, ppoid = parsePort("5432")
+			} else {
+				ppoid = strconv.Itoa(int(cc.Port))
+			}
+		} else if strings.HasPrefix(cc.Host, "/") {
+			// This is a real Unix socket path, handle it properly
 			ppoid = path.Join(cc.Host, ".s.PGSQL."+ppoid)
 			cc.Host = "localhost"
 		}
