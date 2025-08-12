@@ -376,7 +376,7 @@ func (s *APITestSuite) TestServeData() {
 		{"yes-header-gzip-encoded", []string{"gzip"}, true, "test_gzip_encoded.ndjson", true, http.StatusOK},
 		{"yes-header-not-encoded", []string{"gzip"}, true, "test_no_encoding.ndjson", true, http.StatusOK},
 		{"bad file name", []string{""}, false, "not_a_real_file", false, http.StatusNotFound},
-		{"file doesn't exist", []string{""}, true, "foo.ndjson", true, http.StatusOK},
+		{"file doesn't exist", []string{"gzip"}, true, "foo.ndjson", false, http.StatusNotFound},
 		{"single byte file", []string{""}, false, "single_byte_file.bin", false, http.StatusInternalServerError},
 		{"no-header-corrupt-file", []string{""}, false, "corrupt_gz_file.ndjson", false, http.StatusInternalServerError}, //This file is kind of cool. has magic number, but otherwise arbitrary data.
 	}
@@ -403,7 +403,7 @@ func (s *APITestSuite) TestServeData() {
 			handler.ServeHTTP(s.rr, req)
 
 			if !tt.validFile {
-				assert.Equal(t, http.StatusInternalServerError, s.rr.Code)
+				assert.Equal(t, tt.respStatus, s.rr.Code)
 				return
 			}
 
