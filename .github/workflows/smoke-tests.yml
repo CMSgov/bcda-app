@@ -202,7 +202,6 @@ jobs:
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-alerts
           payload: |
             channel: "C03S23MJFJS"
             attachments:
