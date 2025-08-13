@@ -253,7 +253,7 @@ type fhirResponseWriter interface {
 func getRespWriter(version string) (fhirResponseWriter, error) {
 	switch version {
 	case "v1":
-		return responseutils.NewResponseWriter(), nil
+		return responseutils.NewFhirResponseWriter(), nil
 	case "v2":
 		return responseutilsv2.NewFhirResponseWriter(), nil
 	case constants.V3Version:
