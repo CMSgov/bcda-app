@@ -17,7 +17,7 @@ decrypt-secrets:
 # check for vault password file
 	@[ -f .vault_password ] || (echo "vault password not found; ensure .vault_password file exists at repository root" ; exit 1)
 	
-	@echo "Decrypt secrets and discard all local changes to encrypted secrets? (y/N)";
+	@echo "Decrypt and overwrite local secrets? (y/N)";
 	@read response; \
 	if [[ "$$response" == "y" || "$$response" == "Y" ]]; then \
 		./ops/secrets --decrypt ; \
