@@ -57,7 +57,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 
 	slackClient := slack.New(params)
 
-	msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), "")
+	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), "")
 
 	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
 	if err := w.cleanupJob(w.db, cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
