@@ -41,8 +41,6 @@ import (
 	"github.com/slack-go/slack"
 )
 
-var slackChannel = "C034CFU945C" // #bcda-alerts
-
 type Notifier interface {
 	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
