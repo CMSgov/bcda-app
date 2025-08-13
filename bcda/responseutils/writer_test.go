@@ -41,7 +41,7 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	rw.Exception(ctx, s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterExcepton")
@@ -60,7 +60,7 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	rw.NotFound(ctx, s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterNotFound")
@@ -78,7 +78,7 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value)
@@ -87,7 +87,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
@@ -107,7 +107,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	relversion := "r1"
 	baseurl := "bcda.cms.gov"
 	cs := rw.CreateCapabilityStatement(time.Now(), relversion, baseurl)
@@ -118,7 +118,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	relversion := "r1"
 	baseurl := "bcda.cms.gov"
 	cs := rw.CreateCapabilityStatement(time.Now(), relversion, baseurl)
@@ -143,7 +143,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	jobs := []*models.Job{
 		{
 			ID:         1,
@@ -181,7 +181,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundle() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	jb := rw.CreateJobsBundle(nil, constants.TestAPIUrl)
 
 	assert.Equal(s.T(), uint32(0), jb.Total.Value)
@@ -189,7 +189,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundle() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	job := models.Job{
 		ID:         1,
 		ACOID:      uuid.NewUUID(),
@@ -212,7 +212,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestGetFhirStatusCode() {
-	rw := NewResponseWriter()
+	rw := NewFhirResponseWriter()
 	tests := []struct {
 		name string
 
