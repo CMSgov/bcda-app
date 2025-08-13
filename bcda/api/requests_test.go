@@ -515,7 +515,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	req := s.genGroupRequest("runout", middleware.RequestParameters{})
 	w := httptest.NewRecorder()
 	h := &Handler{}
-	h.RespWriter = responseutils.NewResponseWriter()
+	h.RespWriter = responseutils.NewFhirResponseWriter()
 	h.BulkGroupRequest(w, req)
 
 	resp := w.Result()

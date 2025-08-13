@@ -146,12 +146,12 @@ type fhirResponseWriter interface {
 
 func getRespWriter(path string) fhirResponseWriter {
 	if strings.Contains(path, "/v1/") {
-		return responseutils.NewResponseWriter()
+		return responseutils.NewFhirResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
-		return responseutilsv2.NewResponseWriter()
+		return responseutilsv2.NewFhirResponseWriter()
 	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
-		return responseutilsv2.NewResponseWriter() // TODO: V3
+		return responseutilsv2.NewFhirResponseWriter() // TODO: V3
 	} else {
-		return responseutils.NewResponseWriter()
+		return responseutils.NewFhirResponseWriter()
 	}
 }

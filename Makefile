@@ -10,6 +10,23 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+decrypt-secrets:
+# check for ansible in path
+	@which ansible-vault > /dev/null || (echo "ansible-vault not found; ansible-vault must be installed to decrypt secrets" ; exit 1)
+
+# check for vault password file
+	@[ -f .vault_password ] || (echo "vault password not found; ensure .vault_password file exists at repository root" ; exit 1)
+	
+	@echo "Decrypt and overwrite local secrets? (y/N)";
+	@read response; \
+	if [[ "$$response" == "y" || "$$response" == "Y" ]]; then \
+		./ops/secrets --decrypt ; \
+		cp -a ./shared_files/encrypted/. ./shared_files/decrypted/ ; \
+		git checkout ./shared_files/encrypted/ ; \
+	else \
+		echo "Operation cancelled." ; \
+	fi 
+
 setup-tests:
 	# Clean up any existing data to ensure we spin up container in a known state.
 	docker compose -f docker-compose.test.yml rm -fsv tests

@@ -388,7 +388,7 @@ func (a ApiV1) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
 
-	rw := responseutils.NewResponseWriter()
+	rw := responseutils.NewFhirResponseWriter()
 	statement := rw.CreateCapabilityStatement(dt, constants.Version, host)
 	rw.WriteCapabilityStatement(r.Context(), statement, w)
 }
