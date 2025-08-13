@@ -275,11 +275,18 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 
 	logger := log.GetCtxLogger(r.Context())
 
+	// Check file exists
+	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+		logger.Errorf("file not found: %s", err)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
 	encoded, err := isGzipEncoded(filePath)
 	if err != nil {
 		logger.Errorf("failed when checking if file is gzip encoded: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
+		return
 	}
 
 	var useGZIP bool
@@ -305,12 +312,6 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.API.Warnf("API request to serve data is being made without gzip for file %s for jobId %s", fileName, jobID)
 		if encoded {
-			// Check file exists
-			if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
-				logger.Errorf("file not found: %s", err)
-				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-				return
-			}
 			// Open file
 			file, err := os.Open(filePath) // #nosec G304
 			if err != nil {

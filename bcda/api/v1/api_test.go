@@ -370,13 +370,15 @@ func (s *APITestSuite) TestServeData() {
 		gzipExpected bool
 		fileName     string
 		validFile    bool
+		respStatus   int
 	}{
-		{"no-header-gzip-encoded", []string{""}, false, "test_gzip_encoded.ndjson", true},
-		{"yes-header-gzip-encoded", []string{"gzip"}, true, "test_gzip_encoded.ndjson", true},
-		{"yes-header-not-encoded", []string{"gzip"}, true, "test_no_encoding.ndjson", true},
-		{"bad file name", []string{""}, false, "not_a_real_file", false},
-		{"single byte file", []string{""}, false, "single_byte_file.bin", false},
-		{"no-header-corrupt-file", []string{""}, false, "corrupt_gz_file.ndjson", false}, //This file is kind of cool. has magic number, but otherwise arbitrary data.
+		{"no-header-gzip-encoded", []string{""}, false, "test_gzip_encoded.ndjson", true, http.StatusOK},
+		{"yes-header-gzip-encoded", []string{"gzip"}, true, "test_gzip_encoded.ndjson", true, http.StatusOK},
+		{"yes-header-not-encoded", []string{"gzip"}, true, "test_no_encoding.ndjson", true, http.StatusOK},
+		{"bad file name", []string{""}, false, "not_a_real_file", false, http.StatusNotFound},
+		{"file doesn't exist", []string{"gzip"}, true, "foo.ndjson", false, http.StatusNotFound},
+		{"single byte file", []string{""}, false, "single_byte_file.bin", false, http.StatusInternalServerError},
+		{"no-header-corrupt-file", []string{""}, false, "corrupt_gz_file.ndjson", false, http.StatusInternalServerError}, //This file is kind of cool. has magic number, but otherwise arbitrary data.
 	}
 
 	for _, tt := range tests {
@@ -401,7 +403,7 @@ func (s *APITestSuite) TestServeData() {
 			handler.ServeHTTP(s.rr, req)
 
 			if !tt.validFile {
-				assert.Equal(t, http.StatusInternalServerError, s.rr.Code)
+				assert.Equal(t, tt.respStatus, s.rr.Code)
 				return
 			}
 

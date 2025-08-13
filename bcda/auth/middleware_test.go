@@ -469,6 +469,68 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchReturn404WhenNoAuthDataPro
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
 
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchExpiredJob() {
+	expiredJob := models.Job{
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: constants.V1Path + constants.EOBExportPath,
+		Status:     models.JobStatusExpired,
+	}
+
+	archivedJob := models.Job{
+		ACOID:      uuid.Parse(constants.TestACOID),
+		RequestURL: constants.V1Path + constants.EOBExportPath,
+		Status:     models.JobStatusExpired,
+	}
+
+	postgrestest.CreateJobs(s.T(), s.db, &expiredJob)
+	expID, err := safecast.ToInt(expiredJob.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	expiredJobID := strconv.Itoa(expID)
+
+	postgrestest.CreateJobs(s.T(), s.db, &archivedJob)
+	id, err := safecast.ToInt(archivedJob.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	archivedJobID := strconv.Itoa(id)
+
+	tests := []struct {
+		name    string
+		jobID   string
+		ACOID   string
+		errCode int
+	}{
+		{"Expired Job", expiredJobID, expiredJob.ACOID.String(), http.StatusNotFound},
+		{"Archive Job", archivedJobID, archivedJob.ACOID.String(), http.StatusNotFound},
+	}
+
+	p := auth.NewProvider(s.db)
+	am := auth.NewAuthMiddleware(p)
+	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
+	server := s.CreateServer(p)
+	defer server.Close()
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			s.rr = httptest.NewRecorder()
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", tt.jobID)
+			req, err := http.NewRequest("GET", fmt.Sprintf(constants.ServerPath, server.URL), nil)
+			assert.NoError(t, err)
+			ad := auth.AuthData{
+				ACOID:   tt.ACOID,
+				TokenID: uuid.New(),
+			}
+			ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
+			req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
+			handler.ServeHTTP(s.rr, req)
+			assert.Equal(s.T(), tt.errCode, s.rr.Code)
+		})
+	}
+}
+
 // unit test
 func (s *MiddlewareTestSuite) TestCheckBlacklist() {
 	blacklisted := testUtils.RandomHexID()[0:4]
