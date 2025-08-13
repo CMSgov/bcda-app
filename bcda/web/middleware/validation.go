@@ -255,9 +255,9 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	case "v1":
 		return responseutils.NewResponseWriter(), nil
 	case "v2":
-		return responseutilsv2.NewResponseWriter(), nil
+		return responseutilsv2.NewFhirResponseWriter(), nil
 	case constants.V3Version:
-		return responseutilsv2.NewResponseWriter(), nil // TODO: V3
+		return responseutilsv2.NewFhirResponseWriter(), nil // TODO: V3
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}

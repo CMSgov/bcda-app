@@ -27,36 +27,36 @@ import (
 	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
 )
 
-type ResponseWriter struct {
+type FhirResponseWriter struct {
 	marshaller *jsonformat.Marshaller
 }
 
-func NewResponseWriter() ResponseWriter {
+func NewFhirResponseWriter() FhirResponseWriter {
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
 	m, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
 	if err != nil {
 		log.API.Fatalf("Failed to create marshaller %s", err)
 	}
-	return ResponseWriter{marshaller: m}
+	return FhirResponseWriter{marshaller: m}
 }
 
-func (r ResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
+func (r FhirResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
 	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
-func (r ResponseWriter) NotFound(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
+func (r FhirResponseWriter) NotFound(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
 	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
-func (r ResponseWriter) JobsBundle(ctx context.Context, w http.ResponseWriter, jobs []*models.Job, host string) {
+func (r FhirResponseWriter) JobsBundle(ctx context.Context, w http.ResponseWriter, jobs []*models.Job, host string) {
 	jb := r.CreateJobsBundle(jobs, host)
 	r.WriteBundleResponse(jb, w)
 }
 
-func (r ResponseWriter) CreateJobsBundle(jobs []*models.Job, host string) *fhirmodelCR.Bundle {
+func (r FhirResponseWriter) CreateJobsBundle(jobs []*models.Job, host string) *fhirmodelCR.Bundle {
 	var entries []*fhirmodelCR.Bundle_Entry
 
 	// generate bundle task entries
@@ -78,7 +78,7 @@ func (r ResponseWriter) CreateJobsBundle(jobs []*models.Job, host string) *fhirm
 	}
 }
 
-func (r ResponseWriter) CreateJobsBundleEntry(job *models.Job, host string) *fhirmodelCR.Bundle_Entry {
+func (r FhirResponseWriter) CreateJobsBundleEntry(job *models.Job, host string) *fhirmodelCR.Bundle_Entry {
 	fhirStatusCode := r.GetFhirStatusCode(job.Status)
 
 	return &fhirmodelCR.Bundle_Entry{
@@ -118,7 +118,7 @@ func (r ResponseWriter) CreateJobsBundleEntry(job *models.Job, host string) *fhi
 	}
 }
 
-func (r ResponseWriter) GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
+func (r FhirResponseWriter) GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
 	var fhirStatus fhircodes.TaskStatusCode_Value
 
 	switch status {
@@ -140,7 +140,7 @@ func (r ResponseWriter) GetFhirStatusCode(status models.JobStatus) fhircodes.Tas
 	return fhirStatus
 }
 
-func (r ResponseWriter) CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
+func (r FhirResponseWriter) CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
 	errType, diagnostics string) *fhirmodelOO.OperationOutcome {
 
 	return &fhirmodelOO.OperationOutcome{
@@ -164,7 +164,7 @@ func (r ResponseWriter) CreateOpOutcome(severity fhircodes.IssueSeverityCode_Val
 	}
 }
 
-func (r ResponseWriter) WriteError(ctx context.Context, outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
+func (r FhirResponseWriter) WriteError(ctx context.Context, outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
 	//Write application/fhir+json header on OperationOutcome responses
 	//https://build.fhir.org/ig/HL7/bulk-data/export.html#response---error-status-1
 	logger := log.GetCtxLogger(ctx)
@@ -177,7 +177,7 @@ func (r ResponseWriter) WriteError(ctx context.Context, outcome *fhirmodelOO.Ope
 	}
 }
 
-func (r ResponseWriter) WriteOperationOutcome(w io.Writer, outcome *fhirmodelOO.OperationOutcome) (int, error) {
+func (r FhirResponseWriter) WriteOperationOutcome(w io.Writer, outcome *fhirmodelOO.OperationOutcome) (int, error) {
 	resource := &fhirmodelCR.ContainedResource{
 		OneofResource: &fhirmodelCR.ContainedResource_OperationOutcome{OperationOutcome: outcome},
 	}
@@ -189,7 +189,7 @@ func (r ResponseWriter) WriteOperationOutcome(w io.Writer, outcome *fhirmodelOO.
 	return w.Write(outcomeJSON)
 }
 
-func (r ResponseWriter) CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodelCS.CapabilityStatement {
+func (r FhirResponseWriter) CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodelCS.CapabilityStatement {
 	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
 	statement := &fhirmodelCS.CapabilityStatement{
 		Status: &fhirmodelCS.CapabilityStatement_StatusCode{Value: fhircodes.PublicationStatusCode_ACTIVE},
@@ -282,7 +282,7 @@ func (r ResponseWriter) CreateCapabilityStatement(reldate time.Time, relversion,
 	}
 	return statement
 }
-func (r ResponseWriter) WriteCapabilityStatement(ctx context.Context, statement *fhirmodelCS.CapabilityStatement, w http.ResponseWriter) {
+func (r FhirResponseWriter) WriteCapabilityStatement(ctx context.Context, statement *fhirmodelCS.CapabilityStatement, w http.ResponseWriter) {
 	resource := &fhirmodelCR.ContainedResource{
 		OneofResource: &fhirmodelCR.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
 	}
@@ -303,7 +303,7 @@ func (r ResponseWriter) WriteCapabilityStatement(ctx context.Context, statement 
 	}
 }
 
-func (r ResponseWriter) WriteBundleResponse(bundle *fhirmodelCR.Bundle, w http.ResponseWriter) {
+func (r FhirResponseWriter) WriteBundleResponse(bundle *fhirmodelCR.Bundle, w http.ResponseWriter) {
 	resource := &fhirmodelCR.ContainedResource{
 		OneofResource: &fhirmodelCR.ContainedResource_Bundle{Bundle: bundle},
 	}
