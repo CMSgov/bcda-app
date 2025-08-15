@@ -102,11 +102,11 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 
 	switch h.apiVersion {
 	case "v1":
-		h.RespWriter = responseutils.NewResponseWriter()
+		h.RespWriter = responseutils.NewFhirResponseWriter()
 	case "v2":
-		h.RespWriter = responseutilsv2.NewResponseWriter()
+		h.RespWriter = responseutilsv2.NewFhirResponseWriter()
 	case constants.V3Version:
-		h.RespWriter = responseutilsv2.NewResponseWriter() // TODO: V3
+		h.RespWriter = responseutilsv2.NewFhirResponseWriter() // TODO: V3
 	default:
 		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
 	}

@@ -430,7 +430,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	defer close()
 
 	logger := log.GetCtxLogger(ctx)
-	rw := responseutils.NewResponseWriter()
+	rw := responseutils.NewFhirResponseWriter()
 	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
 	fileName := fmt.Sprintf("%s/%s-error.ndjson", tempDir, fileUUID)
