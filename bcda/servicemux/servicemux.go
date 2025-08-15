@@ -17,9 +17,12 @@ import (
 	"github.com/soheilhy/cmux"
 )
 
-var keepAliveInterval int = 60
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
 
-func init() {
+func getKeepAliveConfig() int {
+	keepAliveInterval := 60
 	interval := conf.GetEnv("SERVICE_MUX_KEEP_ALIVE_INTERVAL")
 	if interval != "" {
 		interval, err := strconv.Atoi(interval)
@@ -28,10 +31,7 @@ func init() {
 		}
 		keepAliveInterval = interval
 	}
-}
-
-type tcpKeepAliveListener struct {
-	*net.TCPListener
+	return keepAliveInterval
 }
 
 func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
@@ -45,7 +45,12 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	err = tc.SetKeepAlivePeriod(time.Duration(keepAliveInterval) * time.Second)
+	interval := getKeepAliveConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	err = tc.SetKeepAlivePeriod(time.Duration(interval) * time.Second)
 	if err != nil {
 		return nil, err
 	}

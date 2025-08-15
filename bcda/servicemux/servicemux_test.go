@@ -244,6 +244,17 @@ func TestServiceMuxTestSuite(t *testing.T) {
 	suite.Run(t, new(ServiceMuxTestSuite))
 }
 
+func (s *ServiceMuxTestSuite) TestGetKeepAliveConfig() {
+
+	ln := getKeepAliveConfig()
+	assert.Equal(s.T(), ln, 60)
+
+	os.Setenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL", "240")
+	ln = getKeepAliveConfig()
+	assert.Equal(s.T(), ln, 240)
+	os.Unsetenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL")
+}
+
 func getOrigVars() (origTLSCert, origTLSKey, origHTTPOnly string) {
 	return conf.GetEnv("BCDA_TLS_CERT"), conf.GetEnv("BCDA_TLS_KEY"), conf.GetEnv("HTTP_ONLY")
 }
