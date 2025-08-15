@@ -64,11 +64,11 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
+		log.SetupLoggers()
 		db = database.Connect()
 		pool = database.ConnectPool()
 		repository = postgres.NewRepository(db)
 		provider = auth.NewProvider(db)
-		log.SetupLoggers()
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
