@@ -14,47 +14,32 @@ import (
 )
 
 var (
-	API     logrus.FieldLogger
-	Auth    logrus.FieldLogger
-	BBAPI   logrus.FieldLogger
-	Request logrus.FieldLogger
-	SSAS    logrus.FieldLogger
+	API     logrus.FieldLogger = defaultLogger()
+	Auth    logrus.FieldLogger = defaultLogger()
+	BBAPI   logrus.FieldLogger = defaultLogger()
+	Request logrus.FieldLogger = defaultLogger()
+	SSAS    logrus.FieldLogger = defaultLogger()
 
-	Worker   logrus.FieldLogger
-	BBWorker logrus.FieldLogger
-	Health   logrus.FieldLogger
+	Worker   logrus.FieldLogger = defaultLogger()
+	BBWorker logrus.FieldLogger = defaultLogger()
+	Health   logrus.FieldLogger = defaultLogger()
 )
 
-func init() {
-	setup()
+// setup global access to loggers, overwrite default logger
+func SetupLoggers() {
+	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"), "api")
+	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"), "api")
+	BBAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "api")
+	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"), "api")
+	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"), "api")
+
+	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker")
+	BBWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "worker")
+	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"), "worker")
 }
 
-// setup allows us to invoke it automatically (via init()) and in tests
-// In tests, we want to set up the files/environment in a consistent manner
-func setup() {
-	env := conf.GetEnv("DEPLOYMENT_TARGET")
-
-	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"),
-		"api", env)
-	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"),
-		"api", env)
-	BBAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
-		"api", env)
-	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"),
-		"api", env)
-	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"),
-		"api", env)
-
-	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"),
-		"worker", env)
-	BBWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
-		"worker", env)
-	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"),
-		"worker", env)
-}
-
-func logger(logger *logrus.Logger, outputFile string,
-	application, environment string) logrus.FieldLogger {
+// customize logger and output to files
+func logger(logger *logrus.Logger, outputFile string, application string) logrus.FieldLogger {
 
 	if outputFile != "" {
 		// #nosec G302 -- 0640 permissions required for Splunk ingestion
@@ -74,7 +59,23 @@ func logger(logger *logrus.Logger, outputFile string,
 
 	return logger.WithFields(logrus.Fields{
 		"application": application,
-		"environment": environment,
+		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
+		"version":     constants.Version})
+}
+
+// default logger, always available, outputs to stdout
+func defaultLogger() logrus.FieldLogger {
+	logger := logrus.New()
+
+	logger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+		TimestampFormat:   time.RFC3339Nano,
+	})
+	logger.SetReportCaller(true)
+
+	return logger.WithFields(logrus.Fields{
+		"application": "default",
+		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
 		"version":     constants.Version})
 }
 
