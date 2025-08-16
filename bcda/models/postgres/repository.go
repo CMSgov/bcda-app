@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
+	"github.com/jackc/pgx/v5"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -602,4 +603,35 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	aco.CMSID = &cmsID.String
 	aco.TerminationDetails = termination.Termination
 	return &aco, nil
+}
+
+// CreateCCLFFileWithPgx creates a CCLFFile using a pgx transaction and returns the unique ID
+func (r *Repository) CreateCCLFFileWithPgx(ctx context.Context, tx pgx.Tx, cclfFile models.CCLFFile) (uint, error) {
+	query := `INSERT INTO cclf_files (cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type)
+			  VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+
+	var id uint
+	err := tx.QueryRow(ctx, query,
+		cclfFile.CCLFNum, cclfFile.Name, cclfFile.ACOCMSID, cclfFile.Timestamp,
+		cclfFile.PerformanceYear, cclfFile.ImportStatus, cclfFile.Type).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+// UpdateCCLFFileImportStatusWithPgx updates the import status of a CCLF file using a pgx transaction
+func (r *Repository) UpdateCCLFFileImportStatusWithPgx(ctx context.Context, tx pgx.Tx, fileID uint, importStatus string) error {
+	query := `UPDATE cclf_files SET import_status = $1 WHERE id = $2`
+	result, err := tx.Exec(ctx, query, importStatus, fileID)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("failed to update file entry %d status to %s, no entry found", fileID, importStatus)
+	}
+
+	return nil
 }
