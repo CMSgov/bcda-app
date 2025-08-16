@@ -2,25 +2,24 @@ package database
 
 import (
 	"context"
-
-	"github.com/jackc/pgx"
+	"database/sql"
 )
 
 type PgxTx struct {
-	*pgx.Tx
+	*sql.Tx
 }
 
 func (tx *PgxTx) QueryContext(ctx context.Context, query string, args ...interface{}) (Rows, error) {
-	rows, err := tx.QueryEx(ctx, query, nil, args...)
+	rows, err := tx.Tx.QueryContext(ctx, query, args...)
 	return &pgxRows{rows}, err
 }
 
 func (tx *PgxTx) QueryRowContext(ctx context.Context, query string, args ...interface{}) Row {
-	return tx.QueryRowEx(ctx, query, nil, args...)
+	return tx.Tx.QueryRowContext(ctx, query, args...)
 }
 
 func (tx *PgxTx) ExecContext(ctx context.Context, query string, args ...interface{}) (Result, error) {
-	result, err := tx.ExecEx(ctx, query, nil, args...)
+	result, err := tx.Tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -28,14 +27,13 @@ func (tx *PgxTx) ExecContext(ctx context.Context, query string, args ...interfac
 }
 
 type pgxRows struct {
-	*pgx.Rows
+	*sql.Rows
 }
 
 var _ Rows = &pgxRows{}
 
 func (r *pgxRows) Close() error {
-	r.Rows.Close()
-	return nil
+	return r.Rows.Close()
 }
 
 func (r *pgxRows) Next() bool {
@@ -47,11 +45,11 @@ func (r *pgxRows) Scan(dest ...interface{}) error {
 }
 
 type pgxResult struct {
-	pgx.CommandTag
+	sql.Result
 }
 
 var _ Result = &pgxResult{}
 
 func (r *pgxResult) RowsAffected() (int64, error) {
-	return r.CommandTag.RowsAffected(), nil
+	return r.Result.RowsAffected()
 }

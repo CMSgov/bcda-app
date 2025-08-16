@@ -8,7 +8,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/ccoveille/go-safecast"
-	"github.com/jackc/pgx/pgtype"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,8 +44,8 @@ func TestValues(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, values, 2)
 
-	assert.EqualValues(t, importer.cclfFileID, values[0].(*pgtype.Int4).Int)
-	assert.EqualValues(t, mbi, values[1].(*pgtype.BPChar).String)
+	assert.EqualValues(t, importer.cclfFileID, values[0].(int32))
+	assert.EqualValues(t, mbi, values[1].(string))
 }
 
 func TestErr(t *testing.T) {

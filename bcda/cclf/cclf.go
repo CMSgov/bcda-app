@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -153,14 +152,10 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	importer.logger.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
 
-	conn, err := stdlib.AcquireConn(importer.db)
-	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(importer.db, conn) })
-
-	tx, err := conn.BeginEx(ctx, nil)
+	tx, err := importer.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
 		importer.logger.Error(err)
-
 		return err
 	}
 

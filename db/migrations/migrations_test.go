@@ -26,7 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/suite"
 
-	_ "github.com/jackc/pgx"
+	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 )
 
 const (

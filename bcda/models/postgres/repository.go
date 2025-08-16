@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
-	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -37,7 +36,7 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
 }
 
-func NewRepositoryPgxTx(tx *pgx.Tx) *Repository {
+func NewRepositoryPgxTx(tx *sql.Tx) *Repository {
 	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
 }
 

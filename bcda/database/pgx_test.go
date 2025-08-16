@@ -3,21 +3,21 @@ package database
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/jackc/pgx/pgtype"
-	"github.com/jackc/pgx/stdlib"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPgxTxOperations(t *testing.T) {
-	conn, err := stdlib.AcquireConn(Connect())
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, conn.Close())
-	}()
+	db := Connect()
+	defer db.Close()
 
-	tx, err := conn.Begin()
+	conn, err := db.Conn(context.Background())
+	assert.NoError(t, err)
+	defer conn.Close()
+
+	tx, err := conn.BeginTx(context.Background(), nil)
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, tx.Rollback())
@@ -28,14 +28,14 @@ func TestPgxTxOperations(t *testing.T) {
 	rows, err := q.QueryContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)
 
-	var result pgtype.Timestamptz
+	var result time.Time
 	assert.True(t, rows.Next())
 	assert.NoError(t, rows.Scan(&result))
-	assert.False(t, result.Time.IsZero(), "Time should be set")
+	assert.False(t, result.IsZero(), "Time should be set")
 	assert.NoError(t, rows.Close())
 
 	assert.NoError(t, q.QueryRowContext(context.Background(), constants.TestSelectNowSQL).Scan(&result))
-	assert.False(t, result.Time.IsZero(), "Time should be set")
+	assert.False(t, result.IsZero(), "Time should be set")
 
 	res, err := e.ExecContext(context.Background(), constants.TestSelectNowSQL)
 	assert.NoError(t, err)

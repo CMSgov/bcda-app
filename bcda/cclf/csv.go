@@ -11,15 +11,12 @@ import (
 	f "path/filepath"
 	"time"
 
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/stdlib"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/optout"
 )
 
@@ -113,14 +110,8 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	}
 
 	importer.Logger.Infof("Importing CSV file %s...", csv.metadata.name)
-	conn, err := stdlib.AcquireConn(importer.Database)
-	if err != nil {
-		return err
-	}
 
-	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(importer.Database, conn) })
-
-	tx, err := conn.BeginEx(ctx, nil)
+	tx, err := importer.Database.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
@@ -160,12 +151,13 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return err
 	}
 
-	records, err = tx.CopyFrom(pgx.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgx.CopyFromRows(rows))
+	// Insert beneficiaries using bulk insert
+	records, err = importer.insertBeneficiaries(ctx, tx, rows)
 	if count != records {
 		return fmt.Errorf("unexpected number of records imported (expected: %d, actual: %d)", count, records)
 	}
 	if err != nil {
-		return errors.New("failed to write attribution beneficiaries to database using CopyFrom")
+		return errors.New("failed to write attribution beneficiaries to database")
 	}
 
 	err = rtx.UpdateCCLFFileImportStatus(ctx, csv.metadata.fileID, constants.ImportComplete)
@@ -215,4 +207,28 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 	}
 	return rows, count, err
 
+}
+
+func (importer CSVImporter) insertBeneficiaries(ctx context.Context, tx *sql.Tx, rows [][]interface{}) (int, error) {
+	if len(rows) == 0 {
+		return 0, nil
+	}
+
+	// Prepare bulk insert statement
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO cclf_beneficiaries (file_id, mbi) VALUES ($1, $2)")
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	var count int
+	for _, row := range rows {
+		_, err = stmt.ExecContext(ctx, row[0], row[1])
+		if err != nil {
+			return count, fmt.Errorf("failed to insert row: %w", err)
+		}
+		count++
+	}
+
+	return count, nil
 }
