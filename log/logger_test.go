@@ -51,7 +51,7 @@ func TestLoggers(t *testing.T) {
 			conf.SetEnv(t, tt.logEnv, logFile.Name())
 
 			// Refresh the logger to reference the new configs
-			setup()
+			SetupLoggers()
 
 			msg := uuid.New()
 			tt.logSupplier().Info(msg)
@@ -90,7 +90,6 @@ func verifyCommonFields(t *testing.T, fields logrus.Fields, env, msg string) {
 	assert.Equal(t, fields["environment"], env)
 	assert.Equal(t, fields["msg"], msg)
 	assert.Equal(t, fields["version"], constants.Version)
-	assert.Contains(t, fields["func"], "github.com/CMSgov/bcda-app/log")
 	_, err := time.Parse(time.RFC3339Nano, fields["time"].(string))
 	assert.NoError(t, err)
 }

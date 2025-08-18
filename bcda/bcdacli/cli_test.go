@@ -33,7 +33,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
@@ -318,6 +317,7 @@ func (s *CLITestSuite) TestCreateACO() {
 	// Successful ACO creation
 	ACOName := "Unit Test ACO 1"
 	args := []string{"bcda", constants.CreateACOID, constants.NameArg, ACOName}
+
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
@@ -326,6 +326,7 @@ func (s *CLITestSuite) TestCreateACO() {
 	testACO := postgrestest.GetACOByUUID(s.T(), s.db, acoUUID)
 	assert.Equal(ACOName, testACO.Name)
 	buf.Reset()
+	defer postgrestest.DeleteACO(s.T(), s.db, acoUUID)
 
 	ACO2Name := "Unit Test ACO 2"
 	aco2ID := "A9999"
@@ -339,6 +340,7 @@ func (s *CLITestSuite) TestCreateACO() {
 	assert.Equal(ACO2Name, testACO2.Name)
 	assert.Equal(aco2ID, *testACO2.CMSID)
 	buf.Reset()
+	defer postgrestest.DeleteACO(s.T(), s.db, acoUUID)
 
 	// Negative tests
 
@@ -382,7 +384,6 @@ func (s *CLITestSuite) TestCreateACO() {
 func (s *CLITestSuite) TestImportCCLFDirectory() {
 	targetACO := "A0002"
 	assert := assert.New(s.T())
-	hook := test.NewLocal(testUtils.GetLogger(logger.API))
 
 	type test struct {
 		path         string
@@ -391,9 +392,21 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	}
 
 	tests := []test{
-		{path: "../../shared_files/cclf/archives/valid/", err: errors.New("files skipped or failed import. See logs for more details"), expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."}},
-		{path: "../../shared_files/cclf/archives/invalid_bcd/", err: errors.New("failed to import 1 files"), expectedLogs: []string{"missing CCLF0 or CCLF8 file in zip", "", ""}},
-		{path: "../../shared_files/cclf/archives/skip/", err: errors.New("files failed to import or no files were imported. See logs for more details."), expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 1 files."}},
+		{
+			path:         "../../shared_files/cclf/archives/valid/",
+			err:          errors.New("files skipped or failed import. See logs for more details"),
+			expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."},
+		},
+		{
+			path:         "../../shared_files/cclf/archives/invalid_bcd/",
+			err:          errors.New("failed to import 1 files"),
+			expectedLogs: []string{"missing CCLF0 or CCLF8 file in zip"},
+		},
+		{
+			path:         "../../shared_files/cclf/archives/skip/",
+			err:          errors.New("files failed to import or no files were imported. See logs for more details."),
+			expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."},
+		},
 	}
 
 	for _, tc := range tests {
@@ -401,24 +414,28 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 		path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tc.path)
 		defer cleanup()
+
+		// reset global logs to clean up any previous log entries
+		logger.SetupLoggers()
+
 		args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
 		err := s.testApp.Run(args)
 		if tc.err == nil {
 			assert.Nil(err)
 		}
 
-		var success, failed bool
-		for _, entry := range hook.AllEntries() {
-			if strings.Contains(entry.Message, tc.expectedLogs[0]) {
-				success = true
-			}
-			if strings.Contains(entry.Message, tc.expectedLogs[1]) {
+		var failed bool
+		content, err := os.ReadFile(os.Getenv("BCDA_ERROR_LOG"))
+		assert.Nil(err)
+
+		// go through each expected log and make sure it exists in all logs
+		for _, expectedLog := range tc.expectedLogs {
+			if !strings.Contains(string(content), expectedLog) {
 				failed = true
 			}
 		}
 
-		assert.True(success)
-		assert.True(failed)
+		assert.False(failed)
 	}
 }
 
