@@ -190,7 +190,6 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 			if err1 := pgxTx.Rollback(ctx); err1 != nil {
 				importer.logger.Warnf("Failed to rollback pgx transaction: %s", err1.Error())
 			}
-			return
 		}
 	}()
 

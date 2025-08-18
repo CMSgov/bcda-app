@@ -82,6 +82,14 @@ func (s *CCLFTestSuite) SetupSuite() {
 func (s *CCLFTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
 	os.RemoveAll(s.pendingDeletionDir)
+
+	// Close database connections to prevent connection pool exhaustion
+	if s.db != nil {
+		s.db.Close()
+	}
+	if s.pool != nil {
+		s.pool.Close()
+	}
 }
 
 func (s *CCLFTestSuite) TearDownTest() {
@@ -93,7 +101,10 @@ func TestCCLFTestSuite(t *testing.T) {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
-	ctx := context.Background()
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	assert := assert.New(s.T())
 
 	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
@@ -172,6 +183,10 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	//indeterminate test results without deletion of both.
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
@@ -191,21 +206,21 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 		totalRecordCount: 7,
 	}
 
-	err := s.importer.importCCLF8(context.Background(), metadata, validator)
+	err := s.importer.importCCLF8(ctx, metadata, validator)
 	s.ErrorContains(err, "incorrect record length for file (expected: 2, actual: 549)")
 
 	// validation error -- records too long
 	validator.maxRecordLength = 549
 	validator.totalRecordCount = 2
 
-	err = s.importer.importCCLF8(context.Background(), metadata, validator)
+	err = s.importer.importCCLF8(ctx, metadata, validator)
 	s.ErrorContains(err, "unexpected number of records imported for file T.BCD.A0001.ZC8Y18.D181120.T1000009 (expected: 2, actual: 7)")
 
 	// successful
 	validator.maxRecordLength = 549
 	validator.totalRecordCount = 7
 
-	err = s.importer.importCCLF8(context.Background(), metadata, validator)
+	err = s.importer.importCCLF8(ctx, metadata, validator)
 	s.NoError(err)
 
 	file := postgrestest.GetCCLFFilesByName(s.T(), s.db, metadata.cclf8Metadata.name)[0]
@@ -216,7 +231,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Equal(20, file.PerformanceYear)
 	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
-	mbis, err := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
+	mbis, err := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(ctx, file.ID)
 	assert.NoError(err)
 
 	assert.Len(mbis, 6)
@@ -231,6 +246,10 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 
 func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	assert := assert.New(s.T())
+
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	//indeterminate test results without deletion of both.
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
@@ -249,15 +268,19 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	}
 
 	//Send an invalid context to fail DB check
-	ctx, function := context.WithCancel(context.TODO())
+	ctx2, function := context.WithCancel(ctx)
 	function()
 
-	err := s.importer.importCCLF8(ctx, metadata, validator)
+	err := s.importer.importCCLF8(ctx2, metadata, validator)
 	assert.EqualError(err, "failed to check existence of CCLF8 file: context canceled")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	assert := assert.New(s.T())
+
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	hook := test.NewLocal(testUtils.GetLogger(log.API))
 
@@ -276,7 +299,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 		totalRecordCount: 1,
 	}
 
-	err := s.importer.importCCLF8(context.Background(), metadata, validator)
+	err := s.importer.importCCLF8(ctx, metadata, validator)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}
