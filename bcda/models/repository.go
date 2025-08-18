@@ -49,6 +49,8 @@ type cclfFileRepository interface {
 	CreateCCLFFile(ctx context.Context, cclfFile CCLFFile) (uint, error)
 
 	UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error
+
+	DeleteCCLFFile(ctx context.Context, fileID uint) error
 }
 
 // CCLFBeneficiaryRepository contains methods need to interact with CCLF Beneficiary data.

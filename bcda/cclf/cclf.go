@@ -209,12 +209,20 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	// Step 4: Bulk insert using pgx transaction
 	importedCount, recordCount, err := CopyFrom(ctx, pgxTx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.logger, validator.maxRecordLength)
 	if err != nil {
+		// Cleanup: Delete the file record since bulk import failed
+		if deleteErr := repository.DeleteCCLFFile(ctx, fileMetadata.fileID); deleteErr != nil {
+			importer.logger.Warnf("Failed to cleanup file record after bulk import failure: %s", deleteErr.Error())
+		}
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
 
 	if recordCount > validator.totalRecordCount {
 		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
 		importer.logger.Error(err)
+		// Cleanup: Delete the file record since validation failed
+		if deleteErr := repository.DeleteCCLFFile(ctx, fileMetadata.fileID); deleteErr != nil {
+			importer.logger.Warnf("Failed to cleanup file record after validation failure: %s", deleteErr.Error())
+		}
 		return err
 	}
 
@@ -222,6 +230,10 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	if err = pgxTx.Commit(ctx); err != nil {
 		importer.logger.Error(err.Error())
 		failMsg := fmt.Sprintf("failed to commit pgx transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
+		// Cleanup: Delete the file record since commit failed
+		if deleteErr := repository.DeleteCCLFFile(ctx, fileMetadata.fileID); deleteErr != nil {
+			importer.logger.Warnf("Failed to cleanup file record after commit failure: %s", deleteErr.Error())
+		}
 		return errors.Wrap(err, failMsg)
 	}
 
