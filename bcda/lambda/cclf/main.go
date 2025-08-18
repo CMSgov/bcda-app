@@ -144,7 +144,11 @@ func handleCclfImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string,
 		},
 	}
 
-	importer := cclf.NewCclfImporter(logger, &fileProcessor, db, nil)
+	// Create pgx pool for bulk operations
+	pool := database.ConnectPool()
+	defer pool.Close()
+
+	importer := cclf.NewCclfImporter(logger, &fileProcessor, db, pool)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(s3ImportPath)
 
