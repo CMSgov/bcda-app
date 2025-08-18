@@ -458,7 +458,7 @@ func setUpApp() *cli.App {
 						return errors.New("Unsupported file type.")
 					}
 				}
-				err := cclfUtils.ImportCCLFPackage(db, acoSize, environment, ft)
+				err := cclfUtils.ImportCCLFPackage(db, pool, acoSize, environment, ft)
 				return err
 			},
 		},
