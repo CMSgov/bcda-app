@@ -149,7 +149,7 @@ func ImportCCLFPackage(db *sql.DB, acoSize, environment string, fileType models.
 		},
 	}
 
-	importer := cclf.NewCclfImporter(log.API, file_processor, db)
+	importer := cclf.NewCclfImporter(log.API, file_processor, db, nil)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(dir)
 	if err != nil {

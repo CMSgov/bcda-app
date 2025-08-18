@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,8 @@ type CCLFTestSuite struct {
 
 	origDate string
 
-	db *sql.DB
+	db   *sql.DB
+	pool *pgxv5Pool.Pool
 }
 
 func (s *CCLFTestSuite) SetupTest() {
@@ -60,7 +62,7 @@ func (s *CCLFTestSuite) SetupTest() {
 		},
 	}
 
-	s.importer = NewCclfImporter(log.API, file_processor, s.db)
+	s.importer = NewCclfImporter(log.API, file_processor, s.db, s.pool)
 }
 
 func (s *CCLFTestSuite) SetupSuite() {
@@ -74,6 +76,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
 	s.db = database.Connect()
+	s.pool = database.ConnectPool()
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {

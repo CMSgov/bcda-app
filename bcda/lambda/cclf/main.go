@@ -144,7 +144,7 @@ func handleCclfImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string,
 		},
 	}
 
-	importer := cclf.NewCclfImporter(logger, &fileProcessor, db)
+	importer := cclf.NewCclfImporter(logger, &fileProcessor, db, nil)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(s3ImportPath)
 
