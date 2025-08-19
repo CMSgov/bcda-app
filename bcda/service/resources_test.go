@@ -20,37 +20,37 @@ func TestResourcesTestSuite(t *testing.T) {
 func (s *ResourcesTestSuite) TestSupportsDataType() {
 	tests := []struct {
 		name         string
-		dataType     DataType
+		dataType     ClaimType
 		dataTypeName string
 		expected     bool
 	}{
 		{
 			"Valid Adjudicated Type",
-			DataType{Adjudicated: true, PartiallyAdjudicated: false},
+			ClaimType{Adjudicated: true, PartiallyAdjudicated: false},
 			constants.Adjudicated,
 			true,
 		},
 		{
 			"Valid Partially-Adjudicated Type",
-			DataType{Adjudicated: false, PartiallyAdjudicated: true},
+			ClaimType{Adjudicated: false, PartiallyAdjudicated: true},
 			constants.PartiallyAdjudicated,
 			true,
 		},
 		{
 			"Invalid Type",
-			DataType{Adjudicated: true, PartiallyAdjudicated: true},
+			ClaimType{Adjudicated: true, PartiallyAdjudicated: true},
 			"invalid-type",
 			false,
 		},
 		{
 			"Invalid Partially-Adjudicated Type",
-			DataType{Adjudicated: true, PartiallyAdjudicated: false},
+			ClaimType{Adjudicated: true, PartiallyAdjudicated: false},
 			constants.PartiallyAdjudicated,
 			false,
 		},
 		{
 			"Invalid Adjudicated Type",
-			DataType{Adjudicated: false, PartiallyAdjudicated: true},
+			ClaimType{Adjudicated: false, PartiallyAdjudicated: true},
 			constants.Adjudicated,
 			false,
 		},
@@ -66,16 +66,16 @@ func (s *ResourcesTestSuite) TestSupportsDataType() {
 func (s *ResourcesTestSuite) TestGetDataType() {
 	tests := []struct {
 		resourceName string
-		expectedType DataType
+		expectedType ClaimType
 		expectedOk   bool
 	}{
-		{"Patient", DataType{Adjudicated: true}, true},
-		{"Coverage", DataType{Adjudicated: true}, true},
-		{"ExplanationOfBenefit", DataType{Adjudicated: true}, true},
-		{"Observation", DataType{Adjudicated: true}, true},
-		{"Claim", DataType{Adjudicated: false, PartiallyAdjudicated: true}, true},
-		{"ClaimResponse", DataType{Adjudicated: false, PartiallyAdjudicated: true}, true},
-		{"InvalidResource", DataType{}, false},
+		{"Patient", ClaimType{Adjudicated: true}, true},
+		{"Coverage", ClaimType{Adjudicated: true}, true},
+		{"ExplanationOfBenefit", ClaimType{Adjudicated: true}, true},
+		{"Observation", ClaimType{Adjudicated: true}, true},
+		{"Claim", ClaimType{Adjudicated: false, PartiallyAdjudicated: true}, true},
+		{"ClaimResponse", ClaimType{Adjudicated: false, PartiallyAdjudicated: true}, true},
+		{"InvalidResource", ClaimType{}, false},
 	}
 
 	for _, tt := range tests {
@@ -91,13 +91,13 @@ func (s *ResourcesTestSuite) TestGetDataTypes() {
 	tests := []struct {
 		name          string
 		resourceNames []string
-		expectedTypes map[string]DataType
+		expectedTypes map[string]ClaimType
 		expectedOk    bool
 	}{
 		{
 			"Empty resource names",
 			[]string{},
-			map[string]DataType{
+			map[string]ClaimType{
 				"Patient":              {Adjudicated: true},
 				"Coverage":             {Adjudicated: true},
 				"ExplanationOfBenefit": {Adjudicated: true},
@@ -110,7 +110,7 @@ func (s *ResourcesTestSuite) TestGetDataTypes() {
 		{
 			"Valid resource names",
 			[]string{"Patient", "Claim"},
-			map[string]DataType{
+			map[string]ClaimType{
 				"Patient": {Adjudicated: true},
 				"Claim":   {Adjudicated: false, PartiallyAdjudicated: true},
 			},
@@ -119,7 +119,7 @@ func (s *ResourcesTestSuite) TestGetDataTypes() {
 		{
 			"One invalid resource names",
 			[]string{"Patient", "InvalidResource", "Claim"},
-			map[string]DataType{
+			map[string]ClaimType{
 				"Patient": {Adjudicated: true},
 				"Claim":   {Adjudicated: false, PartiallyAdjudicated: true},
 			},
@@ -128,7 +128,7 @@ func (s *ResourcesTestSuite) TestGetDataTypes() {
 		{
 			"All invalid resource names",
 			[]string{"InvalidResource1", "InvalidResource2"},
-			map[string]DataType{},
+			map[string]ClaimType{},
 			false,
 		},
 	}
