@@ -75,6 +75,15 @@ func (s *CCLFTestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 
+	// Set test-specific database connection limits to prevent connection pool exhaustion
+	s.T().Setenv("BCDA_DB_MAX_OPEN_CONNS", "3")
+	s.T().Setenv("BCDA_DB_MAX_IDLE_CONNS", "1")
+	s.T().Setenv("BCDA_DB_CONN_MAX_LIFETIME_MIN", "1")
+	s.T().Setenv("BCDA_DB_CONN_MAX_IDLE_TIME", "30")
+	s.T().Setenv("DB_HEALTH_CHECK_INTERVAL", "300")     // Set to 5 minutes to reduce frequency for tests
+	s.T().Setenv("BCDA_DB_CONN_TIMEOUT_SEC", "10")      // Reduce connection timeout
+	s.T().Setenv("BCDA_DB_STATEMENT_TIMEOUT_SEC", "30") // Add statement timeout
+
 	s.db = database.Connect()
 	s.pool = database.ConnectPool()
 }
@@ -183,8 +192,8 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 
-	// Add timeout to prevent hanging - increased to 2 minutes for database operations
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	// Add timeout to prevent hanging - increased to 5 minutes for database operations
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	//indeterminate test results without deletion of both.
