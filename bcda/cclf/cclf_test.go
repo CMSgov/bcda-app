@@ -276,7 +276,7 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	function()
 
 	err := s.importer.importCCLF8(ctx2, metadata, validator)
-	assert.EqualError(err, "failed to check existence of CCLF8 file: context canceled")
+	assert.EqualError(err, "failed to start pgx transaction: context canceled")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
