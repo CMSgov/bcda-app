@@ -82,14 +82,6 @@ func (s *CCLFTestSuite) SetupSuite() {
 func (s *CCLFTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
 	os.RemoveAll(s.pendingDeletionDir)
-
-	// Close database connections to prevent connection pool exhaustion
-	if s.db != nil {
-		s.db.Close()
-	}
-	if s.pool != nil {
-		s.pool.Close()
-	}
 }
 
 func (s *CCLFTestSuite) TearDownTest() {
