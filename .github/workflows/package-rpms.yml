@@ -91,7 +91,7 @@ jobs:
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://${{ env.BCDA_RPMS_BUCKET }}/bcdaworker-release-latest.rpm
       
       - name: Upload BCDA RPM to s3 dev
-        if: ${{ inputs.release_version == '' || inputs.release_version == 'main' }}
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
         working-directory: ./bcda
         run: |
           export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
@@ -100,7 +100,7 @@ jobs:
           aws s3 cp --only-show-errors $BCDA_RPM s3://${{ env.BCDA_RPMS_BUCKET }}/bcda-dev-latest.rpm
       
       - name: Upload BCDA Worker RPM to s3 dev
-        if: ${{ inputs.release_version == '' || inputs.release_version == 'main' }}
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' && inputs.release_version == 'main'}}
         working-directory: ./bcdaworker
         run: |
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
