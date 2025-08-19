@@ -101,8 +101,8 @@ func TestCCLFTestSuite(t *testing.T) {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
-	// Add timeout to prevent hanging - increased to 2 minutes for database operations
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	assert := assert.New(s.T())
@@ -183,8 +183,8 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 
-	// Add timeout to prevent hanging - increased to 5 minutes for database operations
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	//indeterminate test results without deletion of both.
@@ -251,8 +251,8 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	assert := assert.New(s.T())
 
-	// Add timeout to prevent hanging - increased to 2 minutes for database operations
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	//indeterminate test results without deletion of both.
@@ -282,8 +282,8 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	assert := assert.New(s.T())
 
-	// Add timeout to prevent hanging - increased to 2 minutes for database operations
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	hook := test.NewLocal(testUtils.GetLogger(log.API))
