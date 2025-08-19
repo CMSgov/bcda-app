@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"database/sql"
 	"fmt"
 	"strconv"
 	"time"
@@ -64,12 +63,17 @@ type CclfFileProcessor interface {
 type CclfImporter struct {
 	logger        logrus.FieldLogger
 	fileProcessor CclfFileProcessor
-	db            *sql.DB
 	pgxPool       *pgxv5Pool.Pool
+	pgxRepo       *postgres.PgxRepository
 }
 
-func NewCclfImporter(logger logrus.FieldLogger, fileProcessor CclfFileProcessor, db *sql.DB, pgxPool *pgxv5Pool.Pool) CclfImporter {
-	return CclfImporter{logger: logger, fileProcessor: fileProcessor, db: db, pgxPool: pgxPool}
+func NewCclfImporter(logger logrus.FieldLogger, fileProcessor CclfFileProcessor, pgxPool *pgxv5Pool.Pool) CclfImporter {
+	return CclfImporter{
+		logger:        logger,
+		fileProcessor: fileProcessor,
+		pgxPool:       pgxPool,
+		pgxRepo:       postgres.NewPgxRepositoryWithPool(pgxPool),
+	}
 }
 
 func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
@@ -139,44 +143,9 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
 	fileMetadata := zipMetadata.cclf8Metadata
 
-	// Step 1: Check if file exists using SQL connection
-	repository := postgres.NewRepository(importer.db)
-	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
-		importer.logger.Error(err)
-		return err
-	}
-
-	if exists {
-		importer.logger.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
-		return nil
-	}
-
-	importer.logger.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
-
-	// Step 2: Create file record using SQL connection
-	cclfFile := models.CCLFFile{
-		CCLFNum:         fileMetadata.cclfNum,
-		Name:            fileMetadata.name,
-		ACOCMSID:        fileMetadata.acoID,
-		Timestamp:       fileMetadata.timestamp,
-		PerformanceYear: fileMetadata.perfYear,
-		ImportStatus:    constants.ImportInprog,
-		Type:            fileMetadata.fileType,
-	}
-	cclfFile.ID, err = repository.CreateCCLFFile(ctx, cclfFile)
-	if err != nil {
-		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
-		importer.logger.Error(err)
-		return err
-	}
-
-	fileMetadata.fileID = cclfFile.ID
-
-	// Step 3: Begin pgx transaction for bulk import
+	// Step 1: Begin pgx transaction for all operations
 	if importer.pgxPool == nil {
-		return fmt.Errorf("pgx pool is required for bulk import operations")
+		return fmt.Errorf("pgx pool is required for import operations")
 	}
 
 	pgxTx, err := importer.pgxPool.Begin(ctx)
@@ -193,6 +162,40 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 		}
 	}()
 
+	// Step 2: Check if file exists using pgx transaction
+	exists, err := importer.pgxRepo.GetCCLFFileExistsByName(ctx, pgxTx, fileMetadata.name)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
+		importer.logger.Error(err)
+		return err
+	}
+
+	if exists {
+		importer.logger.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
+		return nil
+	}
+
+	importer.logger.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
+
+	// Step 3: Create file record using pgx transaction
+	cclfFile := models.CCLFFile{
+		CCLFNum:         fileMetadata.cclfNum,
+		Name:            fileMetadata.name,
+		ACOCMSID:        fileMetadata.acoID,
+		Timestamp:       fileMetadata.timestamp,
+		PerformanceYear: fileMetadata.perfYear,
+		ImportStatus:    constants.ImportInprog,
+		Type:            fileMetadata.fileType,
+	}
+	cclfFile.ID, err = importer.pgxRepo.CreateCCLFFile(ctx, pgxTx, cclfFile)
+	if err != nil {
+		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
+		importer.logger.Error(err)
+		return err
+	}
+
+	fileMetadata.fileID = cclfFile.ID
+
 	close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
 	defer close()
 
@@ -208,40 +211,28 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	// Step 4: Bulk insert using pgx transaction
 	importedCount, recordCount, err := CopyFrom(ctx, pgxTx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.logger, validator.maxRecordLength)
 	if err != nil {
-		// Cleanup: Delete the file record since bulk import failed
-		if deleteErr := repository.DeleteCCLFFile(ctx, fileMetadata.fileID); deleteErr != nil {
-			importer.logger.Warnf("Failed to cleanup file record after bulk import failure: %s", deleteErr.Error())
-		}
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
 
 	if recordCount > validator.totalRecordCount {
 		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
 		importer.logger.Error(err)
-		// Cleanup: Delete the file record since validation failed
-		if deleteErr := repository.DeleteCCLFFile(ctx, fileMetadata.fileID); deleteErr != nil {
-			importer.logger.Warnf("Failed to cleanup file record after validation failure: %s", deleteErr.Error())
-		}
 		return err
 	}
 
-	// Step 5: Commit pgx transaction
-	if err = pgxTx.Commit(ctx); err != nil {
-		importer.logger.Error(err.Error())
-		failMsg := fmt.Sprintf("failed to commit pgx transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
-		// Cleanup: Delete the file record since commit failed
-		if deleteErr := repository.DeleteCCLFFile(ctx, fileMetadata.fileID); deleteErr != nil {
-			importer.logger.Warnf("Failed to cleanup file record after commit failure: %s", deleteErr.Error())
-		}
-		return errors.Wrap(err, failMsg)
-	}
-
-	// Step 6: Update file status using SQL connection
-	err = repository.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
+	// Step 5: Update file status using pgx transaction
+	err = importer.pgxRepo.UpdateCCLFFileImportStatus(ctx, pgxTx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata.name)
 		importer.logger.Error(err)
 		return err
+	}
+
+	// Step 6: Commit pgx transaction
+	if err = pgxTx.Commit(ctx); err != nil {
+		importer.logger.Error(err.Error())
+		failMsg := fmt.Sprintf("failed to commit pgx transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
+		return errors.Wrap(err, failMsg)
 	}
 
 	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata.name)
