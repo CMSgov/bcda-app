@@ -30,11 +30,21 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # ------------------------------------------------------------------------
 FROM golang:1.24.4-alpine3.22
 
+RUN addgroup -S -g 1010 bcda && adduser -S -G bcda -u 1010 bcda
+
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
 COPY --from=builder /go/bin/ /go/bin/
+
+# configure directories
+RUN mkdir /var/fhir && chown -R bcda:bcda \
+    /go/src/github.com/CMSgov/bcda-app \
+    /var/fhir \
+    /var/log 
+
+USER bcda
 
 ENTRYPOINT ["bcda"]
 CMD ["start-api"]

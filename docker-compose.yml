@@ -20,12 +20,12 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      # these should be set in your local env, however they have to match the fhir_payload_dir volume we set below
-      # theses two specifically also must be nested due to the inability of go file.cp between file systems
-      - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
-      - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data/tmpdata
+      # subdirectories of mounted volume
+      FHIR_ARCHIVE_DIR: /var/fhir/archive
+      FHIR_PAYLOAD_DIR: /var/fhir/data
+      FHIR_STAGING_DIR: /var/fhir/tmpdata
     volumes:
-      - fhir_payload_dir:/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
+      - fhir:/var/fhir
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -52,10 +52,13 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
-      - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data/tmpdata
+      # subdirectories of mounted volume
+      FHIR_ARCHIVE_DIR: /var/fhir/archive
+      FHIR_PAYLOAD_DIR: /var/fhir/data
+      FHIR_STAGING_DIR: /var/fhir/tmpdata
+      FHIR_TEMP_DIR: /var/fhir/TEMP
     volumes:
-      - fhir_payload_dir:/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
+      - fhir:/var/fhir
     depends_on:
       - db
     develop:
@@ -108,7 +111,7 @@ services:
       - db
 
 volumes:
-  fhir_payload_dir:
+  fhir:
 
 networks:
   default:
