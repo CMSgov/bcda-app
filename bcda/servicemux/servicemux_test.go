@@ -255,11 +255,7 @@ func (s *ServiceMuxTestSuite) TestGetKeepAliveConfig() {
 	ln = getKeepAliveConfig()
 	assert.Equal(s.T(), ln, 240)
 
-	if oka == "" {
-		os.Unsetenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL")
-	} else {
-		os.Setenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL", oka)
-	}
+	s.T().Cleanup(func() { os.Setenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL", oka) })
 }
 
 func getOrigVars() (origTLSCert, origTLSKey, origHTTPOnly string) {
