@@ -48,6 +48,7 @@ import (
 )
 
 func init() {
+	log.SetupLoggers()
 	client.SetLogger(log.BBAPI)
 
 	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
