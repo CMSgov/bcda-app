@@ -62,7 +62,7 @@ func (s *CCLFTestSuite) SetupTest() {
 		},
 	}
 
-	s.importer = NewCclfImporter(log.API, file_processor, s.db, s.pool)
+	s.importer = NewCclfImporter(log.API, file_processor, s.pool)
 }
 
 func (s *CCLFTestSuite) SetupSuite() {

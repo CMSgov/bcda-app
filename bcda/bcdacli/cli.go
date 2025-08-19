@@ -329,7 +329,7 @@ func setUpApp() *cli.App {
 					}
 				}
 
-				importer := cclf.NewCclfImporter(log.API, file_processor, db, pool)
+				importer := cclf.NewCclfImporter(log.API, file_processor, pool)
 
 				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
 				if err != nil {

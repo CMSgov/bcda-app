@@ -150,7 +150,7 @@ func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment
 		},
 	}
 
-	importer := cclf.NewCclfImporter(log.API, file_processor, db, pgxPool)
+	importer := cclf.NewCclfImporter(log.API, file_processor, pgxPool)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(dir)
 	if err != nil {
