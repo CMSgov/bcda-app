@@ -8,8 +8,17 @@ ARG GPG_RPM_USER
 ARG GPG_RPM_EMAIL
 ARG BCDA_GPG_RPM_PASSPHRASE
 
-RUN apk update upgrade
-RUN apk add gcompat build-base gcc ruby ruby-dev rpm git gpg gpg-agent
+RUN apk update upgrade && \
+    apk add build-base \
+        gcc \
+        gcompat \
+        git \
+        gpg \
+        gpg-agent \
+        rpm \
+        ruby \
+        ruby-dev 
+        
 RUN gem install --no-document fpm etc
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app

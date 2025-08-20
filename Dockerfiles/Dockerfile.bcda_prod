@@ -4,9 +4,9 @@ ARG GO_FLAGS
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
 RUN [ "$ENVIRONMENT" != "development" ] || apk update upgrade && \
-    apk add git \
-        bash \
+    apk add bash \
         entr \
+        git \
         openssl && \
     go install github.com/go-delve/delve/cmd/dlv@latest
     
