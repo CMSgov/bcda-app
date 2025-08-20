@@ -12,7 +12,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.bcda_prod
+      dockerfile: Dockerfiles/Dockerfile.bcda
       args:
         ENVIRONMENT: development
     entrypoint: ""
@@ -44,7 +44,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.bcdaworker_prod
+      dockerfile: Dockerfiles/Dockerfile.bcdaworker
       args:
         ENVIRONMENT: development
     entrypoint: ""
