@@ -116,7 +116,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 
-	rtx := postgres.NewRepositoryPgxTx(tx)
+	rtx := postgres.NewRepositoryTx(tx)
 	var records int
 	defer func() {
 		if err != nil {

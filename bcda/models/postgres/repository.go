@@ -36,10 +36,6 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
 }
 
-func NewRepositoryPgxTx(tx *sql.Tx) *Repository {
-	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
-}
-
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
 	ib.Cols("uuid", "cms_id", "client_id", "name", "termination_details")
