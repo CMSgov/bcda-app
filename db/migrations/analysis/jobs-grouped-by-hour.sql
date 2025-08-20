@@ -10,3 +10,10 @@ select hr, count(id) as total_requests, sum(job_count) as sum_of_sub_jobs from (
 	select id, job_count, created_at, extract(hour from created_at) as hr from jobs
     where created_at > (NOW() - interval '2 years')
 ) group by hr order by hr;
+
+-- Description of query:
+-- Same as above except that we group by Day and 24 hour period
+select hr, count(id) as total_requests, sum(job_count) as sum_of_sub_jobs from (
+	select id, job_count, created_at, to_char(created_at, 'DAY HH24') as hr from jobs 
+	where created_at > (NOW() - interval '2 years')
+) group by hr order by hr;
