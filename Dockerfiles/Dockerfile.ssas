@@ -41,5 +41,7 @@ COPY --from=base /go/bin/ /go/bin/
 
 WORKDIR /go/bcda-ssas-app/ssas/
 
+EXPOSE 3003 3004 3005
+
 ENTRYPOINT ["main"]
 CMD ["--start"]

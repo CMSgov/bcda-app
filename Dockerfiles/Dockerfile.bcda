@@ -47,5 +47,7 @@ RUN mkdir /var/fhir && chown -R bcda:bcda \
 
 USER bcda
 
+EXPOSE 3000 3001
+
 ENTRYPOINT ["bcda"]
 CMD ["start-api"]
