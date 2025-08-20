@@ -17,7 +17,7 @@ func TestResourcesTestSuite(t *testing.T) {
 	suite.Run(t, new(ResourcesTestSuite))
 }
 
-func (s *ResourcesTestSuite) TestSupportsDataType() {
+func (s *ResourcesTestSuite) TestSupportsClaimType() {
 	tests := []struct {
 		name         string
 		dataType     ClaimType
@@ -58,12 +58,12 @@ func (s *ResourcesTestSuite) TestSupportsDataType() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.dataType.SupportsDataType(tt.dataTypeName))
+			assert.Equal(t, tt.expected, tt.dataType.SupportsClaimType(tt.dataTypeName))
 		})
 	}
 }
 
-func (s *ResourcesTestSuite) TestGetDataType() {
+func (s *ResourcesTestSuite) TestGetClaimType() {
 	tests := []struct {
 		resourceName string
 		expectedType ClaimType
@@ -87,7 +87,7 @@ func (s *ResourcesTestSuite) TestGetDataType() {
 	}
 }
 
-func (s *ResourcesTestSuite) TestGetDataTypes() {
+func (s *ResourcesTestSuite) TestGetClaimTypesMap() {
 	tests := []struct {
 		name          string
 		resourceNames []string

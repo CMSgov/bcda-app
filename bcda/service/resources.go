@@ -17,9 +17,9 @@ var fhirResourceTypeMap = map[string]ClaimType{
 	"ClaimResponse":        {PartiallyAdjudicated: true},
 }
 
-// SupportsDataType checks if the dataType is supported by the instanced DataType object
-func (r ClaimType) SupportsDataType(dataType string) bool {
-	switch dataType {
+// SupportsClaimType checks if the dataType is supported by the instanced DataType object
+func (r ClaimType) SupportsClaimType(claimType string) bool {
+	switch claimType {
 	case constants.PartiallyAdjudicated:
 		return r.PartiallyAdjudicated
 	case constants.Adjudicated:
