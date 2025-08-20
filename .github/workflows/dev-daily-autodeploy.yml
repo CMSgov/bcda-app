@@ -2,8 +2,6 @@
 name: Deploy main to dev daily
 
 on:
-  push:
-    branches: [carl-9367-adjust-dev-autodeploy]
   schedule:
     - cron: 0 12 * * 1-5 # every workday at 8am EST
 
