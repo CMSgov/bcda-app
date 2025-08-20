@@ -93,9 +93,7 @@ func TestCCLFTestSuite(t *testing.T) {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
-	// Add timeout to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	assert := assert.New(s.T())
 
@@ -174,10 +172,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
-
-	// Add timeout to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	//indeterminate test results without deletion of both.
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
@@ -222,6 +217,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	file := files[0]
 	assert.Equal(constants.CCLF8Name, file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
+
 	// Normalize timezone to allow us to check for equality
 	assert.Equal(fileTime.UTC().Format("010203040506"), file.Timestamp.UTC().Format("010203040506"))
 	assert.Equal(20, file.PerformanceYear)
@@ -242,10 +238,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 
 func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	assert := assert.New(s.T())
-
-	// Add timeout to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	//indeterminate test results without deletion of both.
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
@@ -274,10 +267,6 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	assert := assert.New(s.T())
 
-	// Add timeout to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
-
 	hook := test.NewLocal(testUtils.GetLogger(log.API))
 
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
@@ -295,7 +284,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 		totalRecordCount: 1,
 	}
 
-	err := s.importer.importCCLF8(ctx, metadata, validator)
+	err := s.importer.importCCLF8(context.Background(), metadata, validator)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}

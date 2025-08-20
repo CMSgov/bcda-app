@@ -75,7 +75,6 @@ func (importer *cclf8Importer) Values() ([]interface{}, error) {
 		return nil, err
 	}
 
-	// Use Int4 because we store file_id as an integer
 	fileID, err := safecast.ToInt32(importer.cclfFileID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert fileID to int32: %w", err)
