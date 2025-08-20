@@ -3,7 +3,6 @@ package cclf
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -11,6 +10,8 @@ import (
 	f "path/filepath"
 	"time"
 
+	pgxv5 "github.com/jackc/pgx/v5"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -51,7 +52,7 @@ type csvFileMetadata struct {
 type CSVImporter struct {
 	Logger        logrus.FieldLogger
 	FileProcessor CSVFileProcessor
-	Database      *sql.DB
+	PgxPool       *pgxv5Pool.Pool
 }
 
 func (importer CSVImporter) ImportCSV(filepath string) error {
@@ -100,8 +101,12 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 // table will have it's import status updated.
 func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	ctx := context.Background()
-	repository := postgres.NewRepository(importer.Database)
-	exists, err := repository.GetCCLFFileExistsByName(ctx, csv.metadata.name)
+	if importer.PgxPool == nil {
+		return fmt.Errorf("pgx pool is required for import operations")
+	}
+
+	pgxRepo := postgres.NewPgxRepositoryWithPool(importer.PgxPool)
+	exists, err := pgxRepo.GetCCLFFileExistsByNameWithPool(ctx, csv.metadata.name)
 	if err != nil {
 		return fmt.Errorf("database query returned an error: %s", err)
 	}
@@ -111,21 +116,20 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 
 	importer.Logger.Infof("Importing CSV file %s...", csv.metadata.name)
 
-	tx, err := importer.Database.BeginTx(ctx, nil)
+	pgxTx, err := importer.PgxPool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
+		return fmt.Errorf("failed to start pgx transaction: %w", err)
 	}
-
-	rtx := postgres.NewRepositoryTx(tx)
-	var records int
 	defer func() {
 		if err != nil {
-			if err1 := tx.Rollback(); err1 != nil {
-				importer.Logger.Errorf("Failed to rollback transaction: %s, %s", err.Error(), err1.Error())
+			if err1 := pgxTx.Rollback(ctx); err1 != nil {
+				importer.Logger.Errorf("Failed to rollback pgx transaction: %s, %s", err.Error(), err1.Error())
 			}
 			return
 		}
 	}()
+
+	var records int
 
 	// CCLF model corresponds with a database record
 	record := models.CCLFFile{
@@ -138,7 +142,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		Type:            csv.metadata.fileType,
 	}
 
-	record.ID, err = rtx.CreateCCLFFile(ctx, record)
+	record.ID, err = pgxRepo.CreateCCLFFile(ctx, pgxTx, record)
 	if err != nil {
 		err := fmt.Errorf("database error when calling CreateCCLFFile(): %s", err)
 		return err
@@ -151,22 +155,22 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return err
 	}
 
-	// Insert beneficiaries using bulk insert
-	records, err = importer.insertBeneficiaries(ctx, tx, rows)
+	importedCount, err := pgxTx.CopyFrom(ctx, pgxv5.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgxv5.CopyFromRows(rows))
+	records = int(importedCount)
+	if err != nil {
+		return fmt.Errorf("failed to write attribution beneficiaries to database: %w", err)
+	}
 	if count != records {
 		return fmt.Errorf("unexpected number of records imported (expected: %d, actual: %d)", count, records)
 	}
-	if err != nil {
-		return errors.New("failed to write attribution beneficiaries to database")
-	}
 
-	err = rtx.UpdateCCLFFileImportStatus(ctx, csv.metadata.fileID, constants.ImportComplete)
+	err = pgxRepo.UpdateCCLFFileImportStatus(ctx, pgxTx, csv.metadata.fileID, constants.ImportComplete)
 	if err != nil {
 		return fmt.Errorf("database error when calling UpdateCCLFFileImportStatus(): %s", csv.metadata.name)
 	}
 
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit database transaction: %s", err)
+	if err = pgxTx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit pgx transaction: %s", err)
 	}
 
 	successMsg := fmt.Sprintf("successfully imported %d records from csv file %s.", records, csv.metadata.name)
@@ -207,28 +211,4 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 	}
 	return rows, count, err
 
-}
-
-func (importer CSVImporter) insertBeneficiaries(ctx context.Context, tx *sql.Tx, rows [][]interface{}) (int, error) {
-	if len(rows) == 0 {
-		return 0, nil
-	}
-
-	// Prepare bulk insert statement
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO cclf_beneficiaries (file_id, mbi) VALUES ($1, $2)")
-	if err != nil {
-		return 0, fmt.Errorf("failed to prepare statement: %w", err)
-	}
-	defer stmt.Close()
-
-	var count int
-	for _, row := range rows {
-		_, err = stmt.ExecContext(ctx, row[0], row[1])
-		if err != nil {
-			return count, fmt.Errorf("failed to insert row: %w", err)
-		}
-		count++
-	}
-
-	return count, nil
 }

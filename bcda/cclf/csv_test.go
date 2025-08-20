@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -24,6 +25,7 @@ import (
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 	"github.com/go-testfixtures/testfixtures/v3"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -35,6 +37,7 @@ type CSVTestSuite struct {
 	importer           CSVImporter
 	cleanup            func()
 	db                 *sql.DB
+	pool               *pgxv5Pool.Pool
 	origDate           string
 	pendingDeletionDir string
 }
@@ -65,6 +68,7 @@ func (s *CSVTestSuite) SetupTest() {
 		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 	}
 	s.db = db
+	s.pool = database.ConnectPool()
 	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
@@ -79,7 +83,7 @@ func (s *CSVTestSuite) SetupTest() {
 	c := CSVImporter{
 		Logger:        log.API,
 		FileProcessor: fp,
-		Database:      s.db,
+		PgxPool:       s.pool,
 	}
 	s.importer = c
 
@@ -203,7 +207,12 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 }
 
 func TestPrepareCSVData(t *testing.T) {
-	c := CSVImporter{}
+	pool := database.ConnectPool()
+	defer pool.Close()
+
+	c := CSVImporter{
+		PgxPool: pool,
+	}
 	tests := []struct {
 		name     string
 		data     *bytes.Reader
