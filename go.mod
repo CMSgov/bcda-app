@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/render v1.0.1
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
-	github.com/golang-migrate/migrate/v4 v4.18.3
+	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/fhir/go v0.0.0-20220518004845-30f5cde7c5cd
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -49,11 +49,14 @@ require (
 )
 
 require (
+	github.com/distribution/reference v0.6.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/nxadm/tail v1.4.11 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/moby/term v0.5.2 // indirect
+	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/riverqueue/river/riverdriver v0.20.2 // indirect
 	github.com/riverqueue/river/rivershared v0.20.2 // indirect
 	github.com/samber/lo v1.44.0 // indirect
@@ -61,7 +64,6 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
@@ -104,7 +106,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/slog-logrus v1.0.0
 	github.com/slack-go/slack v0.15.0
-	github.com/spf13/afero v1.8.2 // indirect
+	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -120,7 +122,6 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
-	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/grpc v1.64.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
