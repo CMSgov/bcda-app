@@ -952,6 +952,98 @@ func (r *RepositoryTestSuite) TestCCLFFileExistsByName() {
 	r.False(exists)
 }
 
+func (r *RepositoryTestSuite) TestDeleteCCLFFile_Success() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	fileID := uint(123)
+	expectedQuery := "DELETE FROM cclf_files WHERE id = $1"
+
+	mock.ExpectExec(regexp.QuoteMeta(expectedQuery)).
+		WithArgs(fileID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repository.DeleteCCLFFile(context.Background(), fileID)
+
+	assert.NoError(r.T(), err)
+}
+
+func (r *RepositoryTestSuite) TestDeleteCCLFFile_NoRowsAffected() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	fileID := uint(456)
+	expectedQuery := "DELETE FROM cclf_files WHERE id = $1"
+
+	mock.ExpectExec(regexp.QuoteMeta(expectedQuery)).
+		WithArgs(fileID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err = repository.DeleteCCLFFile(context.Background(), fileID)
+
+	assert.Error(r.T(), err)
+	assert.Contains(r.T(), err.Error(), "failed to delete file entry 456, no entry found")
+}
+
+func (r *RepositoryTestSuite) TestDeleteCCLFFile_DatabaseError() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	fileID := uint(789)
+	expectedQuery := "DELETE FROM cclf_files WHERE id = $1"
+	expectedError := fmt.Errorf("database connection error")
+
+	mock.ExpectExec(regexp.QuoteMeta(expectedQuery)).
+		WithArgs(fileID).
+		WillReturnError(expectedError)
+
+	err = repository.DeleteCCLFFile(context.Background(), fileID)
+
+	assert.Error(r.T(), err)
+	assert.Equal(r.T(), expectedError, err)
+}
+
+func (r *RepositoryTestSuite) TestDeleteCCLFFile_RowsAffectedError() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	fileID := uint(999)
+	expectedQuery := "DELETE FROM cclf_files WHERE id = $1"
+	expectedError := fmt.Errorf("rows affected error")
+
+	// Create a custom result that will return an error when RowsAffected() is called
+	result := sqlmock.NewErrorResult(expectedError)
+
+	mock.ExpectExec(regexp.QuoteMeta(expectedQuery)).
+		WithArgs(fileID).
+		WillReturnResult(result)
+
+	err = repository.DeleteCCLFFile(context.Background(), fileID)
+
+	assert.Error(r.T(), err)
+	assert.Equal(r.T(), expectedError, err)
+}
+
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
