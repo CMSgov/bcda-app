@@ -9,7 +9,8 @@ ARG GPG_RPM_EMAIL
 ARG BCDA_GPG_RPM_PASSPHRASE
 
 RUN apk update upgrade && \
-    apk add build-base \
+    apk add \
+        build-base \
         gcc \
         gcompat \
         git \

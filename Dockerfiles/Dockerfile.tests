@@ -2,7 +2,8 @@
 FROM golang:1.24.4-alpine3.22
 
 RUN apk update upgrade && \
-    apk add bash \
+    apk add \
+        bash \
         build-base \
         curl
 
