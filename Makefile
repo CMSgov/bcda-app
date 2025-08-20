@@ -182,20 +182,6 @@ debug-worker:
 	docker compose up --watch api & \
 	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --watch worker
 
-bdt:
-	# Set up valid client credentials
-	$(eval ACO_CMS_ID = A9994)
-	$(eval CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
-	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
-	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
-	$(eval BDT_BASE_URL = 'http://host.docker.internal:3000')
-	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
-	@docker run --rm \
-	-e BASE_URL='${BDT_BASE_URL}' \
-	-e CLIENT_ID='${CLIENT_ID}' \
-	-e SECRET='${CLIENT_SECRET}' \
-	bdt
-
 fhir_testing:
 	# Set up inferno server
 	docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
