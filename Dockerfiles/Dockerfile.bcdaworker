@@ -4,11 +4,7 @@ ARG GO_FLAGS
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
 RUN [ "$ENVIRONMENT" != "development" ] || apk update upgrade && \
-    apk add \
-        bash \
-        entr \
-        git \
-        openssl && \
+    apk add bash && \
     go install github.com/go-delve/delve/cmd/dlv@latest
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
