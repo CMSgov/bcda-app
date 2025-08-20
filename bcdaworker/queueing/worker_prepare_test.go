@@ -47,7 +47,7 @@ func TestCleanupTestSuite(t *testing.T) {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
-	s.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	s.db, _, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	s.pool = database.ConnectPool()
 	tf, err := testfixtures.New(
 		testfixtures.Database(s.db),

@@ -6,6 +6,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,15 +18,21 @@ func TestCreateDatabase(t *testing.T) {
 	// Run in sub test to verify database is dropped
 	t.Run("CreateAndDrop", func(sub *testing.T) {
 		var db *sql.DB
-		db, dropped = CreateDatabase(sub, "../../../db/migrations/bcda/", true)
+		var pool *pgxv5Pool.Pool
+		db, pool, dropped = CreateDatabase(sub, "../../../db/migrations/bcda/", true)
 		assert.NotNil(t, db)
+		assert.NotNil(t, pool)
 		assert.NoError(t, db.Close())
+		pool.Close()
 	})
 	t.Run("CreateAndNoDrop", func(sub *testing.T) {
 		var db *sql.DB
-		db, notDropped = CreateDatabase(sub, "../../../db/migrations/bcda/", false)
+		var pool *pgxv5Pool.Pool
+		db, pool, notDropped = CreateDatabase(sub, "../../../db/migrations/bcda/", false)
 		assert.NotNil(t, db)
+		assert.NotNil(t, pool)
 		assert.NoError(t, db.Close())
+		pool.Close()
 	})
 
 	db := database.Connect()

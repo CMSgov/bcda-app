@@ -55,7 +55,7 @@ func (s *CSVTestSuite) SetupTest() {
 	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
-	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	db, pool, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	tf, err := testfixtures.New(
 		testfixtures.Database(db),
 		testfixtures.Dialect("postgres"),
@@ -68,7 +68,7 @@ func (s *CSVTestSuite) SetupTest() {
 		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 	}
 	s.db = db
-	s.pool = database.ConnectPool()
+	s.pool = pool
 	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
