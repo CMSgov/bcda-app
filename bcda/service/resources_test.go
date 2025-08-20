@@ -80,7 +80,7 @@ func (s *ResourcesTestSuite) TestGetDataType() {
 
 	for _, tt := range tests {
 		s.T().Run("Testing "+tt.resourceName, func(t *testing.T) {
-			actualType, actualOk := GetDataType(tt.resourceName)
+			actualType, actualOk := GetClaimType(tt.resourceName)
 			assert.Equal(t, tt.expectedType, actualType)
 			assert.Equal(t, tt.expectedOk, actualOk)
 		})
@@ -135,7 +135,7 @@ func (s *ResourcesTestSuite) TestGetDataTypes() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			actualTypes, actualOk := GetDataTypes(tt.resourceNames...)
+			actualTypes, actualOk := GetClaimTypesMap(tt.resourceNames...)
 			assert.Equal(t, tt.expectedTypes, actualTypes)
 			assert.Equal(t, tt.expectedOk, actualOk)
 		})

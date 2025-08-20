@@ -35,7 +35,7 @@ type ApiV1 struct {
 }
 
 func NewApiV1(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) *ApiV1 {
-	resources, ok := service.GetDataTypes([]string{
+	resources, ok := service.GetClaimTypesMap([]string{
 		"Patient",
 		"Coverage",
 		"ExplanationOfBenefit",

@@ -303,7 +303,7 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 					} else {
 						transactionTime = args.Job.TransactionTime
 					}
-					if resource, ok := GetDataType(rt); ok {
+					if resource, ok := GetClaimType(rt); ok {
 						if resource.SupportsDataType(dataType) {
 							jobId, err := safecast.ToInt(args.Job.ID)
 							if err != nil {

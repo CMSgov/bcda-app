@@ -29,28 +29,28 @@ func (r ClaimType) SupportsDataType(dataType string) bool {
 	}
 }
 
-// GetDataType gets the DataType associated with the given resourceName
-func GetDataType(resourceName string) (ClaimType, bool) {
-	resource, ok := fhirResourceTypeMap[resourceName]
+// GetClaimType gets the claim type associated with the given fhir resource
+func GetClaimType(fhirResource string) (ClaimType, bool) {
+	resource, ok := fhirResourceTypeMap[fhirResource]
 
 	return resource, ok
 }
 
-// GetDataTypes creates a map of the given resourceNames with their associated DataType objects
+// GetClaimTypesMap creates a map of the given fhir resources with their associated claim type objects
 // It returns the resource map and a status flag, with true meaning all resources were found and mapped.
-func GetDataTypes(resourceNames ...string) (map[string]ClaimType, bool) {
+func GetClaimTypesMap(fhirResource ...string) (map[string]ClaimType, bool) {
 	foundAll := true
 
-	returnMap := make(map[string]ClaimType, len(resourceNames))
+	returnMap := make(map[string]ClaimType, len(fhirResource))
 
-	if len(resourceNames) == 0 {
+	if len(fhirResource) == 0 {
 		// If no resource specified, return copy of full map
 		for name, entry := range fhirResourceTypeMap {
 			returnMap[name] = entry
 		}
 	} else {
 		// If resources specified, return map subset
-		for _, name := range resourceNames {
+		for _, name := range fhirResource {
 			if entry, ok := fhirResourceTypeMap[name]; ok {
 				returnMap[name] = entry
 			} else {

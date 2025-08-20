@@ -544,7 +544,7 @@ func (s *APITestSuite) TestResourceTypes() {
 		{"Supported type - default", nil, http.StatusAccepted},
 	}
 
-	resources, _ := service.GetDataTypes([]string{
+	resources, _ := service.GetClaimTypesMap([]string{
 		"Patient",
 		"Coverage",
 		"ExplanationOfBenefit",
