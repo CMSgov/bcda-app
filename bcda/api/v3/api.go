@@ -30,7 +30,7 @@ type ApiV3 struct {
 }
 
 func NewApiV3(db *sql.DB, pool *pgxv5Pool.Pool) *ApiV3 {
-	resources, ok := service.GetDataTypes([]string{
+	resources, ok := service.GetClaimTypesMap([]string{
 		"Patient",
 		"Coverage",
 		"ExplanationOfBenefit",

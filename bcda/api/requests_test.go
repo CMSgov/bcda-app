@@ -72,7 +72,7 @@ type RequestsTestSuite struct {
 
 	acoID uuid.UUID
 
-	resourceType map[string]service.DataType
+	resourceType map[string]service.ClaimType
 }
 
 func TestRequestsTestSuite(t *testing.T) {
@@ -91,7 +91,7 @@ func (s *RequestsTestSuite) SetupSuite() {
 		testfixtures.Directory("testdata/"),
 	)
 
-	s.resourceType = map[string]service.DataType{
+	s.resourceType = map[string]service.ClaimType{
 		"Patient":              {Adjudicated: true},
 		"Coverage":             {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
@@ -240,7 +240,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				)
 			}
 
-			h := newHandler(map[string]service.DataType{
+			h := newHandler(map[string]service.ClaimType{
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
@@ -354,7 +354,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 
 				}
 			}
-			h := newHandler(map[string]service.DataType{
+			h := newHandler(map[string]service.ClaimType{
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
@@ -560,7 +560,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		Data:               []string{},
 	}
 
-	dataTypeMap := map[string]service.DataType{
+	dataTypeMap := map[string]service.ClaimType{
 		"Coverage":             {Adjudicated: true},
 		"Patient":              {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
@@ -1050,7 +1050,7 @@ func TestBulkRequest_Integration(t *testing.T) {
 		Data:               []string{"adjudicated"},
 	}
 
-	dataTypeMap := map[string]service.DataType{
+	dataTypeMap := map[string]service.ClaimType{
 		"Coverage":             {Adjudicated: true},
 		"Patient":              {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
@@ -1204,7 +1204,7 @@ func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *log.StructuredLogge
 func (s *RequestsTestSuite) TestValidateResources() {
 	apiVersion := "v1"
 	fhirPath := "/" + apiVersion + "/fhir"
-	h := newHandler(map[string]service.DataType{
+	h := newHandler(map[string]service.ClaimType{
 		"Patient":              {},
 		"Coverage":             {},
 		"ExplanationOfBenefit": {},

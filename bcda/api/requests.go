@@ -42,7 +42,7 @@ type Handler struct {
 	Enq        queueing.Enqueuer
 	Svc        service.Service
 
-	supportedDataTypes     map[string]service.DataType
+	supportedDataTypes     map[string]service.ClaimType
 	supportedResourceTypes []string
 	supportedStatuses      map[models.JobStatus]struct{}
 	bbBasePath             string
@@ -62,11 +62,11 @@ type fhirResponseWriter interface {
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
+func NewHandler(dataTypes map[string]service.ClaimType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	return newHandler(dataTypes, basePath, apiVersion, db, pool)
 }
 
-func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
+func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer(db, pool)
@@ -631,7 +631,7 @@ func (h *Handler) validateResources(resourceTypes []string, cmsID string) error 
 	return nil
 }
 
-func (h *Handler) authorizedResourceAccess(dataType service.DataType, cmsID string) bool {
+func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID string) bool {
 	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
 		return (dataType.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
 			(dataType.PartiallyAdjudicated && utils.ContainsString(cfg.Data, constants.PartiallyAdjudicated))
