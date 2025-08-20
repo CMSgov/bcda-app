@@ -18,8 +18,8 @@ then
 fi
 
 [  -z "$GPG_RPM_USER" ] && echo "Please enter a Key ID or Username for the GPG Key Signature" && exit 1 || echo "GPG Key user provided"
-[  -z "$GPG_PUB_KEY_FILE" ] && echo "Please select a GPG Public Key File" && exit 1 || echo "GPG Public Key File provided"
-[  -z "$GPG_SEC_KEY_FILE" ] && echo "Please select a GPG Secret Key File" && exit 1 || echo "GPG Secret Key File provided"
+[  -z "$GPG_PUB_FILE_PATH" ] && echo "Please select a GPG Public Key File" && exit 1 || echo "GPG Public Key File provided"
+[  -z "$GPG_SEC_FILE_PATH" ] && echo "Please select a GPG Secret Key File" && exit 1 || echo "GPG Secret Key File provided"
 [  -z "$BCDA_GPG_RPM_PASSPHRASE" ] && echo "Please select the Passphrase to sign the RPMs" && exit 1 || echo "GPG Passphrase provided"
 [  -z "$GPG_RPM_EMAIL" ] && echo "Please enter the email for the GPG Key Signature" && exit 1 || echo "GPG Key Email provided"
 
@@ -39,9 +39,9 @@ fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
 
 #Sign RPMs
 echo "Importing GPG Key files"
-/usr/bin/gpg --batch --import $GPG_PUB_KEY_FILE
-/usr/bin/gpg --batch --import $GPG_SEC_KEY_FILE
-/usr/bin/rpm --import $GPG_PUB_KEY_FILE
+/usr/bin/gpg --batch --import $GPG_PUB_FILE_PATH
+/usr/bin/gpg --batch --import $GPG_SEC_FILE_PATH
+/usr/bin/rpm --import $GPG_PUB_FILE_PATH
 
 cd ../bcda
 BCDA_RPM="bcda-*.rpm"

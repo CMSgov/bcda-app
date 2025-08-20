@@ -66,13 +66,13 @@ jobs:
         env: 
           GPG_RPM_USER: "Beneficiary Claims Data API (for signing RPMs)"
           GPG_RPM_EMAIL: "bcapi@cms.hhs.gov"
-          GPG_PUB_KEY_FILE: "../ops/RPM-GPG-KEY-bcda"
-          GPG_SEC_KEY_FILE: "../ops/RPM-GPG-KEY-SECRET-bcda"
+          GPG_PUB_FILE_PATH: "../ops/RPM-GPG-KEY-bcda"
+          GPG_SEC_FILE_PATH: "../ops/RPM-GPG-KEY-SECRET-bcda"
         run: |
-          echo "${{ env.BCDA_GPG_PUB_KEY }}" > ops/${{ env.GPG_PUB_KEY_FILE }}
-          echo "${{ env.BCDA_GPG_SEC_KEY }}" > ops/${{ env.GPG_SEC_KEY_FILE }}
+          echo "${{ env.BCDA_GPG_PUB_KEY }}" > ops/${{ env.GPG_PUB_FILE_PATH }}
+          echo "${{ env.BCDA_GPG_SEC_KEY }}" > ops/${{ env.GPG_SEC_FILE_PATH }}
           # Remove any slashes - we don't want RPM to contain slash
-          BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
+          BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_FILE_PATH=${{ env.GPG_PUB_FILE_PATH }} GPG_SEC_FILE_PATH=${{ env.GPG_SEC_FILE_PATH }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
       
       - name: Upload BCDA RPM to s3 prod
         # TODO: should we be checking blank release_version or should we be checking inputs.release_env == 'dev' ?

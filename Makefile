@@ -6,8 +6,8 @@ package:
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
 	-e GPG_RPM_USER='${GPG_RPM_USER}' \
 	-e GPG_RPM_EMAIL='${GPG_RPM_EMAIL}' \
-	-e GPG_PUB_KEY_FILE='${GPG_PUB_KEY_FILE}' \
-	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
+	-e GPG_PUB_FILE_PATH='${GPG_PUB_FILE_PATH}' \
+	-e GPG_SEC_FILE_PATH='${GPG_SEC_FILE_PATH}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 decrypt-secrets:
