@@ -214,27 +214,7 @@ func (r *Repository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint
 	return nil
 }
 
-func (r *Repository) DeleteCCLFFile(ctx context.Context, fileID uint) error {
-	db := sqlFlavor.NewDeleteBuilder().DeleteFrom("cclf_files")
-	db.Where(db.Equal("id", fileID))
 
-	query, args := db.Build()
-
-	result, err := r.ExecContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
-		return fmt.Errorf("failed to delete file entry %d, no entry found", fileID)
-	}
-
-	return nil
-}
 
 func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint) ([]string, error) {
 	var mbis []string
