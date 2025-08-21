@@ -14,11 +14,6 @@ type PgxRepository struct {
 	pool *pgxv5Pool.Pool // Optional pool for stateful operations
 }
 
-// NewPgxRepository creates a new stateless pgx repository instance
-func NewPgxRepository() *PgxRepository {
-	return &PgxRepository{}
-}
-
 // NewPgxRepositoryWithPool creates a new pgx repository instance with a connection pool
 func NewPgxRepositoryWithPool(pool *pgxv5Pool.Pool) *PgxRepository {
 	return &PgxRepository{pool: pool}
