@@ -124,39 +124,3 @@ func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID u
 
 	return nil
 }
-
-// DeleteCCLFFileTx deletes a CCLF file record using pgx transaction
-func (r *PgxRepository) DeleteCCLFFileTx(ctx context.Context, tx pgxv5.Tx, fileID uint) error {
-	query := `DELETE FROM cclf_files WHERE id = $1`
-	result, err := tx.Exec(ctx, query, fileID)
-	if err != nil {
-		return err
-	}
-
-	affected := result.RowsAffected()
-	if affected == 0 {
-		return fmt.Errorf("failed to delete file entry %d, no entry found", fileID)
-	}
-
-	return nil
-}
-
-// DeleteCCLFFile deletes a CCLF file record using the repository's pool
-func (r *PgxRepository) DeleteCCLFFile(ctx context.Context, fileID uint) error {
-	if r.pool == nil {
-		return fmt.Errorf("pool not initialized")
-	}
-
-	query := `DELETE FROM cclf_files WHERE id = $1`
-	result, err := r.pool.Exec(ctx, query, fileID)
-	if err != nil {
-		return err
-	}
-
-	affected := result.RowsAffected()
-	if affected == 0 {
-		return fmt.Errorf("failed to delete file entry %d, no entry found", fileID)
-	}
-
-	return nil
-}
