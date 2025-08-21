@@ -952,8 +952,6 @@ func (r *RepositoryTestSuite) TestCCLFFileExistsByName() {
 	r.False(exists)
 }
 
-
-
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)

@@ -214,8 +214,6 @@ func (r *Repository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint
 	return nil
 }
 
-
-
 func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint) ([]string, error) {
 	var mbis []string
 
