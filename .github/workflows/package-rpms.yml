@@ -75,8 +75,7 @@ jobs:
           BCDA_GPG_RPM_PASSPHRASE=${{ env.BCDA_GPG_RPM_PASSPHRASE }} GPG_RPM_USER="${{ env.GPG_RPM_USER }}" GPG_RPM_EMAIL=${{ env.GPG_RPM_EMAIL }} GPG_PUB_KEY_FILE=${{ env.GPG_PUB_KEY_FILE }} GPG_SEC_KEY_FILE=${{ env.GPG_SEC_KEY_FILE }} make package version=`echo ${{ inputs.release_version }} | sed 's/.*\///'`
       
       - name: Upload BCDA RPM to s3 prod
-        # TODO: should we be checking blank release_version or should we be checking inputs.release_env == 'dev' ?
-        if: ${{ inputs.release_version != '' }}
+        if: ${{ inputs.release_version != '' && inputs.release_version != 'main' }}
         working-directory: ./bcda
         run: |
           export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
@@ -84,7 +83,7 @@ jobs:
           aws s3 cp --only-show-errors $BCDA_RPM s3://${{ env.BCDA_RPMS_BUCKET }}/bcda-release-latest.rpm
 
       - name: Upload BCDA Worker RPM to s3 prod
-        if: ${{ inputs.release_version != '' }}
+        if: ${{ inputs.release_version != '' && inputs.release_version != 'main' }}
         working-directory: ./bcdaworker
         run: |
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
@@ -92,7 +91,7 @@ jobs:
           aws s3 cp --only-show-errors $BCDA_WORKER_RPM s3://${{ env.BCDA_RPMS_BUCKET }}/bcdaworker-release-latest.rpm
       
       - name: Upload BCDA RPM to s3 dev
-        if: ${{ inputs.release_version == '' }}
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
         working-directory: ./bcda
         run: |
           export BCDA_RPM=`ls bcda-*.rpm | tr '\n' ' '`
@@ -101,7 +100,7 @@ jobs:
           aws s3 cp --only-show-errors $BCDA_RPM s3://${{ env.BCDA_RPMS_BUCKET }}/bcda-dev-latest.rpm
       
       - name: Upload BCDA Worker RPM to s3 dev
-        if: ${{ inputs.release_version == '' }}
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' && inputs.release_version == 'main'}}
         working-directory: ./bcdaworker
         run: |
           export BCDA_WORKER_RPM=`ls bcdaworker-*.rpm | tr '\n' ' '`
