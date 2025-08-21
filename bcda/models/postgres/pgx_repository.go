@@ -19,8 +19,8 @@ func NewPgxRepositoryWithPool(pool *pgxv5Pool.Pool) *PgxRepository {
 	return &PgxRepository{pool: pool}
 }
 
-// GetCCLFFileExistsByName checks if a CCLF file exists by name using pgx transaction
-func (r *PgxRepository) GetCCLFFileExistsByName(ctx context.Context, tx pgxv5.Tx, name string) (bool, error) {
+// GetCCLFFileExistsByNameTx checks if a CCLF file exists by name using pgx transaction
+func (r *PgxRepository) GetCCLFFileExistsByNameTx(ctx context.Context, tx pgxv5.Tx, name string) (bool, error) {
 	query := `SELECT COUNT(*) FROM cclf_files WHERE name = $1`
 	var count int
 	err := tx.QueryRow(ctx, query, name).Scan(&count)
@@ -30,8 +30,8 @@ func (r *PgxRepository) GetCCLFFileExistsByName(ctx context.Context, tx pgxv5.Tx
 	return count > 0, nil
 }
 
-// GetCCLFFileExistsByNameWithPool checks if a CCLF file exists by name using the repository's pool
-func (r *PgxRepository) GetCCLFFileExistsByNameWithPool(ctx context.Context, name string) (bool, error) {
+// GetCCLFFileExistsByName checks if a CCLF file exists by name using the repository's pool
+func (r *PgxRepository) GetCCLFFileExistsByName(ctx context.Context, name string) (bool, error) {
 	if r.pool == nil {
 		return false, fmt.Errorf("pool not initialized")
 	}
@@ -45,8 +45,8 @@ func (r *PgxRepository) GetCCLFFileExistsByNameWithPool(ctx context.Context, nam
 	return count > 0, nil
 }
 
-// CreateCCLFFile creates a CCLF file record using pgx transaction
-func (r *PgxRepository) CreateCCLFFile(ctx context.Context, tx pgxv5.Tx, cclfFile models.CCLFFile) (uint, error) {
+// CreateCCLFFileTx creates a CCLF file record using pgx transaction
+func (r *PgxRepository) CreateCCLFFileTx(ctx context.Context, tx pgxv5.Tx, cclfFile models.CCLFFile) (uint, error) {
 	query := `
 		INSERT INTO cclf_files (cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -65,8 +65,8 @@ func (r *PgxRepository) CreateCCLFFile(ctx context.Context, tx pgxv5.Tx, cclfFil
 	return id, err
 }
 
-// CreateCCLFFileWithPool creates a CCLF file record using the repository's pool
-func (r *PgxRepository) CreateCCLFFileWithPool(ctx context.Context, cclfFile models.CCLFFile) (uint, error) {
+// CreateCCLFFile creates a CCLF file record using the repository's pool
+func (r *PgxRepository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFile) (uint, error) {
 	if r.pool == nil {
 		return 0, fmt.Errorf("pool not initialized")
 	}
@@ -89,8 +89,8 @@ func (r *PgxRepository) CreateCCLFFileWithPool(ctx context.Context, cclfFile mod
 	return id, err
 }
 
-// UpdateCCLFFileImportStatus updates the import status of a CCLF file using pgx transaction
-func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, tx pgxv5.Tx, fileID uint, importStatus string) error {
+// UpdateCCLFFileImportStatusTx updates the import status of a CCLF file using pgx transaction
+func (r *PgxRepository) UpdateCCLFFileImportStatusTx(ctx context.Context, tx pgxv5.Tx, fileID uint, importStatus string) error {
 	query := `UPDATE cclf_files SET import_status = $1 WHERE id = $2`
 	result, err := tx.Exec(ctx, query, importStatus, fileID)
 	if err != nil {
@@ -105,8 +105,8 @@ func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, tx pgxv5
 	return nil
 }
 
-// UpdateCCLFFileImportStatusWithPool updates the import status of a CCLF file using the repository's pool
-func (r *PgxRepository) UpdateCCLFFileImportStatusWithPool(ctx context.Context, fileID uint, importStatus string) error {
+// UpdateCCLFFileImportStatus updates the import status of a CCLF file using the repository's pool
+func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
 	if r.pool == nil {
 		return fmt.Errorf("pool not initialized")
 	}
@@ -125,8 +125,8 @@ func (r *PgxRepository) UpdateCCLFFileImportStatusWithPool(ctx context.Context, 
 	return nil
 }
 
-// DeleteCCLFFile deletes a CCLF file record using pgx transaction
-func (r *PgxRepository) DeleteCCLFFile(ctx context.Context, tx pgxv5.Tx, fileID uint) error {
+// DeleteCCLFFileTx deletes a CCLF file record using pgx transaction
+func (r *PgxRepository) DeleteCCLFFileTx(ctx context.Context, tx pgxv5.Tx, fileID uint) error {
 	query := `DELETE FROM cclf_files WHERE id = $1`
 	result, err := tx.Exec(ctx, query, fileID)
 	if err != nil {
@@ -141,8 +141,8 @@ func (r *PgxRepository) DeleteCCLFFile(ctx context.Context, tx pgxv5.Tx, fileID 
 	return nil
 }
 
-// DeleteCCLFFileWithPool deletes a CCLF file record using the repository's pool
-func (r *PgxRepository) DeleteCCLFFileWithPool(ctx context.Context, fileID uint) error {
+// DeleteCCLFFile deletes a CCLF file record using the repository's pool
+func (r *PgxRepository) DeleteCCLFFile(ctx context.Context, fileID uint) error {
 	if r.pool == nil {
 		return fmt.Errorf("pool not initialized")
 	}

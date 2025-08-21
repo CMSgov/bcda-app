@@ -106,7 +106,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	}
 
 	pgxRepo := postgres.NewPgxRepositoryWithPool(importer.PgxPool)
-	exists, err := pgxRepo.GetCCLFFileExistsByNameWithPool(ctx, csv.metadata.name)
+	exists, err := pgxRepo.GetCCLFFileExistsByName(ctx, csv.metadata.name)
 	if err != nil {
 		return fmt.Errorf("database query returned an error: %s", err)
 	}
@@ -142,7 +142,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		Type:            csv.metadata.fileType,
 	}
 
-	record.ID, err = pgxRepo.CreateCCLFFile(ctx, pgxTx, record)
+	record.ID, err = pgxRepo.CreateCCLFFileTx(ctx, pgxTx, record)
 	if err != nil {
 		err := fmt.Errorf("database error when calling CreateCCLFFile(): %s", err)
 		return err
@@ -164,7 +164,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return fmt.Errorf("unexpected number of records imported (expected: %d, actual: %d)", count, records)
 	}
 
-	err = pgxRepo.UpdateCCLFFileImportStatus(ctx, pgxTx, csv.metadata.fileID, constants.ImportComplete)
+	err = pgxRepo.UpdateCCLFFileImportStatusTx(ctx, pgxTx, csv.metadata.fileID, constants.ImportComplete)
 	if err != nil {
 		return fmt.Errorf("database error when calling UpdateCCLFFileImportStatus(): %s", csv.metadata.name)
 	}

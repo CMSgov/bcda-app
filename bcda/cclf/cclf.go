@@ -163,7 +163,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	}()
 
 	// Step 2: Check if file exists using pgx transaction
-	exists, err := importer.pgxRepo.GetCCLFFileExistsByName(ctx, pgxTx, fileMetadata.name)
+	exists, err := importer.pgxRepo.GetCCLFFileExistsByNameTx(ctx, pgxTx, fileMetadata.name)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
 		importer.logger.Error(err)
@@ -187,7 +187,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 		ImportStatus:    constants.ImportInprog,
 		Type:            fileMetadata.fileType,
 	}
-	cclfFile.ID, err = importer.pgxRepo.CreateCCLFFile(ctx, pgxTx, cclfFile)
+	cclfFile.ID, err = importer.pgxRepo.CreateCCLFFileTx(ctx, pgxTx, cclfFile)
 	if err != nil {
 		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
 		importer.logger.Error(err)
@@ -221,7 +221,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	}
 
 	// Step 5: Update file status using pgx transaction
-	err = importer.pgxRepo.UpdateCCLFFileImportStatus(ctx, pgxTx, fileMetadata.fileID, constants.ImportComplete)
+	err = importer.pgxRepo.UpdateCCLFFileImportStatusTx(ctx, pgxTx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata.name)
 		importer.logger.Error(err)
