@@ -352,63 +352,6 @@ func (_c *MockRepository_CreateSuppressionFile_Call) RunAndReturn(run func(ctx c
 	return _c
 }
 
-// DeleteCCLFFile provides a mock function for the type MockRepository
-func (_mock *MockRepository) DeleteCCLFFile(ctx context.Context, fileID uint) error {
-	ret := _mock.Called(ctx, fileID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DeleteCCLFFile")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint) error); ok {
-		r0 = returnFunc(ctx, fileID)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockRepository_DeleteCCLFFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteCCLFFile'
-type MockRepository_DeleteCCLFFile_Call struct {
-	*mock.Call
-}
-
-// DeleteCCLFFile is a helper method to define mock.On call
-//   - ctx context.Context
-//   - fileID uint
-func (_e *MockRepository_Expecter) DeleteCCLFFile(ctx interface{}, fileID interface{}) *MockRepository_DeleteCCLFFile_Call {
-	return &MockRepository_DeleteCCLFFile_Call{Call: _e.mock.On("DeleteCCLFFile", ctx, fileID)}
-}
-
-func (_c *MockRepository_DeleteCCLFFile_Call) Run(run func(ctx context.Context, fileID uint)) *MockRepository_DeleteCCLFFile_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uint
-		if args[1] != nil {
-			arg1 = args[1].(uint)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockRepository_DeleteCCLFFile_Call) Return(err error) *MockRepository_DeleteCCLFFile_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockRepository_DeleteCCLFFile_Call) RunAndReturn(run func(ctx context.Context, fileID uint) error) *MockRepository_DeleteCCLFFile_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetACOByCMSID provides a mock function for the type MockRepository
 func (_mock *MockRepository) GetACOByCMSID(ctx context.Context, cmsID string) (*ACO, error) {
 	ret := _mock.Called(ctx, cmsID)
