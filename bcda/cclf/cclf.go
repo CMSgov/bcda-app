@@ -145,7 +145,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	// Step 1: Begin pgx transaction for all operations
 	if importer.pgxPool == nil {
-		return fmt.Errorf("pgx pool is required for import operations")
+		return errors.New("pgx pool is required for import operations")
 	}
 
 	pgxTx, err := importer.pgxPool.Begin(ctx)

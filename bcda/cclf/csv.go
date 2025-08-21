@@ -102,7 +102,7 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	ctx := context.Background()
 	if importer.PgxPool == nil {
-		return fmt.Errorf("pgx pool is required for import operations")
+		return errors.New("pgx pool is required for import operations")
 	}
 
 	pgxRepo := postgres.NewPgxRepositoryWithPool(importer.PgxPool)
