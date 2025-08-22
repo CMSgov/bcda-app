@@ -122,8 +122,8 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	}
 	defer func() {
 		if err != nil {
-			if err1 := pgxTx.Rollback(ctx); err1 != nil {
-				importer.Logger.Errorf("Failed to rollback pgx transaction: %s, %s", err.Error(), err1.Error())
+			if rollbackErr := pgxTx.Rollback(ctx); rollbackErr != nil {
+				importer.Logger.Errorf("Failed to rollback pgx transaction: %s, %s", err.Error(), rollbackErr.Error())
 			}
 			return
 		}

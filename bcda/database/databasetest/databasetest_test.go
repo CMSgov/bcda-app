@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )

@@ -8,8 +8,8 @@ import (
 
 	"github.com/ccoveille/go-safecast"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
-	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	"github.com/sirupsen/logrus"
 )
 
@@ -60,7 +60,7 @@ func ConnectPool() *pgxv5Pool.Pool {
 }
 
 func createDB(cfg *Config) (*sql.DB, error) {
-	db, err := sql.Open("nrpgx", strings.TrimSpace(cfg.DatabaseURL))
+	db, err := sql.Open("pgx", strings.TrimSpace(cfg.DatabaseURL))
 	if err != nil {
 		return nil, err
 	}
