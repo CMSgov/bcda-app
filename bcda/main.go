@@ -47,9 +47,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
-func init() {
-	log.SetupLoggers()
-	client.SetLogger(log.BBAPI)
+func setupDirs() {
 
 	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
 	if isEtlMode != "true" {
@@ -83,6 +81,9 @@ func createETLDirs() {
 }
 
 func main() {
+	log.SetupLoggers()
+	client.SetLogger(log.BBAPI)
+	setupDirs()
 	app := bcdacli.GetApp()
 	err := app.Run(os.Args)
 	if err != nil {
