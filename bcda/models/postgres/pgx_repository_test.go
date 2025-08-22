@@ -50,7 +50,7 @@ func (s *PgxRepositoryTestSuite) TearDownSuite() {
 	}
 }
 
-func (s *PgxRepositoryTestSuite) SetupTest() {
+func (s *PgxRepositoryTestSuite) TearDownTest() {
 	s.cleanupTestData("TEST123")
 }
 
