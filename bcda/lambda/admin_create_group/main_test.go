@@ -30,7 +30,7 @@ func TestHandleCreateGroup(t *testing.T) {
 		{"valid ID but missing required fields", payload{GroupID: "", GroupName: "A9999-group", ACO_ID: "A9999"}, "missing one or more required field(s)"},
 	}
 
-	db, _ := databasetest.CreateDatabase(t, "../../../db/migrations/bcda/", true)
+	db, _, _ := databasetest.CreateDatabase(t, "../../../db/migrations/bcda/", true)
 	tf, err := testfixtures.New(
 		testfixtures.Database(db),
 		testfixtures.Dialect("postgres"),

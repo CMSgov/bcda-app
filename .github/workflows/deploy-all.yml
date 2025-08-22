@@ -2,8 +2,6 @@
 name: Deploy All
 
 on:
-  schedule:
-    - cron: 0 12 * * 1-5 # every workday at 8am EST (autodeploy to dev)
   workflow_dispatch:
     inputs:
       release_version:
@@ -49,6 +47,35 @@ on:
           - 'large'
           - 'extra-large'
           - 'paca'
+        default: 'dev'
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ops_release_version:
+        description: 'Release version/tag for bcda-ops (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version/tag for bcda-ssas (or branch name)'
+        required: true
+        type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        type: string
+        default: dev
+      confirm_env:
+        description: 'Confirm the environment you want to deploy to'
+        required: true
+        type: string
+        default: dev
+      test_aco:
+        description: Run the smoke tests using the selected ACO
+        required: true
+        type: string
         default: 'dev'
 
 permissions:

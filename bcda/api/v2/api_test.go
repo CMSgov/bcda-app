@@ -175,6 +175,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	var expectedUrls []string
 	for i := 1; i <= 10; i++ {
@@ -183,6 +184,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		expectedUrls = append(expectedUrls, expectedurl)
 		postgrestest.CreateJobKeys(s.T(), s.db,
 			models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"})
+		defer postgrestest.DeleteJobKeysByJobIDs(s.T(), s.db, j.ID)
 	}
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
@@ -228,6 +230,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 	jobKey := models.JobKey{
@@ -236,6 +239,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		ResourceType: "ExplanationOfBenefit",
 	}
 	postgrestest.CreateJobKeys(s.T(), s.db, jobKey)
+	defer postgrestest.DeleteJobKeysByJobIDs(s.T(), s.db, jobKey.JobID)
 
 	f := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
 	if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -290,6 +294,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	j.UpdatedAt = time.Now().Add(-(s.apiV2.handler.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
@@ -539,7 +544,7 @@ func (s *APITestSuite) TestResourceTypes() {
 		{"Supported type - default", nil, http.StatusAccepted},
 	}
 
-	resources, _ := service.GetDataTypes([]string{
+	resources, _ := service.GetClaimTypesMap([]string{
 		"Patient",
 		"Coverage",
 		"ExplanationOfBenefit",

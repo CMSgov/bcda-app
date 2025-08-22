@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -18,7 +19,8 @@ import (
 
 type CCLFUtilTestSuite struct {
 	suite.Suite
-	db *sql.DB
+	db      *sql.DB
+	pgxPool *pgxv5Pool.Pool
 }
 
 var origDate string
@@ -26,6 +28,7 @@ var origDate string
 func (s *CCLFUtilTestSuite) SetupSuite() {
 	origDate = conf.GetEnv("CCLF_REF_DATE")
 	s.db = database.Connect()
+	s.pgxPool = database.ConnectPool()
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {
@@ -43,19 +46,19 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "D190617")
-	err := ImportCCLFPackage(s.db, "NOTREAL", "test", models.FileTypeDefault)
+	err := ImportCCLFPackage(s.db, s.pgxPool, "NOTREAL", "test", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for ACO size")
 }
 
 func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage(s.db, "dev", "environment", models.FileTypeDefault)
+	err := ImportCCLFPackage(s.db, s.pgxPool, "dev", "environment", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for environment")
 }
 
 func (s *CCLFUtilTestSuite) TestInvalidFilePath() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage(s.db, "improved-small", "test-partially-adjudicated", models.FileTypeRunout)
+	err := ImportCCLFPackage(s.db, s.pgxPool, "improved-small", "test-partially-adjudicated", models.FileTypeRunout)
 	assert.EqualError(err, "unable to locate ../../../../../../shared_files/cclf/files/synthetic/test-partially-adjudicated/small in file path")
 }
 
@@ -104,7 +107,7 @@ func (s *CCLFUtilTestSuite) TestImport() {
 		for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
 			s.T().Run(fmt.Sprintf("ACO Size %s - Env %s - File Type %s", tt.acoSize, tt.env, fileType),
 				func(t *testing.T) {
-					err := ImportCCLFPackage(s.db, tt.acoSize, tt.env, fileType)
+					err := ImportCCLFPackage(s.db, s.pgxPool, tt.acoSize, tt.env, fileType)
 					assert.NoError(t, err)
 				})
 		}

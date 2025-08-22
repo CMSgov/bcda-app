@@ -64,6 +64,7 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
+		log.SetupLoggers()
 		db = database.Connect()
 		pool = database.ConnectPool()
 		repository = postgres.NewRepository(db)
@@ -328,7 +329,7 @@ func setUpApp() *cli.App {
 					}
 				}
 
-				importer := cclf.NewCclfImporter(log.API, file_processor, db)
+				importer := cclf.NewCclfImporter(log.API, file_processor, pool)
 
 				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
 				if err != nil {
@@ -457,7 +458,7 @@ func setUpApp() *cli.App {
 						return errors.New("Unsupported file type.")
 					}
 				}
-				err := cclfUtils.ImportCCLFPackage(db, acoSize, environment, ft)
+				err := cclfUtils.ImportCCLFPackage(db, pool, acoSize, environment, ft)
 				return err
 			},
 		},

@@ -85,9 +85,12 @@ func handleCSVImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, 
 	logger := configureLogger(env, appName)
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
+	pool := database.ConnectPool()
+	defer pool.Close()
+
 	importer := cclf.CSVImporter{
-		Logger:   logger,
-		Database: db,
+		Logger:  logger,
+		PgxPool: pool,
 		FileProcessor: &cclf.S3FileProcessor{
 			Handler: optout.S3FileHandler{
 				Logger:        logger,
@@ -144,7 +147,11 @@ func handleCclfImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string,
 		},
 	}
 
-	importer := cclf.NewCclfImporter(logger, &fileProcessor, db)
+	// Create pgx pool for bulk operations
+	pool := database.ConnectPool()
+	defer pool.Close()
+
+	importer := cclf.NewCclfImporter(logger, &fileProcessor, pool)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(s3ImportPath)
 

@@ -20,11 +20,12 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
 // begin the import of those files and delete them from the place they were copied to after successful import.
-func ImportCCLFPackage(db *sql.DB, acoSize, environment string, fileType models.CCLFFileType) (err error) {
+func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment string, fileType models.CCLFFileType) (err error) {
 
 	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -149,7 +150,7 @@ func ImportCCLFPackage(db *sql.DB, acoSize, environment string, fileType models.
 		},
 	}
 
-	importer := cclf.NewCclfImporter(log.API, file_processor, db)
+	importer := cclf.NewCclfImporter(log.API, file_processor, pgxPool)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(dir)
 	if err != nil {
