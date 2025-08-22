@@ -51,7 +51,7 @@ func (s *PgxRepositoryTestSuite) TearDownSuite() {
 }
 
 func (s *PgxRepositoryTestSuite) SetupTest() {
-	s.cleanupTestData("")
+	s.cleanupTestData("TEST123")
 }
 
 func (s *PgxRepositoryTestSuite) TestNewPgxRepositoryWithPool() {
