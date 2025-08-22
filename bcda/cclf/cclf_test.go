@@ -238,7 +238,6 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 
 func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	assert := assert.New(s.T())
-	ctx := context.Background()
 
 	//indeterminate test results without deletion of both.
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
@@ -257,10 +256,10 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 	}
 
 	//Send an invalid context to fail DB check
-	ctx2, function := context.WithCancel(ctx)
+	ctx, function := context.WithCancel(context.Background())
 	function()
 
-	err := s.importer.importCCLF8(ctx2, metadata, validator)
+	err := s.importer.importCCLF8(ctx, metadata, validator)
 	assert.EqualError(err, "failed to start pgx transaction: context canceled")
 }
 
