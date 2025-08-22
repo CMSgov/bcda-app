@@ -1,7 +1,6 @@
 FROM golang:1.24.4-alpine3.22 AS builder
 
 ARG GO_FLAGS
-RUN apk update upgrade
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
@@ -23,13 +22,26 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # ------------------------------------------------------------------------
 FROM golang:1.24.4-alpine3.22
 
+RUN addgroup -S -g 1010 bcda && adduser -S -G bcda -u 1010 bcda
+
+# install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
-# only add dev packages if the environment argument was set to development
-RUN [ "$ENVIRONMENT" != "development" ] || apk add git openssl entr bash && go install github.com/go-delve/delve/cmd/dlv@latest
+RUN [ "$ENVIRONMENT" != "development" ] || apk update upgrade && \
+    apk add bash && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
 COPY --from=builder /go/bin/ /go/bin/
+
+# configure directories
+RUN mkdir /var/fhir && chown -R bcda:bcda \
+    /go/src/github.com/CMSgov/bcda-app \
+    /var/fhir \
+    /var/log
+
+USER bcda
 
 ENTRYPOINT ["bcdaworker"]
