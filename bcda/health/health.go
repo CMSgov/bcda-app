@@ -5,7 +5,6 @@ import (
 
 	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	"github.com/CMSgov/bcda-app/log"
 )
 

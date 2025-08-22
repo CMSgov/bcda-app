@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"

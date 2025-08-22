@@ -25,8 +25,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/suite"
-
-	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
 )
 
 const (
