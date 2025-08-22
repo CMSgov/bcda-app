@@ -1,6 +1,6 @@
 // This file was cloned from the New Relic go agent on May 24, 2023.
 // Edits were required to enable this in our repo:
-//  1. Switch from pgx/v4/stdlib to pgx/stdlib to align with our current version of pgx (v3)
+//  1. Updated to use pgx/v5 instead of pgx/v3/v4 to align with our current version of pgx
 //     and avoid "Register called twice for driver pgx" errors.
 //  2. To enable a custom connection and logging configuration, use stdlib.getDefaultDriver().
 //     See: https://github.com/newrelic/go-agent/issues/435
@@ -8,7 +8,7 @@
 // Copyright 2021 New Relic Corporation. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Package nrpgx instruments https://github.com/jackc/pgx/v4.
+// Package nrpgx instruments https://github.com/jackc/pgx/v5.
 //
 // Use this package to instrument your PostgreSQL calls using the pgx
 // library.
@@ -22,7 +22,7 @@
 //
 //		import (
 //	     "database/sql"
-//			_ "github.com/jackc/pgx/v4/stdlib"
+//			_ "github.com/jackc/pgx/v5/stdlib"
 //		)
 //
 //		func main() {
@@ -70,8 +70,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/newrelic/go-agent/v3/newrelic/sqlparse"
 )
@@ -216,19 +216,19 @@ var fullParamPattern = regexp.MustCompile(
 func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, string) {
 	return func(s *newrelic.DatastoreSegment, dsn string) {
 
-		cc, err := pgx.ParseConnectionString(dsn)
+		cc, err := pgx.ParseConfig(dsn)
 		if err != nil {
 			// the connection string is invalid
 
-			// Sometimes we've found that pgx.ParseConnectionString doesn't recognize
+			// Sometimes we've found that pgx.ParseConfig doesn't recognize
 			// all patterns so if that call failed, we'll do a little pattern matching
 			// of our own and see if we can figure it out.
-			cc = pgx.ConnConfig{}
+			cc = &pgx.ConnConfig{}
 			conn := fullIp6ConnectPattern.FindStringSubmatch(dsn)
 			if conn == nil {
 				conn = fullConnectPattern.FindStringSubmatch(dsn)
 				if conn == nil {
-					// maybe it's a parameterized string that ParseConnectionString didn't like.
+					// maybe it's a parameterized string that ParseConfig didn't like.
 					for _, par := range fullParamPattern.FindAllStringSubmatch(dsn, -1) {
 						if len(par) != 3 {
 							continue
@@ -300,7 +300,11 @@ func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, strin
 				cc.Port, ppoid = parsePort(ip6parts[2])
 			}
 		} else {
-			if colon := strings.IndexRune(cc.Host, ':'); colon >= 0 {
+			// Only process colon-separated host:port if it's not an IPv6 address
+			// Check if this looks like an IPv6 address (contains multiple colons)
+			if strings.Count(cc.Host, ":") > 1 {
+				// This is likely an IPv6 address, don't split on colons
+			} else if colon := strings.IndexRune(cc.Host, ':'); colon >= 0 {
 				// This host had an explicit port number attached to it.
 				// Use that in preference to what's in cc.Port.
 				if colon+1 < len(cc.Host) {
@@ -323,7 +327,23 @@ func parseDSN(getenv func(string) string) func(*newrelic.DatastoreSegment, strin
 		}
 
 		// Unix sockets are handled a little differently
-		if strings.HasPrefix(cc.Host, "/") {
+		// Check if this is a default pgx Unix socket path (like /tmp or /private/tmp)
+		if cc.Host == "/tmp" || cc.Host == "/private/tmp" {
+			// This is pgx's default Unix socket path
+			// If environment variables are set, use them instead
+			if envHost := getenv("PGHOST"); envHost != "" {
+				cc.Host = envHost
+			} else {
+				// No environment variable, treat it as localhost with default port
+				cc.Host = "localhost"
+			}
+			if cc.Port == 0 {
+				cc.Port, ppoid = parsePort("5432")
+			} else {
+				ppoid = strconv.Itoa(int(cc.Port))
+			}
+		} else if strings.HasPrefix(cc.Host, "/") {
+			// This is a real Unix socket path, handle it properly
 			ppoid = path.Join(cc.Host, ".s.PGSQL."+ppoid)
 			cc.Host = "localhost"
 		}

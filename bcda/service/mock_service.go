@@ -74,15 +74,26 @@ type MockService_CancelJob_Call struct {
 }
 
 // CancelJob is a helper method to define mock.On call
-//   - ctx
-//   - jobID
+//   - ctx context.Context
+//   - jobID uint
 func (_e *MockService_Expecter) CancelJob(ctx interface{}, jobID interface{}) *MockService_CancelJob_Call {
 	return &MockService_CancelJob_Call{Call: _e.mock.On("CancelJob", ctx, jobID)}
 }
 
 func (_c *MockService_CancelJob_Call) Run(run func(ctx context.Context, jobID uint)) *MockService_CancelJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -129,17 +140,38 @@ type MockService_FindOldCCLFFile_Call struct {
 }
 
 // FindOldCCLFFile is a helper method to define mock.On call
-//   - ctx
-//   - cmsID
-//   - since
-//   - cclfTimestamp
+//   - ctx context.Context
+//   - cmsID string
+//   - since time.Time
+//   - cclfTimestamp time.Time
 func (_e *MockService_Expecter) FindOldCCLFFile(ctx interface{}, cmsID interface{}, since interface{}, cclfTimestamp interface{}) *MockService_FindOldCCLFFile_Call {
 	return &MockService_FindOldCCLFFile_Call{Call: _e.mock.On("FindOldCCLFFile", ctx, cmsID, since, cclfTimestamp)}
 }
 
 func (_c *MockService_FindOldCCLFFile_Call) Run(run func(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time)) *MockService_FindOldCCLFFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(time.Time), args[3].(time.Time))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		var arg3 time.Time
+		if args[3] != nil {
+			arg3 = args[3].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
 	})
 	return _c
 }
@@ -188,14 +220,20 @@ type MockService_GetACOConfigForID_Call struct {
 }
 
 // GetACOConfigForID is a helper method to define mock.On call
-//   - cmsID
+//   - cmsID string
 func (_e *MockService_Expecter) GetACOConfigForID(cmsID interface{}) *MockService_GetACOConfigForID_Call {
 	return &MockService_GetACOConfigForID_Call{Call: _e.mock.On("GetACOConfigForID", cmsID)}
 }
 
 func (_c *MockService_GetACOConfigForID_Call) Run(run func(cmsID string)) *MockService_GetACOConfigForID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }
@@ -242,18 +280,44 @@ type MockService_GetCutoffTime_Call struct {
 }
 
 // GetCutoffTime is a helper method to define mock.On call
-//   - ctx
-//   - reqType
-//   - since
-//   - timeConstraints
-//   - fileType
+//   - ctx context.Context
+//   - reqType constants.DataRequestType
+//   - since time.Time
+//   - timeConstraints TimeConstraints
+//   - fileType models.CCLFFileType
 func (_e *MockService_Expecter) GetCutoffTime(ctx interface{}, reqType interface{}, since interface{}, timeConstraints interface{}, fileType interface{}) *MockService_GetCutoffTime_Call {
 	return &MockService_GetCutoffTime_Call{Call: _e.mock.On("GetCutoffTime", ctx, reqType, since, timeConstraints, fileType)}
 }
 
 func (_c *MockService_GetCutoffTime_Call) Run(run func(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType)) *MockService_GetCutoffTime_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(constants.DataRequestType), args[2].(time.Time), args[3].(TimeConstraints), args[4].(models.CCLFFileType))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 constants.DataRequestType
+		if args[1] != nil {
+			arg1 = args[1].(constants.DataRequestType)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		var arg3 TimeConstraints
+		if args[3] != nil {
+			arg3 = args[3].(TimeConstraints)
+		}
+		var arg4 models.CCLFFileType
+		if args[4] != nil {
+			arg4 = args[4].(models.CCLFFileType)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
 	})
 	return _c
 }
@@ -310,15 +374,26 @@ type MockService_GetJobAndKeys_Call struct {
 }
 
 // GetJobAndKeys is a helper method to define mock.On call
-//   - ctx
-//   - jobID
+//   - ctx context.Context
+//   - jobID uint
 func (_e *MockService_Expecter) GetJobAndKeys(ctx interface{}, jobID interface{}) *MockService_GetJobAndKeys_Call {
 	return &MockService_GetJobAndKeys_Call{Call: _e.mock.On("GetJobAndKeys", ctx, jobID)}
 }
 
 func (_c *MockService_GetJobAndKeys_Call) Run(run func(ctx context.Context, jobID uint)) *MockService_GetJobAndKeys_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -367,16 +442,32 @@ type MockService_GetJobKey_Call struct {
 }
 
 // GetJobKey is a helper method to define mock.On call
-//   - ctx
-//   - jobID
-//   - filename
+//   - ctx context.Context
+//   - jobID uint
+//   - filename string
 func (_e *MockService_Expecter) GetJobKey(ctx interface{}, jobID interface{}, filename interface{}) *MockService_GetJobKey_Call {
 	return &MockService_GetJobKey_Call{Call: _e.mock.On("GetJobKey", ctx, jobID, filename)}
 }
 
 func (_c *MockService_GetJobKey_Call) Run(run func(ctx context.Context, jobID uint, filename string)) *MockService_GetJobKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint), args[2].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -414,16 +505,32 @@ type MockService_GetJobPriority_Call struct {
 }
 
 // GetJobPriority is a helper method to define mock.On call
-//   - acoID
-//   - resourceType
-//   - sinceParam
+//   - acoID string
+//   - resourceType string
+//   - sinceParam bool
 func (_e *MockService_Expecter) GetJobPriority(acoID interface{}, resourceType interface{}, sinceParam interface{}) *MockService_GetJobPriority_Call {
 	return &MockService_GetJobPriority_Call{Call: _e.mock.On("GetJobPriority", acoID, resourceType, sinceParam)}
 }
 
 func (_c *MockService_GetJobPriority_Call) Run(run func(acoID string, resourceType string, sinceParam bool)) *MockService_GetJobPriority_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(bool))
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 bool
+		if args[2] != nil {
+			arg2 = args[2].(bool)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -478,9 +585,9 @@ type MockService_GetJobs_Call struct {
 }
 
 // GetJobs is a helper method to define mock.On call
-//   - ctx
-//   - acoID
-//   - statuses
+//   - ctx context.Context
+//   - acoID uuid.UUID
+//   - statuses ...models.JobStatus
 func (_e *MockService_Expecter) GetJobs(ctx interface{}, acoID interface{}, statuses ...interface{}) *MockService_GetJobs_Call {
 	return &MockService_GetJobs_Call{Call: _e.mock.On("GetJobs",
 		append([]interface{}{ctx, acoID}, statuses...)...)}
@@ -488,8 +595,25 @@ func (_e *MockService_Expecter) GetJobs(ctx interface{}, acoID interface{}, stat
 
 func (_c *MockService_GetJobs_Call) Run(run func(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus)) *MockService_GetJobs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[2].([]models.JobStatus)
-		run(args[0].(context.Context), args[1].(uuid.UUID), variadicArgs...)
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 []models.JobStatus
+		var variadicArgs []models.JobStatus
+		if len(args) > 2 {
+			variadicArgs = args[2].([]models.JobStatus)
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
 	})
 	return _c
 }
@@ -538,18 +662,44 @@ type MockService_GetLatestCCLFFile_Call struct {
 }
 
 // GetLatestCCLFFile is a helper method to define mock.On call
-//   - ctx
-//   - cmsID
-//   - lowerBound
-//   - upperBound
-//   - fileType
+//   - ctx context.Context
+//   - cmsID string
+//   - lowerBound time.Time
+//   - upperBound time.Time
+//   - fileType models.CCLFFileType
 func (_e *MockService_Expecter) GetLatestCCLFFile(ctx interface{}, cmsID interface{}, lowerBound interface{}, upperBound interface{}, fileType interface{}) *MockService_GetLatestCCLFFile_Call {
 	return &MockService_GetLatestCCLFFile_Call{Call: _e.mock.On("GetLatestCCLFFile", ctx, cmsID, lowerBound, upperBound, fileType)}
 }
 
 func (_c *MockService_GetLatestCCLFFile_Call) Run(run func(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType)) *MockService_GetLatestCCLFFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(time.Time), args[3].(time.Time), args[4].(models.CCLFFileType))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		var arg3 time.Time
+		if args[3] != nil {
+			arg3 = args[3].(time.Time)
+		}
+		var arg4 models.CCLFFileType
+		if args[4] != nil {
+			arg4 = args[4].(models.CCLFFileType)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
 	})
 	return _c
 }
@@ -598,15 +748,26 @@ type MockService_GetQueJobs_Call struct {
 }
 
 // GetQueJobs is a helper method to define mock.On call
-//   - ctx
-//   - args
+//   - ctx context.Context
+//   - args worker_types.PrepareJobArgs
 func (_e *MockService_Expecter) GetQueJobs(ctx interface{}, args interface{}) *MockService_GetQueJobs_Call {
 	return &MockService_GetQueJobs_Call{Call: _e.mock.On("GetQueJobs", ctx, args)}
 }
 
 func (_c *MockService_GetQueJobs_Call) Run(run func(ctx context.Context, args worker_types.PrepareJobArgs)) *MockService_GetQueJobs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(worker_types.PrepareJobArgs))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 worker_types.PrepareJobArgs
+		if args[1] != nil {
+			arg1 = args[1].(worker_types.PrepareJobArgs)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -653,15 +814,26 @@ type MockService_GetTimeConstraints_Call struct {
 }
 
 // GetTimeConstraints is a helper method to define mock.On call
-//   - ctx
-//   - cmsID
+//   - ctx context.Context
+//   - cmsID string
 func (_e *MockService_Expecter) GetTimeConstraints(ctx interface{}, cmsID interface{}) *MockService_GetTimeConstraints_Call {
 	return &MockService_GetTimeConstraints_Call{Call: _e.mock.On("GetTimeConstraints", ctx, cmsID)}
 }
 
 func (_c *MockService_GetTimeConstraints_Call) Run(run func(ctx context.Context, cmsID string)) *MockService_GetTimeConstraints_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }

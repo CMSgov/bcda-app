@@ -7,10 +7,6 @@ import (
 	"time"
 
 	"github.com/ccoveille/go-safecast"
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/log/logrusadapter"
-	"github.com/jackc/pgx/stdlib"
-
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 
 	_ "github.com/CMSgov/bcda-app/bcda/nrpgx"
@@ -64,20 +60,7 @@ func ConnectPool() *pgxv5Pool.Pool {
 }
 
 func createDB(cfg *Config) (*sql.DB, error) {
-	dc := stdlib.DriverConfig{
-		ConnConfig: pgx.ConnConfig{
-			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),
-			LogLevel: pgx.LogLevelError,
-		},
-		AfterConnect: func(c *pgx.Conn) error {
-			// Can be used to ensure temp tables, indexes, etc. exist
-			return nil
-		},
-	}
-
-	stdlib.RegisterDriverConfig(&dc)
-
-	db, err := sql.Open("nrpgx", dc.ConnectionString(strings.TrimSpace(cfg.DatabaseURL)))
+	db, err := sql.Open("nrpgx", strings.TrimSpace(cfg.DatabaseURL))
 	if err != nil {
 		return nil, err
 	}

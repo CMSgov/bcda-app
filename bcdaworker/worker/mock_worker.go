@@ -62,17 +62,38 @@ type MockWorker_ProcessJob_Call struct {
 }
 
 // ProcessJob is a helper method to define mock.On call
-//   - ctx
-//   - queJobID
-//   - job
-//   - jobArgs
+//   - ctx context.Context
+//   - queJobID int64
+//   - job models.Job
+//   - jobArgs worker_types.JobEnqueueArgs
 func (_e *MockWorker_Expecter) ProcessJob(ctx interface{}, queJobID interface{}, job interface{}, jobArgs interface{}) *MockWorker_ProcessJob_Call {
 	return &MockWorker_ProcessJob_Call{Call: _e.mock.On("ProcessJob", ctx, queJobID, job, jobArgs)}
 }
 
 func (_c *MockWorker_ProcessJob_Call) Run(run func(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs)) *MockWorker_ProcessJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(models.Job), args[3].(worker_types.JobEnqueueArgs))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		var arg2 models.Job
+		if args[2] != nil {
+			arg2 = args[2].(models.Job)
+		}
+		var arg3 worker_types.JobEnqueueArgs
+		if args[3] != nil {
+			arg3 = args[3].(worker_types.JobEnqueueArgs)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
 	})
 	return _c
 }
@@ -121,16 +142,32 @@ type MockWorker_ValidateJob_Call struct {
 }
 
 // ValidateJob is a helper method to define mock.On call
-//   - ctx
-//   - queJobID
-//   - jobArgs
+//   - ctx context.Context
+//   - queJobID int64
+//   - jobArgs worker_types.JobEnqueueArgs
 func (_e *MockWorker_Expecter) ValidateJob(ctx interface{}, queJobID interface{}, jobArgs interface{}) *MockWorker_ValidateJob_Call {
 	return &MockWorker_ValidateJob_Call{Call: _e.mock.On("ValidateJob", ctx, queJobID, jobArgs)}
 }
 
 func (_c *MockWorker_ValidateJob_Call) Run(run func(ctx context.Context, queJobID int64, jobArgs worker_types.JobEnqueueArgs)) *MockWorker_ValidateJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(worker_types.JobEnqueueArgs))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		var arg2 worker_types.JobEnqueueArgs
+		if args[2] != nil {
+			arg2 = args[2].(worker_types.JobEnqueueArgs)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }

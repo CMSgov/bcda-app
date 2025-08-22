@@ -3,7 +3,6 @@ package cclf
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -11,15 +10,14 @@ import (
 	f "path/filepath"
 	"time"
 
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/stdlib"
+	pgxv5 "github.com/jackc/pgx/v5"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/optout"
 )
 
@@ -54,7 +52,7 @@ type csvFileMetadata struct {
 type CSVImporter struct {
 	Logger        logrus.FieldLogger
 	FileProcessor CSVFileProcessor
-	Database      *sql.DB
+	PgxPool       *pgxv5Pool.Pool
 }
 
 func (importer CSVImporter) ImportCSV(filepath string) error {
@@ -103,8 +101,12 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 // table will have it's import status updated.
 func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	ctx := context.Background()
-	repository := postgres.NewRepository(importer.Database)
-	exists, err := repository.GetCCLFFileExistsByName(ctx, csv.metadata.name)
+	if importer.PgxPool == nil {
+		return errors.New("pgx pool is required for import operations")
+	}
+
+	pgxRepo := postgres.NewPgxRepositoryWithPool(importer.PgxPool)
+	exists, err := pgxRepo.GetCCLFFileExistsByName(ctx, csv.metadata.name)
 	if err != nil {
 		return fmt.Errorf("database query returned an error: %s", err)
 	}
@@ -113,28 +115,21 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	}
 
 	importer.Logger.Infof("Importing CSV file %s...", csv.metadata.name)
-	conn, err := stdlib.AcquireConn(importer.Database)
+
+	pgxTx, err := importer.PgxPool.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start pgx transaction: %w", err)
 	}
-
-	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(importer.Database, conn) })
-
-	tx, err := conn.BeginEx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
-
-	rtx := postgres.NewRepositoryPgxTx(tx)
-	var records int
 	defer func() {
 		if err != nil {
-			if err1 := tx.Rollback(); err1 != nil {
-				importer.Logger.Errorf("Failed to rollback transaction: %s, %s", err.Error(), err1.Error())
+			if err1 := pgxTx.Rollback(ctx); err1 != nil {
+				importer.Logger.Errorf("Failed to rollback pgx transaction: %s, %s", err.Error(), err1.Error())
 			}
 			return
 		}
 	}()
+
+	var records int
 
 	// CCLF model corresponds with a database record
 	record := models.CCLFFile{
@@ -147,7 +142,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		Type:            csv.metadata.fileType,
 	}
 
-	record.ID, err = rtx.CreateCCLFFile(ctx, record)
+	record.ID, err = pgxRepo.CreateCCLFFileTx(ctx, pgxTx, record)
 	if err != nil {
 		err := fmt.Errorf("database error when calling CreateCCLFFile(): %s", err)
 		return err
@@ -160,21 +155,22 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 		return err
 	}
 
-	records, err = tx.CopyFrom(pgx.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgx.CopyFromRows(rows))
+	importedCount, err := pgxTx.CopyFrom(ctx, pgxv5.Identifier{"cclf_beneficiaries"}, []string{"file_id", "mbi"}, pgxv5.CopyFromRows(rows))
+	records = int(importedCount)
+	if err != nil {
+		return fmt.Errorf("failed to write attribution beneficiaries to database: %w", err)
+	}
 	if count != records {
 		return fmt.Errorf("unexpected number of records imported (expected: %d, actual: %d)", count, records)
 	}
-	if err != nil {
-		return errors.New("failed to write attribution beneficiaries to database using CopyFrom")
-	}
 
-	err = rtx.UpdateCCLFFileImportStatus(ctx, csv.metadata.fileID, constants.ImportComplete)
+	err = pgxRepo.UpdateCCLFFileImportStatusTx(ctx, pgxTx, csv.metadata.fileID, constants.ImportComplete)
 	if err != nil {
 		return fmt.Errorf("database error when calling UpdateCCLFFileImportStatus(): %s", csv.metadata.name)
 	}
 
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit database transaction: %s", err)
+	if err = pgxTx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit pgx transaction: %s", err)
 	}
 
 	successMsg := fmt.Sprintf("successfully imported %d records from csv file %s.", records, csv.metadata.name)

@@ -82,7 +82,7 @@ func TestRequestsTestSuite(t *testing.T) {
 func (s *RequestsTestSuite) SetupSuite() {
 	// See testdata/acos.yml
 	s.acoID = uuid.Parse("ba21d24d-cd96-4d7d-a691-b0e8c88e67a5")
-	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	db, _, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	s.db = db
 	s.pool = database.ConnectPool()
 	tf, err := testfixtures.New(
