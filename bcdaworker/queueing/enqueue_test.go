@@ -11,7 +11,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
-	_ "github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"

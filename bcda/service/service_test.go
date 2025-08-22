@@ -1580,7 +1580,7 @@ func TestServiceTestSuiteWithDatabase(t *testing.T) {
 }
 
 func (s *ServiceTestSuiteWithDatabase) SetupSuite() {
-	s.db, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
+	s.db, _, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
 	s.repository = postgres.NewRepository(s.db)
 }
 

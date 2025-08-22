@@ -23,6 +23,13 @@ type AttributionImportMainSuite struct {
 func (s *AttributionImportMainSuite) SetupSuite() {
 	s.db = database.Connect()
 }
+
+func (s *AttributionImportMainSuite) TearDownSuite() {
+	if s.db != nil {
+		s.db.Close()
+	}
+}
+
 func TestAttributionImportMainSuite(t *testing.T) {
 	suite.Run(t, new(AttributionImportMainSuite))
 }

@@ -6,7 +6,6 @@ import (
 	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/log"
-	_ "github.com/jackc/pgx"
 )
 
 type HealthChecker struct {

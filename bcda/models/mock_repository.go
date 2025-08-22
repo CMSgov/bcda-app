@@ -63,15 +63,26 @@ type MockRepository_CreateACO_Call struct {
 }
 
 // CreateACO is a helper method to define mock.On call
-//   - ctx
-//   - aco
+//   - ctx context.Context
+//   - aco ACO
 func (_e *MockRepository_Expecter) CreateACO(ctx interface{}, aco interface{}) *MockRepository_CreateACO_Call {
 	return &MockRepository_CreateACO_Call{Call: _e.mock.On("CreateACO", ctx, aco)}
 }
 
 func (_c *MockRepository_CreateACO_Call) Run(run func(ctx context.Context, aco ACO)) *MockRepository_CreateACO_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(ACO))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 ACO
+		if args[1] != nil {
+			arg1 = args[1].(ACO)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -118,15 +129,26 @@ type MockRepository_CreateCCLFFile_Call struct {
 }
 
 // CreateCCLFFile is a helper method to define mock.On call
-//   - ctx
-//   - cclfFile
+//   - ctx context.Context
+//   - cclfFile CCLFFile
 func (_e *MockRepository_Expecter) CreateCCLFFile(ctx interface{}, cclfFile interface{}) *MockRepository_CreateCCLFFile_Call {
 	return &MockRepository_CreateCCLFFile_Call{Call: _e.mock.On("CreateCCLFFile", ctx, cclfFile)}
 }
 
 func (_c *MockRepository_CreateCCLFFile_Call) Run(run func(ctx context.Context, cclfFile CCLFFile)) *MockRepository_CreateCCLFFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(CCLFFile))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 CCLFFile
+		if args[1] != nil {
+			arg1 = args[1].(CCLFFile)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -173,15 +195,26 @@ type MockRepository_CreateJob_Call struct {
 }
 
 // CreateJob is a helper method to define mock.On call
-//   - ctx
-//   - j
+//   - ctx context.Context
+//   - j Job
 func (_e *MockRepository_Expecter) CreateJob(ctx interface{}, j interface{}) *MockRepository_CreateJob_Call {
 	return &MockRepository_CreateJob_Call{Call: _e.mock.On("CreateJob", ctx, j)}
 }
 
 func (_c *MockRepository_CreateJob_Call) Run(run func(ctx context.Context, j Job)) *MockRepository_CreateJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(Job))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 Job
+		if args[1] != nil {
+			arg1 = args[1].(Job)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -219,15 +252,26 @@ type MockRepository_CreateSuppression_Call struct {
 }
 
 // CreateSuppression is a helper method to define mock.On call
-//   - ctx
-//   - suppression
+//   - ctx context.Context
+//   - suppression optout.OptOutRecord
 func (_e *MockRepository_Expecter) CreateSuppression(ctx interface{}, suppression interface{}) *MockRepository_CreateSuppression_Call {
 	return &MockRepository_CreateSuppression_Call{Call: _e.mock.On("CreateSuppression", ctx, suppression)}
 }
 
 func (_c *MockRepository_CreateSuppression_Call) Run(run func(ctx context.Context, suppression optout.OptOutRecord)) *MockRepository_CreateSuppression_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(optout.OptOutRecord))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 optout.OptOutRecord
+		if args[1] != nil {
+			arg1 = args[1].(optout.OptOutRecord)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -274,15 +318,26 @@ type MockRepository_CreateSuppressionFile_Call struct {
 }
 
 // CreateSuppressionFile is a helper method to define mock.On call
-//   - ctx
-//   - suppressionFile
+//   - ctx context.Context
+//   - suppressionFile optout.OptOutFile
 func (_e *MockRepository_Expecter) CreateSuppressionFile(ctx interface{}, suppressionFile interface{}) *MockRepository_CreateSuppressionFile_Call {
 	return &MockRepository_CreateSuppressionFile_Call{Call: _e.mock.On("CreateSuppressionFile", ctx, suppressionFile)}
 }
 
 func (_c *MockRepository_CreateSuppressionFile_Call) Run(run func(ctx context.Context, suppressionFile optout.OptOutFile)) *MockRepository_CreateSuppressionFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(optout.OptOutFile))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 optout.OptOutFile
+		if args[1] != nil {
+			arg1 = args[1].(optout.OptOutFile)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -331,15 +386,26 @@ type MockRepository_GetACOByCMSID_Call struct {
 }
 
 // GetACOByCMSID is a helper method to define mock.On call
-//   - ctx
-//   - cmsID
+//   - ctx context.Context
+//   - cmsID string
 func (_e *MockRepository_Expecter) GetACOByCMSID(ctx interface{}, cmsID interface{}) *MockRepository_GetACOByCMSID_Call {
 	return &MockRepository_GetACOByCMSID_Call{Call: _e.mock.On("GetACOByCMSID", ctx, cmsID)}
 }
 
 func (_c *MockRepository_GetACOByCMSID_Call) Run(run func(ctx context.Context, cmsID string)) *MockRepository_GetACOByCMSID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -388,15 +454,26 @@ type MockRepository_GetACOByClientID_Call struct {
 }
 
 // GetACOByClientID is a helper method to define mock.On call
-//   - ctx
-//   - clientID
+//   - ctx context.Context
+//   - clientID string
 func (_e *MockRepository_Expecter) GetACOByClientID(ctx interface{}, clientID interface{}) *MockRepository_GetACOByClientID_Call {
 	return &MockRepository_GetACOByClientID_Call{Call: _e.mock.On("GetACOByClientID", ctx, clientID)}
 }
 
 func (_c *MockRepository_GetACOByClientID_Call) Run(run func(ctx context.Context, clientID string)) *MockRepository_GetACOByClientID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -445,15 +522,26 @@ type MockRepository_GetACOByUUID_Call struct {
 }
 
 // GetACOByUUID is a helper method to define mock.On call
-//   - ctx
-//   - uuid1
+//   - ctx context.Context
+//   - uuid1 uuid.UUID
 func (_e *MockRepository_Expecter) GetACOByUUID(ctx interface{}, uuid1 interface{}) *MockRepository_GetACOByUUID_Call {
 	return &MockRepository_GetACOByUUID_Call{Call: _e.mock.On("GetACOByUUID", ctx, uuid1)}
 }
 
 func (_c *MockRepository_GetACOByUUID_Call) Run(run func(ctx context.Context, uuid1 uuid.UUID)) *MockRepository_GetACOByUUID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -502,16 +590,32 @@ type MockRepository_GetCCLFBeneficiaries_Call struct {
 }
 
 // GetCCLFBeneficiaries is a helper method to define mock.On call
-//   - ctx
-//   - cclfFileID
-//   - ignoredMBIs
+//   - ctx context.Context
+//   - cclfFileID uint
+//   - ignoredMBIs []string
 func (_e *MockRepository_Expecter) GetCCLFBeneficiaries(ctx interface{}, cclfFileID interface{}, ignoredMBIs interface{}) *MockRepository_GetCCLFBeneficiaries_Call {
 	return &MockRepository_GetCCLFBeneficiaries_Call{Call: _e.mock.On("GetCCLFBeneficiaries", ctx, cclfFileID, ignoredMBIs)}
 }
 
 func (_c *MockRepository_GetCCLFBeneficiaries_Call) Run(run func(ctx context.Context, cclfFileID uint, ignoredMBIs []string)) *MockRepository_GetCCLFBeneficiaries_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint), args[2].([]string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -560,15 +664,26 @@ type MockRepository_GetCCLFBeneficiaryMBIs_Call struct {
 }
 
 // GetCCLFBeneficiaryMBIs is a helper method to define mock.On call
-//   - ctx
-//   - cclfFileID
+//   - ctx context.Context
+//   - cclfFileID uint
 func (_e *MockRepository_Expecter) GetCCLFBeneficiaryMBIs(ctx interface{}, cclfFileID interface{}) *MockRepository_GetCCLFBeneficiaryMBIs_Call {
 	return &MockRepository_GetCCLFBeneficiaryMBIs_Call{Call: _e.mock.On("GetCCLFBeneficiaryMBIs", ctx, cclfFileID)}
 }
 
 func (_c *MockRepository_GetCCLFBeneficiaryMBIs_Call) Run(run func(ctx context.Context, cclfFileID uint)) *MockRepository_GetCCLFBeneficiaryMBIs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -617,15 +732,26 @@ type MockRepository_GetCCLFFileByID_Call struct {
 }
 
 // GetCCLFFileByID is a helper method to define mock.On call
-//   - ctx
-//   - ID
+//   - ctx context.Context
+//   - ID uint
 func (_e *MockRepository_Expecter) GetCCLFFileByID(ctx interface{}, ID interface{}) *MockRepository_GetCCLFFileByID_Call {
 	return &MockRepository_GetCCLFFileByID_Call{Call: _e.mock.On("GetCCLFFileByID", ctx, ID)}
 }
 
 func (_c *MockRepository_GetCCLFFileByID_Call) Run(run func(ctx context.Context, ID uint)) *MockRepository_GetCCLFFileByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -672,15 +798,26 @@ type MockRepository_GetCCLFFileExistsByName_Call struct {
 }
 
 // GetCCLFFileExistsByName is a helper method to define mock.On call
-//   - ctx
-//   - name
+//   - ctx context.Context
+//   - name string
 func (_e *MockRepository_Expecter) GetCCLFFileExistsByName(ctx interface{}, name interface{}) *MockRepository_GetCCLFFileExistsByName_Call {
 	return &MockRepository_GetCCLFFileExistsByName_Call{Call: _e.mock.On("GetCCLFFileExistsByName", ctx, name)}
 }
 
 func (_c *MockRepository_GetCCLFFileExistsByName_Call) Run(run func(ctx context.Context, name string)) *MockRepository_GetCCLFFileExistsByName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -729,15 +866,26 @@ type MockRepository_GetJobByID_Call struct {
 }
 
 // GetJobByID is a helper method to define mock.On call
-//   - ctx
-//   - jobID
+//   - ctx context.Context
+//   - jobID uint
 func (_e *MockRepository_Expecter) GetJobByID(ctx interface{}, jobID interface{}) *MockRepository_GetJobByID_Call {
 	return &MockRepository_GetJobByID_Call{Call: _e.mock.On("GetJobByID", ctx, jobID)}
 }
 
 func (_c *MockRepository_GetJobByID_Call) Run(run func(ctx context.Context, jobID uint)) *MockRepository_GetJobByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -786,16 +934,32 @@ type MockRepository_GetJobKey_Call struct {
 }
 
 // GetJobKey is a helper method to define mock.On call
-//   - ctx
-//   - jobID
-//   - filename
+//   - ctx context.Context
+//   - jobID uint
+//   - filename string
 func (_e *MockRepository_Expecter) GetJobKey(ctx interface{}, jobID interface{}, filename interface{}) *MockRepository_GetJobKey_Call {
 	return &MockRepository_GetJobKey_Call{Call: _e.mock.On("GetJobKey", ctx, jobID, filename)}
 }
 
 func (_c *MockRepository_GetJobKey_Call) Run(run func(ctx context.Context, jobID uint, filename string)) *MockRepository_GetJobKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint), args[2].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -844,15 +1008,26 @@ type MockRepository_GetJobKeys_Call struct {
 }
 
 // GetJobKeys is a helper method to define mock.On call
-//   - ctx
-//   - jobID
+//   - ctx context.Context
+//   - jobID uint
 func (_e *MockRepository_Expecter) GetJobKeys(ctx interface{}, jobID interface{}) *MockRepository_GetJobKeys_Call {
 	return &MockRepository_GetJobKeys_Call{Call: _e.mock.On("GetJobKeys", ctx, jobID)}
 }
 
 func (_c *MockRepository_GetJobKeys_Call) Run(run func(ctx context.Context, jobID uint)) *MockRepository_GetJobKeys_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -907,9 +1082,9 @@ type MockRepository_GetJobs_Call struct {
 }
 
 // GetJobs is a helper method to define mock.On call
-//   - ctx
-//   - acoID
-//   - statuses
+//   - ctx context.Context
+//   - acoID uuid.UUID
+//   - statuses ...JobStatus
 func (_e *MockRepository_Expecter) GetJobs(ctx interface{}, acoID interface{}, statuses ...interface{}) *MockRepository_GetJobs_Call {
 	return &MockRepository_GetJobs_Call{Call: _e.mock.On("GetJobs",
 		append([]interface{}{ctx, acoID}, statuses...)...)}
@@ -917,8 +1092,25 @@ func (_e *MockRepository_Expecter) GetJobs(ctx interface{}, acoID interface{}, s
 
 func (_c *MockRepository_GetJobs_Call) Run(run func(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus)) *MockRepository_GetJobs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[2].([]JobStatus)
-		run(args[0].(context.Context), args[1].(uuid.UUID), variadicArgs...)
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 []JobStatus
+		var variadicArgs []JobStatus
+		if len(args) > 2 {
+			variadicArgs = args[2].([]JobStatus)
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
 	})
 	return _c
 }
@@ -973,10 +1165,10 @@ type MockRepository_GetJobsByUpdateTimeAndStatus_Call struct {
 }
 
 // GetJobsByUpdateTimeAndStatus is a helper method to define mock.On call
-//   - ctx
-//   - lowerBound
-//   - upperBound
-//   - statuses
+//   - ctx context.Context
+//   - lowerBound time.Time
+//   - upperBound time.Time
+//   - statuses ...JobStatus
 func (_e *MockRepository_Expecter) GetJobsByUpdateTimeAndStatus(ctx interface{}, lowerBound interface{}, upperBound interface{}, statuses ...interface{}) *MockRepository_GetJobsByUpdateTimeAndStatus_Call {
 	return &MockRepository_GetJobsByUpdateTimeAndStatus_Call{Call: _e.mock.On("GetJobsByUpdateTimeAndStatus",
 		append([]interface{}{ctx, lowerBound, upperBound}, statuses...)...)}
@@ -984,8 +1176,30 @@ func (_e *MockRepository_Expecter) GetJobsByUpdateTimeAndStatus(ctx interface{},
 
 func (_c *MockRepository_GetJobsByUpdateTimeAndStatus_Call) Run(run func(ctx context.Context, lowerBound time.Time, upperBound time.Time, statuses ...JobStatus)) *MockRepository_GetJobsByUpdateTimeAndStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[3].([]JobStatus)
-		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time), variadicArgs...)
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		var arg3 []JobStatus
+		var variadicArgs []JobStatus
+		if len(args) > 3 {
+			variadicArgs = args[3].([]JobStatus)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
 	})
 	return _c
 }
@@ -1034,20 +1248,56 @@ type MockRepository_GetLatestCCLFFile_Call struct {
 }
 
 // GetLatestCCLFFile is a helper method to define mock.On call
-//   - ctx
-//   - cmsID
-//   - cclfNum
-//   - importStatus
-//   - lowerBound
-//   - upperBound
-//   - fileType
+//   - ctx context.Context
+//   - cmsID string
+//   - cclfNum int
+//   - importStatus string
+//   - lowerBound time.Time
+//   - upperBound time.Time
+//   - fileType CCLFFileType
 func (_e *MockRepository_Expecter) GetLatestCCLFFile(ctx interface{}, cmsID interface{}, cclfNum interface{}, importStatus interface{}, lowerBound interface{}, upperBound interface{}, fileType interface{}) *MockRepository_GetLatestCCLFFile_Call {
 	return &MockRepository_GetLatestCCLFFile_Call{Call: _e.mock.On("GetLatestCCLFFile", ctx, cmsID, cclfNum, importStatus, lowerBound, upperBound, fileType)}
 }
 
 func (_c *MockRepository_GetLatestCCLFFile_Call) Run(run func(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound time.Time, upperBound time.Time, fileType CCLFFileType)) *MockRepository_GetLatestCCLFFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(string), args[4].(time.Time), args[5].(time.Time), args[6].(CCLFFileType))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 time.Time
+		if args[4] != nil {
+			arg4 = args[4].(time.Time)
+		}
+		var arg5 time.Time
+		if args[5] != nil {
+			arg5 = args[5].(time.Time)
+		}
+		var arg6 CCLFFileType
+		if args[6] != nil {
+			arg6 = args[6].(CCLFFileType)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+			arg6,
+		)
 	})
 	return _c
 }
@@ -1096,16 +1346,32 @@ type MockRepository_GetSuppressedMBIs_Call struct {
 }
 
 // GetSuppressedMBIs is a helper method to define mock.On call
-//   - ctx
-//   - lookbackDays
-//   - upperBound
+//   - ctx context.Context
+//   - lookbackDays int
+//   - upperBound time.Time
 func (_e *MockRepository_Expecter) GetSuppressedMBIs(ctx interface{}, lookbackDays interface{}, upperBound interface{}) *MockRepository_GetSuppressedMBIs_Call {
 	return &MockRepository_GetSuppressedMBIs_Call{Call: _e.mock.On("GetSuppressedMBIs", ctx, lookbackDays, upperBound)}
 }
 
 func (_c *MockRepository_GetSuppressedMBIs_Call) Run(run func(ctx context.Context, lookbackDays int, upperBound time.Time)) *MockRepository_GetSuppressedMBIs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(time.Time))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -1143,16 +1409,32 @@ type MockRepository_UpdateACO_Call struct {
 }
 
 // UpdateACO is a helper method to define mock.On call
-//   - ctx
-//   - acoUUID
-//   - fieldsAndValues
+//   - ctx context.Context
+//   - acoUUID uuid.UUID
+//   - fieldsAndValues map[string]interface{}
 func (_e *MockRepository_Expecter) UpdateACO(ctx interface{}, acoUUID interface{}, fieldsAndValues interface{}) *MockRepository_UpdateACO_Call {
 	return &MockRepository_UpdateACO_Call{Call: _e.mock.On("UpdateACO", ctx, acoUUID, fieldsAndValues)}
 }
 
 func (_c *MockRepository_UpdateACO_Call) Run(run func(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{})) *MockRepository_UpdateACO_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(map[string]interface{}))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 map[string]interface{}
+		if args[2] != nil {
+			arg2 = args[2].(map[string]interface{})
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -1190,16 +1472,32 @@ type MockRepository_UpdateCCLFFileImportStatus_Call struct {
 }
 
 // UpdateCCLFFileImportStatus is a helper method to define mock.On call
-//   - ctx
-//   - fileID
-//   - importStatus
+//   - ctx context.Context
+//   - fileID uint
+//   - importStatus string
 func (_e *MockRepository_Expecter) UpdateCCLFFileImportStatus(ctx interface{}, fileID interface{}, importStatus interface{}) *MockRepository_UpdateCCLFFileImportStatus_Call {
 	return &MockRepository_UpdateCCLFFileImportStatus_Call{Call: _e.mock.On("UpdateCCLFFileImportStatus", ctx, fileID, importStatus)}
 }
 
 func (_c *MockRepository_UpdateCCLFFileImportStatus_Call) Run(run func(ctx context.Context, fileID uint, importStatus string)) *MockRepository_UpdateCCLFFileImportStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint), args[2].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -1237,15 +1535,26 @@ type MockRepository_UpdateJob_Call struct {
 }
 
 // UpdateJob is a helper method to define mock.On call
-//   - ctx
-//   - j
+//   - ctx context.Context
+//   - j Job
 func (_e *MockRepository_Expecter) UpdateJob(ctx interface{}, j interface{}) *MockRepository_UpdateJob_Call {
 	return &MockRepository_UpdateJob_Call{Call: _e.mock.On("UpdateJob", ctx, j)}
 }
 
 func (_c *MockRepository_UpdateJob_Call) Run(run func(ctx context.Context, j Job)) *MockRepository_UpdateJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(Job))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 Job
+		if args[1] != nil {
+			arg1 = args[1].(Job)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -1283,16 +1592,32 @@ type MockRepository_UpdateSuppressionFileImportStatus_Call struct {
 }
 
 // UpdateSuppressionFileImportStatus is a helper method to define mock.On call
-//   - ctx
-//   - fileID
-//   - importStatus
+//   - ctx context.Context
+//   - fileID uint
+//   - importStatus string
 func (_e *MockRepository_Expecter) UpdateSuppressionFileImportStatus(ctx interface{}, fileID interface{}, importStatus interface{}) *MockRepository_UpdateSuppressionFileImportStatus_Call {
 	return &MockRepository_UpdateSuppressionFileImportStatus_Call{Call: _e.mock.On("UpdateSuppressionFileImportStatus", ctx, fileID, importStatus)}
 }
 
 func (_c *MockRepository_UpdateSuppressionFileImportStatus_Call) Run(run func(ctx context.Context, fileID uint, importStatus string)) *MockRepository_UpdateSuppressionFileImportStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint), args[2].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }

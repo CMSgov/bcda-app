@@ -71,15 +71,26 @@ type MockProvider_FindAndCreateACOCredentials_Call struct {
 }
 
 // FindAndCreateACOCredentials is a helper method to define mock.On call
-//   - ACOID
-//   - IPs
+//   - ACOID string
+//   - IPs []string
 func (_e *MockProvider_Expecter) FindAndCreateACOCredentials(ACOID interface{}, IPs interface{}) *MockProvider_FindAndCreateACOCredentials_Call {
 	return &MockProvider_FindAndCreateACOCredentials_Call{Call: _e.mock.On("FindAndCreateACOCredentials", ACOID, IPs)}
 }
 
 func (_c *MockProvider_FindAndCreateACOCredentials_Call) Run(run func(ACOID string, IPs []string)) *MockProvider_FindAndCreateACOCredentials_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]string))
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -179,15 +190,26 @@ type MockProvider_MakeAccessToken_Call struct {
 }
 
 // MakeAccessToken is a helper method to define mock.On call
-//   - credentials
-//   - r
+//   - credentials Credentials
+//   - r *http.Request
 func (_e *MockProvider_Expecter) MakeAccessToken(credentials interface{}, r interface{}) *MockProvider_MakeAccessToken_Call {
 	return &MockProvider_MakeAccessToken_Call{Call: _e.mock.On("MakeAccessToken", credentials, r)}
 }
 
 func (_c *MockProvider_MakeAccessToken_Call) Run(run func(credentials Credentials, r *http.Request)) *MockProvider_MakeAccessToken_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(Credentials), args[1].(*http.Request))
+		var arg0 Credentials
+		if args[0] != nil {
+			arg0 = args[0].(Credentials)
+		}
+		var arg1 *http.Request
+		if args[1] != nil {
+			arg1 = args[1].(*http.Request)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -240,10 +262,10 @@ type MockProvider_RegisterSystem_Call struct {
 }
 
 // RegisterSystem is a helper method to define mock.On call
-//   - localID
-//   - publicKey
-//   - groupID
-//   - ips
+//   - localID string
+//   - publicKey string
+//   - groupID string
+//   - ips ...string
 func (_e *MockProvider_Expecter) RegisterSystem(localID interface{}, publicKey interface{}, groupID interface{}, ips ...interface{}) *MockProvider_RegisterSystem_Call {
 	return &MockProvider_RegisterSystem_Call{Call: _e.mock.On("RegisterSystem",
 		append([]interface{}{localID, publicKey, groupID}, ips...)...)}
@@ -251,8 +273,30 @@ func (_e *MockProvider_Expecter) RegisterSystem(localID interface{}, publicKey i
 
 func (_c *MockProvider_RegisterSystem_Call) Run(run func(localID string, publicKey string, groupID string, ips ...string)) *MockProvider_RegisterSystem_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := args[3].([]string)
-		run(args[0].(string), args[1].(string), args[2].(string), variadicArgs...)
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []string
+		var variadicArgs []string
+		if len(args) > 3 {
+			variadicArgs = args[3].([]string)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
 	})
 	return _c
 }
@@ -299,14 +343,20 @@ type MockProvider_ResetSecret_Call struct {
 }
 
 // ResetSecret is a helper method to define mock.On call
-//   - clientID
+//   - clientID string
 func (_e *MockProvider_Expecter) ResetSecret(clientID interface{}) *MockProvider_ResetSecret_Call {
 	return &MockProvider_ResetSecret_Call{Call: _e.mock.On("ResetSecret", clientID)}
 }
 
 func (_c *MockProvider_ResetSecret_Call) Run(run func(clientID string)) *MockProvider_ResetSecret_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }
@@ -344,14 +394,20 @@ type MockProvider_RevokeAccessToken_Call struct {
 }
 
 // RevokeAccessToken is a helper method to define mock.On call
-//   - tokenString
+//   - tokenString string
 func (_e *MockProvider_Expecter) RevokeAccessToken(tokenString interface{}) *MockProvider_RevokeAccessToken_Call {
 	return &MockProvider_RevokeAccessToken_Call{Call: _e.mock.On("RevokeAccessToken", tokenString)}
 }
 
 func (_c *MockProvider_RevokeAccessToken_Call) Run(run func(tokenString string)) *MockProvider_RevokeAccessToken_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }
@@ -389,14 +445,20 @@ type MockProvider_RevokeSystemCredentials_Call struct {
 }
 
 // RevokeSystemCredentials is a helper method to define mock.On call
-//   - clientID
+//   - clientID string
 func (_e *MockProvider_Expecter) RevokeSystemCredentials(clientID interface{}) *MockProvider_RevokeSystemCredentials_Call {
 	return &MockProvider_RevokeSystemCredentials_Call{Call: _e.mock.On("RevokeSystemCredentials", clientID)}
 }
 
 func (_c *MockProvider_RevokeSystemCredentials_Call) Run(run func(clientID string)) *MockProvider_RevokeSystemCredentials_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }
@@ -445,15 +507,26 @@ type MockProvider_VerifyToken_Call struct {
 }
 
 // VerifyToken is a helper method to define mock.On call
-//   - ctx
-//   - tokenString
+//   - ctx context.Context
+//   - tokenString string
 func (_e *MockProvider_Expecter) VerifyToken(ctx interface{}, tokenString interface{}) *MockProvider_VerifyToken_Call {
 	return &MockProvider_VerifyToken_Call{Call: _e.mock.On("VerifyToken", ctx, tokenString)}
 }
 
 func (_c *MockProvider_VerifyToken_Call) Run(run func(ctx context.Context, tokenString string)) *MockProvider_VerifyToken_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
@@ -500,14 +573,20 @@ type MockProvider_getAuthDataFromClaims_Call struct {
 }
 
 // getAuthDataFromClaims is a helper method to define mock.On call
-//   - commonClaims
+//   - commonClaims *CommonClaims
 func (_e *MockProvider_Expecter) getAuthDataFromClaims(commonClaims interface{}) *MockProvider_getAuthDataFromClaims_Call {
 	return &MockProvider_getAuthDataFromClaims_Call{Call: _e.mock.On("getAuthDataFromClaims", commonClaims)}
 }
 
 func (_c *MockProvider_getAuthDataFromClaims_Call) Run(run func(commonClaims *CommonClaims)) *MockProvider_getAuthDataFromClaims_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*CommonClaims))
+		var arg0 *CommonClaims
+		if args[0] != nil {
+			arg0 = args[0].(*CommonClaims)
+		}
+		run(
+			arg0,
+		)
 	})
 	return _c
 }

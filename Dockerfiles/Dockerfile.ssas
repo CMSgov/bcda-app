@@ -1,8 +1,8 @@
 # syntax = docker/dockerfile:1-experimental
 FROM golang:1.24.4-alpine3.22 AS base
 
-RUN apk update upgrade
-RUN apk add git
+RUN apk update upgrade && \
+    apk add git
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
@@ -26,10 +26,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go install -v ./ssas/service/main
 
-FROM golang:1.24.4-alpine3.22 AS prod
+FROM golang:1.24.4-alpine3.22
 
-RUN apk update upgrade
-RUN apk add openssl
+RUN apk update upgrade && \
+    apk add openssl
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
@@ -38,7 +38,10 @@ RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/
 COPY --from=base /go/bcda-ssas-app/ /go/bcda-ssas-app/
 COPY --from=base /go/bcda-ssas-app/ssas/cfg/configs  /go/src/github.com/CMSgov/bcda-ssas-app/ssas/cfg/configs
 COPY --from=base /go/bin/ /go/bin/
+
 WORKDIR /go/bcda-ssas-app/ssas/
+
+EXPOSE 3003 3004 3005
 
 ENTRYPOINT ["main"]
 CMD ["--start"]

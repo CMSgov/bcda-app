@@ -61,16 +61,32 @@ type MockEnqueuer_AddJob_Call struct {
 }
 
 // AddJob is a helper method to define mock.On call
-//   - ctx
-//   - job
-//   - priority
+//   - ctx context.Context
+//   - job worker_types.JobEnqueueArgs
+//   - priority int
 func (_e *MockEnqueuer_Expecter) AddJob(ctx interface{}, job interface{}, priority interface{}) *MockEnqueuer_AddJob_Call {
 	return &MockEnqueuer_AddJob_Call{Call: _e.mock.On("AddJob", ctx, job, priority)}
 }
 
 func (_c *MockEnqueuer_AddJob_Call) Run(run func(ctx context.Context, job worker_types.JobEnqueueArgs, priority int)) *MockEnqueuer_AddJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(worker_types.JobEnqueueArgs), args[2].(int))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 worker_types.JobEnqueueArgs
+		if args[1] != nil {
+			arg1 = args[1].(worker_types.JobEnqueueArgs)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
 	})
 	return _c
 }
@@ -108,15 +124,26 @@ type MockEnqueuer_AddPrepareJob_Call struct {
 }
 
 // AddPrepareJob is a helper method to define mock.On call
-//   - ctx
-//   - job
+//   - ctx context.Context
+//   - job worker_types.PrepareJobArgs
 func (_e *MockEnqueuer_Expecter) AddPrepareJob(ctx interface{}, job interface{}) *MockEnqueuer_AddPrepareJob_Call {
 	return &MockEnqueuer_AddPrepareJob_Call{Call: _e.mock.On("AddPrepareJob", ctx, job)}
 }
 
 func (_c *MockEnqueuer_AddPrepareJob_Call) Run(run func(ctx context.Context, job worker_types.PrepareJobArgs)) *MockEnqueuer_AddPrepareJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(worker_types.PrepareJobArgs))
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 worker_types.PrepareJobArgs
+		if args[1] != nil {
+			arg1 = args[1].(worker_types.PrepareJobArgs)
+		}
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
