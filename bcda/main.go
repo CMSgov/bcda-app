@@ -51,24 +51,21 @@ func setupDirs() {
 
 	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
 	if isEtlMode != "true" {
+		log.API.Info("BCDA application is running in API mode.")
+		monitoring.GetMonitor()
 		createAPIDirs()
 	} else {
+		log.API.Info("BCDA application is running in ETL mode.")
 		createETLDirs()
 	}
 
-	if isEtlMode != "true" {
-		log.API.Info("BCDA application is running in API mode.")
-		monitoring.GetMonitor()
-	} else {
-		log.API.Info("BCDA application is running in ETL mode.")
-	}
 }
 
 func createAPIDirs() {
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
-		log.API.Fatal(err)
+		log.API.Fatal(errors.Wrap(err, "Could not create CCLF file archive directory"))
 	}
 }
 
