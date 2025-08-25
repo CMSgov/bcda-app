@@ -130,8 +130,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
-		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionOne, false},
-		{"FindCCLFFiles error v2", CCLFNotFoundOperationOutcomeError{}, http.StatusInternalServerError, apiVersionTwo, false},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false},
+		{"FindCCLFFiles error v2", DatabaseError{}, http.StatusInternalServerError, apiVersionTwo, false},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
 	}
@@ -155,7 +155,9 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 24}, nil)
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 			case CCLFNotFoundOperationOutcomeError{}:
-				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, service.CCLFNotFoundError{})
+			case DatabaseError{}:
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
 			case QueueError{}:
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time"), mock.Anything).
 					Return(&models.CCLFFile{PerformanceYear: 24}, nil)
@@ -1227,5 +1229,11 @@ func (e CCLFNotFoundOperationOutcomeError) Error() string {
 type QueueError struct{}
 
 func (e QueueError) Error() string {
+	return "error"
+}
+
+type DatabaseError struct{}
+
+func (e DatabaseError) Error() string {
 	return "error"
 }
