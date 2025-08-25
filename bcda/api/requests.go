@@ -526,8 +526,14 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		fileType,
 	)
 	if err != nil {
-		logger.Error("error finding latest cclf file: %+v", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+		// TODO: this can occur when runout data is expired, we should update error handling: BCDA-9386
+		if errors.As(err, &service.CCLFNotFoundError{}) {
+			logger.Warningf("cclf file not found: %+v", err)
+			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found.")
+			return
+		}
+		logger.Errorf("failed to retrieve latest cclf file: %+v", err)
+		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, responseutils.DbErr)
 		return
 	}
 
