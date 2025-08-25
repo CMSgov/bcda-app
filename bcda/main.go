@@ -50,13 +50,13 @@ import (
 func setupDirs() {
 
 	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
-	if isEtlMode != "true" {
+	if isEtlMode == "true" {
+		log.API.Info("BCDA application is running in ETL mode.")
+		createETLDirs()
+	} else {
 		log.API.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
 		createAPIDirs()
-	} else {
-		log.API.Info("BCDA application is running in ETL mode.")
-		createETLDirs()
 	}
 
 }
