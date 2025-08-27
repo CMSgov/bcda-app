@@ -39,7 +39,7 @@ func SetupLoggers() {
 }
 
 // customize logger and output to files
-func logger(logger *logrus.Logger, outputFile string, application string, logType string) logrus.FieldLogger {
+func logger(logger *logrus.Logger, outputFile, application, logType string) logrus.FieldLogger {
 	fields := logrus.Fields{
 		"application": application,
 		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
