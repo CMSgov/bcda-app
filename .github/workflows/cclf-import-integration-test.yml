@@ -56,7 +56,6 @@ jobs:
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
-        id: createfile
         run: |
           year=$(date +'%y')
           date=$(date +'%y%m%d')
