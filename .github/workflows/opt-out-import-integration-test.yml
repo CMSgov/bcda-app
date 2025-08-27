@@ -36,8 +36,6 @@ jobs:
     defaults:
       run:
         working-directory: ./optout
-    outputs:
-      filename: ${{ steps.createfile.outputs.FILENAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -59,7 +57,6 @@ jobs:
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
-        id: createfile
         run: |
           fname=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1
           echo "FILENAME=$fname" >> "$GITHUB_ENV"
@@ -87,6 +84,7 @@ jobs:
         run: |
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-test-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $CONNECTION_INFO 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+          echo $FILENAME
 
           SUPPRESSION_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM suppression_files WHERE name = '$FILENAME' LIMIT 1" 2>&1`
           if [[ $? -ne 0 || -z $SUPPRESSION_FILE ]]; then
