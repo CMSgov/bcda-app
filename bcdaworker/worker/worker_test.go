@@ -90,7 +90,7 @@ func (s *WorkerTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 
 	// Set up the logger since we're using the real client
-	client.SetLogger(log.BBWorker)
+	client.SetLogger(log.BFDWorker)
 	oldLogger = log.Worker
 
 	ctx := context.Background()

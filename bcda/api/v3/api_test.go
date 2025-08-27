@@ -78,7 +78,7 @@ func (s *APITestSuite) SetupSuite() {
 	})
 
 	// Set up the logger since we're using the real client
-	client.SetLogger(log.BBAPI)
+	client.SetLogger(log.BFDAPI)
 }
 
 func (s *APITestSuite) TearDownTest() {

@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,12 +32,12 @@ func TestLoggers(t *testing.T) {
 	}{
 		{"BCDA_ERROR_LOG", func() logrus.FieldLogger { return API }, verifyAPILogs},
 		{"AUTH_LOG", func() logrus.FieldLogger { return Auth }, verifyAPILogs},
-		{"BCDA_BB_LOG", func() logrus.FieldLogger { return BBAPI }, verifyAPILogs},
+		{"BCDA_BB_LOG", func() logrus.FieldLogger { return BFDAPI }, verifyAPILogs},
 		{"BCDA_REQUEST_LOG", func() logrus.FieldLogger { return Request }, verifyAPILogs},
 		{"BCDA_SSAS_LOG", func() logrus.FieldLogger { return SSAS }, verifyAPILogs},
 
 		{"BCDA_WORKER_ERROR_LOG", func() logrus.FieldLogger { return Worker }, verifyWorkerLogs},
-		{"BCDA_BB_LOG", func() logrus.FieldLogger { return BBWorker }, verifyWorkerLogs},
+		{"BCDA_BB_LOG", func() logrus.FieldLogger { return BFDWorker }, verifyWorkerLogs},
 		{"WORKER_HEALTH_LOG", func() logrus.FieldLogger { return Health }, verifyWorkerLogs},
 	}
 	for _, tt := range tests {
@@ -92,4 +94,60 @@ func verifyCommonFields(t *testing.T, fields logrus.Fields, env, msg string) {
 	assert.Equal(t, fields["version"], constants.Version)
 	_, err := time.Parse(time.RFC3339Nano, fields["time"].(string))
 	assert.NoError(t, err)
+}
+
+func TestLoggers_ToSTDOut(t *testing.T) {
+	env := uuid.New()
+	conf.SetEnv(t, "DEPLOYMENT_TARGET", env)
+	oldVal := conf.GetEnv("LOG_TO_STD_OUT")
+	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
+	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldVal) })
+
+	tests := []struct {
+		logType string
+		// Use a supplier since the logger's reference will be updated everytime we call
+		// setup func. This allows us to retrieve the refreshed logger
+		logSupplier func() logrus.FieldLogger
+	}{
+		{"api-error", func() logrus.FieldLogger { return API }},
+		{"api-auth", func() logrus.FieldLogger { return Auth }},
+		{"api-bfd", func() logrus.FieldLogger { return BFDAPI }},
+		{"api-request", func() logrus.FieldLogger { return Request }},
+		{"ssas", func() logrus.FieldLogger { return SSAS }},
+
+		{"worker-error", func() logrus.FieldLogger { return Worker }},
+		{"worker-bfd", func() logrus.FieldLogger { return BFDWorker }},
+		{"worker-health", func() logrus.FieldLogger { return Health }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.logType, func(t *testing.T) {
+			// Refresh the logger to reference the new configs
+			SetupLoggers()
+
+			testLogger := test.NewLocal(testUtils.GetLogger(tt.logSupplier()))
+
+			msg := uuid.New()
+			tt.logSupplier().Info(msg)
+
+			assert.Equal(t, 1, len(testLogger.Entries))
+			assert.Equal(t, msg, testLogger.LastEntry().Message)
+			assert.Equal(t, tt.logType, testLogger.LastEntry().Data["log_type"])
+			testLogger.Reset()
+		})
+	}
+}
+
+func TestDefaultLogger(t *testing.T) {
+	API := defaultLogger("test-log-type")
+	testLogger := test.NewLocal(testUtils.GetLogger(API))
+
+	msg := uuid.New()
+	API.Info(msg)
+
+	assert.Equal(t, 1, len(testLogger.Entries))
+	assert.Equal(t, msg, testLogger.LastEntry().Message)
+	assert.Equal(t, "default", testLogger.LastEntry().Data["application"])
+	assert.Equal(t, conf.GetEnv("DEPLOYMENT_TARGET"), testLogger.LastEntry().Data["environment"])
+	assert.Equal(t, "test-log-type", testLogger.LastEntry().Data["log_type"])
+	assert.Equal(t, constants.Version, testLogger.LastEntry().Data["version"])
 }
