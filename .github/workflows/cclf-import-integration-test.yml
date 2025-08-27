@@ -3,6 +3,8 @@
 name: cclf-import test integration
 
 on:
+  push:
+    branches: carl-9397-make-sure-lambda-tests-verify
   pull_request:
     paths:
       - .github/workflows/cclf-import-integration-test.yml
@@ -35,9 +37,6 @@ jobs:
     defaults:
       run:
         working-directory: bcda
-    outputs:
-      cclffilename: ${{ steps.createfile.outputs.cclffilename }}
-      csvfilename: ${{ steps.createfile.outputs.csvfilename }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -67,13 +66,13 @@ jobs:
 
           fname=T.BCD.A0001.ZCY${year}.D${date}.T${time}1
           cclf8_fname=T.BCD.A0001.ZC8Y${year}.D${date}.T${time}1
-          echo "CCLFFILENAME=$cclf8_fname" >> "$GITHUB_OUTPUT"
+          echo "CCLFFILENAME=$cclf8_fname" >> "$GITHUB_ENV"
 
           csvname=T.PCPB.M${year}11.D${date}.T${time}1
-          echo "CSVFILENAME=$csvname" >> "$GITHUB_OUTPUT"
+          echo "CSVFILENAME=$csvname" >> "$GITHUB_ENV"
 
           guidecsvname=T.GUIDE.GUIDE-00001.Y${year}.D${date}.T${time}1
-          echo "GUIDEFILENAME=$guidecsvname" >> "$GITHUB_OUTPUT"
+          echo "GUIDEFILENAME=$guidecsvname" >> "$GITHUB_ENV"
 
           mv ../shared_files/cclf/archives/csv/P.PCPB.M2411.D181120.T1000000 ${csvname}
 
@@ -97,16 +96,8 @@ jobs:
 
           aws s3 cp --no-progress ${guidecsvname} \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/${guidecsvname}
-
-            
-
-  verify:
-    needs: trigger
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
-    steps:
-      - uses: actions/checkout@v3
+      # Give a bit of time for lambdas to process files
+      - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -124,9 +115,6 @@ jobs:
             CONNECTION_INFO=/bcda/test/api/DATABASE_URL
       - name: Verify CCLF file was ingested
         env:
-          CCLFFILENAME: ${{ needs.trigger.outputs.cclffilename }}
-          CSVFILENAME: ${{ needs.trigger.outputs.csvfilename }}
-          GUIDEFILENAME: ${{ needs.trigger.outputs.guidefilename }}
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
