@@ -113,7 +113,7 @@ func TestLoggers_ToSTDOut(t *testing.T) {
 		{"api-auth", func() logrus.FieldLogger { return Auth }},
 		{"api-bfd", func() logrus.FieldLogger { return BFDAPI }},
 		{"api-request", func() logrus.FieldLogger { return Request }},
-		{"ssas", func() logrus.FieldLogger { return SSAS }},
+		{"api-ssas", func() logrus.FieldLogger { return SSAS }},
 
 		{"worker-error", func() logrus.FieldLogger { return Worker }},
 		{"worker-bfd", func() logrus.FieldLogger { return BFDWorker }},

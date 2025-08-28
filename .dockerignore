@@ -11,3 +11,5 @@
 **/test_results
 !./bcdaworker/data/test/test.ndjson
 **/bcda/pending_delete_dir/*
+
+**/.DS_Store

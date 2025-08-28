@@ -18,7 +18,7 @@ var (
 	Auth    logrus.FieldLogger = defaultLogger("api-auth")
 	BFDAPI  logrus.FieldLogger = defaultLogger("api-bfd")
 	Request logrus.FieldLogger = defaultLogger("api-request")
-	SSAS    logrus.FieldLogger = defaultLogger("ssas")
+	SSAS    logrus.FieldLogger = defaultLogger("api-ssas")
 
 	Worker    logrus.FieldLogger = defaultLogger("worker")
 	BFDWorker logrus.FieldLogger = defaultLogger("worker-bfd")
@@ -31,7 +31,7 @@ func SetupLoggers() {
 	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"), "api", "api-auth")
 	BFDAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "api", "api-bfd")
 	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"), "api", "api-request")
-	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"), "api", "ssas")
+	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"), "api", "api-ssas")
 
 	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker", "worker-error")
 	BFDWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "worker", "worker-bfd")
