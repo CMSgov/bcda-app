@@ -94,7 +94,7 @@ func main() {
 	fmt.Println("Starting bcdaworker...")
 	log.SetupLoggers()
 	createWorkerDirs()
-	client.SetLogger(log.BBWorker)
+	client.SetLogger(log.BFDWorker)
 	db := database.Connect()
 	healthChecker := health.NewHealthChecker(db)
 	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))

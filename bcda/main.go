@@ -79,7 +79,7 @@ func createETLDirs() {
 
 func main() {
 	log.SetupLoggers()
-	client.SetLogger(log.BBAPI)
+	client.SetLogger(log.BFDAPI)
 	setupDirs()
 	app := bcdacli.GetApp()
 	err := app.Run(os.Args)

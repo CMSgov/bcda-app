@@ -105,7 +105,7 @@ func (s *RequestsTestSuite) SetupSuite() {
 	}
 
 	// Set up the logger since we're using the real client
-	client.SetLogger(log.BBAPI)
+	client.SetLogger(log.BFDAPI)
 }
 
 func (s *RequestsTestSuite) SetupTest() {
