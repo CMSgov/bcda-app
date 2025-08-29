@@ -14,7 +14,7 @@ require (
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/fhir/go v0.0.0-20220518004845-30f5cde7c5cd
+	github.com/google/fhir/go v0.7.4
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/howeyc/fsnotify v0.9.0
@@ -59,6 +59,7 @@ require (
 	github.com/riverqueue/river/riverdriver v0.20.2 // indirect
 	github.com/riverqueue/river/rivershared v0.20.2 // indirect
 	github.com/samber/lo v1.44.0 // indirect
+	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
