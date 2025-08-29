@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go v1.49.6
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
-	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/render v1.0.1
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
