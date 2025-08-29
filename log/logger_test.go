@@ -89,9 +89,10 @@ func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
 }
 
 func verifyCommonFields(t *testing.T, fields logrus.Fields, env, msg string) {
-	assert.Equal(t, fields["environment"], env)
-	assert.Equal(t, fields["msg"], msg)
-	assert.Equal(t, fields["version"], constants.Version)
+	assert.Equal(t, env, fields["environment"])
+	assert.Equal(t, msg, fields["msg"])
+	assert.Equal(t, "bcda", fields["source_app"])
+	assert.Equal(t, constants.Version, fields["version"])
 	_, err := time.Parse(time.RFC3339Nano, fields["time"].(string))
 	assert.NoError(t, err)
 }
@@ -132,6 +133,7 @@ func TestLoggers_ToSTDOut(t *testing.T) {
 			assert.Equal(t, 1, len(testLogger.Entries))
 			assert.Equal(t, msg, testLogger.LastEntry().Message)
 			assert.Equal(t, tt.logType, testLogger.LastEntry().Data["log_type"])
+			assert.Equal(t, "bcda", testLogger.LastEntry().Data["source_app"])
 			testLogger.Reset()
 		})
 	}

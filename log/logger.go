@@ -43,6 +43,7 @@ func logger(logger *logrus.Logger, outputFile, application, logType string) logr
 	fields := logrus.Fields{
 		"application": application,
 		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
+		"source_app":  "bcda",
 		"version":     constants.Version,
 	}
 
@@ -84,6 +85,7 @@ func defaultLogger(logType string) logrus.FieldLogger {
 		"application": "default",
 		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
 		"log_type":    logType,
+		"source_app":  "bcda",
 		"version":     constants.Version})
 }
 
