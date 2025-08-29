@@ -14,28 +14,28 @@ import (
 )
 
 var (
-	API     logrus.FieldLogger = defaultLogger("api-error")
-	Auth    logrus.FieldLogger = defaultLogger("api-auth")
-	BFDAPI  logrus.FieldLogger = defaultLogger("api-bfd")
-	Request logrus.FieldLogger = defaultLogger("api-request")
-	SSAS    logrus.FieldLogger = defaultLogger("api-ssas")
+	API     logrus.FieldLogger = defaultLogger("api")
+	Auth    logrus.FieldLogger = defaultLogger("auth")
+	BFDAPI  logrus.FieldLogger = defaultLogger("bfd")
+	Request logrus.FieldLogger = defaultLogger("request")
+	SSAS    logrus.FieldLogger = defaultLogger("ssas")
 
 	Worker    logrus.FieldLogger = defaultLogger("worker")
-	BFDWorker logrus.FieldLogger = defaultLogger("worker-bfd")
-	Health    logrus.FieldLogger = defaultLogger("worker-health")
+	BFDWorker logrus.FieldLogger = defaultLogger("bfd")
+	Health    logrus.FieldLogger = defaultLogger("health")
 )
 
 // setup global access to loggers, overwrite default logger
 func SetupLoggers() {
-	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"), "api", "api-error")
-	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"), "api", "api-auth")
-	BFDAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "api", "api-bfd")
-	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"), "api", "api-request")
-	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"), "api", "api-ssas")
+	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"), "api", "api")
+	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"), "api", "auth")
+	BFDAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "api", "bfd")
+	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"), "api", "request")
+	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"), "api", "ssas")
 
-	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker", "worker-error")
-	BFDWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "worker", "worker-bfd")
-	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"), "worker", "worker-health")
+	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker", "worker")
+	BFDWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "worker", "bfd")
+	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"), "worker", "health")
 }
 
 // customize logger and output to files

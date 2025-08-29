@@ -110,15 +110,15 @@ func TestLoggers_ToSTDOut(t *testing.T) {
 		// setup func. This allows us to retrieve the refreshed logger
 		logSupplier func() logrus.FieldLogger
 	}{
-		{"api-error", func() logrus.FieldLogger { return API }},
-		{"api-auth", func() logrus.FieldLogger { return Auth }},
-		{"api-bfd", func() logrus.FieldLogger { return BFDAPI }},
-		{"api-request", func() logrus.FieldLogger { return Request }},
-		{"api-ssas", func() logrus.FieldLogger { return SSAS }},
+		{"api", func() logrus.FieldLogger { return API }},
+		{"auth", func() logrus.FieldLogger { return Auth }},
+		{"bfd", func() logrus.FieldLogger { return BFDAPI }},
+		{"request", func() logrus.FieldLogger { return Request }},
+		{"ssas", func() logrus.FieldLogger { return SSAS }},
 
-		{"worker-error", func() logrus.FieldLogger { return Worker }},
-		{"worker-bfd", func() logrus.FieldLogger { return BFDWorker }},
-		{"worker-health", func() logrus.FieldLogger { return Health }},
+		{"worker", func() logrus.FieldLogger { return Worker }},
+		{"bfd", func() logrus.FieldLogger { return BFDWorker }},
+		{"health", func() logrus.FieldLogger { return Health }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.logType, func(t *testing.T) {
