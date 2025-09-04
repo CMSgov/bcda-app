@@ -385,14 +385,6 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_Integration() {
 			nil,
 			nil,
 		},
-		// no longer validating CCLF files in this function, test no longer relevant
-		// {
-		// 	"NoCCLFPerfYearIncompatible",
-		// 	getCCLFFile(7, false, true),
-		// 	getCCLFFile(8, false, false),
-		// 	nil,
-		// 	fmt.Errorf("no CCLF8 file found for cmsID"),
-		// },
 	}
 
 	for _, tt := range tests {
@@ -540,14 +532,6 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries_RecentSinceParamet
 			[]int{},
 			true,
 		},
-		// no longer relevant, we dont check these things anymore, they are done before
-		// {
-		// 	"LaterThanCreatedAtNoBenes",
-		// 	1,
-		// 	[]int{},
-		// 	[]int{},
-		// 	false,
-		// },
 	}
 
 	for _, tt := range tests {
@@ -643,19 +627,6 @@ func (s *ServiceTestSuite) TestGetBeneficiaries_Integration() {
 			getCCLFFile(3, true, false),
 			nil,
 		},
-		// function no longer does various logic trying to find a specific cclf file, these tests are no longer relevant
-		// {
-		// 	"NoBenesReturnedOld",
-		// 	models.FileTypeRunout,
-		// 	getCCLFFile(4, false, true),
-		// 	fmt.Errorf("no CCLF8 file found for cmsID"),
-		// },
-		// {
-		// 	"NoBenesReturnedOldRunout",
-		// 	models.FileTypeRunout,
-		// 	getCCLFFile(4, true, true),
-		// 	fmt.Errorf("no CCLF8 file found for cmsID"),
-		// },
 	}
 
 	for _, tt := range tests {
