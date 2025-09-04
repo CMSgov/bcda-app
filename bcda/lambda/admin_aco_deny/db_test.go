@@ -78,7 +78,7 @@ func TestDenyACOs_Integration(t *testing.T) {
 	err = denyACOs(ctx, tx, payload{testACODenies})
 	assert.Nil(t, err)
 
-	rows, err := tx.Query(ctx, `SELECT id, cms_id, termination_details FROM acos WHERE id IN($1);`, ACO3)
+	rows, err := tx.Query(ctx, `SELECT id, cms_id, termination_details FROM acos WHERE id IN($1, $2, $3, $4, $5);`, ACO1, ACO2, ACO3, ACO4, ACO5)
 	assert.Nil(t, err)
 	defer rows.Close()
 
