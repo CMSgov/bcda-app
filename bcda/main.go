@@ -47,30 +47,25 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
-func init() {
-	log.SetupLoggers()
-	client.SetLogger(log.BBAPI)
+func setupDirs() {
 
 	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
-	if isEtlMode != "true" {
-		createAPIDirs()
-	} else {
+	if isEtlMode == "true" {
+		log.API.Info("BCDA application is running in ETL mode.")
 		createETLDirs()
-	}
-
-	if isEtlMode != "true" {
+	} else {
 		log.API.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
-	} else {
-		log.API.Info("BCDA application is running in ETL mode.")
+		createAPIDirs()
 	}
+
 }
 
 func createAPIDirs() {
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
-		log.API.Fatal(err)
+		log.API.Fatal(errors.Wrap(err, "Could not create CCLF file archive directory"))
 	}
 }
 
@@ -83,6 +78,9 @@ func createETLDirs() {
 }
 
 func main() {
+	log.SetupLoggers()
+	client.SetLogger(log.BFDAPI)
+	setupDirs()
 	app := bcdacli.GetApp()
 	err := app.Run(os.Args)
 	if err != nil {

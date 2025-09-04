@@ -10,6 +10,7 @@ import (
 )
 
 func TestClearTempDirectory(t *testing.T) {
+	createWorkerDirs()
 	tempDirPrefix := conf.GetEnv("FHIR_TEMP_DIR")
 	tempDir, err := os.MkdirTemp(tempDirPrefix, "bananas")
 	defer os.RemoveAll(tempDir)
