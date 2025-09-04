@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -86,18 +87,22 @@ func TestDenyACOs_Integration(t *testing.T) {
 	for rows.Next() {
 		var id string
 		var cmsID string
-		var td *models.Termination
+		var tdJSON []byte
 		i++
 
-		err = rows.Scan(&id, &cmsID, &td)
+		err = rows.Scan(&id, &cmsID, &tdJSON)
 		assert.Nil(t, err)
 		switch id {
 		case ACO1, ACO2, ACO5:
+			assert.NotNil(t, tdJSON, "termination_details should not be null for denied ACOs")
+			var td models.Termination
+			err = json.Unmarshal(tdJSON, &td)
+			assert.Nil(t, err)
 			assert.Equal(t, td.DenylistType, models.Involuntary)
 			assert.WithinDuration(t, td.CutoffDate, time.Now(), 1*time.Second)
 			assert.WithinDuration(t, td.TerminationDate, time.Now(), 1*time.Second)
 		case ACO3, ACO4:
-			assert.Nil(t, td)
+			assert.Nil(t, tdJSON, "termination_details should be null for non-denied ACOs")
 		default:
 			t.Fail()
 		}
