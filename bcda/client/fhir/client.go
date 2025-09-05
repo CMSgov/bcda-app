@@ -2,6 +2,7 @@ package fhir
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -128,6 +129,9 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	s := newrelic.StartExternalSegment(txn, req)
 
 	resp, err := c.Do(req)
+	if resp == nil {
+		return nil, errors.New("response from BFD is nil")
+	}
 	if err != nil {
 		if innerErr := resp.Body.Close(); innerErr != nil {
 			return nil, innerErr
