@@ -2,6 +2,7 @@ package fhir
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -101,6 +102,25 @@ func TestRawRequest(t *testing.T) {
 	resp, err := client.DoRaw(req)
 	assert.NoError(t, err)
 	assert.Equal(t, msg, resp)
+}
+
+type MockRoundTripper struct{}
+
+func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Simulate a network error, returning nil for the response
+	return nil, errors.New("simulated network error")
+}
+
+func TestNilResponse(t *testing.T) {
+	mockClient := &http.Client{Transport: &MockRoundTripper{}}
+	client := NewClient(mockClient, 0)
+
+	req, err := http.NewRequest("GET", "https://doesntmatter.com", nil)
+	assert.NoError(t, err)
+
+	resp, err := client.DoRaw(req)
+	assert.ErrorContains(t, err, "response from BFD is nil")
+	assert.Equal(t, "", resp)
 }
 
 func assertEqualsBundle(t *testing.T, pathToExpected string, actual *models.Bundle) {
