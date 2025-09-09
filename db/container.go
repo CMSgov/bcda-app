@@ -165,7 +165,7 @@ func (td *TestDatabaseContainer) initSeed() error {
 	return nil
 }
 
-// Returns a new postgres container with migrations from db/migrations/bcda applied and seeed
+// Returns a new postgres container with migrations from db/migrations/bcda applied and seed
 // data from db/testdata applied.
 func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 	ctx := context.Background()
