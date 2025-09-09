@@ -14,7 +14,7 @@ This type also implements methods to apply migrations and seed the database with
 
 1. Create the container in the setup of the test suite; this is the longest running step.
 2. Create the database connection in the setup of the test or the setup of the subtest.
-3. (optional) Seed any additional test data with TestDatabaseContainer.ExecuteFile() or TestDatabaseContainer.ExecuteDir(). For details on seed data, please consult the README.md in ./seeddata
+3. (optional) Seed any additional test data with TestDatabaseContainer.ExecuteFile() or TestDatabaseContainer.ExecuteDir(). For details on seed data, please consult the README.md in ./testdata
 4. Restore a snapshot in the test teardown.
 
 *Note*: Database snapshots cannot be created or restored if a database connection still exists.

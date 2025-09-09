@@ -155,7 +155,6 @@ func (td *TestDatabaseContainer) initSeed() error {
 	}
 
 	rowsAffected, err := td.ExecuteFile(filepath.Join(filePath, "insert_acos.sql"))
-	//rowsAffected, err := td.ExecuteFile(filepath.Join(filePath, "insert_acos.sql"))
 	if err != nil {
 		fmt.Sprintf("failed to seed database container: %s", err)
 		return err
@@ -167,7 +166,7 @@ func (td *TestDatabaseContainer) initSeed() error {
 }
 
 // Returns a new postgres container with migrations from db/migrations/bcda applied and seeed
-// data from db/seeddata applied.
+// data from db/testdata applied.
 func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 	ctx := context.Background()
 	c, err := postgres.Run(ctx,
