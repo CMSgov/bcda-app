@@ -18,19 +18,24 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -40,6 +45,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -53,15 +59,16 @@ var (
 
 type APITestSuite struct {
 	suite.Suite
-	db    *sql.DB
-	pool  *pgxv5Pool.Pool
-	apiV2 *ApiV2
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	apiV2       *ApiV2
+	dbContainer db.TestDatabaseContainer
 }
 
 func (s *APITestSuite) SetupSuite() {
-	s.db = database.Connect()
-	s.pool = database.ConnectPool()
-	s.apiV2 = NewApiV2(s.db, s.pool)
+	ctr, err := db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+	s.dbContainer = ctr
 
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
@@ -81,8 +88,36 @@ func (s *APITestSuite) SetupSuite() {
 	client.SetLogger(log.BFDAPI)
 }
 
+func (s *APITestSuite) SetupTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.apiV2 = NewApiV2(s.db, s.pool)
+
+}
+
+func (s *APITestSuite) SetupSubTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.apiV2 = NewApiV2(s.db, s.pool)
+
+}
+
 func (s *APITestSuite) TearDownTest() {
-	postgrestest.DeleteJobsByACOID(s.T(), s.db, acoUnderTest)
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+}
+
+func (s *APITestSuite) TearDownSubTest() {
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func TestAPITestSuite(t *testing.T) {
@@ -140,29 +175,34 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 	}
 
 	for _, tt := range tests {
-		s.T().Run(string(tt.status), func(t *testing.T) {
+		s.Run(string(tt.status), func() {
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 				RequestURL: constants.V2Path + constants.PatientEOBPath,
 				Status:     tt.status,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
 			}
-			postgrestest.CreateJobs(t, s.db, &j)
-			defer postgrestest.DeleteJobByID(t, s.db, j.ID)
+			var err error
+			r := postgres.NewRepository(s.db)
+			j.ID, err = r.CreateJob(context.Background(), j)
+			require.NoError(s.T(), err)
 
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
 
 			s.apiV2.JobStatus(rr, req)
-			assert.Equal(t, tt.expStatusCode, rr.Code)
+			assert.Equal(s.T(), tt.expStatusCode, rr.Code)
 			switch rr.Code {
 			case http.StatusAccepted:
-				assert.Contains(t, rr.Header().Get("X-Progress"), tt.status)
-				assert.Equal(t, "", rr.Header().Get("Expires"))
+				assert.Contains(s.T(), rr.Header().Get("X-Progress"), tt.status)
+				assert.Equal(s.T(), "", rr.Header().Get("Expires"))
 			case http.StatusInternalServerError:
-				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
+				assert.Contains(s.T(), rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(t, j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
+
 		})
 	}
 }
