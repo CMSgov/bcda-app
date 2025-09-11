@@ -46,6 +46,7 @@ require (
 	github.com/riverqueue/river v0.20.2
 	github.com/riverqueue/river/rivertype v0.20.2
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/testcontainers/testcontainers-go v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.38.0
 )
 
@@ -91,7 +92,6 @@ require (
 	github.com/samber/lo v1.44.0 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
-	github.com/testcontainers/testcontainers-go v0.38.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
