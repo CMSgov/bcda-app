@@ -23,28 +23,25 @@ type TestDatabaseContainer struct {
 
 // ExecuteFile will execute a *.sql file for a database container.
 // Sql files for testing purposes should be under a package's 'testdata' directory.
-func (td *TestDatabaseContainer) ExecuteFile(filepath string) (int64, error) {
+func (td *TestDatabaseContainer) ExecuteFile(path string) (int64, error) {
 	ctx := context.Background()
 	var rows int64
-	content, err := os.ReadFile(filepath)
+	content, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
-		fmt.Sprintf("failed to open file: %s", err)
-		return rows, err
+		return rows, fmt.Errorf("failed to open file: %w", err)
 	}
 
 	sql := string(content)
 
 	pgx, err := td.NewPgxConnection()
 	if err != nil {
-		fmt.Sprintf("failed to connect to container database: %s", err)
-		return rows, err
+		return rows, fmt.Errorf("failed to connect to container database: %w", err)
 	}
 	defer pgx.Close(ctx)
 	result, err := pgx.Exec(ctx, sql)
 
 	if err != nil {
-		fmt.Sprintf("failed to execute sql: %s", err)
-		return rows, err
+		return rows, fmt.Errorf("failed to execute sql: %ww", err)
 	} else {
 		rows = result.RowsAffected()
 	}
@@ -55,30 +52,29 @@ func (td *TestDatabaseContainer) ExecuteFile(filepath string) (int64, error) {
 // ExecuteFile will execute all *.sql files in a given dir for a database container.
 // There must be a 'testdata' directory in the current working directory as the *_test.go file.
 func (td *TestDatabaseContainer) ExecuteDir(dirpath string) error {
-	// TODO: this executes all files in the testdata dir; need to update to execute child directories
-	// within testdata
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current working directory: %w", err)
-	}
-
-	testDir := filepath.Join(currentDir, "testdata")
-	_, err = os.Stat(testDir)
+	var err error
+	testDir, err := os.Stat(dirpath)
 	if err != nil {
 		return fmt.Errorf("failed to get testdata directory: %w", err)
 	}
 
-	err = filepath.Walk(testDir, func(path string, info os.FileInfo, err error) error {
+	if !testDir.IsDir() {
+		return errors.New("failed directory check")
+	}
+
+	err = filepath.Walk(dirpath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("Error accessing path %s: %v\n", path, err)
-			return err
+			return fmt.Errorf("error accessing path %s: %w", path, err)
 		}
-		if !info.IsDir() {
-			td.ExecuteFile(path)
+		if !info.IsDir() && (filepath.Ext(info.Name()) == ".sql") {
+			_, err = td.ExecuteFile(path)
+			if err != nil {
+				return fmt.Errorf("failed to execute sql file %s with error: %w", path, err)
+			}
 		}
-		return nil
+		return err
 	})
-	return nil
+	return err
 }
 
 // CreateSnapshot will create a snapshot for a given name. Close any active connections to the database
@@ -86,8 +82,7 @@ func (td *TestDatabaseContainer) ExecuteDir(dirpath string) error {
 func (td *TestDatabaseContainer) CreateSnapshot(name string) error {
 	err := td.Container.Snapshot(context.Background(), postgres.WithSnapshotName(name))
 	if err != nil {
-		fmt.Sprintf("failed to restore container database snapshot: %s", err)
-		return err
+		return fmt.Errorf("failed to restore container database snapshot: %w", err)
 	}
 	return nil
 }
@@ -98,8 +93,7 @@ func (td *TestDatabaseContainer) CreateSnapshot(name string) error {
 func (td *TestDatabaseContainer) RestoreSnapshot(name string) error {
 	err := td.Container.Restore(context.Background(), postgres.WithSnapshotName(name))
 	if err != nil {
-		fmt.Sprintf("failed to restore container database snapshot: %s", err)
-		return err
+		return fmt.Errorf("failed to restore container database snapshot: %w", err)
 	}
 	return nil
 }
@@ -108,8 +102,7 @@ func (td *TestDatabaseContainer) RestoreSnapshot(name string) error {
 func (td *TestDatabaseContainer) NewPgxConnection() (*pgx.Conn, error) {
 	pgx, err := pgx.Connect(context.Background(), td.ConnectionString)
 	if err != nil {
-		fmt.Sprintf("failed to open connection to container database: %s", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to open connection to container database: %w", err)
 	}
 	return pgx, nil
 }
@@ -118,7 +111,7 @@ func (td *TestDatabaseContainer) NewPgxConnection() (*pgx.Conn, error) {
 func (td *TestDatabaseContainer) NewSqlDbConnection() (*sql.DB, error) {
 	db, err := sql.Open("postgres", td.ConnectionString+"sslmode=disable")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open connection to container database: %w", err)
 	}
 	return db, nil
 }
@@ -127,8 +120,7 @@ func (td *TestDatabaseContainer) NewSqlDbConnection() (*sql.DB, error) {
 func (td *TestDatabaseContainer) NewPgxPoolConnection() (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(context.Background(), td.ConnectionString)
 	if err != nil {
-		fmt.Sprintf("failed to create pool for container database: %s", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to create pool for container database: %w", err)
 	}
 	return pool, nil
 }
@@ -136,12 +128,17 @@ func (td *TestDatabaseContainer) NewPgxPoolConnection() (*pgxpool.Pool, error) {
 // runMigrations runs the production migrations to the local database so there is no drift between prod and local development.
 func (td *TestDatabaseContainer) runMigrations() error {
 	m, err := migrate.New("file://../../../db/migrations/bcda/", td.ConnectionString+"sslmode=disable")
+	if err != nil {
+		return fmt.Errorf("failed to get migrations: %w", err)
+	}
 	err = m.Up()
 	if err != nil {
-		fmt.Sprintf("failed to create database container: %s", err)
-		return err
+		return fmt.Errorf("failed to apply migrations: %w", err)
 	}
-	m.Close()
+	err, _ = m.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close database: %w", err)
+	}
 	return nil
 }
 
@@ -150,17 +147,12 @@ func (td *TestDatabaseContainer) runMigrations() error {
 func (td *TestDatabaseContainer) initSeed() error {
 	filePath, err := getSeedDir()
 	if err != nil {
-		fmt.Println("failed to get db/testdata dir", err)
-		return err
+		return fmt.Errorf("failed to get db/testdata dir: %w", err)
 	}
 
-	rowsAffected, err := td.ExecuteFile(filepath.Join(filePath, "insert_acos.sql"))
+	err = td.ExecuteDir(filePath)
 	if err != nil {
-		fmt.Sprintf("failed to seed database container: %s", err)
-		return err
-	}
-	if rowsAffected == 0 {
-		return errors.New("failed to seed init data; zero affected rows")
+		return fmt.Errorf("failed to seed database container: %w", err)
 	}
 	return nil
 }
@@ -174,18 +166,15 @@ func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 		postgres.WithDatabase("bcda"),
 		postgres.WithUsername("toor"),
 		postgres.WithPassword("foobar"),
-		postgres.BasicWaitStrategies(),
-	)
+		postgres.BasicWaitStrategies())
 
 	if err != nil {
-		fmt.Sprintf("failed to create database container: %s", err)
-		return TestDatabaseContainer{}, err
+		return TestDatabaseContainer{}, fmt.Errorf("failed to create database container: %w", err)
 	}
 
 	conn, err := c.ConnectionString(ctx)
 	if err != nil {
-		fmt.Sprintf("failed to get connection string for container database: %s", err)
-		return TestDatabaseContainer{}, err
+		return TestDatabaseContainer{}, fmt.Errorf("failed to get connection string for container database: %w", err)
 	}
 
 	tdc := TestDatabaseContainer{
@@ -195,14 +184,12 @@ func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 
 	err = tdc.runMigrations()
 	if err != nil {
-		fmt.Sprintf("failed to apply migrations to container database: %s", err)
-		return TestDatabaseContainer{}, err
+		return TestDatabaseContainer{}, fmt.Errorf("failed to apply migrations to container database: %w", err)
 	}
 
 	err = tdc.initSeed()
 	if err != nil {
-		fmt.Sprintf("failed to add test data to container database: %s", err)
-		return TestDatabaseContainer{}, err
+		return TestDatabaseContainer{}, fmt.Errorf("failed to add test data to container database: %w", err)
 	}
 
 	err = tdc.CreateSnapshot("Base")
@@ -214,6 +201,24 @@ func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 
 }
 
+// GetTestDataDir is a helper function that will return the testdata directory for package in which
+// it is invoked. If the testdata directory has been created in another package or the files exist
+// outside the package, they will not be found.
+func GetTestDataDir() (string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	testDir := filepath.Join(filepath.Clean(currentDir), "testdata")
+	_, err = os.Stat(testDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get testdata directory: %w", err)
+	}
+
+	return testDir, err
+}
+
 // getSeedDir ensures that we get the db/testdata folder no matter where NewTestDatabaseContainer is called.
 func getSeedDir() (string, error) {
 	currentDir, err := os.Getwd()
@@ -222,7 +227,7 @@ func getSeedDir() (string, error) {
 	}
 
 	for {
-		targetPath := filepath.Join(currentDir, "db", "testdata")
+		targetPath := filepath.Join(filepath.Clean(currentDir), "db", "testdata")
 		_, err := os.Stat(targetPath)
 		if err == nil {
 			return targetPath, nil

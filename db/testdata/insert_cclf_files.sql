@@ -1,0 +1,114 @@
+insert into cclf_files(created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type)
+     values (NOW(), NOW(), 8, 'T.CEC.ZC8Y85.D250909.T2134110', 'E9994', NOW(), 85, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.CEC.ZC8R48.D250909.T2134210', 'E9994', NOW(), 48, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.CEC.ZC8Y26.D250909.T2134310', 'E9996', NOW(), 26, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.CEC.ZC8R36.D250909.T2134410', 'E9996', NOW(), 36, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.V994.ACO.ZC8Y32.D250909.T2134500', 'V994', NOW(), 32, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.V994.ACO.ZC8R81.D250909.T2135000', 'V994', NOW(), 81, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.V996.ACO.ZC8Y39.D250909.T2135100', 'V996', NOW(), 39, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.CEC.ZC8Y32.D250909.T2131090', 'E9994', NOW(), 32, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.CEC.ZC8Y63.D250909.T2131190', 'E9996', NOW(), 63, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.V994.ACO.ZC8Y61.D250909.T2131280', 'V994', NOW(), 61, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.V996.ACO.ZC8Y39.D250909.T2131380', 'V996', NOW(), 39, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.C9994.ACO.ZC8Y05.D250909.T2131480', 'C9994', NOW(), 5, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.C9996.ACO.ZC8Y28.D250909.T2131580', 'C9996', NOW(), 28, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.K9994.ACO.ZC8Y94.D250909.T2132070', 'K9994', NOW(), 94, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.K9996.ACO.ZC8Y27.D250909.T2132170', 'K9996', NOW(), 27, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.V996.ACO.ZC8R19.D250909.T2135200', 'V996', NOW(), 19, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.C9994.ACO.ZC8Y45.D250909.T2135290', 'C9994', NOW(), 45, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.C9994.ACO.ZC8R68.D250909.T2135390', 'C9994', NOW(), 68, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.C9996.ACO.ZC8Y89.D250909.T2135490', 'C9996', NOW(), 89, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.C9996.ACO.ZC8R25.D250909.T2135590', 'C9996', NOW(), 25, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.K9994.ACO.ZC8Y39.D250909.T2136080', 'K9994', NOW(), 39, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.K9994.ACO.ZC8R26.D250909.T2136180', 'K9994', NOW(), 26, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.K9996.ACO.ZC8Y37.D250909.T2136280', 'K9996', NOW(), 37, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.K9996.ACO.ZC8R43.D250909.T2136380', 'K9996', NOW(), 43, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9989.ZC8Y05.D250909.T2138450', 'A9989', NOW(), 5, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9989.ZC8Y31.D250909.T2138550', 'A9989', NOW(), 31, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9989.ZC8R48.D250909.T2139040', 'A9989', NOW(), 48, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9996.ZC8R76.D250909.T2134020', 'A9996', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9994.ZC8Y09.D250909.T2130490', 'A9994', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9996.ZC8Y95.D250909.T2130590', 'A9996', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.D9994.ACO.ZC8Y73.D250909.T2132270', 'D9994', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.D9996.ACO.ZC8Y30.D250909.T2132370', 'D9996', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9990.ZC8Y51.D250909.T2132460', 'A9990', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9991.ZC8Y06.D250909.T2132560', 'A9991', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9992.ZC8Y93.D250909.T2133060', 'A9992', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9993.ZC8Y29.D250909.T2133160', 'A9993', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9994.ZC8Y22.D250909.T2133320', 'A9994', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9994.ZC8R35.D250909.T2133420', 'A9994', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9996.ZC8Y86.D250909.T2133520', 'A9996', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.D9994.ACO.ZC8Y95.D250909.T2136470', 'D9994', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.D9994.ACO.ZC8R37.D250909.T2136570', 'D9994', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.D9996.ACO.ZC8Y52.D250909.T2137070', 'D9996', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.D9996.ACO.ZC8R72.D250909.T2137170', 'D9996', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9990.ZC8Y50.D250909.T2137260', 'A9990', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9990.ZC8R10.D250909.T2137360', 'A9990', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9991.ZC8Y34.D250909.T2137460', 'A9991', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9991.ZC8R92.D250909.T2137560', 'A9991', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9992.ZC8Y91.D250909.T2138050', 'A9992', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9992.ZC8R10.D250909.T2138150', 'A9992', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9993.ZC8Y60.D250909.T2138250', 'A9993', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9993.ZC8R11.D250909.T2138350', 'A9993', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9998.ZC8Y33.D250909.T2139140', 'A9998', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9998.ZC8Y34.D250909.T2139240', 'A9998', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9998.ZC8R17.D250909.T2139340', 'A9998', NOW(), 24, 'Completed', 1),
+     (NOW(), NOW(), 8, 'T.BCD.A9999.ZC8Y08.D250909.T2139430', 'A9999', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9999.ZC8Y13.D250909.T2139530', 'A9999', NOW(), 25, 'Completed', 0),
+     (NOW(), NOW(), 8, 'T.BCD.A9999.ZC8R59.D250909.T2140030', 'A9999', NOW(), 24, 'Completed', 1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
