@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -19,13 +20,25 @@ import (
 type TestDatabaseContainer struct {
 	Container        *postgres.PostgresContainer
 	ConnectionString string
+	migrations       string
+	testdata         string
 }
 
 // ExecuteFile will execute a *.sql file for a database container.
-// Sql files for testing purposes should be under a package's 'testdata' directory.
+// Sql files for testing purposes should be under a package's testdata/ directory.
 func (td *TestDatabaseContainer) ExecuteFile(path string) (int64, error) {
 	ctx := context.Background()
 	var rows int64
+
+	file, err := os.Stat(filepath.Clean(path))
+	if err != nil {
+		return rows, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if filepath.Ext(file.Name()) != ".sql" {
+		return rows, fmt.Errorf("failed execute file: not a .sql file")
+	}
+
 	content, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return rows, fmt.Errorf("failed to open file: %w", err)
@@ -42,15 +55,18 @@ func (td *TestDatabaseContainer) ExecuteFile(path string) (int64, error) {
 
 	if err != nil {
 		return rows, fmt.Errorf("failed to execute sql: %ww", err)
-	} else {
-		rows = result.RowsAffected()
+	}
+	rows = result.RowsAffected()
+	if rows == 0 {
+		return rows, fmt.Errorf("zero rows affected")
 	}
 
 	return rows, err
 }
 
-// ExecuteFile will execute all *.sql files in a given dir for a database container.
-// There must be a 'testdata' directory in the current working directory as the *_test.go file.
+// ExecuteFile will execute all *.sql files for the provided dirpath.
+// Is it recommended to use the package's testdata/ directory to add test files.
+// A package's testdata/ dir can be retrieved with GetTestDataDir().
 func (td *TestDatabaseContainer) ExecuteDir(dirpath string) error {
 	var err error
 	testDir, err := os.Stat(dirpath)
@@ -59,7 +75,7 @@ func (td *TestDatabaseContainer) ExecuteDir(dirpath string) error {
 	}
 
 	if !testDir.IsDir() {
-		return errors.New("failed directory check")
+		return errors.New("failed to get directory; path is not a directory")
 	}
 
 	err = filepath.Walk(dirpath, func(path string, info os.FileInfo, err error) error {
@@ -127,7 +143,7 @@ func (td *TestDatabaseContainer) NewPgxPoolConnection() (*pgxpool.Pool, error) {
 
 // runMigrations runs the production migrations to the local database so there is no drift between prod and local development.
 func (td *TestDatabaseContainer) runMigrations() error {
-	m, err := migrate.New("file://../../../db/migrations/bcda/", td.ConnectionString+"sslmode=disable")
+	m, err := migrate.New("file:"+td.migrations, td.ConnectionString+"sslmode=disable")
 	if err != nil {
 		return fmt.Errorf("failed to get migrations: %w", err)
 	}
@@ -145,12 +161,7 @@ func (td *TestDatabaseContainer) runMigrations() error {
 // initSeed will apply the baseline data to the the database with newly run migrations.
 // For applying test or scenario specific data, utilize ExecuteFile or ExecuteDir.
 func (td *TestDatabaseContainer) initSeed() error {
-	filePath, err := getSeedDir()
-	if err != nil {
-		return fmt.Errorf("failed to get db/testdata dir: %w", err)
-	}
-
-	err = td.ExecuteDir(filePath)
+	err := td.ExecuteDir(td.testdata)
 	if err != nil {
 		return fmt.Errorf("failed to seed database container: %w", err)
 	}
@@ -180,6 +191,11 @@ func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 	tdc := TestDatabaseContainer{
 		Container:        c,
 		ConnectionString: conn,
+	}
+
+	err = tdc.getSetupDirs()
+	if err != nil {
+		return TestDatabaseContainer{}, fmt.Errorf("failed to get testdata or migrations dirs: %w", err)
 	}
 
 	err = tdc.runMigrations()
@@ -219,27 +235,55 @@ func GetTestDataDir() (string, error) {
 	return testDir, err
 }
 
-// getSeedDir ensures that we get the db/testdata folder no matter where NewTestDatabaseContainer is called.
-func getSeedDir() (string, error) {
+// getSetupDirs ensures that we get the db/testdata and migrations directories no matter where NewTestDatabaseContainer is called.
+func (td *TestDatabaseContainer) getSetupDirs() error {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current working directory: %w", err)
+		return fmt.Errorf("failed to get current working directory: %w", err)
 	}
+	testDir := filepath.Join("db", "testdata")
+	migrationsDir := filepath.Join("db", "migrations", "bcda")
+	dirPaths := []string{testDir, migrationsDir}
 
-	for {
-		targetPath := filepath.Join(filepath.Clean(currentDir), "db", "testdata")
-		_, err := os.Stat(targetPath)
-		if err == nil {
-			return targetPath, nil
-		}
-		if !os.IsNotExist(err) {
-			return "", fmt.Errorf("error checking path %s: %w", targetPath, err)
-		}
+	for _, v := range dirPaths {
+		for {
+			targetPath := filepath.Join(filepath.Clean(currentDir), filepath.Clean(v))
+			_, err := os.Stat(targetPath)
+			if err == nil {
+				if strings.Contains(v, "testdata") {
+					td.testdata = targetPath
+				}
+				if strings.Contains(v, "migrations") {
+					td.migrations = targetPath
+				}
+				break
+			}
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("error checking path %s: %w", targetPath, err)
+			}
 
-		parentDir := filepath.Dir(currentDir)
-		if parentDir == currentDir {
-			return "", fmt.Errorf("file or directory '%s' not found in parent directories", "db/testdata")
+			parentDir := filepath.Dir(currentDir)
+			if parentDir == currentDir {
+				return fmt.Errorf("file or directory '%s' not found in parent directories", "db/testdata")
+			}
+			currentDir = parentDir
 		}
-		currentDir = parentDir
 	}
+	return nil
+	// for {
+	// 	targetPath := filepath.Join(filepath.Clean(currentDir), "db", "testdata")
+	// 	_, err := os.Stat(targetPath)
+	// 	if err == nil {
+	// 		return targetPath, nil
+	// 	}
+	// 	if !os.IsNotExist(err) {
+	// 		return "", fmt.Errorf("error checking path %s: %w", targetPath, err)
+	// 	}
+
+	// 	parentDir := filepath.Dir(currentDir)
+	// 	if parentDir == currentDir {
+	// 		return "", fmt.Errorf("file or directory '%s' not found in parent directories", "db/testdata")
+	// 	}
+	// 	currentDir = parentDir
+	// }
 }
