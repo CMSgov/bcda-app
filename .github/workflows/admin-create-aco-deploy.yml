@@ -58,30 +58,34 @@ jobs:
 
       - name: Set ACCOUNT - non prod
         if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
-        run: | 
+        run: |
           echo "ACC=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=dev" >> $GITHUB_ENV
 
       - name: Set ACCOUNT - prod
         if: ${{ env.ENVIRONMENT == 'sandbox' || env.ENVIRONMENT == 'prod' }}
-        run: | 
+        run: |
           echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=prod" >> $GITHUB_ENV
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions 
+          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions
       - name: Get Bucket
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
-          params: | 
+          params: |
             BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip 
+            s3://$BUCKET/function-${{ github.sha }}.zip
+          aws s3api put-object-tagging \
+            --bucket $BUCKET \
+            --key function-${{ github.sha }}.zip \
+            --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
           aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
