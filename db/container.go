@@ -54,7 +54,7 @@ func (td *TestDatabaseContainer) ExecuteFile(path string) (int64, error) {
 	result, err := pgx.Exec(ctx, sql)
 
 	if err != nil {
-		return rows, fmt.Errorf("failed to execute sql: %ww", err)
+		return rows, fmt.Errorf("failed to execute sql: %w", err)
 	}
 	rows = result.RowsAffected()
 	if rows == 0 {
@@ -270,20 +270,5 @@ func (td *TestDatabaseContainer) getSetupDirs() error {
 		}
 	}
 	return nil
-	// for {
-	// 	targetPath := filepath.Join(filepath.Clean(currentDir), "db", "testdata")
-	// 	_, err := os.Stat(targetPath)
-	// 	if err == nil {
-	// 		return targetPath, nil
-	// 	}
-	// 	if !os.IsNotExist(err) {
-	// 		return "", fmt.Errorf("error checking path %s: %w", targetPath, err)
-	// 	}
 
-	// 	parentDir := filepath.Dir(currentDir)
-	// 	if parentDir == currentDir {
-	// 		return "", fmt.Errorf("file or directory '%s' not found in parent directories", "db/testdata")
-	// 	}
-	// 	currentDir = parentDir
-	// }
 }
