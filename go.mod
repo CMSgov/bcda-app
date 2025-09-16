@@ -1,6 +1,6 @@
 module github.com/CMSgov/bcda-app
 
-go 1.24.6
+go 1.24.4
 
 require (
 	github.com/BurntSushi/toml v1.5.0
@@ -166,6 +166,3 @@ require (
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// Security fix: Ensure all yaml.v2 dependencies use at least v2.2.4 to fix CVE-2022-3064
-replace gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.4.0
