@@ -339,14 +339,19 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						},
 						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
 							{
+								Name:          &fhirdatatypes.String{Value: "_since"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_DATE},
+								Documentation: &fhirdatatypes.Markdown{Value: "Return resources updated after the date provided for existing and newly attributed enrollees."},
+							},
+							{
 								Name:          &fhirdatatypes.String{Value: "_type"},
 								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_STRING},
 								Documentation: &fhirdatatypes.Markdown{Value: "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."},
 							},
 							{
-								Name:          &fhirdatatypes.String{Value: "_since"},
-								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_DATE},
-								Documentation: &fhirdatatypes.Markdown{Value: "Return resources updated after the date provided for existing and newly attributed enrollees."},
+								Name:          &fhirdatatypes.String{Value: "_typeFilter"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_STRING},
+								Documentation: &fhirdatatypes.Markdown{Value: "Use a URL-encoded FHIR subquery to further-refine export results."},
 							},
 						},
 					},
@@ -360,14 +365,19 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						},
 						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
 							{
+								Name:          &fhirdatatypes.String{Value: "_since"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_DATE},
+								Documentation: &fhirdatatypes.Markdown{Value: "Return resources updated after the date provided for existing enrollees and all resources for newly attributed enrollees."},
+							},
+							{
 								Name:          &fhirdatatypes.String{Value: "_type"},
 								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_STRING},
 								Documentation: &fhirdatatypes.Markdown{Value: "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."},
 							},
 							{
-								Name:          &fhirdatatypes.String{Value: "_since"},
-								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_DATE},
-								Documentation: &fhirdatatypes.Markdown{Value: "Return resources updated after the date provided for existing enrollees and all resources for newly attributed enrollees."},
+								Name:          &fhirdatatypes.String{Value: "_typeFilter"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_STRING},
+								Documentation: &fhirdatatypes.Markdown{Value: "Use a URL-encoded FHIR subquery to further-refine export results."},
 							},
 						},
 					},
