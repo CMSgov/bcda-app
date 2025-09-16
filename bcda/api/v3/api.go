@@ -333,8 +333,20 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_PATIENT},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "patient-export"},
+								Name:       &fhirdatatypes.String{Value: "export"},
 								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+							},
+						},
+						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+							{
+								Name:          &fhirdatatypes.String{Value: "_type"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_STRING},
+								Documentation: &fhirdatatypes.Markdown{Value: "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."},
+							},
+							{
+								Name:          &fhirdatatypes.String{Value: "_since"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_DATE},
+								Documentation: &fhirdatatypes.Markdown{Value: "Return resources updated after the date provided for existing and newly attributed enrollees."},
 							},
 						},
 					},
@@ -342,8 +354,30 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_GROUP},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "group-export"},
+								Name:       &fhirdatatypes.String{Value: "export"},
 								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+							},
+						},
+						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+							{
+								Name:          &fhirdatatypes.String{Value: "_type"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_STRING},
+								Documentation: &fhirdatatypes.Markdown{Value: "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."},
+							},
+							{
+								Name:          &fhirdatatypes.String{Value: "_since"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_DATE},
+								Documentation: &fhirdatatypes.Markdown{Value: "Return resources updated after the date provided for existing enrollees and all resources for newly attributed enrollees."},
+							},
+						},
+					},
+					{
+						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_EXPLANATION_OF_BENEFIT},
+						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+							{
+								Name:          &fhirdatatypes.String{Value: "_tag"},
+								Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: fhircodes.SearchParamTypeCode_TOKEN},
+								Documentation: &fhirdatatypes.Markdown{Value: "Filter claims by adjudication status: either Adjudicated or PartiallyAdjudicated"},
 							},
 						},
 					},
