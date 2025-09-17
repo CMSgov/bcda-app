@@ -17,6 +17,8 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
+const postgresImage = "postgres:16-alpine"
+
 type TestDatabaseContainer struct {
 	Container        *postgres.PostgresContainer
 	ConnectionString string
@@ -173,7 +175,7 @@ func (td *TestDatabaseContainer) initSeed() error {
 func NewTestDatabaseContainer() (TestDatabaseContainer, error) {
 	ctx := context.Background()
 	c, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		postgresImage,
 		postgres.WithDatabase("bcda"),
 		postgres.WithUsername("toor"),
 		postgres.WithPassword("foobar"),
