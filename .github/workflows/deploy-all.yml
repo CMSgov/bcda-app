@@ -159,13 +159,13 @@ jobs:
           echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
       - name: Install terraform
         with:
-          directory: ./terraform_gf
+          directory: ./terraform
         uses: cmsgov/cdap/actions/setup-tfenv-terraform@main
       - name: Init, Plan Terraform
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          cd terraform_gf/${{ env.RELEASE_ENV }}
+          cd terraform/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
           export TF_CLI_ARGS="-no-color"
           terraform init
@@ -178,7 +178,7 @@ jobs:
             -out 'bcda-release-api-worker.tfplan'
       - name: Terraform Apply
         run: |
-          cd terraform_gf/${{ env.RELEASE_ENV }}
+          cd terraform/${{ env.RELEASE_ENV }}
           export TF_CLI_ARGS="-no-color"
           terraform init
           terraform apply bcda-release-api-worker.tfplan
