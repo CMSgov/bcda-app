@@ -162,27 +162,27 @@ jobs:
         with:
           directory: ./terraform_gf
       - uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
-      - name: Init, Plan Terraform
+      - name: Init, Plan OpenTofu
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
           cd terraform_gf/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
           export TF_CLI_ARGS="-no-color"
-          terraform init
-          terraform plan \
+          tofu init
+          tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
-      - name: Terraform Apply
+      - name: Tofu Apply
         run: |
           cd terraform_gf/${{ env.RELEASE_ENV }}
           export TF_CLI_ARGS="-no-color"
-          terraform init
-          terraform apply bcda-release-api-worker.tfplan
+          tofu init
+          tofu apply bcda-release-api-worker.tfplan
       - name: Refresh AutoScaling Groups
         run: |
           export ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
