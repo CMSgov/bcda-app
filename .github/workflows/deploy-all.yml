@@ -160,7 +160,7 @@ jobs:
       - name: Install opentofu
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
         with:
-          directory: ./terraform_gf
+          directory: ./terraform
       - uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
       - name: Init, Plan OpenTofu
         run: |
