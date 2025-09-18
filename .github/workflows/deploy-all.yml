@@ -157,7 +157,7 @@ jobs:
           echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
           export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
-      - name: Install opentofu
+      - name: Install Opentofu
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
         with:
           directory: ./terraform
