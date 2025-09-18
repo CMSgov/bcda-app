@@ -18,19 +18,21 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
-	"github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
@@ -38,9 +40,12 @@ import (
 	fhiroo "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/operation_outcome_go_proto"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -53,15 +58,16 @@ var (
 
 type APITestSuite struct {
 	suite.Suite
-	db    *sql.DB
-	pool  *pgxv5Pool.Pool
-	apiV2 *ApiV2
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	apiV2       *ApiV2
+	dbContainer db.TestDatabaseContainer
 }
 
 func (s *APITestSuite) SetupSuite() {
-	s.db = database.Connect()
-	s.pool = database.ConnectPool()
-	s.apiV2 = NewApiV2(s.db, s.pool)
+	ctr, err := db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+	s.dbContainer = ctr
 
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
@@ -81,8 +87,43 @@ func (s *APITestSuite) SetupSuite() {
 	client.SetLogger(log.BFDAPI)
 }
 
+func (s *APITestSuite) SetupTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.apiV2 = NewApiV2(s.db, s.pool)
+
+}
+
+func (s *APITestSuite) SetupSubTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.apiV2 = NewApiV2(s.db, s.pool)
+
+}
+func (s *APITestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
+}
+
 func (s *APITestSuite) TearDownTest() {
-	postgrestest.DeleteJobsByACOID(s.T(), s.db, acoUnderTest)
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+}
+
+func (s *APITestSuite) TearDownSubTest() {
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func TestAPITestSuite(t *testing.T) {
@@ -101,7 +142,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 	}
 
 	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
+		s.Run(tt.name, func() {
 			req := httptest.NewRequest("GET", fmt.Sprintf("/api/v2/jobs/%s", tt.jobID), nil)
 			rr := httptest.NewRecorder()
 
@@ -115,11 +156,11 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			s.apiV2.JobStatus(rr, req)
 
-			respOO := getOperationOutcome(t, rr.Body.Bytes())
+			respOO := getOperationOutcome(s.T(), rr.Body.Bytes())
 
-			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
+			assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+			assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -140,42 +181,49 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 	}
 
 	for _, tt := range tests {
-		s.T().Run(string(tt.status), func(t *testing.T) {
+		s.Run(string(tt.status), func() {
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 				RequestURL: constants.V2Path + constants.PatientEOBPath,
 				Status:     tt.status,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
 			}
-			postgrestest.CreateJobs(t, s.db, &j)
-			defer postgrestest.DeleteJobByID(t, s.db, j.ID)
+			var err error
+			r := postgres.NewRepository(s.db)
+			j.ID, err = r.CreateJob(context.Background(), j)
+			require.NoError(s.T(), err)
 
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
 
 			s.apiV2.JobStatus(rr, req)
-			assert.Equal(t, tt.expStatusCode, rr.Code)
+			assert.Equal(s.T(), tt.expStatusCode, rr.Code)
 			switch rr.Code {
 			case http.StatusAccepted:
-				assert.Contains(t, rr.Header().Get("X-Progress"), tt.status)
-				assert.Equal(t, "", rr.Header().Get("Expires"))
+				assert.Contains(s.T(), rr.Header().Get("X-Progress"), tt.status)
+				assert.Equal(s.T(), "", rr.Header().Get("Expires"))
 			case http.StatusInternalServerError:
-				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
+				assert.Contains(s.T(), rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(t, j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
+
 		})
 	}
 }
 
-// https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
 func (s *APITestSuite) TestJobStatusCompleted() {
+	var err error
 	j := models.Job{
 		ACOID:      acoUnderTest,
 		RequestURL: constants.V2Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
+
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	var expectedUrls []string
 	for i := 1; i <= 10; i++ {
@@ -184,7 +232,6 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		expectedUrls = append(expectedUrls, expectedurl)
 		postgrestest.CreateJobKeys(s.T(), s.db,
 			models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"})
-		defer postgrestest.DeleteJobKeysByJobIDs(s.T(), s.db, j.ID)
 	}
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
@@ -199,7 +246,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
-	err := json.Unmarshal(rr.Body.Bytes(), &rb)
+	err = json.Unmarshal(rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -224,13 +271,15 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 }
 
 func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
+	var err error
 	j := models.Job{
 		ACOID:      acoUnderTest,
 		RequestURL: constants.V2Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 	jobKey := models.JobKey{
@@ -239,7 +288,6 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		ResourceType: "ExplanationOfBenefit",
 	}
 	postgrestest.CreateJobKeys(s.T(), s.db, jobKey)
-	defer postgrestest.DeleteJobKeysByJobIDs(s.T(), s.db, jobKey.JobID)
 
 	f := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
 	if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -251,7 +299,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 
 	errFileName := strings.Split(jobKey.FileName, ".")[0]
 	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
-	_, err := os.Create(errFilePath)
+	_, err = os.Create(errFilePath)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -292,9 +340,10 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 		ACOID:      acoUnderTest,
 		RequestURL: constants.V2Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	j.UpdatedAt = time.Now().Add(-(s.apiV2.handler.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
@@ -320,9 +369,13 @@ func (s *APITestSuite) TestJobsStatus() {
 		ACOID:      acoUnderTest,
 		RequestURL: "/api/v2/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     models.JobStatusCompleted,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+	var err error
+	r := postgres.NewRepository(s.db)
+	j.ID, err = r.CreateJob(context.Background(), j)
+	require.NoError(s.T(), err)
 
 	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
@@ -354,7 +407,6 @@ func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
 		Status:     models.JobStatusCompleted,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
@@ -374,7 +426,6 @@ func (s *APITestSuite) TestJobsStatusWithStatus() {
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
@@ -394,7 +445,6 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 		Status:     models.JobStatusFailed,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
-	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	s.apiV2.JobsStatus(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
@@ -412,7 +462,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 	}
 
 	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
+		s.Run(tt.name, func() {
 			req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v2/jobs/%s", tt.jobID), nil)
 			rr := httptest.NewRecorder()
 
@@ -425,11 +475,11 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 			s.apiV2.JobStatus(rr, req)
 
-			respOO := getOperationOutcome(t, rr.Body.Bytes())
+			respOO := getOperationOutcome(s.T(), rr.Body.Bytes())
 
-			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
+			assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+			assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
 }
@@ -450,14 +500,13 @@ func (s *APITestSuite) TestDeleteJob() {
 	}
 
 	for _, tt := range tests {
-		s.T().Run(string(tt.status), func(t *testing.T) {
+		s.Run(string(tt.status), func() {
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 				RequestURL: "/api/v2/Patient/$export?_type=Patient,Coverage",
 				Status:     tt.status,
 			}
-			postgrestest.CreateJobs(t, s.db, &j)
-			defer postgrestest.DeleteJobByID(t, s.db, j.ID)
+			postgrestest.CreateJobs(s.T(), s.db, &j)
 
 			req := s.createJobStatusRequest(acoUnderTest, j.ID)
 			rr := httptest.NewRecorder()
@@ -466,9 +515,9 @@ func (s *APITestSuite) TestDeleteJob() {
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
 			s.apiV2.DeleteJob(rr, req)
-			assert.Equal(t, tt.expStatusCode, rr.Code)
+			assert.Equal(s.T(), tt.expStatusCode, rr.Code)
 			if rr.Code == http.StatusGone {
-				assert.Contains(t, rr.Body.String(), "job was not cancelled because it is not Pending or In Progress")
+				assert.Contains(s.T(), rr.Body.String(), "job was not cancelled because it is not Pending or In Progress")
 			}
 		})
 	}
@@ -564,18 +613,27 @@ func (s *APITestSuite) TestResourceTypes() {
 	mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
 	h.Svc = mockSvc
 
-	for idx, handler := range []http.HandlerFunc{h.BulkGroupRequest, h.BulkPatientRequest} {
-		for _, tt := range tests {
-			s.T().Run(fmt.Sprintf("%s-%d", tt.name, idx), func(t *testing.T) {
+	//for idx, handler := range []string{h.BulkGroupRequest, h.BulkPatientRequest} {
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			for _, v := range []string{"Group", "Patient"} {
+
+				h := api.NewHandler(resources, "/v2/fhir", "v2", s.db, s.pool)
+				mockSvc := &service.MockService{}
+
+				mockSvc.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
+				mockAco := service.ACOConfig{
+					Data: []string{"adjudicated"},
+				}
+				mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+				mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.AnythingOfType("string")).Return(service.TimeConstraints{}, nil)
+				mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+				h.Svc = mockSvc
+
 				rr := httptest.NewRecorder()
 
-				ep := "Group"
-				if idx == 1 {
-					ep = "Patient"
-				}
-
-				u, err := url.Parse(fmt.Sprintf("/api/v2/%s/$export", ep))
-				assert.NoError(t, err)
+				u, err := url.Parse(fmt.Sprintf("/api/v2/%s/$export", v))
+				assert.NoError(s.T(), err)
 
 				rp := middleware.RequestParameters{
 					Version:       "v2",
@@ -593,14 +651,22 @@ func (s *APITestSuite) TestResourceTypes() {
 				newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 				req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
-				handler(rr, req)
-				assert.Equal(t, tt.statusCode, rr.Code)
-				assert.Empty(t, rr.Body.String())
-				if rr.Code == http.StatusAccepted {
-					assert.NotEmpty(t, rr.Header().Get("Content-Location"))
+				switch v {
+				case "Patient":
+					h.BulkPatientRequest(rr, req)
+				case "Group":
+					h.BulkGroupRequest(rr, req)
 				}
-			})
-		}
+
+				assert.Equal(s.T(), tt.statusCode, rr.Code)
+				assert.Empty(s.T(), rr.Body.String())
+				if rr.Code == http.StatusAccepted {
+					assert.NotEmpty(s.T(), rr.Header().Get("Content-Location"))
+				}
+
+			}
+		})
+		//}
 	}
 }
 

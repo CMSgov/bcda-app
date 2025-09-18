@@ -1,8 +1,3 @@
-insert into acos(uuid, cms_id, name, client_id)
-     values ('DBBD1CE1-AE24-435C-807D-ED45953077D3','A9995', 'ACO Lorem Ipsum', 'DBBD1CE1-AE24-435C-807D-ED45953077D3'),
-            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254'),
-            ('dfcb6432-0678-4590-a28b-6573e8a681ce', 'TEST001', 'ACO Partially-Adjudicated Dev', 'dfcb6432-0678-4590-a28b-6573e8a681ce');
-
 insert into acos(uuid, cms_id, name, client_id, termination_details)
      values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', 'A8880', 'ACO Sit Amet', 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null),
             ('c14822fa-19ee-402c-9248-32af98419fe3', 'A8881', 'ACO Revoked',  'c14822fa-19ee-402c-9248-32af98419fe3', null),
@@ -17,4 +12,7 @@ insert into acos(uuid, cms_id, name, client_id, termination_details)
                '{"TerminationDate": "2020-12-31T23:59:59Z", "CutoffDate": "2020-12-31T23:59:59Z", "BlacklistType": 0}'),
             ('eb69af67-8878-4e4f-9d73-f2782e29286e', 'A9989', 'ACO Improved Dev', 'eb69af67-8878-4e4f-9d73-f2782e29286e', null),
             ('8ff7130e-7bfc-4a70-9c4b-5eafd3766502', 'A9998', 'ACO Improved Small', '8ff7130e-7bfc-4a70-9c4b-5eafd3766502', null),
-            ('8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', 'A9999', 'ACO Improved Large', '8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', null);
+            ('8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', 'A9999', 'ACO Improved Large', '8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', null),
+            ('DBBD1CE1-AE24-435C-807D-ED45953077D3','A9995', 'ACO Lorem Ipsum', 'DBBD1CE1-AE24-435C-807D-ED45953077D3', null),
+            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254', null),
+            ('dfcb6432-0678-4590-a28b-6573e8a681ce', 'TEST001', 'ACO Partially-Adjudicated Dev', 'dfcb6432-0678-4590-a28b-6573e8a681ce', null);
