@@ -166,7 +166,7 @@ jobs:
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          cd terraform_gf/${{ env.RELEASE_ENV }}
+          cd terraform/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
           export TF_CLI_ARGS="-no-color"
           tofu init
@@ -179,7 +179,7 @@ jobs:
             -out 'bcda-release-api-worker.tfplan'
       - name: Tofu Apply
         run: |
-          cd terraform_gf/${{ env.RELEASE_ENV }}
+          cd terraform/${{ env.RELEASE_ENV }}
           export TF_CLI_ARGS="-no-color"
           tofu init
           tofu apply bcda-release-api-worker.tfplan
