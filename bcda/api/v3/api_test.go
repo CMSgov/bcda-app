@@ -501,7 +501,7 @@ func (s *APITestSuite) TestMetadataResponse() {
 	// Expecting an R4 response so we'll evaluate some fields to reflect that
 	assert.Equal(s.T(), fhircodes.FHIRVersionCode_V_4_0_1, cs.FhirVersion.Value)
 	assert.Equal(s.T(), 1, len(cs.Rest))
-	assert.Equal(s.T(), 2, len(cs.Rest[0].Resource))
+	assert.Equal(s.T(), 3, len(cs.Rest[0].Resource))
 	assert.Len(s.T(), cs.Instantiates, 2)
 	assert.Contains(s.T(), cs.Instantiates[0].Value, fmt.Sprintf("%s/metadata", constants.BFDV3Path))
 	resourceData := []struct {
@@ -509,8 +509,8 @@ func (s *APITestSuite) TestMetadataResponse() {
 		opName       string
 		opDefinition string
 	}{
-		{fhircodes.ResourceTypeCode_PATIENT, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
-		{fhircodes.ResourceTypeCode_GROUP, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+		{fhircodes.ResourceTypeCode_PATIENT, "export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+		{fhircodes.ResourceTypeCode_GROUP, "export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 	}
 
 	for _, rd := range resourceData {
