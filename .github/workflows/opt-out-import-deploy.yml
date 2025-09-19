@@ -61,11 +61,15 @@ jobs:
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
-          params: | 
+          params: |
             BUCKET=/bcda/${{ env.DEPLOY_ENV }}/bcda-${{ env.DEPLOY_ENV }}-opt-out-import-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
             s3://$BUCKET/function-${{ github.sha }}.zip
+          aws s3api put-object-tagging \
+            --bucket $BUCKET \
+            --key function-${{ github.sha }}.zip \
+            --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
           aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-opt-out-import \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
