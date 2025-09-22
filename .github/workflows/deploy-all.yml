@@ -177,7 +177,7 @@ jobs:
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
-      - name: Tofu Apply
+      - name: OpenTofu Apply
         run: |
           cd terraform/${{ env.RELEASE_ENV }}
           export TF_CLI_ARGS="-no-color"
