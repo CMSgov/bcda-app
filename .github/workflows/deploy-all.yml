@@ -162,6 +162,7 @@ jobs:
       - name: Install OpenTofu
         uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
       - name: Init, Plan OpenTofu
+        working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
