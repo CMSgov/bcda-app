@@ -333,18 +333,34 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_PATIENT},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "patient-export"},
+								Name:       &fhirdatatypes.String{Value: "export"},
 								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
 							},
+						},
+						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+							restResourceSearchParam("_since", fhircodes.SearchParamTypeCode_DATE, "Return resources updated after the date provided for existing and newly attributed enrollees."),
+							restResourceSearchParam("_type", fhircodes.SearchParamTypeCode_STRING, "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."),
+							restResourceSearchParam("_typeFilter", fhircodes.SearchParamTypeCode_STRING, "Use a URL-encoded FHIR subquery to further-refine patient export results."),
 						},
 					},
 					{
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_GROUP},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "group-export"},
+								Name:       &fhirdatatypes.String{Value: "export"},
 								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 							},
+						},
+						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+							restResourceSearchParam("_since", fhircodes.SearchParamTypeCode_DATE, "Return resources updated after the date provided for existing enrollees and all resources for newly attributed enrollees."),
+							restResourceSearchParam("_type", fhircodes.SearchParamTypeCode_STRING, "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."),
+							restResourceSearchParam("_typeFilter", fhircodes.SearchParamTypeCode_STRING, "Use a URL-encoded FHIR subquery to further-refine group export results."),
+						},
+					},
+					{
+						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_EXPLANATION_OF_BENEFIT},
+						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+							restResourceSearchParam("_tag", fhircodes.SearchParamTypeCode_STRING, "Filter claims by adjudication status: either Adjudicated or PartiallyAdjudicated"),
 						},
 					},
 				},
@@ -367,4 +383,14 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 		log.API.Errorf("Failed to write data %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func restResourceSearchParam(n string, t fhircodes.SearchParamTypeCode_Value, d string) *fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam {
+	p := &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
+		Name:          &fhirdatatypes.String{Value: n},
+		Type:          &fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam_TypeCode{Value: t},
+		Documentation: &fhirdatatypes.Markdown{Value: d},
+	}
+
+	return p
 }
