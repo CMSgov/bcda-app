@@ -167,7 +167,6 @@ jobs:
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          cd terraform/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
           tofu init
           tofu plan \
