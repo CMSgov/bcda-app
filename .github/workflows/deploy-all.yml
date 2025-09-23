@@ -83,6 +83,7 @@ permissions:
   contents: read
 
 env:
+  TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
@@ -152,8 +153,6 @@ jobs:
                 mrkdown_in:
                   - text
       - name: Get AMIs
-        env:
-          TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
@@ -179,8 +178,8 @@ jobs:
             -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
+        working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
-          cd terraform/${{ env.RELEASE_ENV }}
           tofu apply bcda-release-api-worker.tfplan
       - name: Refresh AutoScaling Groups
         run: |
