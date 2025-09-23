@@ -83,7 +83,6 @@ permissions:
   contents: read
 
 env:
-  TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
   OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
@@ -91,6 +90,7 @@ env:
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
   ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
+  TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERIFICATION_RETRIES: 90 # 90 retries with 10s sleep = max 900s or 15m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
 
