@@ -90,6 +90,7 @@ env:
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
   ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
+  TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERIFICATION_RETRIES: 90 # 90 retries with 10s sleep = max 900s or 15m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
 
@@ -157,31 +158,28 @@ jobs:
           echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
           export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
           echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
-      - name: Install terraform
-        with:
-          directory: ./terraform
-        uses: cmsgov/cdap/actions/setup-tfenv-terraform@main
-      - name: Init, Plan Terraform
+      - name: Install Cosign to verify tenv and tofu installs
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Install tenv
+        uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
+      - name: Init, Plan OpenTofu
+        working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          cd terraform/${{ env.RELEASE_ENV }}
           touch bcda-release-api-worker-vars.tfvars
-          export TF_CLI_ARGS="-no-color"
-          terraform init
-          terraform plan \
+          tofu init
+          tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
-      - name: Terraform Apply
+      - name: OpenTofu Apply
+        working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
-          cd terraform/${{ env.RELEASE_ENV }}
-          export TF_CLI_ARGS="-no-color"
-          terraform init
-          terraform apply bcda-release-api-worker.tfplan
+          tofu apply bcda-release-api-worker.tfplan
       - name: Refresh AutoScaling Groups
         run: |
           export ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
