@@ -130,7 +130,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 
 		// validate _typeFilter params
 		params, ok = r.URL.Query()["_typeFilter"]
-		if (version == "demo") && ok {
+		if (version == "v3") && ok {
 			var typeFilterParams [][]string
 			for _, subQuery := range params {
 
@@ -235,7 +235,7 @@ func getKeys(kv map[string]struct{}) []string {
 	return keys
 }
 
-var versionExp = regexp.MustCompile(`\/api\/(v\d+|demo)\/`) // TODO: V3
+var versionExp = regexp.MustCompile(`\/api\/(v\d+|v3)\/`) // TODO: V3
 
 func getVersion(path string) (string, error) {
 	parts := versionExp.FindStringSubmatch(path)
