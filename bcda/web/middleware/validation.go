@@ -235,7 +235,7 @@ func getKeys(kv map[string]struct{}) []string {
 	return keys
 }
 
-var versionExp = regexp.MustCompile(`\/api\/(v\d+|v3)\/`) // TODO: V3
+var versionExp = regexp.MustCompile(`\/api\/(v\d+|v3)\/`)
 
 func getVersion(path string) (string, error) {
 	parts := versionExp.FindStringSubmatch(path)
