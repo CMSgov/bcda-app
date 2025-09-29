@@ -136,7 +136,7 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 
 func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([][]string, bool) {
 	params, ok := r.URL.Query()["_typeFilter"]
-	if version != "v3" || !ok {
+	if version != constants.V3Version || !ok {
 		return nil, true
 	}
 
@@ -310,7 +310,7 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	case "v2":
 		return responseutilsv2.NewFhirResponseWriter(), nil
 	case constants.V3Version:
-		return responseutilsv2.NewFhirResponseWriter(), nil // TODO: V3
+		return responseutilsv2.NewFhirResponseWriter(), nil
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}
