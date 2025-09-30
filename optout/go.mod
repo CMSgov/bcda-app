@@ -1,6 +1,6 @@
 module github.com/CMSgov/bcda-app/optout
 
-go 1.24.4
+go 1.25.1
 
 require (
 	github.com/CMSgov/bcda-app v0.0.0-20250626141638-2296e4a365d9
