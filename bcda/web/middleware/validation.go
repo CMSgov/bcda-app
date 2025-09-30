@@ -46,6 +46,152 @@ func GetRequestParamsFromCtx(ctx context.Context) (RequestParameters, bool) {
 	return rp, ok
 }
 
+func validateOutputFormat(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) bool {
+	params, ok := r.URL.Query()["_outputFormat"]
+	if !ok {
+		return true
+	}
+
+	if _, found := supportedOutputFormats[params[0]]; !found {
+		errMsg := fmt.Sprintf("_outputFormat parameter must be one of %v", getKeys(supportedOutputFormats))
+		log.API.Error(errMsg)
+		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		return false
+	}
+	return true
+}
+
+// we do not support "_elements" parameter
+func validateElementsParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) bool {
+	_, ok := r.URL.Query()["_elements"]
+	if !ok {
+		return true
+	}
+
+	errMsg := "Invalid parameter: this server does not support the _elements parameter."
+	log.API.Warn(errMsg)
+	rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+	return false
+}
+
+// Check and see if the user has a duplicated the query parameter symbol (?)
+// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
+func validateQueryParameterFormat(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) bool {
+	for key := range r.URL.Query() {
+		if strings.HasPrefix(key, "?") {
+			errMsg := "Invalid parameter: query parameters cannot start with ?"
+			log.API.Warn(errMsg)
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+			return false
+		}
+	}
+	return true
+}
+
+func validateSinceParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) (time.Time, bool) {
+	params, ok := r.URL.Query()["_since"]
+	if !ok {
+		return time.Time{}, true
+	}
+
+	sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
+	if err != nil {
+		errMsg := "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."
+		log.API.Warn(errMsg)
+		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		return time.Time{}, false
+	}
+
+	if sinceDate.After(time.Now()) {
+		errMsg := "Invalid date format supplied in _since parameter. Date must be a date that has already passed"
+		log.API.Warn(errMsg)
+		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		return time.Time{}, false
+	}
+
+	return sinceDate, true
+}
+
+func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) ([]string, bool) {
+	params, ok := r.URL.Query()["_type"]
+	if !ok {
+		return nil, true
+	}
+
+	// validate no duplicate resource types
+	resourceMap := make(map[string]struct{})
+	resourceTypes := strings.Split(params[0], ",")
+	for _, resource := range resourceTypes {
+		if _, ok := resourceMap[resource]; !ok {
+			resourceMap[resource] = struct{}{}
+		} else {
+			errMsg := fmt.Sprintf("Repeated resource type %s", resource)
+			log.API.Error(errMsg)
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			return nil, false
+		}
+	}
+	return resourceTypes, true
+}
+
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([][]string, bool) {
+	params, ok := r.URL.Query()["_typeFilter"]
+	if version != constants.V3Version || !ok {
+		return nil, true
+	}
+
+	var typeFilterParams [][]string
+	for _, subQuery := range params {
+		// The subquery is url-encoded. So we will first decode so we can parse it
+		decodedQuery, err := url.QueryUnescape(subQuery)
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to unescape %s", subQuery)
+			log.API.Error(errMsg)
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			return nil, false
+		}
+
+		// Expected format is: <resourceType>?<paramList>
+		resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
+		if !ok {
+			errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
+			log.API.Error(errMsg)
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			return nil, false
+		}
+
+		// Right now, we are only accepting ExplanationOfBenefit subqueries
+		if resourceType != "ExplanationOfBenefit" {
+			errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
+			log.API.Error(errMsg)
+			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			return nil, false
+		}
+
+		// Loop through the param list from the subquery
+		paramAry := strings.Split(queryParams, "&")
+		for _, paramPair := range paramAry {
+			paramName, paramValue, ok := strings.Cut(paramPair, "=")
+			if !ok {
+				errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
+				log.API.Error(errMsg)
+				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				return nil, false
+			}
+
+			if slices.Contains([]string{"service-date", "_tag", "_profile"}, paramName) {
+				typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
+			} else {
+				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
+				log.API.Error(errMsg)
+				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				return nil, false
+			}
+		}
+	}
+	return typeFilterParams, true
+}
+
 // ValidateRequestURL ensure that request matches certain expectations.
 // Any error that it finds will result in a http.StatusBadRequest response.
 // If successful, it populates the request context with RequestParameters that can be used downstream.
@@ -57,134 +203,41 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			return
 		}
 
-		var rp RequestParameters
-		rp.Version = version
-		rp.RequestURL = r.URL.String()
-
-		//validate "_outputFormat" parameter
-		params, ok := r.URL.Query()["_outputFormat"]
-		if ok {
-			if _, found := supportedOutputFormats[params[0]]; !found {
-				errMsg := fmt.Sprintf("_outputFormat parameter must be one of %v", getKeys(supportedOutputFormats))
-				log.API.Error(errMsg)
-				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
-				return
-			}
-		}
-
-		// we do not support "_elements" parameter
-		_, ok = r.URL.Query()["_elements"]
-		if ok {
-			errMsg := "Invalid parameter: this server does not support the _elements parameter."
-			log.API.Warn(errMsg)
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		// Validate all parameters
+		if !validateOutputFormat(r, rw, w) ||
+			!validateElementsParameter(r, rw, w) ||
+			!validateQueryParameterFormat(r, rw, w) {
 			return
 		}
 
-		// Check and see if the user has a duplicated the query parameter symbol (?)
-		// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
-		for key := range r.URL.Query() {
-			if strings.HasPrefix(key, "?") {
-				errMsg := "Invalid parameter: query parameters cannot start with ?"
-				log.API.Warn(errMsg)
-				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
-				return
-			}
+		// Validate _since parameter
+		sinceDate, valid := validateSinceParameter(r, rw, w)
+		if !valid {
+			return
 		}
 
-		// validate optional "_since" parameter
-		params, ok = r.URL.Query()["_since"]
-		if ok {
-			sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
-			if err != nil {
-				errMsg := "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."
-				log.API.Warn(errMsg)
-				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
-				return
-			} else if sinceDate.After(time.Now()) {
-				errMsg := "Invalid date format supplied in _since parameter. Date must be a date that has already passed"
-				log.API.Warn(errMsg)
-				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
-				return
-			}
-			rp.Since = sinceDate
+		// Validate resource types
+		resourceTypes, valid := validateResourceTypes(r, rw, w)
+		if !valid {
+			return
 		}
 
-		// validate no duplicate resource types
-		params, ok = r.URL.Query()["_type"]
-		if ok {
-			resourceMap := make(map[string]struct{})
-			resourceTypes := strings.Split(params[0], ",")
-			for _, resource := range resourceTypes {
-				if _, ok := resourceMap[resource]; !ok {
-					resourceMap[resource] = struct{}{}
-				} else {
-					errMsg := fmt.Sprintf("Repeated resource type %s", resource)
-					log.API.Error(errMsg)
-					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-					return
-				}
-			}
-			rp.ResourceTypes = resourceTypes
+		// Validate type filter for v3
+		typeFilter, valid := validateTypeFilterParameter(r, rw, w, version)
+		if !valid {
+			return
 		}
 
-		// validate _typeFilter params
-		params, ok = r.URL.Query()["_typeFilter"]
-		if (version == "demo") && ok {
-			var typeFilterParams [][]string
-			for _, subQuery := range params {
-
-				// The subquery is url-encoded. So we will first decode so we can parse it
-				decodedQuery, err := url.QueryUnescape(subQuery)
-				if err != nil {
-					errMsg := fmt.Sprintf("failed to unescape %s", subQuery)
-					log.API.Error(errMsg)
-					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-					return
-				}
-
-				// Expected format is: <resourceType>?<paramList>
-				resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
-				if !ok {
-					errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
-					log.API.Error(errMsg)
-					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-				}
-
-				// Right now, we are only accepting ExplanationOfBenefit subqueries
-				if resourceType != "ExplanationOfBenefit" {
-					errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
-					log.API.Error(errMsg)
-					rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-				}
-
-				// Loop through the param list from the subquery
-				paramAry := strings.Split(queryParams, "&")
-				for _, paramPair := range paramAry {
-
-					paramName, paramValue, ok := strings.Cut(paramPair, "=")
-					if !ok {
-						errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
-						log.API.Error(errMsg)
-						rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-					}
-
-					if slices.Contains([]string{"service-date", "_tag", "_profile"}, paramName) {
-						typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
-					} else {
-						errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
-						log.API.Error(errMsg)
-						rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-						return
-					}
-				}
-
-				rp.TypeFilter = typeFilterParams
-			}
+		// Build request parameters
+		rp := RequestParameters{
+			Version:       version,
+			RequestURL:    r.URL.String(),
+			Since:         sinceDate,
+			ResourceTypes: resourceTypes,
+			TypeFilter:    typeFilter,
 		}
 
 		ctx := SetRequestParamsCtx(r.Context(), rp)
-
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -235,7 +288,7 @@ func getKeys(kv map[string]struct{}) []string {
 	return keys
 }
 
-var versionExp = regexp.MustCompile(`\/api\/(v\d+|demo)\/`) // TODO: V3
+var versionExp = regexp.MustCompile(`\/api\/(v\d+)\/`)
 
 func getVersion(path string) (string, error) {
 	parts := versionExp.FindStringSubmatch(path)
@@ -257,7 +310,7 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	case "v2":
 		return responseutilsv2.NewFhirResponseWriter(), nil
 	case constants.V3Version:
-		return responseutilsv2.NewFhirResponseWriter(), nil // TODO: V3
+		return responseutilsv2.NewFhirResponseWriter(), nil
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}

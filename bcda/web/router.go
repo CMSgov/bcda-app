@@ -82,7 +82,7 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 
 	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
 		apiV3 := v3.NewApiV3(db, pool)
-		r.Route("/api/demo", func(r chi.Router) {
+		r.Route("/api/v3", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV3.BulkPatientRequest))
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV3.BulkGroupRequest))
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Get(m.WrapHandler(constants.JOBIDPath, apiV3.JobStatus))
