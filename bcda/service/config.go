@@ -52,6 +52,7 @@ type ACOConfig struct {
 	PerfYearTransition string          `conf:"performance_year_transition"`
 	LookbackYears      int             `conf:"lookback_period"`
 	Disabled           bool            `conf:"disabled" conf_default:"false"`
+	V3AccessEnabled    bool            `conf:"v3_access_enabled" conf_default:"false"`
 	Data               []string        `conf:"data"`
 	IgnoreSuppressions bool            `conf:"ignore_suppressions" conf_default:"false"`
 	AttributionFile    AttributionFile `conf:"attribution_file"`
@@ -137,6 +138,16 @@ func (config *Config) IsACODisabled(CMSID string) bool {
 	}
 	// If the ACO does not exist in our config they are automatically disabled
 	return true
+}
+
+func (config *Config) IsACOV3Enabled(CMSID string) bool {
+	for _, ACOcfg := range config.ACOConfigs {
+		if ACOcfg.patternExp.MatchString(CMSID) {
+			return ACOcfg.V3AccessEnabled
+		}
+	}
+	// If the ACO does not exist in our config they are automatically disabled
+	return false
 }
 
 // LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
