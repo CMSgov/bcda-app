@@ -92,6 +92,166 @@ func expectedPerfYear(base time.Time, minusYears int) time.Time {
 	return time.Date(base.Year()-minusYears, base.Month(), base.Day(), 0, 0, 0, 0, time.UTC)
 }
 
+func TestIsACOV3Enabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		cmsID    string
+		expected bool
+		cfg      *Config
+	}{
+		{
+			name:     "ACOWithV3Enabled",
+			cmsID:    "TEST1234",
+			expected: true,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, constants.RegexACOID),
+						V3AccessEnabled: true,
+					},
+				},
+			},
+		},
+		{
+			name:     "ACOWithV3Disabled",
+			cmsID:    "TEST1234",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, constants.RegexACOID),
+						V3AccessEnabled: false,
+					},
+				},
+			},
+		},
+		{
+			name:     "ACODoesNotExist",
+			cmsID:    "DNE1234",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, constants.RegexACOID),
+						V3AccessEnabled: true,
+					},
+				},
+			},
+		},
+		{
+			name:     "EmptyConfig",
+			cmsID:    "TEST1234",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{},
+			},
+		},
+		{
+			name:     "NilConfig",
+			cmsID:    "TEST1234",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: nil,
+			},
+		},
+		{
+			name:     "MultipleACOsFirstMatch",
+			cmsID:    "TEST1234",
+			expected: true,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, constants.RegexACOID),
+						V3AccessEnabled: true,
+					},
+					{
+						patternExp:      compileRegex(t, "OTHER\\d{4}"),
+						V3AccessEnabled: false,
+					},
+				},
+			},
+		},
+		{
+			name:     "MultipleACOsSecondMatch",
+			cmsID:    "OTHER5678",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, constants.RegexACOID),
+						V3AccessEnabled: true,
+					},
+					{
+						patternExp:      compileRegex(t, "OTHER\\d{4}"),
+						V3AccessEnabled: false,
+					},
+				},
+			},
+		},
+		{
+			name:     "WildcardPatternMatch",
+			cmsID:    "ANY1234",
+			expected: true,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, ".*"),
+						V3AccessEnabled: true,
+					},
+				},
+			},
+		},
+		{
+			name:     "SpecificPatternMatch",
+			cmsID:    "SPECIFIC123",
+			expected: true,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, "SPECIFIC\\d{3}"),
+						V3AccessEnabled: true,
+					},
+				},
+			},
+		},
+		{
+			name:     "CaseSensitivePattern",
+			cmsID:    "test1234",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, "TEST\\d{4}"),
+						V3AccessEnabled: true,
+					},
+				},
+			},
+		},
+		{
+			name:     "EmptyCMSID",
+			cmsID:    "",
+			expected: false,
+			cfg: &Config{
+				ACOConfigs: []ACOConfig{
+					{
+						patternExp:      compileRegex(t, constants.RegexACOID),
+						V3AccessEnabled: true,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.cfg.IsACOV3Enabled(tt.cmsID)
+			assert.Equal(t, tt.expected, result,
+				"Expected V3 access enabled=%v for CMS ID '%s' in test case '%s'",
+				tt.expected, tt.cmsID, tt.name)
+		})
+	}
+}
+
 func compileRegex(t *testing.T, pattern string) *regexp.Regexp {
 	patternExp, err := regexp.Compile(pattern)
 	assert.NoError(t, err)

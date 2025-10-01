@@ -146,7 +146,6 @@ func (config *Config) IsACOV3Enabled(CMSID string) bool {
 			return ACOcfg.V3AccessEnabled
 		}
 	}
-	// If the ACO does not exist in our config they are automatically disabled
 	return false
 }
 
