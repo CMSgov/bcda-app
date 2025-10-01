@@ -22,6 +22,9 @@ import (
 func TestLoggers(t *testing.T) {
 	env := uuid.New()
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", env)
+	oldVal := conf.GetEnv("LOG_TO_STD_OUT")
+	conf.SetEnv(t, "LOG_TO_STD_OUT", "false")
+	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldVal) })
 
 	tests := []struct {
 		logEnv string

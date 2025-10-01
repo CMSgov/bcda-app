@@ -382,6 +382,10 @@ func (s *CLITestSuite) TestCreateACO() {
 }
 
 func (s *CLITestSuite) TestImportCCLFDirectory() {
+	oldVal := conf.GetEnv("LOG_TO_STD_OUT")
+	conf.SetEnv(s.T(), "LOG_TO_STD_OUT", "false")
+	s.T().Cleanup(func() { conf.SetEnv(s.T(), "LOG_TO_STD_OUT", oldVal) })
+
 	targetACO := "A0002"
 	assert := assert.New(s.T())
 
