@@ -34,14 +34,14 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
-		if !ok {
-			// We cannot get the correct FHIR response writer from here, so
-			// return a non-FHIR-compliant HTTP response
-			logger := log.GetCtxLogger(r.Context())
-			logger.Error("AuthData should be set before calling this handler")
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
+			if !ok {
+				// We cannot get the correct FHIR response writer from here, so
+				// return a non-FHIR-compliant HTTP response
+				logger := log.GetCtxLogger(r.Context())
+				logger.Error("AuthData should be set before calling this handler")
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 
 			rw, _ := getResponseWriterFromRequestPath(w, r)
 			if rw == nil {
