@@ -21,8 +21,13 @@ linters:
       - examples$
     rules:
       - linters:
-        - errcheck
+          - errcheck
         text: "conf.UnsetEnv|conf.SetEnv" # these are used and unchecked in over 280 test files
+      # disable package deprecation for aws-sdk-go until https://jira.cms.gov/browse/BCDA-9484 is finished
+      - linters:
+          - staticcheck
+        text: "aws-sdk-go"
+      #- end disable for BCDA-9484
 formatters:
   enable:
     - gofmt

@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1-experimental
-FROM golang:1.24.4-alpine3.22
+FROM golang:1.25.1-alpine3.22
 
 RUN apk update upgrade && \
     apk add \
@@ -7,7 +7,7 @@ RUN apk update upgrade && \
         build-base \
         curl
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.2.1
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.5.0
 
 RUN go install github.com/securego/gosec/v2/cmd/gosec@v2.22.8
 RUN go install gotest.tools/gotestsum@v1.12.3
