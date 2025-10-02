@@ -3,47 +3,39 @@ aco_config:
       name_pattern: "C\\d{4}"
       performance_year_transition: "01/01"
       lookback_period: 2
-      v3_access_enabled: true
       data:
         - "adjudicated"
     - model: "KCF"
       name_pattern: "K\\d{4}"
       performance_year_transition: "01/01"
       lookback_period: 2
-      v3_access_enabled: true
       data:
         - "adjudicated"
     - model: "DC"
       name_pattern: "D\\d{4}"
       performance_year_transition: "04/01"
       lookback_period: 3
-      v3_access_enabled: true
       data:
         - "adjudicated"
     - model: "SSP"
       name_pattern: "^A\\d{4}"
-      v3_access_enabled: true
       data:
         - "adjudicated"
     - model: "CEC"
       name_pattern: "E\\d{4}"
-      v3_access_enabled: true
       data:
         - "adjudicated"
     - model: "NGACO"
       name_pattern: "V\\d{3}"
-      v3_access_enabled: true
       data:
         - "adjudicated"
     - model: "TEST"
       name_pattern: "TEST\\d{3}"
-      v3_access_enabled: true
       data:
         - "adjudicated"
         - "partially-adjudicated"
     - model: "TCOCMD"
       name_pattern: "CT\\d{6}"
-      v3_access_enabled: true
       data:
         - "adjudicated"
         - "partially-adjudicated"
@@ -57,7 +49,6 @@ aco_config:
       ignore_suppressions: true
     - model: "CDAC"
       name_pattern: "DA\\d{4}"
-      v3_access_enabled: true
       data:
         - "adjudicated"
         - "partially-adjudicated"
@@ -70,7 +61,6 @@ aco_config:
         metadata_matches: 7
     - model: "GUIDE"
       name_pattern: "GUIDE-\\d{5}"
-      v3_access_enabled: true
       data:
       attribution_file:
         file_type: "csv"
@@ -82,3 +72,4 @@ aco_config:
 rate_limit_config:
   all: false
   acos: []
+v3_enabled_acos: []

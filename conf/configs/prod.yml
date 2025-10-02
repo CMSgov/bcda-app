@@ -3,48 +3,40 @@ aco_config:
       name_pattern: "C\\d{4}"
       performance_year_transition: "01/01"
       lookback_period: 2
-      v3_access_enabled: false
       data:
         - "adjudicated"
     - model: "KCF" # 4i
       name_pattern: "K\\d{4}"
       performance_year_transition: "01/01"
       lookback_period: 2
-      v3_access_enabled: false
       data:
         - "adjudicated"
     - model: "DC" # 4i
       name_pattern: "D\\d{4}"
       performance_year_transition: "04/01"
       lookback_period: 3
-      v3_access_enabled: false
       data:
         - "partially-adjudicated"
         - "adjudicated"
     - model: "SSP" # ACO-MS
       name_pattern: "^A\\d{4}"
-      v3_access_enabled: false
       data:
         - "adjudicated"
     - model: "CEC" # inactive
       name_pattern: "E\\d{4}"
-      v3_access_enabled: false
       data:
         - "adjudicated"
     - model: "NGACO" # inactive
       name_pattern: "V\\d{3}"
-      v3_access_enabled: false
       data:
         - "adjudicated"
     - model: "TEST"
       name_pattern: "TEST\\d{3}"
-      v3_access_enabled: false
       data:
         - "adjudicated"
         - "partially-adjudicated"
     - model: "TCOCMD" # BCDA Admin
       name_pattern: "CT\\d{6}"
-      v3_access_enabled: false
       data:
         - "adjudicated"
         - "partially-adjudicated"
@@ -58,7 +50,6 @@ aco_config:
       ignore_suppressions: true
     - model: "CDAC" # IHP
       name_pattern: "DA\\d{4}"
-      v3_access_enabled: false
       data:
         - "adjudicated"
         - "partially-adjudicated"
@@ -71,7 +62,6 @@ aco_config:
         metadata_matches: 7
     - model: "GUIDE"
       name_pattern: "GUIDE-\\d{5}"
-      v3_access_enabled: false
       data:
       attribution_file:
         file_type: "csv"
@@ -83,3 +73,8 @@ aco_config:
 rate_limit_config:
   all: true
   acos: []
+v3_enabled_acos:
+  - "A1234"
+  - "A5678"
+  - "A9990"
+  - "CT123456"
