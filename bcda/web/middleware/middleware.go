@@ -79,9 +79,9 @@ func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			if !cfg.IsACOV3Enabled(ad.CMSID) {
+			if !cfg.IsACOV3Enabled(ad.ACOID) {
 				logger := log.GetCtxLogger(r.Context())
-				logger.Error(fmt.Sprintf("failed to complete v3 request, CMSID %s does not have v3 access", ad.CMSID))
+				logger.Error(fmt.Sprintf("failed to complete v3 request, ACOID %s does not have v3 access", ad.ACOID))
 				rw.Exception(r.Context(), w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
 				return
 			}
