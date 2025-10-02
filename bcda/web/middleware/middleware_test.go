@@ -240,7 +240,7 @@ func (s *MiddlewareTestSuite) TestV3AccessControl() {
 }
 
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
-	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
+	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid, ACOID: cmsid})
 	ctx = SetRequestParamsCtx(ctx, rp)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
