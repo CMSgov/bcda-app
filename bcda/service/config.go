@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"time"
 
@@ -29,6 +30,7 @@ type Config struct {
 	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
 	ACOConfigs              []ACOConfig `conf:"aco_config"`
+	V3EnabledACOs           []string    `conf:"v3_enabled_acos"` // Simple list of ACOs with v3 access
 	CutoffDuration          time.Duration
 	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
 	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
@@ -52,7 +54,6 @@ type ACOConfig struct {
 	PerfYearTransition string          `conf:"performance_year_transition"`
 	LookbackYears      int             `conf:"lookback_period"`
 	Disabled           bool            `conf:"disabled" conf_default:"false"`
-	V3AccessEnabled    bool            `conf:"v3_access_enabled" conf_default:"false"`
 	Data               []string        `conf:"data"`
 	IgnoreSuppressions bool            `conf:"ignore_suppressions" conf_default:"false"`
 	AttributionFile    AttributionFile `conf:"attribution_file"`
@@ -141,9 +142,13 @@ func (config *Config) IsACODisabled(CMSID string) bool {
 }
 
 func (config *Config) IsACOV3Enabled(CMSID string) bool {
-	for _, ACOcfg := range config.ACOConfigs {
-		if ACOcfg.patternExp.MatchString(CMSID) {
-			return ACOcfg.V3AccessEnabled
+	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
+		return true
+	}
+
+	for _, aco := range config.V3EnabledACOs {
+		if aco == CMSID {
+			return true
 		}
 	}
 	return false
