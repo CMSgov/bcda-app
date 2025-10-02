@@ -205,20 +205,30 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 }
 
 func (s *MiddlewareTestSuite) TestV3AccessControl() {
+	originalDeploymentTarget := os.Getenv("DEPLOYMENT_TARGET")
+	defer func() {
+		os.Setenv("DEPLOYMENT_TARGET", originalDeploymentTarget)
+	}()
+	os.Setenv("DEPLOYMENT_TARGET", "prod")
+
 	tests := []struct {
 		name          string
 		cmsid         string
-		ACOconfig     service.ACOConfig
+		enabledACOs   []string
 		expected_code int
 	}{
-		{"V3AccessEnabled", "TEST01234", service.ACOConfig{Pattern: `TEST\d{4}`, V3AccessEnabled: true}, http.StatusOK},
-		{"V3AccessDisabled", "TEST01234", service.ACOConfig{Pattern: `TEST\d{4}`, V3AccessEnabled: false}, http.StatusForbidden},
-		{"ACODNE", "Not_An_ACO", service.ACOConfig{Pattern: `TEST\d{4}`, V3AccessEnabled: true}, http.StatusForbidden},
+		{"V3AccessEnabled", "A1234", []string{"A1234", "A5678"}, http.StatusOK},
+		{"V3AccessDisabled", "A9999", []string{"A1234", "A5678"}, http.StatusForbidden},
+		{"EmptyEnabledList", "A1234", []string{}, http.StatusForbidden},
+		{"NilEnabledList", "A1234", nil, http.StatusForbidden},
+		{"CaseSensitive", "a1234", []string{"A1234", "A5678"}, http.StatusForbidden},
 	}
 
 	for _, tt := range tests {
-		cfg := &service.Config{RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{tt.ACOconfig}}
-		assert.NoError(s.T(), cfg.ComputeFields())
+		cfg := &service.Config{
+			RunoutConfig:  service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+			V3EnabledACOs: tt.enabledACOs,
+		}
 
 		rr := httptest.NewRecorder()
 		V3Middleware := V3AccessControl(cfg)
@@ -227,24 +237,6 @@ func (s *MiddlewareTestSuite) TestV3AccessControl() {
 		})).ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
 		assert.Equal(s.T(), tt.expected_code, rr.Code)
 	}
-}
-
-func (s *MiddlewareTestSuite) TestV3AccessControl_MultipleACOs() {
-	cfg := &service.Config{
-		RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
-		ACOConfigs: []service.ACOConfig{
-			{Pattern: `TEST\d{4}`, V3AccessEnabled: true},
-			{Pattern: `OTHER\d{4}`, V3AccessEnabled: false},
-		},
-	}
-	assert.NoError(s.T(), cfg.ComputeFields())
-
-	rr := httptest.NewRecorder()
-	V3Middleware := V3AccessControl(cfg)
-
-	V3Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-	})).ServeHTTP(rr, testRequest(RequestParameters{}, "TEST1234"))
-	assert.Equal(s.T(), http.StatusOK, rr.Code)
 }
 
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
