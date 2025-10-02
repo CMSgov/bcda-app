@@ -141,13 +141,13 @@ func (config *Config) IsACODisabled(CMSID string) bool {
 	return true
 }
 
-func (config *Config) IsACOV3Enabled(CMSID string) bool {
+func (config *Config) IsACOV3Enabled(ACOID string) bool {
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		return true
 	}
 
 	for _, aco := range config.V3EnabledACOs {
-		if aco == CMSID {
+		if aco == ACOID {
 			return true
 		}
 	}
