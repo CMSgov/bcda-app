@@ -93,6 +93,12 @@ func expectedPerfYear(base time.Time, minusYears int) time.Time {
 }
 
 func TestIsACOV3Enabled(t *testing.T) {
+	originalDeploymentTarget := os.Getenv("DEPLOYMENT_TARGET")
+	defer func() {
+		os.Setenv("DEPLOYMENT_TARGET", originalDeploymentTarget)
+	}()
+	os.Setenv("DEPLOYMENT_TARGET", "prod")
+
 	tests := []struct {
 		name     string
 		cmsID    string
@@ -100,131 +106,35 @@ func TestIsACOV3Enabled(t *testing.T) {
 		cfg      *Config
 	}{
 		{
-			name:     "ACOWithV3Enabled",
-			cmsID:    "TEST1234",
+			name:     "ACOInEnabledList",
+			cmsID:    "A1234",
 			expected: true,
 			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, constants.RegexACOID),
-						V3AccessEnabled: true,
-					},
-				},
+				V3EnabledACOs: []string{"A1234", "A5678", "A9990"},
 			},
 		},
 		{
-			name:     "ACOWithV3Disabled",
-			cmsID:    "TEST1234",
+			name:     "ACONotInEnabledList",
+			cmsID:    "A9999",
 			expected: false,
 			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, constants.RegexACOID),
-						V3AccessEnabled: false,
-					},
-				},
+				V3EnabledACOs: []string{"A1234", "A5678", "A9990"},
 			},
 		},
 		{
-			name:     "ACODoesNotExist",
-			cmsID:    "DNE1234",
+			name:     "EmptyEnabledList",
+			cmsID:    "A1234",
 			expected: false,
 			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, constants.RegexACOID),
-						V3AccessEnabled: true,
-					},
-				},
+				V3EnabledACOs: []string{},
 			},
 		},
 		{
-			name:     "EmptyConfig",
-			cmsID:    "TEST1234",
+			name:     "NilEnabledList",
+			cmsID:    "A1234",
 			expected: false,
 			cfg: &Config{
-				ACOConfigs: []ACOConfig{},
-			},
-		},
-		{
-			name:     "NilConfig",
-			cmsID:    "TEST1234",
-			expected: false,
-			cfg: &Config{
-				ACOConfigs: nil,
-			},
-		},
-		{
-			name:     "MultipleACOsFirstMatch",
-			cmsID:    "TEST1234",
-			expected: true,
-			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, constants.RegexACOID),
-						V3AccessEnabled: true,
-					},
-					{
-						patternExp:      compileRegex(t, "OTHER\\d{4}"),
-						V3AccessEnabled: false,
-					},
-				},
-			},
-		},
-		{
-			name:     "MultipleACOsSecondMatch",
-			cmsID:    "OTHER5678",
-			expected: false,
-			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, constants.RegexACOID),
-						V3AccessEnabled: true,
-					},
-					{
-						patternExp:      compileRegex(t, "OTHER\\d{4}"),
-						V3AccessEnabled: false,
-					},
-				},
-			},
-		},
-		{
-			name:     "WildcardPatternMatch",
-			cmsID:    "ANY1234",
-			expected: true,
-			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, ".*"),
-						V3AccessEnabled: true,
-					},
-				},
-			},
-		},
-		{
-			name:     "SpecificPatternMatch",
-			cmsID:    "SPECIFIC123",
-			expected: true,
-			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, "SPECIFIC\\d{3}"),
-						V3AccessEnabled: true,
-					},
-				},
-			},
-		},
-		{
-			name:     "CaseSensitivePattern",
-			cmsID:    "test1234",
-			expected: false,
-			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, "TEST\\d{4}"),
-						V3AccessEnabled: true,
-					},
-				},
+				V3EnabledACOs: nil,
 			},
 		},
 		{
@@ -232,12 +142,31 @@ func TestIsACOV3Enabled(t *testing.T) {
 			cmsID:    "",
 			expected: false,
 			cfg: &Config{
-				ACOConfigs: []ACOConfig{
-					{
-						patternExp:      compileRegex(t, constants.RegexACOID),
-						V3AccessEnabled: true,
-					},
-				},
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+		{
+			name:     "CaseSensitiveMatch",
+			cmsID:    "a1234",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+		{
+			name:     "ExactMatch",
+			cmsID:    "A1234",
+			expected: true,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+		{
+			name:     "PartialMatch",
+			cmsID:    "A123",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
 			},
 		},
 	}
@@ -245,6 +174,92 @@ func TestIsACOV3Enabled(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.cfg.IsACOV3Enabled(tt.cmsID)
+			assert.Equal(t, tt.expected, result,
+				"Expected V3 access enabled=%v for CMS ID '%s' in test case '%s'",
+				tt.expected, tt.cmsID, tt.name)
+		})
+	}
+}
+
+func TestIsACOV3Enabled_EnvironmentBased(t *testing.T) {
+	originalDeploymentTarget := os.Getenv("DEPLOYMENT_TARGET")
+	defer func() {
+		os.Setenv("DEPLOYMENT_TARGET", originalDeploymentTarget)
+	}()
+
+	tests := []struct {
+		name             string
+		cmsID            string
+		deploymentTarget string
+		enabledACOs      []string
+		expected         bool
+	}{
+		{
+			name:             "NonProduction_Dev",
+			cmsID:            "ANY1234",
+			deploymentTarget: "dev",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Test",
+			cmsID:            "ANY1234",
+			deploymentTarget: "test",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Sandbox",
+			cmsID:            "ANY1234",
+			deploymentTarget: "sandbox",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Empty",
+			cmsID:            "ANY1234",
+			deploymentTarget: "",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Unknown",
+			cmsID:            "ANY1234",
+			deploymentTarget: "unknown",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "Production_ACOInList",
+			cmsID:            "A1234",
+			deploymentTarget: "prod",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow ACO in list
+		},
+		{
+			name:             "Production_ACONotInList",
+			cmsID:            "A9999",
+			deploymentTarget: "prod",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         false, // Should deny ACO not in list
+		},
+		{
+			name:             "Production_EmptyList",
+			cmsID:            "A1234",
+			deploymentTarget: "prod",
+			enabledACOs:      []string{},
+			expected:         false, // Should deny when list is empty
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv("DEPLOYMENT_TARGET", tt.deploymentTarget)
+			cfg := &Config{
+				V3EnabledACOs: tt.enabledACOs,
+			}
+
+			result := cfg.IsACOV3Enabled(tt.cmsID)
 			assert.Equal(t, tt.expected, result,
 				"Expected V3 access enabled=%v for CMS ID '%s' in test case '%s'",
 				tt.expected, tt.cmsID, tt.name)
