@@ -92,6 +92,181 @@ func expectedPerfYear(base time.Time, minusYears int) time.Time {
 	return time.Date(base.Year()-minusYears, base.Month(), base.Day(), 0, 0, 0, 0, time.UTC)
 }
 
+func TestIsACOV3Enabled(t *testing.T) {
+	originalDeploymentTarget := os.Getenv("DEPLOYMENT_TARGET")
+	defer func() {
+		os.Setenv("DEPLOYMENT_TARGET", originalDeploymentTarget)
+	}()
+	os.Setenv("DEPLOYMENT_TARGET", "prod")
+
+	tests := []struct {
+		name     string
+		acoID    string
+		expected bool
+		cfg      *Config
+	}{
+		{
+			name:     "ACOInEnabledList",
+			acoID:    "A1234",
+			expected: true,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678", "A9990"},
+			},
+		},
+		{
+			name:     "ACONotInEnabledList",
+			acoID:    "A9999",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678", "A9990"},
+			},
+		},
+		{
+			name:     "EmptyEnabledList",
+			acoID:    "A1234",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{},
+			},
+		},
+		{
+			name:     "NilEnabledList",
+			acoID:    "A1234",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: nil,
+			},
+		},
+		{
+			name:     "EmptyCMSID",
+			acoID:    "",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+		{
+			name:     "CaseSensitiveMatch",
+			acoID:    "a1234",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+		{
+			name:     "ExactMatch",
+			acoID:    "A1234",
+			expected: true,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+		{
+			name:     "PartialMatch",
+			acoID:    "A123",
+			expected: false,
+			cfg: &Config{
+				V3EnabledACOs: []string{"A1234", "A5678"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.cfg.IsACOV3Enabled(tt.acoID)
+			assert.Equal(t, tt.expected, result,
+				"Expected V3 access enabled=%v for CMS ID '%s' in test case '%s'",
+				tt.expected, tt.acoID, tt.name)
+		})
+	}
+}
+
+func TestIsACOV3Enabled_EnvironmentBased(t *testing.T) {
+	originalDeploymentTarget := os.Getenv("DEPLOYMENT_TARGET")
+	defer func() {
+		os.Setenv("DEPLOYMENT_TARGET", originalDeploymentTarget)
+	}()
+
+	tests := []struct {
+		name             string
+		acoID            string
+		deploymentTarget string
+		enabledACOs      []string
+		expected         bool
+	}{
+		{
+			name:             "NonProduction_Dev",
+			acoID:            "ANY1234",
+			deploymentTarget: "dev",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Test",
+			acoID:            "ANY1234",
+			deploymentTarget: "test",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Sandbox",
+			acoID:            "ANY1234",
+			deploymentTarget: "sandbox",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Empty",
+			acoID:            "ANY1234",
+			deploymentTarget: "",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "NonProduction_Unknown",
+			acoID:            "ANY1234",
+			deploymentTarget: "unknown",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow any ACO in non-production
+		},
+		{
+			name:             "Production_ACOInList",
+			acoID:            "A1234",
+			deploymentTarget: "prod",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         true, // Should allow ACO in list
+		},
+		{
+			name:             "Production_ACONotInList",
+			acoID:            "A9999",
+			deploymentTarget: "prod",
+			enabledACOs:      []string{"A1234", "A5678"},
+			expected:         false, // Should deny ACO not in list
+		},
+		{
+			name:             "Production_EmptyList",
+			acoID:            "A1234",
+			deploymentTarget: "prod",
+			enabledACOs:      []string{},
+			expected:         false, // Should deny when list is empty
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv("DEPLOYMENT_TARGET", tt.deploymentTarget)
+			cfg := &Config{
+				V3EnabledACOs: tt.enabledACOs,
+			}
+
+			result := cfg.IsACOV3Enabled(tt.acoID)
+			assert.Equal(t, tt.expected, result,
+				"Expected V3 access enabled=%v for CMS ID '%s' in test case '%s'",
+				tt.expected, tt.acoID, tt.name)
+		})
+	}
+}
+
 func compileRegex(t *testing.T, pattern string) *regexp.Regexp {
 	patternExp, err := regexp.Compile(pattern)
 	assert.NoError(t, err)

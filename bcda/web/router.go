@@ -82,11 +82,17 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 
 	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
 		apiV3 := v3.NewApiV3(db, pool)
+		var v3RequestValidators = []func(http.Handler) http.Handler{
+			middleware.ACOEnabled(cfg), middleware.V3AccessControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
+		}
+		var v3NonExportRequestValidators = []func(http.Handler) http.Handler{
+			middleware.ACOEnabled(cfg), middleware.V3AccessControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+		}
 		r.Route("/api/v3", func(r chi.Router) {
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV3.BulkPatientRequest))
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV3.BulkGroupRequest))
+			r.With(append(commonAuth, v3RequestValidators...)...).Get(m.WrapHandler("/Patient/$export", apiV3.BulkPatientRequest))
+			r.With(append(commonAuth, v3RequestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", apiV3.BulkGroupRequest))
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Get(m.WrapHandler(constants.JOBIDPath, apiV3.JobStatus))
-			r.With(append(commonAuth, nonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", apiV3.JobsStatus))
+			r.With(append(commonAuth, v3NonExportRequestValidators...)...).Get(m.WrapHandler("/jobs", apiV3.JobsStatus))
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Delete(m.WrapHandler(constants.JOBIDPath, apiV3.DeleteJob))
 			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", apiV3.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", apiV3.Metadata))

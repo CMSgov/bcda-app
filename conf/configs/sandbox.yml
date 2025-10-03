@@ -85,3 +85,4 @@ aco_config:
 rate_limit_config:
   all: false
   acos: ["SBXBM0002"]
+v3_enabled_acos: []

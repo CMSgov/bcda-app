@@ -72,3 +72,4 @@ aco_config:
 rate_limit_config:
   all: true
   acos: []
+v3_enabled_acos: []

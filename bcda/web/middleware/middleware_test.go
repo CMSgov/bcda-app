@@ -204,8 +204,43 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 	}
 }
 
+func (s *MiddlewareTestSuite) TestV3AccessControl() {
+	originalDeploymentTarget := os.Getenv("DEPLOYMENT_TARGET")
+	defer func() {
+		os.Setenv("DEPLOYMENT_TARGET", originalDeploymentTarget)
+	}()
+	os.Setenv("DEPLOYMENT_TARGET", "prod")
+
+	tests := []struct {
+		name          string
+		cmsid         string
+		enabledACOs   []string
+		expected_code int
+	}{
+		{"V3AccessEnabled", "A1234", []string{"A1234", "A5678"}, http.StatusOK},
+		{"V3AccessDisabled", "A9999", []string{"A1234", "A5678"}, http.StatusForbidden},
+		{"EmptyEnabledList", "A1234", []string{}, http.StatusForbidden},
+		{"NilEnabledList", "A1234", nil, http.StatusForbidden},
+		{"CaseSensitive", "a1234", []string{"A1234", "A5678"}, http.StatusForbidden},
+	}
+
+	for _, tt := range tests {
+		cfg := &service.Config{
+			RunoutConfig:  service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+			V3EnabledACOs: tt.enabledACOs,
+		}
+
+		rr := httptest.NewRecorder()
+		V3Middleware := V3AccessControl(cfg)
+
+		V3Middleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		})).ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
+		assert.Equal(s.T(), tt.expected_code, rr.Code)
+	}
+}
+
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
-	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
+	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid, ACOID: cmsid})
 	ctx = SetRequestParamsCtx(ctx, rp)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)

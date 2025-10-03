@@ -47,7 +47,7 @@ aco_config:
         file_performance_year: 4
         file_date: 6
         metadata_matches: 7
-      ignore_suppressions: true 
+      ignore_suppressions: true
     - model: "CDAC" # IHP
       name_pattern: "DA\\d{4}"
       data:
@@ -73,3 +73,8 @@ aco_config:
 rate_limit_config:
   all: true
   acos: []
+v3_enabled_acos:
+  - "A1234"
+  - "A5678"
+  - "A9990"
+  - "CT123456"
