@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -56,7 +56,7 @@ type CommonClaims struct {
 	Scopes   []string `json:"scp,omitempty"`
 	ACOID    string   `json:"aco,omitempty"`
 	UUID     string   `json:"id,omitempty"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 // Provider defines operations performed through an authentication provider.

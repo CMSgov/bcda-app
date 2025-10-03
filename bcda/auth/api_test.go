@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus/hooks/test"
 
@@ -161,7 +161,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 
 	var ad auth.AuthData
 	token := &jwt.Token{Raw: goodToken, Valid: true, Claims: &auth.CommonClaims{
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer: "ssas",
 		},
 		ClientID: uuid.New(),

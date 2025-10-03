@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
@@ -149,7 +149,7 @@ func (s SSASPlugin) getAuthDataFromClaims(claims *CommonClaims) (AuthData, error
 
 	ad.SystemID = claims.SystemID
 	ad.ClientID = claims.ClientID
-	ad.TokenID = claims.Id
+	ad.TokenID = claims.ID
 
 	if claims.Data == "" {
 		return ad, errors.New("incomplete ssas token")

@@ -8,7 +8,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	mock "github.com/stretchr/testify/mock"
 )
 
