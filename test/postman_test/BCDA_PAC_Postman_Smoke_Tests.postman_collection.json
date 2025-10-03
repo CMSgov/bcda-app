@@ -395,7 +395,7 @@
 												"type": "text"
 											}
 										],
-										"url": "{{scheme}}://{{host}}/api/demo/Patient/$export"
+										"url": "{{scheme}}://{{host}}/api/v3/Patient/$export"
 									},
 									"response": []
 								},
@@ -1183,7 +1183,7 @@
 												"type": "text"
 											}
 										],
-										"url": "{{scheme}}://{{host}}/api/demo/Group/all/$export"
+										"url": "{{scheme}}://{{host}}/api/v3/Group/all/$export"
 									},
 									"response": []
 								},
@@ -2025,14 +2025,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Group/runout/$export?_type=ExplanationOfBenefit",
+											"raw": "{{scheme}}://{{host}}/api/v3/Group/runout/$export?_type=ExplanationOfBenefit",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Group",
 												"runout",
 												"$export"
