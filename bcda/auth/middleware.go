@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"

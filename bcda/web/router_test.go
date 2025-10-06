@@ -15,7 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -330,7 +330,7 @@ func createACO(cmsID string, denyListValue *models.Termination) models.ACO {
 func createTestToken(cmsID string) (token *jwt.Token) {
 	token = &jwt.Token{
 		Claims: &auth.CommonClaims{
-			StandardClaims: jwt.StandardClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
 				Issuer: "ssas",
 			},
 			ClientID: uuid.New(),

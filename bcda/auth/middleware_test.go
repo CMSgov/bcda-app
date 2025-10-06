@@ -19,7 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
@@ -97,9 +97,9 @@ func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
 	defer server.Close()
 	client := server.Client()
 	expiredToken := jwt.NewWithClaims(jwt.SigningMethodRS512, &auth.CommonClaims{
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "ssas",
-			ExpiresAt: time.Now().Unix(),
+			ExpiresAt: jwt.NewNumericDate(time.Now()),
 		},
 		ClientID: uuid.New(),
 		SystemID: uuid.New(),
@@ -137,7 +137,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 
 	token := &jwt.Token{
 		Claims: &auth.CommonClaims{
-			StandardClaims: jwt.StandardClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
 				Issuer: "ssas",
 			},
 			ClientID: uuid.New(),
@@ -184,7 +184,7 @@ func setupDataForAuthMiddlewareTest() (bearerString string, authData auth.AuthDa
 
 	token = &jwt.Token{
 		Claims: &auth.CommonClaims{
-			StandardClaims: jwt.StandardClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
 				Issuer: "ssas",
 			},
 			ClientID: uuid.New(),

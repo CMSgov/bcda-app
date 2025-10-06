@@ -8,10 +8,10 @@ require (
 	github.com/aws/aws-lambda-go v1.49.0
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/render v1.0.1
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/fhir/go v0.7.4

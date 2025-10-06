@@ -27,9 +27,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	m "github.com/stretchr/testify/mock"
@@ -314,7 +314,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccessErrISReturnedWhenVerifyTokenChe
 
 	invalidTokenString := ""
 	_, _, err = am.AuthorizeAccess(context.Background(), invalidTokenString)
-	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token contains an invalid number of segments")
+	assert.EqualError(s.T(), err, "Requestor Data Error encountered - unable to parse provided tokenString to jwt.token. Err: token is malformed: token contains an invalid number of segments")
 }
 
 func (s *SSASPluginTestSuite) TestVerifyTokenErrorHandling() {
@@ -358,7 +358,7 @@ func (s *SSASPluginTestSuite) TestVerifyTokenErrorHandling() {
 
 func createCommonClaimsForTesting(data string, issuer string) CommonClaims {
 	return CommonClaims{
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer: issuer,
 		},
 		ClientID: uuid.New(),
@@ -396,7 +396,7 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsErrIsNilWhenHappyPath() {
 	clientID := uuid.New()
 
 	commonClaims := &CommonClaims{
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer: constants.IssuerSSAS,
 		},
 		ClientID: clientID,
@@ -427,7 +427,7 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsReturnEntityNotFoundError
 	clientID := uuid.New()
 
 	commonClaims := &CommonClaims{
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer: constants.IssuerSSAS,
 		},
 		ClientID: clientID,
@@ -504,7 +504,7 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 	assert.True(s.T(), t.Valid)
 	tc := t.Claims.(*CommonClaims)
 	assert.Equal(s.T(), "mock-system", tc.SystemID)
-	assert.Equal(s.T(), "mock-id", tc.Id)
+	assert.Equal(s.T(), "mock-id", tc.ID)
 }
 
 func TestSSASPluginSuite(t *testing.T) {
@@ -556,11 +556,11 @@ func MockSSASToken() (*jwt.Token, string, string, error) {
 		SystemID: "mock-system",
 		Data:     `{"cms_ids":["A9995"]}`,
 		ClientID: constants.MockClient,
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    constants.IssuerSSAS,
-			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
-			IssuedAt:  time.Now().Unix(),
-			Id:        "mock-id",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        "mock-id",
 		},
 	}
 
