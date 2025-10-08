@@ -1,0 +1,25 @@
+# BCDA Test Environment Configuration
+# This file contains encrypted configuration for the dev environment
+# Edit with: sopsw -e values/dev.sopsw.yaml
+
+# Database Configuration
+/bcda/${env}/core/nonsensitive/database_name: "bcda_dev"
+/bcda/${env}/core/nonsensitive/database_host: "localhost"
+/bcda/${env}/core/nonsensitive/database_port: "5432"
+
+# API Configuration
+/bcda/${env}/api/nonsensitive/debug_mode: "true"
+
+# SASS Configuration
+/bcda/${env}/ssas/nonsensitive/sass_api_debug_mode: "true"
+
+# Worker Configuration
+/bcda/${env}/worker/nonsensitive/worker_debug_mode: "true"
+
+sops:
+  kms:
+    - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-dev
+    - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-dev
+  unencrypted_regex: /nonsensitive/
+  mac_only_encrypted: true
+  version: 3.10.2

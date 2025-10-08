@@ -1,7 +1,7 @@
 # BCDA Config Root Module
 
 This root module is responsible for configuring the sops-enabled strategy for storing sensitive and nonsensitive configuration in AWS SSM Parameter Store.
-The _environment_ specific configuration values are located in the `values` directory.
+The _parent environment_ specific configuration values are located in the `values` directory.
 
 ## Usage
 
