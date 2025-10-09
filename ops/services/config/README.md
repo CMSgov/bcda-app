@@ -71,5 +71,5 @@ Configuration files follow this pattern:
 - **envsubst** - For environment variable substitution (`brew install gettext`)
 
 ### External Tools
-- **sopsw script**
+- **sopsw script** - From CDAP
 - **Terraform** - For deploying configuration to AWS Parameter Store
