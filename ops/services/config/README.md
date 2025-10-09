@@ -14,8 +14,8 @@ Before editing encrypted configuration files, you need to:
 2. **Deploy the Terraform configuration**:
    ```bash
    cd ops/services/config
-   terraform init
-   terraform apply
+   tofu init
+   tofu apply
    ```
 
 ### Editing Encrypted Configuration
