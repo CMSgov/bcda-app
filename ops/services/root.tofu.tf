@@ -67,9 +67,6 @@ terraform {
   backend "s3" {
     bucket       = local.state_buckets[local.parent_env]
     key          = "ops/services/${local.service}/tofu.tfstate"
-    region       = var.region
-    encrypt      = true
-    kms_key_id   = "alias/${local.app}-${local.parent_env}-tfstate-bucket"
     use_lockfile = true
   }
 }
