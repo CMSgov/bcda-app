@@ -37,13 +37,13 @@ To edit the encrypted configuration files for each environment:
 
 ```bash
 # Initialize Terraform
-terraform init
+tofu init
 
 # Plan changes
-terraform plan
+tofu plan
 
 # Apply changes
-terraform apply
+tofu apply
 ```
 
 ## Configuration Structure
