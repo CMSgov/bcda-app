@@ -5,22 +5,19 @@ The _parent environment_ specific configuration values are located in the `value
 
 ## Usage
 
-### Prerequisites
+### Initial Setup
 
-Before editing encrypted configuration files, you need to:
+First, initialize and deploy the Terraform configuration to generate the `sopsw` script:
 
-1. **Get the sopsw script** from the [CDAP repository](https://github.com/CMSgov/cdap/blob/main/scripts/sopsw)
-
-2. **Deploy the Terraform configuration**:
-   ```bash
-   cd ops/services/config
-   tofu init
-   tofu apply
-   ```
+```bash
+cd ops/services/config
+tofu init
+tofu apply
+```
 
 ### Editing Encrypted Configuration
 
-To edit the encrypted configuration files for each environment:
+After the initial deployment, the `sopsw` script will be automatically generated in the `bin/` directory. You can then edit the encrypted configuration files for each environment:
 
 ```bash
 # Edit dev environment
@@ -29,16 +26,18 @@ To edit the encrypted configuration files for each environment:
 # Edit test environment
 ./bin/sopsw -e values/test.sopsw.yaml
 
+# Edit sandbox environment
+./bin/sopsw -e values/sandbox.sopsw.yaml
+
 # Edit prod environment
 ./bin/sopsw -e values/prod.sopsw.yaml
 ```
 
-### Deploying Configuration
+### Deploying Configuration Changes
+
+After editing configuration files, deploy the changes to AWS Parameter Store:
 
 ```bash
-# Initialize Terraform
-tofu init
-
 # Plan changes
 tofu plan
 
@@ -71,5 +70,4 @@ Configuration files follow this pattern:
 - **envsubst** - For environment variable substitution (`brew install gettext`)
 
 ### External Tools
-- **sopsw script** - From [CDAP](https://github.com/CMSgov/cdap/blob/main/scripts/sopsw)
 - **Terraform** - For deploying configuration to AWS Parameter Store
