@@ -4,7 +4,7 @@
 locals {
   app              = "bcda"
   established_envs = ["dev", "test", "sandbox", "prod"]
-  service_prefix   = "${local.app}-${local.env}"
+  service_prefix   = "${local.app}-${local.parent_env}"
 
   parent_env = coalesce(
     var.parent_env,
@@ -49,18 +49,11 @@ variable "parent_env" {
 
 provider "aws" {
   region = var.region
-  default_tags {
-    tags = local.default_tags
-  }
 }
 
 provider "aws" {
   alias = "secondary"
-
   region = var.secondary_region
-  default_tags {
-    tags = local.default_tags
-  }
 }
 
 terraform {
