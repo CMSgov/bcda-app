@@ -9,7 +9,7 @@ The _parent environment_ specific configuration values are located in the `value
 
 Before editing encrypted configuration files, you need to:
 
-1. **Get the sopsw script** from the CDAP repository.
+1. **Get the sopsw script** from the [CDAP repository](https://github.com/CMSgov/cdap/blob/main/scripts/sopsw)
 
 2. **Deploy the Terraform configuration**:
    ```bash
@@ -71,5 +71,5 @@ Configuration files follow this pattern:
 - **envsubst** - For environment variable substitution (`brew install gettext`)
 
 ### External Tools
-- **sopsw script** - From CDAP
+- **sopsw script** - From [CDAP](https://github.com/CMSgov/cdap/blob/main/scripts/sopsw)
 - **Terraform** - For deploying configuration to AWS Parameter Store
