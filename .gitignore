@@ -23,3 +23,9 @@ fhir_testing/data/
 
 # Localstack volume
 .localstack_volume/
+
+# Terraform/OpenTofu
+terraform.tfstate*
+terraform.tfvars
+.terraform*
+!.terraform-docs.yml
