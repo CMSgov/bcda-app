@@ -160,8 +160,6 @@
 /bcda/${env}/nonsensitive/workflows/test_quotes: '{"foo":"bar", "hello":"world"}'
 #ENC[AES256_GCM,data:F9UWvItUAqO/Orwn4OmppyJ8tDQjxC7OmVwfpw==,iv:Ex+sc9MtZhb+p9B2c/kyA8JdGwMtb7+rN+TjZ2EuBbQ=,tag:ptCCUrAeo+7gZgiQp9Vkfg==,type:comment]
 /bcda/${env}/sensitive/lambda/slack_webhook_url: ENC[AES256_GCM,data:64F+GpBpzIOd+GYmWID9mLO6evol0PIqS+EUdHiwDLwrs0ZPhOsLTJ/r1XNSh8CN9FwUkbIPLtUDXgS1jBxAAimnvaf/B2DcVWfqWAMLyQ==,iv:4I0eqHn3/XCYTZl9BkoseonJ1WpEgMdAlt3/qD6mMOE=,tag:rQTdXOY0AqQxh5fJoSPJdQ==,type:str]
-/bcda/${env}/sensitive/zscaler/private_cidrs: ENC[AES256_GCM,data:MumTHaQt1DD4yklwrIBLnPrx0ONazXAf9z2zRJEH++8NyiM=,iv:fmGytnAphLvyo+nvXKx6GD1FVec0wuj0obNDTrHaSjk=,tag:Ao+QMY5Y24I5f8YGuCL8mw==,type:str]
-/bcda/${env}/sensitive/zscaler/public_cidrs: ENC[AES256_GCM,data:dDyjHJzAyMV1Kb+y81SzkuRH7oo9HKv3tPs=,iv:Zc+SCKT/RyU/99JJd5atuEzP+une2jDPg89OSabPj0s=,tag:QXt6wP9HwL/JkYm8KihgcA==,type:str]
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-dev

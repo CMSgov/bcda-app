@@ -105,8 +105,6 @@
 /bcda/sensitive/workflows/sandbox/ssas_admin_credentials: ENC[AES256_GCM,data:ESWAm56XY6sJgCHSr392Z0N5LtaS7UjyyIpx/bmGUhaEZyV4Jodc78ubTTU21iTX+JDC12fa5yBMFUINz+S9iHMR6j4Dode7LAMHEvAPnJEN6gx1F3sNszK16bV4taShoLptiPNhlZSgB11ZBwgNWaf0KV2ZDKxDeHuq0Xdvdluj+Tpa0rhbuIPVhezkXviiswmLdIY7hQ==,iv:liwYvDFZT5Y/awBFQ6wXyCC+642QF/8c09GfhR1Y+oU=,tag:vF8fkoB0U/mHA2PHGy9OcA==,type:str]
 /bcda/sensitive/workflows/sandbox/ssas_assertion_aud: ENC[AES256_GCM,data:/IM7LTtKqjLLADJEKwufSRfGvyKU5w75zkZNi8MzaBleIm5tRLCtlMUWata8NA==,iv:rz0yDkxoR9ZbZuZe/Gbvub7ysifF5O2JG67A84WenJs=,tag:lgFD8jsuLgL8N/xIhbn3og==,type:str]
 /bcda/sensitive/workflows/sandbox/ssas_elb: ENC[AES256_GCM,data:Pe5INzJ/jsbhawyRBMM+ppR727LJ5StCn4sa3kYVbLJHBKhxmivbQIQyVtkDlqtesUm0MKfIJ00zQgkZxTuIX/g=,iv:ttyZOvYDJu9GEMgUFQZ7XuOAF/O0lGsvjIOw2h6QFF0=,tag:FPMYkkMoFcdvDtgURaFZZg==,type:str]
-/bcda/sensitive/zscaler/private_cidrs: ENC[AES256_GCM,data:hTNo7rKDroD5jHj/7grFzRPMGqKG/Wv2P0VI9hlZ7ZgrNsU=,iv:HgDoBCxUImmYUfxk8K7ti3ES9Q1tRzrna4+d7SfwYMs=,tag:gpvLv3N625Hwyjy9IKqWsA==,type:str]
-/bcda/sensitive/zscaler/public_cidrs: ENC[AES256_GCM,data:8kBp2d8RUgJRh6WapOCmtUbXUsTGbSd/+aw=,iv:eKe0NRlYMqMLsednUC/u/ghTRpHvphkgGDvWS8Vcg/A=,tag:aWQ+RhV9pXitdPHiC2tWwQ==,type:str]
 #ENC[AES256_GCM,data:4Q5G/W5RJ3l/6tdjGja+vsTdbzIE9gsZvL2K,iv:90or0QCwH6xtuZRUUL1926ZAbKKt0HcjWbJflZ/kBks=,tag:pr6PXhD5/vlNCmE2BfOJUg==,type:comment]
 /bcda/${env}/sensitive/quicksight-rds/cidr-blocks: ENC[AES256_GCM,data:sNyqOtklzy61aQN6Pkiwt0k6qd0oibbKcexoIWexSr/DUNWSC46b2zMnj9OySWl/gB9vhuWAsh+tM0Y=,iv:+RQnedDxzsk+LmAYsBqD60Rc14pjXp9iZunm3nr0aWw=,tag:BCcVkbVwzpWvG4FuB9i4DQ==,type:str]
 #ENC[AES256_GCM,data:YxKmo/SjggXwqq0x7ISGqUJrOOIrYCn6Ug==,iv:0KW3OA6nk2fwfi/qnUg8q64MUUisftXZTgH71slgfzk=,tag:2JQQuK3JYlU+wRxxZQ9xgA==,type:comment]
