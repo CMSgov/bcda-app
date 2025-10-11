@@ -29,3 +29,4 @@ terraform.tfstate*
 terraform.tfvars
 .terraform*
 !.terraform-docs.yml
+ops/services/10-config/bin/
