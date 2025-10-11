@@ -1,23 +1,24 @@
 # BCDA Config Root Module
 
 This root module is responsible for configuring the sops-enabled strategy for storing sensitive and nonsensitive configuration in AWS SSM Parameter Store.
-The _parent environment_ specific configuration values are located in the `values` directory.
+The environment-specific configuration values are located in the `values` directory.
 
 ## Usage
 
 ### Initial Setup
 
-First, initialize and deploy the Terraform configuration to generate the `sopsw` script:
+First, initialize and apply the configuration with the `sopsw` script targeted:
 
 ```bash
-cd ops/services/config
+cd ops/services/10-config
+export TF_VAR_env=dev
 tofu init
-tofu apply
+tofu apply -target module.sops.local_file.sopsw[0]
 ```
 
 ### Editing Encrypted Configuration
 
-After the initial deployment, the `sopsw` script will be automatically generated in the `bin/` directory. You can then edit the encrypted configuration files for each environment:
+The `sopsw` script should be automatically generated in the `bin/` directory in the initial setup. You can then edit the encrypted configuration files for each environment:
 
 ```bash
 # Edit dev environment
@@ -38,11 +39,8 @@ After the initial deployment, the `sopsw` script will be automatically generated
 After editing configuration files, deploy the changes to AWS Parameter Store:
 
 ```bash
-# Plan changes
-tofu plan
-
 # Apply changes
-tofu apply
+tofu apply -var env=dev
 ```
 
 ## Configuration Structure
@@ -70,4 +68,4 @@ Configuration files follow this pattern:
 - **envsubst** - For environment variable substitution (`brew install gettext`)
 
 ### External Tools
-- **Terraform** - For deploying configuration to AWS Parameter Store
+- **tofu** - For deploying configuration to AWS Parameter Store
