@@ -1,10 +1,6 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5"
-    }
-  }
+locals {
+  default_tags = module.platform.default_tags
+  service      = "config"
 }
 
 module "platform" {
@@ -15,12 +11,6 @@ module "platform" {
   env         = local.env
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/config"
   service     = local.service
-}
-
-locals {
-  default_tags = module.platform.default_tags
-  env          = terraform.workspace
-  service      = "config"
 }
 
 module "sops" {
