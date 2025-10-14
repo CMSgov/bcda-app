@@ -9,7 +9,7 @@ module "platform" {
 
   app         = local.app
   env         = local.env
-  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/config"
+  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
 }
 
