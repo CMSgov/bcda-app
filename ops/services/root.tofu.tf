@@ -55,5 +55,6 @@ terraform {
     bucket       = local.state_buckets[local.env]
     key          = "ops/services/${local.service}/tofu.tfstate"
     use_lockfile = true
+    region       = var.region
   }
 }
