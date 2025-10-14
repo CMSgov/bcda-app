@@ -38,16 +38,6 @@ jobs:
     name: Tag and Release
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - name: Checkout BCDA
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-app 
-          ref: ${{ env.RELEASE_VERSION }}
-      - name: Set tags env var
-        if: ${{ env.NEXT_RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
-        run: |
-          export MANUAL_TAG_ARGS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.NEXT_RELEASE_VERSION }}"
-          echo "MANUAL_TAG_ARGS=$MANUAL_TAG_ARGS" >> $GITHUB_ENV
       - name: Get AWS params
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
@@ -56,32 +46,42 @@ jobs:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
             OPS_GITHUB_TOKEN=/ci/github/token
-      - name: Run release script
+      - name: Set tags env var
+        if: ${{ env.NEXT_RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
         run: |
-          echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.MANUAL_TAG_ARGS }}
-      - name: Upload release scripts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-scripts
-          path: |
-            ./ops/release.sh
-            ./ops/github_release.py
+          export MANUAL_TAG_ARGS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.NEXT_RELEASE_VERSION }}"
+          echo "MANUAL_TAG_ARGS=$MANUAL_TAG_ARGS" >> $GITHUB_ENV
       - name: Checkout BCDA-OPS
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
           ref: ${{ env.OPS_RELEASE_VERSION }}
           token: ${{ env.OPS_GITHUB_TOKEN }}
+      - name: Run release for Ops
+        run: |
+          echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.OPS_GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash scripts/tag_and_release/release.sh ${{ env.MANUAL_TAG_ARGS }}
+      - name: Upload release scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-scripts
+          path: |
+            ./scripts/release.sh
+            ./scripts/github_release.py
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app 
+          ref: ${{ env.RELEASE_VERSION }}
       - name: Download release scripts
         uses: actions/download-artifact@v4
         with:
           name: release-scripts
-          path: ops
-      - name: Run release for Ops
+          path: scripts
+      - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.OPS_GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash ops/release.sh ${{ env.MANUAL_TAG_ARGS }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash scripts/release.sh ${{ env.MANUAL_TAG_ARGS }}
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
