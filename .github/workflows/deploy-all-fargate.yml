@@ -161,12 +161,6 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
-      # - name: Get AMIs
-      #   run: |
-      #     export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-      #     echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
-      #     export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-      #     echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
       - name: Install Cosign to verify tenv and tofu installs
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
@@ -179,11 +173,11 @@ jobs:
           touch bcda-release-api-worker-vars.tfvars
           tofu init
           tofu plan \
-            -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'ami_id=${{ env.BCDA_AMI }}' \
-            -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
-            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
-            -var-file=bcda-release-api-worker-vars.tfvars \
+            # -var 'env=${{ env.RELEASE_ENV }}' \
+            # -var 'ami_id=${{ env.BCDA_AMI }}' \
+            # -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
+            # -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
+            # -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}

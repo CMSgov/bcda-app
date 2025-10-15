@@ -27,8 +27,14 @@ permissions:
   contents: read
 
 jobs:
-  build_and_publish_bcda:
-    uses: ./.github/workflows/build-and-publish.yml
+  build_and_publish_api:
+    uses: ./.github/workflows/build-and-publish-api.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+    secrets: inherit
+
+  build_and_publish_worker:
+    uses: ./.github/workflows/build-and-publish-worker.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
     secrets: inherit
@@ -42,7 +48,7 @@ jobs:
   post_build:
     if: ${{ always() }}
     name: Post Build (Cleanup, Alerts)
-    needs: [build_and_publish_bcda, build_and_publish_ssas]
+    needs: [build_and_publish_api, build_and_publish_worker, build_and_publish_ssas]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Success Alert
