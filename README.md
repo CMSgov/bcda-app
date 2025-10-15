@@ -60,6 +60,10 @@ For production configuration management, BCDA uses [SOPS](https://github.com/moz
 
 **Deploying Changes:**
 ```bash
+# Review changes before applying
+tofu plan -var env=dev
+
+# Apply changes
 tofu apply -var env=dev
 ```
 

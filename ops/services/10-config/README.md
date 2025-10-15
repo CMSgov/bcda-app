@@ -30,6 +30,9 @@ The `sopsw` script should be automatically generated in the `bin/` directory in 
 After editing configuration files, deploy the changes to AWS Parameter Store:
 
 ```bash
+# Review changes before applying
+tofu plan -var env=dev
+
 # Apply changes
 tofu apply -var env=dev
 ```
