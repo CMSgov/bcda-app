@@ -13,7 +13,7 @@ First, initialize and apply the configuration with the `sopsw` script targeted:
 cd ops/services/10-config
 export TF_VAR_env=dev
 tofu init
-tofu apply -target module.sops.local_file.sopsw[0]
+tofu apply -target module.sops.local_file.sopsw
 ```
 
 ### Editing Encrypted Configuration
