@@ -27,31 +27,67 @@ To get started, install some dependencies:
 1. Install [Go](https://golang.org/doc/install)
 2. Install [Docker](https://docs.docker.com/install/)
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
-4. Install [Ansible Vault](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) and its dependencies
+4. Install [SOPS](https://github.com/mozilla/sops) and related tools for secrets management:
+   ```bash
+   brew install sops yq gettext
+   ```
+5. Install [Ansible Vault](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) and its dependencies (legacy)
    For further ansible documentation see: (https://docs.ansible.com/ansible/2.4/vault.html)
-5. Install [Pre-commit](https://pre-commit.com/) with [Gitleaks](https://github.com/gitleaks/gitleaks)
-6. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
+6. Install [Pre-commit](https://pre-commit.com/) with [Gitleaks](https://github.com/gitleaks/gitleaks)
+7. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
-### Secrets
+### Secrets Management
+
+BCDA uses two approaches for managing secrets and configuration:
+
+#### Modern SOPS Approach (Recommended)
+
+For production configuration management, BCDA uses [SOPS](https://github.com/mozilla/sops) with AWS KMS encryption to store sensitive and non-sensitive configuration in AWS SSM Parameter Store.
+
+**Setup:**
+1. Install required tools: `brew install sops yq gettext`
+2. Navigate to the config module: `cd ops/services/10-config`
+3. Initialize and deploy: `tofu init && tofu apply -target module.sops.local_file.sopsw[0]`
+
+**Editing Configuration:**
+```bash
+# Edit environment-specific configuration
+./bin/sopsw -e values/dev.sopsw.yaml
+./bin/sopsw -e values/test.sopsw.yaml
+./bin/sopsw -e values/sandbox.sopsw.yaml
+./bin/sopsw -e values/prod.sopsw.yaml
+```
+
+**Deploying Changes:**
+```bash
+# Review changes before applying
+tofu plan -var env=dev
+
+# Apply changes
+tofu apply -var env=dev
+```
+
+For detailed instructions, see [ops/services/10-config/README.md](ops/services/10-config/README.md).
+
+#### Legacy Ansible Vault Approach (Deprecated)
+
+> **Note:** This section is maintained for backward compatibility with existing workflows.
 
 The files committed in the `shared_files/encrypted` directory hold secret information, and are encrypted with [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html).
 
-#### Ansible Vault
-
+**Setup:**
 - Create a file named `.vault_password` in the root directory of the repository.
 - You should have been given access to [Box](https://app.box.com).  In Box search for `vault_password.txt`, copy the text and paste it into your `.vault_password` file.
 
-#### Decrypt/Encrypt Secrets
-
-You can now decrypt the encrypted secret files (found at `shared_files/encrypted`) by running the following command from the repository root directory:
-
-```
+**Decrypt/Encrypt Secrets:**
+```bash
+# Decrypt secrets
 ./ops/secrets --decrypt
-```
 
-Copy the decrypted files from `shared_files/encrypted` to the sibling directory `shared_files/decrypted`. After make sure to re-encrypt each secret file in the encrypted folder (as these files are committed):
+# Copy to decrypted directory
+cp shared_files/encrypted/* shared_files/decrypted/
 
-```
+# After editing, re-encrypt each secret file in the encrypted folder (as these files are committed)
 ./ops/secrets --encrypt <filename>
 ```
 
@@ -59,6 +95,10 @@ Copy the decrypted files from `shared_files/encrypted` to the sibling directory 
 
 >**Never put passwords, keys, or secrets of any kind in application code. Instead, use the strategy outlined here:**
 
+**For Production Configuration (Recommended):**
+Use the SOPS approach described above to manage configuration in AWS SSM Parameter Store. This provides centralized, encrypted configuration management across environments.
+
+**For Local Development:**
 1. In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed:
 
 ```
