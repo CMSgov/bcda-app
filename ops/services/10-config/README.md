@@ -21,17 +21,8 @@ tofu apply -target module.sops.local_file.sopsw
 The `sopsw` script should be automatically generated in the `bin/` directory in the initial setup. You can then edit the encrypted configuration files for each environment:
 
 ```bash
-# Edit dev environment
+# Edit dev environment, for example
 ./bin/sopsw -e values/dev.sopsw.yaml
-
-# Edit test environment
-./bin/sopsw -e values/test.sopsw.yaml
-
-# Edit sandbox environment
-./bin/sopsw -e values/sandbox.sopsw.yaml
-
-# Edit prod environment
-./bin/sopsw -e values/prod.sopsw.yaml
 ```
 
 ### Deploying Configuration Changes
