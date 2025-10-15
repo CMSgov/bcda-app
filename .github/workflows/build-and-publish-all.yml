@@ -1,0 +1,75 @@
+name: Build and Publish All
+
+on:
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+          description: 'Release version/tag for bcda-ssas (or branch name)'
+          required: true
+          type: string
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version/tag (or branch name)'
+        required: true
+        type: string
+      ssas_release_version:
+        description: 'Release version/tag for bcda-ssas (or branch name)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build_and_publish_bcda:
+    uses: ./.github/workflows/build-and-publish.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+    secrets: inherit
+
+  build_and_publish_ssas:
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
+    with:
+      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+    secrets: inherit
+  
+  post_build:
+    if: ${{ always() }}
+    name: Post Build (Cleanup, Alerts)
+    needs: [build_and_publish_bcda, build_and_publish_ssas]
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    steps:
+      - name: Success Alert
+        if: ${{ success() && needs.build_and_package_bcda.result == 'success' && needs.build_and_package_ssas.result == 'success' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          # Sends to bcda-deploy
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: good
+                text: "SUCCESS: Build and Publish BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
+      - name: Failure Alert
+        if: ${{ failure() || needs.build_and_package_bcda.result != 'success' || needs.build_and_package_ssas.result != 'success' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: danger
+                text: "FAILURE: Build and Publish BCDA/SSAS (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+                mrkdown_in:
+                  - text
+                  
