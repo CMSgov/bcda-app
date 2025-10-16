@@ -24,8 +24,8 @@ on:
         options:
           - dev
           - test
-          - sandbox
-          - prod
+          # - sandbox
+          # - prod
       confirm_env:
         description: 'Confirm the environment you want to deploy to'
         required: true
@@ -34,8 +34,8 @@ on:
         options:
           - dev
           - test
-          - sandbox
-          - prod
+          # - sandbox
+          # - prod
       test_aco:
         description: Run the smoke tests using the selected ACO
         required: true
@@ -84,29 +84,13 @@ permissions:
 
 env:
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
-  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
   SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-  ENV_MODIFIER: ${{ inputs.env || 'dev' }}
-  # TEST_ACO: ${{ inputs.test_aco || 'dev' }}
-  # TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERIFICATION_RETRIES: 90 # 90 retries with 10s sleep = max 900s or 15m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
 
 jobs:
-  # build_and_push_bcda:
-  #   uses: ./.github/workflows/build-and-push-bcda.yml
-  #   with:
-  #     release_version: ${{ inputs.release_version || 'main' }}
-  #   secrets: inherit
-
-  # build_and_push_ssas:
-  #   uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-push.yml@main
-  #   with:
-  #     ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
-  #   secrets: inherit
-  
   migrate_db:
     uses: ./.github/workflows/migrate-db.yml
     with:
@@ -125,7 +109,6 @@ jobs:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      # - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -141,7 +124,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ env.OPS_RELEASE_VERSION }}
+          ref: ${{ inputs.ops_release_version || 'main' }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
@@ -173,22 +156,21 @@ jobs:
           touch bcda-release-api-worker-vars.tfvars
           tofu init
           tofu plan \
-            # -var 'env=${{ env.RELEASE_ENV }}' \
-            # -var 'ami_id=${{ env.BCDA_AMI }}' \
-            # -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
-            # -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
-            # -var-file=bcda-release-api-worker-vars.tfvars \
+            -var 'env=${{ env.RELEASE_ENV }}' \
+            -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
+            -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
+            -var 'worker_image_tag=${{ vars.RELEASE_VERSION }}' \
+            -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           tofu apply bcda-release-api-worker.tfplan
-      # - name: Refresh AutoScaling Groups
-      #   run: |
-      #     export ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
-      #     aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
-      #     export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
-      #     aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
+      - name: Refresh Deployments
+        run: |
+          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
+          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
+          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
       - name: Upload notify script
         uses: actions/upload-artifact@v4
         with:
@@ -243,7 +225,7 @@ jobs:
             fi
           done
 
-  # How do we do this now?
+  # This needs the 'image_tag' tag to be added to each service before this will work
   # verify_worker_version:
   #   needs: [deploy]
   #   runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
@@ -257,15 +239,10 @@ jobs:
   #         TRY=1
 
   #         until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-  #           export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-  #           # Was unable to escape the backticks (`), creating this function seems to get around that
-  #           get_image_version () {
-  #               aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
-  #           }
-  #           export BCDA_WORKER_VERSION=`get_image_version`
+  #           WORKER_VERSION=`aws ecs --resource-arn list-tags-for-resource arn:aws:ecs:us-east-1:539247469933:service/bcda-dev/bcda-dev-api --query "tags[?key=='image_tag'].value | [0]" --output text`
 
-  #           if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-  #             echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match aws version found: ${BCDA_WORKER_VERSION}."
+  #           if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+  #             echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
   #             TRY=$(($TRY + 1))
   #             if [ $TRY -gt $VERIFICATION_RETRIES ]; then
   #               exit 1
@@ -308,7 +285,7 @@ jobs:
         with:
           params: |
             NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
-            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/new-relic/app-id
+            NEWRELIC_APP_ID=/bcda/${{ env.RELEASE_ENV }}/new-relic/app-id
       - name: Download notify scripts
         uses: actions/download-artifact@v4
         with:
