@@ -9,6 +9,26 @@ services:
       - "5432:5432"
     volumes:
       - ./db:/var/db
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - GATEWAY_LISTEN=0.0.0.0:4566
+      - SERVICES=s3,ssm,sts,iam
+      - DEBUG=1
+    ports:
+      - "4566-4583:4566-4583"
+    volumes:
+      - "./.localstack_volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./scripts/localstack_init.sh:/etc/localstack/init/ready.d/init-aws.sh"
+      - "./shared_files/decrypted:/etc/config"
+    healthcheck:
+      test: 'curl --silent --fail localhost:4566/_localstack/init/ready | grep -E "\"completed\": true"'
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
   api:
     build:
       context: .
