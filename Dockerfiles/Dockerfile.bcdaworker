@@ -1,6 +1,7 @@
 FROM golang:1.25.1-alpine3.22 AS builder
 
 ARG GO_FLAGS
+ARG RELEASE_VERSION=main
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
@@ -17,7 +18,7 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go install "$GO_FLAGS"
+    go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
 
 # ------------------------------------------------------------------------
 FROM golang:1.25.1-alpine3.22
