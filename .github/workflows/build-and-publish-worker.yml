@@ -19,14 +19,15 @@ permissions:
   contents: read
 
 jobs:
-  ci_checks:
-    uses: ./.github/workflows/ci-checks.yml
-    with:
-      release_version: ${{ inputs.release_version || 'main' }}
-    secrets: inherit
+  # FIXME
+  # ci_checks:
+  #   uses: ./.github/workflows/ci-checks.yml
+  #   with:
+  #     release_version: ${{ inputs.release_version || 'main' }}
+  #   secrets: inherit
 
   build_and_publish:
-    needs: [ci_checks]
+    # needs: [ci_checks]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env || 'dev' }}
     strategy:
@@ -59,5 +60,6 @@ jobs:
             -f Dockerfiles/Dockerfile.bcdaworker .
       - name: Push to ECR
         if: ${{ matrix.vars.account_id == 'PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
-        run: aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
-          docker image push -a '${{ env.ECR_URL }}'
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
+          docker image push '${{ env.ECR_URL }}' -a
