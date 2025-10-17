@@ -1,9 +1,6 @@
 name: Build and Publish All
 
 on:
-  # FIXME
-  push:
-    branches: [carl-9263-fargate-workflows]
   workflow_call:
     inputs:
       release_version:
@@ -43,9 +40,7 @@ jobs:
     secrets: inherit
 
   build_and_publish_ssas:
-    # FIXME
-    # uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@carl-9263-fargate-workflows
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
     with:
       ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
     secrets: inherit

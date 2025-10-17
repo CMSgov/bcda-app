@@ -19,15 +19,14 @@ permissions:
   contents: read
 
 jobs:
-  # FIXME
-  # ci_checks:
-  #   uses: ./.github/workflows/ci-checks.yml
-  #   with:
-  #     release_version: ${{ inputs.release_version || 'main' }}
-  #   secrets: inherit
+  ci_checks:
+    uses: ./.github/workflows/ci-checks.yml
+    with:
+      release_version: ${{ inputs.release_version || 'main' }}
+    secrets: inherit
 
   build_and_publish:
-    # needs: [ci_checks]
+    needs: [ci_checks]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env || 'dev' }}
     strategy:
