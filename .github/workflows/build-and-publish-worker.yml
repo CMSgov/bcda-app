@@ -51,7 +51,7 @@ jobs:
         run: echo "ECR_URL=${{ secrets[matrix.vars.account_id] }}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker" >> $GITHUB_ENV
       - name: Build Worker
         # Dont release main to prod, also make sure 'latest' in prod aligns with the latest release tag
-        if: ${{ matrix.vars.account_id == 'PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
         run: |
           docker build \
             --build-arg RELEASE_VERSION=${{ inputs.release_version || 'main' }} \
@@ -59,7 +59,7 @@ jobs:
             -t ${{ env.ECR_URL }}:${{ inputs.release_version || 'main' }} \
             -f Dockerfiles/Dockerfile.bcdaworker .
       - name: Push to ECR
-        if: ${{ matrix.vars.account_id == 'PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' && inputs.release_version == 'main' }}
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
           docker image push '${{ env.ECR_URL }}' -a
