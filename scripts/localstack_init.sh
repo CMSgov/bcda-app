@@ -5,12 +5,11 @@
 #
 
 # upload default config files to s3 bucket
-function upload_config_s3() {
-    service=$1
-    CONFIG_BUCKET=bcda-local-$service-config
+function init_config_bucket() {
+    CONFIG_BUCKET=bcda-local-config
     awslocal s3api create-bucket --bucket $CONFIG_BUCKET
-    awslocal s3 sync /etc/config s3://$CONFIG_BUCKET
+    awslocal s3 sync /etc/config s3://$CONFIG_BUCKET/api
+    awslocal s3 sync /etc/config s3://$CONFIG_BUCKET/worker
 }
 
-upload_config_s3 "api"
-upload_config_s3 "worker"
+init_config_bucket
