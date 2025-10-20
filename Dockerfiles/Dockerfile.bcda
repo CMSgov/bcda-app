@@ -23,13 +23,13 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM golang:1.25.1-alpine3.22
 
 RUN apk update upgrade && \
-    apk add aws-cli
+    apk add --no-cache aws-cli
 
 RUN addgroup -S -g 1010 bcda && adduser -S -G bcda -u 1010 bcda
 
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
-RUN [ "$ENVIRONMENT" != "development" ] || apk add bash && \
+RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
     go install github.com/go-delve/delve/cmd/dlv@latest
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
