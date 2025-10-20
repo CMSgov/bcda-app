@@ -120,10 +120,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{scheme}}://{{host}}/api/demo/metadata",
+              "raw": "{{scheme}}://{{host}}/api/v3/metadata",
               "protocol": "{{scheme}}",
               "host": ["{{host}}"],
-              "path": ["api", "demo", "metadata"]
+              "path": ["api", "v3", "metadata"]
             }
           },
           "response": []
@@ -189,7 +189,7 @@
 										},
 										"method": "GET",
 										"header": [],
-										"url": "{{scheme}}://{{host}}/api/demo/attribution_status"
+										"url": "{{scheme}}://{{host}}/api/v3/attribution_status"
 									},
 									"response": []
 								},
@@ -238,14 +238,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=ExplanationOfBenefit",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=ExplanationOfBenefit",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -303,14 +303,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=Patient",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Patient",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -368,14 +368,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=Coverage",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Coverage",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -429,7 +429,7 @@
 												"disabled": true
 											}
 										],
-										"url": "{{scheme}}://{{host}}/api/demo/jobs/{{jobId}}"
+										"url": "{{scheme}}://{{host}}/api/v3/jobs/{{jobId}}"
 									},
 									"response": []
 								},
@@ -473,7 +473,7 @@
 												"disabled": true
 											}
 										],
-										"url": "{{scheme}}://{{host}}/api/demo/jobs/{{jobId}}"
+										"url": "{{scheme}}://{{host}}/api/v3/jobs/{{jobId}}"
 									},
 									"response": []
 								},
@@ -646,7 +646,7 @@
 										},
 										"method": "GET",
 										"header": [],
-										"url": "{{scheme}}://{{host}}/api/demo/attribution_status"
+										"url": "{{scheme}}://{{host}}/api/v3/attribution_status"
 									},
 									"response": []
 								}
@@ -705,14 +705,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=ExplanationOfBenefit",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=ExplanationOfBenefit",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -832,14 +832,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=Patient",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Patient",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -912,14 +912,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=Coverage",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Coverage",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -985,14 +985,14 @@
 											}
 										],
 										"url": {
-											"raw": "{{scheme}}://{{host}}/api/demo/Patient/$export?_type=ExplanationOfBenefit",
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=ExplanationOfBenefit",
 											"protocol": "{{scheme}}",
 											"host": [
 												"{{host}}"
 											],
 											"path": [
 												"api",
-												"demo",
+												"v3",
 												"Patient",
 												"$export"
 											],
@@ -1701,10 +1701,10 @@
                       }
                     ],
                     "url": {
-                      "raw": "{{scheme}}://{{host}}/api/demo/Group/runout/$export?_type=ExplanationOfBenefit",
+                      "raw": "{{scheme}}://{{host}}/api/v3/Group/runout/$export?_type=ExplanationOfBenefit",
                       "protocol": "{{scheme}}",
                       "host": ["{{host}}"],
-                      "path": ["api", "demo", "Group", "runout", "$export"],
+                      "path": ["api", "v3", "Group", "runout", "$export"],
                       "query": [
                         {
                           "key": "_type",
@@ -2013,10 +2013,10 @@
                       }
                     ],
                     "url": {
-                      "raw": "{{scheme}}://{{host}}/api/demo/jobs?_status=Completed",
+                      "raw": "{{scheme}}://{{host}}/api/v3/jobs?_status=Completed",
                       "protocol": "{{scheme}}",
                       "host": ["{{host}}"],
-                      "path": ["api", "demo", "jobs"],
+                      "path": ["api", "v3", "jobs"],
                       "query": [
                         {
                           "key": "_status",
