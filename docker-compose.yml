@@ -39,7 +39,6 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       # localstack
-      APP_NAME: api
       AWS_ACCESS_KEY_ID: foobar
       AWS_SECRET_ACCESS_KEY: foobar
       AWS_ENDPOINT_URL: http://localstack:4566
@@ -84,7 +83,6 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       # localstack
-      APP_NAME: worker
       AWS_ACCESS_KEY_ID: foobar
       AWS_SECRET_ACCESS_KEY: foobar
       AWS_ENDPOINT_URL: http://localstack:4566

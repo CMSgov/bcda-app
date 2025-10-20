@@ -48,5 +48,7 @@ RUN mkdir -p /var/fhir /etc/sv/worker/env && chown -R bcda:bcda \
 
 USER bcda
 
+ENV APP_NAME="worker"
+
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["bcdaworker"]

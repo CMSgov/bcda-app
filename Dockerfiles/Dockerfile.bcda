@@ -50,5 +50,7 @@ USER bcda
 
 EXPOSE 3000 3001
 
+ENV APP_NAME="api"
+
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["bcda", "start-api"]
