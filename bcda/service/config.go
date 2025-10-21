@@ -154,6 +154,15 @@ func (config *Config) IsACOV3Enabled(ACOID string) bool {
 	return false
 }
 
+func (config *Config) IsSupportedACO(CMSID string) bool {
+	for _, cfg := range config.ACOConfigs {
+		if cfg.patternExp.MatchString(CMSID) {
+			return true
+		}
+	}
+	return false
+}
+
 // LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
 // We compute lookback time by evaluating the performance year transition and the number of lookback years.
 func (config *ACOConfig) LookbackTime() time.Time {

@@ -115,17 +115,20 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 	}
 
 	var cmsIDPt *string
-	if data.CMSID != "" {
-		match := service.IsSupportedACO(data.CMSID)
-		if !match {
-			return errors.New("ACO CMS ID is invalid")
-		}
-		cmsIDPt = &data.CMSID
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("Failed to load service config. Err: %v", err)
 	}
+
+	match := cfg.IsSupportedACO(data.CMSID)
+	if !match {
+		return errors.New("ACO CMS ID is invalid")
+	}
+	cmsIDPt = &data.CMSID
 
 	aco := models.ACO{Name: data.Name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err := createACO(context.Background(), conn, aco)
+	err = createACO(ctx, conn, aco)
 	if err != nil {
 		return err
 	}
