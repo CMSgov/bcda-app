@@ -117,7 +117,7 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 	var cmsIDPt *string
 	cfg, err := service.LoadConfig()
 	if err != nil {
-		return fmt.Errorf("Failed to load service config. Err: %v", err)
+		return fmt.Errorf("failed to load service config. Err: %v", err)
 	}
 
 	match := cfg.IsSupportedACO(data.CMSID)
