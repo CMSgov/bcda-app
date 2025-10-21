@@ -2,6 +2,9 @@
 name: Deploy All (ECS/Fargate)
 
 on:
+  # FIXME
+  push:
+    branches: [carl-9263-fargate-workflows]
   workflow_dispatch:
     inputs:
       release_version:
