@@ -162,7 +162,7 @@ jobs:
             -var 'env=${{ env.RELEASE_ENV }}' \
             -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
             -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
-            -var 'worker_image_tag=${{ vars.RELEASE_VERSION }}' \
+            -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
             -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
