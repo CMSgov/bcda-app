@@ -89,8 +89,8 @@ unit-test-db:
 
 unit-test-localstack:
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker compose -f docker-compose.yml rm -fsv localstack
-	docker compose -f docker-compose.yml up -d localstack
+	docker compose -f docker-compose.test.yml rm -fsv localstack-unit-test
+	docker compose -f docker-compose.test.yml up -d localstack-unit-test
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file

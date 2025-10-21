@@ -24,7 +24,7 @@ services:
       - "./scripts/localstack_init.sh:/etc/localstack/init/ready.d/init-aws.sh"
       - "./shared_files/decrypted:/etc/config"
     healthcheck:
-      test: 'curl --silent --fail localhost:4566/_localstack/init/ready | grep -E "\"completed\": true"'
+      test: 'curl --silent --fail localstack:4566/_localstack/init/ready | grep -E "\"completed\": true"'
       interval: 10s
       retries: 5
       start_period: 30s
