@@ -17,7 +17,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
 
@@ -53,12 +53,7 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	session, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
-	if err != nil {
-		return "", err
-	}
-
-	params, err := getAWSParams(session)
+	params, err := getAWSParams(ctx)
 	if err != nil {
 		log.Errorf("Unable to extract slack token from parameter store: %+v", err)
 		return "", err
@@ -71,7 +66,14 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	}
 
 	provider := auth.NewProvider(database.Connect())
-	s3Service := s3.New(session)
+
+	cfg, err := bcdaaws.NewAWSConfig(ctx, "", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	if err != nil {
+		log.Errorf("Unable to setupEnvironment properly: %+v", err)
+		return "", err
+	}
+
+	s3Service := s3.NewFromConfig(cfg)
 	slackClient := slack.New(params.slackToken)
 
 	s3Path, err := handleCreateACOCreds(ctx, data, provider, s3Service, params.credsBucket)

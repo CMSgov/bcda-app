@@ -1,61 +1,111 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	log "github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/conf"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
-func getAWSParams(session *session.Session) (awsParams, error) {
+func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := adjustedEnv()
-
 	if env == "local" {
 		return awsParams{}, nil
 	}
 
-	slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
+	slackTokenName := "/slack/token/workflow-alerts"
+	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
+	clientIDName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
+	clientSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
+	ssasPEMName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
+	credsBucketName := fmt.Sprintf("/bcda/%s/aco_creds_bucket", env)
+
+	paramNames := []string{
+		slackTokenName,
+		ssasURLName,
+		clientIDName,
+		clientSecretName,
+		ssasPEMName,
+		credsBucketName,
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return awsParams{}, err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}
 
-	ssasURL, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
-	if err != nil {
-		return awsParams{}, err
-	}
+	return awsParams{
+		params[slackTokenName],
+		params[ssasURLName],
+		params[clientIDName],
+		params[clientSecretName],
+		params[ssasPEMName],
+		params[credsBucketName],
+	}, nil
+	// output, err := client.GetParameters(ctx, input)
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
+	// slackToken := getParamFromOutput(output, "/slack/token/workflow-alerts")
+	// ssasURL := getParamFromOutput(output, "/bcda/%s/api/SSAS_URL")
+	// clientID := getParamFromOutput(output, "/bcda/%s/api/BCDA_SSAS_CLIENT_ID")
+	// clientSecret := getParamFromOutput(output, "/bcda/%s/api/BCDA_SSAS_SECRET")
+	// ssasPEM := getParamFromOutput(output, "/bcda/%s/api/BCDA_CA_FILE.pem")
+	// credsBucket := getParamFromOutput(output, "/bcda/%s/aco_creds_bucket")
 
-	clientID, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
-	if err != nil {
-		return awsParams{}, err
-	}
+	// return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
 
-	clientSecret, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
-	if err != nil {
-		return awsParams{}, err
-	}
+	// slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
 
-	ssasPEM, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env))
-	if err != nil {
-		return awsParams{}, err
-	}
+	// ssasURL, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
 
-	credsBucket, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env))
-	if err != nil {
-		return awsParams{}, err
-	}
+	// clientID, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
 
-	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
+	// clientSecret, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
+
+	// ssasPEM, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env))
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
+
+	// credsBucket, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env))
+	// if err != nil {
+	// 	return awsParams{}, err
+	// }
+
+	// return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
 }
 
 func setupEnvironment(params awsParams) error {

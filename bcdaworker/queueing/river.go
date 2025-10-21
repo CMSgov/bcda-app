@@ -39,6 +39,9 @@ import (
 	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type Notifier interface {
@@ -179,22 +182,18 @@ func getCutOffTime() time.Time {
 	return cutoff
 }
 
-func getAWSParams() (string, error) {
+func getAWSParams(ctx context.Context) (string, error) {
 	env := conf.GetEnv("ENV")
 
 	if env == "local" {
 		return conf.GetEnv("workflow-alerts"), nil
 	}
 
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return "", err
 	}
+	ssmClient := ssm.NewFromConfig(cfg)
 
-	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
-	if err != nil {
-		return slackToken, err
-	}
-
-	return slackToken, nil
+	return bcdaaws.GetParameter(ctx, ssmClient, "/slack/token/workflow-alerts")
 }

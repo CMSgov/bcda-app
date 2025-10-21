@@ -20,6 +20,9 @@ import (
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 func main() {
@@ -55,7 +58,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
-			s3AssumeRoleArn, err := loadBfdS3Params()
+			s3AssumeRoleArn, err := loadBfdS3Params(ctx)
 			if err != nil {
 				return "", err
 			}
@@ -70,20 +73,16 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	return "", nil
 }
 
-func loadBfdS3Params() (string, error) {
+func loadBfdS3Params(ctx context.Context) (string, error) {
 	env := conf.GetEnv("ENV")
 
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return "", err
 	}
+	ssmClient := ssm.NewFromConfig(cfg)
 
-	param, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env))
-	if err != nil {
-		return "", err
-	}
-
-	return param, nil
+	return bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
 }
 
 func handleOptOutImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
