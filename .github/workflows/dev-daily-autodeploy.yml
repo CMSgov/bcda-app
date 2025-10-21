@@ -17,29 +17,16 @@ jobs:
       ops_release_version: main
       ssas_release_version: main
     secrets: inherit
-  
-  deploy_all:
-    needs: [build_and_package_all]
-    uses: ./.github/workflows/deploy-all.yml
-    with:
-      release_version: main
-      ops_release_version: main
-      ssas_release_version: main
-      env: dev
-      confirm_env: dev
-      test_aco: dev
-    secrets: inherit
 
-  # Fargate -------------------------------------------------------
   build_and_publish_all:
     uses: ./.github/workflows/build-and-publish-all.yml
     with:
       release_version: main
       ssas_release_version: main
     secrets: inherit
-
-  deploy_all_fargate:
-    needs: [build_and_publish_all]
+  
+  deploy_all:
+    needs: [build_and_package_all, build_and_publish_all]
     uses: ./.github/workflows/deploy-all.yml
     with:
       release_version: main
