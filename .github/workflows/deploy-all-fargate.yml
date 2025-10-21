@@ -123,6 +123,7 @@ jobs:
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
+            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
