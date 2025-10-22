@@ -9,29 +9,61 @@ services:
       - "5432:5432"
     volumes:
       - ./db:/var/db
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - GATEWAY_LISTEN=0.0.0.0:4566
+      - SERVICES=s3,ssm,sts,iam
+      - DEBUG=1
+    ports:
+      - "4566-4583:4566-4583"
+    volumes:
+      - "./.localstack_volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./scripts/localstack_init.sh:/etc/localstack/init/ready.d/init-aws.sh"
+      - "./shared_files/decrypted:/etc/config"
+    healthcheck:
+      test: 'curl --silent --fail localstack:4566/_localstack/init/ready | grep -E "\"completed\": true"'
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
   api:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
       args:
         ENVIRONMENT: development
-    entrypoint: ""
-    command: ["bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      # subdirectories of mounted volume
+      # localstack
+      AWS_ACCESS_KEY_ID: foobar
+      AWS_SECRET_ACCESS_KEY: foobar
+      AWS_ENDPOINT_URL: http://localstack:4566
+      CONFIG_BUCKET: bcda-local-config
+      # config files
+      BCDA_API_CONFIG_PATH: /etc/sv/api/env/api.yml
+      BB_CLIENT_CERT_FILE: /etc/sv/api/env/bfd-dev-test-cert.pem
+      BB_CLIENT_KEY_FILE: /etc/sv/api/env/bfd-dev-test-key.pem
+      # mounted fhir volume
       FHIR_ARCHIVE_DIR: /var/fhir/archive
       FHIR_PAYLOAD_DIR: /var/fhir/data
       FHIR_STAGING_DIR: /var/fhir/tmpdata
     volumes:
       - fhir:/var/fhir
+      - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
       - "3001:3001"
     depends_on:
-      - ssas
-      - db
+      ssas:
+        condition: service_started
+      db:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     develop:
       watch:
         - action: rebuild
@@ -47,20 +79,31 @@ services:
       dockerfile: Dockerfiles/Dockerfile.bcdaworker
       args:
         ENVIRONMENT: development
-    entrypoint: ""
-    command: ["bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      # subdirectories of mounted volume
+      # localstack
+      AWS_ACCESS_KEY_ID: foobar
+      AWS_SECRET_ACCESS_KEY: foobar
+      AWS_ENDPOINT_URL: http://localstack:4566
+      CONFIG_BUCKET: bcda-local-config
+      # config files
+      BCDA_API_CONFIG_PATH: /etc/sv/worker/env/api.yml
+      BB_CLIENT_CERT_FILE: /etc/sv/worker/env/bfd-dev-test-cert.pem
+      BB_CLIENT_KEY_FILE: /etc/sv/worker/env/bfd-dev-test-key.pem
+      # mounted fhir volume
       FHIR_ARCHIVE_DIR: /var/fhir/archive
       FHIR_PAYLOAD_DIR: /var/fhir/data
       FHIR_STAGING_DIR: /var/fhir/tmpdata
       FHIR_TEMP_DIR: /var/fhir/TEMP
     volumes:
       - fhir:/var/fhir
+      - worker_config:/etc/sv/worker/env
     depends_on:
-      - db
+      db:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     develop:
       watch:
         - action: rebuild
@@ -112,6 +155,8 @@ services:
 
 volumes:
   fhir:
+  api_config:
+  worker_config:
 
 networks:
   default:

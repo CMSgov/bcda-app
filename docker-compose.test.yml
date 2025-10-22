@@ -1,20 +1,33 @@
 ---
 services:
+  localstack-unit-test:
+    image: localstack/localstack:latest
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - GATEWAY_LISTEN=0.0.0.0:4566
+      - SERVICES=s3,ssm,sts,iam
+      - DEBUG=1
+    volumes:
+      - "./.localstack_volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: 'curl --silent --fail localstack-unit-test:4566/_localstack/health | grep -E ''"s3": "(available|running)"'''
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
   tests:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.tests
-    depends_on:
-      localstack:
-        condition: service_healthy
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
       # Set default values for Localstack to work
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-foobar}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-foobar}
-      - LOCAL_STACK_ENDPOINT=${LOCAL_STACK_ENDPOINT:-http://localstack:4566}
-      - BFD_S3_ENDPOINT=${BFD_S3_ENDPOINT:-http://localstack:4566}
+      - LOCAL_STACK_ENDPOINT=${LOCAL_STACK_ENDPOINT:-http://localstack-unit-test:4566}
+      - BFD_S3_ENDPOINT=${BFD_S3_ENDPOINT:-http://localstack-unit-test:4566}
       - ENV=local
       - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
@@ -27,6 +40,11 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      db-unit-test:
+        condition: service_started
+      localstack-unit-test:
+        condition: service_healthy
   db-unit-test:
     image: postgres:16
     environment:
@@ -38,25 +56,6 @@ services:
       - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
     # Pass a flag so we'll log all queries executed on the test db.
     command: ["postgres", "-c", "log_statement=all"]
-  # Spin up a local S3 server for CCLF and Opt Out File import testing
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      - AWS_DEFAULT_REGION=us-east-1
-      - GATEWAY_LISTEN=0.0.0.0:4566
-      - SERVICES=s3,ssm,sts,iam
-      - DEBUG=1
-    ports:
-      - "4566-4583:4566-4583"
-    volumes:
-      - "./.localstack_volume:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    healthcheck:
-      test: 'curl --silent --fail localstack:4566/_localstack/health | grep -E ''"s3": "(available|running)"'''
-      interval: 10s
-      retries: 12
-      start_period: 30s
-      timeout: 10s
   postman_test:
     build:
       context: .

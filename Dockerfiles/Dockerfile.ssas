@@ -2,7 +2,7 @@
 FROM golang:1.25.1-alpine3.22 AS base
 
 RUN apk update upgrade && \
-    apk add git
+    apk add --no-cache git
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
@@ -28,7 +28,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM golang:1.25.1-alpine3.22
 
-RUN apk update upgrade && \
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk update upgrade && \
     apk add openssl
 
 RUN openssl genrsa -out /var/local/private.pem 2048

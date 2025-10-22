@@ -23,12 +23,14 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # ------------------------------------------------------------------------
 FROM golang:1.25.1-alpine3.22
 
+RUN apk update upgrade && \
+    apk add --no-cache aws-cli
+
 RUN addgroup -S -g 1010 bcda && adduser -S -G bcda -u 1010 bcda
 
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
-RUN [ "$ENVIRONMENT" != "development" ] || apk update upgrade && \
-    apk add bash && \
+RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
     go install github.com/go-delve/delve/cmd/dlv@latest
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
@@ -36,13 +38,18 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
 COPY --from=builder /go/bin/ /go/bin/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 
 # configure directories
-RUN mkdir /var/fhir && chown -R bcda:bcda \
+RUN mkdir -p /var/fhir /etc/sv/worker/env && chown -R bcda:bcda \
     /go/src/github.com/CMSgov/bcda-app \
     /var/fhir \
+    /etc/sv/worker/env \
     /var/log
 
 USER bcda
 
-ENTRYPOINT ["bcdaworker"]
+ENV APP_NAME="worker"
+
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["bcdaworker"]
