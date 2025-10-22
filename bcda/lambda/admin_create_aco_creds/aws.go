@@ -6,17 +6,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+
 	log "github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/conf"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
@@ -151,28 +149,20 @@ func setupEnvironment(params awsParams) error {
 	return nil
 }
 
-func putObject(service s3iface.S3API, acoID string, creds string, credsBucket string) (string, error) {
+func putObject(ctx context.Context, client *s3.Client, acoID, creds, credsBucket string) (string, error) {
 	s3Input := &s3.PutObjectInput{
-		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
+		Body:   strings.NewReader(creds),
 		Bucket: aws.String(credsBucket),
 		Key:    aws.String(fmt.Sprintf("%s-creds", acoID)),
 	}
 
-	result, err := service.PutObject(s3Input)
+	result, err := client.PutObject(ctx, s3Input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				log.Error(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
-			log.Error(err.Error())
-		}
 		return "", err
 	}
-
-	return result.String(), nil
+	// TODO
+	fmt.Printf("\n--- result metadata %+v", result.ResultMetadata)
+	return "", nil
 }
 
 func adjustedEnv() string {

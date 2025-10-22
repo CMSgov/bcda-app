@@ -41,7 +41,7 @@ func GetParameters(ctx context.Context, client *ssm.Client, keynames []string) (
 	if len(output.InvalidParameters) > 0 {
 		invalidParamsStr := ""
 		for i := 0; i < len(output.InvalidParameters); i++ {
-			invalidParamsStr += fmt.Sprintf("%s,\n", *output.InvalidParameters[i])
+			invalidParamsStr += fmt.Sprintf("%s,\n", output.InvalidParameters[i])
 		}
 		return nil, fmt.Errorf("invalid parameters error: %s", invalidParamsStr)
 	}

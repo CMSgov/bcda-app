@@ -3,13 +3,16 @@ package optout
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/sirupsen/logrus"
 )
@@ -28,7 +31,6 @@ type S3FileHandler struct {
 // Define logger functions to ensure that logs get sent to:
 // 1. Splunk (Logger.*)
 // 2. stdout (Jenkins)
-
 func (handler *S3FileHandler) Infof(format string, rest ...interface{}) {
 	handler.Logger.Infof(format, rest...)
 }
@@ -45,7 +47,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	var result []*OptOutFilenameMetadata
 
 	bucket, prefix := ParseS3Uri(path)
-	s3Objects, err := handler.ListFiles(bucket, prefix)
+	s3Objects, err := handler.ListFiles(context.Background(), bucket, prefix)
 
 	if err != nil {
 		return &result, skipped, err
@@ -69,18 +71,17 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	return &result, skipped, err
 }
 
-func (handler *S3FileHandler) ListFiles(bucket, prefix string) (objects []*s3.Object, err error) {
-	sess, err := handler.createSession()
+func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix string) (objects []s3types.Object, err error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		handler.Errorf("Failed to create S3 session: %s\n", err)
 		return nil, err
 	}
 
-	svc := s3.New(sess)
+	client := s3.NewFromConfig(cfg)
 
 	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
 
-	resp, err := svc.ListObjects(&s3.ListObjectsInput{
+	resp, err := client.ListObjects(ctx, &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	})
@@ -105,14 +106,20 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	return sc, func() {}, err
 }
 
-func getHeadObject(bucket string, key string, sess *session.Session) (*s3.HeadObjectOutput, error) {
-	svc := s3.New(sess)
+func getHeadObject(ctx context.Context, bucket string, key string, sess *session.Session) (*s3.HeadObjectOutput, error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client := s3.NewFromConfig(cfg)
+
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}
 
-	output, err := svc.HeadObject(input)
+	output, err := client.HeadObject(ctx, input)
 
 	if err != nil {
 		return nil, err
