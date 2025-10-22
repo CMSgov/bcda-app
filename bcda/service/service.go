@@ -580,7 +580,8 @@ func IsSupportedACO(cmsID string) bool {
 		guide   = `^GUIDE-\d{5}$`
 		test    = `^TEST\d{3}$`
 		sandbox = `^SBX[A-Z]{2}\d{3}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)`
+		iot     = `^IOTA\d{3}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)|(` + iot + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
