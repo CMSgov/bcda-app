@@ -169,7 +169,6 @@ jobs:
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          touch bcda-release-api-worker-vars.tfvars
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
@@ -179,7 +178,6 @@ jobs:
             -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
             -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
             -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
-            -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: Init, Plan OpenTofu
         # FARGATE FIXUP: adding fargate vars to tf plan
@@ -188,14 +186,12 @@ jobs:
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          touch bcda-release-api-worker-vars.tfvars
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
-            -var-file=bcda-release-api-worker-vars.tfvars \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
