@@ -280,7 +280,7 @@ jobs:
             export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
             # Was unable to escape the backticks (`), creating this function seems to get around that
             get_image_version () {
-                aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
+                aws ec2 describe-images --region ${{ vars.AWS_REGION }} --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
             }
             export BCDA_WORKER_VERSION=`get_image_version`
 
@@ -312,7 +312,7 @@ jobs:
   #         TRY=1
 
   #         until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-  #           WORKER_VERSION=`aws ecs --resource-arn list-tags-for-resource arn:aws:ecs:us-east-1:539247469933:service/bcda-dev/bcda-dev-api --query "tags[?key=='image_tag'].value | [0]" --output text`
+  #           WORKER_VERSION=`aws ecs --resource-arn list-tags-for-resource arn:aws:ecs:${{ vars.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:service/bcda-${{ env.RELEASE_ENV }}/bcda-${{ env.RELEASE_ENV }}-api --query "tags[?key=='image_tag'].value | [0]" --output text`
 
   #           if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
   #             echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."

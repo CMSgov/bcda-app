@@ -28,7 +28,6 @@ jobs:
   build_and_publish:
     needs: [ci_checks]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    environment: ${{ inputs.env || 'dev' }}
     strategy:
       matrix:
         vars:
