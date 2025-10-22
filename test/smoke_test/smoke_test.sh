@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CMS_IDs=("A9998")
+CMS_IDs=("A9996")
 set -e
 function cleanup() {
         for CMS_ID in "${CMS_IDs[@]}"; do
@@ -21,8 +21,8 @@ for CMS_ID in "${CMS_IDs[@]}"; do
         ACO_ID=$(docker compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
         GROUP_ID=$(docker compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda create-group --id ${CMS_ID} --name "Smoke Test Group" --aco-id ${CMS_ID}' | tail -n1 | tr -d '\r')
         CREDS=($(docker compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda generate-client-credentials --cms-id ${CMS_ID}' | tail -n3 | tr -d '\r'))
-        CLIENT_ID="e75679c2-1b58-4cf5-8664-d3706de8caf5"
-        CLIENT_SECRET="67570807508212a220cc364d4406b9bd560276142d46257f76ba28dd9a0ff969e0c26db21c9d925c"
+        CLIENT_ID=${CREDS[0]}
+        CLIENT_SECRET=${CREDS[1]}
 
         docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
                 -e test/postman_test/${BCDA_SMOKE_TEST_ENV}.postman_environment.json \
