@@ -87,7 +87,6 @@
 /bcda/${env}/sensitive/ssas/DEPLOYMENT_TARGET: ENC[AES256_GCM,data:Dx+x2qHOKQ==,iv:N6CGT8yEN4jJLWHxM7D2nfoROY3MzrJT3fFBLbRIqGI=,tag:kV5N6kfVbb8ysLCG79lJQQ==,type:str]
 /bcda/${env}/sensitive/ssas/GOPATH: ENC[AES256_GCM,data:yOc0,iv:PE8Hg92S8TKEl1smPylgwbCmRtYCIc3k2CHiwUii74U=,tag:io4JN0t2TuwgvxyymDzCcw==,type:str]
 /bcda/${env}/sensitive/ssas/NEW_RELIC_LICENSE_KEY: ENC[AES256_GCM,data:d3W3VMDwEPdOZl9a83C+Y21y8nIVwkFO8jkmSBUXSX5Indq+xzQ+kA==,iv:zzBqQJ3BPbQ8jVEuTSCPkSjlBjfkH8ceFTZSzXip4sA=,tag:hHro8Bo5MNxKVFwOWHM6yw==,type:str]
-/bcda/${env}/sensitive/ssas/SGA_ADMIN_FEATURE: ENC[AES256_GCM,data:M4W7Ag==,iv:ei99Ui+OOJTdbx/4ElRY4a8ANunc3ci3rId6srXVsFg=,tag:hMTCKst5OMRjmFdY8SI/EQ==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_ADMIN_SIGNING_KEY_PATH: ENC[AES256_GCM,data:IBy+Omv8RxGOTmzMOtCRK91vZ+qlaBaslQ8Rnt0xFn3aeEzUHKjSaMAESg==,iv:JZSdtuDxSshBBkTiFny+mj+6nxuHNjdF/CU3Enn/y4E=,tag:YCF7CrtHs9SB/Yh9FYmpPQ==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_CRED_EXPIRATION_DAYS: ENC[AES256_GCM,data:ly9U,iv:fQ77qXw1orL89aWvGiiPluLS/aUcbEU/eQz+UNlQnKU=,tag:ukiQn32E7FnK8vNIiSoeGg==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_DEFAULT_SYSTEM_SCOPE: ENC[AES256_GCM,data:Dtf5zGMgwG4=,iv:RlRijBk+PIuLwRp8R/F99Jw9kGitSKeGx7Gs1Ln7hd4=,tag:tl3HxbMu2jy+I8p6blMbjg==,type:str]
