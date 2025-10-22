@@ -137,7 +137,7 @@ load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
 	for ACO_SIZE in $(ACO_SIZES) ; do \
-		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='dev' --environment='test' --fileType='' " ; \
+		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
