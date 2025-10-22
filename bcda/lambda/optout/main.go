@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
@@ -29,7 +30,7 @@ func main() {
 	// Localstack is a local-development server that mimics AWS. The endpoint variable
 	// should only be set in local development to avoid making external calls to a real AWS account.
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		res, err := handleOptOutImport(database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
+		res, err := handleOptOutImport(context.Background(), database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
 		if err != nil {
 			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
 		} else {
@@ -65,7 +66,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
-			return handleOptOutImport(db, s3AssumeRoleArn, dir)
+			return handleOptOutImport(ctx, db, s3AssumeRoleArn, dir)
 		}
 	}
 
@@ -85,14 +86,23 @@ func loadBfdS3Params(ctx context.Context) (string, error) {
 	return bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
 }
 
-func handleOptOutImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleOptOutImport(ctx context.Context, db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
 	repo := postgres.NewRepository(db)
 
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		logger.Error("error loading default config: ", err)
+		return "", err
+	}
+	client := s3.NewFromConfig(cfg)
+
 	importer := suppression.OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
+			Ctx:           ctx,
+			Client:        client,
 			Logger:        logger,
 			Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
 			AssumeRoleArn: s3AssumeRoleArn,

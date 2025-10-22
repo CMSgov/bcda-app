@@ -21,6 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
@@ -28,7 +29,7 @@ func main() {
 	// Localstack is a local-development server that mimics AWS. The endpoint variable
 	// should only be set in local development to avoid making external calls to a real AWS account.
 	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		res, err := handleCclfImport(database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
+		res, err := handleCclfImport(context.TODO(), database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
 		if err != nil {
 			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
 		} else {
@@ -71,9 +72,9 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
-				return handleCSVImport(db, s3AssumeRoleArn, filepath)
+				return handleCSVImport(ctx, db, s3AssumeRoleArn, filepath)
 			} else {
-				return handleCclfImport(db, s3AssumeRoleArn, filepath)
+				return handleCclfImport(ctx, db, s3AssumeRoleArn, filepath)
 			}
 		}
 	}
@@ -82,7 +83,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	return "", nil
 }
 
-func handleCSVImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleCSVImport(ctx context.Context, db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -91,19 +92,28 @@ func handleCSVImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, 
 	pool := database.ConnectPool()
 	defer pool.Close()
 
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		logger.Error("error loading default config: ", err)
+		return "", err
+	}
+	client := s3.NewFromConfig(cfg)
+
 	importer := cclf.CSVImporter{
 		Logger:  logger,
 		PgxPool: pool,
 		FileProcessor: &cclf.S3FileProcessor{
 			Handler: optout.S3FileHandler{
+				Ctx:           ctx,
+				Client:        client,
 				Logger:        logger,
 				Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
 				AssumeRoleArn: s3AssumeRoleArn,
 			},
 		},
 	}
-	err := importer.ImportCSV(s3ImportPath)
 
+	err = importer.ImportCSV(s3ImportPath)
 	if err != nil {
 		logger.Error("error returned from ImportCSV: ", err)
 		return "", err
@@ -111,6 +121,7 @@ func handleCSVImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, 
 
 	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v.   See logs for more details.", s3ImportPath)
 	logger.Info(result)
+
 	return result, nil
 }
 
@@ -132,14 +143,23 @@ func loadBCDAParams() error {
 	return nil
 }
 
-func handleCclfImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleCclfImport(ctx context.Context, db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		logger.Error("error loading default config: ", err)
+		return "", err
+	}
+	client := s3.NewFromConfig(cfg)
+
 	fileProcessor := cclf.S3FileProcessor{
 		Handler: optout.S3FileHandler{
+			Ctx:           ctx,
+			Client:        client,
 			Logger:        logger,
 			Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
 			AssumeRoleArn: s3AssumeRoleArn,

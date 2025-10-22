@@ -5,20 +5,21 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/sirupsen/logrus"
 )
 
 // S3FileHandler manages files located on AWS S3.
 type S3FileHandler struct {
+	Ctx    context.Context
+	Client *s3.Client
 	Logger logrus.FieldLogger
 	// Optional S3 endpoint to use for connection.
 	Endpoint string
@@ -47,7 +48,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	var result []*OptOutFilenameMetadata
 
 	bucket, prefix := ParseS3Uri(path)
-	s3Objects, err := handler.ListFiles(context.Background(), bucket, prefix)
+	s3Objects, err := handler.ListFiles(bucket, prefix)
 
 	if err != nil {
 		return &result, skipped, err
@@ -71,8 +72,8 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	return &result, skipped, err
 }
 
-func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix string) (objects []s3types.Object, err error) {
-	cfg, err := config.LoadDefaultConfig(ctx)
+func (handler *S3FileHandler) ListFiles(bucket, prefix string) (objects []s3types.Object, err error) {
+	cfg, err := config.LoadDefaultConfig(handler.Ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix stri
 
 	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
 
-	resp, err := client.ListObjects(ctx, &s3.ListObjectsInput{
+	resp, err := client.ListObjects(handler.Ctx, &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	})
@@ -106,48 +107,24 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	return sc, func() {}, err
 }
 
-func getHeadObject(ctx context.Context, bucket string, key string, sess *session.Session) (*s3.HeadObjectOutput, error) {
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	client := s3.NewFromConfig(cfg)
-
-	input := &s3.HeadObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	}
-
-	output, err := client.HeadObject(ctx, input)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return output, nil
-}
-
 func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 	handler.Infof("Opening file %s\n", filePath)
 	bucket, file := ParseS3Uri(filePath)
 
-	sess, err := handler.createSession()
+	input := &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(filePath),
+	}
+	output, err := handler.Client.HeadObject(handler.Ctx, input)
 	if err != nil {
 		return nil, err
 	}
 
-	downloader := s3manager.NewDownloader(sess)
+	buff := make([]byte, int(output.ContentLength))
+	w := manager.NewWriteAtBuffer(buff)
 
-	headObj, err := getHeadObject(bucket, file, sess)
-	if err != nil {
-		return nil, err
-	}
-
-	buf := make([]byte, int(*headObj.ContentLength))
-	buff := aws.NewWriteAtBuffer(buf)
-
-	numBytes, err := downloader.Download(buff, &s3.GetObjectInput{
+	downloader := manager.NewDownloader(handler.Client)
+	numBytes, err := downloader.Download(handler.Ctx, w, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(file),
 	})
@@ -157,8 +134,8 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 	}
 
 	handler.Logger.WithField("file_size_bytes", numBytes).Infof("file downloaded: size=%d\n", numBytes)
-	byte_arr := buff.Bytes()
-	return byte_arr, err
+
+	return buff, err
 }
 
 func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
@@ -189,69 +166,29 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 	return nil
 }
 
-// Creates a new AWS S3 session. If the handler is given a custom S3 endpoint
-// and/or IAM role ARN to assume, the new session connects using those parameters.
-func (handler *S3FileHandler) createSession() (*session.Session, error) {
-	if handler.Session != nil {
-		return handler.Session, nil
-	}
-
-	sess := session.Must(session.NewSession())
-
-	config := aws.Config{
-		Region: aws.String("us-east-1"),
-	}
-
-	if handler.Endpoint != "" {
-		config.S3ForcePathStyle = aws.Bool(true)
-		config.Endpoint = &handler.Endpoint
-	}
-
-	if handler.AssumeRoleArn != "" && os.Getenv("LOCAL_STACK_ENDPOINT") == "" {
-		config.Credentials = stscreds.NewCredentials(
-			sess,
-			handler.AssumeRoleArn,
-		)
-	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err == nil {
-		handler.Session = sess
-	}
-
-	return sess, err
-}
-
 func (handler *S3FileHandler) Delete(filePath string) error {
-	sess, err := handler.createSession()
-
-	if err != nil {
-		handler.Errorf("File %s failed to clean up properly, error occurred while creating S3 session: %v\n", filePath, err)
-		return err
-	}
-
 	bucket, path := ParseS3Uri(filePath)
 
-	svc := s3.New(sess)
-	_, err = svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(path)})
-
-	if err != nil {
-		handler.Errorf("File %s failed to clean up properly, error occurred while deleting object: %v\n", filePath, err)
-		return err
-	}
-
-	err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+	_, err := handler.Client.DeleteObject(handler.Ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(path),
 	})
-
 	if err != nil {
-		handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", filePath, err)
+		handler.Errorf("file %s failed to clean up properly, error occurred while deleting object: %v\n", filePath, err)
 		return err
+	} else {
+		err = s3.NewObjectNotExistsWaiter(handler.Client).Wait(
+			handler.Ctx,
+			&s3.HeadObjectInput{
+				Bucket: aws.String(bucket),
+				Key:    aws.String(path),
+			},
+			time.Minute,
+		)
+		if err != nil {
+			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", filePath, err)
+		}
 	}
 
-	return nil
+	return err
 }
