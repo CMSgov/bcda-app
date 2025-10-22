@@ -1,13 +1,7 @@
 package bcdaaws
 
-import (
-	"context"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-)
-
-var s3Region = "us-east-1"
-var DefaultRegion = "us-east-1"
+// var s3Region = "us-east-1"
+// var DefaultRegion = "us-east-1"
 
 // Makes these easily mockable for testing
 // var newSession = session.NewSession
@@ -43,31 +37,31 @@ var DefaultRegion = "us-east-1"
 // 	return sess, nil
 // }
 
-func NewAWSConfig(ctx context.Context, roleArn, endpoint string) (config.Config, error) {
-	return config.LoadDefaultConfig(ctx, config.WithRegion(DefaultRegion))
-	// var cfg config.Config
+// func NewAWSConfig(ctx context.Context, roleArn, endpoint string) (config.Config, error) {
+// 	return config.LoadDefaultConfig(ctx, config.WithRegion(DefaultRegion))
+// 	// var cfg config.Config
 
-	// // used to override for localstack
-	// if endpoint != "" {
-	// 	cfg = config.LoadDefaultConfig(
-	// 		ctx,
-	// 		config.WithRegion(DefaultRegion)),
+// 	// // used to override for localstack
+// 	// if endpoint != "" {
+// 	// 	cfg = config.LoadDefaultConfig(
+// 	// 		ctx,
+// 	// 		config.WithRegion(DefaultRegion)),
 
-	// 	// cfg.S3ForcePathStyle = true
-	// 	// cfg.Endpoint = &endpoint
-	// } else if roleArn != "" {
+// 	// 	// cfg.S3ForcePathStyle = true
+// 	// 	// cfg.Endpoint = &endpoint
+// 	// } else if roleArn != "" {
 
-	// 	client := stscreds.NewFromConfig(cfg)
-	// 	appCreds := stscreds.NewAssumeRoleProvider(client, roleArn)
-	// 	creds, err := appCreds.Retrieve(ctx)
-	// 	if err != nil {
-	// 		return config.Config{}, err
-	// 	}
+// 	// 	client := stscreds.NewFromConfig(cfg)
+// 	// 	appCreds := stscreds.NewAssumeRoleProvider(client, roleArn)
+// 	// 	creds, err := appCreds.Retrieve(ctx)
+// 	// 	if err != nil {
+// 	// 		return config.Config{}, err
+// 	// 	}
 
-	// 	cfg.Credentials = creds
-	// } else {
+// 	// 	cfg.Credentials = creds
+// 	// } else {
 
-	// }
+// 	// }
 
-	// return cfg, nil
-}
+// 	// return cfg, nil
+// }

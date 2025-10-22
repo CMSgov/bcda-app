@@ -13,14 +13,13 @@ services:
       # Set default values for Localstack to work
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-foobar}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-foobar}
+      - AWS_ENDPOINT_URL=http://localstack:4566
       - LOCAL_STACK_ENDPOINT=${LOCAL_STACK_ENDPOINT:-http://localstack:4566}
       - BFD_S3_ENDPOINT=${BFD_S3_ENDPOINT:-http://localstack:4566}
       - ENV=local
       - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
-
       - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
-
       # Remaining environment variables defined in ./shared_files/decrypted/local.env
     volumes:
       - ./test_results:/go/src/github.com/CMSgov/bcda-app/test_results
@@ -43,11 +42,14 @@ services:
     image: localstack/localstack:latest
     environment:
       - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
       - GATEWAY_LISTEN=0.0.0.0:4566
       - SERVICES=s3,ssm,sts,iam
       - DEBUG=1
     ports:
-      - "4566-4583:4566-4583"
+      # - "4566-4583:4566-4583"
+      - "127.0.0.1:4566:4566" # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"
     volumes:
       - "./.localstack_volume:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
