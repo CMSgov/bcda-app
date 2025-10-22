@@ -118,6 +118,9 @@ reset-db:
 
 load-fixtures: reset-db
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
+
+# Start api service if it's not already running
+	docker compose up -d api
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
@@ -134,25 +137,25 @@ load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
 	for ACO_SIZE in $(ACO_SIZES) ; do \
-		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
+		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	for ACO_SIZE in $(ACO_SIZES) ; do \
-		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test-new-beneficiaries' --fileType='' " ; \
-		docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='runout' " ; \
+		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test-new-beneficiaries' --fileType='' " ; \
+		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='runout' " ; \
 	done
 
 	# Improved Synthea BFD Data Ingestion
 	$(eval IMPROVED_SIZES := improved-dev improved-small improved-large)
 	for IMPROVED_SIZE in $(IMPROVED_SIZES) ; do \
-			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='' " ; \
-			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved-new' --fileType='' " ; \
-			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='runout' " ; \
+			docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='' " ; \
+			docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved-new' --fileType='' " ; \
+			docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='runout' " ; \
 	done
 
 load-synthetic-suppression-data:
-	docker compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+	docker compose exec api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
 	# See postgres#GetSuppressedMBIs for more information
 	docker compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
