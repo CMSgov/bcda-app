@@ -19,14 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  ci_checks:
-    uses: ./.github/workflows/ci-checks.yml
-    with:
-      release_version: ${{ inputs.release_version || 'main' }}
-    secrets: inherit
-
   build_and_publish:
-    needs: [ci_checks]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     strategy:
       matrix:
