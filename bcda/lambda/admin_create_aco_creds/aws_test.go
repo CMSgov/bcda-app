@@ -1,33 +1,42 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 )
 
-type mockS3 struct {
-	s3iface.S3API
-}
-
-func (m *mockS3) PutObject(*s3.PutObjectInput) (*s3.PutObjectOutput, error) {
-	return &s3.PutObjectOutput{}, nil
-}
-
 func TestPutObject(t *testing.T) {
-	mock := &mockS3{}
-
-	result, err := putObject(mock, "test-filename", "test-creds", "test-bucket")
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithRegion("us-east-1"),
+	)
 	assert.Nil(t, err)
-	assert.Equal(t, result, "{\n\n}")
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+	})
+
+	bucketInput := &s3.CreateBucketInput{
+		Bucket: aws.String("test-bucket"),
+	}
+	_, err = client.CreateBucket(t.Context(), bucketInput)
+	assert.Nil(t, err)
+
+	result, err := putObject(t.Context(), client, "test-filename", "test-creds", "test-bucket")
+	assert.Nil(t, err)
+	assert.Equal(t, result, "test-bucket/test-filename-creds")
 }
 
 func TestAdjustedEnv(t *testing.T) {
 	origEnv := conf.GetEnv("ENV")
+	t.Cleanup(func() {
+		conf.SetEnv(t, "ENV", origEnv)
+	})
 
 	conf.SetEnv(t, "ENV", "dev")
 	resultEnv := adjustedEnv()
@@ -44,8 +53,6 @@ func TestAdjustedEnv(t *testing.T) {
 	conf.SetEnv(t, "ENV", "prod")
 	resultEnv = adjustedEnv()
 	assert.Equal(t, resultEnv, "prod")
-
-	conf.SetEnv(t, "ENV", origEnv)
 }
 
 func TestSetupEnvironment(t *testing.T) {
@@ -55,6 +62,20 @@ func TestSetupEnvironment(t *testing.T) {
 	origBCDASSASSecret := os.Getenv("BCDA_SSAS_SECRET")
 	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
 	origBCDACAFile := os.Getenv("BCDA_CA_FILE")
+
+	t.Cleanup(func() {
+		// restore original env vars
+		err := os.Setenv("SSAS_URL", origSSASURL)
+		assert.Nil(t, err)
+		err = os.Setenv("BCDA_SSAS_CLIENT_ID", origBCDASSASClientID)
+		assert.Nil(t, err)
+		err = os.Setenv("BCDA_SSAS_SECRET", origBCDASSASSecret)
+		assert.Nil(t, err)
+		err = os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+		assert.Nil(t, err)
+		err = os.Setenv("BCDA_CA_FILE", origBCDACAFile)
+		assert.Nil(t, err)
+	})
 
 	err := setupEnvironment(awsParams{
 		ssasURL:      "test-SSAS_URL",
@@ -70,16 +91,4 @@ func TestSetupEnvironment(t *testing.T) {
 	assert.Equal(t, pemFilePath, os.Getenv("BCDA_CA_FILE"))
 
 	assert.FileExists(t, pemFilePath)
-
-	// restore original env vars
-	err = os.Setenv("SSAS_URL", origSSASURL)
-	assert.Nil(t, err)
-	err = os.Setenv("BCDA_SSAS_CLIENT_ID", origBCDASSASClientID)
-	assert.Nil(t, err)
-	err = os.Setenv("BCDA_SSAS_SECRET", origBCDASSASSecret)
-	assert.Nil(t, err)
-	err = os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
-	assert.Nil(t, err)
-	err = os.Setenv("BCDA_CA_FILE", origBCDACAFile)
-	assert.Nil(t, err)
 }

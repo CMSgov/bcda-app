@@ -120,7 +120,7 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 		return nil, err
 	}
 
-	buff := make([]byte, int(output.ContentLength))
+	buff := make([]byte, int(*output.ContentLength))
 	w := manager.NewWriteAtBuffer(buff)
 
 	downloader := manager.NewDownloader(handler.Client)

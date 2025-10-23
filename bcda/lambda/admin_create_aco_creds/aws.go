@@ -156,13 +156,12 @@ func putObject(ctx context.Context, client *s3.Client, acoID, creds, credsBucket
 		Key:    aws.String(fmt.Sprintf("%s-creds", acoID)),
 	}
 
-	result, err := client.PutObject(ctx, s3Input)
+	_, err := client.PutObject(ctx, s3Input)
 	if err != nil {
 		return "", err
 	}
-	// TODO
-	fmt.Printf("\n--- result metadata %+v", result.ResultMetadata)
-	return "", nil
+
+	return (credsBucket + "/" + acoID + "-creds"), nil
 }
 
 func adjustedEnv() string {

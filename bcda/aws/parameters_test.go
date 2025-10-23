@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/stretchr/testify/assert"
@@ -19,11 +20,10 @@ func TestGetParameter(t *testing.T) {
 	assert.Nil(t, err)
 	client := ssm.NewFromConfig(cfg)
 
-	overwrite := true
 	paramInput := ssm.PutParameterInput{
 		Name:      &key1,
 		Value:     &val1,
-		Overwrite: &overwrite,
+		Overwrite: aws.Bool(true),
 		Type:      "String",
 	}
 
@@ -73,11 +73,10 @@ func TestGetParameters(t *testing.T) {
 	assert.Nil(t, err)
 	client := ssm.NewFromConfig(cfg)
 
-	overwrite := true
 	paramInput1 := ssm.PutParameterInput{
 		Name:      &key1,
 		Value:     &val1,
-		Overwrite: &overwrite,
+		Overwrite: aws.Bool(true),
 		Type:      "String",
 	}
 	_, err = client.PutParameter(t.Context(), &paramInput1)
@@ -86,7 +85,7 @@ func TestGetParameters(t *testing.T) {
 	paramInput2 := ssm.PutParameterInput{
 		Name:      &key2,
 		Value:     &val2,
-		Overwrite: &overwrite,
+		Overwrite: aws.Bool(true),
 		Type:      "String",
 	}
 	_, err = client.PutParameter(t.Context(), &paramInput2)
