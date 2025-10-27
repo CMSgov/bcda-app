@@ -66,7 +66,7 @@ jobs:
                 mrkdown_in:
                   - text
       - name: Failure Alert
-        if: ${{ failure() || needs.build_and_publish_api.result != 'success' || needs.build_and_publish_worker.result || needs.build_and_publish_ssas.result != 'success' }}
+        if: ${{ failure() || needs.build_and_publish_api.result != 'success' || needs.build_and_publish_worker.result != 'success' || needs.build_and_publish_ssas.result != 'success' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: chat.postMessage
