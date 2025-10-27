@@ -119,7 +119,7 @@ func TestNilResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	resp, err := client.DoRaw(req)
-	assert.ErrorContains(t, err, "response from BFD is nil")
+	assert.ErrorContains(t, err, "error from BFD")
 	assert.Equal(t, "", resp)
 }
 
