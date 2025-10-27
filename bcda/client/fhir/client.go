@@ -129,7 +129,10 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error from BFD: %s", err)
+		return nil, fmt.Errorf("BFD request failed: %s", err)
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("BFD response is empty")
 	}
 	defer resp.Body.Close()
 	s.Response = resp
