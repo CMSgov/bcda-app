@@ -25,7 +25,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 		return awsParams{}, nil
 	}
 
-	slackTokenName := "/slack/token/workflow-alerts"
+	slackParamName := "/slack/token/workflow-alerts"
 	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
 	clientIDName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
 	clientSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
@@ -33,7 +33,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 	credsBucketName := fmt.Sprintf("/bcda/%s/aco_creds_bucket", env)
 
 	paramNames := []string{
-		slackTokenName,
+		slackParamName,
 		ssasURLName,
 		clientIDName,
 		clientSecretName,
@@ -53,7 +53,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 	}
 
 	return awsParams{
-		params[slackTokenName],
+		params[slackParamName],
 		params[ssasURLName],
 		params[clientIDName],
 		params[clientSecretName],

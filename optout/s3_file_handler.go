@@ -55,7 +55,7 @@ func (handler *S3FileHandler) LoadOptOutFiles(ctx context.Context, path string) 
 
 		if err != nil {
 			// Skip files with a bad name.  An unknown file in this dir isn't a blocker
-			handler.Warningf("Unknown file found: %s. Skipping.\n", metadata)
+			handler.Warningf("Unknown file found: %s. Skipping", metadata)
 			skipped = skipped + 1
 			continue
 		}
@@ -75,7 +75,7 @@ func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix stri
 	})
 
 	if err != nil {
-		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s\n", bucket, prefix, err)
+		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 		return nil, err
 	}
 
-	handler.Logger.WithField("file_size_bytes", numBytes).Infof("file downloaded: size=%d\n", numBytes)
+	handler.Logger.WithField("file_size_bytes", numBytes).Infof("file downloaded: size=%d", numBytes)
 
 	return buff, err
 }
@@ -131,7 +131,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(ctx context.Context, suppressli
 		if !suppressionFile.Imported {
 			// Don't do anything. The S3 bucket should have a retention policy that
 			// automatically cleans up files after a specified period of time,
-			handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", suppressionFile)
+			handler.Warningf("File %s was not imported successfully. Skipping cleanup", suppressionFile)
 			continue
 		}
 
@@ -143,11 +143,11 @@ func (handler *S3FileHandler) CleanupOptOutFiles(ctx context.Context, suppressli
 			continue
 		}
 
-		handler.Infof("File %s successfully ingested and deleted from S3.\n", suppressionFile)
+		handler.Infof("File %s successfully ingested and deleted from S3", suppressionFile)
 	}
 
 	if errCount > 0 {
-		return fmt.Errorf("%d files could not be cleaned up\n", errCount)
+		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 
 	return nil

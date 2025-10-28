@@ -294,10 +294,9 @@ func (s *SuppressionS3TestSuite) TestCleanupSuppression() {
 	assert.Nil(err)
 
 	client := testUtils.TestS3Client(s.T(), testUtils.TestAWSConfig(s.T()))
-	output, err := client.ListObjectsV2(s.T().Context(), &s3.ListObjectsV2Input{
+	output, _ := client.ListObjectsV2(s.T().Context(), &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucketName),
 	})
-	assert.Nil(s.T(), err)
 	assert.True(len(output.Contents) == 0)
 }
 

@@ -150,12 +150,12 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 	ssmClient := ssm.NewFromConfig(cfg)
 
 	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
-	slackTokenName := "/slack/token/workflow-alerts"
-	paramNames := []string{slackTokenName, dbURLName}
+	slackParamName := "/slack/token/workflow-alerts"
+	paramNames := []string{slackParamName, dbURLName}
 	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}
 
-	return awsParams{params[dbURLName], params[slackTokenName]}, nil
+	return awsParams{params[dbURLName], params[slackParamName]}, nil
 }

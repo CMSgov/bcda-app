@@ -148,13 +148,13 @@ func setupEnv(ctx context.Context) (string, error) {
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
-	slackTokenName := "/slack/token/workflow-alerts"
+	slackParamName := "/slack/token/workflow-alerts"
 	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
 	ssasClientName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
 	ssasSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
 	caFileName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
 	paramNames := []string{
-		slackTokenName,
+		slackParamName,
 		ssasURLName,
 		ssasClientName,
 		ssasSecretName,
@@ -165,9 +165,9 @@ func setupEnv(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	err = os.Setenv(slackTokenName, params[slackTokenName])
+	err = os.Setenv(slackParamName, params[slackParamName])
 	if err != nil {
-		log.Errorf("Error setting slackTokenName env var: %+v", err)
+		log.Errorf("Error setting slackParamName env var: %+v", err)
 		return "", err
 	}
 	err = os.Setenv(ssasURLName, params[ssasURLName])
@@ -209,5 +209,5 @@ func setupEnv(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return params[slackTokenName], nil
+	return params[slackParamName], nil
 }
