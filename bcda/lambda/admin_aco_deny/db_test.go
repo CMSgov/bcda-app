@@ -54,7 +54,7 @@ func TestDenyACOsQueryFailure(t *testing.T) {
 func TestDenyACOs_Integration(t *testing.T) {
 	ctx := context.Background()
 
-	params, err := getAWSParams()
+	params, err := getAWSParams(ctx)
 	assert.Nil(t, err)
 
 	conn, err := pgx.Connect(ctx, params.DBURL)

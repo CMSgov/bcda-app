@@ -8,25 +8,20 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/sirupsen/logrus"
 )
 
 // S3FileHandler manages files located on AWS S3.
 type S3FileHandler struct {
-	Ctx    context.Context
 	Client *s3.Client
 	Logger logrus.FieldLogger
 	// Optional S3 endpoint to use for connection.
 	Endpoint string
 	// Optional role to assume when connecting to S3.
 	AssumeRoleArn string
-	// AWS session, created once and cached here.
-	Session *session.Session
 }
 
 // Define logger functions to ensure that logs get sent to:
@@ -44,12 +39,11 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 	handler.Logger.Errorf(format, rest...)
 }
 
-func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
+func (handler *S3FileHandler) LoadOptOutFiles(ctx context.Context, path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
 	var result []*OptOutFilenameMetadata
 
 	bucket, prefix := ParseS3Uri(path)
-	s3Objects, err := handler.ListFiles(bucket, prefix)
-
+	s3Objects, err := handler.ListFiles(ctx, bucket, prefix)
 	if err != nil {
 		return &result, skipped, err
 	}
@@ -72,17 +66,10 @@ func (handler *S3FileHandler) LoadOptOutFiles(path string) (suppressList *[]*Opt
 	return &result, skipped, err
 }
 
-func (handler *S3FileHandler) ListFiles(bucket, prefix string) (objects []s3types.Object, err error) {
-	cfg, err := config.LoadDefaultConfig(handler.Ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	client := s3.NewFromConfig(cfg)
-
+func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix string) (objects []s3types.Object, err error) {
 	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
 
-	resp, err := client.ListObjects(handler.Ctx, &s3.ListObjectsInput{
+	resp, err := handler.Client.ListObjects(ctx, &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	})
@@ -95,9 +82,8 @@ func (handler *S3FileHandler) ListFiles(bucket, prefix string) (objects []s3type
 	return resp.Contents, nil
 }
 
-func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
-	byte_arr, err := handler.OpenFileBytes(metadata.FilePath)
-
+func (handler *S3FileHandler) OpenFile(ctx context.Context, metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
+	byte_arr, err := handler.OpenFileBytes(ctx, metadata.FilePath)
 	if err != nil {
 		handler.Errorf("Failed to download %s\n", metadata.FilePath)
 		return nil, nil, err
@@ -107,15 +93,16 @@ func (handler *S3FileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio
 	return sc, func() {}, err
 }
 
-func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
+func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string) ([]byte, error) {
 	handler.Infof("Opening file %s\n", filePath)
 	bucket, file := ParseS3Uri(filePath)
 
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
-		Key:    aws.String(filePath),
+		Key:    aws.String(file),
 	}
-	output, err := handler.Client.HeadObject(handler.Ctx, input)
+
+	output, err := handler.Client.HeadObject(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -124,11 +111,10 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 	w := manager.NewWriteAtBuffer(buff)
 
 	downloader := manager.NewDownloader(handler.Client)
-	numBytes, err := downloader.Download(handler.Ctx, w, &s3.GetObjectInput{
+	numBytes, err := downloader.Download(ctx, w, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(file),
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -138,8 +124,9 @@ func (handler *S3FileHandler) OpenFileBytes(filePath string) ([]byte, error) {
 	return buff, err
 }
 
-func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
+func (handler *S3FileHandler) CleanupOptOutFiles(ctx context.Context, suppresslist []*OptOutFilenameMetadata) error {
 	errCount := 0
+
 	for _, suppressionFile := range suppresslist {
 		if !suppressionFile.Imported {
 			// Don't do anything. The S3 bucket should have a retention policy that
@@ -149,7 +136,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 		}
 
 		handler.Infof("Cleaning up file %s\n", suppressionFile)
-		err := handler.Delete(suppressionFile.FilePath)
+		err := handler.Delete(ctx, suppressionFile.FilePath)
 
 		if err != nil {
 			errCount++
@@ -166,10 +153,10 @@ func (handler *S3FileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameM
 	return nil
 }
 
-func (handler *S3FileHandler) Delete(filePath string) error {
+func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error {
 	bucket, path := ParseS3Uri(filePath)
 
-	_, err := handler.Client.DeleteObject(handler.Ctx, &s3.DeleteObjectInput{
+	_, err := handler.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(path),
 	})
@@ -178,7 +165,7 @@ func (handler *S3FileHandler) Delete(filePath string) error {
 		return err
 	} else {
 		err = s3.NewObjectNotExistsWaiter(handler.Client).Wait(
-			handler.Ctx,
+			ctx,
 			&s3.HeadObjectInput{
 				Bucket: aws.String(bucket),
 				Key:    aws.String(path),

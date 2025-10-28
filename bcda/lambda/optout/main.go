@@ -27,18 +27,7 @@ import (
 )
 
 func main() {
-	// Localstack is a local-development server that mimics AWS. The endpoint variable
-	// should only be set in local development to avoid making external calls to a real AWS account.
-	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		res, err := handleOptOutImport(context.Background(), database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
-		if err != nil {
-			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
-		} else {
-			fmt.Println(res)
-		}
-	} else {
-		lambda.Start(optOutImportHandler)
-	}
+	lambda.Start(optOutImportHandler)
 }
 
 func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
@@ -48,7 +37,6 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	db := database.Connect()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
-
 	if err != nil {
 		logger.Errorf("Failed to parse S3 event: %v", err)
 		return "", err
@@ -57,16 +45,19 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 		return "", nil
 	}
 
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		logger.Error("Failed to load Default Config")
+		return "", err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+	s3Client := s3.NewFromConfig(cfg)
+
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
-			s3AssumeRoleArn, err := loadBfdS3Params(ctx)
-			if err != nil {
-				return "", err
-			}
-
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
-			return handleOptOutImport(ctx, db, s3AssumeRoleArn, dir)
+			return handleOptOutImport(ctx, db, s3Client, ssmClient, dir)
 		}
 	}
 
@@ -74,35 +65,21 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	return "", nil
 }
 
-func loadBfdS3Params(ctx context.Context) (string, error) {
-	env := conf.GetEnv("ENV")
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return "", err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
-
-	return bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
-}
-
-func handleOptOutImport(ctx context.Context, db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client *s3.Client, ssmClient *ssm.Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
 	repo := postgres.NewRepository(db)
 
-	cfg, err := config.LoadDefaultConfig(ctx)
+	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env))
 	if err != nil {
-		logger.Error("error loading default config: ", err)
+		logger.Errorf("error getting param: %+v", err)
 		return "", err
 	}
-	client := s3.NewFromConfig(cfg)
 
 	importer := suppression.OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
-			Ctx:           ctx,
-			Client:        client,
+			Client:        s3Client,
 			Logger:        logger,
 			Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
 			AssumeRoleArn: s3AssumeRoleArn,
@@ -114,7 +91,7 @@ func handleOptOutImport(ctx context.Context, db *sql.DB, s3AssumeRoleArn, s3Impo
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 	}
 
-	s, f, sk, err := importer.ImportSuppressionDirectory(s3ImportPath)
+	s, f, sk, err := importer.ImportSuppressionDirectory(ctx, s3ImportPath)
 	result := fmt.Sprintf("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 	logger.Info(result)
 	return result, err

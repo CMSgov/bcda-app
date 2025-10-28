@@ -206,7 +206,7 @@ func TestGetAWSParams(t *testing.T) {
 		expectedToken := "local-token"
 		conf.SetEnv(t, "workflow-alerts", expectedToken)
 
-		token, err := getAWSParams()
+		token, err := getAWSParams(t.Context())
 		assert.NoError(t, err)
 		assert.Equal(t, expectedToken, token)
 	})

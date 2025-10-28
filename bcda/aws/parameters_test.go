@@ -1,34 +1,18 @@
 package bcdaaws
 
 import (
-	"context"
 	"errors"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetParameter(t *testing.T) {
 	key1 := "key1"
 	val1 := "val1"
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion("us-east-1"),
-	)
-	assert.Nil(t, err)
-	client := ssm.NewFromConfig(cfg)
-
-	paramInput := ssm.PutParameterInput{
-		Name:      &key1,
-		Value:     &val1,
-		Overwrite: aws.Bool(true),
-		Type:      "String",
-	}
-
-	_, err = client.PutParameter(t.Context(), &paramInput)
-	assert.Nil(t, err)
+	cleanupParam1 := testUtils.SetParameter(t, key1, val1)
+	defer cleanupParam1()
 
 	tests := []struct {
 		desc          string
@@ -50,6 +34,7 @@ func TestGetParameter(t *testing.T) {
 		},
 	}
 
+	client := testUtils.TestSSMClient(t, testUtils.TestAWSConfig(t))
 	for _, test := range tests {
 		value, err := GetParameter(t.Context(), client, test.keyname)
 		assert.Equal(t, test.expectedValue, value)
@@ -67,29 +52,11 @@ func TestGetParameters(t *testing.T) {
 	key2 := "key2"
 	val1 := "val1"
 	val2 := "val2"
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion("us-east-1"),
-	)
-	assert.Nil(t, err)
-	client := ssm.NewFromConfig(cfg)
 
-	paramInput1 := ssm.PutParameterInput{
-		Name:      &key1,
-		Value:     &val1,
-		Overwrite: aws.Bool(true),
-		Type:      "String",
-	}
-	_, err = client.PutParameter(t.Context(), &paramInput1)
-	assert.Nil(t, err)
-
-	paramInput2 := ssm.PutParameterInput{
-		Name:      &key2,
-		Value:     &val2,
-		Overwrite: aws.Bool(true),
-		Type:      "String",
-	}
-	_, err = client.PutParameter(t.Context(), &paramInput2)
-	assert.Nil(t, err)
+	cleanupParam1 := testUtils.SetParameter(t, key1, val1)
+	cleanupParam2 := testUtils.SetParameter(t, key2, val2)
+	defer cleanupParam1()
+	defer cleanupParam2()
 
 	tests := []struct {
 		desc string
@@ -111,6 +78,7 @@ func TestGetParameters(t *testing.T) {
 		},
 	}
 
+	client := testUtils.TestSSMClient(t, testUtils.TestAWSConfig(t))
 	for _, test := range tests {
 		vals, err := GetParameters(t.Context(), client, test.keys)
 

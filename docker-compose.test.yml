@@ -44,7 +44,7 @@ services:
     environment:
       # - AWS_ENDPOINT_URL=http://localstack:4566
       # - GATEWAY_LISTEN=0.0.0.0:4566
-      - SERVICES=s3,ssm,sts,iam
+      - SERVICES=s3,ssm,sts,iam,cloudwatch
       - DEBUG=1
     ports:
       - "127.0.0.1:4566:4566"            # LocalStack Gateway

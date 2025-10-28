@@ -374,6 +374,7 @@ func (s *LocalFileProcessorTestSuite) TestCleanupCCLF() {
 }
 
 func (s *LocalFileProcessorTestSuite) TestLoadCSV() {
+	ctx := context.Background()
 	tests := []struct {
 		name string
 		file string
@@ -386,7 +387,7 @@ func (s *LocalFileProcessorTestSuite) TestLoadCSV() {
 	for _, test := range tests {
 		s.T().Run(test.name, func(tt *testing.T) {
 			file := filepath.Join(s.basePath, test.file)
-			e, _, err := s.csvProcessor.LoadCSV(file)
+			e, _, err := s.csvProcessor.LoadCSV(ctx, file)
 			if test.err != nil {
 				assert.Nil(s.T(), e)
 				assert.NotNil(s.T(), err)
@@ -400,6 +401,7 @@ func (s *LocalFileProcessorTestSuite) TestLoadCSV() {
 }
 
 func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
+	ctx := context.Background()
 	expiredTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 	file := csvFile{
 		metadata: csvFileMetadata{
@@ -441,7 +443,7 @@ func (s *LocalFileProcessorTestSuite) TestCleanUpCSV() {
 			file.metadata.deliveryDate = test.deliverytime
 			file.imported = test.imported
 			file.filepath = filepath.Join(s.basePath, test.filename)
-			err := s.csvProcessor.CleanUpCSV(file)
+			err := s.csvProcessor.CleanUpCSV(ctx, file)
 			assert.Nil(s.T(), err)
 			delDir, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
 			if err != nil {

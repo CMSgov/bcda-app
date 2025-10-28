@@ -60,50 +60,6 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 		params[ssasPEMName],
 		params[credsBucketName],
 	}, nil
-	// output, err := client.GetParameters(ctx, input)
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-	// slackToken := getParamFromOutput(output, "/slack/token/workflow-alerts")
-	// ssasURL := getParamFromOutput(output, "/bcda/%s/api/SSAS_URL")
-	// clientID := getParamFromOutput(output, "/bcda/%s/api/BCDA_SSAS_CLIENT_ID")
-	// clientSecret := getParamFromOutput(output, "/bcda/%s/api/BCDA_SSAS_SECRET")
-	// ssasPEM := getParamFromOutput(output, "/bcda/%s/api/BCDA_CA_FILE.pem")
-	// credsBucket := getParamFromOutput(output, "/bcda/%s/aco_creds_bucket")
-
-	// return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
-
-	// slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-
-	// ssasURL, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-
-	// clientID, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-
-	// clientSecret, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-
-	// ssasPEM, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env))
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-
-	// credsBucket, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env))
-	// if err != nil {
-	// 	return awsParams{}, err
-	// }
-
-	// return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
 }
 
 func setupEnvironment(params awsParams) error {

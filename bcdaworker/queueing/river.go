@@ -18,7 +18,6 @@ package queueing
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -27,7 +26,6 @@ import (
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
@@ -145,36 +143,6 @@ func (q queue) StopRiver() {
 	if err := q.client.Stop(q.ctx); err != nil {
 		panic(err)
 	}
-}
-
-// TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
-// Update the AWS Cloudwatch Metric for job queue count
-func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
-	cloudWatchEnv := conf.GetEnv("DEPLOYMENT_TARGET")
-	if cloudWatchEnv != "" {
-		sampler, err := metrics.NewSampler("BCDA", "Count")
-		if err != nil {
-			fmt.Println("Warning: failed to create new metric sampler...")
-		} else {
-			err := sampler.PutSample("JobQueueCount", getQueueJobCount(db, log), []metrics.Dimension{
-				{Name: "Environment", Value: cloudWatchEnv},
-			})
-			if err != nil {
-				log.Error(err)
-			}
-		}
-	}
-}
-
-func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
-	row := db.QueryRow(`SELECT COUNT(*) FROM river_job WHERE state NOT IN ('completed', 'cancelled', 'discarded');`)
-
-	var count int
-	if err := row.Scan(&count); err != nil {
-		log.Error(err)
-	}
-
-	return float64(count)
 }
 
 func getCutOffTime() time.Time {

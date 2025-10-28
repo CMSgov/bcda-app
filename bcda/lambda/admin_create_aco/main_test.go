@@ -22,7 +22,7 @@ type HandleCreateACOTestSuite struct {
 func (c *HandleCreateACOTestSuite) SetupTest() {
 	c.ctx = context.Background()
 
-	params, err := getAWSParams()
+	params, err := getAWSParams(c.ctx)
 	if err != nil {
 		assert.FailNow(c.T(), "Failed to get AWS Params")
 	}

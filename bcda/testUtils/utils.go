@@ -26,11 +26,12 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -147,38 +148,46 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 	return newPath, cleanup
 }
 
+func TestAWSConfig(t *testing.T) aws.Config {
+	ctx := context.Background()
+
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(constants.DefaultRegion),
+	)
+	assert.Nil(t, err)
+
+	return cfg
+}
+
+func TestS3Client(t *testing.T, cfg aws.Config) *s3.Client {
+	return s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true // required for localstack buckets
+	})
+}
+
+func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
+	return ssm.NewFromConfig(cfg)
+}
+
 // CopyToS3 copies all of the content found at src into a temporary S3 folder within localstack.
 // The path to the temporary S3 directory is returned along with a function that can be called to clean up the data.
 func CopyToS3(t *testing.T, src string) (string, func()) {
-	tempBucket := uuid.NewUUID()
+	ctx := context.Background()
+	tempBucket := uuid.NewUUID().String()
 
-	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
+	client := TestS3Client(t, TestAWSConfig(t))
 
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
+	bucketInput := &s3.CreateBucketInput{
+		Bucket: aws.String(tempBucket),
 	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
+	_, err := client.CreateBucket(ctx, bucketInput)
+	assert.Nil(t, err)
 
 	if err != nil {
-		t.Fatalf("Failed to create new session for S3: %s", err.Error())
+		t.Fatalf("Failed to create bucket %s: %s", tempBucket, err.Error())
 	}
 
-	svc := s3.New(sess)
-
-	_, err = svc.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(tempBucket.String()),
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create bucket %s: %s", tempBucket.String(), err.Error())
-	}
-
-	uploader := s3manager.NewUploader(sess)
+	uploader := manager.NewUploader(client)
 
 	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -200,8 +209,8 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			key = parts[1]
 		}
 
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(tempBucket.String()),
+		_, err = uploader.Upload(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(tempBucket),
 			Key:    aws.String(key),
 			Body:   f,
 		})
@@ -210,7 +219,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			return err
 		}
 
-		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket.String(), key)
+		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket, key)
 		return nil
 	})
 
@@ -219,18 +228,26 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 	}
 
 	cleanup := func() {
-		svc := s3.New(sess)
-		iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
-			Bucket: aws.String(tempBucket.String()),
+		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket: aws.String(tempBucket),
 		})
+		assert.Nil(t, err)
 
-		// Traverse iterator deleting each object
-		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
-			log.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
+		var objIds []types.ObjectIdentifier
+		for _, obj := range output.Contents {
+			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
 		}
+		input := s3.DeleteObjectsInput{
+			Bucket: aws.String(tempBucket),
+			Delete: &types.Delete{
+				Objects: objIds,
+				Quiet:   aws.Bool(true),
+			},
+		}
+		client.DeleteObjects(ctx, &input) //nolint:errcheck
 	}
 
-	return tempBucket.String(), cleanup
+	return tempBucket, cleanup
 }
 
 type ZipInput struct {
@@ -239,32 +256,16 @@ type ZipInput struct {
 }
 
 func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
-	tempBucket := uuid.NewUUID()
-	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
+	ctx := context.Background()
+	tempBucket := uuid.NewUUID().String()
 
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
+	client := TestS3Client(t, TestAWSConfig(t))
+
+	bucketInput := &s3.CreateBucketInput{
+		Bucket: aws.String(tempBucket),
 	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for S3: %s", err.Error())
-	}
-
-	svc := s3.New(sess)
-
-	_, err = svc.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(tempBucket.String()),
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create bucket %s: %s", tempBucket.String(), err.Error())
-	}
+	_, err := client.CreateBucket(ctx, bucketInput)
+	assert.Nil(t, err)
 
 	for _, input := range zipInputs {
 		var b bytes.Buffer
@@ -279,10 +280,10 @@ func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
 		assert.NoError(t, w.Close())
 		assert.NoError(t, f.Flush())
 
-		uploader := s3manager.NewUploader(sess)
+		uploader := manager.NewUploader(client)
 
-		_, s3Err := s3manager.Uploader.Upload(*uploader, &s3manager.UploadInput{
-			Bucket: aws.String(tempBucket.String()),
+		_, s3Err := uploader.Upload(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(tempBucket),
 			Key:    aws.String(input.ZipName),
 			Body:   bytes.NewReader(b.Bytes()),
 		})
@@ -291,145 +292,72 @@ func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
 	}
 
 	cleanup := func() {
-		svc := s3.New(sess)
-		iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
-			Bucket: aws.String(tempBucket.String()),
+		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket: aws.String(tempBucket),
 		})
+		assert.Nil(t, err)
 
-		// Traverse iterator deleting each object
-		if err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter); err != nil {
-			logrus.Printf("Unable to delete objects from bucket %s, %s\n", tempBucket, err)
+		var objIds []types.ObjectIdentifier
+		for _, obj := range output.Contents {
+			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
 		}
+		input := s3.DeleteObjectsInput{
+			Bucket: aws.String(tempBucket),
+			Delete: &types.Delete{
+				Objects: objIds,
+				Quiet:   aws.Bool(true),
+			},
+		}
+		client.DeleteObjects(ctx, &input) //nolint:errcheck
 	}
 
-	return tempBucket.String(), cleanup
-}
-
-func ListS3Objects(t *testing.T, bucket string, prefix string) []*s3.Object {
-	endpoint := conf.GetEnv("BFD_S3_ENDPOINT")
-
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
-	}
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for S3: %s", err.Error())
-	}
-
-	svc := s3.New(sess)
-
-	fmt.Printf("Listing objects in bucket %s, prefix %s", bucket, prefix)
-
-	resp, err := svc.ListObjects(&s3.ListObjectsInput{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(prefix),
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
-	}
-
-	return resp.Contents
+	return tempBucket, cleanup
 }
 
 // Inserts the provided parameter into localstack.
-func PutParameter(t *testing.T, input *ssm.PutParameterInput) error {
-	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
+func putParameter(t *testing.T, input ssm.PutParameterInput) error {
+	ctx := context.Background()
 
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
-	}
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(constants.DefaultRegion),
+	)
+	assert.Nil(t, err)
+	client := ssm.NewFromConfig(cfg)
 
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for SSM: %s", err.Error())
-	}
-
-	fmt.Printf("Inserting parameter %s with value %s\n", *input.Name, *input.Value)
-
-	svc := ssm.New(sess)
-	_, err = svc.PutParameter(input)
-
-	if err != nil {
-		t.Fatalf("Failed to insert parameter %s with value %s: %s\n", *input.Name, *input.Value, err)
-	}
+	_, err = client.PutParameter(ctx, &input)
+	assert.Nil(t, err)
 
 	return nil
 }
 
 // Deletes the provided parameters from localstack.
-func DeleteParameters(t *testing.T, input *ssm.DeleteParametersInput) error {
-	endpoint := conf.GetEnv("LOCAL_STACK_ENDPOINT")
+func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
+	ctx := context.Background()
 
-	config := aws.Config{
-		Region:           aws.String("us-east-1"),
-		S3ForcePathStyle: aws.Bool(true),
-		Endpoint:         &endpoint,
-	}
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(constants.DefaultRegion),
+	)
+	assert.Nil(t, err)
+	client := ssm.NewFromConfig(cfg)
 
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config: config,
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to create new session for SSM: %s", err.Error())
-	}
-
-	fmt.Printf("Deleting parameters from parameter store\n")
-
-	svc := ssm.New(sess)
-	_, err = svc.DeleteParameters(input)
-
-	if err != nil {
-		t.Fatalf("Failed to delete parameters: %s", err)
-	}
+	_, err = client.DeleteParameters(ctx, &input)
+	assert.Nil(t, err)
 
 	return nil
 }
 
-type AwsParameter struct {
-	Name  string
-	Value string
-	Type  string
-}
-
 // Insert all given parameters into localstack and return a method for deferring cleanup.
-func SetParameters(t *testing.T, params []AwsParameter) func() {
-	var paramKeys []*string
-
-	for _, paramInput := range params {
-		err := PutParameter(t, &ssm.PutParameterInput{
-			Name:  &paramInput.Name,
-			Value: &paramInput.Value,
-			Type:  &paramInput.Type,
-		})
-
-		assert.Nil(t, err)
-
-		name := paramInput.Name
-		paramKeys = append(paramKeys, &name)
-	}
+func SetParameter(t *testing.T, name, value string) func() {
+	err := putParameter(t, ssm.PutParameterInput{
+		Name:  &name,
+		Value: &value,
+		Type:  "String",
+	})
+	assert.Nil(t, err)
 
 	cleanup := func() {
-		if len(paramKeys) > 0 {
-			for _, paramInput := range paramKeys {
-				fmt.Printf("Deleting %s\n", *paramInput)
-			}
-
-			err := DeleteParameters(t, &ssm.DeleteParametersInput{Names: paramKeys})
-			assert.Nil(t, err)
-		}
+		err := deleteParameters(t, ssm.DeleteParametersInput{Names: []string{name}})
+		assert.Nil(t, err)
 	}
 
 	return cleanup
