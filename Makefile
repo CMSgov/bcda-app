@@ -151,11 +151,11 @@ load-synthetic-cclf-data:
 			docker compose run --rm api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='runout' " ; \
 	done
 
-load-synthetic-suppression-data:
-	docker compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
-	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
-	# See postgres#GetSuppressedMBIs for more information
-	docker compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
+# load-synthetic-suppression-data:
+# 	docker compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+# 	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
+# 	# See postgres#GetSuppressedMBIs for more information
+# 	docker compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
 
 load-fixtures-ssas:
 	docker compose up -d db

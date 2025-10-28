@@ -68,7 +68,6 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	}
 
 	for _, tc := range tests {
-		fmt.Printf("\n----- path: %s\n", tc.path)
 		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 
