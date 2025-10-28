@@ -34,7 +34,6 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-	db := database.Connect()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 	if err != nil {
@@ -52,6 +51,20 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 	s3Client := s3.NewFromConfig(cfg)
+
+	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	if err != nil {
+		logger.Error("failed to load DB URL")
+		return "", err
+	}
+
+	err = os.Setenv("DATABASE_URL", dbURL)
+	if err != nil {
+		logger.Errorf("error setting dbURL env var: %+v", err)
+		return "", err
+	}
+
+	db := database.Connect()
 
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {

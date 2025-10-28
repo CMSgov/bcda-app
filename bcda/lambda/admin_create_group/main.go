@@ -149,6 +149,7 @@ func setupEnv(ctx context.Context) (string, error) {
 	ssmClient := ssm.NewFromConfig(cfg)
 
 	slackParamName := "/slack/token/workflow-alerts"
+	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
 	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
 	ssasClientName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
 	ssasSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
@@ -168,6 +169,11 @@ func setupEnv(ctx context.Context) (string, error) {
 	err = os.Setenv(slackParamName, params[slackParamName])
 	if err != nil {
 		log.Errorf("Error setting slackParamName env var: %+v", err)
+		return "", err
+	}
+	err = os.Setenv(dbURLName, params[dbURLName])
+	if err != nil {
+		log.Errorf("Error setting dbURLName env var: %+v", err)
 		return "", err
 	}
 	err = os.Setenv(ssasURLName, params[ssasURLName])

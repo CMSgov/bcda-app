@@ -35,9 +35,8 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	logger := configureLogger(env, appName)
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
-
 	if err != nil {
-		logger.Errorf("Failed to parse S3 event: %v", err)
+		logger.Errorf("failed to parse S3 event: %v", err)
 		return "", err
 	} else if s3Event == nil {
 		logger.Info("No S3 event found, skipping safely.")
@@ -46,11 +45,23 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		logger.Error("Failed to load Default Config")
+		logger.Error("failed to load Default Config")
 		return "", err
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 	s3Client := s3.NewFromConfig(cfg)
+
+	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	if err != nil {
+		logger.Error("failed to load DB URL")
+		return "", err
+	}
+
+	err = os.Setenv("DATABASE_URL", dbURL)
+	if err != nil {
+		logger.Errorf("error setting dbURL env var: %+v", err)
+		return "", err
+	}
 
 	// Create pgx pool for bulk operations
 	pool := database.ConnectPool()
