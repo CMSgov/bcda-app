@@ -237,14 +237,17 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 		for _, obj := range output.Contents {
 			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
 		}
-		input := s3.DeleteObjectsInput{
-			Bucket: aws.String(tempBucket),
-			Delete: &types.Delete{
-				Objects: objIds,
-				Quiet:   aws.Bool(true),
-			},
+		if len(objIds) > 0 {
+			input := s3.DeleteObjectsInput{
+				Bucket: aws.String(tempBucket),
+				Delete: &types.Delete{
+					Objects: objIds,
+					Quiet:   aws.Bool(true),
+				},
+			}
+			_, err = client.DeleteObjects(ctx, &input)
+			assert.Nil(t, err)
 		}
-		client.DeleteObjects(ctx, &input) //nolint:errcheck
 	}
 
 	return tempBucket, cleanup
@@ -301,14 +304,18 @@ func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
 		for _, obj := range output.Contents {
 			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
 		}
-		input := s3.DeleteObjectsInput{
-			Bucket: aws.String(tempBucket),
-			Delete: &types.Delete{
-				Objects: objIds,
-				Quiet:   aws.Bool(true),
-			},
+
+		if len(objIds) > 0 {
+			input := s3.DeleteObjectsInput{
+				Bucket: aws.String(tempBucket),
+				Delete: &types.Delete{
+					Objects: objIds,
+					Quiet:   aws.Bool(true),
+				},
+			}
+			_, err = client.DeleteObjects(ctx, &input)
+			assert.Nil(t, err)
 		}
-		client.DeleteObjects(ctx, &input) //nolint:errcheck
 	}
 
 	return tempBucket, cleanup
