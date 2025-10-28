@@ -131,7 +131,7 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	return true, nil
 }
 
-func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
 	sb.From("cclf_files")
@@ -149,14 +149,15 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 		Type:         fileType,
 	}
 
-	if !lowerBound.IsZero() && upperBound.IsZero() {
-		sb.Where(sb.GreaterEqualThan("timestamp", lowerBound))
-	} else if lowerBound.IsZero() && !upperBound.IsZero() {
-		sb.Where(sb.LessEqualThan("timestamp", upperBound))
-	} else if !lowerBound.IsZero() && !upperBound.IsZero() {
+	// earlier = closest to now(), later = older
+	if !earlierTime.IsZero() && laterTime.IsZero() {
+		sb.Where(sb.GreaterEqualThan("timestamp", earlierTime))
+	} else if earlierTime.IsZero() && !laterTime.IsZero() {
+		sb.Where(sb.LessEqualThan("timestamp", laterTime))
+	} else if !earlierTime.IsZero() && !laterTime.IsZero() {
 		sb.Where(
-			sb.GreaterEqualThan("timestamp", lowerBound),
-			sb.LessEqualThan("timestamp", upperBound),
+			sb.GreaterEqualThan("timestamp", earlierTime),
+			sb.LessEqualThan("timestamp", laterTime),
 		)
 	}
 

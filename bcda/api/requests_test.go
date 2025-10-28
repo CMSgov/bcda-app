@@ -19,6 +19,7 @@ import (
 	"github.com/riverqueue/river/rivertest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -36,6 +37,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
@@ -1042,12 +1044,37 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 
 }
 
-func TestBulkRequest_Integration(t *testing.T) {
+type IntegrationRequestsTestSuite struct {
+	suite.Suite
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	dbContainer db.TestDatabaseContainer
+}
+
+func TestIntegrationRequestsTestSuite(t *testing.T) {
+	suite.Run(t, new(IntegrationRequestsTestSuite))
+}
+
+func (s *IntegrationRequestsTestSuite) SetupSuite() {
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
+func (s *IntegrationRequestsTestSuite) SetupTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+}
+
+func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 	acoA := &service.ACOConfig{
 		Model:              "Model A",
 		Pattern:            "A\\d{4}",
 		PerfYearTransition: "01/01",
-		LookbackYears:      10,
+		LookbackYears:      2,
 		Disabled:           false,
 		Data:               []string{"adjudicated"},
 	}
@@ -1061,22 +1088,14 @@ func TestBulkRequest_Integration(t *testing.T) {
 	}
 
 	client.SetLogger(log.API) // Set logger so we don't get errors later
-
-	db := database.Connect()
-	pool := database.ConnectPool()
-	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, db, pool)
-
-	driver := riverpgxv5.New(pool)
-	// start from clean river_job slate
-	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-	assert.Nil(t, err)
-
+	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, s.db, s.pool)
+	driver := riverpgxv5.New(s.pool)
 	acoID := "A0002"
-	repo := postgres.NewRepository(db)
+	repo := postgres.NewRepository(s.db)
 
 	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
 	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
-	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{                   // nolint:errcheck
+	_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{                  // nolint:errcheck
 		Name:            "testfilename",
 		ACOCMSID:        acoID,
 		PerformanceYear: utils.GetPY(),
@@ -1085,6 +1104,18 @@ func TestBulkRequest_Integration(t *testing.T) {
 		CCLFNum:         constants.CCLF8FileNum,
 		ImportStatus:    constants.ImportComplete,
 	})
+	require.NoError(s.T(), err)
+
+	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{ // nolint:errcheck
+		Name:            "testfilename2",
+		ACOCMSID:        acoID,
+		PerformanceYear: utils.GetPY(),
+		Type:            models.FileTypeDefault,
+		Timestamp:       (time.Now().AddDate(0, -3, 0)),
+		CCLFNum:         constants.CCLF8FileNum,
+		ImportStatus:    constants.ImportComplete,
+	})
+	require.NoError(s.T(), err)
 
 	jsonBytes, _ := json.Marshal("{}")
 
@@ -1092,14 +1123,19 @@ func TestBulkRequest_Integration(t *testing.T) {
 		name         string
 		cmsId        string
 		resources    []string
+		reqType      constants.DataRequestType
+		since        time.Time
 		expectedCode int
 		acoConfig    *service.ACOConfig
+		jobCreated   bool
 	}{
-		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, http.StatusAccepted, acoA},
+		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, constants.DefaultRequest, time.Now().AddDate(-1, 0, 0), http.StatusAccepted, acoA, true},
+		{"Test Invalid Since", "A0002", []string{"Patient"}, constants.RetrieveNewBeneHistData, time.Now().AddDate(0, -6, 0), http.StatusNotFound, acoA, false},
+		{"Test Valid Since", "A0002", []string{"Patient"}, constants.RetrieveNewBeneHistData, time.Now().AddDate(0, -2, 0), http.StatusAccepted, acoA, true},
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		s.Run(test.name, func() {
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
 			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
@@ -1110,21 +1146,25 @@ func TestBulkRequest_Integration(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
-				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+				Since:         test.since,
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
 			}))
 
 			ctx := context.Background()
-			h.bulkRequest(w, r, constants.DefaultRequest)
-			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{
-				{Args: worker_types.PrepareJobArgs{}, Opts: nil},
-			})
-			assert.Greater(t, len(jobs), 0)
-			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-			if err != nil {
-				t.Log("failed to cleanup river jobs during tests")
+			h.bulkRequest(w, r, test.reqType)
+			assert.Equal(s.T(), test.expectedCode, w.Code)
+			if test.jobCreated == true {
+				jobs := rivertest.RequireManyInserted(ctx, s.T(), driver, []rivertest.ExpectedJob{
+					{Args: worker_types.PrepareJobArgs{}, Opts: nil},
+				})
+				assert.Greater(s.T(), len(jobs), 0)
+				_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+				if err != nil {
+					s.T().Log("failed to cleanup river jobs during tests")
+				}
 			}
+
 		})
 	}
 }

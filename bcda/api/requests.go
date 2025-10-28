@@ -553,7 +553,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	if complexDataRequestType == constants.GetNewAndExistingBenes {
 		cclfFileOldID, err = h.Svc.FindOldCCLFFile(ctx, ad.CMSID, rp.Since, cclfFileNew.Timestamp)
 		if err != nil {
-			logger.Error("error finding old cclf file: %+v", err)
+			if errors.As(err, &service.CCLFNotFoundError{}) {
+				logger.Warningf("cclf file not found for given _since parameter: %s", rp.Since.String())
+				h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
+				return
+			}
+			logger.Errorf("failed to retrieve cclf file: %s", err)
 			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
