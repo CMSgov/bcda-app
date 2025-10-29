@@ -42,6 +42,8 @@ func TestGetAWSParams(t *testing.T) {
 	t.Cleanup(func() { cleanupParam5() })
 	cleanupParam6 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env), "test-BCDA_CA_FILE")
 	t.Cleanup(func() { cleanupParam6() })
+	cleanupParam7 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "test-DB_URL")
+	t.Cleanup(func() { cleanupParam7() })
 
 	params, err := getAWSParams(context.Background())
 	assert.Nil(t, err)
@@ -52,6 +54,7 @@ func TestGetAWSParams(t *testing.T) {
 	assert.Equal(t, "test-BCDA_SSAS_CLIENT_ID", params.clientID)
 	assert.Equal(t, "test-BCDA_SSAS_SECRET", params.clientSecret)
 	assert.Equal(t, "test-BCDA_CA_FILE", params.ssasPEM)
+	assert.Equal(t, "test-DB_URL", params.dbURL)
 }
 
 func TestAdjustedEnv(t *testing.T) {
@@ -84,6 +87,7 @@ func TestAdjustedEnv(t *testing.T) {
 func TestSetupEnvironment(t *testing.T) {
 	// store env vars to restore later
 	origSSASURL := os.Getenv("SSAS_URL")
+	origDBURL := os.Getenv("DATABASE_URL")
 	origBCDASSASClientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
 	origBCDASSASSecret := os.Getenv("BCDA_SSAS_SECRET")
 	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
@@ -92,6 +96,8 @@ func TestSetupEnvironment(t *testing.T) {
 	t.Cleanup(func() {
 		// restore original env vars
 		err := os.Setenv("SSAS_URL", origSSASURL)
+		assert.Nil(t, err)
+		err = os.Setenv("DATABASE_URL", origDBURL)
 		assert.Nil(t, err)
 		err = os.Setenv("BCDA_SSAS_CLIENT_ID", origBCDASSASClientID)
 		assert.Nil(t, err)
@@ -105,12 +111,14 @@ func TestSetupEnvironment(t *testing.T) {
 
 	err := setupEnvironment(awsParams{
 		ssasURL:      "test-SSAS_URL",
+		dbURL:        "test-DB_URL",
 		clientID:     "test-BCDA_SSAS_CLIENT_ID",
 		clientSecret: "test-BCDA_SSAS_SECRET",
 	})
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test-SSAS_URL", os.Getenv("SSAS_URL"))
+	assert.Equal(t, "test-DB_URL", os.Getenv("DATABASE_URL"))
 	assert.Equal(t, "test-BCDA_SSAS_CLIENT_ID", os.Getenv("BCDA_SSAS_CLIENT_ID"))
 	assert.Equal(t, "test-BCDA_SSAS_SECRET", os.Getenv("BCDA_SSAS_SECRET"))
 	assert.Equal(t, "true", os.Getenv("SSAS_USE_TLS"))

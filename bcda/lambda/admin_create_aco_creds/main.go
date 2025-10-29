@@ -27,6 +27,7 @@ type payload struct {
 
 type awsParams struct {
 	slackToken   string
+	dbURL        string
 	ssasURL      string
 	clientID     string
 	clientSecret string

@@ -23,6 +23,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := adjustedEnv()
 
 	slackParamName := "/slack/token/workflow-alerts"
+	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
 	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
 	clientIDName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
 	clientSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
@@ -31,6 +32,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 
 	paramNames := []string{
 		slackParamName,
+		dbURLName,
 		ssasURLName,
 		clientIDName,
 		clientSecretName,
@@ -51,6 +53,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 
 	return awsParams{
 		params[slackParamName],
+		params[dbURLName],
 		params[ssasURLName],
 		params[clientIDName],
 		params[clientSecretName],
@@ -64,6 +67,11 @@ func setupEnvironment(params awsParams) error {
 	err := os.Setenv("SSAS_URL", params.ssasURL)
 	if err != nil {
 		log.Errorf("Error setting SSAS_URL env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("DATABASE_URL", params.dbURL)
+	if err != nil {
+		log.Errorf("Error setting DATABASE_URL env var: %+v", err)
 		return err
 	}
 	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)

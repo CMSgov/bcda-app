@@ -103,7 +103,6 @@ func TestCSVTestSuite(t *testing.T) {
 }
 
 func (s *CSVTestSuite) TestImportCSV_Integration() {
-	ctx := context.Background()
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 	tests := []struct {
 		name        string
@@ -121,7 +120,7 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 	for _, test := range tests {
 		s.T().Run(test.name, func(tt *testing.T) {
 			filename := filepath.Clean(test.filepath)
-			err := s.importer.ImportCSV(ctx, test.filepath)
+			err := s.importer.ImportCSV(context.Background(), test.filepath)
 			if test.err == nil {
 				assert.Nil(s.T(), err)
 			} else {
