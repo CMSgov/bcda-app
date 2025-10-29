@@ -21,8 +21,10 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 func main() {
@@ -49,7 +51,18 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		return "", err
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
-	s3Client := s3.NewFromConfig(cfg)
+
+	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
+	if err != nil {
+		logger.Errorf("error getting param: %+v", err)
+		return "", err
+	}
+	stsClient := sts.NewFromConfig(cfg)
+	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
+
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.Credentials = appCreds
+	})
 
 	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
 	if err != nil {
@@ -74,9 +87,9 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
-				return handleCSVImport(ctx, pool, s3Client, ssmClient, filepath)
+				return handleCSVImport(ctx, pool, s3Client, filepath)
 			} else {
-				return handleCclfImport(ctx, pool, s3Client, ssmClient, filepath)
+				return handleCclfImport(ctx, pool, s3Client, filepath)
 			}
 		}
 	}
@@ -85,7 +98,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	return "", nil
 }
 
-func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Client, ssmClient *ssm.Client, s3ImportPath string) (string, error) {
+func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -96,21 +109,13 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Clien
 		return "", err
 	}
 
-	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
-	if err != nil {
-		logger.Errorf("error getting param: %+v", err)
-		return "", err
-	}
-
 	importer := cclf.CSVImporter{
 		Logger:  logger,
 		PgxPool: pool,
 		FileProcessor: &cclf.S3FileProcessor{
 			Handler: optout.S3FileHandler{
-				Client:        s3Client,
-				Logger:        logger,
-				Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
-				AssumeRoleArn: s3AssumeRoleArn,
+				Client: s3Client,
+				Logger: logger,
 			},
 		},
 	}
@@ -127,7 +132,7 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Clien
 	return result, nil
 }
 
-func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Client, ssmClient *ssm.Client, s3ImportPath string) (string, error) {
+func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -138,18 +143,10 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Clie
 		return "", err
 	}
 
-	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
-	if err != nil {
-		logger.Errorf("error getting param: %+v", err)
-		return "", err
-	}
-
 	fileProcessor := cclf.S3FileProcessor{
 		Handler: optout.S3FileHandler{
-			Client:        s3Client,
-			Logger:        logger,
-			Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
-			AssumeRoleArn: s3AssumeRoleArn,
+			Client: s3Client,
+			Logger: logger,
 		},
 	}
 

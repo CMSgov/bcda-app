@@ -39,7 +39,6 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	assert := assert.New(s.T())
 	cfg := testUtils.TestAWSConfig(s.T())
 	s3Client := testUtils.TestS3Client(s.T(), cfg)
-	ssmClient := testUtils.TestSSMClient(s.T(), cfg)
 	pool := database.ConnectPool()
 
 	env := uuid.NewUUID()
@@ -49,10 +48,8 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	})
 	defer cleanupEnv()
 
-	cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
-	cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-	defer cleanupParam1()
-	defer cleanupParam2()
+	cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
+	defer cleanupParam()
 
 	type test struct {
 		path         string
@@ -74,7 +71,7 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 		path, cleanup := testUtils.CopyToS3(s.T(), tc.path)
 		defer cleanup()
 
-		res, err := handleCclfImport(context.Background(), pool, s3Client, ssmClient, path)
+		res, err := handleCclfImport(context.Background(), pool, s3Client, path)
 
 		if tc.err == nil {
 			assert.Nil(err)
@@ -87,15 +84,4 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 			assert.Contains(res, entry)
 		}
 	}
-}
-
-func (s *AttributionImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
-	assert := assert.New(s.T())
-	cfg := testUtils.TestAWSConfig(s.T())
-	s3Client := testUtils.TestS3Client(s.T(), cfg)
-	ssmClient := testUtils.TestSSMClient(s.T(), cfg)
-	pool := database.ConnectPool()
-
-	_, err := handleCclfImport(context.Background(), pool, s3Client, ssmClient, "asdf")
-	assert.Contains(err.Error(), "error retrieving parameter /cclf-import/bcda/local/bfd-bucket-role-arn from parameter store")
 }

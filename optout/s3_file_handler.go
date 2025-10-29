@@ -20,8 +20,6 @@ type S3FileHandler struct {
 	Logger logrus.FieldLogger
 	// Optional S3 endpoint to use for connection.
 	Endpoint string
-	// Optional role to assume when connecting to S3.
-	AssumeRoleArn string
 }
 
 // Define logger functions to ensure that logs get sent to:
