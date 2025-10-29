@@ -71,7 +71,6 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	id := uuid.NewRandom()
 
 	if data.CleanUp == nil {
-
 		// run the regular logic (non-rollback transaction)
 		err = handleCreateACO(ctx, conn, data, id)
 		if err != nil {
@@ -108,7 +107,6 @@ func handler(ctx context.Context, event json.RawMessage) error {
 }
 
 func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id uuid.UUID) error {
-
 	if data.Name == "" {
 		return errors.New("ACO name must be provided")
 	}
@@ -128,7 +126,7 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 
 	aco := models.ACO{Name: data.Name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err := createACO(context.Background(), conn, aco)
+	err := createACO(ctx, conn, aco)
 	if err != nil {
 		return err
 	}
@@ -138,10 +136,6 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 
 func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := conf.GetEnv("ENV")
-
-	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
-	}
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {

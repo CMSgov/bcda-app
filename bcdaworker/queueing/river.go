@@ -151,12 +151,6 @@ func getCutOffTime() time.Time {
 }
 
 func getAWSParams(ctx context.Context) (string, error) {
-	env := conf.GetEnv("ENV")
-
-	if env == "local" {
-		return conf.GetEnv("workflow-alerts"), nil
-	}
-
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return "", err

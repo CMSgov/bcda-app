@@ -85,3 +85,15 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 		}
 	}
 }
+
+func TestHandleCSVImport_NoACOConfig(t *testing.T) {
+	cfg := testUtils.TestAWSConfig(t)
+	s3Client := testUtils.TestS3Client(t, cfg)
+	pool := database.ConnectPool()
+
+	path, cleanup := testUtils.CopyToS3(t, "../../../shared_files/csv/valid.csv")
+	defer cleanup()
+
+	_, err := handleCSVImport(context.Background(), pool, s3Client, path)
+	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
+}

@@ -166,37 +166,26 @@ func setupEnv(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	err = os.Setenv(slackParamName, params[slackParamName])
-	if err != nil {
-		log.Errorf("Error setting slackParamName env var: %+v", err)
-		return "", err
-	}
-	err = os.Setenv(dbURLName, params[dbURLName])
+	err = os.Setenv("DATABASE_URL", params[dbURLName])
 	if err != nil {
 		log.Errorf("Error setting dbURLName env var: %+v", err)
 		return "", err
 	}
-	err = os.Setenv(ssasURLName, params[ssasURLName])
+	err = os.Setenv("SSAS_URL", params[ssasURLName])
 	if err != nil {
 		log.Errorf("Error setting ssasURLName env var: %+v", err)
 		return "", err
 	}
-	err = os.Setenv(ssasClientName, params[ssasClientName])
+	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params[ssasClientName])
 	if err != nil {
 		log.Errorf("Error setting ssasClientName env var: %+v", err)
 		return "", err
 	}
-	err = os.Setenv(ssasSecretName, params[ssasSecretName])
+	err = os.Setenv("BCDA_SSAS_SECRET", params[ssasSecretName])
 	if err != nil {
 		log.Errorf("Error setting ssasSecretName env var: %+v", err)
 		return "", err
 	}
-	err = os.Setenv(caFileName, params[caFileName])
-	if err != nil {
-		log.Errorf("Error setting caFileName env var: %+v", err)
-		return "", err
-	}
-
 	err = os.Setenv("BCDA_CA_FILE", "/tmp/BCDA_CA_FILE.pem")
 	if err != nil {
 		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
@@ -210,7 +199,7 @@ func setupEnv(ctx context.Context) (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	_, err = f.Write([]byte(conf.GetEnv("BCDA_CA_FILE.pem")))
+	_, err = f.Write([]byte(params[caFileName]))
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -25,6 +27,33 @@ func TestPutObject(t *testing.T) {
 	assert.Equal(t, result, "test-bucket/test-filename-creds")
 }
 
+func TestGetAWSParams(t *testing.T) {
+	env := conf.GetEnv("ENV")
+
+	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
+	t.Cleanup(func() { cleanupParam1() })
+	cleanupParam2 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env), "test-CREDS_BUCKET")
+	t.Cleanup(func() { cleanupParam2() })
+	cleanupParam3 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env), "test-SSAS_URL")
+	t.Cleanup(func() { cleanupParam3() })
+	cleanupParam4 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env), "test-BCDA_SSAS_CLIENT_ID")
+	t.Cleanup(func() { cleanupParam4() })
+	cleanupParam5 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env), "test-BCDA_SSAS_SECRET")
+	t.Cleanup(func() { cleanupParam5() })
+	cleanupParam6 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env), "test-BCDA_CA_FILE")
+	t.Cleanup(func() { cleanupParam6() })
+
+	params, err := getAWSParams(context.Background())
+	assert.Nil(t, err)
+
+	assert.Equal(t, "slack-val", params.slackToken)
+	assert.Equal(t, "test-CREDS_BUCKET", params.credsBucket)
+	assert.Equal(t, "test-SSAS_URL", params.ssasURL)
+	assert.Equal(t, "test-BCDA_SSAS_CLIENT_ID", params.clientID)
+	assert.Equal(t, "test-BCDA_SSAS_SECRET", params.clientSecret)
+	assert.Equal(t, "test-BCDA_CA_FILE", params.ssasPEM)
+}
+
 func TestAdjustedEnv(t *testing.T) {
 	origEnv := conf.GetEnv("ENV")
 	t.Cleanup(func() {
@@ -41,11 +70,15 @@ func TestAdjustedEnv(t *testing.T) {
 
 	conf.SetEnv(t, "ENV", "sbx")
 	resultEnv = adjustedEnv()
-	assert.Equal(t, resultEnv, "opensbx")
+	assert.Equal(t, resultEnv, "sandbox")
 
 	conf.SetEnv(t, "ENV", "prod")
 	resultEnv = adjustedEnv()
 	assert.Equal(t, resultEnv, "prod")
+
+	conf.SetEnv(t, "ENV", "asdf")
+	resultEnv = adjustedEnv()
+	assert.Equal(t, resultEnv, "asdf")
 }
 
 func TestSetupEnvironment(t *testing.T) {

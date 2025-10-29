@@ -93,10 +93,6 @@ func handleACODenies(ctx context.Context, conn PgxConnection, data payload) erro
 func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := conf.GetEnv("ENV")
 
-	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
-	}
-
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return awsParams{}, err

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/jackc/pgx/v5"
 	"github.com/pborman/uuid"
 
@@ -25,12 +26,7 @@ type CreateACOTestSuite struct {
 func (c *CreateACOTestSuite) SetupTest() {
 	c.ctx = context.Background()
 
-	params, err := getAWSParams(c.ctx)
-	if err != nil {
-		assert.FailNow(c.T(), "Failed to get AWS Params")
-	}
-
-	conn, err := pgx.Connect(c.ctx, params.dbURL)
+	conn, err := pgx.Connect(c.ctx, conf.GetEnv("DATABASE_URL"))
 	if err != nil {
 		assert.FailNow(c.T(), "Failed to setup pgx connection")
 	}

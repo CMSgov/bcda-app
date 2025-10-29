@@ -21,9 +21,6 @@ var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
 func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := adjustedEnv()
-	if env == "local" {
-		return awsParams{}, nil
-	}
 
 	slackParamName := "/slack/token/workflow-alerts"
 	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
@@ -123,7 +120,7 @@ func putObject(ctx context.Context, client *s3.Client, acoID, creds, credsBucket
 func adjustedEnv() string {
 	env := conf.GetEnv("ENV")
 	if env == "sbx" {
-		env = "opensbx"
+		env = "sandbox"
 	}
 	return env
 }

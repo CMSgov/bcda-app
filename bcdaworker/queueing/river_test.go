@@ -128,6 +128,9 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	var logger = logrus.New()
 	client.SetLogger(logger)
 
+	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
+	t.Cleanup(func() { cleanupParam1() })
+
 	// Create mock objects
 	mockCleanupJob := new(MockCleanupJob)
 	mockArchiveExpiring := new(MockArchiveExpiring)
@@ -195,21 +198,12 @@ func TestGetCutOffTime(t *testing.T) {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	defer func(env, workflowAlerts, localStackEndpoint string) {
-		conf.SetEnv(t, "ENV", env)
-		conf.SetEnv(t, "workflow-alerts", workflowAlerts)
-		os.Setenv("LOCAL_STACK_ENDPOINT", localStackEndpoint)
-	}(conf.GetEnv("ENV"), conf.GetEnv("workflow-alerts"), os.Getenv("LOCAL_STACK_ENDPOINT"))
+	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
+	t.Cleanup(func() { cleanupParam1() })
 
-	t.Run("Local Environment", func(t *testing.T) {
-		conf.SetEnv(t, "ENV", "local")
-		expectedToken := "local-token"
-		conf.SetEnv(t, "workflow-alerts", expectedToken)
-
-		token, err := getAWSParams(t.Context())
-		assert.NoError(t, err)
-		assert.Equal(t, expectedToken, token)
-	})
+	token, err := getAWSParams(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "slack-val", token)
 }
 
 func TestNewCleanupJobWorker(t *testing.T) {
