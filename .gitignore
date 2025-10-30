@@ -30,3 +30,4 @@ terraform.tfvars
 .terraform*
 !.terraform-docs.yml
 ops/services/10-config/bin/
+/ops/services/10-config/values/sopsw
