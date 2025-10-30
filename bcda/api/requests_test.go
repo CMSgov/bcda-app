@@ -127,13 +127,15 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		respCode           int
 		apiVersion         string
 		runoutAttributions bool
+		expectedMessage    string
 	}{
-		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
-		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
-		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false},
-		{"FindCCLFFiles error v2", DatabaseError{}, http.StatusInternalServerError, apiVersionTwo, false},
-		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
-		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne, true, ""},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true, ""},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "failed to start job; attribution file not found."},
+		{"FindCCLFFiles error v2", DatabaseError{}, http.StatusInternalServerError, apiVersionTwo, false, ""},
+		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true, ""},
+		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true, ""},
+		{"Expired runout data", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "Runout data is no longer available. Runout data expires 180 days after ingestion."},
 	}
 
 	for _, tt := range tests {
@@ -147,8 +149,13 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
 
+			// Set up cutoff time for expired runout test case
+			cutoffTime := time.Time{}
+			if _, ok := tt.errToReturn.(CCLFNotFoundOperationOutcomeError); ok && tt.name == "Expired runout data" {
+				cutoffTime = time.Now().Add(-200 * 24 * time.Hour) // 200 days ago (past 180 day limit)
+			}
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
-			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(cutoffTime, constants.GetExistingBenes)
 
 			switch tt.errToReturn {
 			case nil:
@@ -179,7 +186,11 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			if tt.errToReturn == nil {
 				assert.NotEmpty(t, resp.Header.Get("Content-Location"))
 			} else {
-				assert.Contains(t, string(body), tt.errToReturn.Error())
+				if tt.expectedMessage != "" {
+					assert.Contains(t, string(body), tt.expectedMessage)
+				} else {
+					assert.Contains(t, string(body), tt.errToReturn.Error())
+				}
 			}
 		})
 	}

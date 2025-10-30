@@ -594,7 +594,7 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBoun
 	}
 
 	if cclfFile == nil {
-		return nil, CCLFNotFoundError{8, cmsID, fileType, time.Time{}}
+		return nil, CCLFNotFoundError{8, cmsID, fileType, lowerBound}
 	}
 
 	return cclfFile, nil
