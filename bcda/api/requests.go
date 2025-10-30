@@ -526,9 +526,15 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		fileType,
 	)
 	if err != nil {
-		// TODO: this can occur when runout data is expired, we should update error handling: BCDA-9386
 		if errors.As(err, &service.CCLFNotFoundError{}) {
 			logger.Warningf("cclf file not found: %+v", err)
+
+			// Check if this is an expired runout data request
+			if fileType == models.FileTypeRunout && !cutoffTime.IsZero() {
+				h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Runout data is no longer available. Runout data expires 180 days after ingestion.")
+				return
+			}
+
 			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found.")
 			return
 		}
