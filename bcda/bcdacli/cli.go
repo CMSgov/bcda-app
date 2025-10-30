@@ -19,6 +19,10 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/suppression"
+	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/optout"
+	"github.com/ccoveille/go-safecast"
 
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -66,11 +70,10 @@ func setUpApp() *cli.App {
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
-	// var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
-	// if err != nil {
-	// 	fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
-	// }
-	// var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType string
+	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
+	if err != nil {
+		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
+	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -371,74 +374,42 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
-		// I dont believe we import-suppression-directory anymore.  We now use the cclf lambda.
-		// {
-		// 	Name:     "import-suppression-directory",
-		// 	Category: constants.CliDataImpCategory,
-		// 	Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
-		// 	Flags: []cli.Flag{
-		// 		cli.StringFlag{
-		// 			Name:        "directory",
-		// 			Usage:       "Directory where suppression files are located",
-		// 			Destination: &filePath,
-		// 		},
-		// 		cli.StringFlag{
-		// 			Name:        "filesource",
-		// 			Usage:       "Source of files. Must be one of 'local', 's3'. Defaults to 'local'",
-		// 			Destination: &fileSource,
-		// 		},
-		// 		cli.StringFlag{
-		// 			Name:        "s3endpoint",
-		// 			Usage:       "Custom S3 endpoint",
-		// 			Destination: &s3Endpoint,
-		// 		},
-		// 		cli.StringFlag{
-		// 			Name:        "assume-role-arn",
-		// 			Usage:       "Optional IAM role ARN to assume for S3",
-		// 			Destination: &assumeRoleArn,
-		// 		},
-		// 	},
-		// 	Action: func(c *cli.Context) error {
-		// 		ignoreSignals()
-		// 		r := postgres.NewRepository(db)
+		{
+			Name:     "import-suppression-directory",
+			Category: constants.CliDataImpCategory,
+			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "directory",
+					Usage:       "Directory where suppression files are located",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				ignoreSignals()
+				r := postgres.NewRepository(db)
 
-		// 		var file_handler optout.OptOutFileHandler
-		// 		cfg, err := config.LoadDefaultConfig(context.Background())
-		// 		if err != nil {
-		// 			log.API.Error("error loading default config: ", err)
-		// 			return err
-		// 		}
-		// 		s3Client := s3.NewFromConfig(cfg)
+				var file_handler optout.OptOutFileHandler
+				file_handler = &optout.LocalFileHandler{
+					Logger:                 log.API,
+					PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+					FileArchiveThresholdHr: hours,
+				}
 
-		// 		if fileSource == "s3" {
-		// 			file_handler = &optout.S3FileHandler{
-		// 				Client:        s3Client,
-		// 				Logger:        log.API,
-		// 				Endpoint:      s3Endpoint,
-		// 				AssumeRoleArn: assumeRoleArn,
-		// 			}
-		// 		} else {
-		// 			file_handler = &optout.LocalFileHandler{
-		// 				Logger:                 log.API,
-		// 				PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-		// 				FileArchiveThresholdHr: hours,
-		// 			}
-		// 		}
-
-		// 		importer := suppression.OptOutImporter{
-		// 			FileHandler: file_handler,
-		// 			Saver: &suppression.BCDASaver{
-		// 				Repo: r,
-		// 			},
-		// 			Logger:               log.API,
-		// 			ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
-		// 		}
-		// 		ctx := context.Background()
-		// 		s, f, sk, err := importer.ImportSuppressionDirectory(ctx, filePath)
-		// 		fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
-		// 		return err
-		// 	},
-		// },
+				importer := suppression.OptOutImporter{
+					FileHandler: file_handler,
+					Saver: &suppression.BCDASaver{
+						Repo: r,
+					},
+					Logger:               log.API,
+					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
+				}
+				ctx := context.Background()
+				s, f, sk, err := importer.ImportSuppressionDirectory(ctx, filePath)
+				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
+				return err
+			},
+		},
 		{
 			Name:     "import-synthetic-cclf-package",
 			Category: constants.CliDataImpCategory,
