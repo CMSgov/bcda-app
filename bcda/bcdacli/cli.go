@@ -389,8 +389,7 @@ func setUpApp() *cli.App {
 				ignoreSignals()
 				r := postgres.NewRepository(db)
 
-				var file_handler optout.OptOutFileHandler
-				file_handler = &optout.LocalFileHandler{
+				var file_handler optout.OptOutFileHandler = &optout.LocalFileHandler{
 					Logger:                 log.API,
 					PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 					FileArchiveThresholdHr: hours,
