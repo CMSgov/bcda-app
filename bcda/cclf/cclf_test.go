@@ -376,7 +376,7 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 }
 
 func buildZipMetadata(t *testing.T, processor CclfFileProcessor, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
-	zipReader, zipCloser, err := processor.OpenZipArchive(zipName)
+	zipReader, zipCloser, err := processor.OpenZipArchive(context.Background(), zipName)
 	assert.Nil(t, err)
 
 	metadata := cclfZipMetadata{

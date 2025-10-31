@@ -49,7 +49,7 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 	environment := conf.GetEnv("DEPLOYMENT_TARGET")
 
-	params, err := getAWSParams()
+	params, err := getAWSParams(ctx)
 	if err != nil {
 		logger.Error("Unable to extract Slack Token from parameter store: %+v", err)
 		return err

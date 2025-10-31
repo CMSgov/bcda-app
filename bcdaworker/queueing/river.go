@@ -18,7 +18,6 @@ package queueing
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -27,7 +26,6 @@ import (
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
@@ -39,6 +37,9 @@ import (
 	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type Notifier interface {
@@ -144,57 +145,17 @@ func (q queue) StopRiver() {
 	}
 }
 
-// TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
-// Update the AWS Cloudwatch Metric for job queue count
-func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
-	cloudWatchEnv := conf.GetEnv("DEPLOYMENT_TARGET")
-	if cloudWatchEnv != "" {
-		sampler, err := metrics.NewSampler("BCDA", "Count")
-		if err != nil {
-			fmt.Println("Warning: failed to create new metric sampler...")
-		} else {
-			err := sampler.PutSample("JobQueueCount", getQueueJobCount(db, log), []metrics.Dimension{
-				{Name: "Environment", Value: cloudWatchEnv},
-			})
-			if err != nil {
-				log.Error(err)
-			}
-		}
-	}
-}
-
-func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
-	row := db.QueryRow(`SELECT COUNT(*) FROM river_job WHERE state NOT IN ('completed', 'cancelled', 'discarded');`)
-
-	var count int
-	if err := row.Scan(&count); err != nil {
-		log.Error(err)
-	}
-
-	return float64(count)
-}
-
 func getCutOffTime() time.Time {
 	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
 	return cutoff
 }
 
-func getAWSParams() (string, error) {
-	env := conf.GetEnv("ENV")
-
-	if env == "local" {
-		return conf.GetEnv("workflow-alerts"), nil
-	}
-
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+func getAWSParams(ctx context.Context) (string, error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return "", err
 	}
+	ssmClient := ssm.NewFromConfig(cfg)
 
-	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
-	if err != nil {
-		return slackToken, err
-	}
-
-	return slackToken, nil
+	return bcdaaws.GetParameter(ctx, ssmClient, "/slack/token/workflow-alerts")
 }

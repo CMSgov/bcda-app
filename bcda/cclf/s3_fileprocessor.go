@@ -17,10 +17,10 @@ type S3FileProcessor struct {
 	Handler optout.S3FileHandler
 }
 
-func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
+func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
 	bucket, prefix := optout.ParseS3Uri(path)
-	s3Objects, err := processor.Handler.ListFiles(bucket, prefix)
+	s3Objects, err := processor.Handler.ListFiles(ctx, bucket, prefix)
 
 	if err != nil {
 		return cclfMap, skipped, failed, err
@@ -53,7 +53,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(path string) (cclfMap map[string
 			continue
 		}
 
-		zipReader, zipCloser, err := processor.OpenZipArchive(filepath.Join(bucket, *obj.Key))
+		zipReader, zipCloser, err := processor.OpenZipArchive(ctx, filepath.Join(bucket, *obj.Key))
 
 		if err != nil {
 			failed++
@@ -138,7 +138,7 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 			}
 
 			processor.Handler.Infof("Cleaning up file %s\n", cclfZipMetadata.filePath)
-			err := processor.Handler.Delete(cclfZipMetadata.filePath)
+			err := processor.Handler.Delete(ctx, cclfZipMetadata.filePath)
 
 			if err != nil {
 				errCount++
@@ -157,8 +157,8 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 	return deletedCount, nil
 }
 
-func (processor *S3FileProcessor) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
-	byte_arr, err := processor.Handler.OpenFileBytes(filePath)
+func (processor *S3FileProcessor) OpenZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
+	byte_arr, err := processor.Handler.OpenFileBytes(ctx, filePath)
 
 	if err != nil {
 		processor.Handler.Errorf("Failed to download %s\n", filePath)
@@ -169,7 +169,7 @@ func (processor *S3FileProcessor) OpenZipArchive(filePath string) (*zip.Reader, 
 	return reader, func() {}, err
 }
 
-func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
+func (processor *S3FileProcessor) CleanUpCSV(ctx context.Context, file csvFile) error {
 
 	close := metrics.NewChild(context.Background(), "cleanUpCCLFZip")
 	defer close()
@@ -182,7 +182,7 @@ func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
 	}
 
 	processor.Handler.Infof("Cleaning up file %s\n", file.filepath)
-	err := processor.Handler.Delete(file.filepath)
+	err := processor.Handler.Delete(ctx, file.filepath)
 
 	if err != nil {
 		processor.Handler.Logger.Error("Failed to clean up file %s\n", file.filepath)
@@ -193,12 +193,12 @@ func (processor *S3FileProcessor) CleanUpCSV(file csvFile) error {
 	return nil
 }
 
-func (processor *S3FileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
+func (processor *S3FileProcessor) LoadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
 	if !optout.IsForCurrentEnv(filepath) {
 		processor.Handler.Infof("Skipping file for different environment: %s", filepath)
 		return nil, nil, &ers.AttributionFileMismatchedEnv{}
 	}
-	byte_arr, err := processor.Handler.OpenFileBytes(filepath)
+	byte_arr, err := processor.Handler.OpenFileBytes(ctx, filepath)
 	if err != nil {
 		processor.Handler.Errorf("Failed to download %s\n", filepath)
 		return nil, nil, err

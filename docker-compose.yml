@@ -14,7 +14,7 @@ services:
     environment:
       - AWS_DEFAULT_REGION=us-east-1
       - GATEWAY_LISTEN=0.0.0.0:4566
-      - SERVICES=s3,ssm,sts,iam
+      - SERVICES=s3,ssm,sts,iam,cloudwatch
       - DEBUG=1
     ports:
       - "4566-4583:4566-4583"

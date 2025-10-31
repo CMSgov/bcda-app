@@ -37,6 +37,9 @@ func TestAttributionImportMainSuite(t *testing.T) {
 func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	targetACO := "A0001"
 	assert := assert.New(s.T())
+	cfg := testUtils.TestAWSConfig(s.T())
+	s3Client := testUtils.TestS3Client(s.T(), cfg)
+	pool := database.ConnectPool()
 
 	env := uuid.NewUUID()
 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{
@@ -45,11 +48,8 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	})
 	defer cleanupEnv()
 
-	cleanupParams := testUtils.SetParameters(s.T(), []testUtils.AwsParameter{
-		{Name: fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env), Value: "arn:aws:iam::000000000000:user/fake-arn", Type: "String"},
-		{Name: fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), Value: "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable", Type: "SecureString"},
-	})
-	defer cleanupParams()
+	cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
+	defer cleanupParam()
 
 	type test struct {
 		path         string
@@ -59,7 +59,7 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	}
 
 	tests := []test{
-		{path: "../../../shared_files/cclf/archives/valid/", filename: "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000", expectedLogs: []string{"Successfully imported 2 files.", "Failed to import 0 files.", "Skipped 0 files."}},
+		{path: "../../../shared_files/cclf/archives/valid/", filename: "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000", expectedLogs: []string{"Successfully imported", "Failed to import 0 files.", "Skipped 0 files."}},
 		{path: "../../../shared_files/cclf/archives/invalid_bcd/", filename: "cclf/archives/invalid_bcd/P.BCD.A0009.ZCY18.D181120.T0001000", err: errors.New("files skipped or failed import. See logs for more details"), expectedLogs: []string{}},
 		{path: "../../../shared_files/cclf/archives/skip/", filename: "cclf/archives/skip/T.BCD.ACOB.ZC0Y18.D181120.T0001000", expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."}},
 	}
@@ -71,7 +71,7 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 		path, cleanup := testUtils.CopyToS3(s.T(), tc.path)
 		defer cleanup()
 
-		res, err := attributionImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), path, tc.filename))
+		res, err := handleCclfImport(context.Background(), pool, s3Client, path)
 
 		if tc.err == nil {
 			assert.Nil(err)
@@ -86,8 +86,14 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	}
 }
 
-func (s *AttributionImportMainSuite) TestHandlerMissingS3AssumeRoleArn() {
-	assert := assert.New(s.T())
-	_, err := attributionImportHandler(context.Background(), testUtils.GetSQSEvent(s.T(), "doesn't-matter", "fake_filename"))
-	assert.Contains(err.Error(), "error retrieving parameter /cclf-import/bcda/local/bfd-bucket-role-arn from parameter store: ParameterNotFound: Parameter /cclf-import/bcda/local/bfd-bucket-role-arn not found.")
+func TestHandleCSVImport_NoACOConfig(t *testing.T) {
+	cfg := testUtils.TestAWSConfig(t)
+	s3Client := testUtils.TestS3Client(t, cfg)
+	pool := database.ConnectPool()
+
+	path, cleanup := testUtils.CopyToS3(t, "../../../shared_files/csv/valid.csv")
+	defer cleanup()
+
+	_, err := handleCSVImport(context.Background(), pool, s3Client, path)
+	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
 }

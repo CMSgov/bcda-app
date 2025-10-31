@@ -17,12 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ccoveille/go-safecast"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/suppression"
+	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/optout"
+	"github.com/ccoveille/go-safecast"
 
-	"github.com/CMSgov/bcda-app/bcda/cclf"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -30,12 +31,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
@@ -76,7 +74,7 @@ func setUpApp() *cli.App {
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, fileSource, s3Endpoint, assumeRoleArn, environment, groupID, groupName, ips, fileType string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -282,72 +280,6 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-cclf-directory",
-			Category: constants.CliDataImpCategory,
-			Usage:    "Import all CCLF files from the specified directory",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "directory",
-					Usage:       "Directory where CCLF files are located",
-					Destination: &filePath,
-				},
-				cli.StringFlag{
-					Name:        "filesource",
-					Usage:       "Source of files. Must be one of 'local', 's3'. Defaults to 'local'",
-					Destination: &fileSource,
-				},
-				cli.StringFlag{
-					Name:        "s3endpoint",
-					Usage:       "Custom S3 endpoint",
-					Destination: &s3Endpoint,
-				},
-				cli.StringFlag{
-					Name:        "assume-role-arn",
-					Usage:       "Optional IAM role ARN to assume for S3",
-					Destination: &assumeRoleArn,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				ignoreSignals()
-				var file_processor cclf.CclfFileProcessor
-
-				if fileSource == "s3" {
-					file_processor = &cclf.S3FileProcessor{
-						Handler: optout.S3FileHandler{
-							Logger:        log.API,
-							Endpoint:      s3Endpoint,
-							AssumeRoleArn: assumeRoleArn,
-						},
-					}
-				} else {
-					file_processor = &cclf.LocalFileProcessor{
-						Handler: optout.LocalFileHandler{
-							Logger:                 log.API,
-							PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-							FileArchiveThresholdHr: hours,
-						},
-					}
-				}
-
-				importer := cclf.NewCclfImporter(log.API, file_processor, pool)
-
-				success, failure, skipped, err := importer.ImportCCLFDirectory(filePath)
-				if err != nil {
-					log.API.Error("error returned from ImportCCLFDirectory: ", err)
-					return err
-
-				}
-				if failure > 0 || skipped > 0 {
-					log.API.Errorf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped, err)
-					err = errors.New("files skipped or failed import. See logs for more details")
-					return err
-				}
-				log.API.Infof("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
-				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
-				return err
-			},
-		},
-		{
 			Name:     "generate-cclf-runout-files",
 			Category: constants.CliDataImpCategory,
 			Usage:    "Clone CCLF files and rename them as runout files",
@@ -378,40 +310,15 @@ func setUpApp() *cli.App {
 					Usage:       "Directory where suppression files are located",
 					Destination: &filePath,
 				},
-				cli.StringFlag{
-					Name:        "filesource",
-					Usage:       "Source of files. Must be one of 'local', 's3'. Defaults to 'local'",
-					Destination: &fileSource,
-				},
-				cli.StringFlag{
-					Name:        "s3endpoint",
-					Usage:       "Custom S3 endpoint",
-					Destination: &s3Endpoint,
-				},
-				cli.StringFlag{
-					Name:        "assume-role-arn",
-					Usage:       "Optional IAM role ARN to assume for S3",
-					Destination: &assumeRoleArn,
-				},
 			},
 			Action: func(c *cli.Context) error {
 				ignoreSignals()
 				r := postgres.NewRepository(db)
 
-				var file_handler optout.OptOutFileHandler
-
-				if fileSource == "s3" {
-					file_handler = &optout.S3FileHandler{
-						Logger:        log.API,
-						Endpoint:      s3Endpoint,
-						AssumeRoleArn: assumeRoleArn,
-					}
-				} else {
-					file_handler = &optout.LocalFileHandler{
-						Logger:                 log.API,
-						PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-						FileArchiveThresholdHr: hours,
-					}
+				var file_handler optout.OptOutFileHandler = &optout.LocalFileHandler{
+					Logger:                 log.API,
+					PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
+					FileArchiveThresholdHr: hours,
 				}
 
 				importer := suppression.OptOutImporter{
@@ -422,7 +329,8 @@ func setUpApp() *cli.App {
 					Logger:               log.API,
 					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 				}
-				s, f, sk, err := importer.ImportSuppressionDirectory(filePath)
+				ctx := context.Background()
+				s, f, sk, err := importer.ImportSuppressionDirectory(ctx, filePath)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				return err
 			},

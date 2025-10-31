@@ -23,6 +23,9 @@ import (
 	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -49,7 +52,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	slackToken, err := setupEnv()
+	slackToken, err := setupEnv(ctx)
 	if err != nil {
 		log.Errorf("Failed to retrieve parameter: %+v", err)
 		return err
@@ -130,56 +133,76 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 	return nil
 }
 
-func setupEnv() (string, error) {
+func setupEnv(ctx context.Context) (string, error) {
 	env := conf.GetEnv("ENV")
 
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Setenv("SSAS_USE_TLS", "true")
+	err := os.Setenv("SSAS_USE_TLS", "true")
 	if err != nil {
 		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
 		return "", err
 	}
 
-	envVars := []string{"SSAS_URL", "BCDA_SSAS_CLIENT_ID", "BCDA_SSAS_SECRET", "BCDA_CA_FILE.pem"}
-	for _, v := range envVars {
-		envVar, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/%s", env, v))
-		if err != nil {
-			return "", err
-		}
-		err = os.Setenv(v, envVar)
-		if err != nil {
-			log.Errorf("Error setting %s env var: %+v", envVar, err)
-			return "", err
-		}
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return "", err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
 
+	slackParamName := "/slack/token/workflow-alerts"
+	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
+	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
+	ssasClientName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
+	ssasSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
+	caFileName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
+	paramNames := []string{
+		slackParamName,
+		ssasURLName,
+		ssasClientName,
+		ssasSecretName,
+		caFileName,
+	}
+	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
+	if err != nil {
+		return "", err
 	}
 
+	err = os.Setenv("DATABASE_URL", params[dbURLName])
+	if err != nil {
+		log.Errorf("Error setting dbURLName env var: %+v", err)
+		return "", err
+	}
+	err = os.Setenv("SSAS_URL", params[ssasURLName])
+	if err != nil {
+		log.Errorf("Error setting ssasURLName env var: %+v", err)
+		return "", err
+	}
+	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params[ssasClientName])
+	if err != nil {
+		log.Errorf("Error setting ssasClientName env var: %+v", err)
+		return "", err
+	}
+	err = os.Setenv("BCDA_SSAS_SECRET", params[ssasSecretName])
+	if err != nil {
+		log.Errorf("Error setting ssasSecretName env var: %+v", err)
+		return "", err
+	}
 	err = os.Setenv("BCDA_CA_FILE", "/tmp/BCDA_CA_FILE.pem")
 	if err != nil {
 		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
 		return "", err
 	}
 
-	// parameter store returns the value of the paremeter and SSAS expects a file, so we need to create it
+	// parameter store returns the value of the parameter and SSAS expects a file, so we need to create it
 	// nosec in use because lambda creates a tmp dir already
 	f, err := os.Create("/tmp/BCDA_CA_FILE.pem") // #nosec
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-	_, err = f.Write([]byte(conf.GetEnv("BCDA_CA_FILE.pem")))
+	_, err = f.Write([]byte(params[caFileName]))
 	if err != nil {
 		return "", err
 	}
 
-	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
-	if err != nil {
-		return "", err
-	}
-
-	return slackToken, nil
+	return params[slackParamName], nil
 }

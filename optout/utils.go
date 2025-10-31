@@ -33,7 +33,7 @@ func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 
 	// ignore files for different environments
 	if !IsForCurrentEnv(filename) {
-		return metadata, fmt.Errorf("Skipping file for different environment: %s", filename)
+		return metadata, fmt.Errorf("skipping file for different environment: %s", filename)
 	}
 
 	filenameDate := matches[3]

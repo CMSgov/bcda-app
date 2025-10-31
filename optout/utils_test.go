@@ -66,7 +66,7 @@ func (s *OptOutTestSuite) TestParseMetadata_DifferentEnv() {
 	}()
 
 	_, err := ParseMetadata("blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
-	assert.EqualError(err, "Skipping file for different environment: blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
+	assert.EqualError(err, "skipping file for different environment: blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
 }
 
 func (s *OptOutTestSuite) TestParseMetadata_InvalidData() {

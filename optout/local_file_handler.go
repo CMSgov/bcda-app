@@ -2,11 +2,13 @@ package optout
 
 import (
 	"bufio"
+	"context"
 	"fmt"
-	"github.com/ccoveille/go-safecast"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/ccoveille/go-safecast"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -20,13 +22,13 @@ type LocalFileHandler struct {
 	FileArchiveThresholdHr uint
 }
 
-func (handler *LocalFileHandler) LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
+func (handler *LocalFileHandler) LoadOptOutFiles(ctx context.Context, path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
 	var result []*OptOutFilenameMetadata
-	err = filepath.Walk(path, handler.getOptOutFileMetadata(&result, &skipped))
+	err = filepath.Walk(path, handler.getOptOutFileMetadata(ctx, &result, &skipped))
 	return &result, skipped, err
 }
 
-func (handler *LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
+func (handler *LocalFileHandler) getOptOutFileMetadata(ctx context.Context, suppresslist *[]*OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -78,7 +80,7 @@ func (handler *LocalFileHandler) getOptOutFileMetadata(suppresslist *[]*OptOutFi
 	}
 }
 
-func (handler *LocalFileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
+func (handler *LocalFileHandler) OpenFile(ctx context.Context, metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
 	f, err := os.Open(metadata.FilePath)
 	if err != nil {
 		fmt.Printf("Could not read file %s.\n", metadata)
@@ -95,7 +97,7 @@ func (handler *LocalFileHandler) OpenFile(metadata *OptOutFilenameMetadata) (*bu
 	}, nil
 }
 
-func (handler *LocalFileHandler) CleanupOptOutFiles(suppresslist []*OptOutFilenameMetadata) error {
+func (handler *LocalFileHandler) CleanupOptOutFiles(ctx context.Context, suppresslist []*OptOutFilenameMetadata) error {
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)

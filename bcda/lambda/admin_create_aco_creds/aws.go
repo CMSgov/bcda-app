@@ -1,15 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+
 	log "github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
@@ -18,44 +19,47 @@ import (
 
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
-func getAWSParams(session *session.Session) (awsParams, error) {
+func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := adjustedEnv()
 
-	if env == "local" {
-		return awsParams{}, nil
+	slackParamName := "/slack/token/workflow-alerts"
+	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
+	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
+	clientIDName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
+	clientSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
+	ssasPEMName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
+	credsBucketName := fmt.Sprintf("/bcda/%s/aco_creds_bucket", env)
+
+	paramNames := []string{
+		slackParamName,
+		dbURLName,
+		ssasURLName,
+		clientIDName,
+		clientSecretName,
+		ssasPEMName,
+		credsBucketName,
 	}
 
-	slackToken, err := bcdaaws.GetParameter(session, "/slack/token/workflow-alerts")
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return awsParams{}, err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}
 
-	ssasURL, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	clientID, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	clientSecret, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	ssasPEM, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	credsBucket, err := bcdaaws.GetParameter(session, fmt.Sprintf("/bcda/%s/aco_creds_bucket", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	return awsParams{slackToken, ssasURL, clientID, clientSecret, ssasPEM, credsBucket}, nil
+	return awsParams{
+		params[slackParamName],
+		params[dbURLName],
+		params[ssasURLName],
+		params[clientIDName],
+		params[clientSecretName],
+		params[ssasPEMName],
+		params[credsBucketName],
+	}, nil
 }
 
 func setupEnvironment(params awsParams) error {
@@ -63,6 +67,11 @@ func setupEnvironment(params awsParams) error {
 	err := os.Setenv("SSAS_URL", params.ssasURL)
 	if err != nil {
 		log.Errorf("Error setting SSAS_URL env var: %+v", err)
+		return err
+	}
+	err = os.Setenv("DATABASE_URL", params.dbURL)
+	if err != nil {
+		log.Errorf("Error setting DATABASE_URL env var: %+v", err)
 		return err
 	}
 	err = os.Setenv("BCDA_SSAS_CLIENT_ID", params.clientID)
@@ -101,34 +110,25 @@ func setupEnvironment(params awsParams) error {
 	return nil
 }
 
-func putObject(service s3iface.S3API, acoID string, creds string, credsBucket string) (string, error) {
+func putObject(ctx context.Context, client *s3.Client, acoID, creds, credsBucket string) (string, error) {
 	s3Input := &s3.PutObjectInput{
-		Body:   aws.ReadSeekCloser(strings.NewReader(creds)),
+		Body:   strings.NewReader(creds),
 		Bucket: aws.String(credsBucket),
 		Key:    aws.String(fmt.Sprintf("%s-creds", acoID)),
 	}
 
-	result, err := service.PutObject(s3Input)
+	_, err := client.PutObject(ctx, s3Input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				log.Error(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and Message from an error.
-			log.Error(err.Error())
-		}
 		return "", err
 	}
 
-	return result.String(), nil
+	return (credsBucket + "/" + acoID + "-creds"), nil
 }
 
 func adjustedEnv() string {
 	env := conf.GetEnv("ENV")
 	if env == "sbx" {
-		env = "opensbx"
+		env = "sandbox"
 	}
 	return env
 }
