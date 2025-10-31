@@ -1072,11 +1072,17 @@ func (s *IntegrationRequestsTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 }
 
-func (s *IntegrationRequestsTestSuite) SetupTest() {
+func (s *IntegrationRequestsTestSuite) SetupSubTest() {
 	var err error
 	s.db, err = s.dbContainer.NewSqlDbConnection()
 	require.NoError(s.T(), err)
 	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+}
+
+func (s *IntegrationRequestsTestSuite) TearDownSubTest() {
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
 	require.NoError(s.T(), err)
 }
 
@@ -1098,38 +1104,6 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
 	}
 
-	client.SetLogger(log.API) // Set logger so we don't get errors later
-	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, s.db, s.pool)
-	driver := riverpgxv5.New(s.pool)
-	acoID := "A0002"
-	repo := postgres.NewRepository(s.db)
-
-	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
-	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
-	_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{                  // nolint:errcheck
-		Name:            "testfilename",
-		ACOCMSID:        acoID,
-		PerformanceYear: utils.GetPY(),
-		Type:            models.FileTypeDefault,
-		Timestamp:       (time.Now()),
-		CCLFNum:         constants.CCLF8FileNum,
-		ImportStatus:    constants.ImportComplete,
-	})
-	require.NoError(s.T(), err)
-
-	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{ // nolint:errcheck
-		Name:            "testfilename2",
-		ACOCMSID:        acoID,
-		PerformanceYear: utils.GetPY(),
-		Type:            models.FileTypeDefault,
-		Timestamp:       (time.Now().AddDate(0, -3, 0)),
-		CCLFNum:         constants.CCLF8FileNum,
-		ImportStatus:    constants.ImportComplete,
-	})
-	require.NoError(s.T(), err)
-
-	jsonBytes, _ := json.Marshal("{}")
-
 	tests := []struct {
 		name         string
 		cmsId        string
@@ -1147,6 +1121,38 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 
 	for _, test := range tests {
 		s.Run(test.name, func() {
+
+			client.SetLogger(log.API) // Set logger so we don't get errors later
+			h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, s.db, s.pool)
+			driver := riverpgxv5.New(s.pool)
+			acoID := "A0002"
+			repo := postgres.NewRepository(s.db)
+
+			// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
+			repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
+			_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{                  // nolint:errcheck
+				Name:            "testfilename",
+				ACOCMSID:        acoID,
+				PerformanceYear: utils.GetPY(),
+				Type:            models.FileTypeDefault,
+				Timestamp:       (time.Now()),
+				CCLFNum:         constants.CCLF8FileNum,
+				ImportStatus:    constants.ImportComplete,
+			})
+			require.NoError(s.T(), err)
+
+			_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{ // nolint:errcheck
+				Name:            "testfilename2",
+				ACOCMSID:        acoID,
+				PerformanceYear: utils.GetPY(),
+				Type:            models.FileTypeDefault,
+				Timestamp:       (time.Now().AddDate(0, -3, 0)),
+				CCLFNum:         constants.CCLF8FileNum,
+				ImportStatus:    constants.ImportComplete,
+			})
+			require.NoError(s.T(), err)
+
+			jsonBytes, _ := json.Marshal("{}")
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
 			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
@@ -1170,10 +1176,6 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 					{Args: worker_types.PrepareJobArgs{}, Opts: nil},
 				})
 				assert.Greater(s.T(), len(jobs), 0)
-				_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-				if err != nil {
-					s.T().Log("failed to cleanup river jobs during tests")
-				}
 			}
 
 		})
