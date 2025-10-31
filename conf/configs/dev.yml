@@ -69,6 +69,12 @@ aco_config:
         file_performance_year: 5
         file_date: 6
         metadata_matches: 7
+    - model: "IOTA" 
+      name_pattern: "IOTA\\d{3}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"
+      lookback_period: 3
 rate_limit_config:
   all: false
   acos: []

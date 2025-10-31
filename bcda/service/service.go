@@ -580,7 +580,8 @@ func IsSupportedACO(cmsID string) bool {
 		guide   = `^GUIDE-\d{5}$`
 		test    = `^TEST\d{3}$`
 		sandbox = `^SBX[A-Z]{2}\d{3}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)`
+		iot     = `^IOTA\d{3}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)|(` + iot + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
@@ -593,7 +594,7 @@ func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBoun
 	}
 
 	if cclfFile == nil {
-		return nil, CCLFNotFoundError{8, cmsID, fileType, time.Time{}}
+		return nil, CCLFNotFoundError{8, cmsID, fileType, lowerBound}
 	}
 
 	return cclfFile, nil

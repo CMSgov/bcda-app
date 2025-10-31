@@ -283,7 +283,11 @@ See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tes
 
 ### Environment variables
 
-Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
+The various BCDA services (api, worker, ssas) require multiple environment variables and config files. 
+1. Environment variables are injected directly into the container environment. For the local docker container, this is done via docker-compose. Deployed Fargate environments may require a larger superset of environment variables, which are managed in param store and listed explicitly in bcda-ops.
+2. Configuration files (api yaml, certificates, etc.) are stored in S3 and synced to each container via its entrypoint script. For the local environment, this setup is replicated via localstack.
+
+While both environment variables and config files are managed in shared_files and injected into docker containers, they can be configured for running the `bcda` and `bcdaworker` apps ourside of docker by setting the following environment variables. The full list of required variables may be referenced in the docker-compose file for the local environment, and in bcda-ops for deployed environments.
 
 #### bcda
 
