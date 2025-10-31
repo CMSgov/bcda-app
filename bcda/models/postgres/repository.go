@@ -131,6 +131,7 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	return true, nil
 }
 
+// earliertime: closest to now and latertime: older in time.
 func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
