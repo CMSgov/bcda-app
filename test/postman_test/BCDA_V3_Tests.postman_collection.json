@@ -1,0 +1,2037 @@
+{
+  "info": {
+    "_postman_id": "817f4c7f-997e-4d35-aed3-ae00ef03c471",
+    "name": "Beneficiary Claims Data API Tests, Sequential",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "20886263"
+  },
+  "item": [
+    {
+      "name": "Informational Endpoints",
+      "item": [
+        {
+          "name": "Get version",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response contains version\", function() {",
+                  "    pm.expect(pm.response.json()).to.have.property(\"version\");",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/_version",
+              "protocol": "{{scheme}}",
+              "host": ["{{host}}"],
+              "path": ["_version"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get metadata",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "pm.test(\"Status code is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type is application/json\", function() {",
+                  "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+                  "});",
+                  "",
+                  "var respJson = pm.response.json();",
+                  "",
+                  "pm.test(\"Resource type is CapabilityStatement\", function() {",
+                  "    pm.expect(respJson.resourceType).to.eql(\"CapabilityStatement\")",
+                  "});",
+                  "",
+                  "const schema = {",
+                  "    \"properties\": {",
+                  "        \"resourceType\": {",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"status\": {",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"date\": {",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"publisher\": {",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"kind\": {",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"instantiates\": {",
+                  "            \"type\": \"array\"",
+                  "        },",
+                  "        \"software\": {",
+                  "            \"type\": \"object\",",
+                  "            \"properties\": {",
+                  "                \"name\": {},",
+                  "                \"version\": {},",
+                  "                \"releaseDate\": {}",
+                  "            }",
+                  "        },",
+                  "        \"implementation\": {",
+                  "            \"type\": \"object\"",
+                  "        },",
+                  "        \"fhirVersion\": {",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"acceptUnknown\":{",
+                  "            \"type\": \"string\"",
+                  "        },",
+                  "        \"format\": {",
+                  "            \"type\": \"array\"",
+                  "        },",
+                  "        \"rest\": {",
+                  "            \"type\": \"array\"",
+                  "        }",
+                  "    }",
+                  "};",
+                  "",
+                  "pm.test(\"Schema is valid\", function() {",
+                  "    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v3/metadata",
+              "protocol": "{{scheme}}",
+              "host": ["{{host}}"],
+              "path": ["api", "v3", "metadata"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response contains database status\", function() {",
+                  "    pm.expect(pm.response.json()).to.have.property(\"database\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/_health",
+              "protocol": "{{scheme}}",
+              "host": ["{{host}}"],
+              "path": ["_health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authenticated Endpoints",
+      "item": [
+        {
+          "name": "Without Token",
+          "item": [
+						{
+							"name": "V3",
+							"item": [
+								{
+									"name": "Get Attribution Status v3, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"",
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": "{{scheme}}://{{host}}/api/v3/attribution_status"
+									},
+									"response": []
+								},
+								{
+									"name": "Start EOB export v3, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"var respJson = pm.response.json();",
+													"",
+													"pm.test(\"Resource type is OperationOutcome\", function() {",
+													"    var respJson = pm.response.json();",
+													"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"});",
+													"",
+													"pm.test(\"Issue details code is Invalid Token\", function() {",
+													"    pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start Patient export v3, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"var respJson = pm.response.json();",
+													"",
+													"pm.test(\"Resource type is OperationOutcome\", function() {",
+													"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"});",
+													"",
+													"pm.test(\"Issue details code is Invalid Token\", function() {",
+													"    pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Patient",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Patient"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start Coverage export v3, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"var respJson = pm.response.json();",
+													"",
+													"pm.test(\"Resource type is OperationOutcome\", function() {",
+													"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"});",
+													"",
+													"pm.test(\"Issue details code is Invalid Token\", function() {",
+													"    pm.expect(respJson.issue[0].diagnostics).to.eql(\"Invalid Token\")",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Coverage",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Coverage"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get job status v3, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"pm.test(\"Resource type is OperationOutcome\", function() {",
+													"    var respJson = pm.response.json();",
+													"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text",
+												"disabled": true
+											}
+										],
+										"url": "{{scheme}}://{{host}}/api/v3/jobs/{{jobId}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Delete job v3, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"pm.test(\"Resource type is OperationOutcome\", function() {",
+													"    var respJson = pm.response.json();",
+													"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text",
+												"disabled": true
+											}
+										],
+										"url": "{{scheme}}://{{host}}/api/v3/jobs/{{jobId}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Get data, no token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 401\", function() {",
+													"    pm.response.to.have.status(401);",
+													"});",
+													"",
+													"pm.test(\"Resource type is OperationOutcome\", function() {",
+													"    var respJson = pm.response.json();",
+													"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson"
+									},
+									"response": []
+								}
+							]
+						}
+          ]
+        },
+        {
+          "name": "With Token",
+          "item": [
+            {
+              "name": "Get Access Token",
+              "item": [
+                {
+                  "name": "Get auth token",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "var env = pm.environment.get(\"env\");",
+                          "pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
+                          "pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
+                          "pm.test(\"Status code is 200\", function() {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "var responseJSON;",
+                          "try {",
+                          "   responseJSON = JSON.parse(responseBody);",
+                          "   tests['response is valid JSON'] = true;",
+                          "}",
+                          "catch (e) {",
+                          "   responseJSON = {};",
+                          "   tests['response is valid JSON'] = false;",
+                          "}",
+                          "",
+                          "pm.environment.set(\"token\", responseJSON.access_token);",
+                          ""
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "basic",
+                      "basic": [
+                        {
+                          "key": "password",
+                          "value": "{{clientSecret}}",
+                          "type": "string"
+                        },
+                        {
+                          "key": "username",
+                          "value": "{{clientId}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "name": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": ""
+                    },
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/auth/token",
+                      "protocol": "{{scheme}}",
+                      "host": ["{{host}}"],
+                      "path": ["auth", "token"]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Attribution Status Scenarios",
+              "item": [
+								{
+									"name": "Get Attribution Status v3",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Content-Type is application/json\", function() {",
+													"    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+													"});",
+													"",
+													"var respJson = pm.response.json();",
+													"",
+													"const schema = {",
+													"    \"properties\": {",
+													"        \"ingestion_dates\": {",
+													"            \"type\": \"array\",",
+													"            \"items\": [{",
+													"                \"type\": \"object\",",
+													"                \"properties\": {",
+													"                    \"type\": {",
+													"                        \"type\": \"string\"",
+													"                    },",
+													"                    \"timestamp\": {",
+													"                        \"type\": \"string\"",
+													"                    }",
+													"                }",
+													"            }]",
+													"        }",
+													"    }",
+													"};",
+													"",
+													"pm.test(\"Schema is valid\", function() {",
+													"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [],
+										"url": "{{scheme}}://{{host}}/api/v3/attribution_status"
+									},
+									"response": []
+								}
+              ]
+            },
+            {
+              "name": "Job Deletions",
+              "item": [
+								{
+									"name": "Start EOB export v3 for Deletion",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"eobv3JobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"packages": {},
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete job v3, valid token",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient EOB endpoint request\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text",
+												"disabled": true
+											}
+										],
+										"url": "{{eobv3JobUrl}}"
+									},
+									"response": []
+								}
+              ]
+            },
+            {
+              "name": "Job End to End (General)",
+              "item": [
+								{
+									"name": "Start Patient export v3",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (v3Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"patientv3JobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Patient",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Patient"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start Coverage export v3",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (v3Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"coveragev3JobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"packages": {},
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=Coverage",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "Coverage"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Start EOB export v3",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (v3Disabled) {",
+													"    pm.test(\"Status code is 404\", function() {",
+													"        pm.response.to.have.status(404);",
+													"    });",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202\", function() {",
+													"    pm.response.to.have.status(202);",
+													"});",
+													"",
+													"pm.test(\"Has Content-Location header\", function() {",
+													"    pm.response.to.have.header(\"Content-Location\");",
+													"});",
+													"",
+													"pm.environment.set(\"eobv3JobUrl\", pm.response.headers.get(\"Content-Location\"));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text"
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{scheme}}://{{host}}/api/v3/Patient/$export?_type=ExplanationOfBenefit",
+											"protocol": "{{scheme}}",
+											"host": [
+												"{{host}}"
+											],
+											"path": [
+												"api",
+												"v3",
+												"Patient",
+												"$export"
+											],
+											"query": [
+												{
+													"key": "_type",
+													"value": "ExplanationOfBenefit"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Patient export v3 job status",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {\t",
+													"    console.log(\"EOY mode is enabled - Skipping Patient request\");",
+													"    pm.environment.set(\"patientv3DataUrl\", \"https://bcda.cms.gov\");",
+													"    return;",
+													"} else {",
+													"    var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"    if (v3Disabled) {",
+													"        console.log(\"Not running Patient export v3 job status, v3 endpoints have been disabled\");",
+													"        return;",
+													"    }",
+													"",
+													"    pm.test(\"Status code is 202 or 200\", function() {",
+													"        pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"    });",
+													"",
+													"    if (pm.response.code === 202) {",
+													"        pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"            pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
+													"        });",
+													"    } else if (pm.response.code === 200) {",
+													"        const schema = {",
+													"            \"properties\": {",
+													"                \"transactionTime\": {",
+													"                    \"type\": \"string\"",
+													"                },",
+													"                \"request\": {",
+													"                    \"type\": \"string\"",
+													"                },",
+													"                \"requiresAccessToken\": {",
+													"                    \"type\": \"boolean\"",
+													"                },",
+													"                \"output\": {",
+													"                    \"type\": \"array\"",
+													"                },",
+													"                \"error\": {",
+													"                    \"type\": \"array\"",
+													"                }",
+													"            }",
+													"        };",
+													"        ",
+													"        var respJson = pm.response.json();",
+													"        ",
+													"        pm.test(\"Schema is valid\", function() {",
+													"            pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"        });",
+													"",
+													"        pm.test(\"Contains Required Resources\", () => {",
+													"          const requiredResources = [\"Patient\"];",
+													"          const otherResources = [\"ExplanationOfBenefit\", \"Coverage\", \"Claim\", \"ClaimResponse\"];",
+													"          const returnedResources = respJson.output.map(r => r.type);",
+													"",
+													"          for (const resource of requiredResources) {",
+													"              pm.expect(returnedResources, resource + \" is required\").to.include(resource);",
+													"          }",
+													"",
+													"          for (const resource of otherResources) {",
+													"              pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
+													"          }",
+													"        });",
+													"        ",
+													"        pm.environment.set(\"patientv3DataUrl\", respJson.output[0].url);",
+													"    }",
+													"}"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient endpoint pre-request\")",
+													"    return;",
+													"}",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (v3Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 25;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"patientv3JobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Patient export v3 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Patient v3 job status.\");",
+													"                postman.setNextRequest(null);",
+													"                pm.expect.fail(\"Failing due to max retries\");",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Patient export v3 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Patient export v3 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text",
+												"disabled": true
+											}
+										],
+										"url": "{{patientv3JobUrl}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Get Patient export v3 data",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient endpoint request\");",
+													"    return;",
+													"}",
+													"",
+													"if (v3Disabled) {",
+													"    console.log(\"Not running Patient export v3 data, v3 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"packages": {},
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [],
+										"url": "{{patientv3DataUrl}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Get Coverage export v3 job status",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient request\");",
+													"    pm.environment.set(\"coveragev3DataUrl\", \"https://bcda.cms.gov\");",
+													"    return;",
+													"}",
+													"",
+													"if (v3Disabled) {",
+													"    console.log(\"Not running Coverage export v3 job status, v3 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"   pm.test(\"X-Progress header is In Progress\", function() {",
+													"        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"",
+													"    pm.test(\"Contains Required Resources\", () => {",
+													"        const requiredResources = [\"Coverage\"];",
+													"        const otherResources = [\"ExplanationOfBenefit\", \"Patient\", \"Claim\", \"ClaimResponse\"];",
+													"        const returnedResources = respJson.output.map(r => r.type);",
+													"",
+													"        for (const resource of requiredResources) {",
+													"            pm.expect(returnedResources, resource + \" is required\").to.include(resource);",
+													"        }",
+													"",
+													"        for (const resource of otherResources) {",
+													"            pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
+													"        }",
+													"    });",
+													"    ",
+													"    pm.environment.set(\"coveragev3DataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient endpoint pre-request for coverage information\")",
+													"    return;",
+													"}",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (v3Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 25;",
+													"",
+													"var coverageJobReq = {",
+													"  url: pm.environment.get(\"coveragev3JobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(coverageJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"Coverage export v3 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for Coverage job status.\");",
+													"                postman.setNextRequest(null);",
+													"                pm.expect.fail(\"Failing due to max retries\");",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"Coverage export v3 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from Coverage export v3 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text",
+												"disabled": true
+											}
+										],
+										"url": "{{coveragev3JobUrl}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Get Coverage export v3 data",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient endpoint request\");",
+													"    return;",
+													"}",
+													"",
+													"if (v3Disabled) {",
+													"    console.log(\"Not running Coverage export v3 data, v3 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [],
+										"url": "{{coveragev3DataUrl}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Get EOB export v3 job status",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient request\");",
+													"    pm.environment.set(\"eobv3DataUrl\", \"https://bcda.cms.gov\");",
+													"    return;",
+													"}",
+													"",
+													"if (v3Disabled) {",
+													"    console.log(\"Not running EOB export v3 job status, v3 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 202 or 200\", function() {",
+													"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+													"});",
+													"",
+													"if (pm.response.code === 202) {",
+													"    pm.test(\"X-Progress header is In Progress\", function() {",
+													"        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
+													"    });",
+													"} else if (pm.response.code === 200) {",
+													"    const schema = {",
+													"        \"properties\": {",
+													"            \"transactionTime\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"request\": {",
+													"                \"type\": \"string\"",
+													"            },",
+													"            \"requiresAccessToken\": {",
+													"                \"type\": \"boolean\"",
+													"            },",
+													"            \"output\": {",
+													"                \"type\": \"array\"",
+													"            },",
+													"            \"error\": {",
+													"                \"type\": \"array\"",
+													"            }",
+													"        }",
+													"    };",
+													"    ",
+													"    var respJson = pm.response.json();",
+													"    ",
+													"    pm.test(\"Schema is valid\", function() {",
+													"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+													"    });",
+													"",
+													"    pm.test(\"Contains Required Resources\", () => {",
+													"        const requiredResources = [\"ExplanationOfBenefit\"];",
+													"        const partiallyAdjudicatedResources = [\"Patient\", \"Coverage\", \"Claim\", \"ClaimResponse\"];",
+													"        const returnedResources = respJson.output.map(r => r.type);",
+													"",
+													"        for (const resource of requiredResources) {",
+													"            pm.expect(returnedResources, resource + \" is required\").to.include(resource);",
+													"        }",
+													"",
+													"        for (const resource of partiallyAdjudicatedResources) {",
+													"            pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
+													"        }",
+													"     });",
+													"    ",
+													"    pm.environment.set(\"eobv3DataUrl\", respJson.output[0].url);",
+													"}"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient endpoint pre-request for EOB information\")",
+													"    return;",
+													"}",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (v3Disabled) {",
+													"    return;",
+													"}",
+													"",
+													"const retryDelay = 5000;",
+													"const maxRetries = 25;",
+													"",
+													"var eobJobReq = {",
+													"  url: pm.environment.get(\"eobv3JobUrl\"),",
+													"  method: \"GET\",",
+													"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+													"};",
+													"",
+													"function awaitExportJob(retryCount) {",
+													"    pm.sendRequest(eobJobReq, function (err, response) {",
+													"        if (err) {",
+													"            console.error(err);",
+													"        } else if (response.code == 202) {",
+													"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+													"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+													"            });",
+													"            if (retryCount < maxRetries) {",
+													"                console.log(\"ExplanationOfBenefit export v3 still in progress. Retrying...\");",
+													"                setTimeout(function() {",
+													"                    awaitExportJob(++retryCount);",
+													"                }, retryDelay);",
+													"            } else {",
+													"                console.log(\"Retry limit reached for ExplanationOfBenefit v3 job status.\");",
+													"                postman.setNextRequest(null);",
+													"                pm.expect.fail(\"Failing due to max retries\");",
+													"            }",
+													"        } else if (response.code == 200) {",
+													"            console.log(\"EOB export v3 job complete.\");",
+													"        } else {",
+													"            console.error(\"Unexpected response from EOB export v3 job: \" + response.status);",
+													"        }",
+													"    });",
+													"}",
+													"",
+													"awaitExportJob(1);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/fhir+json",
+												"type": "text",
+												"disabled": true
+											},
+											{
+												"key": "Prefer",
+												"value": "respond-async",
+												"type": "text",
+												"disabled": true
+											}
+										],
+										"url": "{{eobv3JobUrl}}"
+									},
+									"response": []
+								},
+								{
+									"name": "Get EOB export v3 data",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+													"",
+													"var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
+													"",
+													"if (maintenanceMode === \"eoy\") {",
+													"    console.log(\"EOY mode is enabled - Skipping Patient EOB endpoint request\");",
+													"    return;",
+													"}",
+													"",
+													"if (v3Disabled) {",
+													"    console.log(\"Not running EOB export v3 data, v3 endpoints have been disabled\");",
+													"    return;",
+													"}",
+													"",
+													"pm.test(\"Status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Body contains data\", function() {",
+													"    pm.expect(pm.response.length > 0)",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"packages": {},
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": {
+												"token": "{{token}}"
+											}
+										},
+										"method": "GET",
+										"header": [],
+										"url": "{{eobv3DataUrl}}"
+									},
+									"response": []
+								}
+              ]
+            },
+            {
+              "name": "Job End To End (Runouts)",
+              "item": [
+                {
+                  "name": "Start Group/runout v3 export",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 202\", function() {",
+                          "    pm.response.to.have.status(202);",
+                          "});",
+                          "",
+                          "pm.test(\"Has Content-Location header\", function() {",
+                          "    pm.response.to.have.header(\"Content-Location\");",
+                          "});",
+                          "",
+                          "pm.environment.set(\"groupRunoutv3JobUrl\", pm.response.headers.get(\"Content-Location\"));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "type": "text",
+                        "value": "application/fhir+json"
+                      },
+                      {
+                        "key": "Prefer",
+                        "type": "text",
+                        "value": "respond-async"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/api/v3/Group/runout/$export?_type=ExplanationOfBenefit",
+                      "protocol": "{{scheme}}",
+                      "host": ["{{host}}"],
+                      "path": ["api", "v3", "Group", "runout", "$export"],
+                      "query": [
+                        {
+                          "key": "_type",
+                          "value": "ExplanationOfBenefit"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Group/runout export job status",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 202 or 200\", function() {",
+                          "     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+                          "});",
+                          "",
+                          "if (pm.response.code === 202) {",
+                          "    pm.test(\"X-Progress header is In Progress\", function() {",
+                          "        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
+                          "    });",
+                          "} else if (pm.response.code === 200) {",
+                          "    const schema = {",
+                          "        \"properties\": {",
+                          "            \"transactionTime\": {",
+                          "                \"type\": \"string\"",
+                          "            },",
+                          "            \"request\": {",
+                          "                \"type\": \"string\"",
+                          "            },",
+                          "            \"requiresAccessToken\": {",
+                          "                \"type\": \"boolean\"",
+                          "            },",
+                          "            \"output\": {",
+                          "                \"type\": \"array\"",
+                          "            },",
+                          "            \"error\": {",
+                          "                \"type\": \"array\"",
+                          "            }",
+                          "        }",
+                          "    };",
+                          "    ",
+                          "    var respJson = pm.response.json();",
+                          "    ",
+                          "    pm.test(\"Schema is valid\", function() {",
+                          "        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+                          "    });",
+                          "",
+                          "    pm.test(\"Contains Required Resources\", () => {",
+                          "        const requiredResources = [\"ExplanationOfBenefit\"];",
+                          "        const otherResources = [\"Patient\", \"Coverage\", \"Claim\", \"ClaimResponse\"];",
+                          "        const returnedResources = respJson.output.map(r => r.type);",
+                          "",
+                          "        for (const resource of requiredResources) {",
+                          "            pm.expect(returnedResources, resource + \" is required\").to.include(resource);",
+                          "        }",
+                          "",
+                          "        for (const resource of otherResources) {",
+                          "            pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
+                          "        }",
+                          "    });",
+                          "    ",
+                          "    pm.environment.set(\"groupRunoutv3DataUrl\", respJson.output[0].url);",
+                          "}"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "const retryDelay = 5000;",
+                          "const maxRetries = 25;",
+                          "",
+                          "var eobJobReq = {",
+                          "  url: pm.environment.get(\"groupRunoutv3JobUrl\"),",
+                          "  method: \"GET\",",
+                          "  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+                          "};",
+                          "",
+                          "function awaitExportJob(retryCount) {",
+                          "    pm.sendRequest(eobJobReq, function (err, response) {",
+                          "        if (err) {",
+                          "            console.error(err);",
+                          "        } else if (response.code == 202) {",
+                          "            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+                          "               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+                          "            });",
+                          "            if (retryCount < maxRetries) {",
+                          "                console.log(\"ExplanationOfBenefit export still in progress. Retrying...\");",
+                          "                setTimeout(function() {",
+                          "                    awaitExportJob(++retryCount);",
+                          "                }, retryDelay);",
+                          "            } else {",
+                          "                console.error(\"Retry limit reached for ExplanationOfBenefit job status.\");",
+                          "                postman.setNextRequest(null);",
+                          "                pm.expect.fail(\"Failing due to max retries\");",
+                          "            }",
+                          "        } else if (response.code == 200) {",
+                          "            console.log(\"EOB export job complete.\");",
+                          "        } else {",
+                          "            console.error(\"Unexpected response from EOB export job: \" + response.status);",
+                          "        }",
+                          "    });",
+                          "}",
+                          "",
+                          "awaitExportJob(1);"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "type": "text",
+                        "value": "application/fhir+json",
+                        "disabled": true
+                      },
+                      {
+                        "key": "Prefer",
+                        "type": "text",
+                        "value": "respond-async",
+                        "disabled": true
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{groupRunoutv3JobUrl}}",
+                      "host": ["{{groupRunoutv3JobUrl}}"]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Group/runout export data",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function() {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test(\"Body contains data\", function() {",
+                          "    pm.expect(pm.response.length > 0)",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{groupRunoutv3DataUrl}}",
+                      "host": ["{{groupRunoutv3DataUrl}}"]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Job Completion Status",
+              "item": [
+                {
+                  "name": "Get jobs status v3 Completed data",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function() {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test(\"Body contains data\", function() {",
+                          "    pm.expect(pm.response.length > 0)",
+                          "});",
+                          "",
+                          "const schema = {",
+                          "    \"properties\": {",
+                          "        \"entry\": {",
+                          "            \"type\": \"array\",",
+                          "            \"items\": {",
+                          "                \"type\": \"object\",",
+                          "                \"properties\": {",
+                          "                    \"resource\": {",
+                          "                        \"type\": \"object\",",
+                          "                        \"properties\": {",
+                          "                            \"executionPeriod\": {",
+                          "                                \"type\": \"object\",",
+                          "                                \"properties\": {",
+                          "                                    \"end\": {},",
+                          "                                    \"start\": {}",
+                          "                                }",
+                          "                            },",
+                          "                            \"identifier\": {",
+                          "                                \"type\": \"array\",",
+                          "                                \"items\": {",
+                          "                                    \"type\": \"object\",",
+                          "                                    \"properties\": {",
+                          "                                        \"system\": {},",
+                          "                                        \"use\": {},",
+                          "                                        \"valyue\": {}",
+                          "                                    }",
+                          "                                }",
+                          "                            },",
+                          "                            \"input\": {",
+                          "                                \"type\": \"array\",",
+                          "                                \"items\": {",
+                          "                                    \"type\": \"object\",",
+                          "                                    \"properties\": {",
+                          "                                        \"type\": {},",
+                          "                                        \"valueString\": {}",
+                          "                                    }",
+                          "                                }",
+                          "                            },",
+                          "                            \"intent\": {",
+                          "                                \"type\": \"string\"",
+                          "                            },",
+                          "                            \"resourceType\": {",
+                          "                                \"type\": \"string\"",
+                          "                            },",
+                          "                            \"status\": {",
+                          "                                \"type\": \"string\"",
+                          "                            }",
+                          "                        }",
+                          "                    }",
+                          "                }",
+                          "            }",
+                          "        },",
+                          "        \"resourceType\": {",
+                          "            \"type\": \"string\"",
+                          "        },",
+                          "        \"total\": {",
+                          "            \"type\": \"integer\"",
+                          "        },",
+                          "        \"type\": {",
+                          "            \"type\": \"string\"",
+                          "        }",
+                          "    }",
+                          "};",
+                          "",
+                          "var respJson = pm.response.json();",
+                          "",
+                          "pm.test(\"Schema is valid\", function() {",
+                          "    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "type": "text",
+                        "value": "application/fhir+json"
+                      },
+                      {
+                        "key": "Prefer",
+                        "type": "text",
+                        "value": "respond-async"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/api/v3/jobs?_status=Completed",
+                      "protocol": "{{scheme}}",
+                      "host": ["{{host}}"],
+                      "path": ["api", "v3", "jobs"],
+                      "query": [
+                        {
+                          "key": "_status",
+                          "value": "Completed"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
