@@ -52,11 +52,11 @@ type cclfFileValidator struct {
 // Manages the interaction of CCLF files from a given source
 type CclfFileProcessor interface {
 	// Load a list of valid CCLF files to be imported
-	LoadCclfFiles(path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error)
+	LoadCclfFiles(ctx context.Context, path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error)
 	// Clean up CCLF files after failed or successful import runs
 	CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error)
 	// Open a zip archive
-	OpenZipArchive(name string) (*zip.Reader, func(), error)
+	OpenZipArchive(ctx context.Context, name string) (*zip.Reader, func(), error)
 }
 
 // Manages the import process for CCLF files from a given source
@@ -242,6 +242,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 }
 
 func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
+	success, failure, skipped = 0, 0, 0
 	t := metrics.GetTimer()
 	defer t.Close()
 	ctx := metrics.NewContext(context.Background(), t)
@@ -249,16 +250,16 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
 	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
-	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(filePath)
+	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(ctx, filePath)
 	c()
 
 	if err != nil {
-		return 0, 0, 0, err
+		return success, failure, skipped, err
 	}
 
 	if len(cclfMap) == 0 {
 		importer.logger.Info("Did not find any CCLF files in directory -- returning safely.")
-		return 0, failure, skipped, err
+		return success, failure, skipped, err
 	}
 
 	for acoID := range cclfMap {

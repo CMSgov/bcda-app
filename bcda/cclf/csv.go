@@ -25,9 +25,9 @@ import (
 // This interface has two implementations; one for ingesting and testing locally, and one for ingesting in s3.
 type CSVFileProcessor interface {
 	// Fetch the csv attribution file to be imported.
-	LoadCSV(path string) (*bytes.Reader, func(), error)
+	LoadCSV(ctx context.Context, path string) (*bytes.Reader, func(), error)
 	// Remove csv attribution file that was successfully imported.
-	CleanUpCSV(file csvFile) (err error)
+	CleanUpCSV(ctx context.Context, file csvFile) (err error)
 }
 
 type csvFile struct {
@@ -55,7 +55,7 @@ type CSVImporter struct {
 	PgxPool       *pgxv5Pool.Pool
 }
 
-func (importer CSVImporter) ImportCSV(filepath string) error {
+func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) error {
 
 	file := csvFile{filepath: filepath}
 
@@ -72,7 +72,7 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 	}
 	file.metadata = metadata
 
-	data, _, err := importer.FileProcessor.LoadCSV(filepath)
+	data, _, err := importer.FileProcessor.LoadCSV(ctx, filepath)
 	if err != nil {
 		if errors.Is(err, &ers.AttributionFileMismatchedEnv{}) {
 			importer.Logger.WithFields(logrus.Fields{"file": filepath}).Info(err)
@@ -89,7 +89,7 @@ func (importer CSVImporter) ImportCSV(filepath string) error {
 		return err
 	}
 
-	err = importer.FileProcessor.CleanUpCSV(file)
+	err = importer.FileProcessor.CleanUpCSV(ctx, file)
 	if err != nil {
 		return err
 	}

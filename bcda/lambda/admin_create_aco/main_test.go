@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/pborman/uuid"
@@ -22,12 +26,7 @@ type HandleCreateACOTestSuite struct {
 func (c *HandleCreateACOTestSuite) SetupTest() {
 	c.ctx = context.Background()
 
-	params, err := getAWSParams()
-	if err != nil {
-		assert.FailNow(c.T(), "Failed to get AWS Params")
-	}
-
-	conn, err := pgx.Connect(c.ctx, params.dbURL)
+	conn, err := pgx.Connect(c.ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		assert.FailNow(c.T(), "Failed to setup pgx connection")
 	}
@@ -140,4 +139,19 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 
 	err := handleCreateACO(c.ctx, c.tx, data, id)
 	assert.ErrorContains(c.T(), err, "CMSID must be provided")
+}
+
+func TestGetAWSParams(t *testing.T) {
+	env := conf.GetEnv("ENV")
+
+	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "test-db-url")
+	t.Cleanup(func() { cleanupParam1() })
+	cleanupParam2 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "test-slack-token")
+	t.Cleanup(func() { cleanupParam2() })
+
+	params, err := getAWSParams(context.Background())
+
+	assert.Nil(t, err)
+	assert.Equal(t, "test-db-url", params.dbURL)
+	assert.Equal(t, "test-slack-token", params.slackToken)
 }

@@ -36,7 +36,7 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 	workerInstance := worker.NewWorker(mainDB)
 	repo := postgres.NewRepository(mainDB)
 
-	defer updateJobQueueCountCloudwatchMetric(mainDB, logger)
+	defer updateJobQueueCountCloudwatchMetric(ctx, mainDB, logger)
 
 	exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
 		WorkerInstance: workerInstance,
