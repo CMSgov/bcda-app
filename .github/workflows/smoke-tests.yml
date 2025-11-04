@@ -126,7 +126,7 @@ jobs:
         run: |
           pwd
           ls
-          docker build -t postman_test -f Dockerfiles/Dockerfile.postman_test .
+          docker build -t postman_test -f ./Dockerfiles/Dockerfile.postman_test .
       - name: Run Postman Tests
         if: ${{inputs.postman_tests}} == 'true'
         run: |
