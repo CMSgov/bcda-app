@@ -25,6 +25,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -106,7 +107,7 @@ func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 	case "v2":
 		h.RespWriter = responseutilsv2.NewFhirResponseWriter()
 	case constants.V3Version:
-		h.RespWriter = responseutilsv2.NewFhirResponseWriter() // TODO: V3
+		h.RespWriter = responseutilsv3.NewFhirResponseWriter()
 	default:
 		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
 	}
