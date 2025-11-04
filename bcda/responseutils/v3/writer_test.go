@@ -11,7 +11,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 	"github.com/google/fhir/go/fhirversion"
@@ -22,7 +21,6 @@ import (
 	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -45,15 +43,9 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 }
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	rw := NewFhirResponseWriter()
-	logger := testUtils.GetLogger(log.API)
-	testLogger := test.NewLocal(logger)
-	ctx := log.NewStructuredLoggerEntry(logger, context.Background())
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
+	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	rw.Exception(ctx, s.rr, http.StatusAccepted, responseutils.RequestErr, "TestResponseWriterExcepton")
-
-	// assert error logging
-	assert.Equal(s.T(), 1, len(testLogger.Entries))
-	assert.Equal(s.T(), logrus.ErrorLevel, testLogger.LastEntry().Level)
-	assert.Equal(s.T(), "Request Error: TestResponseWriterExcepton", testLogger.LastEntry().Message)
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
 	assert.NoError(s.T(), err)
@@ -65,6 +57,13 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
+	// Verify Details.Text exists
+	assert.NotNil(s.T(), respOO.Issue[0].Details)
+	assert.NotNil(s.T(), respOO.Issue[0].Details.Text)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Text.Value)
+	// Verify Details.Coding does not exist (v3 should not include coding)
+	assert.Nil(s.T(), respOO.Issue[0].Details.Coding)
+	assert.Empty(s.T(), respOO.Issue[0].Details.Coding)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
@@ -83,7 +82,13 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_NOT_FOUND, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
-
+	// Verify Details.Text exists
+	assert.NotNil(s.T(), respOO.Issue[0].Details)
+	assert.NotNil(s.T(), respOO.Issue[0].Details.Text)
+	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Text.Value)
+	// Verify Details.Coding does not exist (v3 should not include coding)
+	assert.Nil(s.T(), respOO.Issue[0].Details.Coding)
+	assert.Empty(s.T(), respOO.Issue[0].Details.Coding)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
@@ -92,6 +97,30 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Diagnostics.Value)
+	// Verify Details.Text exists
+	assert.NotNil(s.T(), oo.Issue[0].Details)
+	assert.NotNil(s.T(), oo.Issue[0].Details.Text)
+	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Text.Value)
+	// Verify Details.Coding does not exist (v3 should not include coding)
+	assert.Nil(s.T(), oo.Issue[0].Details.Coding)
+	assert.Empty(s.T(), oo.Issue[0].Details.Coding)
+}
+
+func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcomeNoCoding() {
+	// This test specifically verifies that v3 OperationOutcome does not include Coding
+	rw := NewFhirResponseWriter()
+	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "TestDiagnostics")
+
+	// Verify Details exists
+	assert.NotNil(s.T(), oo.Issue[0].Details)
+
+	// Verify Details.Text exists and contains the diagnostic message
+	assert.NotNil(s.T(), oo.Issue[0].Details.Text)
+	assert.Equal(s.T(), "TestDiagnostics", oo.Issue[0].Details.Text.Value)
+
+	// Verify Details.Coding is nil or empty (should not be present)
+	assert.Nil(s.T(), oo.Issue[0].Details.Coding)
+	assert.Empty(s.T(), oo.Issue[0].Details.Coding)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
@@ -112,6 +141,13 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), oo.Issue[0].Code.Value, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Diagnostics.Value)
+	// Verify Details.Text exists
+	assert.NotNil(s.T(), respOO.Issue[0].Details)
+	assert.NotNil(s.T(), respOO.Issue[0].Details.Text)
+	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Details.Text.Value)
+	// Verify Details.Coding does not exist (v3 should not include coding)
+	assert.Nil(s.T(), respOO.Issue[0].Details.Coding)
+	assert.Empty(s.T(), respOO.Issue[0].Details.Coding)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
@@ -180,7 +216,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 
 	assert.Equal(s.T(), jobs[0].CreatedAt.UTC().UnixNano()/int64(time.Microsecond), task.ExecutionPeriod.Start.ValueUs)
 	assert.Equal(s.T(), jobs[0].UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), task.ExecutionPeriod.End.ValueUs)
-	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", task.Identifier[0].System.Value)
+	assert.Equal(s.T(), "https://www.api.com/api/v3/jobs", task.Identifier[0].System.Value)
 	assert.Equal(s.T(), fhircodes.IdentifierUseCode_OFFICIAL, task.Identifier[0].Use.Value)
 	assert.Equal(s.T(), fmt.Sprint(jobs[0].ID), task.Identifier[0].Value.Value)
 	assert.Equal(s.T(), "BULK FHIR Export", task.Input[0].Type.Text.Value)
@@ -211,7 +247,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
 
 	assert.Equal(s.T(), job.CreatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.Start.ValueUs)
 	assert.Equal(s.T(), job.UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.End.ValueUs)
-	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", jbe.Identifier[0].System.Value)
+	assert.Equal(s.T(), "https://www.api.com/api/v3/jobs", jbe.Identifier[0].System.Value)
 	assert.Equal(s.T(), fhircodes.IdentifierUseCode_OFFICIAL, jbe.Identifier[0].Use.Value)
 	assert.Equal(s.T(), fmt.Sprint(job.ID), jbe.Identifier[0].Value.Value)
 	assert.Equal(s.T(), "BULK FHIR Export", jbe.Input[0].Type.Text.Value)

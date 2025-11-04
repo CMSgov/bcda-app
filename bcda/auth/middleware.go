@@ -114,8 +114,6 @@ func (m AuthMiddleware) AuthorizeAccess(ctx context.Context, tokenString string)
 
 func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw fhirResponseWriter, err error) {
 	if err != nil {
-		log.Auth.Error(err)
-
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
 			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.ExpiredErr)
