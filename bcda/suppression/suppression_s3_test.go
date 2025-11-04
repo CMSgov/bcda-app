@@ -1,6 +1,7 @@
 package suppression
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -25,12 +28,17 @@ import (
 
 type SuppressionS3TestSuite struct {
 	suite.Suite
+	ctx context.Context
 }
 
 func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
 	saver := optout.FakeSaver{}
+	s.ctx = context.Background()
+	client := testUtils.TestS3Client(s.T(), testUtils.TestAWSConfig(s.T()))
+
 	return OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
+			Client:   client,
 			Logger:   log.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},
@@ -47,7 +55,7 @@ func TestSuppressionS3TestSuite(t *testing.T) {
 func (s *SuppressionS3TestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	defer cleanup()
+	s.T().Cleanup(func() { cleanup() })
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -59,7 +67,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppression() {
 	}
 
 	importer, saver := s.createImporter()
-	err := importer.ImportSuppressionData(metadata)
+	err := importer.ImportSuppressionData(s.ctx, metadata)
 	assert.Nil(err)
 	assert.Len(saver.Files, 1)
 
@@ -81,7 +89,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppression() {
 
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
 	bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390")
-	defer cleanup()
+	s.T().Cleanup(func() { cleanup() })
 
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
 	metadata = &optout.OptOutFilenameMetadata{
@@ -92,7 +100,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppression() {
 	}
 
 	importer, saver = s.createImporter()
-	err = importer.ImportSuppressionData(metadata)
+	err = importer.ImportSuppressionData(s.ctx, metadata)
 	assert.Nil(err)
 	assert.Len(saver.Files, 1)
 
@@ -120,7 +128,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppression_MissingData() {
 	// Verify empty file is rejected
 	metadata := &optout.OptOutFilenameMetadata{}
 	importer, _ := s.createImporter()
-	err := importer.ImportSuppressionData(metadata)
+	err := importer.ImportSuppressionData(s.ctx, metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
@@ -160,7 +168,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppression_MissingData() {
 				}
 			}
 
-			err = importer.ImportSuppressionData(metadata)
+			err = importer.ImportSuppressionData(s.ctx, metadata)
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
@@ -182,12 +190,12 @@ func (s *SuppressionS3TestSuite) TestValidate() {
 
 	suppressionfilePath := filepath.Join(bucketName, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	metadata := &optout.OptOutFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
-	err := importer.validate(metadata)
+	err := importer.validate(s.ctx, metadata)
 	assert.Nil(err)
 
 	// bad file path
 	metadata.FilePath = metadata.FilePath + "/blah/"
-	err = importer.validate(metadata)
+	err = importer.validate(s.ctx, metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file "+metadata.FilePath)
 
@@ -196,7 +204,7 @@ func (s *SuppressionS3TestSuite) TestValidate() {
 	defer cleanup()
 
 	metadata.FilePath = filepath.Join(bucketName, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	err = importer.validate(metadata)
+	err = importer.validate(s.ctx, metadata)
 	assert.EqualError(err, "invalid file header for file: "+metadata.FilePath)
 
 	// missing record count
@@ -204,7 +212,7 @@ func (s *SuppressionS3TestSuite) TestValidate() {
 	defer cleanup()
 
 	metadata.FilePath = filepath.Join(bucketName, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	err = importer.validate(metadata)
+	err = importer.validate(s.ctx, metadata)
 	assert.EqualError(err, "failed to parse record count from file: "+metadata.FilePath)
 
 	// incorrect record count
@@ -212,7 +220,7 @@ func (s *SuppressionS3TestSuite) TestValidate() {
 	defer cleanup()
 
 	metadata.FilePath = filepath.Join(bucketName, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
-	err = importer.validate(metadata)
+	err = importer.validate(s.ctx, metadata)
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.FilePath+"'. Expected record count: 5, Actual record count: 4")
 }
 
@@ -224,7 +232,7 @@ func (s *SuppressionS3TestSuite) TestLoadOptOutFiles() {
 	defer cleanup()
 
 	filePath := filepath.Join(bucketName, constants.TestSynthMedFilesPath)
-	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(filePath)
+	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(s.ctx, filePath)
 	assert.Nil(err)
 	assert.Equal(2, len(*suppresslist))
 	assert.Equal(0, skipped)
@@ -233,7 +241,7 @@ func (s *SuppressionS3TestSuite) TestLoadOptOutFiles() {
 	defer cleanup()
 
 	filePath = filepath.Join(bucketName, "suppressionfile_BadFileNames/")
-	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(filePath)
+	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(s.ctx, filePath)
 	assert.Nil(err)
 	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
@@ -282,11 +290,14 @@ func (s *SuppressionS3TestSuite) TestCleanupSuppression() {
 	}
 
 	suppresslist = []*optout.OptOutFilenameMetadata{metadata, metadata2, metadata3}
-	err := importer.FileHandler.CleanupOptOutFiles(suppresslist)
+	err := importer.FileHandler.CleanupOptOutFiles(s.ctx, suppresslist)
 	assert.Nil(err)
 
-	objects := testUtils.ListS3Objects(s.T(), bucketName, "")
-	assert.True(len(objects) == 0)
+	client := testUtils.TestS3Client(s.T(), testUtils.TestAWSConfig(s.T()))
+	output, _ := client.ListObjectsV2(s.T().Context(), &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucketName),
+	})
+	assert.True(len(output.Contents) == 0)
 }
 
 func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
@@ -312,7 +323,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
 		{name: "Valid test", directory: "../../shared_files/synthetic1800MedicareFiles/test2/", success: 2, failure: 0, skipped: 0, errorExpected: false, errMessage: "", deleteFiles: true},
 		{name: "Import failure", directory: "../../shared_files/suppressionfile_BadHeader/", success: 0, failure: 1, skipped: 0, errorExpected: true, errMessage: "one or more suppression files failed to import correctly", deleteFiles: false},
 		{name: "Skipped import", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 2, errorExpected: false, errMessage: "", deleteFiles: false},
-		{name: "Carriage char in path", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 0, errorExpected: true, errMessage: "The specified bucket does not exist", deleteFiles: false, insertCarriage: true},
+		{name: "Carriage char in path", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 0, errorExpected: true, errMessage: "Failed to parse uri", deleteFiles: false, insertCarriage: true},
 	}
 
 	for _, tt := range tests {
@@ -324,7 +335,7 @@ func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
 				bucketName += "\n"
 			}
 
-			success, failure, skipped, err := importer.ImportSuppressionDirectory(bucketName)
+			success, failure, skipped, err := importer.ImportSuppressionDirectory(s.ctx, bucketName)
 			if tt.errorExpected {
 				assert.Equal(true, strings.Contains(err.Error(), tt.errMessage))
 			} else {

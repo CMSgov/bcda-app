@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/stretchr/testify/assert"
 )
@@ -57,4 +62,56 @@ func TestHandleCreateGroup(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSetupEnvironment(t *testing.T) {
+	env := conf.GetEnv("ENV")
+
+	// store env vars to restore later
+	origDBURL := os.Getenv("DATABASE_URL")
+	origSSASURL := os.Getenv("SSAS_URL")
+	origBCDASSASClientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
+	origBCDASSASSecret := os.Getenv("BCDA_SSAS_SECRET")
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	origBCDACAFile := os.Getenv("BCDA_CA_FILE")
+	t.Cleanup(func() {
+		// restore original env vars
+		err := os.Setenv("DATABASE_URL", origDBURL)
+		assert.Nil(t, err)
+		err = os.Setenv("SSAS_URL", origSSASURL)
+		assert.Nil(t, err)
+		err = os.Setenv("BCDA_SSAS_CLIENT_ID", origBCDASSASClientID)
+		assert.Nil(t, err)
+		err = os.Setenv("BCDA_SSAS_SECRET", origBCDASSASSecret)
+		assert.Nil(t, err)
+		err = os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+		assert.Nil(t, err)
+		err = os.Setenv("BCDA_CA_FILE", origBCDACAFile)
+		assert.Nil(t, err)
+	})
+
+	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
+	t.Cleanup(func() { cleanupParam1() })
+	cleanupParam2 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "test-DB_URL")
+	t.Cleanup(func() { cleanupParam2() })
+	cleanupParam3 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/SSAS_URL", env), "test-SSAS_URL")
+	t.Cleanup(func() { cleanupParam3() })
+	cleanupParam4 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env), "test-BCDA_SSAS_CLIENT_ID")
+	t.Cleanup(func() { cleanupParam4() })
+	cleanupParam5 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env), "test-BCDA_SSAS_SECRET")
+	t.Cleanup(func() { cleanupParam5() })
+	cleanupParam6 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env), "test-BCDA_CA_FILE")
+	t.Cleanup(func() { cleanupParam6() })
+
+	slackName, err := setupEnv(context.Background())
+	assert.Nil(t, err)
+
+	assert.Equal(t, "slack-val", slackName)
+	assert.Equal(t, "true", os.Getenv("SSAS_USE_TLS"))
+	assert.Equal(t, "test-SSAS_URL", os.Getenv("SSAS_URL"))
+	assert.Equal(t, "test-BCDA_SSAS_CLIENT_ID", os.Getenv("BCDA_SSAS_CLIENT_ID"))
+	assert.Equal(t, "test-BCDA_SSAS_SECRET", os.Getenv("BCDA_SSAS_SECRET"))
+	assert.Equal(t, "true", os.Getenv("SSAS_USE_TLS"))
+	assert.Equal(t, "/tmp/BCDA_CA_FILE.pem", os.Getenv("BCDA_CA_FILE"))
+	assert.FileExists(t, "/tmp/BCDA_CA_FILE.pem")
 }

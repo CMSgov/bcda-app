@@ -1,32 +1,24 @@
 package bcdaaws
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
-// Makes this easier to mock and unit test
-var ssmNew = ssm.New
-var ssmsvcGetParameter = (*ssm.SSM).GetParameter
-var ssmsvcGetParameters = (*ssm.SSM).GetParameters
-
-func GetParameter(s *session.Session, keyname string) (string, error) {
-	ssmsvc := ssmNew(s)
-
+// Returns the value of a single parameter from the SSM Parameter Store
+func GetParameter(ctx context.Context, client *ssm.Client, keyname string) (string, error) {
 	withDecryption := true
-	result, err := ssmsvcGetParameter(ssmsvc, &ssm.GetParameterInput{
+	result, err := client.GetParameter(ctx, &ssm.GetParameterInput{
 		Name:           &keyname,
 		WithDecryption: &withDecryption,
 	})
-
 	if err != nil {
 		return "", fmt.Errorf("error retrieving parameter %s from parameter store: %w", keyname, err)
 	}
 
 	val := *result.Parameter.Value
-
 	if val == "" {
 		return "", fmt.Errorf("no parameter store value found for %s", keyname)
 	}
@@ -35,12 +27,9 @@ func GetParameter(s *session.Session, keyname string) (string, error) {
 }
 
 // Returns a list of parameters from the SSM Parameter Store
-func GetParameters(s *session.Session, keynames []*string) (map[string]string, error) {
-	// Create an SSM client and pull down keys from the param store
-	ssmsvc := ssmNew(s)
-
+func GetParameters(ctx context.Context, client *ssm.Client, keynames []string) (map[string]string, error) {
 	withDecryption := true
-	params, err := ssmsvcGetParameters(ssmsvc, &ssm.GetParametersInput{
+	output, err := client.GetParameters(ctx, &ssm.GetParametersInput{
 		Names:          keynames,
 		WithDecryption: &withDecryption,
 	})
@@ -49,10 +38,10 @@ func GetParameters(s *session.Session, keynames []*string) (map[string]string, e
 	}
 
 	// Unknown keys will come back as invalid, make sure we error on them
-	if len(params.InvalidParameters) > 0 {
+	if len(output.InvalidParameters) > 0 {
 		invalidParamsStr := ""
-		for i := 0; i < len(params.InvalidParameters); i++ {
-			invalidParamsStr += fmt.Sprintf("%s,\n", *params.InvalidParameters[i])
+		for i := 0; i < len(output.InvalidParameters); i++ {
+			invalidParamsStr += fmt.Sprintf("%s,\n", output.InvalidParameters[i])
 		}
 		return nil, fmt.Errorf("invalid parameters error: %s", invalidParamsStr)
 	}
@@ -60,8 +49,9 @@ func GetParameters(s *session.Session, keynames []*string) (map[string]string, e
 	// Build the parameter map that we're going to return
 	paramMap := make(map[string]string)
 
-	for _, item := range params.Parameters {
+	for _, item := range output.Parameters {
 		paramMap[*item.Name] = *item.Value
 	}
+
 	return paramMap, nil
 }
