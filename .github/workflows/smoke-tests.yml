@@ -124,6 +124,8 @@ jobs:
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
       - name: Build Postman Container
         run: |
+          pwd
+          ls
           docker build -t postman_test -f Dockerfiles/Dockerfile.postman_test .
       - name: Run Postman Tests
         if: ${{inputs.postman_tests}} == 'true'
