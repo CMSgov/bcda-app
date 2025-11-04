@@ -126,8 +126,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Build Postman Container
         run: |
-          pwd
-          ls
           docker build -t postman_test -f ./Dockerfiles/Dockerfile.postman_test .
       - name: Run Postman Tests
         if: ${{inputs.postman_tests}} == 'true'
