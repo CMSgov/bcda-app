@@ -54,3 +54,5 @@ const V3Version = "v3"
 
 const GetExistingBenes = "GetExistingBenes"
 const GetNewAndExistingBenes = "GetNewAndExistingBenes"
+
+const DefaultRegion = "us-east-1"

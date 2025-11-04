@@ -120,7 +120,7 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 	for _, test := range tests {
 		s.T().Run(test.name, func(tt *testing.T) {
 			filename := filepath.Clean(test.filepath)
-			err := s.importer.ImportCSV(test.filepath)
+			err := s.importer.ImportCSV(context.Background(), test.filepath)
 			if test.err == nil {
 				assert.Nil(s.T(), err)
 			} else {
