@@ -122,6 +122,8 @@ jobs:
             CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Build Postman Container
         run: |
           pwd
