@@ -99,7 +99,6 @@ func LoadLambdaEnvVars(env string) {
 	var configPaths []string
 	configPaths = append(configPaths, envPath)
 	envVars, state = loadConfigs(configPaths...)
-
 }
 
 // This is the private helper function that sets up viper. This function is

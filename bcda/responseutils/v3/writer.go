@@ -14,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/google/fhir/go/fhirversion"
 	"github.com/google/fhir/go/jsonformat"
 
@@ -42,9 +41,6 @@ func NewFhirResponseWriter() FhirResponseWriter {
 }
 
 func (r FhirResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
-	logger := log.GetCtxLogger(ctx)
-	logger.WithField("resp_status", statusCode)
-	logger.Errorf("%s: %s", errType, errMsg)
 	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }
@@ -91,7 +87,7 @@ func (r FhirResponseWriter) CreateJobsBundleEntry(job *models.Job, host string) 
 					Identifier: []*fhirdatatypes.Identifier{
 						{
 							Use:    &fhirdatatypes.Identifier_UseCode{Value: fhircodes.IdentifierUseCode_OFFICIAL},
-							System: &fhirdatatypes.Uri{Value: host + "/api/v2/jobs"},
+							System: &fhirdatatypes.Uri{Value: host + "/api/v3/jobs"},
 							Value:  &fhirdatatypes.String{Value: fmt.Sprint(job.ID)},
 						},
 					},
@@ -153,13 +149,7 @@ func (r FhirResponseWriter) CreateOpOutcome(severity fhircodes.IssueSeverityCode
 				Code:        &fhirmodelOO.OperationOutcome_Issue_CodeType{Value: code},
 				Diagnostics: &fhirdatatypes.String{Value: diagnostics},
 				Details: &fhirdatatypes.CodeableConcept{
-					Coding: []*fhirdatatypes.Coding{
-						{
-							System:  &fhirdatatypes.Uri{Value: "http://hl7.org/fhir/ValueSet/operation-outcome"},
-							Code:    &fhirdatatypes.Code{Value: responseutils.RequestErr},
-							Display: &fhirdatatypes.String{Value: diagnostics},
-						},
-					},
+					// Coding is intentionally omitted for v3 to conform with FHIR base profile
 					Text: &fhirdatatypes.String{Value: diagnostics},
 				},
 			},

@@ -25,7 +25,7 @@ type LocalFileProcessor struct {
 	Handler optout.LocalFileHandler
 }
 
-func (processor *LocalFileProcessor) LoadCclfFiles(path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
+func (processor *LocalFileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	return processCCLFArchives(path)
 }
 
@@ -269,7 +269,7 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 	return deletedCount, nil
 }
 
-func (processor *LocalFileProcessor) OpenZipArchive(filePath string) (*zip.Reader, func(), error) {
+func (processor *LocalFileProcessor) OpenZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
 		return nil, nil, err
@@ -283,7 +283,7 @@ func (processor *LocalFileProcessor) OpenZipArchive(filePath string) (*zip.Reade
 	}, err
 }
 
-func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
+func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFile) error {
 	var err error
 
 	func() {
@@ -325,7 +325,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(file csvFile) error {
 	return err
 }
 
-func (processor *LocalFileProcessor) LoadCSV(filepath string) (*bytes.Reader, func(), error) {
+func (processor *LocalFileProcessor) LoadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
 	c := fp.Clean(filepath)
 	if !strings.HasPrefix(filepath, "/tmp") {
 		return nil, nil, fmt.Errorf("invalid path, %s", filepath)

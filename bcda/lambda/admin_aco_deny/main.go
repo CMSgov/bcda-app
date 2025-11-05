@@ -16,6 +16,9 @@ import (
 	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -45,7 +48,7 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	params, err := getAWSParams()
+	params, err := getAWSParams(ctx)
 	if err != nil {
 		log.Errorf("Unable to extract DB URL from parameter store: %+v", err)
 		return err
@@ -87,27 +90,22 @@ func handleACODenies(ctx context.Context, conn PgxConnection, data payload) erro
 	return nil
 }
 
-func getAWSParams() (awsParams, error) {
+func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := conf.GetEnv("ENV")
 
-	if env == "local" {
-		return awsParams{conf.GetEnv("DATABASE_URL"), ""}, nil
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return awsParams{}, err
 	}
+	ssmClient := ssm.NewFromConfig(cfg)
 
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
+	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
+	slackParamName := "/slack/token/workflow-alerts"
+	paramNames := []string{slackParamName, dbURLName}
+	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}
 
-	dbURL, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
-	if err != nil {
-		return awsParams{}, err
-	}
-
-	return awsParams{dbURL, slackToken}, nil
+	return awsParams{params[dbURLName], params[slackParamName]}, nil
 }

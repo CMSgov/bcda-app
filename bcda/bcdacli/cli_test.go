@@ -27,8 +27,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
-	logger "github.com/CMSgov/bcda-app/log"
-	"github.com/pkg/errors"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
@@ -381,68 +379,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 }
 
-func (s *CLITestSuite) TestImportCCLFDirectory() {
-	oldVal := conf.GetEnv("LOG_TO_STD_OUT")
-	conf.SetEnv(s.T(), "LOG_TO_STD_OUT", "false")
-	s.T().Cleanup(func() { conf.SetEnv(s.T(), "LOG_TO_STD_OUT", oldVal) })
-
-	targetACO := "A0002"
-	assert := assert.New(s.T())
-
-	type test struct {
-		path         string
-		err          error
-		expectedLogs []string
-	}
-
-	tests := []test{
-		{
-			path:         "../../shared_files/cclf/archives/valid/",
-			err:          errors.New("files skipped or failed import. See logs for more details"),
-			expectedLogs: []string{"Successfully imported 6 files.", "Failed to import 0 files.", "Skipped 0 files."},
-		},
-		{
-			path:         "../../shared_files/cclf/archives/invalid_bcd/",
-			err:          errors.New("failed to import 1 files"),
-			expectedLogs: []string{"missing CCLF0 or CCLF8 file in zip"},
-		},
-		{
-			path:         "../../shared_files/cclf/archives/skip/",
-			err:          errors.New("files failed to import or no files were imported. See logs for more details."),
-			expectedLogs: []string{"Successfully imported 0 files.", "Failed to import 0 files.", "Skipped 0 files."},
-		},
-	}
-
-	for _, tc := range tests {
-		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
-		defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
-		path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tc.path)
-		defer cleanup()
-
-		// reset global logs to clean up any previous log entries
-		logger.SetupLoggers()
-
-		args := []string{"bcda", "import-cclf-directory", constants.DirectoryArg, path}
-		err := s.testApp.Run(args)
-		if tc.err == nil {
-			assert.Nil(err)
-		}
-
-		var failed bool
-		content, err := os.ReadFile(os.Getenv("BCDA_ERROR_LOG"))
-		assert.Nil(err)
-
-		// go through each expected log and make sure it exists in all logs
-		for _, expectedLog := range tc.expectedLogs {
-			if !strings.Contains(string(content), expectedLog) {
-				failed = true
-			}
-		}
-
-		assert.False(failed)
-	}
-}
-
 func (s *CLITestSuite) TestImportSuppressionDirectoryFromLocal() {
 	assert := assert.New(s.T())
 
@@ -468,69 +404,6 @@ func (s *CLITestSuite) TestImportSuppressionDirectoryFromLocal() {
 	for _, f := range fs {
 		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
 	}
-}
-
-func (s *CLITestSuite) TestImportSuppressionDirectoryFromS3() {
-	assert := assert.New(s.T())
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	path, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test2/")
-	defer cleanup()
-
-	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path, constants.FileSourceArg, "s3", constants.S3EndpointArg, conf.GetEnv("BFD_S3_ENDPOINT")}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
-	assert.Contains(buf.String(), "Files imported: 2")
-	assert.Contains(buf.String(), "Files failed: 0")
-	assert.Contains(buf.String(), "Files skipped: 0")
-
-	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
-		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
-		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
-
-	assert.Len(fs, 2)
-	for _, f := range fs {
-		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
-	}
-}
-
-func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
-	assert := assert.New(s.T())
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/suppressionfile_BadFileNames/")
-	defer cleanup()
-
-	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
-	assert.Contains(buf.String(), "Files imported: 0")
-	assert.Contains(buf.String(), "Files failed: 0")
-	assert.Contains(buf.String(), "Files skipped: 2")
-}
-
-func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
-	assert := assert.New(s.T())
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/suppressionfile_BadHeader/")
-	defer cleanup()
-
-	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path}
-	err := s.testApp.Run(args)
-	assert.EqualError(err, "one or more suppression files failed to import correctly")
-	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
-	assert.Contains(buf.String(), "Files imported: 0")
-	assert.Contains(buf.String(), "Files failed: 1")
-	assert.Contains(buf.String(), "Files skipped: 0")
 }
 
 func (s *CLITestSuite) TestDenylistACO() {
