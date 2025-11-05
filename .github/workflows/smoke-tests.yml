@@ -186,16 +186,16 @@ jobs:
                 text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
-      # - name: Failure Alert
-      #   if: ${{ failure() }}
-      #   uses: slackapi/slack-github-action@v2.0.0
-      #   with:
-      #     method: chat.postMessage
-      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     payload: |
-      #       channel: "C03S23MJFJS"
-      #       attachments:
-      #         - color: danger
-      #           text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
-      #           mrkdown_in:
-      #             - text
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: "C03S23MJFJS"
+            attachments:
+              - color: danger
+                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                mrkdown_in:
+                  - text
