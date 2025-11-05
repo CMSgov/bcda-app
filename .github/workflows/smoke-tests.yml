@@ -86,7 +86,6 @@ permissions:
   contents: read
 
 env:
-  #COMPOSE_INTERACTIVE_NO_CLI: 1
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
@@ -97,7 +96,6 @@ jobs:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:
       DOCKER_BUILDKIT: 1
-      #COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
@@ -122,11 +120,27 @@ jobs:
             CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
+            
+
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build Postman Container
         run: |
           docker build -t postman_test -f ./Dockerfiles/Dockerfile.postman_test .
+            - name: checkout bcda-ssas
+      - name: checkout bcda-ssas
+        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-ssas-app
+          ref: ${{ inputs.ssas_release_version || 'main' }}
+      - name: Run SSAS tests
+        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
+        run: |
+          docker system prune -af
+          CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
+          docker run postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Run Postman Tests
         if: ${{inputs.postman_tests}} == 'true'
         run: |
