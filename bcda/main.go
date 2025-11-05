@@ -48,6 +48,7 @@ import (
 )
 
 func setupDirs() {
+	monitoring.GetMonitor()
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
@@ -58,7 +59,6 @@ func setupDirs() {
 func main() {
 	log.SetupLoggers()
 	client.SetLogger(log.BFDAPI)
-	monitoring.GetMonitor()
 	setupDirs()
 	app := bcdacli.GetApp()
 	err := app.Run(os.Args)
