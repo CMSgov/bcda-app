@@ -35,21 +35,24 @@ RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
-COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/conf/configs/ /go/src/github.com/CMSgov/bcda-app/conf/configs/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/bin/ /go/bin/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 
 # configure directories
-RUN mkdir -p /var/fhir /etc/sv/api/env && chown -R bcda:bcda \
-    /go/src/github.com/CMSgov/bcda-app \
-    /var/fhir \
-    /etc/sv/api/env \
-    /var/log 
-
-USER bcda
+RUN mkdir -p \
+        /etc/sv/api/env \
+        /var/efs \
+    && chown -R bcda:bcda \
+        /go/src/github.com/CMSgov/bcda-app \
+        /etc/sv/api/env \
+        /var/efs
 
 EXPOSE 3000 3001
+VOLUME [ "/etc/sv/api/env", "/var/efs" ]
+USER bcda
 
 ENV APP_NAME="api"
 

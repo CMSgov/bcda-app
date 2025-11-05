@@ -48,11 +48,11 @@ services:
       BB_CLIENT_CERT_FILE: /etc/sv/api/env/bfd-dev-test-cert.pem
       BB_CLIENT_KEY_FILE: /etc/sv/api/env/bfd-dev-test-key.pem
       # mounted fhir volume
-      FHIR_ARCHIVE_DIR: /var/fhir/archive
-      FHIR_PAYLOAD_DIR: /var/fhir/data
-      FHIR_STAGING_DIR: /var/fhir/tmpdata
+      FHIR_ARCHIVE_DIR: /var/efs/archive
+      FHIR_PAYLOAD_DIR: /var/efs/data
+      FHIR_STAGING_DIR: /var/efs/tmpdata
     volumes:
-      - fhir:/var/fhir
+      - fhir:/var/efs
       - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
@@ -92,12 +92,12 @@ services:
       BB_CLIENT_CERT_FILE: /etc/sv/worker/env/bfd-dev-test-cert.pem
       BB_CLIENT_KEY_FILE: /etc/sv/worker/env/bfd-dev-test-key.pem
       # mounted fhir volume
-      FHIR_ARCHIVE_DIR: /var/fhir/archive
-      FHIR_PAYLOAD_DIR: /var/fhir/data
-      FHIR_STAGING_DIR: /var/fhir/tmpdata
-      FHIR_TEMP_DIR: /var/fhir/TEMP
+      FHIR_ARCHIVE_DIR: /var/efs/archive
+      FHIR_PAYLOAD_DIR: /var/efs/data
+      FHIR_STAGING_DIR: /var/efs/tmpdata
+      FHIR_TEMP_DIR: /home/bcda/TEMP_FHIR_DIR
     volumes:
-      - fhir:/var/fhir
+      - fhir:/var/efs
       - worker_config:/etc/sv/worker/env
     depends_on:
       db:
