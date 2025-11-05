@@ -30,9 +30,9 @@ jobs:
       - name: Run Inferno
         id: run
         run: |
-          cd ${GITHUB_WORKSPACE} 
-          
-          docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git
+          cd ${GITHUB_WORKSPACE}
+
+          docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git#5bd61db090c5911792f33e12dca6981d7e22f9a0
           docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
           docker compose -f fhir_testing/docker-compose.inferno.yml up -d
           sleep 20
