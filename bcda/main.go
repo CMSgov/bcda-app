@@ -48,20 +48,6 @@ import (
 )
 
 func setupDirs() {
-
-	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
-	if isEtlMode == "true" {
-		log.API.Info("BCDA application is running in ETL mode.")
-		createETLDirs()
-	} else {
-		log.API.Info("BCDA application is running in API mode.")
-		monitoring.GetMonitor()
-		createAPIDirs()
-	}
-
-}
-
-func createAPIDirs() {
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
@@ -69,17 +55,10 @@ func createAPIDirs() {
 	}
 }
 
-func createETLDirs() {
-	pendingDeletionPath := conf.GetEnv("PENDING_DELETION_DIR")
-	err := os.MkdirAll(pendingDeletionPath, 0744)
-	if err != nil {
-		log.API.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))
-	}
-}
-
 func main() {
 	log.SetupLoggers()
 	client.SetLogger(log.BFDAPI)
+	monitoring.GetMonitor()
 	setupDirs()
 	app := bcdacli.GetApp()
 	err := app.Run(os.Args)
