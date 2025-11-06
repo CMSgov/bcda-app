@@ -87,7 +87,6 @@ permissions:
 
 env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
-  COMPOSE_INTERACTIVE_NO_CLI: 1
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
@@ -97,7 +96,6 @@ jobs:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     env:
       DOCKER_BUILDKIT: 1
-      COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
