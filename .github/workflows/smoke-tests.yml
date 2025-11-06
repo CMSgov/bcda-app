@@ -194,7 +194,7 @@ jobs:
             --global-var clientSecret=$CLIENT_SECRET \
             --global-var maintenanceMode=""
       - name: Run v3 Tests
-        if: ${{inputs.v3_tests}} == 'true'
+        if: ${{ inputs.v3_tests == 'true' }}
         run: |
           CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
