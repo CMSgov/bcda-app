@@ -48,6 +48,11 @@ on:
         required: true
         type: boolean
         default: true
+      v3_tests:
+        description: Flag which indicates if v3 integration tests should be run
+        required: true
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_version:
@@ -80,6 +85,11 @@ on:
         required: true
         type: boolean
         default: true
+      v3_tests:
+        description: Flag which indicates if v3 integration tests should be run
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -145,7 +155,7 @@ jobs:
         run: |
           docker compose -f docker-compose.test.yml build --force-rm postman_test
       - name: Run Postman Tests
-        if: ${{inputs.postman_tests}} == 'true'
+        if: ${{ inputs.postman_tests == 'true' }}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
@@ -156,7 +166,7 @@ jobs:
           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
           --global-var maintenanceMode=""
       - name: Run Smoke Tests
-        if: ${{inputs.smoke_tests}} == 'true'
+        if: ${{ inputs.smoke_tests == 'true' }}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
@@ -167,24 +177,24 @@ jobs:
           --global-var maintenanceMode=""
       - name: Run PACA Tests
         run: |
-          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm  postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
-          -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
-          --global-var clientId=$CLIENT_ID \
-          --global-var clientSecret=$CLIENT_SECRET \
-          --global-var maintenanceMode=""
-      # - name: Run v3 Tests
-      #   if: ${{inputs.v3_tests}} == 'true'
-      #   run: |
-      #     CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
-      #     CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-      #     docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
-      #      -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
-      #      --global-var clientId=${CLIENT_ID} \
-      #      --global-var clientSecret=${CLIENT_SECRET} \
-      #      --global-var v3Disabled=false \
-      #      --global-var maintenanceMode=""
+          CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
+            -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
+            --global-var clientId=$CLIENT_ID \
+            --global-var clientSecret=$CLIENT_SECRET \
+            --global-var maintenanceMode=""
+      - name: Run v3 Tests
+        if: ${{ inputs.v3_tests == 'true' }}
+        run: |
+          CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
+           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
+           --global-var clientId=${CLIENT_ID} \
+           --global-var clientSecret=${CLIENT_SECRET} \
+           --global-var v3Disabled=false \
+           --global-var maintenanceMode=""
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
