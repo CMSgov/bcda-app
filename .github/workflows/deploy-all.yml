@@ -337,6 +337,7 @@ jobs:
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
       postman_tests: true
+      v3_tests: false
     secrets: inherit
 
   notify_newrelic:
