@@ -147,7 +147,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker run postman_test postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+          docker run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
