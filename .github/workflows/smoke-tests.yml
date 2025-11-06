@@ -109,6 +109,8 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
+      - name: Get Workflow Inputs
+        run: echo "${{ toJSON(github.event.inputs) }}"
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
         run: |
