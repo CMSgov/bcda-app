@@ -142,6 +142,7 @@ jobs:
           repository: CMSgov/bcda-ssas-app
           ref: ${{ inputs.ssas_release_version || 'main' }}
       - name: Build SSAS Postman Container
+        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
           docker build -t postman_test -f ./Dockerfiles/Dockerfile.postman_test .
       - name: Run SSAS tests
