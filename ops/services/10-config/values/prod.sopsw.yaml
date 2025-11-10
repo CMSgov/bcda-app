@@ -175,6 +175,7 @@
 /bcda/${env}/sensitive/worker/FHIR_TEMP_DIR: ENC[AES256_GCM,data:V+za39zNDZ0Qf0OVdU6fF197fxGqbdfa,iv:fq8/9Hl5ycj7VzuxdSoPJmkaxO/C6YOzKGsq5mLdmL8=,tag:2qzoAyjxp0ISFDdZGQt+Fg==,type:str]
 /bcda/${env}/sensitive/worker/NEW_RELIC_LICENSE_KEY: ENC[AES256_GCM,data:/402RE9SLWmLQaBA+vTHznqN+Tuzf2I0JrdtwtQHAfA3XBjHyXsrSg==,iv:ykc8RXtTS69macQY/4ClyECopLaKBcqZpDmJw/L0jL4=,tag:8Pl21Sjxvrty6UM0bkq5DQ==,type:str]
 /bcda/${env}/sensitive/worker/QUEUE_DATABASE_URL: ENC[AES256_GCM,data:bQvmIeYhUcD9zuwb6rtM0ZEEcaXT/6Um/Wao69ErF7kCVNZMgp0n/3TmnGxyl16kht5tKzyjB7s5YSIsKSYc9S++4lXEAxI4noc0i9To101xDPl0P/gQXp4=,iv:NxF290hMI6N/i/8mgPEL2LI1stzSyh6JMcrcowXNnCM=,tag:6wkzk8QAGRlbXUUITl5JKg==,type:str]
+/bcda/${env}/sensitive/worker/SLACK_TOKEN: ENC[AES256_GCM,data:39Dbi9CXcz638NPojGoIv76ASBIGsefdOBsqA3NydMFByDPlSgP2uozAL1I3eDh1rS/PzKrCGiI=,iv:SSiqoSFgnbvp2kw6Mk6VYOKnfds19mWMo2dzeilQwxs=,tag:Xgoduwr7ob0fwUscdTKk5A==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_HEALTH_INT_SEC: ENC[AES256_GCM,data:s4g=,iv:aNCFNQTla+RtPeI26HujS/Aya3cTKhmbuTDLElV/Q20=,tag:ICVkp2z5cOE8UDPUT1SayA==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_HEALTH_LOG: ENC[AES256_GCM,data:lyD7J36PLIdOFttQq4gwTe7tZZNqJ6GqM+E=,iv:dtKlNro1YNzEApWhvcxf3TCO6R1uAsCEmMFmGdjoW2Y=,tag:pIC+SsfvzR0115BagUDGsQ==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_POOL_SIZE: ENC[AES256_GCM,data:xQ==,iv:nbJD4/ZTIRz20QMesPqghctoVwP4DMBuf2yH3omYwPg=,tag:3PE885Ykk8ejna3vHQNAiA==,type:str]

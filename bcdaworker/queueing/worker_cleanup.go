@@ -48,14 +48,9 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
 	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 	environment := conf.GetEnv("DEPLOYMENT_TARGET")
+	slackToken := conf.GetEnv("SLACK_TOKEN")
 
-	params, err := getAWSParams(ctx)
-	if err != nil {
-		logger.Error("Unable to extract Slack Token from parameter store: %+v", err)
-		return err
-	}
-
-	slackClient := slack.New(params)
+	slackClient := slack.New(slackToken)
 
 	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), "")
 

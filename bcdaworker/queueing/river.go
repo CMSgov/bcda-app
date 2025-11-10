@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"time"
 
-	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -37,9 +36,6 @@ import (
 	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type Notifier interface {
@@ -148,14 +144,4 @@ func (q queue) StopRiver() {
 func getCutOffTime() time.Time {
 	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
 	return cutoff
-}
-
-func getAWSParams(ctx context.Context) (string, error) {
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return "", err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
-
-	return bcdaaws.GetParameter(ctx, ssmClient, "/slack/token/workflow-alerts")
 }

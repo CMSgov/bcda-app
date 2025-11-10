@@ -11,7 +11,7 @@ variable "env" {
 }
 
 variable "region" {
-  default  = constants.DefaultRegion
+  default  = "us-east-1"
   nullable = false
   type     = string
 }
