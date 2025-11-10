@@ -197,15 +197,6 @@ func TestGetCutOffTime(t *testing.T) {
 	assert.WithinDuration(t, expectedCutoff, actualCutoff, time.Second, "Cutoff time should be 48 hours ago")
 }
 
-func TestGetAWSParams(t *testing.T) {
-	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
-	t.Cleanup(func() { cleanupParam1() })
-
-	token, err := getAWSParams(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, "slack-val", token)
-}
-
 func TestNewCleanupJobWorker(t *testing.T) {
 	worker := NewCleanupJobWorker(database.Connect())
 
