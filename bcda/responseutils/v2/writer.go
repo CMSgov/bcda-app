@@ -42,9 +42,9 @@ func NewFhirResponseWriter() FhirResponseWriter {
 }
 
 func (r FhirResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
-	logger := log.GetCtxLogger(ctx)
-	logger.WithField("resp_status", statusCode)
-	logger.Errorf("%s: %s", errType, errMsg)
+	// logger := log.GetCtxLogger(ctx)
+	// logger.WithField("resp_status", statusCode)
+	// logger.Errorf("%s: %s", errType, errMsg)
 	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }

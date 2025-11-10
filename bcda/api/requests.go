@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 
@@ -125,13 +126,13 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		groupAll    = "all"
 		groupRunout = "runout"
 	)
-
 	reqType := constants.DefaultRequest
 	groupID := chi.URLParam(r, "groupId")
+	ctx := r.Context()
+
 	switch groupID {
 	case groupAll:
 		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
-
 		_, ok := r.URL.Query()["_since"]
 		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
 			reqType = constants.RetrieveNewBeneHistData
@@ -143,7 +144,12 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Invalid group ID (%+v)", responseutils.RequestErr, groupID),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
 		return
 	}
 	h.bulkRequest(w, r, reqType)
@@ -155,9 +161,10 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		statusTypes []models.JobStatus
 		err         error
 	)
-	logger := log.GetCtxLogger(r.Context())
 	statusTypes = models.AllJobStatuses // default request to retrieve jobs with all statuses
 	params, ok := r.URL.Query()["_status"]
+	ctx := r.Context()
+
 	if ok {
 		statusMap := make(map[string]struct{})
 		rawStatusTypes := strings.Split(params[0], ",")
@@ -170,33 +177,54 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 				statusTypes = append(statusTypes, models.JobStatus(status))
 			} else {
 				errMsg := fmt.Sprintf("Repeated status type %s", status)
-				h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				ctx, _ = log.ErrorExtra(
+					ctx,
+					fmt.Sprintf("%s: %+v", responseutils.RequestErr, errMsg),
+					logrus.Fields{"resp_status": http.StatusBadRequest},
+				)
+				h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return
 			}
 		}
 
 		// validate status types provided match our valid list of statuses
 		if err = h.validateStatuses(statusTypes); err != nil {
-			logger.Error(err)
-			h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 	}
 
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
+			logrus.Fields{"resp_status": http.StatusUnauthorized},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
-	jobs, err := h.Svc.GetJobs(r.Context(), uuid.Parse(ad.ACOID), statusTypes...)
+	jobs, err := h.Svc.GetJobs(ctx, uuid.Parse(ad.ACOID), statusTypes...)
 	if err != nil {
-		logger.Error(err)
-
 		if ok := goerrors.As(err, &service.JobsNotFoundError{}); ok {
-			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.DbErr, err.Error())
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: %+v", responseutils.DbErr, err),
+				logrus.Fields{"resp_status": http.StatusNotFound},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.DbErr, err.Error())
 		} else {
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: %+v", responseutils.InternalErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		}
 	}
 
@@ -207,7 +235,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
 
 	// pass in the ctx here and log with the ctx logger
-	h.RespWriter.JobsBundle(r.Context(), w, jobs, host)
+	h.RespWriter.JobsBundle(ctx, w, jobs, host)
 }
 
 func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
@@ -223,26 +251,39 @@ func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	logger := log.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
+	ctx := r.Context()
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
-		logger.Error(err)
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
 		//We don't need to return the full error to a consumer.
 		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
+		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
 
 		return
 	}
 
-	job, jobKeys, err := h.Svc.GetJobAndKeys(r.Context(), uint(jobID))
+	job, jobKeys, err := h.Svc.GetJobAndKeys(ctx, uint(jobID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			logger.Infof("Requested job not found.", err.Error())
-			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Requested job not found.  Error: %+v", responseutils.DbErr, err),
+				logrus.Fields{"resp_status": http.StatusNotFound, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
 		} else {
-			logger.Errorf("Error attempting to request job. Error:", err.Error())
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "Error trying to fetch job. Please try again.")
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: Error attempting to request job. Error: %+v", responseutils.InternalErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "Error trying to fetch job. Please try again.")
 		}
 
 		return
@@ -252,7 +293,12 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		logger.Error(job.Status)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Status: %+v", responseutils.JobFailed, job.Status),
+			logrus.Fields{"resp_status": http.StatusInternalServerError, "job_id": jobID},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
 		completedJobKeyCount := utils.CountUniq(jobKeys, func(jobKey *models.JobKey) int64 {
 			if jobKey.QueJobID == nil {
@@ -267,7 +313,12 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-			h.RespWriter.Exception(r.Context(), w, http.StatusGone, responseutils.NotFoundErr, "")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
+				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
 		w.Header().Set("Content-Type", constants.JsonContentType)
@@ -315,50 +366,75 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
-			logger.Error(err)
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: Error marshaling response body: %+v", responseutils.InternalErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
-			logger.Error(err)
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: Error writing response body: %+v", responseutils.InternalErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
 	case models.JobStatusArchived, models.JobStatusExpired:
 		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-		h.RespWriter.Exception(r.Context(), w, http.StatusGone, responseutils.NotFoundErr, "")
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: Job is Archived or Expired", responseutils.NotFoundErr),
+			logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
-		h.RespWriter.NotFound(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
 
 	}
 }
 
 func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
-	logger := log.GetCtxLogger(r.Context())
 	jobIDStr := chi.URLParam(r, "jobID")
+	ctx := r.Context()
 
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
-	_, err = h.Svc.CancelJob(r.Context(), uint(jobID))
+	_, err = h.Svc.CancelJob(ctx, uint(jobID))
 	if err != nil {
 		switch err {
 		case service.ErrJobNotCancellable:
-			logger.Info(errors.Wrap(err, "Job is not cancellable"))
-			h.RespWriter.Exception(r.Context(), w, http.StatusGone, responseutils.DeletedErr, err.Error())
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Job is not cancellable", responseutils.DeletedErr),
+				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
-			logger.Error(err)
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, err.Error())
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: %+v", responseutils.DbErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError, "job_id": jobID},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.DbErr, err.Error())
 			return
 		}
 	}
@@ -376,8 +452,6 @@ type AttributionFileStatusResponse struct {
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := log.GetCtxLogger(ctx)
-
 	var (
 		ad   auth.AuthData
 		err  error
@@ -385,16 +459,26 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
-		logger.Error(err)
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
+			logrus.Fields{"resp_status": http.StatusUnauthorized},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
 	// Retrieve the most recent cclf 8 file we have successfully ingested
 	group := chi.URLParam(r, "groupId")
+	notFoundMsg := fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group)
 	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
 	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, notFoundMsg)
 		return
 	}
 	if asd != nil {
@@ -404,7 +488,12 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
 	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group))
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, notFoundMsg)
 		return
 	}
 	if asr != nil {
@@ -412,8 +501,12 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.Data == nil {
-		logger.Error(errors.New("Could not find any CCLF8 files"))
-		h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: Could not find any CCLF8 file", responseutils.NotFoundErr),
+			logrus.Fields{"resp_status": http.StatusNotFound},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
 	}
 
@@ -421,8 +514,12 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		logger.Error(errors.Wrap(err, "Failed to encode JSON response"))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Failed to encode JSON response: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.RequestErr, "")
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -470,8 +567,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	)
 
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
-		logger.Error(err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
+			logrus.Fields{"resp_status": http.StatusUnauthorized},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -482,8 +583,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
-		logger.Error("error validating resources: %+v", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Error validating resources: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
@@ -507,15 +612,23 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
 	if err != nil {
-		logger.Error("error setting time constraints: %+v", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Error setting time constraints: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
 	cutoffTime, complexDataRequestType := h.Svc.GetCutoffTime(ctx, reqType, rp.Since, timeConstraints, fileType)
 	if complexDataRequestType == "" {
-		logger.Error("invalid complex data request type")
-		h.RespWriter.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Invalid complex data request type: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
 		return
 	}
 
@@ -528,19 +641,34 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	)
 	if err != nil {
 		if errors.As(err, &service.CCLFNotFoundError{}) {
-			logger.Warningf("cclf file not found: %+v", err)
-
 			// Check if this is an expired runout data request
 			if fileType == models.FileTypeRunout && !cutoffTime.IsZero() {
-				h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Runout data is no longer available. Runout data expires 180 days after ingestion.")
+				msg := "runout data is no longer available. Runout data expires 180 days after ingestion"
+				ctx, _ = log.WarnExtra(
+					ctx,
+					fmt.Sprintf("%s: %+v", responseutils.NotFoundErr, msg),
+					logrus.Fields{"resp_status": http.StatusNotFound},
+				)
+				h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
 				return
 			}
 
-			h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found.")
+			msg := "failed to start job; attribution file not found"
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: %+v", responseutils.NotFoundErr, msg),
+				logrus.Fields{"resp_status": http.StatusNotFound},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
 			return
 		}
-		logger.Errorf("failed to retrieve latest cclf file: %+v", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, responseutils.DbErr)
+
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Failed to retrieve latest cclf file: %+v", responseutils.DbErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.DbErr, responseutils.DbErr)
 		return
 	}
 
@@ -551,8 +679,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	// validate cclffile and PY
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-		logger.Error("failed to validate cclf file or performance year of found cclf file")
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Failed to validate cclf file or performance year of found cclf file", responseutils.NotFoundErr),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
 
@@ -561,20 +693,33 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		cclfFileOldID, err = h.Svc.FindOldCCLFFile(ctx, ad.CMSID, rp.Since, cclfFileNew.Timestamp)
 		if err != nil {
 			if errors.As(err, &service.CCLFNotFoundError{}) {
-				logger.Warningf("cclf file not found for given _since parameter: %s", rp.Since.String())
-				h.RespWriter.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
+				ctx, _ = log.WarnExtra(
+					ctx,
+					fmt.Sprintf("%s: CCLF file not found for given _since parameter: %s", responseutils.NotFoundErr, rp.Since.String()),
+					logrus.Fields{"resp_status": http.StatusNotFound},
+				)
+				h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
 				return
 			}
-			logger.Errorf("failed to retrieve cclf file: %s", err)
-			h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+
+			ctx, _ = log.ErrorExtra(
+				ctx,
+				fmt.Sprintf("%s: failed to retrieve cclf file: %+v", responseutils.DbErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError},
+			)
+			h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
 	}
 
 	newJob.ID, err = h.r.CreateJob(ctx, newJob)
 	if err != nil {
-		logger.Error("failed to create job: %s", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.DbErr, "")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Failed to create job: %+v", responseutils.DbErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
 
@@ -599,14 +744,18 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		CreationTime:           time.Now(),
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
-		TransactionID:          r.Context().Value(m.CtxTransactionKey).(string),
+		TransactionID:          ctx.Value(m.CtxTransactionKey).(string),
 	}
 
 	logger.Infof("Adding jobs using %T", h.Enq)
 	err = h.Enq.AddPrepareJob(ctx, prepJob)
 	if err != nil {
-		logger.Errorf("failed to add job to the queue: %s", err)
-		h.RespWriter.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		ctx, _ = log.ErrorExtra(
+			ctx,
+			fmt.Sprintf("%s: Failed to add job to the queue: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
