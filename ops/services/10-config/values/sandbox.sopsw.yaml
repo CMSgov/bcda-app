@@ -131,6 +131,7 @@
 /bcda/${env}/sensitive/worker/FHIR_TEMP_DIR: ENC[AES256_GCM,data:spLZrxNFRvV+RGIgHd8VdZP7+W3kHX3P,iv:Ip/Pj7KIQGCSNPb+ylMHoa/EmVwzY0gPDPR1SKZbX68=,tag:PHntjOa2jQ6v6SGL+S4URg==,type:str]
 /bcda/${env}/sensitive/worker/NEW_RELIC_LICENSE_KEY: ENC[AES256_GCM,data:wCD2ZAa5O/7jPctg6iMUfv9OduQLZBaihVa/VTIma+WkTnmsMzL40g==,iv:2BMvF6jay5Pi+KC7V+dLP3czrUFDEERksfrFSbE5muM=,tag:wVhH3c7sYktQd8Tj3QHU2w==,type:str]
 /bcda/${env}/sensitive/worker/QUEUE_DATABASE_URL: ENC[AES256_GCM,data:a73LbRKbk6HLxyqvImiMkq5vjq4kGdrHtY/eHXanqVKNE8YqXxBBNibj7viw8WRwdB8qrlXt9VsM34S1C3H1TXq2PpFCKwXtv8SgcScC8e4PMbRzzDXxooQCd58=,iv:+OearQy2BbGVTuAQk+NiZBiqvgYIZybuKWl92W0GNdI=,tag:PoPFJZ4vxceRNajCb8ZyFA==,type:str]
+/bcda/${env}/sensitive/worker/SLACK_TOKEN: ENC[AES256_GCM,data:BrBBqpxXoQVvOli5+aZOMyja87XXebwKeJJehL+G/UVjws+QvcJV8GRaiQWi6MwX2BUatDmHA4w=,iv:EQLKHsucDcIyEIlh8OLn9KII8105nBiY8jCRZevoA4Y=,tag:y7dRbAsANftpEa6Bi8r2kA==,type:str]
 /bcda/${env}/sensitive/worker/V3_BB_SERVER_LOCATION: ENC[AES256_GCM,data:zRUuAf05CZ+tPOtg6avn1y9RC0rWfgq8qI/bzY/0rGOvleSM1WLpovw=,iv:MpeWVnk7kQ7/5pK/1txZVNeRLZtuA+ntRf9kYq7qRNw=,tag:NsjblWZhDpGu9MwJNPy6TA==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_HEALTH_INT_SEC: ENC[AES256_GCM,data:77E=,iv:3y+sggQC97JeAIIzC5M7dpqsbpqEe3b5UKCZfcbeKJs=,tag:KYvLFQwWy6Idh8eyEQvAXg==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_HEALTH_LOG: ENC[AES256_GCM,data:nwz1sXWzs8JE6nNRGMUX0UymEGXKGvPBYs4=,iv:2Q+KOTQK5fpr8DUWfGuvNRIpv7GRwpm6FOhwliqzTio=,tag:JDFWRG+I46S4+T/3SxqHmg==,type:str]

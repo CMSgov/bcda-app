@@ -1,13 +1,13 @@
 # BCDA Config Root Module
 
 This root module is responsible for configuring the sops-enabled strategy for storing sensitive and nonsensitive configuration in AWS SSM Parameter Store.
-The environment-specific configuration values are located in the `values` directory.
+The environment-specific configuration values are located in the `values` directory.  You will need to have copied over AWS short term access keys for all of the following.  See cloudtamer to get keys.
 
 ## Usage
 
 ### Initial Setup
 
-First, initialize and apply the configuration with the `sopsw` script targeted:
+First, initialize and apply the configuration with the `sopsw` script targeted.
 
 ```bash
 cd ops/services/10-config
@@ -62,4 +62,4 @@ Configuration files follow this pattern:
 - **envsubst** - For environment variable substitution (`brew install gettext`)
 
 ### External Tools
-- **tofu** - For deploying configuration to AWS Parameter Store
+- **tofu** - For deploying configuration to AWS Parameter Store (`brew install opentofu`)
