@@ -26,7 +26,7 @@ FROM golang:1.25.1-alpine3.22
 RUN apk update upgrade && \
     apk add --no-cache aws-cli
 
-RUN addgroup -S -g 1010 bcda && adduser -S -G bcda -u 1010 bcda
+RUN addgroup -S -g 1200 bcda && adduser -S -G bcda -u 1100 bcda
 
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
