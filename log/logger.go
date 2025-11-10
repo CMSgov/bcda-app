@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,83 +11,102 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
+	sloglogrus "github.com/samber/slog-logrus"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	API     logrus.FieldLogger = defaultLogger("api")
-	Auth    logrus.FieldLogger = defaultLogger("auth")
-	BFDAPI  logrus.FieldLogger = defaultLogger("bfd")
-	Request logrus.FieldLogger = defaultLogger("request")
-	SSAS    logrus.FieldLogger = defaultLogger("ssas")
+	API     logrus.FieldLogger = defaultFieldLogger("api")
+	Auth    logrus.FieldLogger = defaultFieldLogger("auth")
+	BFDAPI  logrus.FieldLogger = defaultFieldLogger("bfd")
+	Request logrus.FieldLogger = defaultFieldLogger("request")
+	SSAS    logrus.FieldLogger = defaultFieldLogger("ssas")
 
-	Worker    logrus.FieldLogger = defaultLogger("worker")
-	BFDWorker logrus.FieldLogger = defaultLogger("bfd")
-	Health    logrus.FieldLogger = defaultLogger("health")
+	Worker    logrus.FieldLogger = defaultFieldLogger("worker")
+	BFDWorker logrus.FieldLogger = defaultFieldLogger("bfd")
+	Health    logrus.FieldLogger = defaultFieldLogger("health")
 )
 
 // setup global access to loggers, overwrite default logger
 func SetupLoggers() {
-	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"), "api", "api")
-	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"), "api", "auth")
-	BFDAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "api", "bfd")
-	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"), "api", "request")
-	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"), "api", "ssas")
+	API = newFieldLogger(conf.GetEnv("BCDA_ERROR_LOG"), "api", "api")
+	Auth = newFieldLogger(conf.GetEnv("AUTH_LOG"), "api", "auth")
+	BFDAPI = newFieldLogger(conf.GetEnv("BCDA_BB_LOG"), "api", "bfd")
+	Request = newFieldLogger(conf.GetEnv("BCDA_REQUEST_LOG"), "api", "request")
+	SSAS = newFieldLogger(conf.GetEnv("BCDA_SSAS_LOG"), "api", "ssas")
 
-	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker", "worker")
-	BFDWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"), "worker", "bfd")
-	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"), "worker", "health")
+	Worker = newFieldLogger(conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker", "worker")
+	BFDWorker = newFieldLogger(conf.GetEnv("BCDA_BB_LOG"), "worker", "bfd")
+	Health = newFieldLogger(conf.GetEnv("WORKER_HEALTH_LOG"), "worker", "health")
 }
 
-// customize logger and output to files
-func logger(logger *logrus.Logger, outputFile, application, logType string) logrus.FieldLogger {
-	fields := logrus.Fields{
-		"application": application,
-		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
-		"source_app":  "bcda",
-		"version":     constants.Version,
-	}
+// customize newFieldLogger and output to files
+func newFieldLogger(outputFile, application, logType string) logrus.FieldLogger {
+	logger := newLogger(outputFile)
+	fields := defaultFields(application)
 
 	if conf.GetEnv("LOG_TO_STD_OUT") == "true" {
 		fields["log_type"] = logType
-	} else {
-		if outputFile != "" {
-			// #nosec G302 -- 0640 permissions required for Splunk ingestion
-			if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
-				logger.SetOutput(file)
-			} else {
-				logger.Infof("Failed to open output file %s. Will use stderr. %s",
-					outputFile, err.Error())
-			}
+	}
+	return logger.WithFields(fields)
+}
+
+func newLogger(outputFile string) *logrus.Logger {
+	logger := logrus.New()
+	if conf.GetEnv("LOG_TO_STD_OUT") != "true" && outputFile != "" {
+		// #nosec G302 -- 0640 permissions required for Splunk ingestion
+		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
+			logger.SetOutput(file)
+		} else {
+			logger.Infof("Failed to open output file %s. Will use stderr. %s",
+				outputFile, err.Error())
 		}
 	}
-
 	// Disable the HTML escape so we get the raw URLs
 	logger.SetFormatter(&logrus.JSONFormatter{
 		DisableHTMLEscape: true,
 		TimestampFormat:   time.RFC3339Nano,
 	})
 	logger.SetReportCaller(true)
-
-	return logger.WithFields(fields)
+	return logger
 }
 
 // default logger, always available, outputs to stdout
-func defaultLogger(logType string) logrus.FieldLogger {
+func defaultFieldLogger(logType string) logrus.FieldLogger {
 	logger := logrus.New()
-
 	logger.SetFormatter(&logrus.JSONFormatter{
 		DisableHTMLEscape: true,
 		TimestampFormat:   time.RFC3339Nano,
 	})
 	logger.SetReportCaller(true)
+	fields := defaultFields("default")
+	fields["log_type"] = logType
+	return logger.WithFields(fields)
+}
 
-	return logger.WithFields(logrus.Fields{
-		"application": "default",
+func defaultFields(application string) logrus.Fields {
+	return logrus.Fields{
+		"application": application,
 		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
-		"log_type":    logType,
 		"source_app":  "bcda",
-		"version":     constants.Version})
+		"version":     constants.Version,
+	}
+}
+
+// River requires a slog.Logger for logging, this function converts logrus to slog
+func NewSlogLogger(outputFile, application string) *slog.Logger {
+	logrusLogger := newLogger(outputFile)
+	handler := sloglogrus.Option{Logger: logrusLogger}.NewLogrusHandler()
+	return slogLoggerFromHandler(handler, application)
+}
+
+func slogLoggerFromHandler(handler slog.Handler, application string) *slog.Logger {
+	return slog.New(handler).With(
+		"application", application,
+		"environment", conf.GetEnv("DEPLOYMENT_TARGET"),
+		"source_app", "bcda",
+		"version", constants.Version,
+	)
 }
 
 // type to create context.Context key

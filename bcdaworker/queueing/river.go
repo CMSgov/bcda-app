@@ -18,23 +18,18 @@ package queueing
 import (
 	"context"
 	"database/sql"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/robfig/cron/v3"
-	sloglogrus "github.com/samber/slog-logrus"
-	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 )
 
@@ -71,7 +66,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		),
 	}
 
-	logger := getSlogLogger()
+	logger := log.NewSlogLogger(conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker")
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -102,37 +97,6 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 	}
 
 	return q
-}
-
-// River requires a slog.Logger for logging, this function converts logrus to slog
-// Much of this function is pulled from logger.go
-func getSlogLogger() *slog.Logger {
-	logrusLogger := logrus.New()
-
-	outputFile := conf.GetEnv("BCDA_WORKER_ERROR_LOG")
-	if outputFile != "" {
-		// #nosec G302 -- 0640 permissions required for Splunk ingestion
-		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
-			logrusLogger.SetOutput(file)
-		} else {
-			logrusLogger.Infof("Failed to open output file %s. Will use stderr. %s",
-				outputFile, err.Error())
-		}
-	}
-	// Disable the HTML escape so we get the raw URLs
-	logrusLogger.SetFormatter(&logrus.JSONFormatter{
-		DisableHTMLEscape: true,
-		TimestampFormat:   time.RFC3339Nano,
-	})
-	logrusLogger.SetReportCaller(true)
-
-	logrusLogger.WithFields(logrus.Fields{
-		"application": "worker",
-		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
-		"version":     constants.Version,
-	})
-
-	return slog.New(sloglogrus.Option{Logger: logrusLogger}.NewLogrusHandler())
 }
 
 func (q queue) StopRiver() {
