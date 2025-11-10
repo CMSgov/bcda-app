@@ -161,10 +161,9 @@ func TestDefaultLogger(t *testing.T) {
 
 func TestSlogLogger(t *testing.T) {
 	oldEnvironment := conf.GetEnv("DEPLOYMENT_TARGET")
-	print(oldEnvironment)
 	environment := uuid.New()
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", environment)
-	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", conf.GetEnv("DEPLOYMENT_TARGET")) })
+	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", oldEnvironment) })
 
 	oldStdOut := conf.GetEnv("LOG_TO_STD_OUT")
 	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
