@@ -14,6 +14,7 @@ import (
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 )
 
 var supportedOutputFormats = map[string]struct{}{
@@ -47,6 +48,7 @@ func GetRequestParamsFromCtx(ctx context.Context) (RequestParameters, bool) {
 }
 
 func validateOutputFormat(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) bool {
+	ctx := r.Context()
 	params, ok := r.URL.Query()["_outputFormat"]
 	if !ok {
 		return true
@@ -54,8 +56,12 @@ func validateOutputFormat(r *http.Request, rw fhirResponseWriter, w http.Respons
 
 	if _, found := supportedOutputFormats[params[0]]; !found {
 		errMsg := fmt.Sprintf("_outputFormat parameter must be one of %v", getKeys(supportedOutputFormats))
-		log.API.Error(errMsg)
-		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 		return false
 	}
 	return true
@@ -64,24 +70,35 @@ func validateOutputFormat(r *http.Request, rw fhirResponseWriter, w http.Respons
 // we do not support "_elements" parameter
 func validateElementsParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) bool {
 	_, ok := r.URL.Query()["_elements"]
+	ctx := r.Context()
 	if !ok {
 		return true
 	}
 
 	errMsg := "Invalid parameter: this server does not support the _elements parameter."
-	log.API.Warn(errMsg)
-	rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+	ctx, _ = log.WarnExtra(
+		ctx,
+		fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+		logrus.Fields{"resp_status": http.StatusBadRequest},
+	)
+	rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 	return false
 }
 
 // Check and see if the user has a duplicated the query parameter symbol (?)
 // e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
 func validateQueryParameterFormat(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) bool {
+	ctx := r.Context()
+
 	for key := range r.URL.Query() {
 		if strings.HasPrefix(key, "?") {
 			errMsg := "Invalid parameter: query parameters cannot start with ?"
-			log.API.Warn(errMsg)
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 			return false
 		}
 	}
@@ -89,6 +106,7 @@ func validateQueryParameterFormat(r *http.Request, rw fhirResponseWriter, w http
 }
 
 func validateSinceParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) (time.Time, bool) {
+	ctx := r.Context()
 	params, ok := r.URL.Query()["_since"]
 	if !ok {
 		return time.Time{}, true
@@ -97,15 +115,23 @@ func validateSinceParameter(r *http.Request, rw fhirResponseWriter, w http.Respo
 	sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
 	if err != nil {
 		errMsg := "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."
-		log.API.Warn(errMsg)
-		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 		return time.Time{}, false
 	}
 
 	if sinceDate.After(time.Now()) {
 		errMsg := "Invalid date format supplied in _since parameter. Date must be a date that has already passed"
-		log.API.Warn(errMsg)
-		rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		ctx, _ = log.WarnExtra(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 		return time.Time{}, false
 	}
 
@@ -113,6 +139,7 @@ func validateSinceParameter(r *http.Request, rw fhirResponseWriter, w http.Respo
 }
 
 func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter) ([]string, bool) {
+	ctx := r.Context()
 	params, ok := r.URL.Query()["_type"]
 	if !ok {
 		return nil, true
@@ -126,8 +153,12 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 			resourceMap[resource] = struct{}{}
 		} else {
 			errMsg := fmt.Sprintf("Repeated resource type %s", resource)
-			log.API.Error(errMsg)
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 	}
@@ -135,6 +166,7 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 }
 
 func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([][]string, bool) {
+	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
 	if version != constants.V3Version || !ok {
 		return nil, true
@@ -146,8 +178,12 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		decodedQuery, err := url.QueryUnescape(subQuery)
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to unescape %s", subQuery)
-			log.API.Error(errMsg)
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 
@@ -155,16 +191,24 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
 		if !ok {
 			errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
-			log.API.Error(errMsg)
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 
 		// Right now, we are only accepting ExplanationOfBenefit subqueries
 		if resourceType != "ExplanationOfBenefit" {
 			errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
-			log.API.Error(errMsg)
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 
@@ -174,8 +218,12 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 			paramName, paramValue, ok := strings.Cut(paramPair, "=")
 			if !ok {
 				errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
-				log.API.Error(errMsg)
-				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				ctx, _ = log.WarnExtra(
+					ctx,
+					fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+					logrus.Fields{"resp_status": http.StatusBadRequest},
+				)
+				rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return nil, false
 			}
 
@@ -183,8 +231,12 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
 			} else {
 				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
-				log.API.Error(errMsg)
-				rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				ctx, _ = log.WarnExtra(
+					ctx,
+					fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+					logrus.Fields{"resp_status": http.StatusBadRequest},
+				)
+				rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return nil, false
 			}
 		}
@@ -244,12 +296,11 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 
 func ValidateRequestHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		h := r.Header
 
 		acceptHeader := h.Get("Accept")
 		preferHeader := h.Get("Prefer")
-
-		logger := log.GetCtxLogger(r.Context())
 
 		rw, _ := getResponseWriterFromRequestPath(w, r)
 		if rw == nil {
@@ -257,22 +308,38 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 		}
 
 		if acceptHeader == "" {
-			logger.Warn("Accept header is required")
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Accept header is required", responseutils.FormatErr),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
 			return
 		} else if acceptHeader != "application/fhir+json" {
-			logger.Warn("application/fhir+json is the only supported response format")
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Application/fhir+json is the only supported response format", responseutils.FormatErr),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			return
 		}
 
 		if preferHeader == "" {
-			logger.Warn("Prefer header is required")
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Prefer header is required", responseutils.FormatErr),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
 			return
 		} else if preferHeader != "respond-async" {
-			logger.Warn("Only asynchronous responses are supported")
-			rw.Exception(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Only asynchronous responses are supported", responseutils.FormatErr),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
 			return
 		}
 

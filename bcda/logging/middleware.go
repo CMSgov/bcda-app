@@ -86,15 +86,20 @@ type ResourceTypeLogger struct {
 func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := getRespWriter(r.URL.Path)
+		ctx := r.Context()
 		jobKey, err := rl.extractJobKey(r)
+
 		if err != nil {
-			logger := log.GetCtxLogger(r.Context())
-			logger.Error("job key not found: ", err)
-			rw.Exception(r.Context(), w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
+			ctx, _ = log.WarnExtra(
+				ctx,
+				fmt.Sprintf("%s: Job key not found: %+v", responseutils.NotFoundErr, jobKey),
+				logrus.Fields{"resp_status": http.StatusNotFound},
+			)
+			rw.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
 			return
 		}
 
-		ctx, _ := log.SetCtxLogger(r.Context(), "resource_type", jobKey.ResourceType)
+		ctx, _ = log.SetCtxLogger(ctx, "resource_type", jobKey.ResourceType)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

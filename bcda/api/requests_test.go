@@ -133,11 +133,11 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}{
 		{"Successful", nil, http.StatusAccepted, apiVersionOne, true, ""},
 		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true, ""},
-		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "failed to start job; attribution file not found."},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "failed to start job; attribution file not found"},
 		{"FindCCLFFiles error v2", DatabaseError{}, http.StatusInternalServerError, apiVersionTwo, false, ""},
 		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true, ""},
 		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true, ""},
-		{"Expired runout data", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "Runout data is no longer available. Runout data expires 180 days after ingestion."},
+		{"Expired runout data", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "runout data is no longer available. Runout data expires 180 days after ingestion"},
 	}
 
 	for _, tt := range tests {
