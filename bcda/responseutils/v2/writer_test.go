@@ -45,14 +45,8 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	rw := NewFhirResponseWriter()
 	logger := testUtils.GetLogger(log.API)
-	// testLogger := test.NewLocal(logger)
 	ctx := log.NewStructuredLoggerEntry(logger, context.Background())
 	rw.Exception(ctx, s.rr, http.StatusAccepted, responseutils.RequestErr, "TestResponseWriterExcepton")
-
-	// assert error logging
-	// assert.Equal(s.T(), 1, len(testLogger.Entries))
-	// assert.Equal(s.T(), logrus.ErrorLevel, testLogger.LastEntry().Level)
-	// assert.Equal(s.T(), "Request Error: TestResponseWriterExcepton", testLogger.LastEntry().Message)
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
 	assert.NoError(s.T(), err)
