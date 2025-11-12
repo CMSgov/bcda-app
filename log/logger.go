@@ -151,8 +151,11 @@ func SetCtxLogger(ctx context.Context, key string, value interface{}) (context.C
 
 func ErrorExtra(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
 	logger := GetCtxLogger(ctx)
-	logger.WithFields(fields)
+	fmt.Printf("\n--- inside errorextra logger: %+v", logger)
+	logger = logger.WithFields(fields)
+	fmt.Printf("\n--- inside errorextra logger: %+v", logger)
 	logger.Error(msg)
+	fmt.Printf("\n--- inside errorextra logger: %+v", logger)
 
 	nCtx := context.WithValue(ctx, CtxLoggerKey, &StructuredLoggerEntry{Logger: logger})
 	return nCtx, logger
@@ -160,7 +163,7 @@ func ErrorExtra(ctx context.Context, msg string, fields logrus.Fields) (context.
 
 func WarnExtra(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
 	logger := GetCtxLogger(ctx)
-	logger.WithFields(fields)
+	logger = logger.WithFields(fields)
 	logger.Warn(msg)
 
 	nCtx := context.WithValue(ctx, CtxLoggerKey, &StructuredLoggerEntry{Logger: logger})
@@ -169,7 +172,7 @@ func WarnExtra(ctx context.Context, msg string, fields logrus.Fields) (context.C
 
 func InfoExtra(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
 	logger := GetCtxLogger(ctx)
-	logger.WithFields(fields)
+	logger = logger.WithFields(fields)
 	logger.Info(msg)
 
 	nCtx := context.WithValue(ctx, CtxLoggerKey, &StructuredLoggerEntry{Logger: logger})
