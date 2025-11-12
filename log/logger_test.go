@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -169,7 +168,6 @@ func TestErrorExtra(t *testing.T) {
 
 	resultCtx, resultLogger := ErrorExtra(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
 	entry := testLogger.LastEntry()
-	fmt.Printf("\n--- logger: %+v\n", testLogger)
 
 	assert.Equal(t, "test-msg", entry.Message)
 	assert.Equal(t, "val1", entry.Data["key1"])
