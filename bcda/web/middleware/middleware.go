@@ -40,7 +40,7 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 				// We cannot get the correct FHIR response writer from here, so
 				// return a non-FHIR-compliant HTTP response
 				logger := log.GetCtxLogger(ctx)
-				logger.Error("AuthData should be set before calling this handler")
+				logger.WithField("resp_status", http.StatusInternalServerError).Error("AuthData should be set before calling this handler")
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 
@@ -74,7 +74,7 @@ func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 				// We cannot get the correct FHIR response writer from here, so
 				// return a non-FHIR-compliant HTTP response
 				logger := log.GetCtxLogger(ctx)
-				logger.Error("AuthData should be set before calling this handler")
+				logger.WithField("resp_status", http.StatusInternalServerError).Error("AuthData should be set before calling this handler")
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}

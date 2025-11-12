@@ -387,14 +387,14 @@ func getResponseWriterFromRequestPath(w http.ResponseWriter, r *http.Request) (f
 	version, err := getVersion(r.URL.Path)
 	if err != nil {
 		logger := log.GetCtxLogger(r.Context())
-		logger.Error(err)
+		logger.WithField("resp_status", http.StatusBadRequest).Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return nil, ""
 	}
 	rw, err := getRespWriter(version)
 	if err != nil {
 		logger := log.GetCtxLogger(r.Context())
-		logger.Error(err)
+		logger.WithField("resp_status", http.StatusBadRequest).Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return nil, ""
 	}
