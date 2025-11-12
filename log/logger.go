@@ -58,7 +58,7 @@ func newLogger(outputFile string) *logrus.Logger {
 		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
 			logger.SetOutput(file)
 		} else {
-			logger.Infof("Failed to open output file %s. Will use stderr. %s",
+			logger.Warningf("Failed to open output file %s. Will use stderr. %s",
 				outputFile, err.Error())
 		}
 	}
