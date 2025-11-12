@@ -2,7 +2,7 @@ package log
 
 import (
 	"bytes"
-  "context"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -162,7 +162,7 @@ func TestDefaultLogger(t *testing.T) {
 }
 
 func TestErrorExtra(t *testing.T) {
-	apiLogger := defaultLogger("test-log-type")
+	apiLogger := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
 	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
 	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
@@ -193,7 +193,7 @@ func TestErrorExtra(t *testing.T) {
 }
 
 func TestWarnExtra(t *testing.T) {
-	apiLogger := defaultLogger("test-log-type")
+	apiLogger := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
 	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
 	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
@@ -223,7 +223,7 @@ func TestWarnExtra(t *testing.T) {
 }
 
 func TestInfoExtra(t *testing.T) {
-	apiLogger := defaultLogger("test-log-type")
+	apiLogger := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
 	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
 	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
