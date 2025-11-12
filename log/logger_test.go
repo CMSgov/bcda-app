@@ -1,10 +1,12 @@
 package log
 
 import (
-	"context"
+	"bytes"
+  "context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -145,7 +147,7 @@ func TestLoggers_ToSTDOut(t *testing.T) {
 }
 
 func TestDefaultLogger(t *testing.T) {
-	API := defaultLogger("test-log-type")
+	API := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(API))
 
 	msg := uuid.New()
@@ -248,4 +250,30 @@ func TestInfoExtra(t *testing.T) {
 
 	assert.Equal(t, "newest-test", entry.Message)
 	assert.Equal(t, "val1", entry.Data["key1"])
+}
+
+func TestSlogLogger(t *testing.T) {
+	oldEnvironment := conf.GetEnv("DEPLOYMENT_TARGET")
+	environment := uuid.New()
+	conf.SetEnv(t, "DEPLOYMENT_TARGET", environment)
+	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", oldEnvironment) })
+
+	oldStdOut := conf.GetEnv("LOG_TO_STD_OUT")
+	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
+	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldStdOut) })
+
+	application := "test_app"
+
+	var output bytes.Buffer
+	logger := slogLoggerFromHandler(slog.NewJSONHandler(&output, nil), application)
+	logger.Info("test message")
+	var logJson map[string]string
+	err := json.Unmarshal(output.Bytes(), &logJson)
+
+	assert.Nil(t, err)
+	assert.Equal(t, "test message", logJson["msg"])
+	assert.Equal(t, application, logJson["application"])
+	assert.Equal(t, environment, logJson["environment"])
+	assert.Equal(t, "bcda", logJson["source_app"])
+	assert.Equal(t, constants.Version, logJson["version"])
 }
