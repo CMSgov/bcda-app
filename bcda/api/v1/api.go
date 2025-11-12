@@ -433,9 +433,11 @@ func (a ApiV1) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 	dbStatus, dbOK := a.healthChecker.IsDatabaseOK()
 	ssasStatus, ssasOK := a.healthChecker.IsSsasOK()
+	introspectStatus, _ := a.healthChecker.IsSsasIntrospectOK()
 
 	m["database"] = dbStatus
 	m["ssas"] = ssasStatus
+	m["ssas_introspect"] = introspectStatus
 
 	if !dbOK || !ssasOK {
 		w.WriteHeader(http.StatusBadGateway)
