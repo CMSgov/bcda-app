@@ -59,7 +59,7 @@ func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler
 		if shouldRateLimit(m.config.RateLimitConfig, ad.CMSID) {
 			pendingAndInProgressJobs, err := m.repository.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
 			if err != nil {
-				ctx, _ = log.ErrorExtra(
+				ctx, _ = log.WriteErrorWithFields(
 					ctx,
 					fmt.Sprintf("%s: Failed to lookup pending and in-progress jobs %+v", responseutils.InternalErr, err),
 					logrus.Fields{"resp_status": http.StatusInternalServerError},

@@ -154,22 +154,17 @@ func GetCtxLogger(ctx context.Context) logrus.FieldLogger {
 	return API
 }
 
-// Appends additional or creates new logrus.Fields to a logrus.FieldLogger within a context
-func SetCtxLogger(ctx context.Context, key string, value interface{}) (context.Context, logrus.FieldLogger) {
-	if entry, ok := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry); ok {
-		entry.Logger = entry.Logger.WithField(key, value)
-		nCtx := context.WithValue(ctx, CtxLoggerKey, entry)
-		return nCtx, entry.Logger
-	}
+// Appends additional fields to our logger and sets it back into context
+func SetLoggerFields(ctx context.Context, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)
+	entry.Logger = entry.Logger.WithFields(fields)
+	nCtx := context.WithValue(ctx, CtxLoggerKey, entry)
 
-	var lggr logrus.Logger
-	newLogEntry := &StructuredLoggerEntry{Logger: lggr.WithField(key, value)}
-	nCtx := context.WithValue(ctx, CtxLoggerKey, newLogEntry)
-
-	return nCtx, newLogEntry.Logger
+	return nCtx, entry.Logger
 }
 
-func ErrorExtra(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+// Sets fields into logger, writes error entry, and sets logger back into context
+func WriteErrorWithFields(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
 	logger := GetCtxLogger(ctx)
 	logger = logger.WithFields(fields)
 	logger.Error(msg)
@@ -178,7 +173,8 @@ func ErrorExtra(ctx context.Context, msg string, fields logrus.Fields) (context.
 	return nCtx, logger
 }
 
-func WarnExtra(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+// Sets fields into logger, writes warning entry, and sets logger back into context
+func WriteWarnWithFields(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
 	logger := GetCtxLogger(ctx)
 	logger = logger.WithFields(fields)
 	logger.Warn(msg)
@@ -187,7 +183,8 @@ func WarnExtra(ctx context.Context, msg string, fields logrus.Fields) (context.C
 	return nCtx, logger
 }
 
-func InfoExtra(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+// Sets fields into logger, writes info entry, and sets logger back into context
+func WriteInfoWithFields(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
 	logger := GetCtxLogger(ctx)
 	logger = logger.WithFields(fields)
 	logger.Info(msg)

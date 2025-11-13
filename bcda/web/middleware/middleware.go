@@ -50,7 +50,7 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 			}
 
 			if cfg.IsACODisabled(ad.CMSID) {
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: Failed to complete request, CMSID %s is not enabled", responseutils.UnauthorizedErr, ad.CMSID),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -85,7 +85,7 @@ func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 			}
 
 			if !cfg.IsACOV3Enabled(ad.ACOID) {
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: Failed to begin v3 request, ACOID %s does not have v3 access", responseutils.UnauthorizedErr, ad.ACOID),
 					logrus.Fields{"resp_status": http.StatusForbidden},

@@ -90,7 +90,7 @@ func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler
 		jobKey, err := rl.extractJobKey(r)
 
 		if err != nil {
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Job key not found: %+v", responseutils.NotFoundErr, jobKey),
 				logrus.Fields{"resp_status": http.StatusNotFound},
@@ -99,7 +99,7 @@ func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler
 			return
 		}
 
-		ctx, _ = log.SetCtxLogger(ctx, "resource_type", jobKey.ResourceType)
+		ctx, _ = log.SetLoggerFields(ctx, logrus.Fields{"resource_type": jobKey.ResourceType})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

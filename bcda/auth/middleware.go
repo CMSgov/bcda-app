@@ -63,7 +63,7 @@ func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
-			ctx, _ = log.ErrorExtra(
+			ctx, _ = log.WriteErrorWithFields(
 				ctx,
 				fmt.Sprintf("%s: Invalid Authorization header value", responseutils.TokenErr),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -121,42 +121,42 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 	if err != nil {
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.ExpiredErr, err),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
 			)
 			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.ExpiredErr)
 		case *customErrors.EntityNotFoundError:
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.UnauthorizedErr, err),
 				logrus.Fields{"resp_status": http.StatusForbidden},
 			)
 			rw.Exception(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden), responseutils.UnauthorizedErr)
 		case *customErrors.RequestorDataError:
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.RequestErr, err),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
 			rw.Exception(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.RequestErr)
 		case *customErrors.RequestTimeoutError:
-			ctx, _ = log.ErrorExtra(
+			ctx, _ = log.WriteErrorWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.InternalErr, err),
 				logrus.Fields{"resp_status": http.StatusServiceUnavailable},
 			)
 			rw.Exception(ctx, w, http.StatusServiceUnavailable, http.StatusText(http.StatusServiceUnavailable), responseutils.InternalErr)
 		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
-			ctx, _ = log.ErrorExtra(
+			ctx, _ = log.WriteErrorWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.InternalErr, err),
 				logrus.Fields{"resp_status": http.StatusInternalServerError},
 			)
 			rw.Exception(ctx, w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), responseutils.InternalErr)
 		default:
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.TokenErr, err),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -175,7 +175,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 		token := ctx.Value(TokenContextKey)
 		if token == nil {
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: No token found", responseutils.TokenErr),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -198,7 +198,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 
 		ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
 		if !ok {
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: AuthData not found", responseutils.NotFoundErr),
 				logrus.Fields{"resp_status": http.StatusNotFound},
@@ -208,7 +208,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 		}
 
 		if ad.Blacklisted {
-			ctx, _ = log.WarnExtra(
+			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: ACO %s is denylisted: ", responseutils.UnauthorizedErr, ad.CMSID),
 				logrus.Fields{"resp_status": http.StatusForbidden},
@@ -228,7 +228,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 
 			ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
 			if !ok {
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: AuthData not found", responseutils.UnauthorizedErr),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -240,7 +240,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 			//Throw an invalid request for non-unsigned integers
 			jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 			if err != nil {
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: Failed to parse jobID: %+v", responseutils.RequestErr, err),
 					logrus.Fields{"resp_status": http.StatusBadRequest},
@@ -253,7 +253,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 
 			job, err := repository.GetJobByID(ctx, uint(jobID))
 			if err != nil {
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: Job not found, ID: %+v", responseutils.NotFoundErr, jobID),
 					logrus.Fields{"resp_status": http.StatusNotFound},
@@ -263,7 +263,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 			}
 
 			if job.Status == models.JobStatusExpired || job.Status == models.JobStatusArchived {
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: Job found but expired or archived, ID: %+v", responseutils.JobExpiredErr, jobID),
 					logrus.Fields{"resp_status": http.StatusNotFound},
@@ -275,7 +275,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 			if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 				log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
 					ad.ACOID, job.ID, job.ACOID)
-				ctx, _ = log.WarnExtra(
+				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: ACO %s does not have access to job ID %d (ACO ID of job: %s)", responseutils.UnauthorizedErr, ad.ACOID, jobID, job.ACOID),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},

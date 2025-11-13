@@ -160,13 +160,29 @@ func TestDefaultLogger(t *testing.T) {
 	assert.Equal(t, constants.Version, testLogger.LastEntry().Data["version"])
 }
 
-func TestErrorExtra(t *testing.T) {
+func TestSetLoggerFields(t *testing.T) {
+	apiLogger := defaultFieldLogger("test-log-type")
+	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
+	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
+	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
+	_, logger := SetLoggerFields(ctx, logrus.Fields{"request_id": "123456", "cms_id": "A0000"})
+
+	logger.WithField("test", "entry").Error("test-msg")
+	entry := testLogger.LastEntry()
+
+	assert.Equal(t, "test-msg", entry.Message)
+	assert.Equal(t, "123456", entry.Data["request_id"])
+	assert.Equal(t, "A0000", entry.Data["cms_id"])
+	assert.Equal(t, "entry", entry.Data["test"])
+}
+
+func TestWriteErrorWithFields(t *testing.T) {
 	apiLogger := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
 	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
 	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
 
-	resultCtx, resultLogger := ErrorExtra(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
+	resultCtx, resultLogger := WriteErrorWithFields(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
 	entry := testLogger.LastEntry()
 
 	assert.Equal(t, "test-msg", entry.Message)
@@ -190,13 +206,13 @@ func TestErrorExtra(t *testing.T) {
 	assert.Equal(t, "val1", entry.Data["key1"])
 }
 
-func TestWarnExtra(t *testing.T) {
+func TestWriteWarnWithFields(t *testing.T) {
 	apiLogger := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
 	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
 	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
 
-	resultCtx, resultLogger := WarnExtra(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
+	resultCtx, resultLogger := WriteWarnWithFields(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
 	entry := testLogger.LastEntry()
 
 	assert.Equal(t, "test-msg", entry.Message)
@@ -220,13 +236,13 @@ func TestWarnExtra(t *testing.T) {
 	assert.Equal(t, "val1", entry.Data["key1"])
 }
 
-func TestInfoExtra(t *testing.T) {
+func TestWriteInfoWithFields(t *testing.T) {
 	apiLogger := defaultFieldLogger("test-log-type")
 	testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
 	newLogEntry := &StructuredLoggerEntry{Logger: apiLogger}
 	ctx := context.WithValue(context.Background(), CtxLoggerKey, newLogEntry)
 
-	resultCtx, resultLogger := InfoExtra(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
+	resultCtx, resultLogger := WriteInfoWithFields(ctx, "test-msg", logrus.Fields{"key1": "val1", "key2": "val2"})
 	entry := testLogger.LastEntry()
 
 	assert.Equal(t, "test-msg", entry.Message)

@@ -268,26 +268,3 @@ func TestMiddlewareTransactionCtx(t *testing.T) {
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
 }
-
-func TestSetCtxLogger(t *testing.T) {
-	ctx := context.Background()
-	ctx, _ = log.SetCtxLogger(ctx, "request_id", "123456")
-	ctx, _ = log.SetCtxLogger(ctx, "cms_id", "A0000")
-	ctxEntryAppend := ctx.Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
-	entry := ctxEntryAppend.Logger.WithField("test", "entry")
-
-	if cmsId, ok := entry.Data["cms_id"]; ok {
-		if cmsId != "A0000" {
-			t.Errorf("unexpected value for cms_id")
-		}
-	} else {
-		t.Errorf("key cms_id does not exist")
-	}
-	if reqId, ok := entry.Data["request_id"]; ok {
-		if reqId != "123456" {
-			t.Errorf("unexpected value for request_id")
-		}
-	} else {
-		t.Errorf("key request_id does not exist")
-	}
-}
