@@ -75,6 +75,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		// TODO: whats an appropriate timeout?
 		JobTimeout:   -1, // default for river is 1m, using -1 for no timeout
 		Logger:       logger,
+		MaxAttempts:  6, // This is roughly 17m of total attempts with exp backoff
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,
 	})
