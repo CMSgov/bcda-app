@@ -178,6 +178,7 @@ jobs:
             -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
             -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
             -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
+            -var 'fargate_switch={start_ec2=false, start_fargate=true, fargate_traffic=100}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: Init, Plan OpenTofu
         # FARGATE FIXUP: adding fargate vars to tf plan
