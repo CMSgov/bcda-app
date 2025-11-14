@@ -47,7 +47,7 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	clientId, secret, ok := r.BasicAuth()
 	if !ok {
-		ctxLogger.Errorf("Error Basic Authentication - HTTPS Status Code: %v", http.StatusBadRequest)
+		ctxLogger.WithField("resp_status", http.StatusBadRequest).Errorf("Error Basic Authentication - HTTPS Status Code: %v", http.StatusBadRequest)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -59,19 +59,19 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 			//default retrySeconds: 1 second (may convert to environmental variable later)
 			retrySeconds := strconv.FormatInt(int64(1), 10)
 			w.Header().Set("Retry-After", retrySeconds)
-			ctxLogger.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusServiceUnavailable)
+			ctxLogger.WithField("resp_status", http.StatusServiceUnavailable).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusServiceUnavailable)
 			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
 		case *customErrors.InternalParsingError:
-			ctxLogger.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
+			ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		case *customErrors.SSASErrorUnauthorized:
-			ctxLogger.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusUnauthorized)
+			ctxLogger.WithField("resp_status", http.StatusUnauthorized).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusUnauthorized)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		case *customErrors.SSASErrorBadRequest:
-			ctxLogger.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusBadRequest)
+			ctxLogger.WithField("resp_status", http.StatusBadRequest).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusBadRequest)
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		default:
-			ctxLogger.Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
+			ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		return
@@ -84,7 +84,7 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 	_, err = w.Write([]byte(tokenInfo))
 	if err != nil {
-		ctxLogger.Errorf("Error writing response - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
+		ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error writing response - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

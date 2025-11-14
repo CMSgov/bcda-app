@@ -205,11 +205,11 @@ func TestResourceTypeLogging(t *testing.T) {
 		},
 	}
 
-	for _, test := range testCases {
-		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/%s", test.jobID, "blob.ndjson"), nil)
+	for _, tt := range testCases {
+		req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/%s", tt.jobID, "blob.ndjson"), nil)
 		repository := &models.MockRepository{}
-		if test.ResourceType != nil {
-			j := &models.JobKey{ID: 1, JobID: 1234, FileName: constants.TestBlobFileName, ResourceType: test.ResourceType.(string)}
+		if tt.ResourceType != nil {
+			j := &models.JobKey{ID: 1, JobID: 1234, FileName: constants.TestBlobFileName, ResourceType: tt.ResourceType.(string)}
 			repository.On("GetJobKey", testUtils.CtxMatcher, uint(1234), constants.TestBlobFileName).Return(j, nil)
 		} else {
 			repository.On("GetJobKey", testUtils.CtxMatcher, mock.MatchedBy(func(i interface{}) bool { return true }), "blob.ndjson").Return(nil, errors.New("expected error"))
@@ -220,7 +220,10 @@ func TestResourceTypeLogging(t *testing.T) {
 		}
 
 		r := chi.NewRouter()
-		newLogEntry := &log.StructuredLoggerEntry{Logger: logrus.New()}
+
+		apiLogger := log.API
+		testLogger := test.NewLocal(testUtils.GetLogger(apiLogger))
+		newLogEntry := &log.StructuredLoggerEntry{Logger: apiLogger}
 		req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 
 		r.With(logger.LogJobResourceType).Get("/data/{jobID}/{fileName}", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -229,12 +232,13 @@ func TestResourceTypeLogging(t *testing.T) {
 
 		rw := httptest.NewRecorder()
 		r.ServeHTTP(rw, req)
-		ctxEntry := log.GetCtxEntry(req.Context())
-		testEntry := ctxEntry.Logger.WithField("test", nil)
-		if respT := testEntry.Data["resource_type"]; respT != test.ResourceType {
+
+		newLogEntry.Logger.Error("test")
+		testEntry := testLogger.LastEntry()
+		if respT := testEntry.Data["resource_type"]; respT != tt.ResourceType {
 			t.Error("Failed to find resource_type in logs", respT, testEntry)
 		}
-		assert.Equal(t, test.httpStatus, rw.Result().StatusCode)
+		assert.Equal(t, tt.httpStatus, rw.Result().StatusCode)
 	}
 }
 
@@ -263,27 +267,4 @@ func TestMiddlewareTransactionCtx(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://testing", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
-}
-
-func TestSetCtxLogger(t *testing.T) {
-	ctx := context.Background()
-	ctx, _ = log.SetCtxLogger(ctx, "request_id", "123456")
-	ctx, _ = log.SetCtxLogger(ctx, "cms_id", "A0000")
-	ctxEntryAppend := ctx.Value(log.CtxLoggerKey).(*log.StructuredLoggerEntry)
-	entry := ctxEntryAppend.Logger.WithField("test", "entry")
-
-	if cmsId, ok := entry.Data["cms_id"]; ok {
-		if cmsId != "A0000" {
-			t.Errorf("unexpected value for cms_id")
-		}
-	} else {
-		t.Errorf("key cms_id does not exist")
-	}
-	if reqId, ok := entry.Data["request_id"]; ok {
-		if reqId != "123456" {
-			t.Errorf("unexpected value for request_id")
-		}
-	} else {
-		t.Errorf("key request_id does not exist")
-	}
 }

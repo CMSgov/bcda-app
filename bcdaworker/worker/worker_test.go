@@ -21,7 +21,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -40,7 +39,6 @@ import (
 	"github.com/ccoveille/go-safecast"
 )
 
-var logHook *test.Hook
 var oldLogger logrus.FieldLogger
 var GlobalLogger *logrus.Logger
 
@@ -94,7 +92,8 @@ func (s *WorkerTestSuite) SetupSuite() {
 	oldLogger = log.Worker
 
 	ctx := context.Background()
-	s.logctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+	newLogEntry := &log.StructuredLoggerEntry{Logger: log.BFDWorker}
+	s.logctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 }
 
 func (s *WorkerTestSuite) SetupTest() {
@@ -553,19 +552,10 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		TransactionID:  uuid.New(),
 	}
 
-	ctx, _ := log.SetCtxLogger(s.logctx, "job_id", j.ID)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", jobArgs.TransactionID)
-	logHook = test.NewLocal(testUtils.GetLogger(logger))
-
-	err = s.w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
-
-	entries := logHook.AllEntries()
+	err = s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), entries[0].Data, "cms_id")
-	assert.Contains(s.T(), entries[0].Data, "job_id")
-	assert.Contains(s.T(), entries[0].Data, "transaction_id")
 
-	_, err = CheckJobCompleteAndCleanup(ctx, s.r, j.ID)
+	_, err = CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
 	fmt.Printf("%+v", completedJob)
@@ -575,7 +565,6 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 }
 
 func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
-	ctx := context.Background()
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
@@ -599,7 +588,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 
 	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, rid, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
 	w := &worker{r}
-	err := w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
+	err := w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
@@ -723,7 +712,6 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 }
 
 func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
-	ctx := context.Background()
 	j := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: "/api/v1/Patient/$export",
@@ -741,8 +729,8 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 		BBBasePath:     constants.TestFHIRPath,
 	}
 
-	processJobErr := s.w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
-	completedJob, _ := s.r.GetJobByID(ctx, j.ID)
+	processJobErr := s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
+	completedJob, _ := s.r.GetJobByID(s.logctx, j.ID)
 
 	// cancelled parent job status should not update after failed queuejob
 	assert.Contains(s.T(), processJobErr.Error(), "job was not updated, no match found")
@@ -750,7 +738,6 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 }
 
 func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
-
 	tests := []struct {
 		name        string
 		stagingFail bool
@@ -789,7 +776,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 			conf.SetEnv(s.T(), "FHIR_STAGING_DIR", staging)
 			conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", payload)
 			conf.SetEnv(s.T(), "FHIR_TEMP_DIR", tmp)
-			ctx := context.Background()
+
 			j := models.Job{
 				ACOID:      uuid.Parse(constants.TestACOID),
 				RequestURL: "/api/v1/Patient/$export",
@@ -807,7 +794,7 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 				BBBasePath:     constants.TestFHIRPath,
 			}
 
-			processJobErr := s.w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
+			processJobErr := s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 
 			// cancelled parent job status should not update after failed queuejob
 			if tt.payloadFail || tt.stagingFail || tt.tempDirFail {

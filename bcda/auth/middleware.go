@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
@@ -48,7 +49,7 @@ func NewAuthMiddleware(provider Provider) AuthMiddleware {
 // to insulate API code from the differences among Provider tokens.
 func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		ctx := r.Context()
 		// ParseToken is called on every request, but not every request has a token
 		// Continue serving if not Auth token is found and let RequireToken throw the error
 		authHeader := r.Header.Get("Authorization")
@@ -62,20 +63,24 @@ func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
-			log.Auth.Warn("Invalid Authorization header value")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
+			ctx, _ = log.WriteErrorWithFields(
+				ctx,
+				fmt.Sprintf("%s: Invalid Authorization header value", responseutils.TokenErr),
+				logrus.Fields{"resp_status": http.StatusUnauthorized},
+			)
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
 			return
 		}
 
 		tokenString := authSubmatches[1]
 
-		token, ad, err := m.AuthorizeAccess(r.Context(), tokenString)
+		token, ad, err := m.AuthorizeAccess(ctx, tokenString)
 		if err != nil {
-			handleTokenVerificationError(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, rw, err)
+			handleTokenVerificationError(log.NewStructuredLoggerEntry(log.Auth, ctx), w, rw, err)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), TokenContextKey, token)
+		ctx = context.WithValue(ctx, TokenContextKey, token)
 		ctx = context.WithValue(ctx, AuthDataContextKey, ad)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -116,16 +121,46 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 	if err != nil {
 		switch err.(type) {
 		case *customErrors.ExpiredTokenError:
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: Verification error: %+v", responseutils.ExpiredErr, err),
+				logrus.Fields{"resp_status": http.StatusUnauthorized},
+			)
 			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.ExpiredErr)
 		case *customErrors.EntityNotFoundError:
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: Verification error: %+v", responseutils.UnauthorizedErr, err),
+				logrus.Fields{"resp_status": http.StatusForbidden},
+			)
 			rw.Exception(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden), responseutils.UnauthorizedErr)
 		case *customErrors.RequestorDataError:
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: Verification error: %+v", responseutils.RequestErr, err),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
 			rw.Exception(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.RequestErr)
 		case *customErrors.RequestTimeoutError:
+			ctx, _ = log.WriteErrorWithFields(
+				ctx,
+				fmt.Sprintf("%s: Verification error: %+v", responseutils.InternalErr, err),
+				logrus.Fields{"resp_status": http.StatusServiceUnavailable},
+			)
 			rw.Exception(ctx, w, http.StatusServiceUnavailable, http.StatusText(http.StatusServiceUnavailable), responseutils.InternalErr)
 		case *customErrors.ConfigError, *customErrors.InternalParsingError, *customErrors.UnexpectedSSASError:
+			ctx, _ = log.WriteErrorWithFields(
+				ctx,
+				fmt.Sprintf("%s: Verification error: %+v", responseutils.InternalErr, err),
+				logrus.Fields{"resp_status": http.StatusInternalServerError},
+			)
 			rw.Exception(ctx, w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), responseutils.InternalErr)
 		default:
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: Verification error: %+v", responseutils.TokenErr, err),
+				logrus.Fields{"resp_status": http.StatusUnauthorized},
+			)
 			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 		}
 	}
@@ -136,11 +171,16 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := getRespWriter(r.URL.Path)
+		ctx := r.Context()
 
-		token := r.Context().Value(TokenContextKey)
+		token := ctx.Value(TokenContextKey)
 		if token == nil {
-			log.Auth.Error("No token found")
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: No token found", responseutils.TokenErr),
+				logrus.Fields{"resp_status": http.StatusUnauthorized},
+			)
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 			return
 		}
 
@@ -154,16 +194,26 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := getRespWriter(r.URL.Path)
+		ctx := r.Context()
 
-		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
+		ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
 		if !ok {
-			log.Auth.Error()
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: AuthData not found", responseutils.NotFoundErr),
+				logrus.Fields{"resp_status": http.StatusNotFound},
+			)
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
 			return
 		}
 
 		if ad.Blacklisted {
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: ACO %s is denylisted: ", responseutils.UnauthorizedErr, ad.CMSID),
+				logrus.Fields{"resp_status": http.StatusForbidden},
+			)
+			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -174,40 +224,63 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rw := getRespWriter(r.URL.Path)
+			ctx := r.Context()
 
-			ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
+			ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
 			if !ok {
-				log.Auth.Error("Auth data not found")
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: AuthData not found", responseutils.UnauthorizedErr),
+					logrus.Fields{"resp_status": http.StatusUnauthorized},
+				)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
 				return
 			}
 
 			//Throw an invalid request for non-unsigned integers
 			jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 			if err != nil {
-				log.Auth.Error(err)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: Failed to parse jobID: %+v", responseutils.RequestErr, err),
+					logrus.Fields{"resp_status": http.StatusBadRequest},
+				)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusBadRequest, responseutils.RequestErr, "")
 				return
 			}
 
 			repository := postgres.NewRepository(db)
 
-			job, err := repository.GetJobByID(r.Context(), uint(jobID))
+			job, err := repository.GetJobByID(ctx, uint(jobID))
 			if err != nil {
-				log.Auth.Error(err)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.NotFoundErr, "")
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: Job not found, ID: %+v", responseutils.NotFoundErr, jobID),
+					logrus.Fields{"resp_status": http.StatusNotFound},
+				)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.NotFoundErr, "")
 				return
 			}
 
 			if job.Status == models.JobStatusExpired || job.Status == models.JobStatusArchived {
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusNotFound, responseutils.JobExpiredErr, "")
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: Job found but expired or archived, ID: %+v", responseutils.JobExpiredErr, jobID),
+					logrus.Fields{"resp_status": http.StatusNotFound},
+				)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.JobExpiredErr, "")
 			}
 
 			// ACO did not create the job
 			if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 				log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
 					ad.ACOID, job.ID, job.ACOID)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, r.Context()), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: ACO %s does not have access to job ID %d (ACO ID of job: %s)", responseutils.UnauthorizedErr, ad.ACOID, jobID, job.ACOID),
+					logrus.Fields{"resp_status": http.StatusUnauthorized},
+				)
+				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
 				return
 			}
 			next.ServeHTTP(w, r)

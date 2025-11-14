@@ -277,14 +277,14 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 
 	// Check file exists
 	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
-		logger.Errorf("file not found: %s", err)
+		logger.WithField("resp_status", http.StatusNotFound).Errorf("file not found: %s", err)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
 	encoded, err := isGzipEncoded(filePath)
 	if err != nil {
-		logger.Errorf("failed when checking if file is gzip encoded: %s", err)
+		logger.WithField("resp_status", http.StatusInternalServerError).Errorf("failed when checking if file is gzip encoded: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -315,7 +315,7 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 			// Open file
 			file, err := os.Open(filePath) // #nosec G304
 			if err != nil {
-				logger.Errorf("failed to open file: %s", err)
+				logger.WithField("resp_status", http.StatusInternalServerError).Errorf("failed to open file: %s", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -323,14 +323,14 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 			defer file.Close() //#nosec G307
 			gzipReader, err := gzip.NewReader(file)
 			if err != nil {
-				logger.Errorf("failed to create gzip reader: %s", err)
+				logger.WithField("resp_status", http.StatusInternalServerError).Errorf("failed to create gzip reader: %s", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 			defer gzipReader.Close()
 			_, err = io.Copy(w, gzipReader) // #nosec G110
 			if err != nil {
-				logger.Errorf("failed to copy file: %s", err)
+				logger.WithField("resp_status", http.StatusInternalServerError).Errorf("failed to copy file: %s", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -414,7 +414,7 @@ func (a ApiV1) GetVersion(w http.ResponseWriter, r *http.Request) {
 	respMap["version"] = constants.Version
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -422,7 +422,7 @@ func (a ApiV1) GetVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	_, err = w.Write(respBytes)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -445,14 +445,14 @@ func (a ApiV1) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 	respJSON, err := json.Marshal(m)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	_, err = w.Write(respJSON)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

@@ -83,7 +83,6 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_t
 }
 
 func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs) error {
-
 	t := metrics.GetTimer()
 	defer t.Close()
 	ctx = metrics.NewContext(ctx, t)
@@ -96,8 +95,7 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 		return err
 	}
 
-	ctx, logger := log.SetCtxLogger(ctx, "cms_id", aco.CMSID)
-
+	ctx, logger := log.SetLoggerFields(ctx, logrus.Fields{"cms_id": aco.CMSID})
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
 		// could also occur if job was marked as cancelled

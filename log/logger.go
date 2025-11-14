@@ -145,12 +145,6 @@ func NewStructuredLoggerEntry(logger logrus.FieldLogger, ctx context.Context) co
 	return ctx
 }
 
-// Gets the logrus.StructuredLoggerEntry from a context
-func GetCtxEntry(ctx context.Context) *StructuredLoggerEntry {
-	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)
-	return entry
-}
-
 // Gets the logrus.FieldLogger from a context
 func GetCtxLogger(ctx context.Context) logrus.FieldLogger {
 	entry := ctx.Value(CtxLoggerKey)
@@ -160,16 +154,41 @@ func GetCtxLogger(ctx context.Context) logrus.FieldLogger {
 	return API
 }
 
-// Appends additional or creates new logrus.Fields to a logrus.FieldLogger within a context
-func SetCtxLogger(ctx context.Context, key string, value interface{}) (context.Context, logrus.FieldLogger) {
-	if entry, ok := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry); ok {
-		entry.Logger = entry.Logger.WithField(key, value)
-		nCtx := context.WithValue(ctx, CtxLoggerKey, entry)
-		return nCtx, entry.Logger
-	}
+// Appends additional fields to our logger and sets it back into context
+func SetLoggerFields(ctx context.Context, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+	entry := ctx.Value(CtxLoggerKey).(*StructuredLoggerEntry)
+	entry.Logger = entry.Logger.WithFields(fields)
+	nCtx := context.WithValue(ctx, CtxLoggerKey, entry)
 
-	var lggr logrus.Logger
-	newLogEntry := &StructuredLoggerEntry{Logger: lggr.WithField(key, value)}
-	nCtx := context.WithValue(ctx, CtxLoggerKey, newLogEntry)
-	return nCtx, newLogEntry.Logger
+	return nCtx, entry.Logger
+}
+
+// Sets fields into logger, writes error entry, and sets logger back into context
+func WriteErrorWithFields(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+	logger := GetCtxLogger(ctx)
+	logger = logger.WithFields(fields)
+	logger.Error(msg)
+
+	nCtx := context.WithValue(ctx, CtxLoggerKey, &StructuredLoggerEntry{Logger: logger})
+	return nCtx, logger
+}
+
+// Sets fields into logger, writes warning entry, and sets logger back into context
+func WriteWarnWithFields(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+	logger := GetCtxLogger(ctx)
+	logger = logger.WithFields(fields)
+	logger.Warn(msg)
+
+	nCtx := context.WithValue(ctx, CtxLoggerKey, &StructuredLoggerEntry{Logger: logger})
+	return nCtx, logger
+}
+
+// Sets fields into logger, writes info entry, and sets logger back into context
+func WriteInfoWithFields(ctx context.Context, msg string, fields logrus.Fields) (context.Context, logrus.FieldLogger) {
+	logger := GetCtxLogger(ctx)
+	logger = logger.WithFields(fields)
+	logger.Info(msg)
+
+	nCtx := context.WithValue(ctx, CtxLoggerKey, &StructuredLoggerEntry{Logger: logger})
+	return nCtx, logger
 }
