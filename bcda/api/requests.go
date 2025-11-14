@@ -679,12 +679,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 
 	// validate cclffile and PY
 	if cclfFileNew == nil || performanceYear != cclfFileNew.PerformanceYear {
-		ctx, _ = log.WriteErrorWithFields(
+		ctx, _ = log.WriteWarnWithFields(
 			ctx,
 			fmt.Sprintf("%s: Failed to validate cclf file or performance year of found cclf file", responseutils.NotFoundErr),
-			logrus.Fields{"resp_status": http.StatusInternalServerError},
+			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
+		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
 

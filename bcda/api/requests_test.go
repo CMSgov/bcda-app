@@ -615,8 +615,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		// other errors
 		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
 		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
-		// no longer running in transaction, test no longer relevant
-		// {"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
 	}
 
 	for _, test := range tests {
