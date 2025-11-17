@@ -8,8 +8,11 @@ import (
 	"sync"
 	"time"
 
+	backoff "github.com/cenkalti/backoff/v4"
+
 	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/middleware"
@@ -27,7 +30,11 @@ type HealthChecker struct {
 	introspectCache *introspectCache
 }
 
-const introspectCacheTTL = 5 * time.Minute
+const (
+	introspectCacheTTL     = 5 * time.Minute
+	introspectRetryCount   = 3
+	introspectRetryInitial = 100 * time.Millisecond
+)
 
 func NewHealthChecker(db *sql.DB) HealthChecker {
 	return HealthChecker{
@@ -139,17 +146,14 @@ func (h HealthChecker) IsSsasIntrospectOK() (result string, ok bool) {
 		return result, false
 	}
 
-	// Get token
-	tokenInfo, err := c.GetToken(ssasClient.Credentials{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-	}, *req)
+	// Get token with retry
+	tokenInfo, err := h.getTokenWithRetry(c, clientID, clientSecret, req)
 	if err != nil {
 		result := "Failed to get BCDA admin token"
 		h.introspectCache.result = result
 		h.introspectCache.ok = false
 		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - failed to get token: ", err.Error())
+		log.API.Error("Health check: SSAS introspect - failed to get token after retries: ", err.Error())
 		return result, false
 	}
 
@@ -177,14 +181,14 @@ func (h HealthChecker) IsSsasIntrospectOK() (result string, ok bool) {
 		return result, false
 	}
 
-	// Call introspect endpoint
-	_, err = c.CallSSASIntrospect(ctx, tokenResp.AccessToken)
+	// Call introspect endpoint with retry
+	_, err = h.introspectWithRetry(c, ctx, tokenResp.AccessToken)
 	if err != nil {
 		result := "SSAS introspect check failed"
 		h.introspectCache.result = result
 		h.introspectCache.ok = false
 		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - introspect call failed: ", err.Error())
+		log.API.Error("Health check: SSAS introspect - introspect call failed after retries: ", err.Error())
 		return result, false
 	}
 
@@ -193,4 +197,106 @@ func (h HealthChecker) IsSsasIntrospectOK() (result string, ok bool) {
 	h.introspectCache.ok = true
 	h.introspectCache.timestamp = time.Now()
 	return "ok", true
+}
+
+// isRetryableError determines if an error should be retried
+func isRetryableError(err error) bool {
+	switch e := err.(type) {
+	case *customErrors.RequestTimeoutError:
+		return true
+	case *customErrors.UnexpectedSSASError:
+		// Retry on 5xx errors, but not 4xx (client errors)
+		if e.SsasStatusCode >= 500 {
+			return true
+		}
+		return false
+	default:
+		// Retry on network errors and other unexpected errors
+		// Don't retry on auth failures (401), bad requests (400), parsing errors, etc.
+		if _, ok := err.(*customErrors.SSASErrorUnauthorized); ok {
+			return false
+		}
+		if _, ok := err.(*customErrors.SSASErrorBadRequest); ok {
+			return false
+		}
+		if _, ok := err.(*customErrors.InternalParsingError); ok {
+			return false
+		}
+		if _, ok := err.(*customErrors.ConfigError); ok {
+			return false
+		}
+		// For other errors (like network errors), retry
+		return true
+	}
+}
+
+// getTokenWithRetry attempts to get a token with exponential backoff retry
+func (h HealthChecker) getTokenWithRetry(c *ssasClient.SSASClient, clientID, clientSecret string, req *http.Request) (string, error) {
+	eb := backoff.NewExponentialBackOff()
+	eb.InitialInterval = introspectRetryInitial
+	eb.MaxInterval = 2 * time.Second
+	eb.Multiplier = 2.0
+	b := backoff.WithMaxRetries(eb, introspectRetryCount)
+
+	var tokenInfo string
+	var lastErr error
+
+	err := backoff.RetryNotify(func() error {
+		var err error
+		tokenInfo, err = c.GetToken(ssasClient.Credentials{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+		}, *req)
+		if err != nil {
+			lastErr = err
+			if !isRetryableError(err) {
+				// Don't retry non-retryable errors
+				return backoff.Permanent(err)
+			}
+			return err
+		}
+		return nil
+	}, b, func(err error, d time.Duration) {
+		log.API.Warnf("Health check: SSAS introspect - token request failed, retrying in %s: %s", d.String(), err.Error())
+	})
+
+	if err != nil {
+		return "", lastErr
+	}
+
+	return tokenInfo, nil
+}
+
+// introspectWithRetry attempts to call introspect with exponential backoff retry
+func (h HealthChecker) introspectWithRetry(c *ssasClient.SSASClient, ctx context.Context, tokenString string) ([]byte, error) {
+	eb := backoff.NewExponentialBackOff()
+	eb.InitialInterval = introspectRetryInitial
+	eb.MaxInterval = 2 * time.Second
+	eb.Multiplier = 2.0
+	b := backoff.WithMaxRetries(eb, introspectRetryCount)
+
+	var result []byte
+	var lastErr error
+
+	err := backoff.RetryNotify(func() error {
+		var err error
+		result, err = c.CallSSASIntrospect(ctx, tokenString)
+		if err != nil {
+			lastErr = err
+			if !isRetryableError(err) {
+				// Don't retry non-retryable errors
+				return backoff.Permanent(err)
+			}
+			return err
+		}
+		return nil
+	}, b, func(err error, d time.Duration) {
+		log.API.Warnf("Health check: SSAS introspect - introspect request failed, retrying in %s: %s", d.String(), err.Error())
+	})
+
+	if err != nil {
+		return nil, lastErr
+	}
+
+	return result, nil
 }
