@@ -165,7 +165,7 @@ func (r FhirResponseWriter) WriteError(ctx context.Context, outcome *fhirmodelOO
 	w.WriteHeader(code)
 	_, err := r.WriteOperationOutcome(w, outcome)
 	if err != nil {
-		logger.Error(err)
+		logger.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -281,7 +281,7 @@ func (r FhirResponseWriter) WriteCapabilityStatement(ctx context.Context, statem
 	}
 	statementJSON, err := r.marshaller.Marshal(resource)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -290,7 +290,7 @@ func (r FhirResponseWriter) WriteCapabilityStatement(ctx context.Context, statem
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(statementJSON)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -302,7 +302,7 @@ func (r FhirResponseWriter) WriteBundleResponse(bundle *fhirmodelCR.Bundle, w ht
 	}
 	bundleJSON, err := r.marshaller.Marshal(resource)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -311,7 +311,7 @@ func (r FhirResponseWriter) WriteBundleResponse(bundle *fhirmodelCR.Bundle, w ht
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(bundleJSON)
 	if err != nil {
-		log.API.Error(err)
+		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

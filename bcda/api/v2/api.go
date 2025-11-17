@@ -357,14 +357,14 @@ func (a ApiV2) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := a.marshaller.Marshal(resource)
 	if err != nil {
-		log.API.Errorf("Failed to marshal Capability Statement %s", err.Error())
+		log.API.WithField("resp_status", http.StatusInternalServerError).Errorf("Failed to marshal Capability Statement %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
 	if _, err = w.Write(b); err != nil {
-		log.API.Errorf("Failed to write data %s", err.Error())
+		log.API.WithField("resp_status", http.StatusInternalServerError).Errorf("Failed to write data %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
