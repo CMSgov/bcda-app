@@ -43,15 +43,15 @@ COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 # configure directories
 RUN mkdir -p \
         /etc/sv/worker/env \
-        /home/bcda/TEMP_FHIR_DIR \
+        /home/bcda/FHIR_TEMP_DIR \
         /var/efs \
     && chown -R bcda:bcda \
         /go/src/github.com/CMSgov/bcda-app \
         /etc/sv/worker/env \
-        /home/bcda/TEMP_FHIR_DIR \
+        /home/bcda/FHIR_TEMP_DIR \
         /var/efs
 
-VOLUME [ "/etc/sv/worker/env", "/var/efs" ]
+VOLUME [ "/etc/sv/worker/env", "/var/efs", "/home/bcda/FHIR_TEMP_DIR" ]
 USER bcda
 
 ENV APP_NAME="worker"

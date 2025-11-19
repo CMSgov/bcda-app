@@ -99,6 +99,7 @@ services:
     volumes:
       - fhir:/var/efs
       - worker_config:/etc/sv/worker/env
+      - fhir_temp:/home/bcda/FHIR_TEMP_DIR
     depends_on:
       db:
         condition: service_started
@@ -157,6 +158,7 @@ volumes:
   fhir:
   api_config:
   worker_config:
+  fhir_temp:
 
 networks:
   default:
