@@ -51,7 +51,7 @@ RUN mkdir -p \
         /home/bcda/TEMP_FHIR_DIR \
         /var/efs
 
-VOLUME [ "/etc/sv/worker/env", "/var/efs" ]
+VOLUME [ "/etc/sv/worker/env", "/var/efs", "/home/bcda/TEMP_FHIR_DIR" ]
 USER bcda
 
 ENV APP_NAME="worker"
