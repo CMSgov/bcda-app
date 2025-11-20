@@ -157,10 +157,18 @@ jobs:
       - name: Build API Postman Container
         run: |
           docker compose -f docker-compose.test.yml build --force-rm postman_test
+      - run: echo postman_tests is true as == true
+        if: ${{ inputs.postman_tests == true }}
       - run: echo postman_tests is true as string
         if: ${{ inputs.postman_tests == 'true' }}
       - run: echo postman_tests is true as bool
         if: ${{ inputs.postman_tests }}
+      - run: echo v3_tests is true as bool
+        if: ${{ inputs.v3_tests }}
+      - run: echo v3_tests is true as string
+        if: ${{ inputs.v3_tests == 'false' }}
+      - run: echo v3_tests is !true
+        if: ${{ !inputs.v3_tests }}
       - name: Run Postman Tests
         if: ${{ inputs.postman_tests }}
         run: |
