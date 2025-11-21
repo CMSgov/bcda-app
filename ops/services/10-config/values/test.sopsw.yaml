@@ -131,7 +131,7 @@
 /bcda/${env}/sensitive/worker/FHIR_EXPIRED_DIR: ENC[AES256_GCM,data:TcVbTtYE750hq9R/OGUBKA==,iv:MrMn/x2CoxtUGCkrLP02zaXWNydn5374oPfRnBoc6JA=,tag:MftfEJpjUuXKIiuVgBkmCQ==,type:str]
 /bcda/${env}/sensitive/worker/FHIR_PAYLOAD_DIR: ENC[AES256_GCM,data:p0RTZfPGZqN3j91PI6MJAg==,iv:5yyzln1eilghtENHf8dwY+vtjExi/FXfAGauhsU6Rsk=,tag:UhWaVe2UcOZ+oUXu01dGwA==,type:str]
 /bcda/${env}/sensitive/worker/FHIR_STAGING_DIR: ENC[AES256_GCM,data:15smknalJP+7bWQgATyKxg==,iv:R5vY1aOyHaEIr6hJbXmWELaZZdAdv0MWpBCzj42L7Lo=,tag:ZYRCoO4xRGLQMu6WoF4LXg==,type:str]
-/bcda/${env}/sensitive/worker/FHIR_TEMP_DIR: ENC[AES256_GCM,data:dAxh8gIPVRpRVEb//zahHEZSUxXzvbpY,iv:8KW9Yeuy3A4+18W8kmXOLlV2oe3DxwtIodJzgnLUzUo=,tag:amCuwDYKozoh+r16W5yKzg==,type:str]
+/bcda/${env}/sensitive/worker/FHIR_TEMP_DIR: ENC[AES256_GCM,data:2iP+mvrCNOxo62eSExMGI4684pW5ss+R,iv:wrOCzFjrDyic+/OE5stgdeudLcY7JF/qoQHu1dUNnUA=,tag:1Zz/07wyoKl63kGExIWRoQ==,type:str]
 /bcda/${env}/sensitive/worker/NEW_RELIC_LICENSE_KEY: ENC[AES256_GCM,data:soASJiHBULRTpYdS2F/Snww+BP1JqID1WtXOeLPZWtJbCu3vbpYt+A==,iv:NXPk3EPMfBoqghH9ztemRqLU2dMr9Y7wy5Q/kQK/xug=,tag:CmjdnldyniJs+zYh5GXCdQ==,type:str]
 /bcda/${env}/sensitive/worker/QUEUE_DATABASE_URL: ENC[AES256_GCM,data:jctk0CAiuUlmUbBWiNgQLRSP6LgxFnwCgQudG6b1Np+o3DXSZT2v6+bd5I8Hkj023Gj/XWVuiMYg9MSfOKWMyxZhCn96KCMSHDDCSOptTHVD7UQLO46GUqE=,iv:SxCsvEVyxmyX9oTG7wAnWH/SeOpoJ2eRBgUZTD1ljQk=,tag:Tgc3rqn0KSGWithndNNZzA==,type:str]
 /bcda/${env}/sensitive/worker/SLACK_TOKEN: ENC[AES256_GCM,data:7otqHxnz+mm9OYYBXyBZvNdHWhPagwOva6p/LRcf6H7v7y4bzBf3h//iHnqjvM0iWq6hxe6rhP4=,iv:OmssKPFEy1T0+FugpGEv+limnWlZgMU/XJcfM049kpM=,tag:5C8ZIEDha3ybdSmLTGjAiQ==,type:str]
