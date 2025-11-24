@@ -334,7 +334,7 @@ Each view is defined in its own file following the naming convention: `{service}
 Export configurations are organized by service in the `db-exports/` directory:
 - **BCDA Exports:** `cdap/terraform/services/insights/db-exports/bcda/`
 
-Each export file schedules a cron job to automatically dump view data to S3 every 6 hours. Export files follow the naming convention: `{service}-{env}-{view-name}.sql`
+Each export file schedules a cron job to automatically dump view data to S3 every 6 hours. Export files follow the naming convention: `{env}-{view-name}.sql`
 
 **Note:** These S3 buckets are used to feed AWS QuickSight for the aforementioned metrics and analytics.
 
