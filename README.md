@@ -325,7 +325,7 @@ BCDA maintains database views and automated exports for analytics and metrics tr
 Database views are organized by service (ab2d, bcda) in the `views/` directory:
 - **BCDA Views:** `cdap/terraform/services/insights/views/bcda/`
 
-Each view is defined in its own file following the naming convention: `{service}-{env}-{view-name}.view.sql`
+Each view is defined in its own file following the naming convention: `{env}-{view-name}.view.sql`
 
 **Note:** The original migration file `db/migrations/manual/20250331-create_metric_views.up.sql` in this repository contains the initial view definitions. However, the authoritative source for these views is now the CDAP repository.
 
