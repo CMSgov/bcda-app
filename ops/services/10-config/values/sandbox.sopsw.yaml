@@ -5,14 +5,12 @@
 /bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:nUaPqBqomT6B5AhMJb2h9klx+iEKLmZ2duTDsdaAwMpKV/s99BNumJIE1FL2U6xkNA==,iv:aoZJoItf30mSzD8jo1wzIxsVE/NuxscX0egQ+V0f9fQ=,tag:UNNQpGB5z67jgPq+Ko4E8g==,type:str]
 #ENC[AES256_GCM,data:uYeldI3but1pLvt0rjLKNvdR,iv:3kkvLso+fD5mnOTCP9mLotibHgpZGtVsiYkbXgtX5No=,tag:LYCzXe8Z5enZmGcxEEZSaw==,type:comment]
 /bcda/${env}/nonsensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: "300"
-/bcda/${env}/nonsensitive/api/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:7E+OHiCTd2JhfJo+g71Cp3hLdP844IZm,iv:fAy6jT4pe25qv+eD1bHgyYaz0W9s83/C6/zfPZnE744=,tag:6BaR9m4kFowmWS62t5pLeQ==,type:comment]
 /bcda/${env}/nonsensitive/bcda-sandbox-admin-aco-deny-bucket: bcda-sandbox-admin-aco-deny-function-20250529213345026800000001
 /bcda/${env}/nonsensitive/bcda-sandbox-admin-create-aco-bucket: bcda-sandbox-admin-create-aco-functi-20250529213241246400000001
 /bcda/${env}/nonsensitive/bcda-sandbox-admin-create-aco-creds-bucket: bcda-sandbox-admin-create-aco-creds--20250616214605221200000001
 /bcda/${env}/nonsensitive/bcda-sandbox-admin-create-group-bucket: bcda-sandbox-admin-create-group-func-20250529213324142300000001
 #ENC[AES256_GCM,data:m+LDrFyLhEhJB1g18MBcRK2rtIJc,iv:ImZBP/xHp+7ZZoblyEA9o0aLxtKtaYxC8F2IF2hY9hs=,tag:coa4gRThgFy2tQ6WA9KRMA==,type:comment]
-/bcda/${env}/nonsensitive/worker/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:FMlBBGYeXLme3c4pAB3vGGerahfEK5dqmJUbUA==,iv:GzUr1IA7xctrjWIXWFsSpGizBQwf8WTMw3qmYQoMOds=,tag:0cf9Gp7OV2C+tR7CWJigkQ==,type:comment]
 /bcda/${env}/sensitive/api/API_WRITE_TIMEOUT: ENC[AES256_GCM,data:csY=,iv:AXuAgb61lDyChZzR1GfO66phn/p5A8RxOId3zFy7FsA=,tag:sB1Mx5EebvmYfVWrDXCgfg==,type:str]
 /bcda/${env}/sensitive/api/ARCHIVE_THRESHOLD_HR: ENC[AES256_GCM,data:deQ=,iv:wyO36Gd16CAqV33duTvimbREcWNasIganyQdtPP5wRM=,tag:3bUQc1n5vcQFUE8FiDrkOg==,type:str]

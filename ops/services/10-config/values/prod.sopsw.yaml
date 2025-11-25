@@ -5,7 +5,6 @@
 /bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:7EeZIeiBSx5b3zgSeUrL2n+Lfn98cdTLvtCZAk/UvaUdyZNJaAbaP6lphrZKvQ==,iv:SRFgCdhIgZkEiqzyJCq9afhGXznGFs+ZOwEK2mgPEoI=,tag:O8aEZFFlI0MsJ/t16nAlwg==,type:str]
 #ENC[AES256_GCM,data:7s6hUXTwwxfUyHIEkYSpyVFA,iv:gF7m/pWvfvFJjjLThznWh4GySYHPnJkkaX1YXHPdcL4=,tag:vNBC+bw9CBELC1OXbTHIhg==,type:comment]
 /bcda/${env}/nonsensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: "300"
-/bcda/${env}/nonsensitive/api/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:4VqxCw/zcFZosLS9+8hlHx3oSjP5myYj,iv:vZg8EckXne+5mCPEoOmYVOGLb8TlmobOfbnIC9F9nMg=,tag:2xXoNiZH/uGf+GokzMEJuw==,type:comment]
 /bcda/${env}/nonsensitive/bcda-prod-admin-aco-deny-bucket: bcda-prod-admin-aco-deny-function-20250529213313178000000001
 /bcda/${env}/nonsensitive/bcda-prod-admin-create-aco-bucket: bcda-prod-admin-create-aco-function-20250529213239858800000001
@@ -19,7 +18,6 @@
 #ENC[AES256_GCM,data:7NZed6ybO/hfFZWN,iv:06VAJbgmvAAVxfxPPx1owiJakcsQ/59gwrD4zvlTSTU=,tag:F3zZNhzT1AdJKHLhkQ+PNg==,type:comment]
 /bcda/${env}/nonsensitive/static_site: bcda.cms.gov20250530174014865000000001
 #ENC[AES256_GCM,data:CwFxDgswUPJ/w34Fvv04iWN1qd17,iv:Fyz+tUKAUlQSoXljjkPPdlrVnIzBVlA6rwXKGyPB6no=,tag:eGekeYDR7GDW+s+KP7Dx2Q==,type:comment]
-/bcda/${env}/nonsensitive/worker/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:qy1riI95egc3qw+hzl8Gp3EE,iv:GD8QX9TftTc/pSD4MZQ2w63WDFJ0JcF0oR0WAPSlxsQ=,tag:q/SLlH6oyrrqx7GTD/ancw==,type:comment]
 /bcda/nonsensitive/rpms_bucket: bcda-rpms-20250602223806538400000001
 #ENC[AES256_GCM,data:h8J/AdwNg1cowGeSeDcOXH3F7FgUoj+6agQ9iA==,iv:wO+Kz9I/a2WW0A4sIyljrW8AHIPSEQb8HqtWLF/IQzE=,tag:I9wvHXVGmOU993bcAogvXA==,type:comment]

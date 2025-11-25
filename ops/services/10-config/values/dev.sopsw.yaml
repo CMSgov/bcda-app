@@ -5,7 +5,6 @@
 /bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:TG8Mo+WSmM9OW8rSe7PApu3uLW6B01G49tJMHvRtvgrm9rH/xwxX9RmXv4Yd,iv:yStGNU5NMFL3RD+I0DYTLt1qH/qni1nxOcSxK+uISp8=,tag:hU15ySo8QkPBPLkFWRDf0w==,type:str]
 #ENC[AES256_GCM,data:8a8V4OQ3qweZZ7GpH7oL/9zY,iv:RTBvhXu4+Foz3v2iGLg1Z7/hv4LQ+V6g+6XtDaGZmiE=,tag:G87DAS2UV4ou37ra+QiRMQ==,type:comment]
 /bcda/${env}/nonsensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: "300"
-/bcda/${env}/nonsensitive/api/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:W4a79kSk8zEPuE6UiGY34MdJpu1EbcCV,iv:aFThZOZkh3FQtY6VNyrKCE3uuOrmL/loy3WBXuBmB/Y=,tag:270341OnobFj042kvTS0lg==,type:comment]
 /bcda/${env}/nonsensitive/bcda-dev-admin-aco-deny-bucket: bcda-dev-admin-aco-deny-function-20250509215939999000000001
 /bcda/${env}/nonsensitive/bcda-dev-admin-create-aco-bucket: bcda-dev-admin-create-aco-function-20250515161920680200000001
@@ -16,7 +15,6 @@
 /bcda/${env}/nonsensitive/bcda-dev-opt-out-export-bucket: bcda-dev-opt-out-export-function-20250528140634149300000001
 /bcda/${env}/nonsensitive/bcda-dev-opt-out-import-bucket: bcda-dev-opt-out-import-function-20250520182638198500000001
 #ENC[AES256_GCM,data:wqKWV2396llJN6l8pt6xFj3ZtswN,iv:QTWWDmvSbia8XgjPMYB9oVPUTJK5cS1j0xA+jaYwWcg=,tag:8FrsEIWpqURpo7CkSlXRgw==,type:comment]
-/bcda/${env}/nonsensitive/worker/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:mwwP1FCUyX/impbf16SvlgOiX5RTV/jsfedD/rqRMId2x3WmHIniRalfmL0=,iv:FEzuvSCqjv7n7Bz0z/wLKWkaLKvTRzIYjeHMbDm8uxw=,tag:YFflARBMbbRhUzdup2A8GA==,type:comment]
 /bcda/${env}/sensitive/quicksight-rds/cidr-blocks: ENC[AES256_GCM,data:bZPXN2sa6GQ/i9sz8/4x3XmFHziPYiimYfhtiSoJlSniDnCOd9gh0QIsQmjHNUu31oRPHEPvWuD/lMI=,iv:jXJQX5tQhQiWNPv70Q8bTmJu9qsZeTqgLZYBN3AKvJE=,tag:EAMnd8UZT/1N1JJkzmBSyA==,type:str]
 #ENC[AES256_GCM,data:JQexfkAWHvkNHrm4mkInQBqACp8VRMg43ayEWQ==,iv:Yeiz9ezSkLktSD7w5CBQT5nCJdV0JFH4Qsluji5QQ5o=,tag:X65nBBoQ1D+DY16/GAXvhg==,type:comment]
