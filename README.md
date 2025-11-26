@@ -283,7 +283,7 @@ See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tes
 
 ### Environment variables
 
-The various BCDA services (api, worker, ssas) require multiple environment variables and config files. 
+The various BCDA services (api, worker, ssas) require multiple environment variables and config files.
 1. Environment variables are injected directly into the container environment. For the local docker container, this is done via docker-compose. Deployed Fargate environments may require a larger superset of environment variables, which are managed in param store and listed explicitly in bcda-ops.
 2. Configuration files (api yaml, certificates, etc.) are stored in S3 and synced to each container via its entrypoint script. For the local environment, this setup is replicated via localstack.
 
@@ -313,6 +313,30 @@ BB_SERVER_LOCATION <url>
 FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
 ```
+
+### Database Insights and Metrics
+
+BCDA maintains database views and automated exports for analytics and metrics tracking. These are designed to provide insights into BCDA usage without exposing PHI/PII or internal database structures.
+
+**Location:** All insights views and export configurations are managed in the [CDAP repository](https://github.com/CMSgov/cdap) under `terraform/services/insights/`.
+
+#### Views
+
+Database views are organized by service (ab2d, bcda) in the `views/` directory:
+- **BCDA Views:** `cdap/terraform/services/insights/views/bcda/`
+
+Each view is defined in its own file following the naming convention: `{env}-{view-name}.view.sql`
+
+**Note:** The original migration file `db/migrations/manual/20250331-create_metric_views.up.sql` in this repository contains the initial view definitions. However, the authoritative source for these views is now the CDAP repository.
+
+#### Automated Exports
+
+Export configurations are organized by service in the `db-exports/` directory:
+- **BCDA Exports:** `cdap/terraform/services/insights/db-exports/bcda/`
+
+Each export file schedules a cron job to automatically dump view data to S3 every 6 hours. Export files follow the naming convention: `{env}-{view-name}.sql`
+
+**Note:** These S3 buckets are used to feed AWS QuickSight for the aforementioned metrics and analytics.
 
 ### Container Interaction
 

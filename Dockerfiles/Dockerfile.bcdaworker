@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine3.22 AS builder
+FROM golang:1.25.4-alpine3.22 AS builder
 
 ARG GO_FLAGS
 ARG RELEASE_VERSION=main
@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
 
 # ------------------------------------------------------------------------
-FROM golang:1.25.1-alpine3.22
+FROM golang:1.25.4-alpine3.22
 
 RUN apk update upgrade && \
     apk add --no-cache aws-cli
@@ -43,15 +43,15 @@ COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 # configure directories
 RUN mkdir -p \
         /etc/sv/worker/env \
-        /home/bcda/TEMP_FHIR_DIR \
+        /home/bcda/FHIR_TEMP_DIR \
         /var/efs \
     && chown -R bcda:bcda \
         /go/src/github.com/CMSgov/bcda-app \
         /etc/sv/worker/env \
-        /home/bcda/TEMP_FHIR_DIR \
+        /home/bcda/FHIR_TEMP_DIR \
         /var/efs
 
-VOLUME [ "/etc/sv/worker/env", "/var/efs" ]
+VOLUME [ "/etc/sv/worker/env", "/var/efs", "/home/bcda/FHIR_TEMP_DIR" ]
 USER bcda
 
 ENV APP_NAME="worker"

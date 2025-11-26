@@ -110,7 +110,7 @@ jobs:
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Get Workflow Inputs
-        run: echo "${{ toJSON(github.event.inputs) }}"
+        run: echo "${{ toJSON(inputs) }}"
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
         run: |
@@ -158,7 +158,7 @@ jobs:
         run: |
           docker compose -f docker-compose.test.yml build --force-rm postman_test
       - name: Run Postman Tests
-        if: ${{ inputs.postman_tests == 'true' }}
+        if: ${{ inputs.postman_tests }}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
@@ -169,7 +169,7 @@ jobs:
           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
           --global-var maintenanceMode=""
       - name: Run Smoke Tests
-        if: ${{ inputs.smoke_tests == 'true' }}
+        if: ${{ inputs.smoke_tests }}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
@@ -188,7 +188,7 @@ jobs:
           --global-var clientSecret=$CLIENT_SECRET \
           --global-var maintenanceMode=""
       - name: Run v3 Tests
-        if: ${{ inputs.v3_tests == 'true' }}
+        if: ${{ inputs.v3_tests }}
         run: |
           CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
