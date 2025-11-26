@@ -44,7 +44,9 @@ func PutMetricSample(
 
 	client := cloudwatch.NewFromConfig(cfg)
 
-	_, err = client.PutMetricData(ctx, input)
+	_, err = client.PutMetricData(ctx, input, func(o *cloudwatch.Options) {
+		o.Region = constants.DefaultRegion
+	})
 
 	return err
 }
