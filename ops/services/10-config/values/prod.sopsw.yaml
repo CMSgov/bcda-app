@@ -5,7 +5,6 @@
 /bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:7EeZIeiBSx5b3zgSeUrL2n+Lfn98cdTLvtCZAk/UvaUdyZNJaAbaP6lphrZKvQ==,iv:SRFgCdhIgZkEiqzyJCq9afhGXznGFs+ZOwEK2mgPEoI=,tag:O8aEZFFlI0MsJ/t16nAlwg==,type:str]
 #ENC[AES256_GCM,data:7s6hUXTwwxfUyHIEkYSpyVFA,iv:gF7m/pWvfvFJjjLThznWh4GySYHPnJkkaX1YXHPdcL4=,tag:vNBC+bw9CBELC1OXbTHIhg==,type:comment]
 /bcda/${env}/nonsensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: "300"
-/bcda/${env}/nonsensitive/api/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:4VqxCw/zcFZosLS9+8hlHx3oSjP5myYj,iv:vZg8EckXne+5mCPEoOmYVOGLb8TlmobOfbnIC9F9nMg=,tag:2xXoNiZH/uGf+GokzMEJuw==,type:comment]
 /bcda/${env}/nonsensitive/bcda-prod-admin-aco-deny-bucket: bcda-prod-admin-aco-deny-function-20250529213313178000000001
 /bcda/${env}/nonsensitive/bcda-prod-admin-create-aco-bucket: bcda-prod-admin-create-aco-function-20250529213239858800000001
@@ -19,7 +18,6 @@
 #ENC[AES256_GCM,data:7NZed6ybO/hfFZWN,iv:06VAJbgmvAAVxfxPPx1owiJakcsQ/59gwrD4zvlTSTU=,tag:F3zZNhzT1AdJKHLhkQ+PNg==,type:comment]
 /bcda/${env}/nonsensitive/static_site: bcda.cms.gov20250530174014865000000001
 #ENC[AES256_GCM,data:CwFxDgswUPJ/w34Fvv04iWN1qd17,iv:Fyz+tUKAUlQSoXljjkPPdlrVnIzBVlA6rwXKGyPB6no=,tag:eGekeYDR7GDW+s+KP7Dx2Q==,type:comment]
-/bcda/${env}/nonsensitive/worker/QUEUE_LIBRARY: river
 #ENC[AES256_GCM,data:qy1riI95egc3qw+hzl8Gp3EE,iv:GD8QX9TftTc/pSD4MZQ2w63WDFJ0JcF0oR0WAPSlxsQ=,tag:q/SLlH6oyrrqx7GTD/ancw==,type:comment]
 /bcda/nonsensitive/rpms_bucket: bcda-rpms-20250602223806538400000001
 #ENC[AES256_GCM,data:h8J/AdwNg1cowGeSeDcOXH3F7FgUoj+6agQ9iA==,iv:wO+Kz9I/a2WW0A4sIyljrW8AHIPSEQb8HqtWLF/IQzE=,tag:I9wvHXVGmOU993bcAogvXA==,type:comment]
@@ -63,7 +61,6 @@
 /bcda/${env}/sensitive/api/NEW_RELIC_LICENSE_KEY: ENC[AES256_GCM,data:qeY+/xWdmeGfUIOboiEfCJ5Gt6d1uIVMoc4bhh0FbSXD85beg/51vg==,iv:rV6QyNuqzz2oHlOq9WTxBoqovayT8Op7V5pihLNZAU8=,tag:8pftBDI7WVwGlg2r6CJXTw==,type:str]
 /bcda/${env}/sensitive/api/PRIORITY_ACO_IDS: ENC[AES256_GCM,data:efzJAjd55FscbNINehkWeJlr1KFZNfl2iYI90DNs47EDbaNbDr2gBw==,iv:sGK8s3oYpQ23l7w86mxKu3bOElSu5aTBRBw+ljPk7OQ=,tag:ZtaJBsrzdm0pqIBSt4p5Ew==,type:str]
 /bcda/${env}/sensitive/api/PRIORITY_ACO_REG_EX: ENC[AES256_GCM,data:7VuKztEj6ncDnJajvffaLJQsuTgdWiWnOw==,iv:5XaQ8CN9/SrQEpPcxIs2MAfM0H859p2/g0ZE/D38QdU=,tag:Ww4LiN5+kQRfwVyuunOHmA==,type:str]
-/bcda/${env}/sensitive/api/QUEUE_DATABASE_URL: ENC[AES256_GCM,data:jyj0reMkl6W4d61h6bEBvE+xR5xLoEqMlCAobDgwiJ7ZTEQ8UmvDfODOyat8sntTBCQBv+lfC+s93XepFerGIX7krx/LkjboHzPhDoP+qXV+K9tQHcLMGQY=,iv:x4qHh2xRzaw2G0jBkttiTT++JOYpFFLChL3R/m/No2g=,tag:O+GBDSuGMRsbeNSzqPTleQ==,type:str]
 /bcda/${env}/sensitive/api/RUNOUT_CLAIM_THRU_DATE: ENC[AES256_GCM,data:TmwGJ5mAkh9/5A==,iv:dMXYclLEzPATtsE4XMtJPGjgXkL9jXf68Y1NxWJlkgo=,tag:2qKCuExRQVonNe9R+JaPlA==,type:str]
 /bcda/${env}/sensitive/api/SSAS_PUBLIC_URL: ENC[AES256_GCM,data:uCJ45z5llCsbM5fomMQ2XbFCERswP2rggcbuXaTvKWgQRVuOhMmRzH2FASnIAjAxsJIp4v8vdPOG+99bsD3U2GHDZrk9ornaQg==,iv:uWrtpPdaTRdq0yb84qGD8zrcAy4G6kqQnSReszlI05k=,tag:K1dg8mnLekDEFHYYHBMQuQ==,type:str]
 /bcda/${env}/sensitive/api/SSAS_TIMEOUT_MS: ENC[AES256_GCM,data:lcgV3g==,iv:9RHQwykBsKHzoABfbK/28x1edCPod/7cC1eMwVOmyyw=,tag:0ogntvS/R/Qe4zmUcUQRVQ==,type:str]
@@ -84,7 +81,6 @@
 /bcda/${env}/sensitive/PROD_V3_CLIENT_CREDENTIALS: ENC[AES256_GCM,data:1Usm8raVnGd8yTTyFTEHfpFAG+jU79owx4KmL/zMG50RSTjSdNAE+YiI+pUuozIpajtG8np5bXC6a7POwCU/p94YlzKxF35qsMiLHh6w7fwwT6ekPD+Wx3nErbWafwA57GEuZaFeitW2CEqzAmXe6s5OrFL0PqL1ru9KqqHS4c1EllHNnEQ/+jAcgtygjcs9nA3aWycUIQ==,iv:A1wlGUAG0lEMI6+8HeBe6qog0cmgeXlJNKk7u4RjfYU=,tag:eVSImUjc6LcNkqXyIeUwyA==,type:str]
 #ENC[AES256_GCM,data:dESKLPsEX6LfaIvguK6HdAdhaXzXs28=,iv:bnInLjF5yb6GwLNrGOg835X4u29hzhVPLxhQ+81H7zk=,tag:vIiHet5O4AdCrMFMk75ogw==,type:comment]
 /bcda/${env}/sensitive/insights/DATABASE_URL: ENC[AES256_GCM,data:RumPbERQeraavWCicWjcpFCY8j8r4kMm6IYS0cv1mASqd/wxlwmfiiZoumFXWVEoJCs7gqbTJw5h526umu/jJpvMuiFwv9ba8yjDo5ddBwj1Gh4z,iv:qqjH5cWQL6spSgRfyiYj+24mNvyvVotJRYyP84S1Inw=,tag:VZiDj+vjNQO71ODUJVSVmg==,type:str]
-/bcda/${env}/sensitive/insights/QUEUE_DATABASE_URL: ENC[AES256_GCM,data:mbZYJC8TM7HvX0YU3fgnWvvUhFxRqf9AoOcZTqAGF53OP/a4NsMEhowSmifII6dvciOyPaC/XoCiESZmWOJdunlzB5KJJWdU6maqHqi5j60AZ0la+vUi154=,iv:mG23St9w7S0+xWorlneSnXKlqQawkZBuEOWzjTzrom0=,tag:uyqzRgHlelxm0d1qImujzA==,type:str]
 #ENC[AES256_GCM,data:niYgW4JsPlYSOXFMsLj0H7X6t9d/pVFb,iv:e+H0Gv6NhC7Tr52b32u8zAZL/gE65fKyZph80Pqj6Us=,tag:mbwMO6wlSBiookf+bfOhqA==,type:comment]
 /bcda/${env}/sensitive/new-relic/app-id: ENC[AES256_GCM,data:VRNjNGggOESK,iv:J0hueKqQw8DRqwQ9V5XUHmq9cjDJWpTnjUWJMrX/9mw=,tag:9eNX+y9qgtLr9RX6kocn9w==,type:str]
 #ENC[AES256_GCM,data:qbvaC98XgU+y0lbMI/03+t9xEsfpBt7ymAwYAA==,iv:Lbfb9jqIXAV/VzKmQv5To7Xy4JEUjbw0ML5BUZmOe0I=,tag:6+rn2J/ZWdDoFtahvTVNLg==,type:comment]
@@ -174,7 +170,6 @@
 /bcda/${env}/sensitive/worker/FHIR_STAGING_DIR: ENC[AES256_GCM,data:1GYNYn/gT9ZSgLKFUr81Tg==,iv:T3DuqHqeXJapXt1NOkFb6uyapwm2wKw29t9Lx+hSSIs=,tag:uj4nXqOR0UiMZZPO+Dcayg==,type:str]
 /bcda/${env}/sensitive/worker/FHIR_TEMP_DIR: ENC[AES256_GCM,data:V+za39zNDZ0Qf0OVdU6fF197fxGqbdfa,iv:fq8/9Hl5ycj7VzuxdSoPJmkaxO/C6YOzKGsq5mLdmL8=,tag:2qzoAyjxp0ISFDdZGQt+Fg==,type:str]
 /bcda/${env}/sensitive/worker/NEW_RELIC_LICENSE_KEY: ENC[AES256_GCM,data:/402RE9SLWmLQaBA+vTHznqN+Tuzf2I0JrdtwtQHAfA3XBjHyXsrSg==,iv:ykc8RXtTS69macQY/4ClyECopLaKBcqZpDmJw/L0jL4=,tag:8Pl21Sjxvrty6UM0bkq5DQ==,type:str]
-/bcda/${env}/sensitive/worker/QUEUE_DATABASE_URL: ENC[AES256_GCM,data:bQvmIeYhUcD9zuwb6rtM0ZEEcaXT/6Um/Wao69ErF7kCVNZMgp0n/3TmnGxyl16kht5tKzyjB7s5YSIsKSYc9S++4lXEAxI4noc0i9To101xDPl0P/gQXp4=,iv:NxF290hMI6N/i/8mgPEL2LI1stzSyh6JMcrcowXNnCM=,tag:6wkzk8QAGRlbXUUITl5JKg==,type:str]
 /bcda/${env}/sensitive/worker/SLACK_TOKEN: ENC[AES256_GCM,data:39Dbi9CXcz638NPojGoIv76ASBIGsefdOBsqA3NydMFByDPlSgP2uozAL1I3eDh1rS/PzKrCGiI=,iv:SSiqoSFgnbvp2kw6Mk6VYOKnfds19mWMo2dzeilQwxs=,tag:Xgoduwr7ob0fwUscdTKk5A==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_HEALTH_INT_SEC: ENC[AES256_GCM,data:s4g=,iv:aNCFNQTla+RtPeI26HujS/Aya3cTKhmbuTDLElV/Q20=,tag:ICVkp2z5cOE8UDPUT1SayA==,type:str]
 /bcda/${env}/sensitive/worker/WORKER_HEALTH_LOG: ENC[AES256_GCM,data:lyD7J36PLIdOFttQq4gwTe7tZZNqJ6GqM+E=,iv:dtKlNro1YNzEApWhvcxf3TCO6R1uAsCEmMFmGdjoW2Y=,tag:pIC+SsfvzR0115BagUDGsQ==,type:str]
