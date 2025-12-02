@@ -3,7 +3,6 @@ package health
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -55,20 +54,10 @@ func TestHealthCheckerTestSuite(t *testing.T) {
 	suite.Run(t, new(HealthCheckerTestSuite))
 }
 
-// makeTestCombinedServer creates a test server that handles both /token and /introspect endpoints
-// For tests that only need one endpoint, pass appropriate defaults for the other endpoint
-func makeTestCombinedServer(tokenStatusCode int, tokenResponse string, introspectStatusCode int, introspectActive bool) *httptest.Server {
+// makeTestIntrospectServer creates a test server that handles the /introspect endpoint
+func makeTestIntrospectServer(introspectStatusCode int, introspectActive bool) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/token" && r.Method == "POST" {
-			_, _, ok := r.BasicAuth()
-			if !ok && tokenStatusCode == http.StatusOK {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(tokenStatusCode)
-			_, _ = io.WriteString(w, tokenResponse)
-		} else if r.URL.Path == "/introspect" && r.Method == "POST" {
+		if r.URL.Path == "/introspect" && r.Method == "POST" {
 			_, _, ok := r.BasicAuth()
 			if !ok && introspectStatusCode == http.StatusOK {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -97,16 +86,11 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_MissingCredentials() {
 }
 
 func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_Success() {
-	combinedServer := makeTestCombinedServer(
-		http.StatusOK,
-		`{"access_token":"test-token","expires_in":"3600","token_type":"bearer"}`,
-		http.StatusOK,
-		true,
-	)
-	defer combinedServer.Close()
+	server := makeTestIntrospectServer(http.StatusOK, false) // active=false is fine, we just need 200 OK
+	defer server.Close()
 
-	conf.SetEnv(s.T(), "SSAS_URL", combinedServer.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", combinedServer.URL)
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
 	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
 	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
@@ -139,16 +123,11 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_CacheExpired() {
 	s.hc.introspectCache.timestamp = time.Now().Add(-6 * time.Minute) // Expired
 	s.hc.introspectCache.mu.Unlock()
 
-	combinedServer := makeTestCombinedServer(
-		http.StatusOK,
-		`{"access_token":"test-token","expires_in":"3600","token_type":"bearer"}`,
-		http.StatusOK,
-		true,
-	)
-	defer combinedServer.Close()
+	server := makeTestIntrospectServer(http.StatusOK, false)
+	defer server.Close()
 
-	conf.SetEnv(s.T(), "SSAS_URL", combinedServer.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", combinedServer.URL)
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
 	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
 	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
@@ -159,80 +138,12 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_CacheExpired() {
 	assert.Equal(s.T(), "ok", result)
 }
 
-func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_TokenRequestFailure() {
-	server := makeTestCombinedServer(
-		http.StatusUnauthorized,
-		`{"error":"Unauthorized"}`,
-		http.StatusOK,
-		false,
-	)
-	defer server.Close()
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
-	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
-
-	result, ok := s.hc.IsSsasIntrospectOK()
-
-	assert.False(s.T(), ok)
-	assert.Equal(s.T(), "Failed to get BCDA admin token", result)
-}
-
-func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_InvalidTokenResponse() {
-	server := makeTestCombinedServer(
-		http.StatusOK,
-		`invalid json`,
-		http.StatusOK,
-		false,
-	)
-	defer server.Close()
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
-	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
-
-	result, ok := s.hc.IsSsasIntrospectOK()
-
-	assert.False(s.T(), ok)
-	assert.Equal(s.T(), "Failed to get BCDA admin token", result)
-}
-
-func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_EmptyToken() {
-	server := makeTestCombinedServer(
-		http.StatusOK,
-		`{"access_token":"","expires_in":"3600","token_type":"bearer"}`,
-		http.StatusOK,
-		false,
-	)
-	defer server.Close()
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
-	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
-
-	result, ok := s.hc.IsSsasIntrospectOK()
-
-	assert.False(s.T(), ok)
-	assert.Equal(s.T(), "Empty access token in response", result)
-}
-
 func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_IntrospectFailure() {
-	combinedServer := makeTestCombinedServer(
-		http.StatusOK,
-		`{"access_token":"test-token","expires_in":"3600","token_type":"bearer"}`,
-		http.StatusInternalServerError,
-		false,
-	)
-	defer combinedServer.Close()
+	server := makeTestIntrospectServer(http.StatusInternalServerError, false)
+	defer server.Close()
 
-	conf.SetEnv(s.T(), "SSAS_URL", combinedServer.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", combinedServer.URL)
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
 	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
 	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
@@ -284,68 +195,8 @@ func (s *HealthCheckerTestSuite) TestIsRetryableError_ConfigError() {
 	assert.False(s.T(), isRetryableError(err))
 }
 
-func (s *HealthCheckerTestSuite) TestGetTokenWithRetry_Success() {
-	server := makeTestCombinedServer(
-		http.StatusOK,
-		`{"access_token":"test-token","expires_in":"3600","token_type":"bearer"}`,
-		http.StatusOK,
-		false,
-	)
-	defer server.Close()
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-
-	client, err := ssasClient.NewSSASClient()
-	s.Require().NoError(err)
-
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, middleware.CtxTransactionKey, "test")
-	req, err := http.NewRequestWithContext(ctx, "GET", "/", nil)
-	s.Require().NoError(err)
-
-	tokenInfo, err := s.hc.getTokenWithRetry(client, "test-client-id", "test-secret", req)
-
-	assert.NoError(s.T(), err)
-	assert.Contains(s.T(), tokenInfo, "test-token")
-}
-
-func (s *HealthCheckerTestSuite) TestGetTokenWithRetry_NonRetryableError() {
-	server := makeTestCombinedServer(
-		http.StatusUnauthorized,
-		`{"error":"Unauthorized"}`,
-		http.StatusOK,
-		false,
-	)
-	defer server.Close()
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-
-	client, err := ssasClient.NewSSASClient()
-	s.Require().NoError(err)
-
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, middleware.CtxTransactionKey, "test")
-	req, err := http.NewRequestWithContext(ctx, "GET", "/", nil)
-	s.Require().NoError(err)
-
-	tokenInfo, err := s.hc.getTokenWithRetry(client, "test-client-id", "test-secret", req)
-
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), tokenInfo)
-	// Should not retry on 401, so should fail immediately
-}
-
 func (s *HealthCheckerTestSuite) TestIntrospectWithRetry_Success() {
-	server := makeTestCombinedServer(
-		http.StatusOK,
-		`{}`,
-		http.StatusOK,
-		true,
-	)
+	server := makeTestIntrospectServer(http.StatusOK, false) // active=false is fine, we just need 200 OK
 	defer server.Close()
 
 	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
@@ -360,7 +211,8 @@ func (s *HealthCheckerTestSuite) TestIntrospectWithRetry_Success() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, middleware.CtxTransactionKey, "test")
 
-	result, err := s.hc.introspectWithRetry(client, ctx, "test-token")
+	// Use "None" as the token (old approach)
+	result, err := s.hc.introspectWithRetry(client, ctx, "None")
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), result)
@@ -370,16 +222,12 @@ func (s *HealthCheckerTestSuite) TestIntrospectWithRetry_Success() {
 	}
 	err = json.Unmarshal(result, &introspectResp)
 	assert.NoError(s.T(), err)
-	assert.True(s.T(), introspectResp.Active)
+	// "None" will result in active=false, but that's fine - we just need 200 OK response
+	assert.False(s.T(), introspectResp.Active)
 }
 
 func (s *HealthCheckerTestSuite) TestIntrospectWithRetry_NonRetryableError() {
-	server := makeTestCombinedServer(
-		http.StatusOK,
-		`{}`,
-		http.StatusBadRequest,
-		false,
-	)
+	server := makeTestIntrospectServer(http.StatusBadRequest, false)
 	defer server.Close()
 
 	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
@@ -394,7 +242,8 @@ func (s *HealthCheckerTestSuite) TestIntrospectWithRetry_NonRetryableError() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, middleware.CtxTransactionKey, "test")
 
-	result, err := s.hc.introspectWithRetry(client, ctx, "test-token")
+	// Use "None" as the token (old approach)
+	result, err := s.hc.introspectWithRetry(client, ctx, "None")
 
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
@@ -403,16 +252,11 @@ func (s *HealthCheckerTestSuite) TestIntrospectWithRetry_NonRetryableError() {
 
 func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_ConcurrentAccess() {
 	// Test that concurrent access to cache is safe
-	combinedServer := makeTestCombinedServer(
-		http.StatusOK,
-		`{"access_token":"test-token","expires_in":"3600","token_type":"bearer"}`,
-		http.StatusOK,
-		true,
-	)
-	defer combinedServer.Close()
+	server := makeTestIntrospectServer(http.StatusOK, false)
+	defer server.Close()
 
-	conf.SetEnv(s.T(), "SSAS_URL", combinedServer.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", combinedServer.URL)
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
 	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "test-client-id")
 	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "test-secret")
@@ -450,7 +294,7 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_SSASClientCreationFailur
 func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_CacheWithFailedResult() {
 	// Set up cache with failed result
 	s.hc.introspectCache.mu.Lock()
-	s.hc.introspectCache.result = "Failed to get BCDA admin token"
+	s.hc.introspectCache.result = "SSAS introspect check failed"
 	s.hc.introspectCache.ok = false
 	s.hc.introspectCache.timestamp = time.Now()
 	s.hc.introspectCache.mu.Unlock()
@@ -458,5 +302,5 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_CacheWithFailedResult() 
 	result, ok := s.hc.IsSsasIntrospectOK()
 
 	assert.False(s.T(), ok)
-	assert.Equal(s.T(), "Failed to get BCDA admin token", result)
+	assert.Equal(s.T(), "SSAS introspect check failed", result)
 }

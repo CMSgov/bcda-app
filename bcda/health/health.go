@@ -3,8 +3,6 @@ package health
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"net/http"
 	"sync"
 	"time"
 
@@ -133,56 +131,12 @@ func (h HealthChecker) IsSsasIntrospectOK() (result string, ok bool) {
 		return result, false
 	}
 
-	// Create a minimal request with context for GetToken
+	// This verifies SSAS is up and credentials are valid without requiring token generation
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, middleware.CtxTransactionKey, "health-check")
-	req, err := http.NewRequestWithContext(ctx, "GET", "/", nil)
-	if err != nil {
-		result := "Failed to create request"
-		h.introspectCache.result = result
-		h.introspectCache.ok = false
-		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - failed to create request: ", err.Error())
-		return result, false
-	}
-
-	// Get token with retry
-	tokenInfo, err := h.getTokenWithRetry(c, clientID, clientSecret, req)
-	if err != nil {
-		result := "Failed to get BCDA admin token"
-		h.introspectCache.result = result
-		h.introspectCache.ok = false
-		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - failed to get token after retries: ", err.Error())
-		return result, false
-	}
-
-	// Parse token response to extract access_token
-	var tokenResp struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   string `json:"expires_in,omitempty"`
-		TokenType   string `json:"token_type"`
-	}
-	if err := json.Unmarshal([]byte(tokenInfo), &tokenResp); err != nil {
-		result := "Failed to parse token response"
-		h.introspectCache.result = result
-		h.introspectCache.ok = false
-		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - failed to parse token: ", err.Error())
-		return result, false
-	}
-
-	if tokenResp.AccessToken == "" {
-		result := "Empty access token in response"
-		h.introspectCache.result = result
-		h.introspectCache.ok = false
-		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - empty access token")
-		return result, false
-	}
 
 	// Call introspect endpoint with retry
-	_, err = h.introspectWithRetry(c, ctx, tokenResp.AccessToken)
+	_, err = h.introspectWithRetry(c, ctx, "None")
 	if err != nil {
 		result := "SSAS introspect check failed"
 		h.introspectCache.result = result
@@ -228,43 +182,6 @@ func isRetryableError(err error) bool {
 		// For other errors (like network errors), retry
 		return true
 	}
-}
-
-// getTokenWithRetry attempts to get a token with exponential backoff retry
-func (h HealthChecker) getTokenWithRetry(c *ssasClient.SSASClient, clientID, clientSecret string, req *http.Request) (string, error) {
-	eb := backoff.NewExponentialBackOff()
-	eb.InitialInterval = introspectRetryInitial
-	eb.MaxInterval = 2 * time.Second
-	eb.Multiplier = 2.0
-	b := backoff.WithMaxRetries(eb, introspectRetryCount)
-
-	var tokenInfo string
-	var lastErr error
-
-	err := backoff.RetryNotify(func() error {
-		var err error
-		tokenInfo, err = c.GetToken(ssasClient.Credentials{
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-		}, *req)
-		if err != nil {
-			lastErr = err
-			if !isRetryableError(err) {
-				// Don't retry non-retryable errors
-				return backoff.Permanent(err)
-			}
-			return err
-		}
-		return nil
-	}, b, func(err error, d time.Duration) {
-		log.API.Warnf("Health check: SSAS introspect - token request failed, retrying in %s: %s", d.String(), err.Error())
-	})
-
-	if err != nil {
-		return "", lastErr
-	}
-
-	return tokenInfo, nil
 }
 
 // introspectWithRetry attempts to call introspect with exponential backoff retry
