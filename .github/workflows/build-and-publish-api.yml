@@ -84,7 +84,7 @@ jobs:
         run: echo "ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-${{ env.RELEASE_ENV }}-api" >> $GITHUB_ENV
       - name: Build BCDA
         # Dont release main to prod, also make sure 'latest' in prod aligns with the latest release tag
-        # if: ${{ env.RELEASE_ENV == 'dev' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
+        # if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
           docker build \
@@ -93,7 +93,7 @@ jobs:
             -t ${{ env.ECR_URL }}:${{ inputs.release_version || 'main' }} \
             -f Dockerfiles/Dockerfile.bcda .
       - name: Push to ECR
-        # if: ${{ env.RELEASE_ENV == 'dev' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
+        # if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
