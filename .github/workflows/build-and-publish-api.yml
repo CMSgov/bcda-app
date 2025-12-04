@@ -66,6 +66,8 @@ jobs:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
+      - name: Get Workflow Inputs
+        run: echo "${{ toJSON(inputs) }}"
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
         run: |
