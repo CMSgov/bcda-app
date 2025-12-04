@@ -94,8 +94,8 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            SONAR_HOST_URL=/sonarqube/url
-            SONAR_TOKEN=/sonarqube/token
+            SONAR_HOST_URL=/cdap/nonsensitive/sonarqube/url
+            SONAR_TOKEN=/cdap/sensitive/sonarqube/token
       - name: Checkout code
         uses: actions/checkout@v4
         with:
