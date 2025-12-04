@@ -128,19 +128,19 @@ func (s *service) FindOldCCLFFile(ctx context.Context, cmsID string, since time.
 	// - and they request all beneficiary data “since January 1st, 2023"
 	// - any beneficiaries added in 2023 are considered "new."
 	//
-	oldFileUpperBound := since
+	oldFileTime := since
 
-	// If the _since parameter is more recent than the latest CCLF file timestamp, set the upper bound
-	// for the older file to be prior to the newest file's timestamp.
+	// If the _since parameter is more recent than the latest CCLF file timestamp, e
+	// set the old file's time to be older than the newest file's timestamp.
 	if !since.IsZero() && cclfTimestamp.Sub(since) < 0 {
-		oldFileUpperBound = cclfTimestamp.Add(-1 * time.Second)
+		oldFileTime = cclfTimestamp.Add(-1 * time.Second)
 	}
 
 	cclfFileOld, err := s.GetLatestCCLFFile(
 		ctx,
 		cmsID,
 		time.Time{},
-		oldFileUpperBound,
+		oldFileTime,
 		models.FileTypeDefault,
 	)
 	if err != nil {
@@ -580,20 +580,21 @@ func IsSupportedACO(cmsID string) bool {
 		guide   = `^GUIDE-\d{5}$`
 		test    = `^TEST\d{3}$`
 		sandbox = `^SBX[A-Z]{2}\d{3}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)`
+		iot     = `^IOTA\d{3}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)|(` + iot + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
 }
 
-func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, constants.CCLF8FileNum, constants.ImportComplete, lowerBound, upperBound, fileType)
+func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, constants.CCLF8FileNum, constants.ImportComplete, earlierTime, laterTime, fileType)
 	if err != nil {
 		return nil, err
 	}
 
 	if cclfFile == nil {
-		return nil, CCLFNotFoundError{8, cmsID, fileType, time.Time{}}
+		return nil, CCLFNotFoundError{8, cmsID, fileType, earlierTime}
 	}
 
 	return cclfFile, nil

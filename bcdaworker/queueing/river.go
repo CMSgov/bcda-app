@@ -18,26 +18,18 @@ package queueing
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"time"
 
-	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/robfig/cron/v3"
-	sloglogrus "github.com/samber/slog-logrus"
-	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 )
 
@@ -74,7 +66,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		),
 	}
 
-	logger := getSlogLogger()
+	logger := log.NewSlogLogger(conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker")
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -83,6 +75,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		// TODO: whats an appropriate timeout?
 		JobTimeout:   -1, // default for river is 1m, using -1 for no timeout
 		Logger:       logger,
+		MaxAttempts:  10, // This is a few hours worth of retries
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,
 	})
@@ -107,94 +100,13 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 	return q
 }
 
-// River requires a slog.Logger for logging, this function converts logrus to slog
-// Much of this function is pulled from logger.go
-func getSlogLogger() *slog.Logger {
-	logrusLogger := logrus.New()
-
-	outputFile := conf.GetEnv("BCDA_WORKER_ERROR_LOG")
-	if outputFile != "" {
-		// #nosec G302 -- 0640 permissions required for Splunk ingestion
-		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
-			logrusLogger.SetOutput(file)
-		} else {
-			logrusLogger.Infof("Failed to open output file %s. Will use stderr. %s",
-				outputFile, err.Error())
-		}
-	}
-	// Disable the HTML escape so we get the raw URLs
-	logrusLogger.SetFormatter(&logrus.JSONFormatter{
-		DisableHTMLEscape: true,
-		TimestampFormat:   time.RFC3339Nano,
-	})
-	logrusLogger.SetReportCaller(true)
-
-	logrusLogger.WithFields(logrus.Fields{
-		"application": "worker",
-		"environment": conf.GetEnv("DEPLOYMENT_TARGET"),
-		"version":     constants.Version,
-	})
-
-	return slog.New(sloglogrus.Option{Logger: logrusLogger}.NewLogrusHandler())
-}
-
 func (q queue) StopRiver() {
 	if err := q.client.Stop(q.ctx); err != nil {
 		panic(err)
 	}
 }
 
-// TODO: once we remove que library and upgrade to pgx5 we can move the below functions into manager
-// Update the AWS Cloudwatch Metric for job queue count
-func updateJobQueueCountCloudwatchMetric(db *sql.DB, log logrus.FieldLogger) {
-	cloudWatchEnv := conf.GetEnv("DEPLOYMENT_TARGET")
-	if cloudWatchEnv != "" {
-		sampler, err := metrics.NewSampler("BCDA", "Count")
-		if err != nil {
-			fmt.Println("Warning: failed to create new metric sampler...")
-		} else {
-			err := sampler.PutSample("JobQueueCount", getQueueJobCount(db, log), []metrics.Dimension{
-				{Name: "Environment", Value: cloudWatchEnv},
-			})
-			if err != nil {
-				log.Error(err)
-			}
-		}
-	}
-}
-
-func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
-	row := db.QueryRow(`SELECT COUNT(*) FROM river_job WHERE state NOT IN ('completed', 'cancelled', 'discarded');`)
-
-	var count int
-	if err := row.Scan(&count); err != nil {
-		log.Error(err)
-	}
-
-	return float64(count)
-}
-
 func getCutOffTime() time.Time {
 	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
 	return cutoff
-}
-
-func getAWSParams() (string, error) {
-	env := conf.GetEnv("ENV")
-
-	if env == "local" {
-		return conf.GetEnv("workflow-alerts"), nil
-	}
-
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
-	if err != nil {
-		return "", err
-	}
-
-	slackToken, err := bcdaaws.GetParameter(bcdaSession, "/slack/token/workflow-alerts")
-	if err != nil {
-		return slackToken, err
-	}
-
-	return slackToken, nil
 }

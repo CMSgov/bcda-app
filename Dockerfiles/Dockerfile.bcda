@@ -1,6 +1,7 @@
-FROM golang:1.25.1-alpine3.22 AS builder
+FROM golang:1.25.4-alpine3.22 AS builder
 
 ARG GO_FLAGS
+ARG RELEASE_VERSION=main
     
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
@@ -17,34 +18,42 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go install "$GO_FLAGS"
+    go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
 
 # ------------------------------------------------------------------------
-FROM golang:1.25.1-alpine3.22
+FROM golang:1.25.4-alpine3.22
 
-RUN addgroup -S -g 1010 bcda && adduser -S -G bcda -u 1010 bcda
+RUN addgroup -S -g 1200 bcda && adduser -S -G bcda -u 1100 bcda && \
+    apk update upgrade --no-cache && \
+    apk add --no-cache aws-cli
 
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
-RUN [ "$ENVIRONMENT" != "development" ] || apk update upgrade && \
-    apk add bash && \
+RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
     go install github.com/go-delve/delve/cmd/dlv@latest
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
-COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/conf/configs/ /go/src/github.com/CMSgov/bcda-app/conf/configs/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/bin/ /go/bin/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 
 # configure directories
-RUN mkdir /var/fhir && chown -R bcda:bcda \
-    /go/src/github.com/CMSgov/bcda-app \
-    /var/fhir \
-    /var/log 
-
-USER bcda
+RUN mkdir -p \
+        /etc/sv/api/env \
+        /var/efs \
+    && chown -R bcda:bcda \
+        /go/src/github.com/CMSgov/bcda-app \
+        /etc/sv/api/env \
+        /var/efs
 
 EXPOSE 3000 3001
+VOLUME [ "/etc/sv/api/env", "/var/efs" ]
+USER bcda
 
-ENTRYPOINT ["bcda"]
-CMD ["start-api"]
+ENV APP_NAME="api"
+
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["bcda", "start-api"]

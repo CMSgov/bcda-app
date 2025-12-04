@@ -20,31 +20,24 @@ import (
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 func main() {
-	// Localstack is a local-development server that mimics AWS. The endpoint variable
-	// should only be set in local development to avoid making external calls to a real AWS account.
-	if os.Getenv("LOCAL_STACK_ENDPOINT") != "" {
-		res, err := handleOptOutImport(database.Connect(), os.Getenv("BFD_BUCKET_ROLE_ARN"), os.Getenv("BFD_S3_IMPORT_PATH"))
-		if err != nil {
-			fmt.Printf("Failed to run opt out import: %s\n", err.Error())
-		} else {
-			fmt.Println(res)
-		}
-	} else {
-		lambda.Start(optOutImportHandler)
-	}
+	lambda.Start(optOutImportHandler)
 }
 
 func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-	db := database.Connect()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
-
 	if err != nil {
 		logger.Errorf("Failed to parse S3 event: %v", err)
 		return "", err
@@ -53,16 +46,44 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 		return "", nil
 	}
 
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		logger.Error("Failed to load Default Config")
+		return "", err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
+	if err != nil {
+		logger.Errorf("error getting param: %+v", err)
+		return "", err
+	}
+	stsClient := sts.NewFromConfig(cfg)
+	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
+
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.Credentials = appCreds
+	})
+
+	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	if err != nil {
+		logger.Error("failed to load DB URL")
+		return "", err
+	}
+
+	err = os.Setenv("DATABASE_URL", dbURL)
+	if err != nil {
+		logger.Errorf("error setting dbURL env var: %+v", err)
+		return "", err
+	}
+
+	db := database.Connect()
+
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
-			s3AssumeRoleArn, err := loadBfdS3Params()
-			if err != nil {
-				return "", err
-			}
-
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
-			return handleOptOutImport(db, s3AssumeRoleArn, dir)
+			return handleOptOutImport(ctx, db, s3Client, dir)
 		}
 	}
 
@@ -70,23 +91,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	return "", nil
 }
 
-func loadBfdS3Params() (string, error) {
-	env := conf.GetEnv("ENV")
-
-	bcdaSession, err := bcdaaws.NewSession("", os.Getenv("LOCAL_STACK_ENDPOINT"))
-	if err != nil {
-		return "", err
-	}
-
-	param, err := bcdaaws.GetParameter(bcdaSession, fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env))
-	if err != nil {
-		return "", err
-	}
-
-	return param, nil
-}
-
-func handleOptOutImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (string, error) {
+func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client *s3.Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -94,9 +99,8 @@ func handleOptOutImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (strin
 
 	importer := suppression.OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
-			Logger:        logger,
-			Endpoint:      os.Getenv("LOCAL_STACK_ENDPOINT"),
-			AssumeRoleArn: s3AssumeRoleArn,
+			Client: s3Client,
+			Logger: logger,
 		},
 		Saver: &suppression.BCDASaver{
 			Repo: repo,
@@ -105,7 +109,7 @@ func handleOptOutImport(db *sql.DB, s3AssumeRoleArn, s3ImportPath string) (strin
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 	}
 
-	s, f, sk, err := importer.ImportSuppressionDirectory(s3ImportPath)
+	s, f, sk, err := importer.ImportSuppressionDirectory(ctx, s3ImportPath)
 	result := fmt.Sprintf("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 	logger.Info(result)
 	return result, err

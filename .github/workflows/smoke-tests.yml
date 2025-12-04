@@ -48,6 +48,11 @@ on:
         required: true
         type: boolean
         default: true
+      v3_tests:
+        description: Flag which indicates if v3 integration tests should be run
+        required: true
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_version:
@@ -80,14 +85,19 @@ on:
         required: true
         type: boolean
         default: true
+      v3_tests:
+        description: Flag which indicates if v3 integration tests should be run
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
   contents: read
 
 env:
-  COMPOSE_INTERACTIVE_NO_CLI: 1
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
+  COMPOSE_INTERACTIVE_NO_CLI: 1
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
 jobs:
@@ -99,6 +109,8 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
+      - name: Get Workflow Inputs
+        run: echo "${{ toJSON(inputs) }}"
       - name: Set creds (non-dev)
         if: ${{ env.TEST_ACO == 'dev' }}
         run: |
@@ -122,12 +134,17 @@ jobs:
             CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
+            V3_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_v3_client_credentials
       - name: checkout bcda-ssas
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ssas-app
           ref: ${{ inputs.ssas_release_version || 'main' }}
+      - name: Build SSAS Postman Container
+        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
+        run: |
+          docker build -t postman_test -f ./Dockerfiles/Dockerfile.postman_test .
       - name: Run SSAS tests
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
@@ -137,51 +154,50 @@ jobs:
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Install Ansible
+      - name: Build API Postman Container
         run: |
-          sudo yum update -y
-          sudo yum install python3-pip -y
-          sudo dnf install ansible-8.3.0 -y      
-      - name: Decrypt secrets
-        env:
-          VAULT_PW: ${{ secrets.VAULT_PW }}
-        run: |
-          echo "$VAULT_PW" > .vault_password
-          bash ops/secrets --decrypt
-          mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Build the stack
-        run: |
-          make docker-bootstrap
+          docker compose -f docker-compose.test.yml build --force-rm postman_test
       - name: Run Postman Tests
-        if: ${{inputs.postman_tests}} == 'true'
+        if: ${{ inputs.postman_tests }}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
-           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
-           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
-           --global-var v2Disabled=false \
-           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-           --global-var maintenanceMode=""
+          -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
+          --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
+          --global-var v2Disabled=false \
+          --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
+          --global-var maintenanceMode=""
       - name: Run Smoke Tests
-        if: ${{inputs.smoke_tests}} == 'true'
+        if: ${{ inputs.smoke_tests }}
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
-            -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
-            --global-var clientId=$CLIENT_ID \
-            --global-var clientSecret=$CLIENT_SECRET \
-            --global-var maintenanceMode=""
+          docker compose -f docker-compose.test.yml run --rm  postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
+          -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
+          --global-var clientId=$CLIENT_ID \
+          --global-var clientSecret=$CLIENT_SECRET \
+          --global-var maintenanceMode=""
       - name: Run PACA Tests
         run: |
           CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
-            -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
-            --global-var clientId=$CLIENT_ID \
-            --global-var clientSecret=$CLIENT_SECRET \
-            --global-var maintenanceMode=""
+          -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
+          --global-var clientId=$CLIENT_ID \
+          --global-var clientSecret=$CLIENT_SECRET \
+          --global-var maintenanceMode=""
+      - name: Run v3 Tests
+        if: ${{ inputs.v3_tests }}
+        run: |
+          CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
+           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
+           --global-var clientId=${CLIENT_ID} \
+           --global-var clientSecret=${CLIENT_SECRET} \
+           --global-var v3Disabled=false \
+           --global-var maintenanceMode=""
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0

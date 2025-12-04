@@ -19,6 +19,7 @@ import (
 	"github.com/riverqueue/river/rivertest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -36,6 +37,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
@@ -127,13 +129,15 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		respCode           int
 		apiVersion         string
 		runoutAttributions bool
+		expectedMessage    string
 	}{
-		{"Successful", nil, http.StatusAccepted, apiVersionOne, true},
-		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true},
-		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false},
-		{"FindCCLFFiles error v2", DatabaseError{}, http.StatusInternalServerError, apiVersionTwo, false},
-		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true},
-		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true},
+		{"Successful", nil, http.StatusAccepted, apiVersionOne, true, ""},
+		{"Successful v2", nil, http.StatusAccepted, apiVersionTwo, true, ""},
+		{"FindCCLFFiles error", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "failed to start job; attribution file not found"},
+		{"FindCCLFFiles error v2", DatabaseError{}, http.StatusInternalServerError, apiVersionTwo, false, ""},
+		{constants.DefaultError, QueueError{}, http.StatusInternalServerError, apiVersionOne, true, ""},
+		{constants.DefaultError + " v2", QueueError{}, http.StatusInternalServerError, apiVersionTwo, true, ""},
+		{"Expired runout data", CCLFNotFoundOperationOutcomeError{}, http.StatusNotFound, apiVersionOne, false, "runout data is no longer available. Runout data expires 180 days after ingestion"},
 	}
 
 	for _, tt := range tests {
@@ -147,8 +151,13 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			enqueuer := queueing.NewMockEnqueuer(s.T())
 			h.Enq = enqueuer
 
+			// Set up cutoff time for expired runout test case
+			cutoffTime := time.Time{}
+			if _, ok := tt.errToReturn.(CCLFNotFoundOperationOutcomeError); ok && tt.name == "Expired runout data" {
+				cutoffTime = time.Now().Add(-200 * 24 * time.Hour) // 200 days ago (past 180 day limit)
+			}
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
-			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(cutoffTime, constants.GetExistingBenes)
 
 			switch tt.errToReturn {
 			case nil:
@@ -179,7 +188,11 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			if tt.errToReturn == nil {
 				assert.NotEmpty(t, resp.Header.Get("Content-Location"))
 			} else {
-				assert.Contains(t, string(body), tt.errToReturn.Error())
+				if tt.expectedMessage != "" {
+					assert.Contains(t, string(body), tt.expectedMessage)
+				} else {
+					assert.Contains(t, string(body), tt.errToReturn.Error())
+				}
 			}
 		})
 	}
@@ -602,8 +615,6 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		// other errors
 		{"Bad Authentication", "D0000", []string{"Claim"}, http.StatusUnauthorized, acoD, false, false, false, true},
 		{"Error Enqueing", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, true, false, true},
-		// no longer running in transaction, test no longer relevant
-		// {"Database closed", "A0000", []string{"Claim", "Patient"}, http.StatusInternalServerError, acoA, true, false, true, false},
 	}
 
 	for _, test := range tests {
@@ -1042,12 +1053,43 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 
 }
 
-func TestBulkRequest_Integration(t *testing.T) {
+type IntegrationRequestsTestSuite struct {
+	suite.Suite
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	dbContainer db.TestDatabaseContainer
+}
+
+func TestIntegrationRequestsTestSuite(t *testing.T) {
+	suite.Run(t, new(IntegrationRequestsTestSuite))
+}
+
+func (s *IntegrationRequestsTestSuite) SetupSuite() {
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
+func (s *IntegrationRequestsTestSuite) SetupSubTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+}
+
+func (s *IntegrationRequestsTestSuite) TearDownSubTest() {
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+}
+
+func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 	acoA := &service.ACOConfig{
 		Model:              "Model A",
 		Pattern:            "A\\d{4}",
 		PerfYearTransition: "01/01",
-		LookbackYears:      10,
+		LookbackYears:      2,
 		Disabled:           false,
 		Data:               []string{"adjudicated"},
 	}
@@ -1060,46 +1102,55 @@ func TestBulkRequest_Integration(t *testing.T) {
 		"ClaimResponse":        {Adjudicated: false, PartiallyAdjudicated: true},
 	}
 
-	client.SetLogger(log.API) // Set logger so we don't get errors later
-
-	db := database.Connect()
-	pool := database.ConnectPool()
-	h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, db, pool)
-
-	driver := riverpgxv5.New(pool)
-	// start from clean river_job slate
-	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-	assert.Nil(t, err)
-
-	acoID := "A0002"
-	repo := postgres.NewRepository(db)
-
-	// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
-	repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
-	_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{                   // nolint:errcheck
-		Name:            "testfilename",
-		ACOCMSID:        acoID,
-		PerformanceYear: utils.GetPY(),
-		Type:            models.FileTypeDefault,
-		Timestamp:       (time.Now()),
-		CCLFNum:         constants.CCLF8FileNum,
-		ImportStatus:    constants.ImportComplete,
-	})
-
-	jsonBytes, _ := json.Marshal("{}")
-
 	tests := []struct {
 		name         string
 		cmsId        string
 		resources    []string
+		reqType      constants.DataRequestType
+		since        time.Time
 		expectedCode int
 		acoConfig    *service.ACOConfig
+		jobCreated   bool
 	}{
-		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, http.StatusAccepted, acoA},
+		{"Test Insert PrepareJob", "A0002", []string{"Patient"}, constants.DefaultRequest, time.Now().AddDate(-1, 0, 0), http.StatusAccepted, acoA, true},
+		{"Test Invalid Since", "A0002", []string{"Patient"}, constants.RetrieveNewBeneHistData, time.Now().AddDate(0, -6, 0), http.StatusNotFound, acoA, false},
+		{"Test Valid Since", "A0002", []string{"Patient"}, constants.RetrieveNewBeneHistData, time.Now().AddDate(0, -2, 0), http.StatusAccepted, acoA, true},
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		s.Run(test.name, func() {
+
+			client.SetLogger(log.API) // Set logger so we don't get errors later
+			h := NewHandler(dataTypeMap, v2BasePath, apiVersionTwo, s.db, s.pool)
+			driver := riverpgxv5.New(s.pool)
+			acoID := "A0002"
+			repo := postgres.NewRepository(s.db)
+
+			// our DB is not always cleaned up properly so sometimes this record exists when this test runs and sometimes it doesnt
+			repo.CreateACO(context.Background(), models.ACO{CMSID: &acoID, UUID: uuid.NewUUID()}) // nolint:errcheck
+			_, err := repo.CreateCCLFFile(context.Background(), models.CCLFFile{                  // nolint:errcheck
+				Name:            "testfilename",
+				ACOCMSID:        acoID,
+				PerformanceYear: utils.GetPY(),
+				Type:            models.FileTypeDefault,
+				Timestamp:       (time.Now()),
+				CCLFNum:         constants.CCLF8FileNum,
+				ImportStatus:    constants.ImportComplete,
+			})
+			require.NoError(s.T(), err)
+
+			_, err = repo.CreateCCLFFile(context.Background(), models.CCLFFile{ // nolint:errcheck
+				Name:            "testfilename2",
+				ACOCMSID:        acoID,
+				PerformanceYear: utils.GetPY(),
+				Type:            models.FileTypeDefault,
+				Timestamp:       (time.Now().AddDate(0, -3, 0)),
+				CCLFNum:         constants.CCLF8FileNum,
+				ImportStatus:    constants.ImportComplete,
+			})
+			require.NoError(s.T(), err)
+
+			jsonBytes, _ := json.Marshal("{}")
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
 			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
@@ -1110,21 +1161,21 @@ func TestBulkRequest_Integration(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
-				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+				Since:         test.since,
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
 			}))
 
 			ctx := context.Background()
-			h.bulkRequest(w, r, constants.DefaultRequest)
-			jobs := rivertest.RequireManyInserted(ctx, t, driver, []rivertest.ExpectedJob{
-				{Args: worker_types.PrepareJobArgs{}, Opts: nil},
-			})
-			assert.Greater(t, len(jobs), 0)
-			_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
-			if err != nil {
-				t.Log("failed to cleanup river jobs during tests")
+			h.bulkRequest(w, r, test.reqType)
+			assert.Equal(s.T(), test.expectedCode, w.Code)
+			if test.jobCreated == true {
+				jobs := rivertest.RequireManyInserted(ctx, s.T(), driver, []rivertest.ExpectedJob{
+					{Args: worker_types.PrepareJobArgs{}, Opts: nil},
+				})
+				assert.Greater(s.T(), len(jobs), 0)
 			}
+
 		})
 	}
 }

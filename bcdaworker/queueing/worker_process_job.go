@@ -11,6 +11,7 @@ import (
 	"github.com/ccoveille/go-safecast"
 	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
+	"github.com/sirupsen/logrus"
 )
 
 type JobWorker struct {
@@ -28,15 +29,14 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 	}
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx, _ = log.SetCtxLogger(ctx, "job_id", jobID)
-	ctx, logger := log.SetCtxLogger(ctx, "transaction_id", rjob.Args.TransactionID)
+	ctx, logger := log.SetLoggerFields(ctx, logrus.Fields{"transaction_id": rjob.Args.TransactionID, "job_id": jobID})
 
 	// TODO: use pgxv5 when available
 	mainDB := w.db
 	workerInstance := worker.NewWorker(mainDB)
 	repo := postgres.NewRepository(mainDB)
 
-	defer updateJobQueueCountCloudwatchMetric(mainDB, logger)
+	defer updateJobQueueCountCloudwatchMetric(ctx, mainDB, logger)
 
 	exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
 		WorkerInstance: workerInstance,

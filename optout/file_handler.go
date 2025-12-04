@@ -2,6 +2,7 @@ package optout
 
 import (
 	"bufio"
+	"context"
 )
 
 // File handlers can load opt out files from a given source and can optionally clean them up afterwards.
@@ -11,10 +12,10 @@ type OptOutFileHandler interface {
 	//
 	// Return a list of metadata parsed from valid filenames,
 	// and the number of files skipped due to unknown filenames.
-	LoadOptOutFiles(path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error)
+	LoadOptOutFiles(ctx context.Context, path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error)
 	// Cleanup any opt out files that were successfully imported, and handle
 	// any files that failed to be imported.
-	CleanupOptOutFiles(suppressList []*OptOutFilenameMetadata) error
+	CleanupOptOutFiles(ctx context.Context, suppressList []*OptOutFilenameMetadata) error
 	// Open a given opt out file, specified by the metadata struct.
-	OpenFile(metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error)
+	OpenFile(ctx context.Context, metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error)
 }

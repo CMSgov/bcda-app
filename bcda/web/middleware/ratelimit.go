@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type RateLimitMiddleware struct {
@@ -37,12 +38,13 @@ func NewRateLimitMiddleware(config *service.Config, db *sql.DB) RateLimitMiddlew
 
 func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+		ctx := r.Context()
+		ad, ok := ctx.Value(auth.AuthDataContextKey).(auth.AuthData)
 		if !ok {
 			panic("AuthData should be set before calling this handler")
 		}
 
-		rp, ok := GetRequestParamsFromCtx(r.Context())
+		rp, ok := GetRequestParamsFromCtx(ctx)
 		if !ok {
 			panic("RequestParameters should be set before calling this handler")
 		}
@@ -55,15 +57,18 @@ func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler
 		acoID := uuid.Parse(ad.ACOID)
 
 		if shouldRateLimit(m.config.RateLimitConfig, ad.CMSID) {
-			pendingAndInProgressJobs, err := m.repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
+			pendingAndInProgressJobs, err := m.repository.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
 			if err != nil {
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
-				rw.Exception(r.Context(), w, http.StatusInternalServerError, responseutils.InternalErr, "")
+				ctx, _ = log.WriteErrorWithFields(
+					ctx,
+					fmt.Sprintf("%s: Failed to lookup pending and in-progress jobs %+v", responseutils.InternalErr, err),
+					logrus.Fields{"resp_status": http.StatusInternalServerError},
+				)
+				rw.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 				return
 			}
 			if len(pendingAndInProgressJobs) > 0 {
-				if m.hasDuplicates(r.Context(), pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
+				if m.hasDuplicates(ctx, pendingAndInProgressJobs, rp.ResourceTypes, rp.Version, rp.RequestURL) {
 					w.Header().Set("Retry-After", strconv.Itoa(m.retrySeconds))
 					w.WriteHeader(http.StatusTooManyRequests)
 					return

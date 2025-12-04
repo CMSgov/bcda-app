@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 	"github.com/google/fhir/go/fhirversion"
@@ -43,8 +44,8 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 }
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	rw := NewFhirResponseWriter()
-	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
-	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
+	logger := testUtils.GetLogger(log.API)
+	ctx := log.NewStructuredLoggerEntry(logger, context.Background())
 	rw.Exception(ctx, s.rr, http.StatusAccepted, responseutils.RequestErr, "TestResponseWriterExcepton")
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
@@ -57,7 +58,6 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
-
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {

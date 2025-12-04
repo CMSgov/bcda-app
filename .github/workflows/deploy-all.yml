@@ -163,18 +163,36 @@ jobs:
       - name: Install tenv
         uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
       - name: Init, Plan OpenTofu
+        # FARGATE FIXUP: adding fargate vars to tf plan
+        if: ${{ env.RELEASE_ENV == 'dev' }}
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
-          touch bcda-release-api-worker-vars.tfvars
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
             -var 'ami_id=${{ env.BCDA_AMI }}' \
             -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
             -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
-            -var-file=bcda-release-api-worker-vars.tfvars \
+            -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
+            -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
+            -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
+            -var 'fargate_switch={start_ec2=false, start_fargate=true, fargate_traffic=100}' \
+            -out 'bcda-release-api-worker.tfplan'
+      - name: Init, Plan OpenTofu
+        # FARGATE FIXUP: adding fargate vars to tf plan
+        if: ${{ env.RELEASE_ENV != 'dev' }}
+        working-directory: terraform/${{ env.RELEASE_ENV }}
+        run: |
+          IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
+          export APP_DB_PW=${STRS[2]}
+          tofu init
+          tofu plan \
+            -var 'env=${{ env.RELEASE_ENV }}' \
+            -var 'ami_id=${{ env.BCDA_AMI }}' \
+            -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
+            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -186,6 +204,13 @@ jobs:
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
           export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
+      - name: Refresh Deployments
+        # FARGATE FIXUP:
+        if: ${{ env.RELEASE_ENV == 'dev' }}
+        run: |
+          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
+          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
+          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
       - name: Upload notify script
         uses: actions/upload-artifact@v4
         with:
@@ -256,7 +281,7 @@ jobs:
             export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
             # Was unable to escape the backticks (`), creating this function seems to get around that
             get_image_version () {
-                aws ec2 describe-images --region us-east-1 --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
+                aws ec2 describe-images --region ${{ vars.AWS_REGION }} --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
             }
             export BCDA_WORKER_VERSION=`get_image_version`
 
@@ -272,6 +297,36 @@ jobs:
               break
             fi
           done
+  
+  # # FARGATE FIXUP:
+  # This needs the 'image_tag' tag to be added to each service before this will work
+  # verify_worker_version:
+  #   needs: [deploy]
+  #   runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+  #   environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
+  #   steps:
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ vars.AWS_REGION }}
+  #         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+  #     - run: |
+  #         TRY=1
+
+  #         until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+  #           WORKER_VERSION=`aws ecs --resource-arn list-tags-for-resource arn:aws:ecs:${{ vars.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:service/bcda-${{ env.RELEASE_ENV }}/bcda-${{ env.RELEASE_ENV }}-api --query "tags[?key=='image_tag'].value | [0]" --output text`
+
+  #           if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+  #             echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
+  #             TRY=$(($TRY + 1))
+  #             if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+  #               exit 1
+  #             else
+  #               sleep $VERIFICATION_SLEEP
+  #             fi
+  #           else
+  #             break
+  #           fi
+  #         done
 
   smoketests:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
@@ -283,6 +338,7 @@ jobs:
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
       postman_tests: true
+      v3_tests: false
     secrets: inherit
 
   notify_newrelic:

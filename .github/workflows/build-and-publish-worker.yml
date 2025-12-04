@@ -1,0 +1,58 @@
+name: Build and publish Worker
+
+on:
+  workflow_call:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (or branch name)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build_and_publish:
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    strategy:
+      matrix:
+        vars:
+          - account_id: NON_PROD_ACCOUNT_ID
+            role_to_assume: bcda-dev-github-actions
+          - account_id: PROD_ACCOUNT_ID
+            role_to_assume: bcda-prod-github-actions
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.release_version }}
+      - name: Set ECR_URL
+        run: echo "ECR_URL=${{ secrets[matrix.vars.account_id] }}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker" >> $GITHUB_ENV
+      - name: Build Worker
+        # Dont release main to prod, also make sure 'latest' in prod aligns with the latest release tag
+        # if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' }}
+        run: |
+          docker build \
+            --build-arg RELEASE_VERSION=${{ inputs.release_version || 'main' }} \
+            -t ${{ env.ECR_URL }}:latest \
+            -t ${{ env.ECR_URL }}:${{ inputs.release_version || 'main' }} \
+            -f Dockerfiles/Dockerfile.bcdaworker .
+      - name: Push to ECR
+        # if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
+        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' }}
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
+          docker image push '${{ env.ECR_URL }}' -a

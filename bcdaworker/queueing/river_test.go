@@ -40,6 +40,14 @@ func TestWork_Integration(t *testing.T) {
 	// Set up the logger since we're using the real client
 	client.SetLogger(logger)
 
+	env := conf.GetEnv("DEPLOYMENT_TARGET")
+	conf.SetEnv(t, "DEPLOYMENT_TARGET", uuid.New())
+	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", env) })
+
+	oldStdOut := conf.GetEnv("LOG_TO_STD_OUT")
+	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
+	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldStdOut) })
+
 	defer func(payload, staging string) {
 		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
 		conf.SetEnv(t, "FHIR_STAGING_DIR", staging)
@@ -128,6 +136,9 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	var logger = logrus.New()
 	client.SetLogger(logger)
 
+	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
+	t.Cleanup(func() { cleanupParam1() })
+
 	// Create mock objects
 	mockCleanupJob := new(MockCleanupJob)
 	mockArchiveExpiring := new(MockArchiveExpiring)
@@ -192,24 +203,6 @@ func TestGetCutOffTime(t *testing.T) {
 	expectedCutoff = time.Now().Add(-48 * time.Hour)
 	actualCutoff = getCutOffTime()
 	assert.WithinDuration(t, expectedCutoff, actualCutoff, time.Second, "Cutoff time should be 48 hours ago")
-}
-
-func TestGetAWSParams(t *testing.T) {
-	defer func(env, workflowAlerts, localStackEndpoint string) {
-		conf.SetEnv(t, "ENV", env)
-		conf.SetEnv(t, "workflow-alerts", workflowAlerts)
-		os.Setenv("LOCAL_STACK_ENDPOINT", localStackEndpoint)
-	}(conf.GetEnv("ENV"), conf.GetEnv("workflow-alerts"), os.Getenv("LOCAL_STACK_ENDPOINT"))
-
-	t.Run("Local Environment", func(t *testing.T) {
-		conf.SetEnv(t, "ENV", "local")
-		expectedToken := "local-token"
-		conf.SetEnv(t, "workflow-alerts", expectedToken)
-
-		token, err := getAWSParams()
-		assert.NoError(t, err)
-		assert.Equal(t, expectedToken, token)
-	})
 }
 
 func TestNewCleanupJobWorker(t *testing.T) {

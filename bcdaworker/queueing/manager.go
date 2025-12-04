@@ -2,16 +2,21 @@ package queueing
 
 import (
 	"context"
+	"database/sql"
 	goerrors "errors"
 	"fmt"
 	"time"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/ccoveille/go-safecast"
 	pgxv5 "github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
@@ -133,4 +138,33 @@ func checkIfCancelled(
 			return
 		}
 	}
+}
+
+// Update the AWS Cloudwatch Metric for job queue count
+func updateJobQueueCountCloudwatchMetric(ctx context.Context, db *sql.DB, log logrus.FieldLogger) {
+	cloudWatchEnv := conf.GetEnv("DEPLOYMENT_TARGET")
+	if cloudWatchEnv != "" {
+		err := bcdaaws.PutMetricSample(
+			ctx,
+			"BCDA",
+			"JobQueueCount",
+			"Count",
+			getQueueJobCount(db, log),
+			[]types.Dimension{{Name: aws.String("Environment"), Value: aws.String(cloudWatchEnv)}},
+		)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func getQueueJobCount(db *sql.DB, log logrus.FieldLogger) float64 {
+	row := db.QueryRow(`SELECT COUNT(*) FROM river_job WHERE state NOT IN ('completed', 'cancelled', 'discarded');`)
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Error(err)
+	}
+
+	return float64(count)
 }

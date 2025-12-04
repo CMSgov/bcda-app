@@ -9,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 )
 
 func ConnectionClose(next http.Handler) http.Handler {
@@ -33,12 +34,13 @@ func SecurityHeader(next http.Handler) http.Handler {
 func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+			ctx := r.Context()
+			ad, ok := ctx.Value(auth.AuthDataContextKey).(auth.AuthData)
 			if !ok {
 				// We cannot get the correct FHIR response writer from here, so
 				// return a non-FHIR-compliant HTTP response
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error("AuthData should be set before calling this handler")
+				logger := log.GetCtxLogger(ctx)
+				logger.WithField("resp_status", http.StatusInternalServerError).Error("AuthData should be set before calling this handler")
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 
@@ -48,9 +50,12 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 			}
 
 			if cfg.IsACODisabled(ad.CMSID) {
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
-				rw.Exception(r.Context(), w, http.StatusUnauthorized, responseutils.InternalErr, "")
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: Failed to complete request, CMSID %s is not enabled", responseutils.UnauthorizedErr, ad.CMSID),
+					logrus.Fields{"resp_status": http.StatusUnauthorized},
+				)
+				rw.Exception(ctx, w, http.StatusUnauthorized, responseutils.InternalErr, "")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -63,12 +68,13 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+			ctx := r.Context()
+			ad, ok := ctx.Value(auth.AuthDataContextKey).(auth.AuthData)
 			if !ok {
 				// We cannot get the correct FHIR response writer from here, so
 				// return a non-FHIR-compliant HTTP response
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error("AuthData should be set before calling this handler")
+				logger := log.GetCtxLogger(ctx)
+				logger.WithField("resp_status", http.StatusInternalServerError).Error("AuthData should be set before calling this handler")
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -79,9 +85,12 @@ func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 			}
 
 			if !cfg.IsACOV3Enabled(ad.ACOID) {
-				logger := log.GetCtxLogger(r.Context())
-				logger.Error(fmt.Sprintf("failed to complete v3 request, ACOID %s does not have v3 access", ad.ACOID))
-				rw.Exception(r.Context(), w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: Failed to begin v3 request, ACOID %s does not have v3 access", responseutils.UnauthorizedErr, ad.ACOID),
+					logrus.Fields{"resp_status": http.StatusForbidden},
+				)
+				rw.Exception(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
 				return
 			}
 			next.ServeHTTP(w, r)
