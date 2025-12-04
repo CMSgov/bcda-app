@@ -117,21 +117,16 @@ reset-db:
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 
 load-fixtures: reset-db
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
-
 # Start api service if it's not already running
 	docker compose up -d api
-	$(MAKE) load-synthetic-cclf-data
-	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
 
 	# Ensure components are started as expected
 	docker compose up -d api worker ssas
 	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
+	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
-	# Additional fixtures for postman+ssas
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
 
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
