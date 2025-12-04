@@ -1,4 +1,4 @@
-name: Build and publish BCDA
+name: Build and publish API
 
 on:
   workflow_call:
@@ -7,16 +7,50 @@ on:
         description: 'Release version (or branch name)'
         required: true
         type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        type: string
+        default: dev
+      confirm_env:
+        description: 'Confirm the environment you want to deploy to'
+        required: true
+        type: string
+        default: dev
   workflow_dispatch:
     inputs:
       release_version:
         description: 'Release version (or branch name)'
         required: true
         type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - sandbox
+          - prod
+      confirm_env:
+        description: 'Confirm the environment you want to deploy to'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - sandbox
+          - prod
 
 permissions:
   id-token: write
   contents: read
+
+env:
+  RELEASE_ENV: ${{ inputs.env || 'dev' }}
+  CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
 
 jobs:
   # FARGATE FIXME: unnecessary and causes errors when running ci_checks more than once for a single build
@@ -29,30 +63,31 @@ jobs:
 
   build_and_publish:
     # needs: [ci_checks]
+    environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    strategy:
-      matrix:
-        vars:
-          - account_id: NON_PROD_ACCOUNT_ID
-            role_to_assume: bcda-dev-github-actions
-          - account_id: PROD_ACCOUNT_ID
-            role_to_assume: bcda-prod-github-actions
     steps:
+      - name: Get Workflow Inputs
+        run: echo "${{ toJSON(inputs) }}"
+      - name: Confirm Env
+        if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
+        run: |
+          echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
+          exit 1
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/${{ matrix.vars.role_to_assume }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Checkout BCDA
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
           ref: ${{ inputs.release_version }}
       - name: Set ECR_URL
-        run: echo "ECR_URL=${{ secrets[matrix.vars.account_id] }}.dkr.ecr.us-east-1.amazonaws.com/bcda-api" >> $GITHUB_ENV
+        run: echo "ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-${{ env.RELEASE_ENV }}-api" >> $GITHUB_ENV
       - name: Build BCDA
         # Dont release main to prod, also make sure 'latest' in prod aligns with the latest release tag
-        # if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
-        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' }}
+        # if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
+        if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
           docker build \
             --build-arg RELEASE_VERSION=${{ inputs.release_version || 'main' }} \
@@ -60,8 +95,8 @@ jobs:
             -t ${{ env.ECR_URL }}:${{ inputs.release_version || 'main' }} \
             -f Dockerfiles/Dockerfile.bcda .
       - name: Push to ECR
-        # if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
-        if: ${{ matrix.vars.account_id == 'NON_PROD_ACCOUNT_ID' }}
+        # if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
+        if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
           docker image push '${{ env.ECR_URL }}' -a
