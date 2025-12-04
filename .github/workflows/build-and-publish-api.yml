@@ -1,4 +1,4 @@
-name: Build and publish BCDA
+name: Build and publish API
 
 on:
   workflow_call:
