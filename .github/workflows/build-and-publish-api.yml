@@ -87,7 +87,7 @@ jobs:
       - name: Build BCDA
         # Dont release main to prod, also make sure 'latest' in prod aligns with the latest release tag
         # if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || inputs.release_version != 'main' }} TODO: restore when ECR exists in prod
-        if: ${{ env.RELEASE_ENV == 'dev' }}
+        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
           docker build \
             --build-arg RELEASE_VERSION=${{ inputs.release_version || 'main' }} \
