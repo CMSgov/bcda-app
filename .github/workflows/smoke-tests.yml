@@ -89,7 +89,7 @@ on:
         description: Flag which indicates if v3 integration tests should be run
         required: true
         type: boolean
-        default: true
+        default: false
 
 permissions:
   id-token: write
