@@ -84,10 +84,10 @@ func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			if !cfg.IsACOV3Enabled(ad.ACOID) {
+			if !cfg.IsACOV3Enabled(ad.CMSID) {
 				ctx, _ = log.WriteWarnWithFields(
 					ctx,
-					fmt.Sprintf("%s: Failed to begin v3 request, ACOID %s does not have v3 access", responseutils.UnauthorizedErr, ad.ACOID),
+					fmt.Sprintf("%s: Failed to begin v3 request, CMSID %s does not have v3 access", responseutils.UnauthorizedErr, ad.CMSID),
 					logrus.Fields{"resp_status": http.StatusForbidden},
 				)
 				rw.Exception(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
