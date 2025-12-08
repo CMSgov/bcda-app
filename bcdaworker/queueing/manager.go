@@ -146,8 +146,8 @@ func updateJobQueueCountCloudwatchMetric(ctx context.Context, db *sql.DB, log lo
 	if cloudWatchEnv != "" {
 		err := bcdaaws.PutMetricSample(
 			ctx,
-			"JobQueueCount",
 			"BCDA",
+			"JobQueueCount",
 			"Count",
 			getQueueJobCount(db, log),
 			[]types.Dimension{{Name: aws.String("Environment"), Value: aws.String(cloudWatchEnv)}},
