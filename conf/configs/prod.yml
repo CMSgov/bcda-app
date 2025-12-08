@@ -74,8 +74,4 @@ rate_limit_config:
   all: true
   acos: []
 v3_enabled_acos:
-  - "A1234"
-  - "A5678"
-  - "A9990"
-  - "CT123456"
   - "TEST994"
