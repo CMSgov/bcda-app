@@ -122,7 +122,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }} 
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
