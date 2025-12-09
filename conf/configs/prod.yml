@@ -70,11 +70,13 @@ aco_config:
         file_performance_year: 5
         file_date: 6
         metadata_matches: 7
+    - model: "IOTA"
+      name_pattern: "IOTA\\d{3}"
+      data:
+        - "adjudicated"
+        - "partially-adjudicated"
 rate_limit_config:
   all: true
   acos: []
 v3_enabled_acos:
-  - "A1234"
-  - "A5678"
-  - "A9990"
-  - "CT123456"
+  - "TEST994"

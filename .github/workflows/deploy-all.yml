@@ -216,7 +216,7 @@ jobs:
         with:
           name: notify-script
           path: ./scripts/mark_deployment.py
-  
+
   verify_api_version:
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
@@ -297,7 +297,7 @@ jobs:
               break
             fi
           done
-  
+
   # # FARGATE FIXUP:
   # This needs the 'image_tag' tag to be added to each service before this will work
   # verify_worker_version:
@@ -378,7 +378,7 @@ jobs:
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
             --version ${BCDA_AMI}
-  
+
   slack_alerts:
     if: ${{ always() }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
