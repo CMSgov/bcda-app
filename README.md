@@ -132,7 +132,7 @@ source [src-path]/bcda-app/.env.sh
 
 #### 1. Build Images
 
-Before we can run the application locally, we need to build the docker images and load the fixtures:
+Before we can run the application locally, we need to build the docker images and seed the database with data:
 
 ```sh
 make docker-bootstrap
