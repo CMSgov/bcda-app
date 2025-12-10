@@ -125,7 +125,7 @@ load-fixtures: reset-db
 	docker compose up -d api worker ssas
 	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
+	docker compose run --rm db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 
 load-synthetic-cclf-data:
@@ -135,7 +135,7 @@ load-synthetic-cclf-data:
 		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
+	docker compose run --rm db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	for ACO_SIZE in $(ACO_SIZES) ; do \
 		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test-new-beneficiaries' --fileType='' " ; \
 		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='runout' " ; \
@@ -158,7 +158,7 @@ load-synthetic-suppression-data:
 load-fixtures-ssas:
 	docker compose up -d db
 	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
-	docker compose run ssas --add-fixture-data
+	docker compose run --rm ssas --add-fixture-data
 
 docker-build:
 	docker compose build --force-rm
