@@ -56,4 +56,4 @@ USER bcda
 ENV APP_NAME="worker"
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["bcdaworker"]
+CMD ["bcdaworker", "start-worker"]
