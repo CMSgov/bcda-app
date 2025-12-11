@@ -115,7 +115,7 @@ services:
       - worker_config:/etc/sv/worker/env
       - fhir_temp:/home/bcda/FHIR_TEMP_DIR
     healthcheck:
-      test: ["CMD", "pgrep", "-n", "bcdaworker"]
+      test: ["CMD", "bcdaworker", "health"]
       interval: 1m30s
       retries: 5
       start_period: 10s
