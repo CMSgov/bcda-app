@@ -164,7 +164,7 @@ jobs:
         uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
       - name: Init, Plan OpenTofu
         # FARGATE FIXUP: adding fargate vars to tf plan
-        if: ${{ env.RELEASE_ENV == 'dev' }}
+        if: ${{ env.RELEASE_ENV != 'prod' }}
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
@@ -182,7 +182,7 @@ jobs:
             -out 'bcda-release-api-worker.tfplan'
       - name: Init, Plan OpenTofu
         # FARGATE FIXUP: adding fargate vars to tf plan
-        if: ${{ env.RELEASE_ENV != 'dev' }}
+        if: ${{ env.RELEASE_ENV == 'prod' }}
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
@@ -199,6 +199,8 @@ jobs:
         run: |
           tofu apply bcda-release-api-worker.tfplan
       - name: Refresh AutoScaling Groups
+        # FARGATE FIXUP:
+        if: ${{ env.RELEASE_ENV == 'prod' }}
         run: |
           export ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
@@ -206,7 +208,7 @@ jobs:
           aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
       - name: Refresh Deployments
         # FARGATE FIXUP:
-        if: ${{ env.RELEASE_ENV == 'dev' }}
+        if: ${{ env.RELEASE_ENV != 'prod' }}
         run: |
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
@@ -265,6 +267,7 @@ jobs:
             fi
           done
 
+  # FARGATE FIXUP: can remove this in favor of below check
   verify_worker_version:
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
