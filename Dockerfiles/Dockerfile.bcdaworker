@@ -34,7 +34,6 @@ RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 
-COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/ /go/src/github.com/CMSgov/bcda-app/shared_files/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
 COPY --from=builder /go/bin/ /go/bin/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
