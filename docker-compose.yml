@@ -110,6 +110,7 @@ services:
       FHIR_STAGING_DIR: /var/efs/tmpdata
       FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
       LOG_TO_STD_OUT: true
+      SKIP_HEALTH: true
     volumes:
       - fhir:/var/efs
       - worker_config:/etc/sv/worker/env

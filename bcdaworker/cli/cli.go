@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -74,6 +76,28 @@ func startWorker() {
 	createWorkerDirs()
 	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 	defer queue.StopRiver()
+
+	if conf.GetEnv("SKIP_HEALTH") != "true" {
+		healthChecker := health.NewHealthChecker(db)
+		queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
+		defer queue.StopRiver()
+
+		if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
+			ticker := time.NewTicker(time.Duration(hInt) * time.Second)
+			quit := make(chan struct{})
+			go func() {
+				for {
+					select {
+					case <-ticker.C:
+						checkHealth(healthChecker)
+					case <-quit:
+						ticker.Stop()
+						return
+					}
+				}
+			}()
+		}
+	}
 	waitForSig()
 }
 
