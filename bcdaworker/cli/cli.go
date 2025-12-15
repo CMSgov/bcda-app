@@ -56,7 +56,8 @@ func setUpApp() *cli.App {
 			Name:  "health",
 			Usage: "Check the worker health",
 			Action: func(c *cli.Context) error {
-				healthy := checkHealth()
+				healthChecker := health.NewHealthChecker(db)
+				healthy := checkHealth(healthChecker)
 				if healthy {
 					return nil
 				} else {
@@ -146,8 +147,7 @@ func waitForSig() {
 	os.Exit(code)
 }
 
-func checkHealth() bool {
-	healthChecker := health.NewHealthChecker(db)
+func checkHealth(healthChecker health.HealthChecker) bool {
 	entry := log.Health
 
 	logFields := logrus.Fields{}
