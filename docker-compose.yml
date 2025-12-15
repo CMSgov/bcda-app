@@ -36,6 +36,7 @@ services:
       start_period: 30s
       timeout: 10s
   api:
+    read_only: true
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
@@ -87,6 +88,7 @@ services:
           ignore: ["!go.mod", "!go.sum", "!tools.go"]
     stop_grace_period: 1s
   worker:
+    read_only: true
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcdaworker
