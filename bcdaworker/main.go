@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		// Since the logs may be routed to a file,
 		// ensure that the error makes it at least once to stdout
-		fmt.Printf("Error occurred while executing command %s\n", err)
+		fmt.Printf("Error occurred while executing app.Run from main, err %s\n", err)
 		log.Worker.Fatal(err)
 	}
 }
