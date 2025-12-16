@@ -56,10 +56,9 @@ func TestCheckHealth(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mockHealthChecker := health.MockHealthChecker{
-				WorkerOk: test.dbOk,
-				BbOk:     test.bbOk,
-			}
+			mockHealthChecker := &health.MockHealthChecker{}
+			mockHealthChecker.On("IsWorkerDatabaseOK").Return("", test.dbOk)
+			mockHealthChecker.On("IsBlueButtonOK").Return(test.bbOk)
 			actualHealthy := checkHealth(mockHealthChecker)
 			assert.Equal(t, test.expectedHealthy, actualHealthy)
 		})
