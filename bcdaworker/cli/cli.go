@@ -38,7 +38,6 @@ func setUpApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = Name
 	app.Usage = Usage
-	// app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
 		log.SetupLoggers()
 		client.SetLogger(log.BFDWorker)
