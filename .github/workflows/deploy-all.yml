@@ -152,6 +152,7 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
+      # FARGATE FIXUP: Can remove this step
       - name: Get AMIs
         run: |
           export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
@@ -163,8 +164,6 @@ jobs:
       - name: Install tenv
         uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
       - name: Init, Plan OpenTofu
-        # FARGATE FIXUP: adding fargate vars to tf plan
-        if: ${{ env.RELEASE_ENV != 'prod' }}
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
@@ -180,35 +179,11 @@ jobs:
             -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
             -var 'fargate_switch={start_ec2=false, start_fargate=true, fargate_traffic=100}' \
             -out 'bcda-release-api-worker.tfplan'
-      - name: Init, Plan OpenTofu
-        # FARGATE FIXUP: adding fargate vars to tf plan
-        if: ${{ env.RELEASE_ENV == 'prod' }}
-        working-directory: terraform/${{ env.RELEASE_ENV }}
-        run: |
-          IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
-          export APP_DB_PW=${STRS[2]}
-          tofu init
-          tofu plan \
-            -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'ami_id=${{ env.BCDA_AMI }}' \
-            -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
-            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
-            -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           tofu apply bcda-release-api-worker.tfplan
-      - name: Refresh AutoScaling Groups
-        # FARGATE FIXUP:
-        if: ${{ env.RELEASE_ENV == 'prod' }}
-        run: |
-          export ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-api" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
-          aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${ASG}
-          export WORKER_ASG=`aws autoscaling describe-auto-scaling-groups --region ${{ vars.AWS_REGION }} --filters "Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker" --query 'AutoScalingGroups[0].AutoScalingGroupName' --output text`
-          aws autoscaling start-instance-refresh --region ${{ vars.AWS_REGION }} --auto-scaling-group-name ${WORKER_ASG}
       - name: Refresh Deployments
-        # FARGATE FIXUP:
-        if: ${{ env.RELEASE_ENV != 'prod' }}
         run: |
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
@@ -267,40 +242,8 @@ jobs:
             fi
           done
 
-  # FARGATE FIXUP: can remove this in favor of below check
-  verify_worker_version:
-    needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - run: |
-          TRY=1
-
-          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            export IMAGE_ID=`aws ec2 describe-instances --region ${{ vars.AWS_REGION }} --filters 'Name=tag:Name,Values=bcda-${{ env.RELEASE_ENV }}-worker' 'Name=instance-state-name,Values=running' --query 'Reservations[0].Instances[*][LaunchTime,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-            # Was unable to escape the backticks (`), creating this function seems to get around that
-            get_image_version () {
-                aws ec2 describe-images --region ${{ vars.AWS_REGION }} --image-ids ${IMAGE_ID} --query 'Images[0].Tags[?Key==`version`].Value' --output text
-            }
-            export BCDA_WORKER_VERSION=`get_image_version`
-
-            if [[ $BCDA_WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-              echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match aws version found: ${BCDA_WORKER_VERSION}."
-              TRY=$(($TRY + 1))
-              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-                exit 1
-              else
-                sleep $VERIFICATION_SLEEP
-              fi
-            else
-              break
-            fi
-          done
-
+  # Temporarily we need to manually verify worker is on correct version
+  
   # # FARGATE FIXUP:
   # This needs the 'image_tag' tag to be added to each service before this will work
   # verify_worker_version:
@@ -332,7 +275,8 @@ jobs:
   #         done
 
   smoketests:
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    # needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
       release_version: ${{ inputs.release_version || 'main' }}
@@ -345,7 +289,8 @@ jobs:
     secrets: inherit
 
   notify_newrelic:
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    # needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
