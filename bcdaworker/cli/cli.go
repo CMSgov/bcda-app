@@ -77,7 +77,7 @@ func startWorker() {
 	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 	defer queue.StopRiver()
 
-	if conf.GetEnv("SKIP_HEALTH") != "true" {
+	if conf.GetEnv("SKIP_EC2_HEALTH_CHECK") != "true" {
 		healthChecker := health.NewHealthChecker(db)
 		queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 		defer queue.StopRiver()
