@@ -27,7 +27,7 @@ var (
 
 type HealthCheckerTestSuite struct {
 	suite.Suite
-	hc healthChecker
+	hc healthCheck
 }
 
 func (s *HealthCheckerTestSuite) SetupSuite() {
@@ -39,7 +39,7 @@ func (s *HealthCheckerTestSuite) SetupSuite() {
 }
 
 func (s *HealthCheckerTestSuite) SetupTest() {
-	s.hc = healthChecker{
+	s.hc = healthCheck{
 		db:              nil,
 		introspectCache: &introspectCache{},
 	}

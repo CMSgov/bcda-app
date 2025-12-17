@@ -31,7 +31,7 @@ type HealthChecker interface {
 	IsSsasIntrospectOK() (string, bool)
 }
 
-type healthChecker struct {
+type healthCheck struct {
 	db              *sql.DB
 	introspectCache *introspectCache
 }
@@ -43,13 +43,13 @@ const (
 )
 
 func NewHealthChecker(db *sql.DB) HealthChecker {
-	return healthChecker{
+	return healthCheck{
 		db:              db,
 		introspectCache: &introspectCache{},
 	}
 }
 
-func (h healthChecker) IsDatabaseOK() (result string, ok bool) {
+func (h healthCheck) IsDatabaseOK() (result string, ok bool) {
 	if err := h.db.Ping(); err != nil {
 		log.API.Error("Health check: database ping error: ", err.Error())
 		return "database ping error", false
@@ -58,7 +58,7 @@ func (h healthChecker) IsDatabaseOK() (result string, ok bool) {
 	return "ok", true
 }
 
-func (h healthChecker) IsWorkerDatabaseOK() (result string, ok bool) {
+func (h healthCheck) IsWorkerDatabaseOK() (result string, ok bool) {
 	if err := h.db.Ping(); err != nil {
 		log.Worker.Error("Health check: database ping error: ", err.Error())
 		return "database ping error", false
@@ -67,7 +67,7 @@ func (h healthChecker) IsWorkerDatabaseOK() (result string, ok bool) {
 	return "ok", true
 }
 
-func (h healthChecker) IsBlueButtonOK() bool {
+func (h healthCheck) IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
 	if err != nil {
 		log.Worker.Error("Health check: Blue Button client error: ", err.Error())
@@ -83,7 +83,7 @@ func (h healthChecker) IsBlueButtonOK() bool {
 	return true
 }
 
-func (h healthChecker) IsSsasOK() (result string, ok bool) {
+func (h healthCheck) IsSsasOK() (result string, ok bool) {
 	c, err := ssasClient.NewSSASClient()
 	if err != nil {
 		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
@@ -96,7 +96,7 @@ func (h healthChecker) IsSsasOK() (result string, ok bool) {
 	return "ok", true
 }
 
-func (h healthChecker) IsSsasIntrospectOK() (result string, ok bool) {
+func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {
 	// Check cache first
 	h.introspectCache.mu.RLock()
 	if h.introspectCache.timestamp.Add(introspectCacheTTL).After(time.Now()) {
@@ -193,7 +193,7 @@ func isRetryableError(err error) bool {
 }
 
 // introspectWithRetry attempts to call introspect with exponential backoff retry
-func (h healthChecker) introspectWithRetry(c *ssasClient.SSASClient, ctx context.Context, tokenString string) ([]byte, error) {
+func (h healthCheck) introspectWithRetry(c *ssasClient.SSASClient, ctx context.Context, tokenString string) ([]byte, error) {
 	eb := backoff.NewExponentialBackOff()
 	eb.InitialInterval = introspectRetryInitial
 	eb.MaxInterval = 2 * time.Second
