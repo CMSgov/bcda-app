@@ -117,53 +117,20 @@ reset-db:
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
 
 load-fixtures: reset-db
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
-
 # Start api service if it's not already running
 	docker compose up -d api
-	$(MAKE) load-synthetic-cclf-data
-	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
 
 	# Ensure components are started as expected
 	docker compose up -d api worker ssas
 	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
-
-	# Additional fixtures for postman+ssas
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
-
-load-synthetic-cclf-data:
-	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
-	# The "test" environment provides baseline CCLF ingestion for ACO
-	for ACO_SIZE in $(ACO_SIZES) ; do \
-		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='' " ; \
-	done
-	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
-	docker compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
-	for ACO_SIZE in $(ACO_SIZES) ; do \
-		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test-new-beneficiaries' --fileType='' " ; \
-		docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$ACO_SIZE' --environment='test' --fileType='runout' " ; \
-	done
-
-	# Improved Synthea BFD Data Ingestion
-	$(eval IMPROVED_SIZES := improved-dev improved-small improved-large)
-	for IMPROVED_SIZE in $(IMPROVED_SIZES) ; do \
-			docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='' " ; \
-			docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved-new' --fileType='' " ; \
-			docker compose exec api sh -c "bcda import-synthetic-cclf-package --acoSize='$$IMPROVED_SIZE' --environment='improved' --fileType='runout' " ; \
-	done
-
-load-synthetic-suppression-data:
-	docker compose exec api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
-	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
-	# See postgres#GetSuppressedMBIs for more information
-	docker compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
+	docker compose run --rm db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 load-fixtures-ssas:
 	docker compose up -d db
 	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
-	docker compose run ssas --add-fixture-data
+	docker compose run --rm ssas --add-fixture-data
 
 docker-build:
 	docker compose build --force-rm
@@ -210,7 +177,7 @@ fhir_testing:
 	-e CLIENT_SECRET='${CLIENT_SECRET}' \
 	fhir_testing
 
-.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 credentials:
 	$(eval ACO_CMS_ID = A9994)

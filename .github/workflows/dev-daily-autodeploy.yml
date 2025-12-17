@@ -23,6 +23,8 @@ jobs:
     with:
       release_version: main
       ssas_release_version: main
+      env: dev
+      confirm_env: dev
     secrets: inherit
   
   deploy_all:
