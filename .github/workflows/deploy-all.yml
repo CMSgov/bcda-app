@@ -286,6 +286,7 @@ jobs:
       smoke_tests: true
       postman_tests: true
       v3_tests: false
+      eoy_mode: false
     secrets: inherit
 
   notify_newrelic:
