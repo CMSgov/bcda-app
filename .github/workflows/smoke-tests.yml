@@ -38,6 +38,11 @@ on:
           - 'dev'
           - 'paca'
         default: 'dev'
+      eoy_mode:
+        description: Flag which indicates if smoke tests should be run in EOY mode
+        required: true
+        type: boolean
+        default: false
       smoke_tests:
         description: Flag which indicates if smoke integration tests should be run
         required: true
@@ -75,6 +80,11 @@ on:
         required: true
         type: 'string'
         default: 'dev'
+      eoy_mode:
+        description: Flag which indicates if smoke tests should be run in EOY mode
+        required: true
+        type: boolean
+        default: false
       smoke_tests:
         description: Flag which indicates if smoke integration tests should be run
         required: true
@@ -99,6 +109,7 @@ env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   COMPOSE_INTERACTIVE_NO_CLI: 1
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
+  EOY_MODE: ${{ (inputs.eoy_mode && 'eoy') || '' }}
 
 jobs:
   smoke_tests:
@@ -167,7 +178,7 @@ jobs:
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-          --global-var maintenanceMode=""
+          --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Run Smoke Tests
         if: ${{ inputs.smoke_tests }}
         run: |
@@ -177,7 +188,9 @@ jobs:
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET \
-          --global-var maintenanceMode=""
+          --global-var maintenanceMode="${{ env.EOY_MODE }}"
+      # Sleep a bit to hopefully prevent intermittent failures
+      - run: sleep 60
       - name: Run PACA Tests
         run: |
           CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
@@ -186,7 +199,7 @@ jobs:
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET \
-          --global-var maintenanceMode=""
+          --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Run v3 Tests
         if: ${{ inputs.v3_tests }}
         run: |
@@ -197,7 +210,7 @@ jobs:
            --global-var clientId=${CLIENT_ID} \
            --global-var clientSecret=${CLIENT_SECRET} \
            --global-var v3Disabled=false \
-           --global-var maintenanceMode=""
+           --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
