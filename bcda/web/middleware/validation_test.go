@@ -43,6 +43,34 @@ func TestValidRequestURL(t *testing.T) {
 	assert.Equal(t, rp.Version, "v1")
 }
 
+func TestValidv3RequestURL(t *testing.T) {
+	// Allow us to retrieve the RequestParameters by grabbing the updated context.
+	// When we call *http.Request.WithContext(ctx), a new request is created.
+	// So we cannot leverage the context associated with the original request
+	var ctx context.Context
+	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+
+	now := time.Now().Add(-24 * time.Hour).Round(time.Millisecond)
+	req, err := http.NewRequest("GET",
+		fmt.Sprintf("/api/v3/Patient/$export?_type=ExplanationOfBenefit&_since=%s&_outputFormat=ndjson&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dgt2001-04-01",
+			now.Format(time.RFC3339Nano)),
+		nil)
+	assert.NoError(t, err)
+	rr := httptest.NewRecorder()
+	ValidateRequestURL(handler).ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Verify we have the context as expected
+	rp, ok := GetRequestParamsFromCtx(ctx)
+	assert.True(t, ok)
+	// assert.True(t, now.Equal(rp.Since), "Since parameter does not match")
+	assert.Equal(t, rp.ResourceTypes, []string{"ExplanationOfBenefit"})
+	assert.Equal(t, rp.Version, constants.V3Version)
+	assert.Equal(t, [][]string{{"service-date", "gt2001-04-01"}}, rp.TypeFilter)
+}
+
 func TestInvalidRequestURL(t *testing.T) {
 
 	base := "/api/v1/Patient/$export?"
@@ -127,6 +155,26 @@ func TestInvalidRequestHeaders(t *testing.T) {
 			ValidateRequestHeaders(noop).ServeHTTP(rr, req)
 			assert.Equal(t, http.StatusBadRequest, rr.Code)
 			assert.Contains(t, rr.Body.String(), tt.errMsg)
+		})
+	}
+}
+
+func TestGetVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{"v1", "/api/v1/Patient"},
+		{"v2", "/api/v2/Group/all"},
+		{"v3", "/api/v3/Patient/$export"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			version, err := getVersion(tt.url)
+
+			assert.Equal(t, tt.name, version)
+			assert.Equal(t, nil, err)
 		})
 	}
 }
