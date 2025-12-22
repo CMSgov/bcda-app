@@ -177,7 +177,10 @@ fhir_testing:
 	-e CLIENT_SECRET='${CLIENT_SECRET}' \
 	fhir_testing
 
-.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
+generate-mocks:
+	docker run -v "$PWD":/src -w /src vektra/mockery:v3.6.1
+
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build generate-mocks lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 credentials:
 	$(eval ACO_CMS_ID = A9994)

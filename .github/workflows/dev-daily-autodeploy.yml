@@ -2,6 +2,7 @@
 name: Deploy main to dev daily
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: 0 12 * * 1-5 # every workday at 8am EST
 

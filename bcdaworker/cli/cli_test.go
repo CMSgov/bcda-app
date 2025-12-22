@@ -1,10 +1,11 @@
-package main
+package cli
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,4 +39,28 @@ func TestClearTempDirectory(t *testing.T) {
 
 	err = clearTempDirectory("/fakedir") //Expect an error when there's an incorrect directory passed
 	assert.Error(t, err)
+}
+
+func TestCheckHealth(t *testing.T) {
+	tests := []struct {
+		name            string
+		dbOk            bool
+		bbOk            bool
+		expectedHealthy bool
+	}{
+		{"Database and BlueButton healthy", true, true, true},
+		{"Database unhealthy", false, true, false},
+		{"BlueButton unhealthy", true, false, false},
+		{"Database and BlueButton unhealthy", false, false, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockHealthChecker := &health.MockHealthChecker{}
+			mockHealthChecker.On("IsWorkerDatabaseOK").Return("", test.dbOk)
+			mockHealthChecker.On("IsBlueButtonOK").Return(test.bbOk)
+			actualHealthy := checkHealth(mockHealthChecker)
+			assert.Equal(t, test.expectedHealthy, actualHealthy)
+		})
+	}
 }
