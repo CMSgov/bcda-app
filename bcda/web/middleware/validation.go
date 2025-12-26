@@ -61,7 +61,7 @@ func validateOutputFormat(r *http.Request, rw fhirResponseWriter, w http.Respons
 			fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 		return false
 	}
 	return true
@@ -81,7 +81,7 @@ func validateElementsParameter(r *http.Request, rw fhirResponseWriter, w http.Re
 		fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 		logrus.Fields{"resp_status": http.StatusBadRequest},
 	)
-	rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+	rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 	return false
 }
 
@@ -98,7 +98,7 @@ func validateQueryParameterFormat(r *http.Request, rw fhirResponseWriter, w http
 				fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 			return false
 		}
 	}
@@ -120,7 +120,7 @@ func validateSinceParameter(r *http.Request, rw fhirResponseWriter, w http.Respo
 			fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 		return time.Time{}, false
 	}
 
@@ -131,7 +131,7 @@ func validateSinceParameter(r *http.Request, rw fhirResponseWriter, w http.Respo
 			fmt.Sprintf("%s: %s", responseutils.FormatErr, errMsg),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 		return time.Time{}, false
 	}
 
@@ -158,7 +158,7 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 	}
@@ -183,7 +183,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 
@@ -196,7 +196,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 
@@ -208,7 +208,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 			return nil, false
 		}
 
@@ -223,7 +223,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 					fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 					logrus.Fields{"resp_status": http.StatusBadRequest},
 				)
-				rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return nil, false
 			}
 
@@ -236,7 +236,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 					fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 					logrus.Fields{"resp_status": http.StatusBadRequest},
 				)
-				rw.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return nil, false
 			}
 		}
@@ -313,7 +313,7 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: Accept header is required", responseutils.FormatErr),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
 			return
 		} else if acceptHeader != "application/fhir+json" {
 			ctx, _ = log.WriteWarnWithFields(
@@ -321,7 +321,7 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: Application/fhir+json is the only supported response format", responseutils.FormatErr),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			return
 		}
 
@@ -331,7 +331,7 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: Prefer header is required", responseutils.FormatErr),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
 			return
 		} else if preferHeader != "respond-async" {
 			ctx, _ = log.WriteWarnWithFields(
@@ -339,7 +339,7 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: Only asynchronous responses are supported", responseutils.FormatErr),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
 			return
 		}
 
@@ -368,6 +368,7 @@ func getVersion(path string) (string, error) {
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
 func getRespWriter(version string) (fhirResponseWriter, error) {

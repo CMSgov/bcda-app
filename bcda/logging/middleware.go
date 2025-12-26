@@ -95,7 +95,7 @@ func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler
 				fmt.Sprintf("%s: Job key not found: %+v", responseutils.NotFoundErr, jobKey),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			rw.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
+			rw.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
 			return
 		}
 
@@ -147,6 +147,7 @@ func NewCtxLogger(next http.Handler) http.Handler {
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
 func getRespWriter(path string) fhirResponseWriter {
