@@ -1,5 +1,5 @@
 -- This is a manual DB wrangle to convert Dec CCLF attribution into runouts
--- We will undo this and convert back to Dec CCLF once the runout for 2024 is received
+-- We will undo this and convert back to Dec CCLF once the runout for 2026 is received
 
 BEGIN;
 DO $$
