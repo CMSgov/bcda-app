@@ -319,7 +319,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
 				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 			)
-			// TODO?
 			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
@@ -396,7 +395,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Job is Archived or Expired", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 		)
-		// TODO?
 		h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
 		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
@@ -416,7 +414,6 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		// TODO?
 		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -430,7 +427,6 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Job is not cancellable", responseutils.DeletedErr),
 				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 			)
-			// TODO?
 			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
@@ -469,7 +465,6 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		// TODO?
 		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
@@ -578,7 +573,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		// TODO?
 		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
