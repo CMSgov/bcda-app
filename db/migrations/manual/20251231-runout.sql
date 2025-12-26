@@ -6,7 +6,7 @@ DO $$
 
 DECLARE cclfids integer ARRAY;
 BEGIN
-cclfids := ARRAY(SELECT id FROM cclf_files WHERE timestamp > '2025-11-30' AND type = 0 AND aco_cms_id NOT LIKE ALL(ARRAY['A999%', 'V99%', 'E999%']));
+cclfids := ARRAY(SELECT id FROM cclf_files WHERE timestamp > '2025-11-30' AND type = 0 AND aco_cms_id NOT LIKE ALL(ARRAY['A999%', 'V99%', 'E999%', 'TEST%', 'DA999%']));
 -- This array should ONLY have type == 0
 
 -- You can store the array in Box and ensure the right IDs are affected when undoing this
