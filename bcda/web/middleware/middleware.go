@@ -55,7 +55,7 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 					fmt.Sprintf("%s: Failed to complete request, CMSID %s is not enabled", responseutils.UnauthorizedErr, ad.CMSID),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},
 				)
-				rw.Exception(ctx, w, http.StatusUnauthorized, responseutils.InternalErr, "")
+				rw.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.InternalErr, "")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -90,7 +90,7 @@ func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
 					fmt.Sprintf("%s: Failed to begin v3 request, CMSID %s does not have v3 access", responseutils.UnauthorizedErr, ad.CMSID),
 					logrus.Fields{"resp_status": http.StatusForbidden},
 				)
-				rw.Exception(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
+				rw.OpOutcome(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
 				return
 			}
 			next.ServeHTTP(w, r)

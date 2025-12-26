@@ -132,13 +132,13 @@ func TestAPITestSuite(t *testing.T) {
 
 func (s *APITestSuite) TestJobStatusBadInputs() {
 	tests := []struct {
-		name          string
-		jobID         string
-		expStatusCode int
-		expErrCode    string
+		name        string
+		jobID       string
+		expFHIRCode fhircodes.IssueTypeCode_Value
+		expErrCode  string
 	}{
-		{"InvalidJobID", "abcd", 400, "could not parse job id"},
-		{"DoesNotExist", "0", 404, "Job not found."},
+		{"InvalidJobID", "abcd", fhircodes.IssueTypeCode_STRUCTURE, "could not parse job id"},
+		{"DoesNotExist", "0", fhircodes.IssueTypeCode_NOT_FOUND, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -159,7 +159,7 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 			respOO := getOperationOutcome(s.T(), rr.Body.Bytes())
 
 			assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+			assert.Equal(s.T(), tt.expFHIRCode, respOO.Issue[0].Code.Value)
 			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}
@@ -452,13 +452,13 @@ func (s *APITestSuite) TestJobsStatusWithStatuses() {
 
 func (s *APITestSuite) TestDeleteJobBadInputs() {
 	tests := []struct {
-		name          string
-		jobID         string
-		expStatusCode int
-		expErrCode    string
+		name        string
+		jobID       string
+		expFHIRCode fhircodes.IssueTypeCode_Value
+		expErrCode  string
 	}{
-		{"InvalidJobID", "abcd", 400, "could not parse job id"},
-		{"DoesNotExist", "0", 404, "Job not found."},
+		{"InvalidJobID", "abcd", fhircodes.IssueTypeCode_STRUCTURE, "could not parse job id"},
+		{"DoesNotExist", "0", fhircodes.IssueTypeCode_NOT_FOUND, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -478,7 +478,7 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 			respOO := getOperationOutcome(s.T(), rr.Body.Bytes())
 
 			assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+			assert.Equal(s.T(), tt.expFHIRCode, respOO.Issue[0].Code.Value)
 			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
 		})
 	}

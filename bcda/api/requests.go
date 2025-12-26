@@ -61,6 +61,7 @@ type Handler struct {
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
@@ -149,7 +150,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Invalid group ID (%+v)", responseutils.RequestErr, groupID),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
 		return
 	}
 	h.bulkRequest(w, r, reqType)
@@ -182,7 +183,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 					fmt.Sprintf("%s: %+v", responseutils.RequestErr, errMsg),
 					logrus.Fields{"resp_status": http.StatusBadRequest},
 				)
-				h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return
 			}
 		}
@@ -194,7 +195,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 	}
@@ -205,7 +206,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: %+v", responseutils.DbErr, err),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.DbErr, err.Error())
+			h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.DbErr, err.Error())
 		} else {
 			ctx, _ = log.WriteErrorWithFields(
 				ctx,
@@ -263,7 +264,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		)
 		//We don't need to return the full error to a consumer.
 		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
 
 		return
 	}
@@ -276,7 +277,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Requested job not found.  Error: %+v", responseutils.DbErr, err),
 				logrus.Fields{"resp_status": http.StatusNotFound, "job_id": jobID},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
+			h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
 		} else {
 			ctx, _ = log.WriteErrorWithFields(
 				ctx,
@@ -318,7 +319,8 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
 				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
+			// TODO?
+			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
 		w.Header().Set("Content-Type", constants.JsonContentType)
@@ -394,7 +396,8 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Job is Archived or Expired", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
+		// TODO?
+		h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
 		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
 
@@ -413,7 +416,8 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		// TODO?
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
@@ -426,7 +430,8 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Job is not cancellable", responseutils.DeletedErr),
 				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.DeletedErr, err.Error())
+			// TODO?
+			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
 			ctx, _ = log.WriteErrorWithFields(
@@ -464,7 +469,8 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		// TODO?
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -506,7 +512,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Could not find any CCLF8 file", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
 	}
 
@@ -572,7 +578,8 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		// TODO?
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -588,7 +595,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: Error validating resources: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
@@ -628,7 +635,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: Invalid complex data request type: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
 		return
 	}
 
@@ -649,7 +656,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 					fmt.Sprintf("%s: %+v", responseutils.NotFoundErr, msg),
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
-				h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
+				h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
 				return
 			}
 
@@ -659,7 +666,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 				fmt.Sprintf("%s: %+v", responseutils.NotFoundErr, msg),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
+			h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
 			return
 		}
 
@@ -684,7 +691,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: Failed to validate cclf file or performance year of found cclf file", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
 
@@ -698,7 +705,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 					fmt.Sprintf("%s: CCLF file not found for given _since parameter: %s", responseutils.NotFoundErr, rp.Since.String()),
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
-				h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
+				h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
 				return
 			}
 

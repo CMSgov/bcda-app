@@ -91,6 +91,31 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	assert.Empty(s.T(), respOO.Issue[0].Details.Coding)
 }
 
+func (s *ResponseUtilsWriterTestSuite) TestResponseWriterOpOutcome() {
+	rw := NewFhirResponseWriter()
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
+	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
+	rw.OpOutcome(ctx, s.rr, http.StatusBadRequest, responseutils.RequestErr, "TestResponseWriterExcepton")
+
+	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	assert.NoError(s.T(), err)
+	cr := res.(*fhirmodelCR.ContainedResource)
+	respOO := cr.GetOperationOutcome()
+
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_STRUCTURE, respOO.Issue[0].Code.Value)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
+	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
+	// Verify Details.Text exists
+	assert.NotNil(s.T(), respOO.Issue[0].Details)
+	assert.NotNil(s.T(), respOO.Issue[0].Details.Text)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Text.Value)
+	// Verify Details.Coding does not exist (v3 should not include coding)
+	assert.Nil(s.T(), respOO.Issue[0].Details.Coding)
+	assert.Empty(s.T(), respOO.Issue[0].Details.Coding)
+}
+
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 	rw := NewFhirResponseWriter()
 	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "TestCreateOpOutcome")
