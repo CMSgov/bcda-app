@@ -242,7 +242,6 @@ jobs:
             fi
           done
 
-  # We need to manually verify worker is on correct version
   verify_worker_version:
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
