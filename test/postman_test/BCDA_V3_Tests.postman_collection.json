@@ -2232,7 +2232,7 @@
 													"",
 													"    pm.test(\"Contains Required Resources\", () => {",
 													"        const requiredResources = [\"ExplanationOfBenefit\"];",
-													"        const partiallyAdjudicatedResources = [\"Patient\", \"Coverage\", \"Claim\", \"ClaimResponse\"];",
+													"        const partiallyAdjudicatedResources = [\"Patient\", \"Coverage\", \"ExplanationOfBenefit\"];",
 													"        const returnedResources = respJson.output.map(r => r.type);",
 													"",
 													"        for (const resource of requiredResources) {",
