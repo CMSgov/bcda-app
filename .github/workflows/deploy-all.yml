@@ -253,25 +253,16 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
-          TRY=1
+          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
 
-          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            WORKER_ARN=`aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text`
-            WORKER_IMAGE=`aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text`
-            WORKER_VERSION=${WORKER_IMAGE#*:}
+          WORKER_ARN=`aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text`
+          WORKER_IMAGE=`aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text`
+          WORKER_VERSION=${WORKER_IMAGE#*:}
 
-            if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-              echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
-              TRY=$(($TRY + 1))
-              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-                exit 1
-              else
-                sleep $VERIFICATION_SLEEP
-              fi
-            else
-              break
-            fi
-          done
+          if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
+            echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
+            exit 1
+          fi
 
   smoketests:
     # needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
