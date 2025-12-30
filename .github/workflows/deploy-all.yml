@@ -153,9 +153,9 @@ jobs:
       # FARGATE FIXUP: Can remove this step
       - name: Get AMIs
         run: |
-          export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          export BCDA_AMI=$(aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text)
           echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
-          export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          export WORKER_AMI=$(aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text)
           echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
       - name: Install Cosign to verify tenv and tofu installs
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
@@ -203,7 +203,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
-          BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
+          BCDA_API_VERSION=$(curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
           if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
             exit 1
@@ -220,7 +220,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
-          BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
+          BCDA_SSAS_VERSION=$(curl https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
           if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
             echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
             exit 1
@@ -237,8 +237,8 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
-          WORKER_ARN=`aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text`
-          WORKER_IMAGE=`aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text`
+          WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
+          WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text)
           WORKER_VERSION=${WORKER_IMAGE#*:}
           if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
             echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
@@ -291,7 +291,7 @@ jobs:
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
-          export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          export BCDA_AMI=$(aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text)
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
