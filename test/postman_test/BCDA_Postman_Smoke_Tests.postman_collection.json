@@ -214,6 +214,14 @@
                       "listen": "test",
                       "script": {
                         "exec": [
+                          "const maintenanceMode = pm.globals.get('maintenanceMode');",
+                          "",
+                          "if (maintenanceMode === \"eoy\") {",
+                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request for job status\");",
+                          "",
+                          "    pm.environment.set(\"smokeTestPatientDataUrl\", \"https://bcda.cms.gov\")",
+                          "    return;",
+                          "}",
                           "pm.test(\"Status code is 202\", function() {",
                           "    pm.response.to.have.status(202);",
                           "});",
@@ -273,8 +281,6 @@
                           "if (maintenanceMode === \"eoy\") {",
                           "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request for job status\");",
                           "",
-                          "    pm.environment.set(\"smokeTestPatientDataUrl\", \"https://bcda.cms.gov\")",
-                          "    return;",
                           "}",
                           "",
                           "pm.test(\"Status code is 202 or 200\", function () {",
@@ -495,6 +501,13 @@
                       "listen": "test",
                       "script": {
                         "exec": [
+                          "const maintenanceMode = pm.globals.get('maintenanceMode');",
+                          "",
+                          "if (maintenanceMode === \"eoy\") {",
+                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request for job status\");",
+                          "",
+                          "    return;",
+                          "}",
                           "pm.test(\"Status code is 202\", function () {",
                           "    pm.response.to.have.status(202);",
                           "});",
