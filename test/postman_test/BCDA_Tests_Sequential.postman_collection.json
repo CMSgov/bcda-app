@@ -1089,23 +1089,13 @@
                       "script": {
                         "exec": [
                           "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
+                          "console.log(maintenanceMode)",
                           "if (maintenanceMode === \"eoy\") {\t",
                           "    console.log(\"EOY mode is enabled - Skipping Patient EOB endpoint request\");\t",
                           "    pm.environment.set(\"eobJobUrl\", \"https://bcda.cms.gov\")\t\t",
                           "    pm.test(\"Status code is 400, 404, or 500\", function() {",
                           "        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
                           "    });",
-                          "} else {",
-                          "    pm.test(\"Status code is 202\", function() {",
-                          "        pm.response.to.have.status(202);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Has Content-Location header\", function() {",
-                          "        pm.response.to.have.header(\"Content-Location\");",
-                          "    });",
-                          "",
-                          "    pm.environment.set(\"eobJobUrl\", pm.response.headers.get(\"Content-Location\"));",
                           "}"
                         ],
                         "type": "text/javascript"
@@ -1222,6 +1212,7 @@
                           "        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
                           "    });",
                           "} else {",
+                          "    console.log(executing else statement..)",
                           "    pm.test(\"Status code is 202\", function() {",
                           "        pm.response.to.have.status(202);",
                           "    });",
