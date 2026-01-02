@@ -1142,61 +1142,6 @@
                   "response": []
                 },
                 {
-                  "name": "Delete job, valid token",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient EOB endpoint request\");",
-                          "    return;",
-                          "}",
-                          "",
-                          "pm.test(\"Status code is 202\", function() {",
-                          "    pm.response.to.have.status(202);",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{token}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "DELETE",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json",
-                        "disabled": true
-                      },
-                      {
-                        "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async",
-                        "disabled": true
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{eobJobUrl}}",
-                      "host": ["{{eobJobUrl}}"]
-                    }
-                  },
-                  "response": []
-                },
-                {
                   "name": "Start EOB export v2 for Deletion",
                   "event": [
                     {
