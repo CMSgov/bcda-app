@@ -672,6 +672,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db, s.pool)
 
 	enqueuer := queueing.NewMockEnqueuer(s.T())
+	h.Enq = enqueuer
 	enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 
 	// Test Group and Patient
