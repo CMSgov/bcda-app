@@ -2685,6 +2685,7 @@
                           "",
                           "if (maintenanceMode === \"eoy\") {\t",
                           "    console.log(\"EOY mode is enabled - Skipping Patient endpoint request\");",
+                          "    pm.environment.set(\"smokeTestPatientDataUrl\", \"https://bcda.cms.gov\")",
                           "    return;",
                           "} else {",
                           "    pm.test(\"Status code is 200\", function() {",
