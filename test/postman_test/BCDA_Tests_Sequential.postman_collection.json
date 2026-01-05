@@ -2532,6 +2532,7 @@
                           "",
                           "if (maintenanceMode === \"eoy\") {\t",
                           "    console.log(\"EOY mode is enabled - Skipping Patient endpoint request\");\t\t\t\t    ",
+                          "    pm.environment.set(\"patientDataUrl\", \"https://bcda.cms.gov\")",
                           "    return;",
                           "} else {",
                           "    pm.test(\"Status code is 202 or 200\", function() {",
