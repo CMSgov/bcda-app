@@ -156,12 +156,13 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			if _, ok := tt.errToReturn.(CCLFNotFoundOperationOutcomeError); ok && tt.name == "Expired runout data" {
 				cutoffTime = time.Now().Add(-200 * 24 * time.Hour) // 200 days ago (past 180 day limit)
 			}
+
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(cutoffTime, constants.GetExistingBenes)
 
 			switch tt.errToReturn {
 			case nil:
-				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 24}, nil)
+				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: (utils.GetPY() - 1)}, nil)
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 			case CCLFNotFoundOperationOutcomeError{}:
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, service.CCLFNotFoundError{})
@@ -169,7 +170,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
 			case QueueError{}:
 				mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time"), mock.Anything).
-					Return(&models.CCLFFile{PerformanceYear: 24}, nil)
+					Return(&models.CCLFFile{PerformanceYear: (utils.GetPY() - 1)}, nil)
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
 			}
 
@@ -623,7 +624,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
 			mockSvc.On("GetTimeConstraints", mock.Anything, mock.Anything).Return(service.TimeConstraints{}, nil)
 			mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
-			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: 25}, nil)
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{PerformanceYear: utils.GetPY()}, nil)
 			mockSvc.On("FindOldCCLFFile", testUtils.CtxMatcher, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(uint(1), nil)
 			h.Svc = &mockSvc
 
@@ -664,12 +665,15 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
-
 	apiVersion := "v1"
 	fhirPath := "/" + apiVersion + "/fhir"
 	resourceMap := s.resourceType
 
 	h := newHandler(resourceMap, fhirPath, apiVersion, s.db, s.pool)
+
+	enqueuer := queueing.NewMockEnqueuer(s.T())
+	h.Enq = enqueuer
+	enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(nil)
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit
