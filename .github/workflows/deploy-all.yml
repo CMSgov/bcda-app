@@ -111,7 +111,6 @@ jobs:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -123,8 +122,6 @@ jobs:
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
-            SUBNET_ID=/bcda/workflows/packer_subnet_id
-            S3_BUCKET=/bcda/rpms_bucket
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
