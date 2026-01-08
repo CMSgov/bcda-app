@@ -147,13 +147,6 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
-      # FARGATE FIXUP: Can remove this step
-      - name: Get AMIs
-        run: |
-          export BCDA_AMI=$(aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text)
-          echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
-          export WORKER_AMI=$(aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text)
-          echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
       - name: Install Cosign to verify tenv and tofu installs
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
@@ -166,13 +159,9 @@ jobs:
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'ami_id=${{ env.BCDA_AMI }}' \
-            -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
-            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
             -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
             -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
             -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
-            -var 'fargate_switch={start_ec2=false, start_fargate=true, fargate_traffic=100}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -288,11 +277,14 @@ jobs:
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
-          export BCDA_AMI=$(aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text)
+          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
+          API_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-api --query 'taskArns[0]' --output text)
+          API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[0].image" --output=text)
+          export API_VERSION=${API_IMAGE#*:}
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${BCDA_AMI}
+            --version ${API_VERSION}
 
   slack_alerts:
     if: ${{ always() }}
