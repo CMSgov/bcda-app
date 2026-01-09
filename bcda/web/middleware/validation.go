@@ -165,6 +165,17 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 	return resourceTypes, true
 }
 
+// extractTagCode extracts the tag code from either a short format (e.g., "SharedSystem")
+// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem")
+func extractTagCode(tagValue string) string {
+	// Check if it's a URL format with pipe separator
+	if pipeIdx := strings.LastIndex(tagValue, "|"); pipeIdx != -1 {
+		return tagValue[pipeIdx+1:]
+	}
+	// Otherwise, it's short format, return as-is
+	return tagValue
+}
+
 func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([][]string, bool) {
 	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -228,6 +239,22 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 			}
 
 			if slices.Contains([]string{"service-date", "_tag", "_profile"}, paramName) {
+				// For _tag parameters, validate the tag code format
+				if paramName == "_tag" {
+					tagCode := extractTagCode(paramValue)
+					// Validate that the tag code is one of the supported values
+					validTagCodes := []string{"SharedSystem", "NotFinalAction", "FinalAction", "NationalClaimsHistory"}
+					if !slices.Contains(validTagCodes, tagCode) {
+						errMsg := fmt.Sprintf("Invalid _tag value: %s. Supported tag codes are: %v", tagCode, validTagCodes)
+						ctx, _ = log.WriteWarnWithFields(
+							ctx,
+							fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+							logrus.Fields{"resp_status": http.StatusBadRequest},
+						)
+						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+						return nil, false
+					}
+				}
 				typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
 			} else {
 				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
