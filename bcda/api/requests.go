@@ -818,6 +818,60 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 	return false
 }
 
+// validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
+// tags in _typeFilter have PAC data access. Returns error if validation fails (and writes response).
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter [][]string, cmsID string, w http.ResponseWriter) error {
+	// Tags that require PAC eligibility
+	tagsRequiringPAC := []string{"SharedSystem"}
+
+	// Extract all _tag parameter values
+	var requestedTagCodes []string
+	for _, paramPair := range typeFilter {
+		if len(paramPair) == 2 && paramPair[0] == "_tag" {
+			tagValue := paramPair[1]
+			// Extract tag code from either short format or URL format
+			tagCode := extractTagCodeFromValue(tagValue)
+			requestedTagCodes = append(requestedTagCodes, tagCode)
+		}
+	}
+
+	// Check if any requested tags require PAC eligibility
+	requiresPAC := false
+	for _, tagCode := range requestedTagCodes {
+		if utils.ContainsString(tagsRequiringPAC, tagCode) {
+			requiresPAC = true
+			break
+		}
+	}
+
+	// If PAC is required, check if ACO has PAC access
+	if requiresPAC {
+		acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
+		if !ok {
+			ctx, _ = log.WriteErrorWithFields(
+				ctx,
+				fmt.Sprintf("%s: Unable to determine ACO configuration", responseutils.RequestErr),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Unable to determine ACO configuration")
+			return fmt.Errorf("ACO configuration not found")
+		}
+
+		hasPACAccess := utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated)
+		if !hasPACAccess {
+			errMsg := "Model Entity must be eligible for PAC data to access claims from the Shared Systems"
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			return fmt.Errorf("PAC eligibility required")
+		}
+	}
+
+	return nil
+}
 
 // extractTagCodeFromValue extracts the tag code from either a short format (e.g., "SharedSystem")
 // or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem")
