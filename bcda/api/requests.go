@@ -582,6 +582,13 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
+	// Validate PAC eligibility for v3 _typeFilter tags that require it
+	if h.apiVersion == constants.V3Version {
+		if err = h.validateTypeFilterPACEligibility(ctx, rp.TypeFilter, ad.CMSID, w); err != nil {
+			return
+		}
+	}
+
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
 		ctx, _ = log.WriteErrorWithFields(
