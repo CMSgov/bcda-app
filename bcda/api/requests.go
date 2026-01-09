@@ -818,6 +818,18 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 	return false
 }
 
+
+// extractTagCodeFromValue extracts the tag code from either a short format (e.g., "SharedSystem")
+// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem")
+func extractTagCodeFromValue(tagValue string) string {
+	// Check if it's a URL format with pipe separator
+	if pipeIdx := strings.LastIndex(tagValue, "|"); pipeIdx != -1 {
+		return tagValue[pipeIdx+1:]
+	}
+	// Otherwise, it's short format, return as-is
+	return tagValue
+}
+
 func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {
 	var ok bool
 	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
