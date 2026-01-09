@@ -1,4 +1,4 @@
-# Deploy BCDA/SSAS and Worker ec2 instances
+# Deploy terraform and API, SSAS, and Worker ECS services
 name: Deploy All
 
 on:
