@@ -9,7 +9,7 @@ const ImportInprog = "In-Progress"
 const ImportComplete = "Completed"
 const ImportFail = "Failed"
 
-// This is set during compilation.  See build_and_package.sh in the /ops dir
+// This is set during compilation. See dockerfiles for usage
 var Version = "latest"
 
 const Adjudicated = "adjudicated"
