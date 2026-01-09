@@ -56,7 +56,6 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
-
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
@@ -74,6 +73,24 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 	assert.Equal(s.T(), fhircodes.IssueTypeCode_NOT_FOUND, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Diagnostics.Value)
+	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
+}
+
+func (s *ResponseUtilsWriterTestSuite) TestResponseWriterOpOutcome() {
+	rw := NewFhirResponseWriter()
+	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
+	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
+	rw.OpOutcome(ctx, s.rr, http.StatusBadRequest, RequestErr, "TestResponseWriterExcepton")
+
+	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	assert.NoError(s.T(), err)
+	cr := res.(*fhirmodels.ContainedResource)
+	respOO := cr.GetOperationOutcome()
+
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_STRUCTURE, respOO.Issue[0].Code.Value)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 }
 

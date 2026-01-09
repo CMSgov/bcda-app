@@ -51,6 +51,17 @@ func (r FhirResponseWriter) NotFound(ctx context.Context, w http.ResponseWriter,
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
+func (r FhirResponseWriter) OpOutcome(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
+	respStatusToFHIRStatusMap := map[int]fhircodes.IssueTypeCode_Value{
+		400: fhircodes.IssueTypeCode_STRUCTURE,
+		401: fhircodes.IssueTypeCode_FORBIDDEN,
+		403: fhircodes.IssueTypeCode_FORBIDDEN,
+		410: fhircodes.IssueTypeCode_NOT_FOUND,
+	}
+	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, respStatusToFHIRStatusMap[statusCode], errType, errMsg)
+	r.WriteError(ctx, oo, w, statusCode)
+}
+
 func (r FhirResponseWriter) JobsBundle(ctx context.Context, w http.ResponseWriter, jobs []*models.Job, host string) {
 	jb := r.CreateJobsBundle(jobs, host)
 	r.WriteBundleResponse(jb, w)
