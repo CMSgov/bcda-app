@@ -1497,6 +1497,128 @@ func TestExtractTagCodeFromValue(t *testing.T) {
 	}
 }
 
+func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
+
+	// Create mock service
+	mockSvc := new(service.MockService)
+	h := &Handler{
+		Svc: mockSvc,
+	}
+
+	// ACO configs
+	acoWithPAC := &service.ACOConfig{
+		Model: "Model With PAC",
+		Data:  []string{"adjudicated", "partially-adjudicated"},
+	}
+
+	acoWithoutPAC := &service.ACOConfig{
+		Model: "Model Without PAC",
+		Data:  []string{"adjudicated"},
+	}
+
+	tests := []struct {
+		name         string
+		cmsID        string
+		typeFilter   [][]string
+		acoConfig    *service.ACOConfig
+		expectedTags []string // Expected _tag values in the returned filter
+		description  string
+	}{
+		{
+			name:         "NonPACNoFilter",
+			cmsID:        "NOPAC0000",
+			typeFilter:   [][]string{},
+			acoConfig:    acoWithoutPAC,
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			description:  "Non-PAC ACO with no filter should get NCH filter added",
+		},
+		{
+			name:         "NonPACWithNCHFilter",
+			cmsID:        "NOPAC0000",
+			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"}},
+			acoConfig:    acoWithoutPAC,
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			description:  "Non-PAC ACO with existing NCH filter should not duplicate it",
+		},
+		{
+			name:         "NonPACWithFinalAction",
+			cmsID:        "NOPAC0000",
+			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"}},
+			acoConfig:    acoWithoutPAC,
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			description:  "Non-PAC ACO with FinalAction should still get NCH filter added",
+		},
+		{
+			name:         "PACNoFilter",
+			cmsID:        "PAC0000",
+			typeFilter:   [][]string{},
+			acoConfig:    acoWithPAC,
+			expectedTags: []string{},
+			description:  "PAC ACO with no filter should not get NCH filter added",
+		},
+		{
+			name:         "PACWithSharedSystem",
+			cmsID:        "PAC0000",
+			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
+			acoConfig:    acoWithPAC,
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+			description:  "PAC ACO with SharedSystem should not get NCH filter added",
+		},
+		{
+			name:         "NonPACWithServiceDate",
+			cmsID:        "NOPAC0000",
+			typeFilter:   [][]string{{"service-date", "ge2024-01-01"}},
+			acoConfig:    acoWithoutPAC,
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			description:  "Non-PAC ACO with service-date but no _tag should get NCH filter added",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Setup mock
+			mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
+
+			// Call the function
+			result := h.ensureNCHOnlyForNonPAC(ctx, test.typeFilter, test.cmsID)
+
+			// Extract _tag values from result
+			var actualTags []string
+			for _, paramPair := range result {
+				if len(paramPair) == 2 && paramPair[0] == "_tag" {
+					actualTags = append(actualTags, paramPair[1])
+				}
+			}
+
+			// Verify expected tags (handle nil vs empty slice)
+			if len(test.expectedTags) == 0 && len(actualTags) == 0 {
+				// Both are empty, that's fine
+			} else {
+				assert.Equal(t, test.expectedTags, actualTags, test.description)
+			}
+
+			// Verify other parameters are preserved
+			var otherParams [][]string
+			for _, paramPair := range result {
+				if len(paramPair) == 2 && paramPair[0] != "_tag" {
+					otherParams = append(otherParams, paramPair)
+				}
+			}
+			var expectedOtherParams [][]string
+			for _, paramPair := range test.typeFilter {
+				if len(paramPair) == 2 && paramPair[0] != "_tag" {
+					expectedOtherParams = append(expectedOtherParams, paramPair)
+				}
+			}
+			assert.Equal(t, expectedOtherParams, otherParams, "Other parameters should be preserved")
+
+			mockSvc.AssertExpectations(t)
+		})
+	}
+}
+
 type DatabaseError struct{}
 
 func (e DatabaseError) Error() string {
