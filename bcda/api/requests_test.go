@@ -30,6 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -1285,6 +1286,215 @@ type QueueError struct{}
 
 func (e QueueError) Error() string {
 	return "error"
+}
+
+func TestValidateTypeFilterPACEligibility(t *testing.T) {
+	// Setup ACO configs
+	acoWithPAC := &service.ACOConfig{
+		Model:              "Model With PAC",
+		Pattern:            "PAC\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated", "partially-adjudicated"},
+	}
+	acoWithoutPAC := &service.ACOConfig{
+		Model:              "Model Without PAC",
+		Pattern:            "NOPAC\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated"},
+	}
+
+	// Create a minimal handler - we only need the service mock, not the full database setup
+	h := &Handler{
+		Svc:        &service.MockService{},
+		apiVersion: constants.V3Version,
+		RespWriter: responseutilsv3.NewFhirResponseWriter(),
+	}
+
+	tests := []struct {
+		name          string
+		cmsID         string
+		typeFilter    [][]string
+		acoConfig     *service.ACOConfig
+		shouldFail    bool
+		expectedError string
+		description   string
+	}{
+		{
+			name:          "SharedSystemWithPAC",
+			cmsID:         "PAC0000",
+			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
+			acoConfig:     acoWithPAC,
+			shouldFail:    false,
+			description:   "ACO with PAC access should be able to use SharedSystem tag",
+		},
+		{
+			name:          "SharedSystemWithoutPAC",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    true,
+			expectedError: "Model Entity must be eligible for PAC data to access claims from the Shared Systems",
+			description:   "ACO without PAC access should be blocked from using SharedSystem tag",
+		},
+		{
+			name:          "SharedSystemURLFormatWithPAC",
+			cmsID:         "PAC0000",
+			typeFilter:    [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
+			acoConfig:     acoWithPAC,
+			shouldFail:    false,
+			description:   "ACO with PAC access should be able to use SharedSystem tag in URL format",
+		},
+		{
+			name:          "SharedSystemURLFormatWithoutPAC",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    true,
+			expectedError: "Model Entity must be eligible for PAC data to access claims from the Shared Systems",
+			description:   "ACO without PAC access should be blocked from SharedSystem tag in URL format",
+		},
+		{
+			name:          "FinalActionNoPACRequired",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"_tag", "FinalAction"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    false,
+			description:   "FinalAction tag should not require PAC eligibility",
+		},
+		{
+			name:          "NotFinalActionNoPACRequired",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"_tag", "NotFinalAction"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    false,
+			description:   "NotFinalAction tag should not require PAC eligibility",
+		},
+		{
+			name:          "NationalClaimsHistoryNoPACRequired",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"_tag", "NationalClaimsHistory"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    false,
+			description:   "NationalClaimsHistory tag should not require PAC eligibility",
+		},
+		{
+			name:          "SharedSystemAndFinalActionWithPAC",
+			cmsID:         "PAC0000",
+			typeFilter:    [][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}},
+			acoConfig:     acoWithPAC,
+			shouldFail:    false,
+			description:   "ACO with PAC should be able to combine SharedSystem with other tags",
+		},
+		{
+			name:          "SharedSystemAndFinalActionWithoutPAC",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    true,
+			expectedError: "Model Entity must be eligible for PAC data to access claims from the Shared Systems",
+			description:   "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
+		},
+		{
+			name:          "NoTypeFilter",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    false,
+			description:   "No typeFilter should pass validation",
+		},
+		{
+			name:          "NonTagParameters",
+			cmsID:         "NOPAC0000",
+			typeFilter:    [][]string{{"service-date", "ge2020-01-01"}},
+			acoConfig:     acoWithoutPAC,
+			shouldFail:    false,
+			description:   "Non-tag parameters should not require PAC eligibility",
+		},
+		{
+			name:          "ACOConfigNotFound",
+			cmsID:         "UNKNOWN0000",
+			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
+			acoConfig:     nil,
+			shouldFail:    true,
+			expectedError: "Unable to determine ACO configuration",
+			description:   "Should fail when ACO config is not found",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Create a new mock service for each test
+			mockSvc := service.MockService{}
+			h.Svc = &mockSvc
+
+			// Check if SharedSystem tag is present (which requires PAC check)
+			requiresPACCheck := false
+			for _, paramPair := range test.typeFilter {
+				if len(paramPair) == 2 && paramPair[0] == "_tag" {
+					tagCode := extractTagCodeFromValue(paramPair[1])
+					if tagCode == "SharedSystem" {
+						requiresPACCheck = true
+						break
+					}
+				}
+			}
+
+			// Setup mock service only if PAC check is required
+			if requiresPACCheck {
+				if test.acoConfig != nil {
+					mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
+				} else {
+					mockSvc.On("GetACOConfigForID", test.cmsID).Return(nil, false)
+				}
+			}
+
+			// Create response writer
+			w := httptest.NewRecorder()
+			ctx := context.Background()
+			ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
+
+			// Call the validation function
+			err := h.validateTypeFilterPACEligibility(ctx, test.typeFilter, test.cmsID, w)
+
+			if test.shouldFail {
+				assert.Error(t, err, test.description)
+				assert.Equal(t, http.StatusBadRequest, w.Code, test.description)
+				if test.expectedError != "" {
+					assert.Contains(t, w.Body.String(), test.expectedError, test.description)
+				}
+			} else {
+				assert.NoError(t, err, test.description)
+			}
+
+			mockSvc.AssertExpectations(t)
+		})
+	}
+}
+
+func TestExtractTagCodeFromValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		tagValue string
+		expected string
+	}{
+		{"shortFormat", "SharedSystem", "SharedSystem"},
+		{"shortFormatNotFinalAction", "NotFinalAction", "NotFinalAction"},
+		{"urlFormatSystemType", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem", "SharedSystem"},
+		{"urlFormatFinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "FinalAction"},
+		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", "SharedSystem"},
+		{"emptyString", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractTagCodeFromValue(tt.tagValue)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 type DatabaseError struct{}

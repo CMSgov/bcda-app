@@ -130,3 +130,136 @@ func TestInvalidRequestHeaders(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractTagCode(t *testing.T) {
+	tests := []struct {
+		name     string
+		tagValue string
+		expected string
+	}{
+		{"shortFormat", "SharedSystem", "SharedSystem"},
+		{"shortFormatNotFinalAction", "NotFinalAction", "NotFinalAction"},
+		{"urlFormatSystemType", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem", "SharedSystem"},
+		{"urlFormatFinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "FinalAction"},
+		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", "SharedSystem"},
+		{"emptyString", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractTagCode(tt.tagValue)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestValidateTypeFilterTagCodes(t *testing.T) {
+	baseV3 := constants.V3Path + "Patient/$export?"
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
+
+	tests := []struct {
+		name        string
+		url         string
+		shouldFail  bool
+		errMsg      string
+		description string
+	}{
+		{
+			name:        "validTagShortFormat",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem", baseV3),
+			shouldFail:  false,
+			description: "Valid tag in short format should pass",
+		},
+		{
+			name:        "validTagURLFormat",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
+			shouldFail:  false,
+			description: "Valid tag in URL format should pass",
+		},
+		{
+			name:        "validTagNotFinalAction",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DNotFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Valid NotFinalAction tag should pass",
+		},
+		{
+			name:        "validTagFinalAction",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Valid FinalAction tag should pass",
+		},
+		{
+			name:        "validTagNationalClaimsHistory",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DNationalClaimsHistory", baseV3),
+			shouldFail:  false,
+			description: "Valid NationalClaimsHistory tag should pass",
+		},
+		{
+			name:        "invalidTagPartiallyAdjudicated",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated", baseV3),
+			shouldFail:  true,
+			errMsg:      "Invalid _tag value: PartiallyAdjudicated",
+			description: "Old PartiallyAdjudicated tag should be rejected",
+		},
+		{
+			name:        "invalidTagAdjudicated",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DAdjudicated", baseV3),
+			shouldFail:  true,
+			errMsg:      "Invalid _tag value: Adjudicated",
+			description: "Old Adjudicated tag should be rejected",
+		},
+		{
+			name:        "invalidTagRandomValue",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DInvalidTag", baseV3),
+			shouldFail:  true,
+			errMsg:      "Invalid _tag value: InvalidTag",
+			description: "Random invalid tag should be rejected",
+		},
+		{
+			name:        "multipleValidTags",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem%%26_tag%%3DFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Multiple valid tags should pass",
+		},
+		{
+			name:        "multipleTagsOneInvalid",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem%%26_tag%%3DPartiallyAdjudicated", baseV3),
+			shouldFail:  true,
+			errMsg:      "Invalid _tag value: PartiallyAdjudicated",
+			description: "Multiple tags with one invalid should fail",
+		},
+		{
+			name:        "v2ShouldIgnoreTypeFilter",
+			url:         fmt.Sprintf("/api/v2/Patient/$export?_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated"),
+			shouldFail:  false,
+			description: "v2 should ignore _typeFilter validation (old behavior preserved)",
+		},
+		{
+			name:        "v1ShouldIgnoreTypeFilter",
+			url:         fmt.Sprintf("/api/v1/Patient/$export?_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated"),
+			shouldFail:  false,
+			description: "v1 should ignore _typeFilter validation (old behavior preserved)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", tt.url, nil)
+			assert.NoError(t, err)
+			req = req.WithContext(ctx)
+			req.Header.Set("Accept", "application/fhir+json")
+			req.Header.Set("Prefer", constants.TestRespondAsync)
+
+			rr := httptest.NewRecorder()
+			ValidateRequestURL(noop).ServeHTTP(rr, req)
+
+			if tt.shouldFail {
+				assert.Equal(t, http.StatusBadRequest, rr.Code, tt.description)
+				assert.Contains(t, rr.Body.String(), tt.errMsg, tt.description)
+			} else {
+				assert.Equal(t, http.StatusOK, rr.Code, tt.description)
+			}
+		})
+	}
+}
