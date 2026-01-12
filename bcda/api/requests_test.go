@@ -1337,7 +1337,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
-			expectedError: "Model Entity must be eligible for PAC data to access claims from the Shared Systems",
+			expectedError: "Model entities in Model Without PAC are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: [SharedSystem]",
 			description:   "ACO without PAC access should be blocked from using SharedSystem tag",
 		},
 		{
@@ -1354,7 +1354,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			typeFilter:    [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
-			expectedError: "Model Entity must be eligible for PAC data to access claims from the Shared Systems",
+			expectedError: "Model entities in Model Without PAC are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: [SharedSystem]",
 			description:   "ACO without PAC access should be blocked from SharedSystem tag in URL format",
 		},
 		{
@@ -1395,7 +1395,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			typeFilter:    [][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}},
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
-			expectedError: "Model Entity must be eligible for PAC data to access claims from the Shared Systems",
+			expectedError: "Model entities in Model Without PAC are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: [SharedSystem]",
 			description:   "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
 		},
 		{

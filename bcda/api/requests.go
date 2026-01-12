@@ -859,7 +859,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 		hasPACAccess := utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated)
 		if !hasPACAccess {
-			errMsg := "Model Entity must be eligible for PAC data to access claims from the Shared Systems"
+			errMsg := fmt.Sprintf("Model entities in %s are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: %v", acoConfig.Model, tagsRequiringPAC)
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
