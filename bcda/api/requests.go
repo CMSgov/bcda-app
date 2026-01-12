@@ -866,7 +866,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
 			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return fmt.Errorf("PAC eligibility required")
+			return fmt.Errorf("Not eligible for partially adjudicated claims data")
 		}
 	}
 
