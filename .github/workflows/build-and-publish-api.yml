@@ -60,7 +60,7 @@ jobs:
     secrets: inherit
 
   build_and_publish:
-    # needs: [ci_checks]
+    needs: [ci_checks]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
