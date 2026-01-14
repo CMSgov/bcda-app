@@ -607,15 +607,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			rp.TypeFilter = h.ensureNCHOnlyForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
 		}
 	}
-	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
-		ctx, _ = log.WriteErrorWithFields(
-			ctx,
-			fmt.Sprintf("%s: Error validating resources: %+v", responseutils.RequestErr, err),
-			logrus.Fields{"resp_status": http.StatusBadRequest},
-		)
-		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
-		return
-	}
 
 	acoID := uuid.Parse(ad.ACOID)
 
