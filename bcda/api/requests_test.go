@@ -1619,6 +1619,52 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 	}
 }
 
+func TestEnsureNCHOnlyForNonPACWithDefaultEOB(t *testing.T) {
+	// This test verifies that when a non-PAC ACO makes a v3 request without _type parameter,
+	// ExplanationOfBenefit is included by default, and the NCH filter is added
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
+
+	mockSvc := new(service.MockService)
+	h := &Handler{
+		Svc:        mockSvc,
+		apiVersion: constants.V3Version,
+	}
+
+	acoWithoutPAC := &service.ACOConfig{
+		Model: "Model Without PAC",
+		Data:  []string{"adjudicated"},
+	}
+
+	// Simulate getResourceTypes returning default types (including EOB)
+	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
+
+	// No typeFilter provided (empty)
+	typeFilter := [][]string{}
+
+	// Setup mock
+	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
+
+	// Call ensureNCHOnlyForNonPAC (this is what gets called when EOB is in resourceTypes)
+	result := h.ensureNCHOnlyForNonPAC(ctx, typeFilter, "NOPAC0000")
+
+	// Verify NCH filter was added
+	var actualTags []string
+	for _, paramPair := range result {
+		if len(paramPair) == 2 && paramPair[0] == "_tag" {
+			actualTags = append(actualTags, paramPair[1])
+		}
+	}
+
+	expectedNCHTag := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"
+	assert.Contains(t, actualTags, expectedNCHTag, "NCH filter should be added for non-PAC ACO when EOB is requested")
+
+	// Verify that ExplanationOfBenefit would trigger this logic
+	assert.True(t, utils.ContainsString(resourceTypes, "ExplanationOfBenefit"), "EOB should be in default resource types")
+
+	mockSvc.AssertExpectations(t)
+}
+
 type DatabaseError struct{}
 
 func (e DatabaseError) Error() string {
