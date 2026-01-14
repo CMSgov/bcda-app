@@ -11,14 +11,6 @@ permissions:
   contents: read
 
 jobs:
-  build_and_package_all:
-    uses: ./.github/workflows/build-and-package-all.yml
-    with:
-      release_version: main
-      ops_release_version: main
-      ssas_release_version: main
-    secrets: inherit
-
   build_and_publish_all:
     uses: ./.github/workflows/build-and-publish-all.yml
     with:
@@ -29,7 +21,7 @@ jobs:
     secrets: inherit
   
   deploy_all:
-    needs: [build_and_package_all, build_and_publish_all]
+    needs: [build_and_publish_all]
     uses: ./.github/workflows/deploy-all.yml
     with:
       release_version: main
