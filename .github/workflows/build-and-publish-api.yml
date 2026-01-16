@@ -90,7 +90,7 @@ jobs:
       - name: Set Version
         id: version
         run: |
-          TAG=$(git describe --tags --exact-match)
+          TAG=$(git describe --tags --exact-match 2>/dev/null)
           if [[ $? -eq 0 ]]; then
             echo "Revision is a tag; setting version to tag name"
             echo "version=$TAG" >> $GITHUB_OUTPUT
