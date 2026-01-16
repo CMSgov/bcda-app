@@ -98,7 +98,7 @@ jobs:
     secrets: inherit
 
   migrate_ssas_db:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
+    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@38fd7736527b9cfef07d76c2cf4a98f17caeb1bd
     with:
       revision: ${{ inputs.ssas_tag }}
       env: ${{ inputs.env || 'dev' }}
