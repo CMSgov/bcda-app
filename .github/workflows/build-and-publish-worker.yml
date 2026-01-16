@@ -91,12 +91,14 @@ jobs:
             echo "Revision is not a tag; setting version to revision shorthand"
             REV_SHORT=$(git rev-parse --short=8 HEAD)
             echo "version=$REV_SHORT" >> $GITHUB_OUTPUT
+            if [[ ${{ env.RELEASE_ENV }} != 'dev' && ${{ env.RELEASE_ENV }} != 'test']]; then
+              echo "Publishing non-tag versions to prod account is forbidden; exiting process"
+              exit 1
+            fi
           fi
       - name: Set ECR_URL
         run: echo "ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-${{ env.RELEASE_ENV }}-worker" >> $GITHUB_ENV
       - name: Build Worker
-        # Don't release non-tag versions to prod/sandbox, also makes sure 'latest' in prod aligns with the latest release tag
-        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || startsWith(steps.version.outputs.version, 'r') }}
         run: |
           docker build \
             --build-arg RELEASE_VERSION=${{ steps.version.outputs.version }} \
@@ -104,7 +106,6 @@ jobs:
             -t ${{ env.ECR_URL }}:${{ steps.version.outputs.version }} \
             -f Dockerfiles/Dockerfile.bcdaworker .
       - name: Push to ECR
-        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' || startsWith(steps.version.outputs.version, 'r') }}
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
           docker image push ${{ env.ECR_URL }}:${{ steps.version.outputs.version }}
