@@ -36,9 +36,9 @@ jobs:
     needs: [build_and_publish_all]
     uses: ./.github/workflows/deploy-all.yml
     with:
-      version: ${{ needs.build_and_publish_all.outputs.version }}
-      ops_version: ${{ needs.build_and_publish_all.outputs.version }}
-      ssas_version: ${{ needs.build_and_publish_all.outputs.version }}
+      tag: ${{ needs.build_and_publish_all.outputs.version }}
+      ops_tag: ${{ needs.build_and_publish_all.outputs.version }}
+      ssas_tag: ${{ needs.build_and_publish_all.outputs.version }}
       env: dev
       confirm_env: dev
       test_aco: dev
