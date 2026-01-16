@@ -4,16 +4,16 @@ name: Deploy All
 on:
   workflow_dispatch:
     inputs:
-      release_version:
-        description: 'Release version/tag (or branch name)'
+      version:
+        description: 'Version of API/worker to deploy (revision and docker image tag)'
         required: true
         type: string
-      ops_release_version:
-        description: 'Release version/tag for bcda-ops (or branch name)'
+      ops_version:
+        description: 'Version of bcda-ops to deploy (revision and docker image tag)'
         required: true
         type: string
-      ssas_release_version:
-        description: 'Release version/tag for bcda-ssas (or branch name)'
+      ssas_version:
+        description: 'Version of SSAS to deploy (revision and docker image tag)'
         required: true
         type: string
       env:
@@ -50,16 +50,16 @@ on:
         default: 'dev'
   workflow_call:
     inputs:
-      release_version:
-        description: 'Release version/tag (or branch name)'
+      tag:
+        description: 'Tag of api/worker to deploy'
         required: true
         type: string
-      ops_release_version:
-        description: 'Release version/tag for bcda-ops (or branch name)'
+      ops_tag:
+        description: 'Tag of bcda-ops to deploy'
         required: true
         type: string
-      ssas_release_version:
-        description: 'Release version/tag for bcda-ssas (or branch name)'
+      ssas_tag:
+        description: 'Tag of SSAS to deploy'
         required: true
         type: string
       env:
@@ -83,9 +83,6 @@ permissions:
   contents: read
 
 env:
-  RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
-  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
-  SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
   ENV_MODIFIER: ${{ inputs.env || 'dev' }}
@@ -96,14 +93,14 @@ jobs:
   migrate_db:
     uses: ./.github/workflows/migrate-db.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
+      revision: ${{ inputs.tag }}
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
   migrate_ssas_db:
     uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
     with:
-      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+      revision: ${{ inputs.ssas_tag }}
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
@@ -127,7 +124,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ env.OPS_RELEASE_VERSION }}
+          ref: ${{ inputs.ops_tag }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
@@ -159,9 +156,9 @@ jobs:
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
-            -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
-            -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
+            -var 'api_image_tag=${{ inputs.tag }}' \
+            -var 'ssas_image_tag=${{ inputs.ssas_tag }}' \
+            -var 'worker_image_tag=${{ inputs.tag }}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -190,8 +187,8 @@ jobs:
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
           BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-          if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-            echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
+          if [[ $BCDA_API_VERSION != ${{ inputs.tag }} ]]; then
+            echo "BCDA API expected release version: ${{ inputs.tag }} did not match curled version: ${BCDA_API_VERSION}."
             exit 1
           fi
 
@@ -207,8 +204,8 @@ jobs:
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
           BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-          if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
-            echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
+          if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_tag }} ]]; then
+            echo "BCDA SSAS expected release version: ${{ inputs.ssas_tag }} did not match curled version: ${BCDA_SSAS_VERSION}."
             exit 1
           fi
 
@@ -226,8 +223,8 @@ jobs:
           WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text)
           WORKER_VERSION=${WORKER_IMAGE#*:}
-          if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-            echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
+          if [[ $WORKER_VERSION != ${{ inputs.tag }} ]]; then
+            echo "BCDA Worker expected release version: ${{ inputs.tag }} did not match AWS version: ${WORKER_VERSION}."
             exit 1
           fi
 
@@ -235,8 +232,8 @@ jobs:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
-      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+      revision: ${{ inputs.tag || 'main' }}
+      ssas_revision: ${{ inputs.ssas_tag || 'main' }}
       env: ${{ inputs.env || 'dev' }}
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
@@ -273,7 +270,7 @@ jobs:
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${{ env.RELEASE_VERSION }}
+            --version ${{ inputs.tag }}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
@@ -307,13 +304,13 @@ jobs:
                 fields:
                   - title: 'API'
                     short: true
-                    value: ${{ env.RELEASE_VERSION }}
+                    value: ${{ inputs.tag }}
                   - title: 'SSAS'
                     short: true
-                    value: ${{ env.SSAS_RELEASE_VERSION }}
+                    value: ${{ inputs.ssas_tag }}
                   - title: 'Worker'
                     short: true
-                    value: ${{ env.RELEASE_VERSION }}
+                    value: ${{ inputs.tag }}
                 mrkdown_in:
                   - pretext
                   - footer

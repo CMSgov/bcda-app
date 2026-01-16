@@ -6,12 +6,12 @@ on:
       - .github/workflows/smoke-tests.yml
   workflow_dispatch:
     inputs:
-      release_version:
+      revision:
         description: The branch of the bcda-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
-      ssas_release_version:
+      ssas_revision:
         description: The branch of the ssas-app to use for the test execution.
         required: true
         type: 'string'
@@ -60,12 +60,12 @@ on:
         default: false
   workflow_call:
     inputs:
-      release_version:
+      revision:
         description: The branch of the bcda-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
-      ssas_release_version:
+      ssas_revision:
         description: The branch of the ssas-app to use for the test execution.
         required: true
         type: 'string'
@@ -151,7 +151,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ssas-app
-          ref: ${{ inputs.ssas_release_version || 'main' }}
+          ref: ${{ inputs.ssas_revision || 'main' }}
       - name: Build SSAS Postman Container
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
@@ -167,7 +167,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.release_version || 'main' }}
+          ref: ${{ inputs.revision || 'main' }}
       - name: Build API Postman Container
         run: |
           docker compose -f docker-compose.test.yml build --force-rm postman_test
@@ -225,7 +225,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.revision }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -238,6 +238,6 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: danger
-                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.revision }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
