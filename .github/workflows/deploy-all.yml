@@ -4,16 +4,16 @@ name: Deploy All
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version of API/worker to deploy (revision and docker image tag)'
+      tag:
+        description: 'Tag of api/worker to deploy'
         required: true
         type: string
-      ops_version:
-        description: 'Version of bcda-ops to deploy (revision and docker image tag)'
+      ops_tag:
+        description: 'Tag of bcda-ops to deploy'
         required: true
         type: string
-      ssas_version:
-        description: 'Version of SSAS to deploy (revision and docker image tag)'
+      ssas_tag:
+        description: 'Tag of SSAS to deploy'
         required: true
         type: string
       env:
