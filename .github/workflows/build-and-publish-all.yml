@@ -98,7 +98,7 @@ jobs:
     secrets: inherit
 
   build_and_publish_ssas:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@38fd7736527b9cfef07d76c2cf4a98f17caeb1bd
     with:
       revision: ${{ inputs.ssas_revision }}
       env: ${{ inputs.env || 'dev'  }}
