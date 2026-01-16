@@ -98,7 +98,7 @@ jobs:
             echo "Revision is not a tag; setting version to revision shorthand"
             REV_SHORT=$(git rev-parse --short=8 HEAD)
             echo "version=$REV_SHORT" >> $GITHUB_OUTPUT
-            if [[ ${{ env.RELEASE_ENV }} != 'dev' && ${{ env.RELEASE_ENV }} != 'test']]; then
+            if [[ ${{ env.RELEASE_ENV }} != 'dev' && ${{ env.RELEASE_ENV }} != test' ]]; then
               echo "Publishing non-tag versions to prod account is forbidden; exiting process"
               exit 1
             fi
