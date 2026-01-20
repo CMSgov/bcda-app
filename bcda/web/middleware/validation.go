@@ -13,6 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 )
@@ -405,7 +406,7 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	case "v2":
 		return responseutilsv2.NewFhirResponseWriter(), nil
 	case constants.V3Version:
-		return responseutilsv2.NewFhirResponseWriter(), nil
+		return responseutilsv3.NewFhirResponseWriter(), nil
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}

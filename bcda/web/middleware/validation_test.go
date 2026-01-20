@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -259,6 +261,34 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				assert.Contains(t, rr.Body.String(), tt.errMsg, tt.description)
 			} else {
 				assert.Equal(t, http.StatusOK, rr.Code, tt.description)
+			}
+		})
+	}
+}
+
+func TestGetRespWriter(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"v1", constants.V1Path},
+		{"v2", constants.V2Path},
+		{"v3", constants.V3Path},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			rw := auth.GetRespWriter(tt.path)
+			rw.OpOutcome(ctx, rr, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
+			resp := rr.Body.String()
+			switch tt.name {
+			case "v1":
+				assert.NotContains(t, resp, "coding")
+			case "v2":
+				assert.Contains(t, resp, "coding")
+			case "v3":
+				assert.NotContains(t, resp, "coding")
 			}
 		})
 	}
