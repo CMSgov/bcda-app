@@ -1,6 +1,6 @@
 # Build, publish, and deploy any repo revision to dev
 # Deploys main to dev daily
-name: Deploy to dev
+name: Dev Publish and Deploy
 
 on:
   schedule:
