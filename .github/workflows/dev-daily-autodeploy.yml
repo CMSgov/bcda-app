@@ -8,17 +8,17 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+        description: 'Revision of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         default: main
         type: string
       ops_revision:
-        description: 'Revision of bcda-ops to checkout (e.g. tag or branch name)'
+        description: 'Revision of bcda-ops to checkout (tag, branch name, or full SHA)'
         required: true
         default: main
         type: string
       ssas_revision:
-        description: 'Revision of SSAS to checkout (e.g. tag or branch name)'
+        description: 'Revision of ssas-app to checkout (tag, branch name, or full SHA)'
         required: true
         default: main
         type: string
@@ -41,9 +41,11 @@ jobs:
     needs: [build_and_publish_all]
     uses: ./.github/workflows/deploy-all.yml
     with:
-      tag: ${{ needs.build_and_publish_all.outputs.api_version }}
-      ops_tag: ${{ inputs.ops_revision || 'main' }}
-      ssas_tag: ${{ needs.build_and_publish_all.outputs.ssas_version }}
+      image: ${{ needs.build_and_publish_all.outputs.api_version }}
+      ref: ${{ inputs.revision || 'main' }}
+      ops_ref: ${{ inputs.ops_revision || 'main' }}
+      ssas_image: ${{ needs.build_and_publish_all.outputs.ssas_version }}
+      ssas_ref: ${{ inputs.ssas_revision || 'main' }}
       env: dev
       confirm_env: dev
       test_aco: dev
