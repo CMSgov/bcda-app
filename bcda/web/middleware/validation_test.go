@@ -133,23 +133,23 @@ func TestInvalidRequestHeaders(t *testing.T) {
 	}
 }
 
-func TestExtractTagCode(t *testing.T) {
+func TestValidateTagSubqueryParameter(t *testing.T) {
 	tests := []struct {
 		name     string
 		tagValue string
-		expected string
+		expected bool
 	}{
-		{"shortFormat", "SharedSystem", "SharedSystem"},
-		{"shortFormatNotFinalAction", "NotFinalAction", "NotFinalAction"},
-		{"urlFormatSystemType", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem", "SharedSystem"},
-		{"urlFormatFinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "FinalAction"},
-		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", "SharedSystem"},
-		{"emptyString", "", ""},
+		{"codeOnly", "SharedSystem", false},
+		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", false},
+		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", false},
+		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", false},
+		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", true},
+		{"emptyString", "", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractTagCode(tt.tagValue)
+			result, _ := ValidateTagSubqueryParameter(tt.tagValue)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

@@ -166,17 +166,6 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 	return resourceTypes, true
 }
 
-// extractTagCode extracts the tag code from either a short format (e.g., "SharedSystem")
-// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem")
-func extractTagCode(tagValue string) string {
-	// Check if it's a URL format with pipe separator
-	if pipeIdx := strings.LastIndex(tagValue, "|"); pipeIdx != -1 {
-		return tagValue[pipeIdx+1:]
-	}
-	// Otherwise, it's short format, return as-is
-	return tagValue
-}
-
 func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([][]string, bool) {
 	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -239,23 +228,19 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				return nil, false
 			}
 
-			if slices.Contains([]string{"service-date", "_tag", "_profile"}, paramName) {
-				// For _tag parameters, validate the tag code format
+			if slices.Contains([]string{"service-date", "_tag"}, paramName) {
 				if paramName == "_tag" {
-					tagCode := extractTagCode(paramValue)
-					// Validate that the tag code is one of the supported values
-					validTagCodes := []string{"SharedSystem", "NotFinalAction", "FinalAction", "NationalClaimsHistory"}
-					if !slices.Contains(validTagCodes, tagCode) {
-						errMsg := fmt.Sprintf("Invalid _tag value: %s. Supported tag codes are: %v", tagCode, validTagCodes)
+					if valid, err := ValidateTagSubqueryParameter(paramValue); !valid {
 						ctx, _ = log.WriteWarnWithFields(
 							ctx,
-							fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+							fmt.Sprintf("%s: %s", responseutils.RequestErr, err),
 							logrus.Fields{"resp_status": http.StatusBadRequest},
 						)
-						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err)
 						return nil, false
 					}
 				}
+				// TODO: add service-date validation
 				typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
 			} else {
 				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
@@ -270,6 +255,30 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		}
 	}
 	return typeFilterParams, true
+}
+
+// ValidateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
+func ValidateTagSubqueryParameter(tag string) (bool, string) {
+
+	if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx == -1 {
+		return false, fmt.Sprintf("Invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
+	}
+
+	// Validate that the _tag system and code are supported values
+	validTagTokens := map[string][]string{
+		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory"},
+		"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action": {"FinalAction", "NotFinalAction"},
+	}
+
+	tagSystem := strings.Split(tag, "|")[0]
+	tagCode := strings.Split(tag, "|")[1]
+
+	validTagCodes, ok := validTagTokens[tagSystem]
+	if !ok || !slices.Contains(validTagCodes, tagCode) {
+		return false, fmt.Sprintf("Invalid _tag value: %s.", tag)
+	}
+
+	return true, ""
 }
 
 // ValidateRequestURL ensure that request matches certain expectations.
