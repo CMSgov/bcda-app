@@ -39,7 +39,7 @@ jobs:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Get AWS params
-        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        uses: cmsgov/cdap/actions/aws-params-env-action@38711d86419b9d91a003f4eea4931287d546b55b
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
