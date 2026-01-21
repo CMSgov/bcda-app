@@ -248,8 +248,8 @@ jobs:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
-      ref: ${{ inputs.version || 'main' }}
-      ssas_ref: ${{ inputs.ssas_version || 'main' }}
+      ref: ${{ inputs.ref || 'main' }}
+      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
       env: ${{ inputs.env || 'dev' }}
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
