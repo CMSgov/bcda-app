@@ -4,8 +4,8 @@ name: Deploy All
 on:
   workflow_dispatch:
     inputs:
-      image:
-        description: 'Docker image of api/worker to use (e.g. r123)'
+      version:
+        description: 'Version of api/worker docker image to use (e.g. r123)'
         required: true
         type: string
       ref:
@@ -16,8 +16,8 @@ on:
         description: 'Ref of bcda-ops repo to deploy (e.g. r123)'
         required: true
         type: string
-      ssas_image:
-        description: 'Docker image of SSAS to use (e.g. r456)'
+      ssas_version:
+        description: 'Version of SSAS docker image to use (e.g. r456)'
         required: true
         type: string
       ssas_ref:
@@ -58,8 +58,8 @@ on:
         default: 'dev'
   workflow_call:
     inputs:
-      image:
-        description: 'Docker image of api/worker to use (e.g. r123)'
+      version:
+        description: 'Version of api/worker docker image to use (e.g. r123)'
         required: true
         type: string
       ref:
@@ -70,8 +70,8 @@ on:
         description: 'Ref of bcda-ops repo to deploy (e.g. r123)'
         required: true
         type: string
-      ssas_image:
-        description: 'Docker image of SSAS to use (e.g. r456)'
+      ssas_version:
+        description: 'Version of SSAS docker image to use (e.g. r456)'
         required: true
         type: string
       ssas_ref:
@@ -172,9 +172,9 @@ jobs:
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'api_image_tag=${{ inputs.image }}' \
-            -var 'ssas_image_tag=${{ inputs.ssas_image }}' \
-            -var 'worker_image_tag=${{ inputs.image }}' \
+            -var 'api_image_tag=${{ inputs.version }}' \
+            -var 'ssas_image_tag=${{ inputs.ssas_version }}' \
+            -var 'worker_image_tag=${{ inputs.version }}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -203,8 +203,8 @@ jobs:
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
           BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-          if [[ $BCDA_API_VERSION != ${{ inputs.image }} ]]; then
-            echo "BCDA API expected release version: ${{ inputs.image }} did not match curled version: ${BCDA_API_VERSION}."
+          if [[ $BCDA_API_VERSION != ${{ inputs.version }} ]]; then
+            echo "BCDA API expected release version: ${{ inputs.version }} did not match curled version: ${BCDA_API_VERSION}."
             exit 1
           fi
 
@@ -220,8 +220,8 @@ jobs:
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
           BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-          if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_image }} ]]; then
-            echo "BCDA SSAS expected release version: ${{ inputs.ssas_image }} did not match curled version: ${BCDA_SSAS_VERSION}."
+          if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_version }} ]]; then
+            echo "BCDA SSAS expected release version: ${{ inputs.ssas_version }} did not match curled version: ${BCDA_SSAS_VERSION}."
             exit 1
           fi
 
@@ -239,8 +239,8 @@ jobs:
           WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text)
           WORKER_VERSION=${WORKER_IMAGE#*:}
-          if [[ $WORKER_VERSION != ${{ inputs.image }} ]]; then
-            echo "BCDA Worker expected release version: ${{ inputs.image }} did not match AWS version: ${WORKER_VERSION}."
+          if [[ $WORKER_VERSION != ${{ inputs.version }} ]]; then
+            echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION}."
             exit 1
           fi
 
@@ -248,8 +248,8 @@ jobs:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
-      ref: ${{ inputs.image || 'main' }}
-      ssas_ref: ${{ inputs.ssas_image || 'main' }}
+      ref: ${{ inputs.version || 'main' }}
+      ssas_ref: ${{ inputs.ssas_version || 'main' }}
       env: ${{ inputs.env || 'dev' }}
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
@@ -286,7 +286,7 @@ jobs:
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${{ inputs.image }}
+            --version ${{ inputs.version }}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
@@ -320,13 +320,13 @@ jobs:
                 fields:
                   - title: 'API'
                     short: true
-                    value: ${{ inputs.image }}
+                    value: ${{ inputs.version }}
                   - title: 'SSAS'
                     short: true
-                    value: ${{ inputs.ssas_image }}
+                    value: ${{ inputs.ssas_version }}
                   - title: 'Worker'
                     short: true
-                    value: ${{ inputs.image }}
+                    value: ${{ inputs.version }}
                 mrkdown_in:
                   - pretext
                   - footer
