@@ -3,8 +3,8 @@ name: Build and publish API
 on:
   workflow_dispatch:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
       env:
@@ -29,8 +29,8 @@ on:
           - prod
   workflow_call:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
       env:
@@ -61,7 +61,7 @@ jobs:
   ci_checks:
     uses: ./.github/workflows/ci-checks.yml
     with:
-      revision: ${{ inputs.revision }}
+      ref: ${{ inputs.ref }}
     secrets: inherit
 
   build_and_publish:
@@ -86,16 +86,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.revision }}
+          ref: ${{ inputs.ref }}
       - name: Set Version
         id: version
         run: |
           TAG=$(git describe --tags --exact-match 2>/dev/null || echo "undefined")
           if [[ "$TAG" != "undefined" ]]; then
-            echo "Revision is a tag; setting version to tag name"
+            echo "Ref is a tag; setting version to tag name"
             echo "version=$TAG" >> $GITHUB_OUTPUT
           else
-            echo "Revision is not a tag; setting version to revision shorthand"
+            echo "Ref is not a tag; setting version to revision shorthand"
             REV_SHORT=$(git rev-parse --short=8 HEAD)
             echo "version=$REV_SHORT" >> $GITHUB_OUTPUT
             if [[ ${{ env.RELEASE_ENV }} != 'dev' && ${{ env.RELEASE_ENV }} != 'test' ]]; then

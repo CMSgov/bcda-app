@@ -3,8 +3,8 @@ name: Migrate DB
 on:
   workflow_call:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
       env:
@@ -13,8 +13,8 @@ on:
         type: string
   workflow_dispatch:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
       env:
@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.revision }}
+          ref: ${{ inputs.ref }}
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}

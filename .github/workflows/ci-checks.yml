@@ -7,14 +7,14 @@ on:
   pull_request:
   workflow_call:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
   workflow_dispatch:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
 
@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.revision }}
+          ref: ${{ inputs.ref }}
       - name: Get Go # TEMP
         uses: actions/setup-go@v5
         with:
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.revision }}
+          ref: ${{ inputs.ref }}
       - name: Get Go
         uses: actions/setup-go@v5
         with:
@@ -110,7 +110,7 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=testcoverage.out
             -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
-            -Dsonar.branch.name=${{ inputs.revision }}
+            -Dsonar.branch.name=${{ inputs.ref }}
             -Dsonar.projectVersion=${{ github.sha }}
             -Dsonar.qualitygate.wait=true
             -Dsonar.ci.autoconfig.disabled=true 

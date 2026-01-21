@@ -3,12 +3,12 @@ name: Build and Publish All
 on:
   workflow_dispatch:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      ssas_revision:
-        description: 'Revision of SSAS to checkout (e.g. tag or branch name)'
+      ssas_ref:
+        description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
       env:
@@ -33,12 +33,12 @@ on:
           - prod
   workflow_call:
     inputs:
-      revision:
-        description: 'Revision to checkout (e.g. tag or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      ssas_revision:
-          description: 'Revision of SSAS to checkout (e.g. tag or branch name)'
+      ssas_ref:
+          description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
           required: true
           type: string
       env:
@@ -84,7 +84,7 @@ jobs:
   build_and_publish_api:
     uses: ./.github/workflows/build-and-publish-api.yml
     with:
-      revision: ${{ inputs.revision }}
+      ref: ${{ inputs.ref }}
       env: ${{ inputs.env || 'dev'  }}
       confirm_env: ${{ inputs.confirm_env || 'dev' }}
     secrets: inherit
@@ -92,7 +92,7 @@ jobs:
   build_and_publish_worker:
     uses: ./.github/workflows/build-and-publish-worker.yml
     with:
-      revision: ${{ inputs.revision }}
+      ref: ${{ inputs.ref }}
       env: ${{ inputs.env || 'dev'  }}
       confirm_env: ${{ inputs.confirm_env || 'dev' }}
     secrets: inherit
@@ -100,7 +100,7 @@ jobs:
   build_and_publish_ssas:
     uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@ccdd6baecec9bd736786989d9a697f93b8ced396
     with:
-      revision: ${{ inputs.ssas_revision }}
+      ref: ${{ inputs.ssas_ref }}
       env: ${{ inputs.env || 'dev'  }}
       confirm_env: ${{ inputs.confirm_env || 'dev' }}
     secrets: inherit

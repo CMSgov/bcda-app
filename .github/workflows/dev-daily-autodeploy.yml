@@ -1,24 +1,24 @@
 # Build, publish, and deploy any repo revision to dev
 # Deploys main to dev daily
-name: Deploy revision to dev
+name: Deploy to dev
 
 on:
   schedule:
     - cron: 0 12 * * 1-5 # every workday at 8am EST
   workflow_dispatch:
     inputs:
-      revision:
-        description: 'Revision of bcda-app to checkout (tag, branch name, or full SHA)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         default: main
         type: string
-      ops_revision:
-        description: 'Revision of bcda-ops to checkout (tag, branch name, or full SHA)'
+      ops_ref:
+        description: 'Ref of bcda-ops to checkout (tag, branch name, or full SHA)'
         required: true
         default: main
         type: string
-      ssas_revision:
-        description: 'Revision of ssas-app to checkout (tag, branch name, or full SHA)'
+      ssas_ref:
+        description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
         required: true
         default: main
         type: string
@@ -31,8 +31,8 @@ jobs:
   build_and_publish_all:
     uses: ./.github/workflows/build-and-publish-all.yml
     with:
-      revision: ${{ inputs.revision || 'main' }}
-      ssas_revision: ${{ inputs.ssas_revision || 'main' }}
+      ref: ${{ inputs.ref || 'main' }}
+      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
       env: dev
       confirm_env: dev
     secrets: inherit
@@ -42,10 +42,10 @@ jobs:
     uses: ./.github/workflows/deploy-all.yml
     with:
       image: ${{ needs.build_and_publish_all.outputs.api_version }}
-      ref: ${{ inputs.revision || 'main' }}
-      ops_ref: ${{ inputs.ops_revision || 'main' }}
+      ref: ${{ inputs.ref || 'main' }}
+      ops_ref: ${{ inputs.ops_ref || 'main' }}
       ssas_image: ${{ needs.build_and_publish_all.outputs.ssas_version }}
-      ssas_ref: ${{ inputs.ssas_revision || 'main' }}
+      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
       env: dev
       confirm_env: dev
       test_aco: dev
