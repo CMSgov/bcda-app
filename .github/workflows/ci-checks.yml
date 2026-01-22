@@ -18,6 +18,9 @@ on:
         required: true
         type: string
 
+env:
+  REF: ${{ inputs.ref || github.sha }}
+
 jobs:
   go_mod_tidy:
     name: Modules Lint
@@ -27,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.ref }}
+          ref: ${{ env.REF }}
       - name: Get Go # TEMP
         uses: actions/setup-go@v5
         with:
@@ -50,7 +53,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.ref }}
+          ref: ${{ env.REF }}
       - name: Get Go
         uses: actions/setup-go@v5
         with:
@@ -110,7 +113,7 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=testcoverage.out
             -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/*,**/ops/*,**/mock*.go,**/mock/**/*
-            -Dsonar.branch.name=${{ inputs.ref }}
+            -Dsonar.branch.name=${{ env.REF }}
             -Dsonar.projectVersion=${{ github.sha }}
             -Dsonar.qualitygate.wait=true
             -Dsonar.ci.autoconfig.disabled=true 
