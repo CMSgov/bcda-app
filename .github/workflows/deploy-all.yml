@@ -5,23 +5,23 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version of api/worker docker image to use (e.g. r123)'
+        description: 'Version of api/worker docker image to use (e.g. r123, aabb1122)'
         required: true
         type: string
       ref:
-        description: 'Ref of bcda-app repo to apply migrations from (e.g. r123)'
+        description: 'Ref of bcda-app repo to apply migrations from (e.g. r123, main)'
         required: true
         type: string
       ops_ref:
-        description: 'Ref of bcda-ops repo to deploy (e.g. r123)'
+        description: 'Ref of bcda-ops repo to deploy (e.g. r123, main)'
         required: true
         type: string
       ssas_version:
-        description: 'Version of SSAS docker image to use (e.g. r456)'
+        description: 'Version of SSAS docker image to use (e.g. r456, ccdd3344)'
         required: true
         type: string
       ssas_ref:
-        description: 'Ref of ssas repo to apply migrations from (e.g. r456)'
+        description: 'Ref of ssas repo to apply migrations from (e.g. r456, main)'
         required: true
         type: string
       env:
