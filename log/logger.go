@@ -45,15 +45,12 @@ func newFieldLogger(outputFile, application, logType string) logrus.FieldLogger 
 	logger := newLogger(outputFile)
 	fields := defaultFields(application)
 
-	if conf.GetEnv("LOG_TO_STD_OUT") == "true" {
-		fields["log_type"] = logType
-	}
 	return logger.WithFields(fields)
 }
 
 func newLogger(outputFile string) *logrus.Logger {
 	logger := logrus.New()
-	if conf.GetEnv("LOG_TO_STD_OUT") != "true" && outputFile != "" {
+	if outputFile != "" {
 		// #nosec G302 -- 0640 permissions required for Splunk ingestion
 		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
 			logger.SetOutput(file)

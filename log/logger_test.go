@@ -25,9 +25,6 @@ import (
 func TestLoggers(t *testing.T) {
 	env := uuid.New()
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", env)
-	oldVal := conf.GetEnv("LOG_TO_STD_OUT")
-	conf.SetEnv(t, "LOG_TO_STD_OUT", "false")
-	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldVal) })
 
 	tests := []struct {
 		logEnv string
@@ -101,48 +98,6 @@ func verifyCommonFields(t *testing.T, fields logrus.Fields, env, msg string) {
 	assert.Equal(t, constants.Version, fields["version"])
 	_, err := time.Parse(time.RFC3339Nano, fields["time"].(string))
 	assert.NoError(t, err)
-}
-
-func TestLoggers_ToSTDOut(t *testing.T) {
-	env := uuid.New()
-	conf.SetEnv(t, "DEPLOYMENT_TARGET", env)
-	oldVal := conf.GetEnv("LOG_TO_STD_OUT")
-	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
-	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldVal) })
-
-	tests := []struct {
-		logType string
-		// Use a supplier since the logger's reference will be updated everytime we call
-		// setup func. This allows us to retrieve the refreshed logger
-		logSupplier func() logrus.FieldLogger
-	}{
-		{"api", func() logrus.FieldLogger { return API }},
-		{"auth", func() logrus.FieldLogger { return Auth }},
-		{"bfd", func() logrus.FieldLogger { return BFDAPI }},
-		{"request", func() logrus.FieldLogger { return Request }},
-		{"ssas", func() logrus.FieldLogger { return SSAS }},
-
-		{"worker", func() logrus.FieldLogger { return Worker }},
-		{"bfd", func() logrus.FieldLogger { return BFDWorker }},
-		{"health", func() logrus.FieldLogger { return Health }},
-	}
-	for _, tt := range tests {
-		t.Run(tt.logType, func(t *testing.T) {
-			// Refresh the logger to reference the new configs
-			SetupLoggers()
-
-			testLogger := test.NewLocal(testUtils.GetLogger(tt.logSupplier()))
-
-			msg := uuid.New()
-			tt.logSupplier().Info(msg)
-
-			assert.Equal(t, 1, len(testLogger.Entries))
-			assert.Equal(t, msg, testLogger.LastEntry().Message)
-			assert.Equal(t, tt.logType, testLogger.LastEntry().Data["log_type"])
-			assert.Equal(t, "bcda", testLogger.LastEntry().Data["source_app"])
-			testLogger.Reset()
-		})
-	}
 }
 
 func TestDefaultLogger(t *testing.T) {
@@ -271,10 +226,6 @@ func TestSlogLogger(t *testing.T) {
 	environment := uuid.New()
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", environment)
 	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", oldEnvironment) })
-
-	oldStdOut := conf.GetEnv("LOG_TO_STD_OUT")
-	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
-	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldStdOut) })
 
 	application := "test_app"
 
