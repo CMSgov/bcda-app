@@ -1,6 +1,6 @@
-# Build, publish, and deploy any repo revision to dev
+# Build, publish, and deploy any repo revision to dev or test
 # Deploys main to dev daily
-name: Dev Publish and Deploy
+name: Publish and Deploy Non-Prod
 
 on:
   schedule:
@@ -22,6 +22,14 @@ on:
         required: true
         default: main
         type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
 
 permissions:
   id-token: write
@@ -46,7 +54,7 @@ jobs:
       ops_ref: ${{ inputs.ops_ref || 'main' }}
       ssas_version: ${{ needs.build_and_publish_all.outputs.ssas_version }}
       ssas_ref: ${{ inputs.ssas_ref || 'main' }}
-      env: dev
-      confirm_env: dev
+      env: ${{ inputs.env || 'dev' }}
+      confirm_env: ${{ inputs.env || 'dev' }}
       test_aco: dev
     secrets: inherit
