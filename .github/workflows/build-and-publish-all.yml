@@ -55,9 +55,6 @@ on:
       api_version:
         description: 'The version of the published API docker tag'
         value: ${{ jobs.build_and_publish_api.outputs.version }}
-      worker_version:
-        description: 'The version of the published worker docker tag'
-        value: ${{ jobs.build_and_publish_worker.outputs.version }}
       ssas_version:
         description: 'The version of the published SSAS docker tag'
         value: ${{ jobs.build_and_publish_ssas.outputs.version }}

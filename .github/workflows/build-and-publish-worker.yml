@@ -43,10 +43,6 @@ on:
         required: true
         type: string
         default: dev
-    outputs:
-        version:
-          description: 'The version of the published docker tag'
-          value: ${{ jobs.build_and_publish.outputs.version }}
 
 
 permissions:
@@ -61,8 +57,6 @@ jobs:
   build_and_publish:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Get Workflow Inputs
         run: echo "${{ toJSON(inputs) }}"
