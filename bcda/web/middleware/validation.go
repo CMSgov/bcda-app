@@ -230,7 +230,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 			if slices.Contains([]string{"service-date", "_tag"}, paramName) {
 				if paramName == "_tag" {
-					if valid, err := ValidateTagSubqueryParameter(paramValue); !valid {
+					if valid, err := validateTagSubqueryParameter(paramValue); !valid {
 						ctx, _ = log.WriteWarnWithFields(
 							ctx,
 							fmt.Sprintf("%s: %s", responseutils.RequestErr, err),
@@ -255,30 +255,6 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		}
 	}
 	return typeFilterParams, true
-}
-
-// ValidateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
-func ValidateTagSubqueryParameter(tag string) (bool, string) {
-
-	if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx == -1 {
-		return false, fmt.Sprintf("Invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
-	}
-
-	// Validate that the _tag system and code are supported values
-	validTagTokens := map[string][]string{
-		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory"},
-		"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action": {"FinalAction", "NotFinalAction"},
-	}
-
-	tagSystem := strings.Split(tag, "|")[0]
-	tagCode := strings.Split(tag, "|")[1]
-
-	validTagCodes, ok := validTagTokens[tagSystem]
-	if !ok || !slices.Contains(validTagCodes, tagCode) {
-		return false, fmt.Sprintf("Invalid _tag value: %s.", tag)
-	}
-
-	return true, ""
 }
 
 // ValidateRequestURL ensure that request matches certain expectations.
@@ -382,6 +358,30 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// validateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
+func validateTagSubqueryParameter(tag string) (bool, string) {
+
+	if !strings.Contains(tag, "|") {
+		return false, fmt.Sprintf("Invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
+	}
+
+	// Validate that the _tag system and code are supported values
+	validTagTokens := map[string][]string{
+		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory"},
+		"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action": {"FinalAction", "NotFinalAction"},
+	}
+
+	tagSystem := strings.Split(tag, "|")[0]
+	tagCode := strings.Split(tag, "|")[1]
+
+	validTagCodes, ok := validTagTokens[tagSystem]
+	if !ok || !slices.Contains(validTagCodes, tagCode) {
+		return false, fmt.Sprintf("Invalid _tag value: %s.", tag)
+	}
+
+	return true, ""
 }
 
 func getKeys(kv map[string]struct{}) []string {

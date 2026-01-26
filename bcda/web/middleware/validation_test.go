@@ -149,7 +149,7 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, _ := ValidateTagSubqueryParameter(tt.tagValue)
+			result, _ := validateTagSubqueryParameter(tt.tagValue)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
