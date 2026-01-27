@@ -137,20 +137,20 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 	tests := []struct {
 		name     string
 		tagValue string
-		expected bool
+		expected error
 	}{
-		{"codeOnly", "SharedSystem", false},
-		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", false},
-		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", false},
-		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", false},
-		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", true},
-		{"emptyString", "", false},
+		{"codeOnly", "SharedSystem", fmt.Errorf("Invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
+		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", fmt.Errorf("Invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345.")},
+		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("Invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction.")},
+		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", fmt.Errorf("Invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction.")},
+		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", nil},
+		{"emptyString", "", fmt.Errorf("Invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, _ := validateTagSubqueryParameter(tt.tagValue)
-			assert.Equal(t, tt.expected, result)
+			err := validateTagSubqueryParameter(tt.tagValue)
+			assert.Equal(t, tt.expected, err)
 		})
 	}
 }

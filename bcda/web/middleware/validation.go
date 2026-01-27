@@ -230,13 +230,13 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 			if slices.Contains([]string{"service-date", "_tag"}, paramName) {
 				if paramName == "_tag" {
-					if valid, err := validateTagSubqueryParameter(paramValue); !valid {
+					if err := validateTagSubqueryParameter(paramValue); err != nil {
 						ctx, _ = log.WriteWarnWithFields(
 							ctx,
-							fmt.Sprintf("%s: %s", responseutils.RequestErr, err),
+							fmt.Sprintf("%s: %s", responseutils.RequestErr, err.Error()),
 							logrus.Fields{"resp_status": http.StatusBadRequest},
 						)
-						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err)
+						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 						return nil, false
 					}
 				}
@@ -361,10 +361,10 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 }
 
 // validateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
-func validateTagSubqueryParameter(tag string) (bool, string) {
+func validateTagSubqueryParameter(tag string) error {
 
 	if !strings.Contains(tag, "|") {
-		return false, fmt.Sprintf("Invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
+		return fmt.Errorf("Invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
 	}
 
 	// Validate that the _tag system and code are supported values
@@ -378,10 +378,10 @@ func validateTagSubqueryParameter(tag string) (bool, string) {
 
 	validTagCodes, ok := validTagTokens[tagSystem]
 	if !ok || !slices.Contains(validTagCodes, tagCode) {
-		return false, fmt.Sprintf("Invalid _tag value: %s.", tag)
+		return fmt.Errorf("Invalid _tag value: %s.", tag)
 	}
 
-	return true, ""
+	return nil
 }
 
 func getKeys(kv map[string]struct{}) []string {
