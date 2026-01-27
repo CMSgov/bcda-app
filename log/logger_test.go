@@ -4,12 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
-	"os"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -20,84 +16,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestLoggers verifies that all of our loggers are set up
-// with the expected parameters and write to the expected files.
-func TestLoggers(t *testing.T) {
+func TestLoggers_ToSTDOut(t *testing.T) {
 	env := uuid.New()
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", env)
-
 	tests := []struct {
-		logEnv string
+		logType string
 		// Use a supplier since the logger's reference will be updated everytime we call
 		// setup func. This allows us to retrieve the refreshed logger
 		logSupplier func() logrus.FieldLogger
-		verify      func(*testing.T, string, string, *os.File)
 	}{
-		{"BCDA_ERROR_LOG", func() logrus.FieldLogger { return API }, verifyAPILogs},
-		{"AUTH_LOG", func() logrus.FieldLogger { return Auth }, verifyAPILogs},
-		{"BCDA_BB_LOG", func() logrus.FieldLogger { return BFDAPI }, verifyAPILogs},
-		{"BCDA_REQUEST_LOG", func() logrus.FieldLogger { return Request }, verifyAPILogs},
-		{"BCDA_SSAS_LOG", func() logrus.FieldLogger { return SSAS }, verifyAPILogs},
+		{"api", func() logrus.FieldLogger { return API }},
+		{"auth", func() logrus.FieldLogger { return Auth }},
+		{"bfd", func() logrus.FieldLogger { return BFDAPI }},
+		{"request", func() logrus.FieldLogger { return Request }},
+		{"ssas", func() logrus.FieldLogger { return SSAS }},
 
-		{"BCDA_WORKER_ERROR_LOG", func() logrus.FieldLogger { return Worker }, verifyWorkerLogs},
-		{"BCDA_BB_LOG", func() logrus.FieldLogger { return BFDWorker }, verifyWorkerLogs},
-		{"WORKER_HEALTH_LOG", func() logrus.FieldLogger { return Health }, verifyWorkerLogs},
+		{"worker", func() logrus.FieldLogger { return Worker }},
+		{"bfd", func() logrus.FieldLogger { return BFDWorker }},
+		{"health", func() logrus.FieldLogger { return Health }},
 	}
 	for _, tt := range tests {
-		t.Run(tt.logEnv, func(t *testing.T) {
-			logFile, err := os.CreateTemp("", "*")
-			old := conf.GetEnv(tt.logEnv)
-			t.Cleanup(func() {
-				assert.NoError(t, os.Remove(logFile.Name()))
-				assert.NoError(t, conf.SetEnv(t, tt.logEnv, old))
-			})
-
-			assert.NoError(t, err)
-			conf.SetEnv(t, tt.logEnv, logFile.Name())
-
+		t.Run(tt.logType, func(t *testing.T) {
 			// Refresh the logger to reference the new configs
 			SetupLoggers()
 
+			testLogger := test.NewLocal(testUtils.GetLogger(tt.logSupplier()))
+
 			msg := uuid.New()
 			tt.logSupplier().Info(msg)
-			tt.verify(t, env, msg, logFile)
+
+			assert.Equal(t, 1, len(testLogger.Entries))
+			assert.Equal(t, msg, testLogger.LastEntry().Message)
+			assert.Equal(t, tt.logType, testLogger.LastEntry().Data["log_type"])
+			assert.Equal(t, "bcda", testLogger.LastEntry().Data["source_app"])
+			testLogger.Reset()
 		})
 	}
-}
-
-func verifyAPILogs(t *testing.T, env, msg string, logFile *os.File) {
-	data, err := io.ReadAll(logFile)
-	assert.NoError(t, err)
-
-	res := strings.Split(string(data), "\n")
-	// msg + new line
-	assert.Len(t, res, 2)
-	var fields logrus.Fields
-	assert.NoError(t, json.Unmarshal([]byte(res[0]), &fields))
-	assert.Equal(t, fields["application"], "api")
-	verifyCommonFields(t, fields, env, msg)
-}
-
-func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
-	data, err := io.ReadAll(logFile)
-	assert.NoError(t, err)
-
-	res := strings.Split(string(data), "\n")
-	// msg + new line
-	assert.Len(t, res, 2)
-	var fields logrus.Fields
-	assert.NoError(t, json.Unmarshal([]byte(res[0]), &fields))
-	assert.Equal(t, fields["application"], "worker")
-	verifyCommonFields(t, fields, env, msg)
-}
-
-func verifyCommonFields(t *testing.T, fields logrus.Fields, env, msg string) {
-	assert.Equal(t, env, fields["environment"])
-	assert.Equal(t, msg, fields["msg"])
-	assert.Equal(t, "bcda", fields["source_app"])
-	assert.Equal(t, constants.Version, fields["version"])
-	_, err := time.Parse(time.RFC3339Nano, fields["time"].(string))
-	assert.NoError(t, err)
 }
 
 func TestDefaultLogger(t *testing.T) {
@@ -226,7 +180,6 @@ func TestSlogLogger(t *testing.T) {
 	environment := uuid.New()
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", environment)
 	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", oldEnvironment) })
-
 	application := "test_app"
 
 	var output bytes.Buffer
