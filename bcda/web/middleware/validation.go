@@ -364,7 +364,7 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 func validateTagSubqueryParameter(tag string) error {
 
 	if !strings.Contains(tag, "|") {
-		return fmt.Errorf("Invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
+		return fmt.Errorf("invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
 	}
 
 	// Validate that the _tag system and code are supported values
@@ -378,7 +378,7 @@ func validateTagSubqueryParameter(tag string) error {
 
 	validTagCodes, ok := validTagTokens[tagSystem]
 	if !ok || !slices.Contains(validTagCodes, tagCode) {
-		return fmt.Errorf("Invalid _tag value: %s.", tag)
+		return fmt.Errorf("invalid _tag value: %s.", tag)
 	}
 
 	return nil
