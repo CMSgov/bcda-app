@@ -378,7 +378,7 @@ func validateTagSubqueryParameter(tag string) error {
 
 	validTagCodes, ok := validTagTokens[tagSystem]
 	if !ok || !slices.Contains(validTagCodes, tagCode) {
-		return fmt.Errorf("invalid _tag value: %s.", tag)
+		return fmt.Errorf("invalid _tag value: %s", tag)
 	}
 
 	return nil

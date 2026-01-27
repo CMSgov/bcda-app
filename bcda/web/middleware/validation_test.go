@@ -140,9 +140,9 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 		expected error
 	}{
 		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
-		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345.")},
-		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction.")},
-		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction.")},
+		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345")},
+		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction")},
+		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction")},
 		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", nil},
 		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
 	}
@@ -195,21 +195,21 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "invalidTagPartiallyAdjudicated",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			errMsg:      "Invalid _tag value: PartiallyAdjudicated. Searching by tag requires a token (system|code) to be specified",
+			errMsg:      "invalid _tag value: PartiallyAdjudicated. Searching by tag requires a token (system|code) to be specified",
 			description: "Old PartiallyAdjudicated tag should be rejected",
 		},
 		{
 			name:        "invalidTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem", baseV3),
 			shouldFail:  true,
-			errMsg:      "Invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified",
+			errMsg:      "invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified",
 			description: "Only code, no system should be rejected. even with valid code",
 		},
 		{
 			name:        "invalidTagRandomValue",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DInvalidTag", baseV3),
 			shouldFail:  true,
-			errMsg:      "Invalid _tag value: InvalidTag. Searching by tag requires a token (system|code) to be specified",
+			errMsg:      "invalid _tag value: InvalidTag. Searching by tag requires a token (system|code) to be specified",
 			description: "Random invalid tag should be rejected",
 		},
 		{
@@ -222,7 +222,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "multipleTagsOneInvalid",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			errMsg:      "Invalid _tag value: PartiallyAdjudicated",
+			errMsg:      "invalid _tag value: PartiallyAdjudicated",
 			description: "Multiple tags with one invalid should fail",
 		},
 		{
