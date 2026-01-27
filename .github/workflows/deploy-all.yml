@@ -237,8 +237,8 @@ jobs:
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
           WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
-          WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[0].image" --output=text)
-          WORKER_VERSION=${WORKER_IMAGE#*:}
+          WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
+          WORKER_VERSION=${WORKER_IMAGE##*:}
           if [[ $WORKER_VERSION != ${{ inputs.version }} ]]; then
             echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION}."
             exit 1
@@ -292,8 +292,8 @@ jobs:
         run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
           API_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-api --query 'taskArns[0]' --output text)
-          API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[0].image" --output=text)
-          export API_VERSION=${API_IMAGE#*:}
+          API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[?name == 'api'].image" --output=text)
+          export API_VERSION=${API_IMAGE##*:}
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
