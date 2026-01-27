@@ -25,7 +25,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -66,7 +65,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		),
 	}
 
-	logger := log.NewSlogLogger(conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker")
+	logger := log.NewSlogLogger("worker")
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
