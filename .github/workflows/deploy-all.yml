@@ -107,6 +107,7 @@ env:
 
 jobs:
   verify_images_exist:
+    environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:      
       - uses: aws-actions/configure-aws-credentials@v4
