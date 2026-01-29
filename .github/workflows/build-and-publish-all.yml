@@ -77,7 +77,7 @@ jobs:
         run: |
           echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
           exit 1
-          
+
   build_and_publish_api:
     uses: ./.github/workflows/build-and-publish-api.yml
     with:

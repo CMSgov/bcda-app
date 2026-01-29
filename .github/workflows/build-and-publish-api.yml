@@ -97,14 +97,14 @@ jobs:
           else
             echo "Ref is not a tag; setting version to revision shorthand"
             REV_SHORT=$(git rev-parse --short=8 HEAD)
-            echo "version=$REV_SHORT" >> $GITHUB_OUTPUT
+            echo "version=temp-$REV_SHORT" >> $GITHUB_OUTPUT
             if [[ ${{ env.RELEASE_ENV }} != 'dev' && ${{ env.RELEASE_ENV }} != 'test' ]]; then
               echo "Publishing non-tag versions to prod account is forbidden; exiting process"
               exit 1
             fi
           fi
       - name: Set ECR_URL
-        run: echo "ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-${{ env.RELEASE_ENV }}-api" >> $GITHUB_ENV
+        run: echo "ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-api" >> $GITHUB_ENV
       - name: Build BCDA
         run: |
           docker build \
