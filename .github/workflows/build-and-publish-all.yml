@@ -82,24 +82,18 @@ jobs:
     uses: ./.github/workflows/build-and-publish-api.yml
     with:
       ref: ${{ inputs.ref }}
-      env: ${{ inputs.env || 'dev'  }}
-      confirm_env: ${{ inputs.confirm_env || 'dev' }}
     secrets: inherit
 
   build_and_publish_worker:
     uses: ./.github/workflows/build-and-publish-worker.yml
     with:
       ref: ${{ inputs.ref }}
-      env: ${{ inputs.env || 'dev'  }}
-      confirm_env: ${{ inputs.confirm_env || 'dev' }}
     secrets: inherit
 
   build_and_publish_ssas:
     uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
     with:
       ref: ${{ inputs.ssas_ref }}
-      env: ${{ inputs.env || 'dev'  }}
-      confirm_env: ${{ inputs.confirm_env || 'dev' }}
     secrets: inherit
   
   post_build:
