@@ -106,7 +106,29 @@ env:
   TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  verify_images_exist:
+    environment: ${{ inputs.env || 'dev' }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    steps:      
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Verify API image exists
+        run: |
+          echo "Verifying that tag ${{ inputs.version }} exists in the bcda-${{ env.RELEASE_ENV }}-api repo"
+          aws ecr describe-images --repository-name bcda-${{ env.RELEASE_ENV }}-api --image-ids imageTag=${{ inputs.version }}
+      - name: Verify SSAS image exists
+        run: |
+          echo "Verifying that tag ${{ inputs.ssas_version }} exists in the bcda-${{ env.RELEASE_ENV }}-ssas repo"
+          aws ecr describe-images --repository-name bcda-${{ env.RELEASE_ENV }}-ssas --image-ids imageTag=${{ inputs.ssas_version }}
+      - name: Verify Worker image exists
+        run: |
+          echo "Verifying that tag ${{ inputs.version }} exists in the bcda-${{ env.RELEASE_ENV }}-worker repo"
+          aws ecr describe-images --repository-name bcda-${{ env.RELEASE_ENV }}-worker --image-ids imageTag=${{ inputs.version }}
+
   migrate_db:
+    needs: [verify_images_exist]
     uses: ./.github/workflows/migrate-db.yml
     with:
       ref: ${{ inputs.ref }}
@@ -114,6 +136,7 @@ jobs:
     secrets: inherit
 
   migrate_ssas_db:
+    needs: [verify_images_exist]
     uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
     with:
       ref: ${{ inputs.ssas_ref }}
@@ -121,6 +144,7 @@ jobs:
     secrets: inherit
 
   deploy:
+    needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
