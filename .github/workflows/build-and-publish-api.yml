@@ -66,15 +66,13 @@ jobs:
         run: |
           docker build \
             --build-arg RELEASE_VERSION=${{ steps.version.outputs.version }} \
-            -t ${{ env.ECR_NON_PROD_URL }}:latest \
-            -t ${{ env.ECR_PROD_URL }}:latest \
             -t ${{ env.ECR_NON_PROD_URL }}:${{ steps.version.outputs.version }} \
             -t ${{ env.ECR_PROD_URL }}:${{ steps.version.outputs.version }} \
             -f Dockerfiles/Dockerfile.bcda .
       - name: Push to Non Prod ECR
         run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
-          docker image push ${{ env.ECR_URL }}:${{ steps.version.outputs.version }}
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_NON_PROD_URL }}'
+          docker image push ${{ env.ECR_NON_PROD_URL }}:${{ steps.version.outputs.version }}
       - name: Log into prod in order to push to prod ECR
         uses: aws-actions/configure-aws-credentials@v4
         if: ${{ startsWith(steps.version.outputs.version, 'r') }}
