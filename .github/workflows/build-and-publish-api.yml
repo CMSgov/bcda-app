@@ -40,7 +40,7 @@ jobs:
       - name: Checkout BCDA
         uses: actions/checkout@v4
         with:
-          repository: CMSgov/bcda-ssas-app
+          repository: CMSgov/bcda-app
           ref: ${{ inputs.ref }}
       - name: Set Version
         id: version
