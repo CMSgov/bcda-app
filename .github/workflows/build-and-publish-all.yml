@@ -11,26 +11,6 @@ on:
         description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
-          - sandbox
-          - prod
-      confirm_env:
-        description: 'Confirm the environment you want to deploy to'
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
-          - sandbox
-          - prod
   workflow_call:
     inputs:
       ref:
@@ -41,16 +21,6 @@ on:
           description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
           required: true
           type: string
-      env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
-        required: true
-        type: string
-        default: dev
-      confirm_env:
-        description: 'Confirm the environment you want to deploy to'
-        required: true
-        type: string
-        default: dev
     outputs:
       api_version:
         description: 'The version of the published API docker tag'
