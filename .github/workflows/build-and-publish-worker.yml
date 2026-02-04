@@ -7,68 +7,27 @@ on:
         description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
-          - sandbox
-          - prod
-      confirm_env:
-        description: 'Confirm the environment you want to deploy to'
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
-          - sandbox
-          - prod
   workflow_call:
     inputs:
       ref:
         description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
-        required: true
-        type: string
-        default: dev
-      confirm_env:
-        description: 'Confirm the environment you want to deploy to'
-        required: true
-        type: string
-        default: dev
-
 
 permissions:
   id-token: write
   contents: read
 
-env:
-  RELEASE_ENV: ${{ inputs.env || 'dev' }}
-  CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-
 jobs:
   build_and_publish:
-    environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Get Workflow Inputs
         run: echo "${{ toJSON(inputs) }}"
-      - name: Confirm Env
-        if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
-        run: |
-          echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
-          exit 1
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions
       - name: Checkout BCDA
         uses: actions/checkout@v4
         with:
@@ -84,22 +43,35 @@ jobs:
           else
             echo "Ref is not a tag; setting version to revision shorthand"
             REV_SHORT=$(git rev-parse --short=8 HEAD)
-            echo "version=$REV_SHORT" >> $GITHUB_OUTPUT
+            echo "version=temp-$REV_SHORT" >> $GITHUB_OUTPUT
             if [[ ${{ env.RELEASE_ENV }} != 'dev' && ${{ env.RELEASE_ENV }} != 'test' ]]; then
               echo "Publishing non-tag versions to prod account is forbidden; exiting process"
               exit 1
             fi
           fi
-      - name: Set ECR_URL
-        run: echo "ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-${{ env.RELEASE_ENV }}-worker" >> $GITHUB_ENV
+      - name: Set ECR urls
+        run: |
+          echo "ECR_NON_PROD_URL=${{ secrets.NON_PROD_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker" >> $GITHUB_ENV
+          echo "ECR_PROD_URL=${{ secrets.PROD_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker" >> $GITHUB_ENV
       - name: Build Worker
         run: |
           docker build \
             --build-arg RELEASE_VERSION=${{ steps.version.outputs.version }} \
-            -t ${{ env.ECR_URL }}:latest \
-            -t ${{ env.ECR_URL }}:${{ steps.version.outputs.version }} \
+            -t ${{ env.ECR_NON_PROD_URL }}:${{ steps.version.outputs.version }} \
+            -t ${{ env.ECR_PROD_URL }}:${{ steps.version.outputs.version }} \
             -f Dockerfiles/Dockerfile.bcdaworker .
-      - name: Push to ECR
+      - name: Push to Non Prod ECR
         run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_URL }}'
-          docker image push ${{ env.ECR_URL }}:${{ steps.version.outputs.version }}
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_NON_PROD_URL }}'
+          docker image push ${{ env.ECR_NON_PROD_URL }}:${{ steps.version.outputs.version }}
+      - name: Log into prod in order to push to prod ECR
+        uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ startsWith(steps.version.outputs.version, 'r') }}
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-prod-github-actions
+      - name: Push to Prod ECR
+        if: ${{ startsWith(steps.version.outputs.version, 'r') }}
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin '${{ env.ECR_PROD_URL }}'
+          docker image push ${{ env.ECR_PROD_URL }}:${{ steps.version.outputs.version }}
