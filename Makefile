@@ -36,6 +36,13 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN> maintenanceMode=<CURRENT_MAINTENANCE_MODE>
+
+	echo $(env)
+	@if test -z "$(env)"; then \
+		echo "Error: postman target must include an 'env' argument (e.g. 'env=local')"; \
+		exit 1; \
+	fi
+
 	$(eval BLACKLIST_CLIENT_ID=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
 	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
 
@@ -45,10 +52,17 @@ postman:
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
+	# Set up valid client credentials for previous performance year client
+	$(eval PREVPY_CMS_ID = TEST995)
+	$(eval PREVPY_CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(PREVPY_CMS_ID)'|tail -n2))
+	$(eval PREVPY_CLIENT_ID:=$(shell echo $(PREVPY_CLIENT_TEMP) |awk '{print $$1}'))
+	$(eval PREVPY_CLIENT_SECRET:=$(shell echo $(PREVPY_CLIENT_TEMP) |awk '{print $$2}'))
+
 	docker compose -f docker-compose.test.yml build postman_test
 	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
+	--global-var prevpyClientId=$(PREVPY_CLIENT_ID) --global-var prevpyClientSecret=$(PREVPY_CLIENT_SECRET) \
 	--global-var v2Disabled=false \
 	--global-var maintenanceMode=$(maintenanceMode)
 
