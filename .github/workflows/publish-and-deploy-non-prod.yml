@@ -41,8 +41,6 @@ jobs:
     with:
       ref: ${{ inputs.ref || 'main' }}
       ssas_ref: ${{ inputs.ssas_ref || 'main' }}
-      env: dev
-      confirm_env: dev
     secrets: inherit
   
   deploy_all:
