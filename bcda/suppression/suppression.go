@@ -55,10 +55,10 @@ func (importer OptOutImporter) ImportSuppressionDirectory(ctx context.Context, p
 			}
 		}
 	}
-	err = importer.FileHandler.CleanupOptOutFiles(ctx, *suppresslist)
-	if err != nil {
-		importer.Logger.Error(err)
-	}
+	// err = importer.FileHandler.CleanupOptOutFiles(ctx, *suppresslist)
+	// if err != nil {
+	// 	importer.Logger.Error(err)
+	// }
 
 	if failure > 0 {
 		err = errors.New("one or more suppression files failed to import correctly")
