@@ -7,7 +7,7 @@ RUN apk add --no-cache \
         curl \
         jq \
         && \
-    apk update upgrade
+    apk update upgrade --no-cache
 
 COPY fhir_testing/config.json .
 COPY fhir_testing/run-fhir-test.sh .
