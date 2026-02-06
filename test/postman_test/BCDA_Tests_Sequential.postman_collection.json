@@ -7760,22 +7760,22 @@
       ]
     },
     {
-      "name": "Previous Performance Year Scenarios",
+      "name": "Outdated Attribution Scenarios",
       "item": [
         {
-          "name": "Get Previous PY auth token",
+          "name": "Get Outdated Attr auth token",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "if (!pm.globals.get(\"prevpyClientId\") || !pm.globals.get(\"prevpyClientSecret\")) {",
-                  "    console.log(\"Prev PY test skipped due to creds not set.\")",
+                  "if (!pm.globals.get(\"outdatedAttrClientId\") || !pm.globals.get(\"outdatedAttrClientSecret\")) {",
+                  "    console.log(\"Outdated Attribution test skipped due to creds not set.\")",
                   "    return",
                   "}",
                   "var env = pm.environment.get(\"env\");",
-                  "pm.environment.set(\"prevpyClientId\", pm.globals.get(\"prevpyClientId\"));",
-                  "pm.environment.set(\"prevpyClientSecret\", pm.globals.get(\"prevpyClientSecret\"));",
+                  "pm.environment.set(\"outdatedAttrClientId\", pm.globals.get(\"outdatedAttrClientId\"));",
+                  "pm.environment.set(\"outdatedAttrClientSecret\", pm.globals.get(\"outdatedAttrClientSecret\"));",
                   "pm.test(\"Status code is 200\", function() {",
                   "    pm.response.to.have.status(200);",
                   "});",
@@ -7790,7 +7790,7 @@
                   "   tests['response is valid JSON'] = false;",
                   "}",
                   "",
-                  "pm.environment.set(\"prevpyToken\", responseJSON.access_token);",
+                  "pm.environment.set(\"outdatedAttrToken\", responseJSON.access_token);",
                   ""
                 ],
                 "type": "text/javascript",
@@ -7805,12 +7805,12 @@
               "basic": [
                 {
                   "key": "password",
-                  "value": "{{prevpyClientSecret}}",
+                  "value": "{{outdatedAttrClientSecret}}",
                   "type": "string"
                 },
                 {
                   "key": "username",
-                  "value": "{{prevpyClientId}}",
+                  "value": "{{outdatedAttrClientId}}",
                   "type": "string"
                 }
               ]
@@ -7838,19 +7838,19 @@
                 "token"
               ]
             },
-            "description": "Retrieve token for Previous PY ACO"
+            "description": "Retrieve token for Outdated Attribution ACO"
           },
           "response": []
         },
         {
-          "name": "Start Previous PY Patient export",
+          "name": "Start Outdated Attribution Patient export",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "if (!pm.globals.get(\"prevpyClientId\") || !pm.globals.get(\"prevpyClientSecret\")) {",
-                  "    console.log(\"Previous PY test skipped due to creds not set.\")",
+                  "if (!pm.globals.get(\"outdatedAttrClientId\") || !pm.globals.get(\"outdatedAttrClientSecret\")) {",
+                  "    console.log(\"Outdated Attribution test skipped due to creds not set.\")",
                   "    return",
                   "}",
                   "pm.test(\"Status code is 404 (Not Found)\", function () {",
@@ -7880,7 +7880,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{prevpyToken}}",
+                  "value": "{{outdatedAttrToken}}",
                   "type": "string"
                 }
               ]
@@ -7916,14 +7916,14 @@
           "response": []
         },
         {
-          "name": "Start Previous PY Group export",
+          "name": "Start Outdated Attribution Group export",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "if (!pm.globals.get(\"prevpyClientId\") || !pm.globals.get(\"prevpyClientSecret\")) {",
-                  "    console.log(\"Previous PY test skipped due to creds not set.\")",
+                  "if (!pm.globals.get(\"outdatedAttrClientId\") || !pm.globals.get(\"outdatedAttrClientSecret\")) {",
+                  "    console.log(\"Outdated Attribution test skipped due to creds not set.\")",
                   "    return",
                   "}",
                   "pm.test(\"Status code is 404 (Not Found)\", function () {",
@@ -7953,7 +7953,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{prevpyToken}}",
+                  "value": "{{outdatedAttrToken}}",
                   "type": "string"
                 }
               ]
@@ -7990,7 +7990,7 @@
           "response": []
         },
         {
-          "name": "Start Previous PY Group/runout v2 export",
+          "name": "Start Outdated Attribution Group/runout v2 export",
           "event": [
             {
               "listen": "test",
@@ -8017,7 +8017,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{prevpyToken}}",
+                  "value": "{{outdatedAttrToken}}",
                   "type": "string"
                 }
               ]

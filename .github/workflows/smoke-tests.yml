@@ -146,7 +146,7 @@ jobs:
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
             V3_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_v3_client_credentials
-            PREVPY_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/prevpy_client_credentials
+            OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/outdated_attr_client_credentials
       - name: checkout bcda-ssas
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         uses: actions/checkout@v4
@@ -179,14 +179,14 @@ jobs:
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           DENYLIST_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           DENYLIST_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          PREVPY_CLIENT_ID=$(echo $PREVPY_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
-          PREVPY_CLIENT_SECRET=$(echo $PREVPY_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          OUTDATED_ATTR_CLIENT_ID=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          OUTDATED_ATTR_CLIENT_SECRET=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-          --global-var prevpyClientId=${PREVPY_CLIENT_ID} --global-var prevpyClientSecret=${PREVPY_CLIENT_SECRET} \
+          --global-var outdatedAttrClientId=${OUTDATED_ATTR_CLIENT_ID} --global-var outdatedAttrClientSecret=${OUTDATED_ATTR_CLIENT_SECRET} \
           --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Run Smoke Tests
         if: ${{ inputs.smoke_tests }}

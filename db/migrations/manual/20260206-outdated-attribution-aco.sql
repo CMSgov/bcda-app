@@ -1,6 +1,6 @@
--- This is a manual migration to attribute existing synthetic MBIs to a new ACO to be used for Previous PY smoke tests (BCDA-9765)
+-- This is a manual migration to attribute existing synthetic MBIs to a new ACO to be used for Outdated Attribution smoke tests (BCDA-9765)
 -- We will be copying the MBIs from ACO A9994 (sandbox) to ACO TEST995 since those are also used for smoke tests
--- Adding one row into cclf_files for one new CCLF file and one runout file associated with Previous PY ACO
+-- Adding one row into cclf_files for one new CCLF file and one runout file associated with Outdated Attribution ACO
 BEGIN;
 
 WITH NEW_FILES AS (
@@ -39,7 +39,7 @@ WITH NEW_FILES AS (
             'Completed',
             1
         ) RETURNING id
-) -- Adding rows into cclf_beneficiaries for TEST993
+) -- Adding rows into cclf_beneficiaries for TEST995
 INSERT INTO
     cclf_beneficiaries (file_id, mbi)
 SELECT
