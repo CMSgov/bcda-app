@@ -23,8 +23,8 @@ jobs:
             account_id: NON_PROD_ACCOUNT_ID
           - env: sandbox
             account_id: PROD_ACCOUNT_ID
-          # - env: prod
-          #   account_id: PROD_ACCOUNT_ID
+          - env: prod
+            account_id: PROD_ACCOUNT_ID
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
