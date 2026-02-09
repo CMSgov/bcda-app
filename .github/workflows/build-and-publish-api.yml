@@ -13,6 +13,10 @@ on:
         description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
+    outputs:
+        version:
+          description: 'The version of the published docker tag'
+          value: ${{ jobs.build_and_publish.outputs.version }}
 
 permissions:
   id-token: write
