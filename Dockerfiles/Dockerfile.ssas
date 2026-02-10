@@ -28,9 +28,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM golang:1.25.4-alpine3.22
 
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk update upgrade && \
-    apk add openssl
+RUN apk update upgrade --no-cache && \
+    apk add --no-cache \
+        curl \
+        openssl
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem

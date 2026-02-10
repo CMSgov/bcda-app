@@ -61,6 +61,7 @@ type Handler struct {
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 	JobsBundle(context.Context, http.ResponseWriter, []*models.Job, string)
 }
 
@@ -149,7 +150,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Invalid group ID (%+v)", responseutils.RequestErr, groupID),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
 		return
 	}
 	h.bulkRequest(w, r, reqType)
@@ -182,7 +183,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 					fmt.Sprintf("%s: %+v", responseutils.RequestErr, errMsg),
 					logrus.Fields{"resp_status": http.StatusBadRequest},
 				)
-				h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 				return
 			}
 		}
@@ -194,7 +195,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 			return
 		}
 	}
@@ -205,7 +206,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: %+v", responseutils.DbErr, err),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.DbErr, err.Error())
+			h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.DbErr, err.Error())
 		} else {
 			ctx, _ = log.WriteErrorWithFields(
 				ctx,
@@ -263,7 +264,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		)
 		//We don't need to return the full error to a consumer.
 		//We pass a bad request header (400) for this exception due to the inputs always being invalid for our purposes
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "could not parse job id")
 
 		return
 	}
@@ -276,7 +277,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Requested job not found.  Error: %+v", responseutils.DbErr, err),
 				logrus.Fields{"resp_status": http.StatusNotFound, "job_id": jobID},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
+			h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.DbErr, "Job not found.")
 		} else {
 			ctx, _ = log.WriteErrorWithFields(
 				ctx,
@@ -318,7 +319,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
 				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
+			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
 		w.Header().Set("Content-Type", constants.JsonContentType)
@@ -394,7 +395,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Job is Archived or Expired", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
 		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
 
@@ -413,7 +414,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
@@ -426,7 +427,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%s: Job is not cancellable", responseutils.DeletedErr),
 				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusGone, responseutils.DeletedErr, err.Error())
+			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
 			ctx, _ = log.WriteErrorWithFields(
@@ -464,7 +465,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -506,7 +507,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%s: Could not find any CCLF8 file", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
 	}
 
@@ -572,13 +573,20 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
 	rp, ok := middleware.GetRequestParamsFromCtx(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
+	}
+
+	// Validate PAC eligibility for v3 _typeFilter tags that require it
+	if h.apiVersion == constants.V3Version {
+		if err = h.validateTypeFilterPACEligibility(ctx, rp.TypeFilter, ad.CMSID, w); err != nil {
+			return
+		}
 	}
 
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
@@ -588,8 +596,16 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: Error validating resources: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
+	}
+
+	// For v3, ensure non-PAC eligible ACOs requesting ExplanationOfBenefit default to NCH-only data
+	// This ensures they only get NCH data, not SharedSystem data
+	if h.apiVersion == constants.V3Version {
+		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
+			rp.TypeFilter = h.ensureNCHOnlyForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
+		}
 	}
 
 	acoID := uuid.Parse(ad.ACOID)
@@ -628,7 +644,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: Invalid complex data request type: %+v", responseutils.RequestErr, err),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "invalid complex data request type")
 		return
 	}
 
@@ -649,7 +665,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 					fmt.Sprintf("%s: %+v", responseutils.NotFoundErr, msg),
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
-				h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
+				h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
 				return
 			}
 
@@ -659,7 +675,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 				fmt.Sprintf("%s: %+v", responseutils.NotFoundErr, msg),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
+			h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, msg)
 			return
 		}
 
@@ -684,7 +700,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 			fmt.Sprintf("%s: Failed to validate cclf file or performance year of found cclf file", responseutils.NotFoundErr),
 			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, fmt.Sprintf("unable to perform export operations for this Group. No up-to-date attribution information is available for ACOID '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year", ad.CMSID))
 		return
 	}
 
@@ -698,7 +714,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 					fmt.Sprintf("%s: CCLF file not found for given _since parameter: %s", responseutils.NotFoundErr, rp.Since.String()),
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
-				h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
+				h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "failed to start job; attribution file not found for given _since parameter.")
 				return
 			}
 
@@ -808,6 +824,115 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 	}
 
 	return false
+}
+
+// validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
+// tags in _typeFilter have PAC data access. Returns error if validation fails (and writes response).
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter [][]string, cmsID string, w http.ResponseWriter) error {
+	// Tags that require PAC eligibility
+	tagsRequiringPAC := []string{"SharedSystem"}
+
+	// Extract all _tag parameter values
+	var requestedTagCodes []string
+	for _, paramPair := range typeFilter {
+		if len(paramPair) == 2 && paramPair[0] == "_tag" {
+			tagValue := paramPair[1]
+			// Extract tag code from either short format or URL format
+			tagCode := extractTagCodeFromValue(tagValue)
+			requestedTagCodes = append(requestedTagCodes, tagCode)
+		}
+	}
+
+	// Check if any requested tags require PAC eligibility
+	requiresPAC := false
+	for _, tagCode := range requestedTagCodes {
+		if utils.ContainsString(tagsRequiringPAC, tagCode) {
+			requiresPAC = true
+			break
+		}
+	}
+
+	// If PAC is required, check if ACO has PAC access
+	if requiresPAC {
+		acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
+		if !ok {
+			ctx, _ = log.WriteErrorWithFields(
+				ctx,
+				fmt.Sprintf("%s: Unable to determine ACO configuration", responseutils.RequestErr),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "Unable to determine ACO configuration")
+			return fmt.Errorf("ACO configuration not found")
+		}
+
+		hasPACAccess := utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated)
+		if !hasPACAccess {
+			errMsg := fmt.Sprintf("Model entities in %s are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: %v", acoConfig.Model, tagsRequiringPAC)
+			ctx, _ = log.WriteWarnWithFields(
+				ctx,
+				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+				logrus.Fields{"resp_status": http.StatusBadRequest},
+			)
+			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+			return fmt.Errorf("not eligible for partially adjudicated claims data")
+		}
+	}
+
+	return nil
+}
+
+// extractTagCodeFromValue extracts the tag code from either a short format (e.g., "SharedSystem")
+// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem")
+func extractTagCodeFromValue(tagValue string) string {
+	// Check if it's a URL format with pipe separator
+	if pipeIdx := strings.LastIndex(tagValue, "|"); pipeIdx != -1 {
+		return tagValue[pipeIdx+1:]
+	}
+	// Otherwise, it's short format, return as-is
+	return tagValue
+}
+
+// ensureNCHOnlyForNonPAC ensures that non-PAC eligible ACOs in v3 only receive NCH data
+// by adding a NationalClaimsHistory tag filter if no explicit filter is provided
+func (h *Handler) ensureNCHOnlyForNonPAC(ctx context.Context, typeFilter [][]string, cmsID string) [][]string {
+	// Check if ACO has PAC access
+	acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
+	if !ok {
+		// If we can't determine ACO config, don't modify the filter
+		return typeFilter
+	}
+
+	hasPACAccess := utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated)
+	if hasPACAccess {
+		// PAC eligible ACOs can access all data, no need to filter
+		return typeFilter
+	}
+
+	// Check if there's already a _tag parameter that filters to NCH
+	// If NCH is already specified, no need to add it again
+	hasNCHFilter := false
+	for _, paramPair := range typeFilter {
+		if len(paramPair) == 2 && paramPair[0] == "_tag" {
+			tagCode := extractTagCodeFromValue(paramPair[1])
+			if tagCode == "NationalClaimsHistory" {
+				hasNCHFilter = true
+				break
+			}
+		}
+	}
+
+	// If NCH filter is already present, no need to add default
+	if hasNCHFilter {
+		return typeFilter
+	}
+
+	// For non-PAC ACOs without an explicit NCH filter, add NationalClaimsHistory filter
+	// to ensure they only get NCH data, not SharedSystem data
+	// This function is only called when ExplanationOfBenefit is in the resource types
+	nchTagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"
+	typeFilter = append(typeFilter, []string{"_tag", nchTagValue})
+
+	return typeFilter
 }
 
 func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {

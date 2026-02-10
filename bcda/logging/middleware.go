@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -95,7 +96,7 @@ func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler
 				fmt.Sprintf("%s: Job key not found: %+v", responseutils.NotFoundErr, jobKey),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			rw.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
+			rw.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "Job not found")
 			return
 		}
 
@@ -147,6 +148,7 @@ func NewCtxLogger(next http.Handler) http.Handler {
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
 func getRespWriter(path string) fhirResponseWriter {
@@ -155,7 +157,7 @@ func getRespWriter(path string) fhirResponseWriter {
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewFhirResponseWriter()
 	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
-		return responseutilsv2.NewFhirResponseWriter() // TODO: V3
+		return responseutilsv3.NewFhirResponseWriter()
 	} else {
 		return responseutils.NewFhirResponseWriter()
 	}

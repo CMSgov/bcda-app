@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -127,6 +129,161 @@ func TestInvalidRequestHeaders(t *testing.T) {
 			ValidateRequestHeaders(noop).ServeHTTP(rr, req)
 			assert.Equal(t, http.StatusBadRequest, rr.Code)
 			assert.Contains(t, rr.Body.String(), tt.errMsg)
+		})
+	}
+}
+
+func TestValidateTagSubqueryParameter(t *testing.T) {
+	tests := []struct {
+		name     string
+		tagValue string
+		expected error
+	}{
+		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
+		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345")},
+		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction")},
+		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction")},
+		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", nil},
+		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateTagSubqueryParameter(tt.tagValue)
+			assert.Equal(t, tt.expected, err)
+		})
+	}
+}
+
+func TestValidateTypeFilterTagCodes(t *testing.T) {
+	baseV3 := constants.V3Path + "Patient/$export?"
+	ctx := context.Background()
+	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
+
+	tests := []struct {
+		name        string
+		url         string
+		shouldFail  bool
+		errMsg      string
+		description string
+	}{
+		{
+			name:        "validTagSharedSystem",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
+			shouldFail:  false,
+			description: "Valid tag in URL format should pass",
+		},
+		{
+			name:        "validTagNationalClaimsHistory",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
+			shouldFail:  false,
+			description: "Valid NotFinalAction tag should pass",
+		},
+		{
+			name:        "validTagFinalAction",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Valid FinalAction tag should pass",
+		},
+		{
+			name:        "validTagNotFinalAction",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Valid NationalClaimsHistory tag should pass",
+		},
+		{
+			name:        "invalidTagPartiallyAdjudicated",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated", baseV3),
+			shouldFail:  true,
+			errMsg:      "invalid _tag value: PartiallyAdjudicated. Searching by tag requires a token (system|code) to be specified",
+			description: "Old PartiallyAdjudicated tag should be rejected",
+		},
+		{
+			name:        "invalidTagSharedSystem",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem", baseV3),
+			shouldFail:  true,
+			errMsg:      "invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified",
+			description: "Only code, no system should be rejected. even with valid code",
+		},
+		{
+			name:        "invalidTagRandomValue",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DInvalidTag", baseV3),
+			shouldFail:  true,
+			errMsg:      "invalid _tag value: InvalidTag. Searching by tag requires a token (system|code) to be specified",
+			description: "Random invalid tag should be rejected",
+		},
+		{
+			name:        "multipleValidTags",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
+			shouldFail:  false,
+			description: "Multiple valid tags should pass",
+		},
+		{
+			name:        "multipleTagsOneInvalid",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3DPartiallyAdjudicated", baseV3),
+			shouldFail:  true,
+			errMsg:      "invalid _tag value: PartiallyAdjudicated",
+			description: "Multiple tags with one invalid should fail",
+		},
+		{
+			name:        "v2ShouldIgnoreTypeFilter",
+			url:         fmt.Sprintf("/api/v2/Patient/$export?_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated"),
+			shouldFail:  false,
+			description: "v2 should ignore _typeFilter validation (old behavior preserved)",
+		},
+		{
+			name:        "v1ShouldIgnoreTypeFilter",
+			url:         fmt.Sprintf("/api/v1/Patient/$export?_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated"),
+			shouldFail:  false,
+			description: "v1 should ignore _typeFilter validation (old behavior preserved)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", tt.url, nil)
+			assert.NoError(t, err)
+			req = req.WithContext(ctx)
+			req.Header.Set("Accept", "application/fhir+json")
+			req.Header.Set("Prefer", constants.TestRespondAsync)
+
+			rr := httptest.NewRecorder()
+			ValidateRequestURL(noop).ServeHTTP(rr, req)
+
+			if tt.shouldFail {
+				assert.Equal(t, http.StatusBadRequest, rr.Code, tt.description)
+				assert.Contains(t, rr.Body.String(), tt.errMsg, tt.description)
+			} else {
+				assert.Equal(t, http.StatusOK, rr.Code, tt.description)
+			}
+		})
+	}
+}
+
+func TestGetRespWriter(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"v1", constants.V1Path},
+		{"v2", constants.V2Path},
+		{"v3", constants.V3Path},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			rw := auth.GetRespWriter(tt.path)
+			rw.OpOutcome(ctx, rr, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
+			resp := rr.Body.String()
+			switch tt.name {
+			case "v1":
+				assert.NotContains(t, resp, "coding")
+			case "v2":
+				assert.Contains(t, resp, "coding")
+			case "v3":
+				assert.NotContains(t, resp, "coding")
+			}
 		})
 	}
 }

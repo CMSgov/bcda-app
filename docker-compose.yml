@@ -9,6 +9,12 @@ services:
       - "5432:5432"
     volumes:
       - ./db:/var/db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "bcda"]
+      interval: 1m30s
+      timeout: 15s
+      retries: 5
+      start_period: 2s
   localstack:
     image: localstack/localstack:latest
     environment:
@@ -25,7 +31,7 @@ services:
       - "./shared_files/decrypted:/etc/config"
     healthcheck:
       test: 'curl --silent --fail localstack:4566/_localstack/init/ready | grep -E "\"completed\": true"'
-      interval: 10s
+      interval: 1m30s
       retries: 5
       start_period: 30s
       timeout: 10s
@@ -52,18 +58,23 @@ services:
       FHIR_ARCHIVE_DIR: /var/efs/archive
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
-      LOG_TO_STD_OUT: true
     volumes:
       - fhir:/var/efs
       - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
       - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3000/_health"]
+      interval: 1m30s
+      retries: 5
+      start_period: 10s
+      timeout: 10s
     depends_on:
       ssas:
-        condition: service_started
+        condition: service_healthy
       db:
-        condition: service_started
+        condition: service_healthy
       localstack:
         condition: service_healthy
     develop:
@@ -99,14 +110,19 @@ services:
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
       FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
-      LOG_TO_STD_OUT: true
     volumes:
       - fhir:/var/efs
       - worker_config:/etc/sv/worker/env
       - fhir_temp:/home/bcda/FHIR_TEMP_DIR
+    healthcheck:
+      test: ["CMD-SHELL", "bcdaworker health >> /proc/1/fd/1 2>&1  || exit 1"]
+      interval: 1m30s
+      retries: 5
+      start_period: 10s
+      timeout: 10s
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       localstack:
         condition: service_healthy
     develop:
@@ -155,8 +171,15 @@ services:
       - "3003:3003"
       - "3004:3004"
       - "3005:3005"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3003/_health"]
+      interval: 1m30s
+      retries: 5
+      start_period: 2s
+      timeout: 10s
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   fhir:

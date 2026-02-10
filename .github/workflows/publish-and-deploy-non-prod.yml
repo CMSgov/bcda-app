@@ -1,0 +1,58 @@
+# Build, publish, and deploy any repo revision to dev or test
+# Deploys main to dev daily
+name: Publish and Deploy Non-Prod
+
+on:
+  schedule:
+    - cron: 0 12 * * 1-5 # every workday at 8am EST
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
+        required: true
+        default: main
+        type: string
+      ops_ref:
+        description: 'Ref of bcda-ops to checkout (tag, branch name, or full SHA)'
+        required: true
+        default: main
+        type: string
+      ssas_ref:
+        description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
+        required: true
+        default: main
+        type: string
+      env:
+        description: 'Environment you want to deploy to (dev, test)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build_and_publish_all:
+    uses: ./.github/workflows/build-and-publish-all.yml
+    with:
+      ref: ${{ inputs.ref || 'main' }}
+      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
+    secrets: inherit
+  
+  deploy_all:
+    needs: [build_and_publish_all]
+    uses: ./.github/workflows/deploy-all.yml
+    with:
+      version: ${{ needs.build_and_publish_all.outputs.api_version }}
+      ref: ${{ inputs.ref || 'main' }}
+      ops_ref: ${{ inputs.ops_ref || 'main' }}
+      ssas_version: ${{ needs.build_and_publish_all.outputs.ssas_version }}
+      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
+      env: ${{ inputs.env || 'dev' }}
+      confirm_env: ${{ inputs.env || 'dev' }}
+      test_aco: dev
+    secrets: inherit

@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/log"
 )
 
@@ -58,7 +59,7 @@ func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		rw := getRespWriter(r.URL.Path)
+		rw := GetRespWriter(r.URL.Path)
 
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
@@ -68,7 +69,7 @@ func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: Invalid Authorization header value", responseutils.TokenErr),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
 			)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
+			rw.OpOutcome(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.TokenErr, responseutils.TokenErr)
 			return
 		}
 
@@ -126,21 +127,21 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.ExpiredErr, err),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
 			)
-			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.ExpiredErr)
+			rw.OpOutcome(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.ExpiredErr)
 		case *customErrors.EntityNotFoundError:
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.UnauthorizedErr, err),
 				logrus.Fields{"resp_status": http.StatusForbidden},
 			)
-			rw.Exception(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden), responseutils.UnauthorizedErr)
+			rw.OpOutcome(ctx, w, http.StatusForbidden, http.StatusText(http.StatusForbidden), responseutils.UnauthorizedErr)
 		case *customErrors.RequestorDataError:
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.RequestErr, err),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
-			rw.Exception(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.RequestErr)
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), responseutils.RequestErr)
 		case *customErrors.RequestTimeoutError:
 			ctx, _ = log.WriteErrorWithFields(
 				ctx,
@@ -161,7 +162,7 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 				fmt.Sprintf("%s: Verification error: %+v", responseutils.TokenErr, err),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
 			)
-			rw.Exception(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
+			rw.OpOutcome(ctx, w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 		}
 	}
 }
@@ -170,7 +171,7 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 // This depends on ParseToken being called beforehand in the routing middleware.
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := GetRespWriter(r.URL.Path)
 		ctx := r.Context()
 
 		token := ctx.Value(TokenContextKey)
@@ -180,7 +181,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: No token found", responseutils.TokenErr),
 				logrus.Fields{"resp_status": http.StatusUnauthorized},
 			)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
+			rw.OpOutcome(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized), responseutils.TokenErr)
 			return
 		}
 
@@ -193,7 +194,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 // CheckBlacklist checks the auth data is associated with a blacklisted entity
 func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := GetRespWriter(r.URL.Path)
 		ctx := r.Context()
 
 		ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
@@ -203,7 +204,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: AuthData not found", responseutils.NotFoundErr),
 				logrus.Fields{"resp_status": http.StatusNotFound},
 			)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
+			rw.NotFound(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
 			return
 		}
 
@@ -213,7 +214,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 				fmt.Sprintf("%s: ACO %s is denylisted: ", responseutils.UnauthorizedErr, ad.CMSID),
 				logrus.Fields{"resp_status": http.StatusForbidden},
 			)
-			rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
+			rw.OpOutcome(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -223,7 +224,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			rw := getRespWriter(r.URL.Path)
+			rw := GetRespWriter(r.URL.Path)
 			ctx := r.Context()
 
 			ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
@@ -233,7 +234,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 					fmt.Sprintf("%s: AuthData not found", responseutils.UnauthorizedErr),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},
 				)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
+				rw.OpOutcome(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "AuthData not found")
 				return
 			}
 
@@ -245,7 +246,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 					fmt.Sprintf("%s: Failed to parse jobID: %+v", responseutils.RequestErr, err),
 					logrus.Fields{"resp_status": http.StatusBadRequest},
 				)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusBadRequest, responseutils.RequestErr, "")
+				rw.OpOutcome(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusBadRequest, responseutils.RequestErr, "")
 				return
 			}
 
@@ -258,7 +259,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 					fmt.Sprintf("%s: Job not found, ID: %+v", responseutils.NotFoundErr, jobID),
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.NotFoundErr, "")
+				rw.NotFound(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.NotFoundErr, "")
 				return
 			}
 
@@ -268,7 +269,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 					fmt.Sprintf("%s: Job found but expired or archived, ID: %+v", responseutils.JobExpiredErr, jobID),
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.JobExpiredErr, "")
+				rw.NotFound(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.JobExpiredErr, "")
 			}
 
 			// ACO did not create the job
@@ -280,7 +281,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 					fmt.Sprintf("%s: ACO %s does not have access to job ID %d (ACO ID of job: %s)", responseutils.UnauthorizedErr, ad.ACOID, jobID, job.ACOID),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},
 				)
-				rw.Exception(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
+				rw.OpOutcome(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusUnauthorized, responseutils.UnauthorizedErr, "")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -292,15 +293,16 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 type fhirResponseWriter interface {
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
+	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
-func getRespWriter(path string) fhirResponseWriter {
+func GetRespWriter(path string) fhirResponseWriter {
 	if strings.Contains(path, "/v1/") {
 		return responseutils.NewFhirResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewFhirResponseWriter()
 	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
-		return responseutilsv2.NewFhirResponseWriter() // TODO: V3
+		return responseutilsv3.NewFhirResponseWriter()
 	} else {
 		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
 		// In the cases we cannot discern a version we default to v1

@@ -6,13 +6,13 @@ on:
       - .github/workflows/smoke-tests.yml
   workflow_dispatch:
     inputs:
-      release_version:
-        description: The branch of the bcda-app to use for the test execution.
+      ref:
+        description: The ref of the bcda-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
-      ssas_release_version:
-        description: The branch of the ssas-app to use for the test execution.
+      ssas_ref:
+        description: The ref of the ssas-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
@@ -38,6 +38,11 @@ on:
           - 'dev'
           - 'paca'
         default: 'dev'
+      eoy_mode:
+        description: Flag which indicates if smoke tests should be run in EOY mode
+        required: true
+        type: boolean
+        default: false
       smoke_tests:
         description: Flag which indicates if smoke integration tests should be run
         required: true
@@ -55,13 +60,13 @@ on:
         default: false
   workflow_call:
     inputs:
-      release_version:
-        description: The branch of the bcda-app to use for the test execution.
+      ref:
+        description: The ref of the bcda-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
-      ssas_release_version:
-        description: The branch of the ssas-app to use for the test execution.
+      ssas_ref:
+        description: The ref of the ssas-app to use for the test execution.
         required: true
         type: 'string'
         default: 'main'
@@ -75,6 +80,11 @@ on:
         required: true
         type: 'string'
         default: 'dev'
+      eoy_mode:
+        description: Flag which indicates if smoke tests should be run in EOY mode
+        required: true
+        type: boolean
+        default: false
       smoke_tests:
         description: Flag which indicates if smoke integration tests should be run
         required: true
@@ -99,6 +109,7 @@ env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   COMPOSE_INTERACTIVE_NO_CLI: 1
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
+  EOY_MODE: ${{ (inputs.eoy_mode && 'eoy') || '' }}
 
 jobs:
   smoke_tests:
@@ -135,12 +146,13 @@ jobs:
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/paca_client_credentials
             V3_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_v3_client_credentials
+            OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/outdated_attr_client_credentials
       - name: checkout bcda-ssas
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ssas-app
-          ref: ${{ inputs.ssas_release_version || 'main' }}
+          ref: ${{ inputs.ssas_ref || 'main' }}
       - name: Build SSAS Postman Container
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
@@ -153,7 +165,10 @@ jobs:
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.ref || 'main' }}
       - name: Build API Postman Container
         run: |
           docker compose -f docker-compose.test.yml build --force-rm postman_test
@@ -162,12 +177,17 @@ jobs:
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          DENYLIST_CLIENT_ID=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          DENYLIST_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          OUTDATED_ATTR_CLIENT_ID=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
+          OUTDATED_ATTR_CLIENT_SECRET=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
           --global-var blacklistedClientId=${DENYLIST_CLIENT_ID} --global-var blacklistedClientSecret=${DENYLIST_CLIENT_SECRET} \
-          --global-var maintenanceMode=""
+          --global-var outdatedAttrClientId=${OUTDATED_ATTR_CLIENT_ID} --global-var outdatedAttrClientSecret=${OUTDATED_ATTR_CLIENT_SECRET} \
+          --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Run Smoke Tests
         if: ${{ inputs.smoke_tests }}
         run: |
@@ -177,7 +197,9 @@ jobs:
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET \
-          --global-var maintenanceMode=""
+          --global-var maintenanceMode="${{ env.EOY_MODE }}"
+      # Sleep a bit to hopefully prevent intermittent failures
+      - run: sleep 60
       - name: Run PACA Tests
         run: |
           CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
@@ -186,7 +208,7 @@ jobs:
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET \
-          --global-var maintenanceMode=""
+          --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Run v3 Tests
         if: ${{ inputs.v3_tests }}
         run: |
@@ -197,7 +219,7 @@ jobs:
            --global-var clientId=${CLIENT_ID} \
            --global-var clientSecret=${CLIENT_SECRET} \
            --global-var v3Disabled=false \
-           --global-var maintenanceMode=""
+           --global-var maintenanceMode="${{ env.EOY_MODE }}"
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
@@ -209,7 +231,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.ref || 'main' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -222,6 +244,6 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: danger
-                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.release_version || 'dev' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.ref || 'main' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text

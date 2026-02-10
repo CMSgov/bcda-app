@@ -44,10 +44,6 @@ func TestWork_Integration(t *testing.T) {
 	conf.SetEnv(t, "DEPLOYMENT_TARGET", uuid.New())
 	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", env) })
 
-	oldStdOut := conf.GetEnv("LOG_TO_STD_OUT")
-	conf.SetEnv(t, "LOG_TO_STD_OUT", "true")
-	t.Cleanup(func() { conf.SetEnv(t, "LOG_TO_STD_OUT", oldStdOut) })
-
 	defer func(payload, staging string) {
 		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
 		conf.SetEnv(t, "FHIR_STAGING_DIR", staging)

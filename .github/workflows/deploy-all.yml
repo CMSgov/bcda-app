@@ -1,19 +1,27 @@
-# Deploy BCDA/SSAS and Worker ec2 instances
+# Deploy terraform and API, SSAS, and Worker ECS services
 name: Deploy All
 
 on:
   workflow_dispatch:
     inputs:
-      release_version:
-        description: 'Release version/tag (or branch name)'
+      version:
+        description: 'Version of api/worker docker image to use (e.g. r123, aabb1122)'
         required: true
         type: string
-      ops_release_version:
-        description: 'Release version/tag for bcda-ops (or branch name)'
+      ref:
+        description: 'Ref of bcda-app repo to apply migrations from (e.g. r123, main)'
         required: true
         type: string
-      ssas_release_version:
-        description: 'Release version/tag for bcda-ssas (or branch name)'
+      ops_ref:
+        description: 'Ref of bcda-ops repo to deploy (e.g. r123, main)'
+        required: true
+        type: string
+      ssas_version:
+        description: 'Version of SSAS docker image to use (e.g. r456, ccdd3344)'
+        required: true
+        type: string
+      ssas_ref:
+        description: 'Ref of ssas repo to apply migrations from (e.g. r456, main)'
         required: true
         type: string
       env:
@@ -50,16 +58,24 @@ on:
         default: 'dev'
   workflow_call:
     inputs:
-      release_version:
-        description: 'Release version/tag (or branch name)'
+      version:
+        description: 'Version of api/worker docker image to use (e.g. r123)'
         required: true
         type: string
-      ops_release_version:
-        description: 'Release version/tag for bcda-ops (or branch name)'
+      ref:
+        description: 'Ref of bcda-app repo to apply migrations from (e.g. r123)'
         required: true
         type: string
-      ssas_release_version:
-        description: 'Release version/tag for bcda-ssas (or branch name)'
+      ops_ref:
+        description: 'Ref of bcda-ops repo to deploy (e.g. r123)'
+        required: true
+        type: string
+      ssas_version:
+        description: 'Version of SSAS docker image to use (e.g. r456)'
+        required: true
+        type: string
+      ssas_ref:
+        description: 'Ref of ssas repo to apply migrations from (e.g. r456)'
         required: true
         type: string
       env:
@@ -83,37 +99,55 @@ permissions:
   contents: read
 
 env:
-  RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
-  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
-  SSAS_RELEASE_VERSION: ${{ inputs.ssas_release_version || 'main' }}
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
   ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
   TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  VERIFICATION_RETRIES: 90 # 90 retries with 10s sleep = max 900s or 15m.  Verification jobs run in parallel.
-  VERIFICATION_SLEEP: 10
 
 jobs:
+  verify_images_exist:
+    environment: ${{ inputs.env || 'dev' }}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    steps:      
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Verify API image exists
+        run: |
+          echo "Verifying that tag ${{ inputs.version }} exists in the bcda-api repo"
+          aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${{ inputs.version }}
+      - name: Verify SSAS image exists
+        run: |
+          echo "Verifying that tag ${{ inputs.ssas_version }} exists in the bcda-ssas repo"
+          aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${{ inputs.ssas_version }}
+      - name: Verify Worker image exists
+        run: |
+          echo "Verifying that tag ${{ inputs.version }} exists in the bcda-worker repo"
+          aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${{ inputs.version }}
+
   migrate_db:
+    needs: [verify_images_exist]
     uses: ./.github/workflows/migrate-db.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
+      ref: ${{ inputs.ref }}
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
   migrate_ssas_db:
+    needs: [verify_images_exist]
     uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
     with:
-      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+      ref: ${{ inputs.ssas_ref }}
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
   deploy:
+    needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - uses: hashicorp/setup-packer@v3.1.0
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -125,14 +159,12 @@ jobs:
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
-            SUBNET_ID=/bcda/workflows/packer_subnet_id
-            S3_BUCKET=/bcda/rpms_bucket
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-ops
-          ref: ${{ env.OPS_RELEASE_VERSION }}
+          ref: ${{ inputs.ops_ref }}
           token: ${{ env.GITHUB_TOKEN }}
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
@@ -152,13 +184,6 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
-      # FARGATE FIXUP: Can remove this step
-      - name: Get AMIs
-        run: |
-          export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-          echo "BCDA_AMI=$BCDA_AMI" >> $GITHUB_ENV
-          export WORKER_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-worker' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
-          echo "WORKER_AMI=$WORKER_AMI" >> $GITHUB_ENV
       - name: Install Cosign to verify tenv and tofu installs
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
@@ -171,13 +196,9 @@ jobs:
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'ami_id=${{ env.BCDA_AMI }}' \
-            -var 'worker_ami_id=${{ env.WORKER_AMI }}' \
-            -var 'instance_type=${{ vars.INSTANCE_CLASS }}' \
-            -var 'api_image_tag=${{ env.RELEASE_VERSION }}' \
-            -var 'ssas_image_tag=${{ env.SSAS_RELEASE_VERSION }}' \
-            -var 'worker_image_tag=${{ env.RELEASE_VERSION }}' \
-            -var 'fargate_switch={start_ec2=false, start_fargate=true, fargate_traffic=100}' \
+            -var 'api_image_tag=${{ inputs.version }}' \
+            -var 'ssas_image_tag=${{ inputs.ssas_version }}' \
+            -var 'worker_image_tag=${{ inputs.version }}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -199,98 +220,70 @@ jobs:
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
-          TRY=1
-
-          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            BCDA_API_VERSION=`curl https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
-
-            if [[ $BCDA_API_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-              echo "BCDA API expected release version: ${{ env.RELEASE_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
-              TRY=$(($TRY + 1))
-              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-                exit 1
-              else
-                sleep $VERIFICATION_SLEEP
-              fi
-            else
-              break
-            fi
-          done
+          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
+          BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
+          if [[ $BCDA_API_VERSION != ${{ inputs.version }} ]]; then
+            echo "BCDA API expected release version: ${{ inputs.version }} did not match curled version: ${BCDA_API_VERSION}."
+            exit 1
+          fi
 
   verify_ssas_version:
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
     steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
-          TRY=1
+          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
+          BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
+          if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_version }} ]]; then
+            echo "BCDA SSAS expected release version: ${{ inputs.ssas_version }} did not match curled version: ${BCDA_SSAS_VERSION}."
+            exit 1
+          fi
 
-          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            BCDA_SSAS_VERSION=`curl https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'"`
-
-            if [[ $BCDA_SSAS_VERSION != ${{ env.SSAS_RELEASE_VERSION }} ]]; then
-              echo "BCDA SSAS expected release version: ${{ env.SSAS_RELEASE_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
-              TRY=$(($TRY + 1))
-              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-                exit 1
-              else
-                sleep $VERIFICATION_SLEEP
-              fi
-            else
-              break
-            fi
-          done
-
-  # Temporarily we need to manually verify worker is on correct version
-  
-  # # FARGATE FIXUP:
-  # This needs the 'image_tag' tag to be added to each service before this will work
-  # verify_worker_version:
-  #   needs: [deploy]
-  #   runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-  #   environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
-  #   steps:
-  #     - uses: aws-actions/configure-aws-credentials@v4
-  #       with:
-  #         aws-region: ${{ vars.AWS_REGION }}
-  #         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-  #     - run: |
-  #         TRY=1
-
-  #         until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-  #           WORKER_VERSION=`aws ecs --resource-arn list-tags-for-resource arn:aws:ecs:${{ vars.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:service/bcda-${{ env.RELEASE_ENV }}/bcda-${{ env.RELEASE_ENV }}-api --query "tags[?key=='image_tag'].value | [0]" --output text`
-
-  #           if [[ $WORKER_VERSION != ${{ env.RELEASE_VERSION }} ]]; then
-  #             echo "BCDA Worker expected release version: ${{ env.RELEASE_VERSION }} did not match AWS version: ${WORKER_VERSION}."
-  #             TRY=$(($TRY + 1))
-  #             if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-  #               exit 1
-  #             else
-  #               sleep $VERIFICATION_SLEEP
-  #             fi
-  #           else
-  #             break
-  #           fi
-  #         done
+  verify_worker_version:
+    needs: [deploy]
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - run: |
+          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
+          WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
+          WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
+          WORKER_VERSION=${WORKER_IMAGE##*:}
+          if [[ $WORKER_VERSION != ${{ inputs.version }} ]]; then
+            echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION}."
+            exit 1
+          fi
 
   smoketests:
-    # needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
-      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
+      ref: ${{ inputs.ref || 'main' }}
+      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
       env: ${{ inputs.env || 'dev' }}
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
       postman_tests: true
       v3_tests: true
+      eoy_mode: false
     secrets: inherit
 
   notify_newrelic:
-    # needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version]
+    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
@@ -317,15 +310,18 @@ jobs:
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${{ env.RELEASE_VERSION }}
+            --version ${{ inputs.version }}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
-          export BCDA_AMI=`aws ec2 describe-images --region ${{ vars.AWS_REGION }} --filters 'Name=tag:app,Values=bcda-app' 'Name=tag:version,Values=${{ env.RELEASE_VERSION }}' --query 'Images[*][CreationDate,ImageId] | reverse(sort_by(@,&[0])) | [0][1]' --output text`
+          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
+          API_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-api --query 'taskArns[0]' --output text)
+          API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[?name == 'api'].image" --output=text)
+          export API_VERSION=${API_IMAGE##*:}
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${BCDA_AMI}
+            --version ${API_VERSION}
 
   slack_alerts:
     if: ${{ always() }}
@@ -348,13 +344,13 @@ jobs:
                 fields:
                   - title: 'API'
                     short: true
-                    value: ${{ env.RELEASE_VERSION }}
+                    value: ${{ inputs.version }}
                   - title: 'SSAS'
                     short: true
-                    value: ${{ env.SSAS_RELEASE_VERSION }}
+                    value: ${{ inputs.ssas_version }}
                   - title: 'Worker'
                     short: true
-                    value: ${{ env.RELEASE_VERSION }}
+                    value: ${{ inputs.version }}
                 mrkdown_in:
                   - pretext
                   - footer
