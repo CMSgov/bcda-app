@@ -218,6 +218,19 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			shouldFail:  false,
 			description: "Multiple valid tags should pass",
 		},
+		// _typeFilter subquery with multiple params (service-date and _tag) — validation accepts any valid combination
+		{
+			name:        "validTypeFilterServiceDateAndTag",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Subquery with service-date and _tag (FinalAction) should pass",
+		},
+		{
+			name:        "validTypeFilterServiceDateAndTagAlternate",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dgt2001-04-01%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
+			shouldFail:  false,
+			description: "Subquery with service-date and _tag (NationalClaimsHistory) should pass",
+		},
 		{
 			name:        "multipleTagsOneInvalid",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3DPartiallyAdjudicated", baseV3),
