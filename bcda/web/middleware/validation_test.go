@@ -250,6 +250,13 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			shouldFail:  false,
 			description: "v1 should ignore _typeFilter validation (old behavior preserved)",
 		},
+		// Bulk IG: repeated _typeFilter = OR semantics (resources matching ANY subquery). Validation accepts multiple _typeFilter params.
+		{
+			name:        "multipleTypeFilterSubqueries",
+			url:         fmt.Sprintf("%s_type=ExplanationOfBenefit&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction&_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Multiple _typeFilter params (Bulk IG OR: FinalAction EOBs before 2021-02-15 OR all NotFinalAction EOBs) should pass validation",
+		},
 	}
 
 	for _, tt := range tests {
