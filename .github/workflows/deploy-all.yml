@@ -278,7 +278,7 @@ jobs:
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
       postman_tests: true
-      v3_tests: false
+      v3_tests: true
       eoy_mode: false
     secrets: inherit
 
