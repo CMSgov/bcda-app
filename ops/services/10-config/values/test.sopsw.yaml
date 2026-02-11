@@ -5,7 +5,7 @@
 /bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:DD0RdnMHTulqXK0TpvhyUWXQ00+N/wdcNEMgSWLRLSaTxIwAKV20o4k94TW7ag==,iv:DBMPKXYm7N32tgv5SPpWh1qEhULjfGHUcggeh/KNNc0=,tag:Rh23599XenWtCUzTViqNCw==,type:str]
 #ENC[AES256_GCM,data:GB+3EB0SLIroEZ7KzaDo3yBA,iv:+IUtL0BFfpBwDirykehDBtSz6myr5puW7OYbJBtR0W4=,tag:FiPnxZHlHRjh8M0iBcFcbg==,type:comment]
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:H/CB,iv:atGloib5mt7phyZeeE58XjID4K91Ho2FtOy80HbXtrg=,tag:cblfrIFx31TR9jhQRzwQDQ==,type:str]
-/bcda/${env}/nonsensitive/api/VERSION_3_ENDPOINT_ACTIVE: "true"
+/bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:pcT6bw==,iv:ba2euw4TLAdrXdZUe0QoPytG6j+ThgoxHM3I6ZwrU9I=,tag:c0X7goSVTVe7OjxjsLPdLw==,type:str]
 #ENC[AES256_GCM,data:3wxEuksNauPlFZbPdycCPr+NQHTvwVhf,iv:nuD8WRwbERBAiiiC/yo4mMkOGjuLwSR8teY/tPA/MjE=,tag:XFG5P/CptJ8YWXZ3RMuWeQ==,type:comment]
 /bcda/${env}/nonsensitive/bcda-test-admin-aco-deny-bucket: bcda-test-admin-aco-deny-function-20250528140635182000000001
 /bcda/${env}/nonsensitive/bcda-test-admin-create-aco-bucket: bcda-test-admin-create-aco-function-20250528140632188700000001
