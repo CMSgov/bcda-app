@@ -161,35 +161,48 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 
 	tests := []struct {
-		name        string
-		url         string
-		shouldFail  bool
-		errMsg      string
-		description string
+		name               string
+		url                string
+		shouldFail         bool
+		errMsg             string
+		description        string
+		expectedTypeFilter [][]string // when non-nil, we assert the parsed TypeFilter in context equals this making sure params are not dropped.
 	}{
 		{
 			name:        "validTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
 			shouldFail:  false,
 			description: "Valid tag in URL format should pass",
+			expectedTypeFilter: [][]string{
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+			},
 		},
 		{
 			name:        "validTagNationalClaimsHistory",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
 			description: "Valid NotFinalAction tag should pass",
+			expectedTypeFilter: [][]string{
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			},
 		},
 		{
 			name:        "validTagFinalAction",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid FinalAction tag should pass",
+			expectedTypeFilter: [][]string{
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+			},
 		},
 		{
 			name:        "validTagNotFinalAction",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid NationalClaimsHistory tag should pass",
+			expectedTypeFilter: [][]string{
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
+			},
 		},
 		{
 			name:        "invalidTagPartiallyAdjudicated",
@@ -217,19 +230,31 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
 			shouldFail:  false,
 			description: "Multiple valid tags should pass",
+			expectedTypeFilter: [][]string{
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+			},
 		},
-		// _typeFilter subquery with multiple params (service-date and _tag) — validation accepts any valid combination
+
 		{
 			name:        "validTypeFilterServiceDateAndTag",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Subquery with service-date and _tag (FinalAction) should pass",
+			expectedTypeFilter: [][]string{
+				{"service-date", "lt2021-02-15"},
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+			},
 		},
 		{
 			name:        "validTypeFilterServiceDateAndTagAlternate",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dgt2001-04-01%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
 			description: "Subquery with service-date and _tag (NationalClaimsHistory) should pass",
+			expectedTypeFilter: [][]string{
+				{"service-date", "gt2001-04-01"},
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			},
 		},
 		{
 			name:        "multipleTagsOneInvalid",
@@ -250,12 +275,17 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			shouldFail:  false,
 			description: "v1 should ignore _typeFilter validation (old behavior preserved)",
 		},
-		// Bulk IG: repeated _typeFilter = OR semantics (resources matching ANY subquery). Validation accepts multiple _typeFilter params.
+
 		{
 			name:        "multipleTypeFilterSubqueries",
 			url:         fmt.Sprintf("%s_type=ExplanationOfBenefit&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction&_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Multiple _typeFilter params (Bulk IG OR: FinalAction EOBs before 2021-02-15 OR all NotFinalAction EOBs) should pass validation",
+			expectedTypeFilter: [][]string{
+				{"service-date", "lt2021-02-15"},
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
+			},
 		},
 	}
 
@@ -267,14 +297,25 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			req.Header.Set("Accept", "application/fhir+json")
 			req.Header.Set("Prefer", constants.TestRespondAsync)
 
+			var capturedCtx context.Context
+			handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				capturedCtx = r.Context()
+				rw.WriteHeader(http.StatusOK)
+			})
+
 			rr := httptest.NewRecorder()
-			ValidateRequestURL(noop).ServeHTTP(rr, req)
+			ValidateRequestURL(handler).ServeHTTP(rr, req)
 
 			if tt.shouldFail {
 				assert.Equal(t, http.StatusBadRequest, rr.Code, tt.description)
 				assert.Contains(t, rr.Body.String(), tt.errMsg, tt.description)
 			} else {
 				assert.Equal(t, http.StatusOK, rr.Code, tt.description)
+				if tt.expectedTypeFilter != nil {
+					rp, ok := GetRequestParamsFromCtx(capturedCtx)
+					assert.True(t, ok, "request params should be in context")
+					assert.Equal(t, tt.expectedTypeFilter, rp.TypeFilter, "parsed _typeFilter params should match request")
+				}
 			}
 		})
 	}
