@@ -33,6 +33,7 @@ type Config struct {
 	V3EnabledACOs           []string    `conf:"v3_enabled_acos"` // Simple list of ACOs with v3 access
 	CutoffDuration          time.Duration
 	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
+	V1V2DenyRegexes         []string `conf:"v1_v2_deny_regexes"`
 	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
 	// to be defined as a child of RunoutConfig.
 	// Ex: Without the ,squash, we would have to have RunoutConfig.RUNOUT_CUTOFF_DATE_DAYS
