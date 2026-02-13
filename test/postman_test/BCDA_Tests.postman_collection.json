@@ -5,825 +5,788 @@
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "20786112"
 	},
-	"item": [
-		{
-			"name": "ExplanationOfBenefit",
-			"item": [
-				{
-					"name": "Start EOB export, no token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-									"",
-									"if (maintenanceMode === \"eoy\") {\t",
-									"    console.log(\"EOY mode is enabled - Skipping Patient EOB endpoint request\");",
-									"    pm.test(\"Status code is 400, 404, or 500\", function() {",
-									"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-									"    });",
-									"} else {",
-									"    pm.test(\"Status code is 401\", function() {",
-									"        pm.response.to.have.status(401);",
-									"    });",
-									"",
-									"    pm.test(\"Resource type is OperationOutcome\", function() {",
-									"        var respJson = pm.response.json();",
-									"        pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/fhir+json",
-								"type": "text"
-							},
-							{
-								"key": "Prefer",
-								"value": "respond-async",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"Patient",
-								"$export"
-							],
-							"query": [
-								{
-									"key": "_type",
-									"value": "ExplanationOfBenefit"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Start EOB export, valid token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-									"",
-									"if (maintenanceMode === \"eoy\") {\t",
-									"    console.log(\"EOY mode is enabled - Skipping Patient EOB endpoint request\");\t\t\t",
-									"    pm.test(\"Status code is 400, 404, or 500\", function() {",
-									"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-									"    });",
-									"} else {",
-									"    pm.test(\"Status code is 202\", function() {",
-									"        pm.response.to.have.status(202);",
-									"    });",
-									"",
-									"    pm.test(\"Has Content-Location header\", function() {",
-									"        pm.response.to.have.header(\"Content-Location\");",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/fhir+json",
-								"type": "text"
-							},
-							{
-								"key": "Prefer",
-								"value": "respond-async",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=ExplanationOfBenefit",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v2",
-								"Patient",
-								"$export"
-							],
-							"query": [
-								{
-									"key": "_type",
-									"value": "ExplanationOfBenefit"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "Patient",
-			"item": [
-				{
-					"name": "Start Patient export, no token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-									"",
-									"if (maintenanceMode === \"eoy\") {\t",
-									"    console.log(\"EOY mode is enabled - Skipping Patient endpoint request\");\t\t\t",
-									"    pm.test(\"Status code is 400, 404, or 500\", function() {",
-									"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-									"    });",
-									"} else {",
-									"    pm.test(\"Status code is 401\", function() {",
-									"        pm.response.to.have.status(401);",
-									"    });",
-									"",
-									"    var respJson = pm.response.json();",
-									"",
-									"    pm.test(\"Resource type is OperationOutcome\", function() {",
-									"        pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-									"    });",
-									"",
-									"    pm.test(\"Issue details text is Invalid Token\", function() {",
-									"        pm.expect(respJson.issue[0].diagnostics.value).to.eql(\"Invalid Token\")",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/fhir+json",
-								"type": "text"
-							},
-							{
-								"key": "Prefer",
-								"value": "respond-async",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"Patient",
-								"$export"
-							],
-							"query": [
-								{
-									"key": "_type",
-									"value": "Patient"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Start Patient export, valid token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-									"",
-									"if (maintenanceMode === \"eoy\") {\t",
-									"    console.log(\"EOY mode is enabled - Skipping Patient endpoint request\");\t\t\t",
-									"    pm.test(\"Status code is 400, 404, or 500\", function() {",
-									"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-									"    });",
-									"} else {",
-									"    pm.test(\"Status code is 202\", function() {",
-									"        pm.response.to.have.status(202);",
-									"    });",
-									"",
-									"    pm.test(\"Has Content-Location header\", function() {",
-									"        pm.response.to.have.header(\"Content-Location\");",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"type": "text",
-								"value": "application/fhir+json"
-							},
-							{
-								"key": "Prefer",
-								"type": "text",
-								"value": "respond-async"
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v2",
-								"Patient",
-								"$export"
-							],
-							"query": [
-								{
-									"key": "_type",
-									"value": "Patient"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Coverage",
-			"item": [
-				{
-					"name": "Start Coverage export, no token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-									"",
-									"if (maintenanceMode === \"eoy\") {\t",
-									"    console.log(\"EOY mode is enabled - Skipping Patient type Coverage endpoint request\");\t\t\t",
-									"    pm.test(\"Status code is 400, 404, or 500\", function() {",
-									"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-									"    });",
-									"} else {",
-									"    pm.test(\"Status code is 401\", function() {",
-									"        pm.response.to.have.status(401);",
-									"    });",
-									"",
-									"    var respJson = pm.response.json();",
-									"",
-									"    pm.test(\"Resource type is OperationOutcome\", function() {",
-									"        pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-									"    });",
-									"",
-									"    pm.test(\"Issue details text is Invalid Token\", function() {",
-									"        pm.expect(respJson.issue[0].diagnostics.value).to.eql(\"Invalid Token\")",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/fhir+json",
-								"type": "text"
-							},
-							{
-								"key": "Prefer",
-								"value": "respond-async",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"Patient",
-								"$export"
-							],
-							"query": [
-								{
-									"key": "_type",
-									"value": "Coverage"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Start Coverage export, valid token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-									"",
-									"if (maintenanceMode === \"eoy\") {\t",
-									"    console.log(\"EOY mode is enabled - Skipping Patient type Coverage endpoint request\");\t\t\t",
-									"    pm.test(\"Status code is 400, 404, or 500\", function() {",
-									"        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-									"    });",
-									"} else {",
-									"    pm.test(\"Status code is 202\", function() {",
-									"        pm.response.to.have.status(202);",
-									"    });",
-									"",
-									"    pm.test(\"Has Content-Location header\", function() {",
-									"        pm.response.to.have.header(\"Content-Location\");",
-									"    });",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"type": "text",
-								"value": "application/fhir+json"
-							},
-							{
-								"key": "Prefer",
-								"type": "text",
-								"value": "respond-async"
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Coverage",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v2",
-								"Patient",
-								"$export"
-							],
-							"query": [
-								{
-									"key": "_type",
-									"value": "Coverage"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Job status",
-			"item": [
-				{
-					"name": "Get status, no token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 401\", function() {",
-									"    pm.response.to.have.status(401);",
-									"});",
-									"",
-									"pm.test(\"Resource type is OperationOutcome\", function() {",
-									"    var respJson = pm.response.json();",
-									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/fhir+json",
-								"type": "text",
-								"disabled": true
-							},
-							{
-								"key": "Prefer",
-								"value": "respond-async",
-								"type": "text",
-								"disabled": true
-							}
-						],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"jobs",
-								"{{jobId}}"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Data",
-			"item": [
-				{
-					"name": "Get data, no token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 401\", function() {",
-									"    pm.response.to.have.status(401);",
-									"});",
-									"",
-									"pm.test(\"Resource type is OperationOutcome\", function() {",
-									"    var respJson = pm.response.json();",
-									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
-							"protocol": "{{scheme}}",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"data",
-								"{{jobId}}",
-								"{{acoId}}.ndjson"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Get version",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Response contains version\", function() {",
-							"    pm.expect(pm.response.json()).to.have.property(\"version\");",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}/_version",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"_version"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Health check",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Response contains database status\", function() {",
-							"    pm.expect(pm.response.json()).to.have.property(\"database\");",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}/_health",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"_health"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get metadata",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Content-Type is application/json\", function() {",
-							"    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
-							"});",
-							"",
-							"var respJson = pm.response.json();",
-							"",
-							"pm.test(\"Resource type is CapabilityStatement\", function() {",
-							"    pm.expect(respJson.resourceType).to.eql(\"CapabilityStatement\")",
-							"});",
-							"",
-							"const schema = {",
-							"    \"properties\": {",
-							"        \"resourceType\": {",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"status\": {",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"date\": {",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"publisher\": {",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"kind\": {",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"instantiates\": {",
-							"            \"type\": \"array\"",
-							"        },",
-							"        \"software\": {",
-							"            \"type\": \"object\",",
-							"            \"properties\": {",
-							"                \"name\": {},",
-							"                \"version\": {},",
-							"                \"releaseDate\": {}",
-							"            }",
-							"        },",
-							"        \"implementation\": {",
-							"            \"type\": \"object\"",
-							"        },",
-							"        \"fhirVersion\": {",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"acceptUnknown\":{",
-							"            \"type\": \"string\"",
-							"        },",
-							"        \"format\": {",
-							"            \"type\": \"array\"",
-							"        },",
-							"        \"rest\": {",
-							"            \"type\": \"array\"",
-							"        }",
-							"    }",
-							"};",
-							"",
-							"pm.test(\"Schema is valid\", function() {",
-							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v2/metadata",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v2",
-						"metadata"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get token",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"var env = pm.environment.get(\"env\");",
-							"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
-							"pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"var responseJSON;",
-							"try {",
-							"   responseJSON = JSON.parse(responseBody);",
-							"   tests['response is valid JSON'] = true;",
-							"}",
-							"catch (e) {",
-							"   responseJSON = {};",
-							"   tests['response is valid JSON'] = false;",
-							"}",
-							"",
-							"pm.environment.set(\"token\", responseJSON.access_token);",
-							""
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{clientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{clientId}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"name": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					},
-					{
-						"key": "Prefer",
-						"value": "respond-async",
-						"type": "text"
-					},
-					{
-						"key": "Accept",
-						"value": "application/fhir+json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/auth/token",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"auth",
-						"token"
-					]
-				}
-			},
-			"response": []
-		}
-	]
+  "item": [
+    {
+      "name": "ExplanationOfBenefit",
+      "item": [
+        {
+          "name": "Start EOB export, no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Resource type is OperationOutcome\", function () {",
+                  "    var respJson = pm.response.json();",
+                  "    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Patient",
+                "$export"
+              ],
+              "query": [
+                {
+                  "key": "_type",
+                  "value": "ExplanationOfBenefit"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start EOB export, valid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test(\"Has Content-Location header\", function () {",
+                  "    pm.response.to.have.header(\"Content-Location\");",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=ExplanationOfBenefit",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "Patient",
+                "$export"
+              ],
+              "query": [
+                {
+                  "key": "_type",
+                  "value": "ExplanationOfBenefit"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patient",
+      "item": [
+        {
+          "name": "Start Patient export, no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "var respJson = pm.response.json();",
+                  "",
+                  "pm.test(\"Resource type is OperationOutcome\", function () {",
+                  "    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+                  "});",
+                  "",
+                  "pm.test(\"Issue details text is Invalid Token\", function () {",
+                  "    pm.expect(respJson.issue[0].diagnostics.value).to.eql(\"Invalid Token\")",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Patient",
+                "$export"
+              ],
+              "query": [
+                {
+                  "key": "_type",
+                  "value": "Patient"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start Patient export, valid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test(\"Has Content-Location header\", function () {",
+                  "    pm.response.to.have.header(\"Content-Location\");",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "Patient",
+                "$export"
+              ],
+              "query": [
+                {
+                  "key": "_type",
+                  "value": "Patient"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Coverage",
+      "item": [
+        {
+          "name": "Start Coverage export, no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "var respJson = pm.response.json();",
+                  "",
+                  "pm.test(\"Resource type is OperationOutcome\", function () {",
+                  "    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+                  "});",
+                  "",
+                  "pm.test(\"Issue details text is Invalid Token\", function () {",
+                  "    pm.expect(respJson.issue[0].diagnostics.value).to.eql(\"Invalid Token\")",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "Patient",
+                "$export"
+              ],
+              "query": [
+                {
+                  "key": "_type",
+                  "value": "Coverage"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start Coverage export, valid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test(\"Has Content-Location header\", function () {",
+                  "    pm.response.to.have.header(\"Content-Location\");",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Coverage",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "Patient",
+                "$export"
+              ],
+              "query": [
+                {
+                  "key": "_type",
+                  "value": "Coverage"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Job status",
+      "item": [
+        {
+          "name": "Get status, no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Resource type is OperationOutcome\", function() {",
+                  "    var respJson = pm.response.json();",
+                  "    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text",
+                "disabled": true
+              },
+              {
+                "key": "Prefer",
+                "value": "respond-async",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "{{jobId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Data",
+      "item": [
+        {
+          "name": "Get data, no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401\", function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Resource type is OperationOutcome\", function() {",
+                  "    var respJson = pm.response.json();",
+                  "    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "path": [
+                "data",
+                "{{jobId}}",
+                "{{acoId}}.ndjson"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Get version",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Response contains version\", function() {",
+              "    pm.expect(pm.response.json()).to.have.property(\"version\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{scheme}}://{{host}}/_version",
+          "protocol": "{{scheme}}",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "_version"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Health check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Response contains database status\", function() {",
+              "    pm.expect(pm.response.json()).to.have.property(\"database\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{scheme}}://{{host}}/_health",
+          "protocol": "{{scheme}}",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "_health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get metadata",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Content-Type is application/json\", function() {",
+              "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+              "});",
+              "",
+              "var respJson = pm.response.json();",
+              "",
+              "pm.test(\"Resource type is CapabilityStatement\", function() {",
+              "    pm.expect(respJson.resourceType).to.eql(\"CapabilityStatement\")",
+              "});",
+              "",
+              "const schema = {",
+              "    \"properties\": {",
+              "        \"resourceType\": {",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"status\": {",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"date\": {",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"publisher\": {",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"kind\": {",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"instantiates\": {",
+              "            \"type\": \"array\"",
+              "        },",
+              "        \"software\": {",
+              "            \"type\": \"object\",",
+              "            \"properties\": {",
+              "                \"name\": {},",
+              "                \"version\": {},",
+              "                \"releaseDate\": {}",
+              "            }",
+              "        },",
+              "        \"implementation\": {",
+              "            \"type\": \"object\"",
+              "        },",
+              "        \"fhirVersion\": {",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"acceptUnknown\":{",
+              "            \"type\": \"string\"",
+              "        },",
+              "        \"format\": {",
+              "            \"type\": \"array\"",
+              "        },",
+              "        \"rest\": {",
+              "            \"type\": \"array\"",
+              "        }",
+              "    }",
+              "};",
+              "",
+              "pm.test(\"Schema is valid\", function() {",
+              "    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{scheme}}://{{host}}/api/v2/metadata",
+          "protocol": "{{scheme}}",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "api",
+            "v2",
+            "metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var env = pm.environment.get(\"env\");",
+              "pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
+              "pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
+              "pm.test(\"Status code is 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var responseJSON;",
+              "try {",
+              "   responseJSON = JSON.parse(responseBody);",
+              "   tests['response is valid JSON'] = true;",
+              "}",
+              "catch (e) {",
+              "   responseJSON = {};",
+              "   tests['response is valid JSON'] = false;",
+              "}",
+              "",
+              "pm.environment.set(\"token\", responseJSON.access_token);",
+              ""
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{clientSecret}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{clientId}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Prefer",
+            "value": "respond-async",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{scheme}}://{{host}}/auth/token",
+          "protocol": "{{scheme}}",
+          "host": [
+            "{{host}}"
+          ],
+          "path": [
+            "auth",
+            "token"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
 }
