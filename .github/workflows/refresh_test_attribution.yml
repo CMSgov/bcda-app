@@ -3,6 +3,7 @@ name: Refresh Attribution For Test ACOs
 
 on:
   workflow_call:
+  workflow_dispatch:
   schedule:
     - cron: "0 12 * * 1"
 

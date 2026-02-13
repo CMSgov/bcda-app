@@ -29,13 +29,13 @@ lint: setup-tests
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
 smoke-test: setup-tests
-	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
+	test/smoke_test/smoke_test.sh $(env)
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sandbox)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
-	# For example: make postman env=test token=<MY_TOKEN> maintenanceMode=<CURRENT_MAINTENANCE_MODE>
+	# For example: make postman env=test token=<MY_TOKEN>
 
 	echo $(env)
 	@if test -z "$(env)"; then \
@@ -63,8 +63,7 @@ postman:
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
 	--global-var outdatedAttrClientId=$(OUTDATED_ATTR_CLIENT_ID) --global-var outdatedAttrClientSecret=$(OUTDATED_ATTR_CLIENT_SECRET) \
-	--global-var v2Disabled=false \
-	--global-var maintenanceMode=$(maintenanceMode)
+	--global-var v2Disabled=false
 
 # make test-path TEST_PATH="bcdaworker/worker/*.go"
 test-path: setup-tests
@@ -104,8 +103,8 @@ performance-test: setup-tests
 test:
 	$(MAKE) lint
 	$(MAKE) unit-test
-	$(MAKE) postman env=local maintenanceMode=""
-	$(MAKE) smoke-test env=local maintenanceMode=""
+	$(MAKE) postman env=local
+	$(MAKE) smoke-test env=local
 
 reset-db:
 	# Rebuild the databases to ensure that we're starting in a fresh state
