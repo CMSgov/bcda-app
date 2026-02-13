@@ -65,6 +65,7 @@ jobs:
       - name: Build API
         run: |
           docker build \
+            --platform linux/arm64 \
             --build-arg RELEASE_VERSION=${{ steps.version.outputs.version }} \
             -t ${{ env.ECR_NON_PROD_URL }}:${{ steps.version.outputs.version }} \
             -t ${{ env.ECR_PROD_URL }}:${{ steps.version.outputs.version }} \

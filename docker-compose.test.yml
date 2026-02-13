@@ -2,6 +2,7 @@
 services:
   localstack-unit-test:
     image: localstack/localstack:latest
+    platform: linux/arm64
     environment:
       - AWS_DEFAULT_REGION=us-east-1
       - GATEWAY_LISTEN=0.0.0.0:4566
@@ -20,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.tests
+    platform: linux/arm64
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
