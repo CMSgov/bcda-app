@@ -287,7 +287,7 @@ jobs:
           WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
           WORKER_VERSION=$(echo $WORKER_IMAGE | sed 's/.*:\(.*\)@.*/\1/')
-          if [[ $WORKER_VERSION != ${{ inputs.version }} ]]; then
+          if [[ $WORKER_VERSION != ${{ inputs.version }} || ${WORKER_IMAGE##*:} != ${{ inputs.version }} ]]; then
             echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION}."
             exit 1
           fi
