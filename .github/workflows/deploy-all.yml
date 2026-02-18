@@ -104,6 +104,8 @@ env:
   ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
   TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VERIFICATION_RETRIES: 30 # 90 retries with 10s sleep = max 300 or 5m.  Verification jobs run in parallel.
+  VERIFICATION_SLEEP: 10
 
 jobs:
   verify_images_exist:
@@ -226,11 +228,22 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
-          BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-          if [[ $BCDA_API_VERSION != ${{ inputs.version }} ]]; then
-            echo "BCDA API expected release version: ${{ inputs.version }} did not match curled version: ${BCDA_API_VERSION}."
-            exit 1
-          fi
+          TRY=1
+          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+            BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
+            if [[ $BCDA_API_VERSION != ${{ inputs.version }} ]]; then
+              echo "BCDA API expected release version: ${{ inputs.version }} did not match curled version: ${BCDA_API_VERSION}."
+              TRY=$(($TRY + 1))
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $VERIFICATION_SLEEP
+              fi
+            else
+              break
+            fi
+          done
+
 
   verify_ssas_version:
     needs: [deploy]
@@ -243,11 +256,22 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - run: |
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
-          BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-          if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_version }} ]]; then
-            echo "BCDA SSAS expected release version: ${{ inputs.ssas_version }} did not match curled version: ${BCDA_SSAS_VERSION}."
-            exit 1
-          fi
+          TRY=1
+          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+            BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
+            if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_version }} ]]; then
+              echo "BCDA SSAS expected release version: ${{ inputs.ssas_version }} did not match curled version: ${BCDA_SSAS_VERSION}."
+              TRY=$(($TRY + 1))
+              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+                exit 1
+              else
+                sleep $VERIFICATION_SLEEP
+              fi
+            else
+              break
+            fi
+          done
+
 
   verify_worker_version:
     needs: [deploy]
@@ -262,7 +286,7 @@ jobs:
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
           WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
-          WORKER_VERSION=${WORKER_IMAGE##*:}
+          WORKER_VERSION=$(echo $WORKER_IMAGE | sed 's/.*\(r[0-9]\{3\}\)@.*/\1/')
           if [[ $WORKER_VERSION != ${{ inputs.version }} ]]; then
             echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION}."
             exit 1
