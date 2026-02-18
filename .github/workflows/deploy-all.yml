@@ -104,7 +104,7 @@ env:
   ENV_MODIFIER: ${{ inputs.env || 'dev' }}
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
   TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  VERIFICATION_RETRIES: 30 # 90 retries with 10s sleep = max 300 or 5m.  Verification jobs run in parallel.
+  VERIFICATION_RETRIES: 30 # 30 retries with 10s sleep = max 300 or 5m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
 
 jobs:
@@ -286,7 +286,7 @@ jobs:
           aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
           WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
-          WORKER_VERSION=$(echo $WORKER_IMAGE | sed 's/.*\(r[0-9]\{3\}\)@.*/\1/')
+          WORKER_VERSION=$(echo $WORKER_IMAGE | sed 's/.*:\(.*\)@.*/\1/'
           if [[ $WORKER_VERSION != ${{ inputs.version }} ]]; then
             echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION}."
             exit 1
