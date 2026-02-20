@@ -106,6 +106,8 @@ env:
   TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERIFICATION_RETRIES: 30 # 30 retries with 10s sleep = max 300 or 5m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
+  SANITIZED_VERSION: ${{ inputs.version }}
+  SANITIZED_SSAS_VERSION: ${{ inputs.ssas_version }}
 
 jobs:
   verify_images_exist:
@@ -149,9 +151,6 @@ jobs:
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    env:
-      SANITIZED_VERSION: ${{ inputs.version }}
-      SANITIZED_SSAS_VERSION: ${{ inputs.ssas_version }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
