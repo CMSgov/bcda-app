@@ -149,6 +149,9 @@ jobs:
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    env:
+      SANITIZED_VERSION: ${{ inputs.version }}
+      SANITIZED_SSAS_VERSION: ${{ inputs.ssas_version }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -173,10 +176,6 @@ jobs:
         run: |
           echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
           exit 1
-      - name: Sanitize input versions
-        run: |
-          echo "SANITIZED_VERSION=$(echo ${{ inputs.version }} | sed -E 's/[^[:alnum:]-]//g')" >> $GITHUB_ENV
-          echo "SANITIZED_SSAS_VERSION=$(echo ${{ inputs.ssas_version}} | sed -E 's/[^[:alnum:]-]//g')" >> $GITHUB_ENV
       - name: Started Deploy Alert
         uses: slackapi/slack-github-action@v2.0.0
         with:
