@@ -370,13 +370,13 @@ jobs:
                 fields:
                   - title: 'API'
                     short: true
-                    value: ${SANITIZED_VERSION}
+                    value: ${{ env.SANITIZED_VERSION }}
                   - title: 'SSAS'
                     short: true
-                    value: ${SANITIZED_SSAS_VERSION}
+                    value: ${{ env.SANITIZED_SSAS_VERSION }}
                   - title: 'Worker'
                     short: true
-                    value: ${SANITIZED_VERSION}
+                    value: ${{ env.SANITIZED_VERSION }}
                 mrkdown_in:
                   - pretext
                   - footer
