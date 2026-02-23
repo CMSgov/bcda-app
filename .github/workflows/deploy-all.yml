@@ -120,16 +120,16 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Verify API image exists
         run: |
-          echo "Verifying that tag ${{ env.SANITIZED_VERSION }} exists in the bcda-api repo"
-          aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${{ env.SANITIZED_VERSION }}
+          echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-api repo"
+          aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${SANITIZED_VERSION}
       - name: Verify SSAS image exists
         run: |
-          echo "Verifying that tag ${{ env.SANITIZED_SSAS_VERSION }} exists in the bcda-ssas repo"
-          aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${{ env.SANITIZED_SSAS_VERSION }}
+          echo "Verifying that tag ${SANITIZED_SSAS_VERSION} exists in the bcda-ssas repo"
+          aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${SANITIZED_SSAS_VERSION}
       - name: Verify Worker image exists
         run: |
-          echo "Verifying that tag ${{ env.SANITIZED_VERSION }} exists in the bcda-worker repo"
-          aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${{ env.SANITIZED_VERSION }}
+          echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-worker repo"
+          aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${SANITIZED_VERSION}
 
   migrate_db:
     needs: [verify_images_exist]
@@ -200,9 +200,9 @@ jobs:
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'api_image_tag=${{ env.SANITIZED_VERSION }}' \
-            -var 'ssas_image_tag=${{ env.SANITIZED_SSAS_VERSION }}' \
-            -var 'worker_image_tag=${{ env.SANITIZED_VERSION }}' \
+            -var 'api_image_tag=${SANITIZED_VERSION}' \
+            -var 'ssas_image_tag=${SANITIZED_SSAS_VERSION}' \
+            -var 'worker_image_tag=${SANITIZED_VERSION}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -233,8 +233,8 @@ jobs:
           TRY=1
           until [ $TRY -gt $VERIFICATION_RETRIES ]; do
             BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-            if [[ $BCDA_API_VERSION != ${{ env.SANITIZED_VERSION }} ]]; then
-              echo "BCDA API expected release version: ${{ env.SANITIZED_VERSION }} did not match curled version: ${BCDA_API_VERSION}."
+            if [[ $BCDA_API_VERSION != ${SANITIZED_VERSION} ]]; then
+              echo "BCDA API expected release version: ${SANITIZED_VERSION} did not match curled version: ${BCDA_API_VERSION}."
               TRY=$(($TRY + 1))
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
@@ -261,8 +261,8 @@ jobs:
           TRY=1
           until [ $TRY -gt $VERIFICATION_RETRIES ]; do
             BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-            if [[ $BCDA_SSAS_VERSION != ${{ env.SANITIZED_SSAS_VERSION }} ]]; then
-              echo "BCDA SSAS expected release version: ${{ env.SANITIZED_SSAS_VERSION }} did not match curled version: ${BCDA_SSAS_VERSION}."
+            if [[ $BCDA_SSAS_VERSION != ${SANITIZED_SSAS_VERSION} ]]; then
+              echo "BCDA SSAS expected release version: ${SANITIZED_SSAS_VERSION} did not match curled version: ${BCDA_SSAS_VERSION}."
               TRY=$(($TRY + 1))
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
@@ -290,8 +290,8 @@ jobs:
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
           WORKER_VERSION_NO_SHA=${WORKER_IMAGE##*:}
           WORKER_VERSION_SHA=$(echo $WORKER_IMAGE | sed 's/.*:\(.*\)@.*/\1/')
-          if [[ $WORKER_VERSION_SHA != ${{ env.SANITIZED_VERSION }} && $WORKER_VERSION_NO_SHA != ${{ env.SANITIZED_VERSION }} ]]; then
-            echo "BCDA Worker expected release version: ${{ env.SANITIZED_VERSION }} did not match AWS version: ${WORKER_VERSION_SHA} or ${WORKER_VERSION_NO_SHA}."
+          if [[ $WORKER_VERSION_SHA != ${SANITIZED_VERSION} && $WORKER_VERSION_NO_SHA != ${SANITIZED_VERSION} ]]; then
+            echo "BCDA Worker expected release version: ${SANITIZED_VERSION} did not match AWS version: ${WORKER_VERSION_SHA} or ${WORKER_VERSION_NO_SHA}."
             exit 1
           fi
 
@@ -336,7 +336,7 @@ jobs:
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${{ env.SANITIZED_VERSION }}
+            --version ${SANITIZED_VERSION}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
@@ -370,13 +370,13 @@ jobs:
                 fields:
                   - title: 'API'
                     short: true
-                    value: ${{ env.SANITIZED_VERSION }}
+                    value: ${SANITIZED_VERSION}
                   - title: 'SSAS'
                     short: true
-                    value: ${{ env.SANITIZED_SSAS_VERSION }}
+                    value: ${SANITIZED_SSAS_VERSION}
                   - title: 'Worker'
                     short: true
-                    value: ${{ env.SANITIZED_VERSION }}
+                    value: ${SANITIZED_VERSION}
                 mrkdown_in:
                   - pretext
                   - footer
