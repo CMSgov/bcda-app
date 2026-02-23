@@ -192,16 +192,14 @@ jobs:
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
         uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
-      - name: Set user input env vars needed for OpenTofu
-        run: |
-          export TF_VAR_api_image_tag=${SANITIZED_VERSION}
-          export TF_VAR_ssas_image_tag=${SANITIZED_SSAS_VERSION}
-          export TF_VAR_worker_image_tag=${SANITIZED_VERSION}
       - name: Init, Plan OpenTofu
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
+          export TF_VAR_api_image_tag=${SANITIZED_VERSION}
+          export TF_VAR_ssas_image_tag=${SANITIZED_SSAS_VERSION}
+          export TF_VAR_worker_image_tag=${SANITIZED_VERSION}
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
