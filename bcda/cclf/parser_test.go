@@ -27,6 +27,7 @@ func TestGetCMSID(t *testing.T) {
 		{"missingBCD", "path/T.A0001.ACO.ZCY18.D18NOV20.T1000009", true, ""},
 		{"not ZCY or ZCR", "path/T.BCD.A0001.ZC18.D181120.T1000000", true, ""},
 		{"missing ZCY and ZCR", "path/T.BCD.A0001.ZCA18.D181120.T1000000", true, ""},
+		{"validIotaPath", "path/T.BCD.IOTA123.ZCY18.D181120.T2000000", false, "IOTA123"},
 		{"empty", "", true, ""},
 	}
 	for _, tt := range tests {
