@@ -199,7 +199,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	const (
 		sspID, iotaID, cecID, ngacoID, ckccID, kcfID, dcID, testID, sbxID = "A9999", "IOTA965", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999", "SBXBD001"
 		sspProd, sspTest                                                  = "P.BCD." + sspID, "T.BCD." + sspID
-		iotaProd, iotaTest                                                = "P.BCD." + iotaID, "T.BCD." + iotaID
+		iotaProd, iotaTest                                                = "P." + iotaID + ".PRT", "T." + iotaID + ".PRT"
 		cecProd, cecTest                                                  = "P.CEC", "T.CEC"
 		ngacoProd, ngacoTest                                              = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
 		ckccProd, ckccTest                                                = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
