@@ -27,6 +27,7 @@ func TestGetCMSID(t *testing.T) {
 		{"missingBCD", "path/T.A0001.ACO.ZCY18.D18NOV20.T1000009", true, ""},
 		{"not ZCY or ZCR", "path/T.BCD.A0001.ZC18.D181120.T1000000", true, ""},
 		{"missing ZCY and ZCR", "path/T.BCD.A0001.ZCA18.D181120.T1000000", true, ""},
+		{"validIotaPath", "path/T.BCD.IOTA123.ZCY18.D181120.T2000000", false, "IOTA123"},
 		{"empty", "", true, ""},
 	}
 	for _, tt := range tests {
@@ -197,15 +198,16 @@ func TestValidateCSVFileName(t *testing.T) {
 
 func TestGetCCLFMetadata(t *testing.T) {
 	const (
-		sspID, cecID, ngacoID, ckccID, kcfID, dcID, testID, sbxID = "A9999", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999", "SBXBD001"
-		sspProd, sspTest                                          = "P.BCD." + sspID, "T.BCD." + sspID
-		cecProd, cecTest                                          = "P.CEC", "T.CEC"
-		ngacoProd, ngacoTest                                      = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
-		ckccProd, ckccTest                                        = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
-		kcfProd, kcfTest                                          = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
-		dcProd, dcTest                                            = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
-		testProd, testTest                                        = "P." + testID + ".ACO", "T." + testID + ".ACO"
-		sbxProd, sbxTest                                          = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
+		sspID, iotaID, cecID, ngacoID, ckccID, kcfID, dcID, testID, sbxID = "A9999", "IOTA965", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999", "SBXBD001"
+		sspProd, sspTest                                                  = "P.BCD." + sspID, "T.BCD." + sspID
+		iotaProd, iotaTest                                                = "P." + iotaID + ".PRT", "T." + iotaID + ".PRT"
+		cecProd, cecTest                                                  = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest                                              = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		ckccProd, ckccTest                                                = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
+		kcfProd, kcfTest                                                  = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
+		dcProd, dcTest                                                    = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
+		testProd, testTest                                                = "P." + testID + ".ACO", "T." + testID + ".ACO"
+		sbxProd, sbxTest                                                  = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
 	)
 
 	start := time.Now()
@@ -228,6 +230,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	assert.NoError(t, err)
 	sspProdFile, sspTestFile, sspRunoutFile := gen(sspProd, validTime), gen(sspTest, validTime),
 		strings.Replace(gen(sspProd, validTime), "ZC8Y", "ZC8R", 1)
+	iotaProdFile, iotaTestFile, iotaRunoutFile := gen(iotaProd, validTime), gen(iotaTest, validTime), strings.Replace(gen(iotaProd, validTime), "ZC8Y", "ZC8R", 1)
 	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
 	ngacoProdFile, ngacoTestFile := gen(ngacoProd, validTime), gen(ngacoTest, validTime)
 	ckccProdFile, ckccTestFile := gen(ckccProd, validTime), gen(ckccTest, validTime)
@@ -280,6 +283,42 @@ func TestGetCCLFMetadata(t *testing.T) {
 				name:      sspRunoutFile,
 				cclfNum:   8,
 				acoID:     sspID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeRunout,
+			},
+		},
+		{
+			"Production IOTA file", iotaID, iotaProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      iotaProdFile,
+				cclfNum:   8,
+				acoID:     iotaID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Test IOTA file", iotaID, iotaTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      iotaTestFile,
+				cclfNum:   8,
+				acoID:     iotaID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Runout IOTA file", iotaID, iotaRunoutFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      iotaRunoutFile,
+				cclfNum:   8,
+				acoID:     iotaID,
 				timestamp: validTime,
 				perfYear:  perfYear,
 				fileType:  models.FileTypeRunout,
