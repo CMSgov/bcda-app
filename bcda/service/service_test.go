@@ -89,6 +89,13 @@ func TestSupportedACOs(t *testing.T) {
 		{"GUIDE invalid characters", "GUIDE99999", false},
 		{"valid GUIDE", "GUIDE-99999", true},
 
+		{"Iota too short", "IOTA12", false},
+		{"Iota too long", "IOTA0123", false},
+		{"Iota invalid characters 1", "IOTA12Z", false},
+		{"Iota invalid characters 2", "IOTA1YZ", false},
+		{"Iota invalid characters 3", "IOTAXYZ", false},
+		{"valid Iota", "IOTA123", true},
+
 		{"SBX too short", "SBXB1", false},
 		{"SBX too long", "SBXPA0123", false},
 		{"SBX invalid characters 1", "SBX0A123", false},
