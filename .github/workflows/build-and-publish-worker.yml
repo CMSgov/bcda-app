@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build_and_publish:
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Get Workflow Inputs
         run: echo "${{ toJSON(inputs) }}"
