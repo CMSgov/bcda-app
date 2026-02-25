@@ -222,13 +222,13 @@ make unit-test
 3. Run postman integration tests:
 
 ```sh
-make postman env=local maintenanceMode=""
+make postman env=local
 ```
 
 4. Run smoke tests:
 
 ```sh
-make smoke-test env=local maintenanceMode=""
+make smoke-test env=local
 ```
 
 5. Run full test suite (executes all of items in 1-4 above):
