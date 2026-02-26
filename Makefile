@@ -22,7 +22,7 @@ setup-tests:
 
 LINT_TIMEOUT ?= 5m
 lint: setup-tests
-	docker compose -f docker-compose.test.yml run --rm --remove-orphans \
+	docker compose -f docker-compose.test.yml run --rm \
 		tests golangci-lint run --timeout=$(LINT_TIMEOUT) --verbose --new-from-merge-base=main
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
