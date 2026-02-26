@@ -1,4 +1,5 @@
 version: "2"
+concurrency: 2
 linters:
   default: none
   enable:
