@@ -163,7 +163,7 @@ jobs:
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
-            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
+            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/DATABASE_URL
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
@@ -324,7 +324,7 @@ jobs:
         with:
           params: |
             NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
-            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/new-relic/app-id
+            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/sensitive/new-relic/app-id
       - name: Download notify scripts
         uses: actions/download-artifact@v4
         with:

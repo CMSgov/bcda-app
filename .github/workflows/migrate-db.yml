@@ -53,7 +53,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            DB_URL=/bcda/${{ inputs.env }}/api/DATABASE_URL
+            DB_URL=/bcda/${{ inputs.env }}/sensitive/api/DATABASE_URL
       - name: Get Go
         uses: actions/setup-go@v5
         with:
