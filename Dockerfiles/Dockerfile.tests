@@ -1,5 +1,8 @@
 # syntax = docker/dockerfile:1-experimental
-FROM golang:1.25.4-alpine3.22
+FROM arm64v8/golang:1.25.7-alpine3.23
+
+ENV GOOS=linux
+ENV GOARCH=arm64
 
 RUN apk update upgrade --no-cache && \
     apk add --no-cache \

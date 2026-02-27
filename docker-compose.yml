@@ -42,6 +42,7 @@ services:
       dockerfile: Dockerfiles/Dockerfile.bcda
       args:
         ENVIRONMENT: development
+    platform: linux/arm64
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -93,6 +94,7 @@ services:
       dockerfile: Dockerfiles/Dockerfile.bcdaworker
       args:
         ENVIRONMENT: development
+    platform: linux/arm64
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -138,6 +140,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.ssas
+    platform: linux/arm64
     environment:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
       - DEPLOYMENT_TARGET=local

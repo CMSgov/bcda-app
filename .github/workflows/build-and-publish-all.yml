@@ -48,7 +48,8 @@ jobs:
     secrets: inherit
 
   build_and_publish_ssas:
-    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
+    # uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
+    uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@carl-9772-use-arm64
     with:
       ref: ${{ inputs.ssas_ref }}
     secrets: inherit
@@ -57,7 +58,7 @@ jobs:
     if: ${{ always() }}
     name: Post Build (Cleanup, Alerts)
     needs: [build_and_publish_api, build_and_publish_worker, build_and_publish_ssas]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Success Alert
         if: ${{ success() && needs.build_and_publish_api.result == 'success' && needs.build_and_publish_worker.result == 'success' && needs.build_and_publish_ssas.result == 'success' }}

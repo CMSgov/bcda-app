@@ -20,11 +20,10 @@ setup-tests:
 	docker compose -f docker-compose.test.yml rm -fsv tests
 	docker compose -f docker-compose.test.yml build tests
 
-# -D(isabling) errcheck, staticcheck, and govet linters for now due to v2 upgrade, see: https://jira.cms.gov/browse/BCDA-8911
-LINT_TIMEOUT ?= 3m
+LINT_TIMEOUT ?= 5m
 lint: setup-tests
-	docker compose -f docker-compose.test.yml run \
-	--rm tests golangci-lint run --timeout=$(LINT_TIMEOUT) --verbose --new-from-merge-base=main
+	docker compose -f docker-compose.test.yml run --rm \
+		tests golangci-lint run --timeout=$(LINT_TIMEOUT) --verbose --new-from-merge-base=main --concurrency=1
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
@@ -83,7 +82,8 @@ unit-test-db:
 	docker compose -f docker-compose.test.yml up -d db-unit-test
 
 	# Wait for the database to be ready
-	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
+# 	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
+	sleep 100
 
 	# Perform migrations to ensure matching schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
@@ -112,7 +112,8 @@ reset-db:
 
 	docker compose up -d db
 	echo "Wait for database to be ready..."
-	docker run --rm --network bcda-app-net willwill/wait-for-it db:5432 -t 100
+# 	docker run --rm --network bcda-app-net willwill/wait-for-it db:5432 -t 100
+	sleep 100
 
 	# Initialize schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
@@ -124,8 +125,9 @@ load-fixtures: reset-db
 
 	# Ensure components are started as expected
 	docker compose up -d api worker ssas
-	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
-	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
+# 	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
+# 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
+	sleep 30
 	docker compose run --rm db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 load-fixtures-ssas:

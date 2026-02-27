@@ -31,7 +31,7 @@ jobs:
 
   build_and_publish:
     needs: [ci_checks]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -65,6 +65,7 @@ jobs:
       - name: Build API
         run: |
           docker build \
+            --platform linux/arm64 \
             --build-arg RELEASE_VERSION=${{ steps.version.outputs.version }} \
             -t ${{ env.ECR_NON_PROD_URL }}:${{ steps.version.outputs.version }} \
             -t ${{ env.ECR_PROD_URL }}:${{ steps.version.outputs.version }} \
