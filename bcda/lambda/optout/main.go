@@ -65,7 +65,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 		o.Credentials = appCreds
 	})
 
-	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
 		logger.Error("failed to load DB URL")
 		return "", err

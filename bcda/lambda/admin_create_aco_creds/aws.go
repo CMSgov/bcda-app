@@ -23,12 +23,12 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 	env := adjustedEnv()
 
 	slackParamName := "/slack/token/workflow-alerts"
-	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
-	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
-	clientIDName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
-	clientSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
-	ssasPEMName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
-	credsBucketName := fmt.Sprintf("/bcda/%s/aco_creds_bucket", env)
+	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
+	ssasURLName := fmt.Sprintf("/bcda/%s/sensitive/api/SSAS_URL", env)
+	clientIDName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_CLIENT_ID", env)
+	clientSecretName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_SECRET", env)
+	ssasPEMName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_CA_FILE.pem", env)
+	credsBucketName := fmt.Sprintf("/bcda/%s/sensitive/aco_creds_bucket", env)
 
 	paramNames := []string{
 		slackParamName,
