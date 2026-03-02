@@ -144,7 +144,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 func TestGetAWSParams(t *testing.T) {
 	env := conf.GetEnv("ENV")
 
-	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "test-db-url")
+	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), "test-db-url")
 	t.Cleanup(func() { cleanupParam1() })
 	cleanupParam2 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "test-slack-token")
 	t.Cleanup(func() { cleanupParam2() })
