@@ -7,11 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
-// DatabaseURLParamPath returns the SSM parameter path for the API DATABASE_URL (sensitive).
-func DatabaseURLParamPath(env string) string {
-	return fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
-}
-
 // Returns the value of a single parameter from the SSM Parameter Store
 func GetParameter(ctx context.Context, client *ssm.Client, keyname string) (string, error) {
 	withDecryption := true
