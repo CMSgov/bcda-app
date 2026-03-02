@@ -1,8 +1,8 @@
 # syntax = docker/dockerfile:1-experimental
 FROM golang:1.25.4-alpine3.22
 
-RUN apk update upgrade && \
-    apk add \
+RUN apk update upgrade --no-cache && \
+    apk add --no-cache \
         bash \
         build-base \
         curl

@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
@@ -156,7 +157,7 @@ func getRespWriter(path string) fhirResponseWriter {
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewFhirResponseWriter()
 	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
-		return responseutilsv2.NewFhirResponseWriter() // TODO: V3
+		return responseutilsv3.NewFhirResponseWriter()
 	} else {
 		return responseutils.NewFhirResponseWriter()
 	}

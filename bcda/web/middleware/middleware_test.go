@@ -239,6 +239,48 @@ func (s *MiddlewareTestSuite) TestV3AccessControl() {
 	}
 }
 
+func (s *MiddlewareTestSuite) TestV1V2DenyControl() {
+	tests := []struct {
+		name         string
+		acoID        string
+		regexes      []string
+		expectedCode int
+	}{
+		{"V1V2 deny empty", "A1234", []string{}, http.StatusOK},
+		{"V1V2 deny list nil", "A1234", nil, http.StatusOK},
+		{"V1V2 deny list mismatch", "A1234", []string{"D\\d{4}"}, http.StatusOK},
+		{"V1V2 deny list mismatch specific", "A1234", []string{"A1235", "A1236"}, http.StatusOK},
+		{"V1V2 deny list mismatch case sensitive", "a1234", []string{"A1234", "A5678"}, http.StatusOK},
+		{"V1V2 deny list match", "A1234", []string{"A\\d{4}"}, http.StatusForbidden},
+		{"V1V2 deny list match specific", "A1234", []string{"A1234"}, http.StatusForbidden},
+		{"V1V2 deny all", "A9999", []string{".*"}, http.StatusForbidden},
+		{"V1V2 deny many regexes", "A9999", []string{"A1234", "A9998", "A999\\d"}, http.StatusForbidden},
+	}
+
+	for _, tt := range tests {
+		cfg := &service.Config{
+			RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+			V1V2DenyRegexes: tt.regexes,
+		}
+
+		rr := httptest.NewRecorder()
+
+		V1V2DenyControl(cfg)(http.HandlerFunc(
+			func(rw http.ResponseWriter, r *http.Request) {}),
+		).ServeHTTP(rr, testRequest(RequestParameters{}, tt.acoID))
+
+		assert.Equal(s.T(), tt.expectedCode, rr.Code)
+	}
+}
+
+func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
+	cfg := &service.Config{
+		RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+		V1V2DenyRegexes: []string{"?!.*"}, // invalid regex (invalid target for quantifier)
+	}
+	assert.Panics(s.T(), func() { isACOV1V2DeniedAccess(cfg, "A1234") })
+}
+
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid, ACOID: cmsid})
 	ctx = SetRequestParamsCtx(ctx, rp)

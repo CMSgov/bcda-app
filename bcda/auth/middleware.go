@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/log"
 )
 
@@ -58,7 +59,7 @@ func (m AuthMiddleware) ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		rw := getRespWriter(r.URL.Path)
+		rw := GetRespWriter(r.URL.Path)
 
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
@@ -170,7 +171,7 @@ func handleTokenVerificationError(ctx context.Context, w http.ResponseWriter, rw
 // This depends on ParseToken being called beforehand in the routing middleware.
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := GetRespWriter(r.URL.Path)
 		ctx := r.Context()
 
 		token := ctx.Value(TokenContextKey)
@@ -193,7 +194,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 // CheckBlacklist checks the auth data is associated with a blacklisted entity
 func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := getRespWriter(r.URL.Path)
+		rw := GetRespWriter(r.URL.Path)
 		ctx := r.Context()
 
 		ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
@@ -223,7 +224,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			rw := getRespWriter(r.URL.Path)
+			rw := GetRespWriter(r.URL.Path)
 			ctx := r.Context()
 
 			ad, ok := ctx.Value(AuthDataContextKey).(AuthData)
@@ -295,13 +296,13 @@ type fhirResponseWriter interface {
 	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
-func getRespWriter(path string) fhirResponseWriter {
+func GetRespWriter(path string) fhirResponseWriter {
 	if strings.Contains(path, "/v1/") {
 		return responseutils.NewFhirResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewFhirResponseWriter()
 	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
-		return responseutilsv2.NewFhirResponseWriter() // TODO: V3
+		return responseutilsv3.NewFhirResponseWriter()
 	} else {
 		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
 		// In the cases we cannot discern a version we default to v1

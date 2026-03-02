@@ -1,15 +1,3 @@
-package:
-	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
-	# For example: make package version=r1
-	docker build -t packaging -f Dockerfiles/Dockerfile.package .
-	docker run --rm \
-	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
-	-e GPG_RPM_USER='${GPG_RPM_USER}' \
-	-e GPG_RPM_EMAIL='${GPG_RPM_EMAIL}' \
-	-e GPG_PUB_FILE_PATH='${GPG_PUB_FILE_PATH}' \
-	-e GPG_SEC_FILE_PATH='${GPG_SEC_FILE_PATH}' \
-	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
-
 decrypt-secrets:
 # check for ansible in path
 	@which ansible-vault > /dev/null || (echo "ansible-vault not found; ansible-vault must be installed to decrypt secrets" ; exit 1)
@@ -41,13 +29,20 @@ lint: setup-tests
 	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
 smoke-test: setup-tests
-	test/smoke_test/smoke_test.sh $(env) $(maintenanceMode)
+	test/smoke_test/smoke_test.sh $(env)
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sandbox)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
-	# For example: make postman env=test token=<MY_TOKEN> maintenanceMode=<CURRENT_MAINTENANCE_MODE>
+	# For example: make postman env=test token=<MY_TOKEN>
+
+	echo $(env)
+	@if test -z "$(env)"; then \
+		echo "Error: postman target must include an 'env' argument (e.g. 'env=local')"; \
+		exit 1; \
+	fi
+
 	$(eval BLACKLIST_CLIENT_ID=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
 	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
 
@@ -57,12 +52,18 @@ postman:
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
+	# Set up valid client credentials for outdated attribution client
+	$(eval OUTDATED_ATTR_CMS_ID = TEST995)
+	$(eval OUTDATED_ATTR_CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(OUTDATED_ATTR_CMS_ID)'|tail -n2))
+	$(eval OUTDATED_ATTR_CLIENT_ID:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$1}'))
+	$(eval OUTDATED_ATTR_CLIENT_SECRET:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$2}'))
+
 	docker compose -f docker-compose.test.yml build postman_test
 	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
-	--global-var v2Disabled=false \
-	--global-var maintenanceMode=$(maintenanceMode)
+	--global-var outdatedAttrClientId=$(OUTDATED_ATTR_CLIENT_ID) --global-var outdatedAttrClientSecret=$(OUTDATED_ATTR_CLIENT_SECRET) \
+	--global-var v2Disabled=false
 
 # make test-path TEST_PATH="bcdaworker/worker/*.go"
 test-path: setup-tests
@@ -102,8 +103,8 @@ performance-test: setup-tests
 test:
 	$(MAKE) lint
 	$(MAKE) unit-test
-	$(MAKE) postman env=local maintenanceMode=""
-	$(MAKE) smoke-test env=local maintenanceMode=""
+	$(MAKE) postman env=local
+	$(MAKE) smoke-test env=local
 
 reset-db:
 	# Rebuild the databases to ensure that we're starting in a fresh state

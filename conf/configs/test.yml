@@ -79,3 +79,4 @@ rate_limit_config:
   all: true
   acos: []
 v3_enabled_acos: []
+v1_v2_deny_regexes: []

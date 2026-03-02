@@ -1,97 +1,56 @@
 name: Build and Publish All
 
 on:
-  workflow_call:
-    inputs:
-      release_version:
-        description: 'Release version/tag (or branch name)'
-        required: true
-        type: string
-      ssas_release_version:
-          description: 'Release version/tag for bcda-ssas (or branch name)'
-          required: true
-          type: string
-      env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
-        required: true
-        type: string
-        default: dev
-      confirm_env:
-        description: 'Confirm the environment you want to deploy to'
-        required: true
-        type: string
-        default: dev
   workflow_dispatch:
     inputs:
-      release_version:
-        description: 'Release version/tag (or branch name)'
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      ssas_release_version:
-        description: 'Release version/tag for bcda-ssas (or branch name)'
+      ssas_ref:
+        description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
-      env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
-          - sandbox
-          - prod
-      confirm_env:
-        description: 'Confirm the environment you want to deploy to'
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
-          - sandbox
-          - prod
+        type: string
+      ssas_ref:
+          description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
+          required: true
+          type: string
+    outputs:
+      api_version:
+        description: 'The version of the published API docker tag'
+        value: ${{ jobs.build_and_publish_api.outputs.version }}
+      ssas_version:
+        description: 'The version of the published SSAS docker tag'
+        value: ${{ jobs.build_and_publish_ssas.outputs.version }}
+
 
 permissions:
   id-token: write
   contents: read
 
-env:
-  RELEASE_ENV: ${{ inputs.env || 'dev' }}
-  CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
-
 jobs:
-  confirm_env:
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
-    steps:      
-      - name: Confirm Env
-        if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
-        run: |
-          echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
-          exit 1
-          
   build_and_publish_api:
     uses: ./.github/workflows/build-and-publish-api.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
-      env: ${{ inputs.env || 'dev'  }}
-      confirm_env: ${{ inputs.confirm_env || 'dev' }}
+      ref: ${{ inputs.ref }}
     secrets: inherit
 
   build_and_publish_worker:
     uses: ./.github/workflows/build-and-publish-worker.yml
     with:
-      release_version: ${{ inputs.release_version || 'main' }}
-      env: ${{ inputs.env || 'dev'  }}
-      confirm_env: ${{ inputs.confirm_env || 'dev' }}
+      ref: ${{ inputs.ref }}
     secrets: inherit
 
   build_and_publish_ssas:
     uses: CMSgov/bcda-ssas-app/.github/workflows/build-and-publish.yml@main
     with:
-      ssas_release_version: ${{ inputs.ssas_release_version || 'main' }}
-      env: ${{ inputs.env || 'dev'  }}
-      confirm_env: ${{ inputs.confirm_env || 'dev' }}
+      ref: ${{ inputs.ssas_ref }}
     secrets: inherit
   
   post_build:

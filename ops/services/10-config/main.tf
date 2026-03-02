@@ -1,6 +1,5 @@
 locals {
-  default_tags = module.platform.default_tags
-  service      = "config"
+  service = "config"
 }
 
 module "platform" {
@@ -14,11 +13,8 @@ module "platform" {
 }
 
 module "sops" {
-  source = "github.com/CMSgov/cdap//terraform/modules/sops?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
+  source = "github.com/CMSgov/cdap//terraform/modules/sops?ref=8874310"
 
-  platform = module.platform
-}
-
-output "edit" {
-  value = module.sops.sopsw
+  platform                  = module.platform
+  create_local_sops_wrapper = var.create_local_sops_wrapper
 }

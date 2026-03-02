@@ -158,9 +158,11 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		aco    = `(?:\.ACO)`
 		bcd    = `(?:BCD\.)`
 
-		// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y|R]**.Dyymmdd.Thhmmsst
+		// CCLF file name convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y|R]**.Dyymmdd.Thhmmsst
 		ssp = `A\d{4}`
-		// CCLF filename convention for NGACO: P.V***.ACO.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
+		// CCLF file name convention for IOTA with PRT identifier: P.IOTA***.PRT.ZC[0|8](Y|R).Dyymmdd.Thhmmsst
+		iotaPrt = `IOTA\d{3}(?:\.PRT)`
+		// CCLF file name convention for NGACO: P.V***.ACO.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
 		ngaco = `V\d{3}`
 		// CCLF file name convention for CEC: P.CEC.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
 		cec = `CEC`
@@ -175,9 +177,17 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		// CCLF file name convention for SBX: P.SBX*****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
 		sandbox = `SBX[A-Z]{2}\d{3}`
 
-		pattern = prefix + `(` + bcd + ssp + `|` + ngaco + aco + `|` + cec +
-			`|` + ckcc + aco + `|` + kcf + aco + `|` + dc + aco +
-			`|` + test + aco + `|` + sandbox + aco + `)` + suffix
+		pattern = prefix + `(` +
+			bcd + ssp + `|` +
+			iotaPrt + `|` +
+			ngaco + aco + `|` +
+			cec + `|` +
+			ckcc + aco + `|` +
+			kcf + aco + `|` +
+			dc + aco + `|` +
+			test + aco + `|` +
+			sandbox + aco +
+			`)` + suffix
 	)
 
 	filenameRegexp := regexp.MustCompile(pattern)

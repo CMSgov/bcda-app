@@ -13,6 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
+	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 )
@@ -227,7 +228,19 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				return nil, false
 			}
 
-			if slices.Contains([]string{"service-date", "_tag", "_profile"}, paramName) {
+			if slices.Contains([]string{"service-date", "_tag"}, paramName) {
+				if paramName == "_tag" {
+					if err := validateTagSubqueryParameter(paramValue); err != nil {
+						ctx, _ = log.WriteWarnWithFields(
+							ctx,
+							fmt.Sprintf("%s: %s", responseutils.RequestErr, err.Error()),
+							logrus.Fields{"resp_status": http.StatusBadRequest},
+						)
+						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+						return nil, false
+					}
+				}
+				// TODO: add service-date validation
 				typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
 			} else {
 				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
@@ -347,6 +360,30 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// validateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
+func validateTagSubqueryParameter(tag string) error {
+
+	if !strings.Contains(tag, "|") {
+		return fmt.Errorf("invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
+	}
+
+	// Validate that the _tag system and code are supported values
+	validTagTokens := map[string][]string{
+		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory"},
+		"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action": {"FinalAction", "NotFinalAction"},
+	}
+
+	tagSystem := strings.Split(tag, "|")[0]
+	tagCode := strings.Split(tag, "|")[1]
+
+	validTagCodes, ok := validTagTokens[tagSystem]
+	if !ok || !slices.Contains(validTagCodes, tagCode) {
+		return fmt.Errorf("invalid _tag value: %s", tag)
+	}
+
+	return nil
+}
+
 func getKeys(kv map[string]struct{}) []string {
 	keys := make([]string, 0, len(kv))
 	for k := range kv {
@@ -378,7 +415,7 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	case "v2":
 		return responseutilsv2.NewFhirResponseWriter(), nil
 	case constants.V3Version:
-		return responseutilsv2.NewFhirResponseWriter(), nil
+		return responseutilsv3.NewFhirResponseWriter(), nil
 	default:
 		return nil, fmt.Errorf("unexpected API version: %s", version)
 	}

@@ -45,10 +45,10 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 
 	rlm := middleware.NewRateLimitMiddleware(cfg, db)
 	var requestValidators = []func(http.Handler) http.Handler{
-		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
+		middleware.ACOEnabled(cfg), middleware.V1V2DenyControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
 	}
 	nonExportRequestValidators := []func(http.Handler) http.Handler{
-		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+		middleware.ACOEnabled(cfg), middleware.V1V2DenyControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 	}
 
 	if conf.GetEnv("DEPLOYMENT_TARGET") != "prod" {

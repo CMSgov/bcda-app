@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -29,39 +27,27 @@ var (
 
 // setup global access to loggers, overwrite default logger
 func SetupLoggers() {
-	API = newFieldLogger(conf.GetEnv("BCDA_ERROR_LOG"), "api", "api")
-	Auth = newFieldLogger(conf.GetEnv("AUTH_LOG"), "api", "auth")
-	BFDAPI = newFieldLogger(conf.GetEnv("BCDA_BB_LOG"), "api", "bfd")
-	Request = newFieldLogger(conf.GetEnv("BCDA_REQUEST_LOG"), "api", "request")
-	SSAS = newFieldLogger(conf.GetEnv("BCDA_SSAS_LOG"), "api", "ssas")
+	API = newFieldLogger("api", "api")
+	Auth = newFieldLogger("api", "auth")
+	BFDAPI = newFieldLogger("api", "bfd")
+	Request = newFieldLogger("api", "request")
+	SSAS = newFieldLogger("api", "ssas")
 
-	Worker = newFieldLogger(conf.GetEnv("BCDA_WORKER_ERROR_LOG"), "worker", "worker")
-	BFDWorker = newFieldLogger(conf.GetEnv("BCDA_BB_LOG"), "worker", "bfd")
-	Health = newFieldLogger(conf.GetEnv("WORKER_HEALTH_LOG"), "worker", "health")
+	Worker = newFieldLogger("worker", "worker")
+	BFDWorker = newFieldLogger("worker", "bfd")
+	Health = newFieldLogger("worker", "health")
 }
 
 // customize newFieldLogger and output to files
-func newFieldLogger(outputFile, application, logType string) logrus.FieldLogger {
-	logger := newLogger(outputFile)
+func newFieldLogger(application, logType string) logrus.FieldLogger {
+	logger := newLogger()
 	fields := defaultFields(application)
-
-	if conf.GetEnv("LOG_TO_STD_OUT") == "true" {
-		fields["log_type"] = logType
-	}
+	fields["log_type"] = logType
 	return logger.WithFields(fields)
 }
 
-func newLogger(outputFile string) *logrus.Logger {
+func newLogger() *logrus.Logger {
 	logger := logrus.New()
-	if conf.GetEnv("LOG_TO_STD_OUT") != "true" && outputFile != "" {
-		// #nosec G302 -- 0640 permissions required for Splunk ingestion
-		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
-			logger.SetOutput(file)
-		} else {
-			logger.Warningf("Failed to open output file %s. Will use stderr. %s",
-				outputFile, err.Error())
-		}
-	}
 	// Disable the HTML escape so we get the raw URLs
 	logger.SetFormatter(&logrus.JSONFormatter{
 		DisableHTMLEscape: true,
@@ -94,8 +80,8 @@ func defaultFields(application string) logrus.Fields {
 }
 
 // River requires a slog.Logger for logging, this function converts logrus to slog
-func NewSlogLogger(outputFile, application string) *slog.Logger {
-	logrusLogger := newLogger(outputFile)
+func NewSlogLogger(application string) *slog.Logger {
+	logrusLogger := newLogger()
 	handler := sloglogrus.Option{Logger: logrusLogger}.NewLogrusHandler()
 	return slogLoggerFromHandler(handler, application)
 }

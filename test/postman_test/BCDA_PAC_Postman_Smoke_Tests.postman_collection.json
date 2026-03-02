@@ -46,16 +46,23 @@
               "request": {
                 "auth": {
                   "type": "basic",
-                  "basic": {
-                    "password": "{{clientSecret}}",
-                    "username": "{{clientId}}"
-                  }
+                  "basic": [
+                    {
+                      "key": "password",
+                      "value": "{{clientSecret}}",
+                      "type": "string"
+                    },
+                    {
+                      "key": "username",
+                      "value": "{{clientId}}",
+                      "type": "string"
+                    }
+                  ]
                 },
                 "method": "POST",
                 "header": [
                   {
                     "key": "Content-Type",
-                    "name": "Content-Type",
                     "value": "application/json",
                     "type": "text"
                   },
@@ -74,7 +81,17 @@
                   "mode": "raw",
                   "raw": ""
                 },
-                "url": "{{scheme}}://{{host}}/auth/token"
+                "url": {
+                  "raw": "{{scheme}}://{{host}}/auth/token",
+                  "protocol": "{{scheme}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "token"
+                  ]
+                }
               },
               "response": []
             }
@@ -93,38 +110,33 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+                          "pm.test(\"Status code is 202\", function () {",
+                          "    pm.response.to.have.status(202);",
+                          "});",
                           "",
-                          "if (maintenanceMode === \"eoy\") {\t",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request\");\t\t\t\t    ",
-                          "    pm.environment.set(\"smokeTestPatientJobUrl\", \"https://bcda.cms.gov\");",
+                          "pm.test(\"Has Content-Location header\", function () {",
+                          "    pm.response.to.have.header(\"Content-Location\");",
+                          "});",
                           "",
-                          "    pm.test(\"Status code is 400, 404, or 500\", function() {",
-                          "        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-                          "    });",
-                          "    return;",
-                          "} else {",
-                          "    pm.test(\"Status code is 202\", function() {",
-                          "        pm.response.to.have.status(202);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Has Content-Location header\", function() {",
-                          "        pm.response.to.have.header(\"Content-Location\");",
-                          "    });",
-                          "",
-                          "    pm.environment.set(\"smokeTestPatientJobUrl\", pm.response.headers.get(\"Content-Location\"));",
-                          "}"
+                          "pm.environment.set(\"smokeTestPatientJobUrl\", pm.response.headers.get(\"Content-Location\"));",
+                          ""
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -139,7 +151,19 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{scheme}}://{{host}}/api/v2/Patient/$export"
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/api/v2/Patient/$export",
+                      "protocol": "{{scheme}}",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v2",
+                        "Patient",
+                        "$export"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -150,15 +174,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get('maintenanceMode');",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request for job status\");",
-                          "",
-                          "    pm.environment.set(\"smokeTestPatientDataUrl\", \"https://bcda.cms.gov\")",
-                          "    return;",
-                          "}",
-                          "",
                           "pm.test(\"Status code is 202 or 200\", function () {",
                           "    pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
                           "});",
@@ -206,7 +221,9 @@
                           "    pm.environment.set(\"smokeTestPatientDataUrl\", respJson.output[0].url);",
                           "}"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
@@ -215,17 +232,11 @@
                         "exec": [
                           "const retryDelay = 5000;",
                           "const maxRetries = 25;",
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all pre-request\")",
-                          "    return;",
-                          "}",
                           "",
                           "var eobJobReq = {",
-                          "  url: pm.environment.get(\"smokeTestPatientJobUrl\"),",
-                          "  method: \"GET\",",
-                          "  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+                          "    url: pm.environment.get(\"smokeTestPatientJobUrl\"),",
+                          "    method: \"GET\",",
+                          "    header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
                           "};",
                           "",
                           "function awaitExportJob(retryCount) {",
@@ -233,12 +244,12 @@
                           "        if (err) {",
                           "            console.error(err);",
                           "        } else if (response.code == 202) {",
-                          "            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
-                          "               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+                          "            pm.test(\"X-Progress header is Pending or In Progress\", function () {",
+                          "                pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
                           "            });",
                           "            if (retryCount < maxRetries) {",
                           "                console.log(\"Patient export still in progress. Retrying...\");",
-                          "                setTimeout(function() {",
+                          "                setTimeout(function () {",
                           "                    awaitExportJob(++retryCount);",
                           "                }, retryDelay);",
                           "            } else {",
@@ -256,130 +267,22 @@
                           "",
                           "awaitExportJob(1);"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
-                      },
-                      {
-                        "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
-                      }
-                    ],
-                    "url": "{{smokeTestPatientJobUrl}}"
-                  },
-                  "response": []
-                },
-                {
-                  "name": "Get Patient v2 export job data",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request\");",
-                          "    return;",
-                          "}",
-                          "",
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test(\"Body contains data\", function () {",
-                          "    pm.expect(pm.response.length > 0)",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    },
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "exec": [""],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
-                      },
-                      {
-                        "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
-                      }
-                    ],
-                    "url": "{{smokeTestPatientDataUrl}}"
-                  },
-                  "response": []
-                },
-                {
-                  "name": "Start Patient v1 export",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {\t",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request\");\t\t\t\t    ",
-                          "    pm.environment.set(\"smokeTestPatientv1JobUrl\", \"https://bcda.cms.gov\");",
-                          "",
-                          "    pm.test(\"Status code is 400, 404, or 500\", function() {",
-                          "        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-                          "    });",
-                          "    return;",
-                          "} else {",
-                          "    pm.test(\"Status code is 202\", function() {",
-                          "        pm.response.to.have.status(202);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Has Content-Location header\", function() {",
-                          "        pm.response.to.have.header(\"Content-Location\");",
-                          "    });",
-                          "",
-                          "    pm.environment.set(\"smokeTestPatientv1JobUrl\", pm.response.headers.get(\"Content-Location\"));",
-                          "}"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -394,7 +297,141 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{scheme}}://{{host}}/api/v1/Patient/$export"
+                    "url": {
+                      "raw": "{{smokeTestPatientJobUrl}}",
+                      "host": [
+                        "{{smokeTestPatientJobUrl}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Patient v2 export job data",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test(\"Body contains data\", function () {",
+                          "    pm.expect(pm.response.length > 0)",
+                          "});"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/fhir+json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Prefer",
+                        "value": "respond-async",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{smokeTestPatientDataUrl}}",
+                      "host": [
+                        "{{smokeTestPatientDataUrl}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Start Patient v1 export",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 202\", function () {",
+                          "    pm.response.to.have.status(202);",
+                          "});",
+                          "",
+                          "pm.test(\"Has Content-Location header\", function () {",
+                          "    pm.response.to.have.header(\"Content-Location\");",
+                          "});",
+                          "",
+                          "pm.environment.set(\"smokeTestPatientv1JobUrl\", pm.response.headers.get(\"Content-Location\"));",
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/fhir+json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Prefer",
+                        "value": "respond-async",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+                      "protocol": "{{scheme}}",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "Patient",
+                        "$export"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -405,15 +442,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get('maintenanceMode');",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request for job status\");",
-                          "",
-                          "    pm.environment.set(\"smokeTestPatientv1DataUrl\", \"https://bcda.cms.gov\")",
-                          "    return;",
-                          "}",
-                          "",
                           "pm.test(\"Status code is 202 or 200\", function () {",
                           "    pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
                           "});",
@@ -466,7 +494,9 @@
                           "    pm.environment.set(\"smokeTestPatientv1DataUrl\", respJson.output[0].url);",
                           "}"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
@@ -475,12 +505,6 @@
                         "exec": [
                           "const retryDelay = 5000;",
                           "const maxRetries = 25;",
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all pre-request\")",
-                          "    return;",
-                          "}",
                           "",
                           "var eobJobReq = {",
                           "  url: pm.environment.get(\"smokeTestPatientv1JobUrl\"),",
@@ -516,140 +540,22 @@
                           "",
                           "awaitExportJob(1);"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
-                      },
-                      {
-                        "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
-                      }
-                    ],
-                    "url": "{{smokeTestPatientv1JobUrl}}"
-                  },
-                  "response": []
-                },
-                {
-                  "name": "Get Patient v1 export job data",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Patient/all endpoint request\");",
-                          "    return;",
-                          "}",
-                          "",
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test(\"Body contains data\", function () {",
-                          "    pm.expect(pm.response.length > 0)",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    },
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "exec": [""],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
-                      },
-                      {
-                        "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
-                      }
-                    ],
-                    "url": "{{smokeTestPatientv1DataUrl}}"
-                  },
-                  "response": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "Group",
-          "item": [
-            {
-              "name": "/all",
-              "item": [
-                {
-                  "name": "Start Group export",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {\t",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all endpoint request\");\t\t\t\t    ",
-                          "    pm.environment.set(\"smokeTestGroupAllJobUrl\", \"https://bcda.cms.gov\");",
-                          "",
-                          "    pm.test(\"Status code is 400, 404, or 500\", function() {",
-                          "        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-                          "    });",
-                          "    return;",
-                          "} else {",
-                          "    pm.test(\"Status code is 202\", function () {",
-                          "        pm.response.to.have.status(202);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Has Content-Location header\", function () {",
-                          "        pm.response.to.have.header(\"Content-Location\");",
-                          "    });",
-                          "",
-                          "    pm.environment.set(\"smokeTestGroupAllJobUrl\", pm.response.headers.get(\"Content-Location\"));",
-                          "}"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -664,7 +570,152 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{scheme}}://{{host}}/api/v2/Group/all/$export"
+                    "url": {
+                      "raw": "{{smokeTestPatientv1JobUrl}}",
+                      "host": [
+                        "{{smokeTestPatientv1JobUrl}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Patient v1 export job data",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test(\"Body contains data\", function () {",
+                          "    pm.expect(pm.response.length > 0)",
+                          "});"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/fhir+json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Prefer",
+                        "value": "respond-async",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{smokeTestPatientv1DataUrl}}",
+                      "host": [
+                        "{{smokeTestPatientv1DataUrl}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Group",
+          "item": [
+            {
+              "name": "/all (v2)",
+              "item": [
+                {
+                  "name": "Start Group export",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 202\", function () {",
+                          "        pm.response.to.have.status(202);",
+                          "    });",
+                          "",
+                          "    pm.test(\"Has Content-Location header\", function () {",
+                          "        pm.response.to.have.header(\"Content-Location\");",
+                          "    });",
+                          "",
+                          "    pm.environment.set(\"smokeTestGroupAllJobUrl\", pm.response.headers.get(\"Content-Location\"));",
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/fhir+json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Prefer",
+                        "value": "respond-async",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/api/v2/Group/all/$export",
+                      "protocol": "{{scheme}}",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v2",
+                        "Group",
+                        "all",
+                        "$export"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -677,12 +728,6 @@
                         "exec": [
                           "const retryDelay = 5000;",
                           "const maxRetries = 25;",
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all pre-request\")",
-                          "    return;",
-                          "}",
                           "",
                           "var eobJobReq = {",
                           "  url: pm.environment.get(\"smokeTestGroupAllJobUrl\"),",
@@ -718,22 +763,15 @@
                           "",
                           "awaitExportJob(1);"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all endpoint request for job status\");",
-                          "    ",
-                          "    pm.environment.set(\"smokeTestGroupAllDataUrl\", \"https://bcda.cms.gov\")",
-                          "    return;",
-                          "}",
-                          "",
                           "pm.test(\"Status code is 202 or 200\", function () {",
                           "    pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
                           "});",
@@ -781,16 +819,22 @@
                           "    pm.environment.set(\"smokeTestGroupAllDataUrl\", respJson.output[0].url);",
                           "}"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -805,7 +849,12 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{smokeTestGroupAllJobUrl}}"
+                    "url": {
+                      "raw": "{{smokeTestGroupAllJobUrl}}",
+                      "host": [
+                        "{{smokeTestGroupAllJobUrl}}"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -816,13 +865,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all endpoint request\");",
-                          "    return;",
-                          "}",
-                          "",
                           "pm.test(\"Status code is 200\", function () {",
                           "    pm.response.to.have.status(200);",
                           "});",
@@ -831,85 +873,33 @@
                           "    pm.expect(pm.response.length > 0)",
                           "});"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
                       "listen": "prerequest",
                       "script": {
-                        "exec": [""],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
-                      },
-                      {
-                        "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
-                      }
-                    ],
-                    "url": "{{smokeTestGroupAllDataUrl}}"
-                  },
-                  "response": []
-                }
-              ]
-            },
-            {
-              "name": "/all",
-              "item": [
-                {
-                  "name": "Start Group v1 export",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {\t",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all endpoint request\");\t\t\t\t    ",
-                          "    pm.environment.set(\"smokeTestGroupAllJobUrlv1\", \"https://bcda.cms.gov\");",
-                          "",
-                          "    pm.test(\"Status code is 400, 404, or 500\", function() {",
-                          "        pm.expect(pm.response.code).to.be.oneOf([400, 404, 500]);",
-                          "    });",
-                          "    return;",
-                          "} else {",
-                          "    pm.test(\"Status code is 202\", function () {",
-                          "        pm.response.to.have.status(202);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Has Content-Location header\", function () {",
-                          "        pm.response.to.have.header(\"Content-Location\");",
-                          "    });",
-                          "",
-                          "    pm.environment.set(\"smokeTestGroupAllJobUrlv1\", pm.response.headers.get(\"Content-Location\"));",
-                          "}"
+                          ""
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -924,7 +914,82 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{scheme}}://{{host}}/api/v1/Group/all/$export"
+                    "url": {
+                      "raw": "{{smokeTestGroupAllDataUrl}}",
+                      "host": [
+                        "{{smokeTestGroupAllDataUrl}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "/all (v1)",
+              "item": [
+                {
+                  "name": "Start Group v1 export",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 202\", function () {",
+                          "    pm.response.to.have.status(202);",
+                          "});",
+                          "",
+                          "pm.test(\"Has Content-Location header\", function () {",
+                          "    pm.response.to.have.header(\"Content-Location\");",
+                          "});",
+                          "",
+                          "pm.environment.set(\"smokeTestGroupAllJobUrlv1\", pm.response.headers.get(\"Content-Location\"));",
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/fhir+json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Prefer",
+                        "value": "respond-async",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export",
+                      "protocol": "{{scheme}}",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "Group",
+                        "all",
+                        "$export"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -937,17 +1002,11 @@
                         "exec": [
                           "const retryDelay = 5000;",
                           "const maxRetries = 25;",
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all pre-request\")",
-                          "    return;",
-                          "}",
                           "",
                           "var eobJobReq = {",
-                          "  url: pm.environment.get(\"smokeTestGroupAllJobUrlv1\"),",
-                          "  method: \"GET\",",
-                          "  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+                          "    url: pm.environment.get(\"smokeTestGroupAllJobUrlv1\"),",
+                          "    method: \"GET\",",
+                          "    header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
                           "};",
                           "",
                           "function awaitExportJob(retryCount) {",
@@ -955,12 +1014,12 @@
                           "        if (err) {",
                           "            console.error(err);",
                           "        } else if (response.code == 202) {",
-                          "            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
-                          "               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+                          "            pm.test(\"X-Progress header is Pending or In Progress\", function () {",
+                          "                pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
                           "            });",
                           "            if (retryCount < maxRetries) {",
                           "                console.log(\"Group/all export still in progress. Retrying...\");",
-                          "                setTimeout(function() {",
+                          "                setTimeout(function () {",
                           "                    awaitExportJob(++retryCount);",
                           "                }, retryDelay);",
                           "            } else {",
@@ -978,22 +1037,15 @@
                           "",
                           "awaitExportJob(1);"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all endpoint request for job status\");",
-                          "    ",
-                          "    pm.environment.set(\"smokeTestGroupAllDataUrlv1\", \"https://bcda.cms.gov\")",
-                          "    return;",
-                          "}",
-                          "",
                           "pm.test(\"Status code is 202 or 200\", function () {",
                           "    pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
                           "});",
@@ -1031,7 +1083,7 @@
                           "",
                           "    pm.test(\"Contains Required Resources\", () => {",
                           "        const requiredResources = [\"Patient\", \"ExplanationOfBenefit\", \"Coverage\"];",
-                          "        const otherResources = [ \"Claim\", \"ClaimResponse\"];",
+                          "        const otherResources = [\"Claim\", \"ClaimResponse\"];",
                           "        const returnedResources = respJson.output.map(r => r.type);",
                           "",
                           "        for (const resource of requiredResources) {",
@@ -1041,21 +1093,27 @@
                           "        for (const resource of otherResources) {",
                           "            pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
                           "        }",
-                          "      });",
-                          "      ",
+                          "    });",
+                          "",
                           "    pm.environment.set(\"smokeTestGroupAllDataUrlv1\", respJson.output[0].url);",
                           "}"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -1070,7 +1128,12 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{smokeTestGroupAllJobUrlv1}}"
+                    "url": {
+                      "raw": "{{smokeTestGroupAllJobUrlv1}}",
+                      "host": [
+                        "{{smokeTestGroupAllJobUrlv1}}"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -1081,13 +1144,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const maintenanceMode = pm.globals.get(\"maintenanceMode\");",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping Group/all endpoint request\");",
-                          "    return;",
-                          "}",
-                          "",
                           "pm.test(\"Status code is 200\", function () {",
                           "    pm.response.to.have.status(200);",
                           "});",
@@ -1096,38 +1152,53 @@
                           "    pm.expect(pm.response.length > 0)",
                           "});"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
                       "listen": "prerequest",
                       "script": {
-                        "exec": [""],
-                        "type": "text/javascript"
+                        "exec": [
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
                       {
                         "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
+                        "value": "application/fhir+json",
+                        "type": "text"
                       },
                       {
                         "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
+                        "value": "respond-async",
+                        "type": "text"
                       }
                     ],
-                    "url": "{{smokeTestGroupAllDataUrlv1}}"
+                    "url": {
+                      "raw": "{{smokeTestGroupAllDataUrlv1}}",
+                      "host": [
+                        "{{smokeTestGroupAllDataUrlv1}}"
+                      ]
+                    }
                   },
                   "response": []
                 }
@@ -1143,45 +1214,33 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+                          "pm.test(\"Status code is 202\", function () {",
+                          "    pm.response.to.have.status(202);",
+                          "});",
                           "",
-                          "var maintenanceModeEOYTest = function () {",
-                          "    console.log(\"EOY mode is enabled - Expect 404 due to no file attributions found\");",
-                          "    pm.test(\"Status code is 404\", function () {",
-                          "        pm.response.to.have.status(404);",
-                          "    });",
+                          "pm.test(\"Has Content-Location header\", function () {",
+                          "    pm.response.to.have.header(\"Content-Location\");",
+                          "});",
                           "",
-                          "    pm.environment.set(\"smokeTestGroupRunoutEOBJobUrl\", \"https://bcda.cms.gov\");",
-                          "};",
-                          "",
-                          "const maintenanceModeTest = function () {",
-                          "    pm.test(\"Status code is 202\", function () {",
-                          "        pm.response.to.have.status(202);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Has Content-Location header\", function () {",
-                          "        pm.response.to.have.header(\"Content-Location\");",
-                          "    });",
-                          "",
-                          "    pm.environment.set(\"smokeTestGroupRunoutEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));",
-                          "};",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    maintenanceModeEOYTest();",
-                          "} else {",
-                          "    maintenanceModeTest();",
-                          "}"
+                          "pm.environment.set(\"smokeTestGroupRunoutEOBJobUrl\", pm.response.headers.get(\"Content-Location\"));",
+                          ""
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -1199,8 +1258,16 @@
                     "url": {
                       "raw": "{{scheme}}://{{host}}/api/v2/Group/runout/$export?_type=ExplanationOfBenefit",
                       "protocol": "{{scheme}}",
-                      "host": ["{{host}}"],
-                      "path": ["api", "v2", "Group", "runout", "$export"],
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v2",
+                        "Group",
+                        "runout",
+                        "$export"
+                      ],
                       "query": [
                         {
                           "key": "_type",
@@ -1218,137 +1285,122 @@
                       "listen": "prerequest",
                       "script": {
                         "exec": [
-                          "var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
                           "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    console.log(\"EOY mode is enabled - Skipping due to previous 500, see above test.\");",
-                          "    return;",
-                          "} else {",
-                          "    const retryDelay = 5000;",
-                          "    const maxRetries = 25;",
+                          "const retryDelay = 5000;",
+                          "const maxRetries = 25;",
                           "",
-                          "    var eobJobReq = {",
-                          "      url: pm.environment.get(\"smokeTestGroupRunoutEOBJobUrl\"),",
-                          "      method: \"GET\",",
-                          "      header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
-                          "    };",
+                          "var eobJobReq = {",
+                          "    url: pm.environment.get(\"smokeTestGroupRunoutEOBJobUrl\"),",
+                          "    method: \"GET\",",
+                          "    header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+                          "};",
                           "",
-                          "    function awaitExportJob(retryCount) {",
-                          "        pm.sendRequest(eobJobReq, function (err, response) {",
-                          "            if (err) {",
-                          "                console.error(err);",
-                          "            } else if (response.code == 202) {",
-                          "                pm.test(\"X-Progress header is Pending or In Progress\", function() {",
-                          "                   pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
-                          "                });",
-                          "                if (retryCount < maxRetries) {",
-                          "                    console.log(\"Group/runout export still in progress. Retrying...\");",
-                          "                    setTimeout(function() {",
-                          "                        awaitExportJob(++retryCount);",
-                          "                    }, retryDelay);",
-                          "                } else {",
-                          "                    console.log(\"Retry limit reached for Group/runout job status.\");",
-                          "                    postman.setNextRequest(null);",
-                          "                pm.expect.fail(\"Failing due to max retries\");",
-                          "                }",
-                          "            } else if (response.code == 200) {",
-                          "                console.log(\"Group/runout export job complete.\");",
+                          "function awaitExportJob(retryCount) {",
+                          "    pm.sendRequest(eobJobReq, function (err, response) {",
+                          "        if (err) {",
+                          "            console.error(err);",
+                          "        } else if (response.code == 202) {",
+                          "            pm.test(\"X-Progress header is Pending or In Progress\", function () {",
+                          "                pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+                          "            });",
+                          "            if (retryCount < maxRetries) {",
+                          "                console.log(\"Group/runout export still in progress. Retrying...\");",
+                          "                setTimeout(function () {",
+                          "                    awaitExportJob(++retryCount);",
+                          "                }, retryDelay);",
                           "            } else {",
-                          "                console.error(\"Unexpected response from Group/runout export job: \" + response.status);",
+                          "                console.log(\"Retry limit reached for Group/runout job status.\");",
+                          "                postman.setNextRequest(null);",
+                          "                pm.expect.fail(\"Failing due to max retries\");",
                           "            }",
-                          "        });",
-                          "    }",
+                          "        } else if (response.code == 200) {",
+                          "            console.log(\"Group/runout export job complete.\");",
+                          "        } else {",
+                          "            console.error(\"Unexpected response from Group/runout export job: \" + response.status);",
+                          "        }",
+                          "    });",
                           "}",
                           "",
                           "awaitExportJob(1);"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+                          "pm.test(\"Status code is 202 or 200\", function () {",
+                          "    pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
+                          "});",
                           "",
-                          "var maintenanceModeEOYTest = function () {",
-                          "    pm.test(\"Status code is 202 or 200\", function () {",
-                          "        pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
+                          "if (pm.response.code === 202) {",
+                          "    pm.test(\"X-Progress header is Pending or In Progress\", function () {",
+                          "        pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
                           "    });",
-                          "",
-                          "    pm.environment.set(\"smokeTestGroupRunoutEOBDataUrl\", \"https://bcda.cms.gov\");",
-                          "};",
-                          "",
-                          "const maintenanceModeTest = function () {",
-                          "    pm.test(\"Status code is 202 or 200\", function () {",
-                          "        pm.expect(pm.response.code).to.be.oneOf([202, 200]);",
-                          "    });",
-                          "",
-                          "    if (pm.response.code === 202) {",
-                          "        pm.test(\"X-Progress header is Pending or In Progress\", function () {",
-                          "            pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
-                          "        });",
-                          "    } else if (pm.response.code === 200) {",
-                          "        const schema = {",
-                          "            \"properties\": {",
-                          "                \"transactionTime\": {",
-                          "                    \"type\": \"string\"",
-                          "                },",
-                          "                \"request\": {",
-                          "                    \"type\": \"string\"",
-                          "                },",
-                          "                \"requiresAccessToken\": {",
-                          "                    \"type\": \"boolean\"",
-                          "                },",
-                          "                \"output\": {",
-                          "                    \"type\": \"array\"",
-                          "                },",
-                          "                \"error\": {",
-                          "                    \"type\": \"array\"",
-                          "                }",
+                          "} else if (pm.response.code === 200) {",
+                          "    const schema = {",
+                          "        \"properties\": {",
+                          "            \"transactionTime\": {",
+                          "                \"type\": \"string\"",
+                          "            },",
+                          "            \"request\": {",
+                          "                \"type\": \"string\"",
+                          "            },",
+                          "            \"requiresAccessToken\": {",
+                          "                \"type\": \"boolean\"",
+                          "            },",
+                          "            \"output\": {",
+                          "                \"type\": \"array\"",
+                          "            },",
+                          "            \"error\": {",
+                          "                \"type\": \"array\"",
                           "            }",
-                          "        };",
+                          "        }",
+                          "    };",
                           "",
-                          "        var respJson = pm.response.json();",
+                          "    var respJson = pm.response.json();",
                           "",
-                          "        pm.test(\"Schema is valid\", function () {",
-                          "            pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-                          "        });",
+                          "    pm.test(\"Schema is valid\", function () {",
+                          "        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+                          "    });",
                           "",
-                          "        pm.test(\"Contains Required Resources\", () => {",
-                          "          const requiredResources = [\"ExplanationOfBenefit\"];",
-                          "          const otherResources = [\"Patient\", \"Coverage\", \"Claim\", \"ClaimResponse\"];",
-                          "          const returnedResources = respJson.output.map(r => r.type);",
+                          "    pm.test(\"Contains Required Resources\", () => {",
+                          "        const requiredResources = [\"ExplanationOfBenefit\"];",
+                          "        const otherResources = [\"Patient\", \"Coverage\", \"Claim\", \"ClaimResponse\"];",
+                          "        const returnedResources = respJson.output.map(r => r.type);",
                           "",
-                          "          for (const resource of requiredResources) {",
-                          "              pm.expect(returnedResources, resource + \" is required\").to.include(resource);",
-                          "          }",
+                          "        for (const resource of requiredResources) {",
+                          "            pm.expect(returnedResources, resource + \" is required\").to.include(resource);",
+                          "        }",
                           "",
-                          "          for (const resource of otherResources) {",
-                          "              pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
-                          "          }",
-                          "        });",
+                          "        for (const resource of otherResources) {",
+                          "            pm.expect(returnedResources, resource + \" resource type should not be returned\").to.not.include(resource);",
+                          "        }",
+                          "    });",
                           "",
-                          "        pm.environment.set(\"smokeTestGroupRunoutEOBDataUrl\", respJson.output[0].url);",
-                          "    }",
-                          "};",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    maintenanceModeEOYTest();",
-                          "} else {",
-                          "    maintenanceModeTest();",
-                          "}"
+                          "    pm.environment.set(\"smokeTestGroupRunoutEOBDataUrl\", respJson.output[0].url);",
+                          "}",
+                          ""
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
@@ -1363,7 +1415,12 @@
                         "type": "text"
                       }
                     ],
-                    "url": "{{smokeTestGroupRunoutEOBJobUrl}}"
+                    "url": {
+                      "raw": "{{smokeTestGroupRunoutEOBJobUrl}}",
+                      "host": [
+                        "{{smokeTestGroupRunoutEOBJobUrl}}"
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -1374,66 +1431,61 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "var maintenanceMode = pm.globals.get(\"maintenanceMode\");",
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
                           "",
-                          "var maintenanceModeEOYTest = function () {",
-                          "    pm.test(\"Status code is 200\", function () {",
-                          "        pm.response.to.have.status(200);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Body contains data\", function () {",
-                          "        pm.expect(pm.response.length > 0)",
-                          "    });",
-                          "};",
-                          "",
-                          "const maintenanceModeTest = function () {",
-                          "    pm.test(\"Status code is 200\", function () {",
-                          "        pm.response.to.have.status(200);",
-                          "    });",
-                          "",
-                          "    pm.test(\"Body contains data\", function () {",
-                          "        pm.expect(pm.response.length > 0)",
-                          "    });",
-                          "};",
-                          "",
-                          "if (maintenanceMode === \"eoy\") {",
-                          "    maintenanceModeEOYTest();",
-                          "} else {",
-                          "    maintenanceModeTest();",
-                          "}"
+                          "pm.test(\"Body contains data\", function () {",
+                          "    pm.expect(pm.response.length > 0)",
+                          "});"
                         ],
-                        "type": "text/javascript"
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
                       "listen": "prerequest",
                       "script": {
-                        "exec": [""],
-                        "type": "text/javascript"
+                        "exec": [
+                          ""
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
                   "request": {
                     "auth": {
                       "type": "bearer",
-                      "bearer": {
-                        "token": "{{token}}"
-                      }
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "method": "GET",
                     "header": [
                       {
                         "key": "Accept",
-                        "type": "text",
-                        "value": "application/fhir+json"
+                        "value": "application/fhir+json",
+                        "type": "text"
                       },
                       {
                         "key": "Prefer",
-                        "type": "text",
-                        "value": "respond-async"
+                        "value": "respond-async",
+                        "type": "text"
                       }
                     ],
-                    "url": "{{smokeTestGroupRunoutEOBDataUrl}}"
+                    "url": {
+                      "raw": "{{smokeTestGroupRunoutEOBDataUrl}}",
+                      "host": [
+                        "{{smokeTestGroupRunoutEOBDataUrl}}"
+                      ]
+                    }
                   },
                   "response": []
                 }

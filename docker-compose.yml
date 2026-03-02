@@ -58,7 +58,6 @@ services:
       FHIR_ARCHIVE_DIR: /var/efs/archive
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
-      LOG_TO_STD_OUT: true
     volumes:
       - fhir:/var/efs
       - api_config:/etc/sv/api/env
@@ -111,8 +110,6 @@ services:
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
       FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
-      LOG_TO_STD_OUT: true
-      SKIP_EC2_HEALTH_CHECK: true
     volumes:
       - fhir:/var/efs
       - worker_config:/etc/sv/worker/env
