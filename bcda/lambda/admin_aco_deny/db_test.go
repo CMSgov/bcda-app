@@ -59,7 +59,7 @@ func TestDenyACOs_Integration(t *testing.T) {
 	ctx := context.Background()
 	env := conf.GetEnv("ENV")
 
-	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), os.Getenv("DATABASE_URL"))
+	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), os.Getenv("DATABASE_URL"))
 	t.Cleanup(func() { cleanupParam1() })
 	cleanupParam2 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "test-slack-token")
 	t.Cleanup(func() { cleanupParam2() })
