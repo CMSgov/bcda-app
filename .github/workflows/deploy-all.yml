@@ -112,7 +112,7 @@ env:
 jobs:
   verify_images_exist:
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:      
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -221,7 +221,7 @@ jobs:
 
   verify_api_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -249,7 +249,7 @@ jobs:
 
   verify_ssas_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -277,7 +277,7 @@ jobs:
 
   verify_worker_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -311,7 +311,7 @@ jobs:
   notify_newrelic:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -351,7 +351,7 @@ jobs:
 
   slack_alerts:
     if: ${{ always() }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info
