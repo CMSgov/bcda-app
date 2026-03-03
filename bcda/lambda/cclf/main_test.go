@@ -48,7 +48,7 @@ func (s *AttributionImportMainSuite) TestImportCCLFDirectory() {
 	})
 	defer cleanupEnv()
 
-	cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
+	cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
 	defer cleanupParam()
 
 	type test struct {
