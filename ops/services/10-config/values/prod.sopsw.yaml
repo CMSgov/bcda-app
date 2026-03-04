@@ -53,6 +53,7 @@
 /bcda/${env}/sensitive/api/DATABASE_URL: ENC[AES256_GCM,data:1RG89sUYk40cS8CgF/1+s39XW0rY7DEcW4G/eGh3D1ro8LMh3iJfZcWrmuXDU3ESKZ0DrDZfVzV9wIFEyEvGqP2m3sOlXePaT9Qhj0xez3zetOCT,iv:yveDghbRRfDfISx8iUzsiXBW8cULTJbsSx86gabyh+A=,tag:KuI7yqfcQ38AHZpy/8xlfg==,type:str]
 /bcda/${env}/sensitive/api/DEBUG: ENC[AES256_GCM,data:e360lls=,iv:kq1HrrriyV2usFTrWbb5MGiWPh/fhtIe8ywhmjkHq3A=,tag:YuO1CuNHi95LSxxEKUNsiw==,type:str]
 /bcda/${env}/sensitive/api/DEPLOYMENT_TARGET: ENC[AES256_GCM,data:h63+RA==,iv:dEdU+1dvXTlZ2jtO+znUEaViH7TNe8HIpcyl8q7kXug=,tag:ZiuT+wFRk42RDe8YM/VMcg==,type:str]
+/bcda/${env}/sensitive/api/EXPORT_FAIL_PCT: ENC[AES256_GCM,data:E+zX,iv:rUPlu5GVsgLTsj+f/lswI0O1JkWfQbk1jLmLM24fUuI=,tag:0V7IzJmOxLNruVvTn/FaCg==,type:int]
 /bcda/${env}/sensitive/api/FHIR_ARCHIVE_DIR: ENC[AES256_GCM,data:esloy+ubY4xlrJRVsXFeww==,iv:Ta3vDBRnIfUju6UciE/9wJFbEvNjYdM4Lv0ClrTK6y0=,tag:7l9ltnHqsaTJX8PXbP0faQ==,type:str]
 /bcda/${env}/sensitive/api/FHIR_PAYLOAD_DIR: ENC[AES256_GCM,data:CMy+oUS/9pkQG18NqyF0tw==,iv:2KUZswZkD2wvvKw/Sn8g/Yqzhnz19tc/oYpSiwVW+EY=,tag:mkiCeFW3zDwBH8511QiQzw==,type:str]
 /bcda/${env}/sensitive/api/FHIR_STAGING_DIR: ENC[AES256_GCM,data:Qw5N2Mv0aX/BwZL5q3oZiw==,iv:6Fs2seSWiC9KCSH8ioKiIlR5cdpDgoLv3e19bTC0jSE=,tag:47NsMzDB+0y/ErnkQA7Wsg==,type:str]
