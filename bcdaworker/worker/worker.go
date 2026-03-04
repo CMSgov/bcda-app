@@ -410,20 +410,6 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 	return cclfBeneficiary, nil
 }
 
-// TODO remove
-func getFailureThreshold() float64 {
-	exportFailPctStr := conf.GetEnv("EXPORT_FAIL_PCT")
-	exportFailPct, err := strconv.Atoi(exportFailPctStr)
-	if err != nil {
-		exportFailPct = 50
-	} else if exportFailPct < 0 {
-		exportFailPct = 0
-	} else if exportFailPct > 100 {
-		exportFailPct = 100
-	}
-	return float64(exportFailPct)
-}
-
 func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, tempDir string) {
