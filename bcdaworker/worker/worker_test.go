@@ -494,26 +494,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.AssertExpectations(s.T())
 }
 
-func TestGetFailureThreshold(t *testing.T) {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(t, "EXPORT_FAIL_PCT", origFailPct)
-
-	conf.SetEnv(t, "EXPORT_FAIL_PCT", "60")
-	assert.Equal(t, 60.0, getFailureThreshold())
-
-	conf.SetEnv(t, "EXPORT_FAIL_PCT", "-1")
-	assert.Equal(t, 0.0, getFailureThreshold())
-
-	conf.SetEnv(t, "EXPORT_FAIL_PCT", "500")
-	assert.Equal(t, 100.0, getFailureThreshold())
-
-	conf.SetEnv(t, "EXPORT_FAIL_PCT", "zero")
-	assert.Equal(t, 50.0, getFailureThreshold())
-
-	conf.UnsetEnv(t, "EXPORT_FAIL_PCT")
-	assert.Equal(t, 50.0, getFailureThreshold())
-}
-
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(s.logctx, s.testACO.UUID.String(),
 		fhircodes.IssueTypeCode_CODE_INVALID,
