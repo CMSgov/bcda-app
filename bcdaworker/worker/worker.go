@@ -306,12 +306,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	defer w.Flush()
 	errorCount := 0
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
-	jobFailPercent := conf.GetEnv("EXPORT_FAIL_PCT")
-	failThreshold, err := strconv.ParseFloat(jobFailPercent, 64)
-	if err != nil {
-		failThreshold = 100.00
-	}
-	failThreshold = float64(failThreshold)
+	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
