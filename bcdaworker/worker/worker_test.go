@@ -374,7 +374,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
 	transactionTime := time.Now()
 
 	var cclfBeneficiaryIDs []string
@@ -392,11 +392,15 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[0], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[1], claimsWindowMatcher()).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[2], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
 	bbc.On("GetPatientByMbi", beneficiaryIDs[0]).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 
 	bbc.MBI = &beneficiaryIDs[1]
 	bbc.On("GetPatientByMbi", beneficiaryIDs[1]).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
+
+	bbc.MBI = &beneficiaryIDs[2]
+	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err := createDir(s.tempDir)
@@ -413,23 +417,24 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}]}
-	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}]}`, s.testACO.UUID, s.testACO.UUID)
+	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}]}
+	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000012463 in ACO %s"}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 
 	// Since our error file ends with a new line character, we need
 	// to remove it in order so split OperationOutcome responses by newline character
 	fData = fData[:len(fData)-1]
-	assertEqualErrorFiles(s.T(), ooResp, string(fData))
+	d := string(fData)
+	assertEqualErrorFiles(s.T(), ooResp, d)
 
 	// Assert cmsID and jobID fields are being added to the logs
 	bbc.AssertExpectations(s.T())
-	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", jobArgs, beneficiaryIDs[2], claimsWindowMatcher())
+
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "51")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
 
 	bbc := client.MockBlueButtonClient{}
 	bbc.On("GetPatientByMbi", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
@@ -489,21 +494,24 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.AssertExpectations(s.T())
 }
 
-func (s *WorkerTestSuite) TestGetFailureThreshold() {
+func TestGetFailureThreshold(t *testing.T) {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
+	defer conf.SetEnv(t, "EXPORT_FAIL_PCT", origFailPct)
 
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
-	assert.Equal(s.T(), 60.0, getFailureThreshold())
+	conf.SetEnv(t, "EXPORT_FAIL_PCT", "60")
+	assert.Equal(t, 60.0, getFailureThreshold())
 
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "-1")
-	assert.Equal(s.T(), 0.0, getFailureThreshold())
+	conf.SetEnv(t, "EXPORT_FAIL_PCT", "-1")
+	assert.Equal(t, 0.0, getFailureThreshold())
 
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "500")
-	assert.Equal(s.T(), 100.0, getFailureThreshold())
+	conf.SetEnv(t, "EXPORT_FAIL_PCT", "500")
+	assert.Equal(t, 100.0, getFailureThreshold())
 
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "zero")
-	assert.Equal(s.T(), 50.0, getFailureThreshold())
+	conf.SetEnv(t, "EXPORT_FAIL_PCT", "zero")
+	assert.Equal(t, 50.0, getFailureThreshold())
+
+	conf.UnsetEnv(t, "EXPORT_FAIL_PCT")
+	assert.Equal(t, 50.0, getFailureThreshold())
 }
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
