@@ -79,7 +79,7 @@ func TestMultipleRequestBundle(t *testing.T) {
 		// The partial files do not know the correct port, so we'll update the request
 		// to point to the test server
 		next.Host = testHost
-		req, err = http.NewRequest("GET", next.String(), nil)
+		req, err = http.NewRequest("GET", next.String(), nil) // #nosec G704
 		assert.NoError(t, err)
 	}
 
