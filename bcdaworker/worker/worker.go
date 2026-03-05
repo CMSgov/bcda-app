@@ -306,7 +306,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	defer w.Flush()
 	errorCount := 0
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
-	failThreshold := getFailureThreshold()
+	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
@@ -354,6 +354,8 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			break
 		}
 	}
+	failPct := (float64(errorCount) / totalBeneIDs) * 100
+	logger.Infof("Job Failure: %.2f%%", failPct)
 
 	if err = w.Flush(); err != nil {
 		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
@@ -406,19 +408,6 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 	}
 
 	return cclfBeneficiary, nil
-}
-
-func getFailureThreshold() float64 {
-	exportFailPctStr := conf.GetEnv("EXPORT_FAIL_PCT")
-	exportFailPct, err := strconv.Atoi(exportFailPctStr)
-	if err != nil {
-		exportFailPct = 50
-	} else if exportFailPct < 0 {
-		exportFailPct = 0
-	} else if exportFailPct > 100 {
-		exportFailPct = 100
-	}
-	return float64(exportFailPct)
 }
 
 func appendErrorToFile(ctx context.Context, fileUUID string,

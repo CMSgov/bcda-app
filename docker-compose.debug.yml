@@ -6,6 +6,7 @@ services:
     build:
       args:
         GO_FLAGS: -gcflags=all=-N -l
+    platform: linux/arm64
     entrypoint: dlv
     command: exec --headless --listen=:4040 --accept-multiclient /go/bin/bcda -- start-api
     security_opt:
@@ -16,6 +17,7 @@ services:
     build:
       args:
         GO_FLAGS: -gcflags=all=-N -l
+    platform: linux/arm64
     entrypoint: dlv
     command: exec --headless --listen=:4040 --accept-multiclient /go/bin/bcdaworker
     security_opt:

@@ -1,8 +1,6 @@
 #ENC[AES256_GCM,data:u7pq4VrU0QGGGuwKljYojltyTtIDBvkcyxkGeZKrEc2JGl+upPwc,iv:E3l/2ONt/nndCdc3bCO84poU51x4R404Nc+BUdAOw8E=,tag:q8kVCVPQyifuF7aExDeK7Q==,type:comment]
 #ENC[AES256_GCM,data:hFZLXpFQSsJhJslfR/dpybedCuYe1zktg3hv5DbfUo6SSIDVYXBgrkf3wvCGdr1xyyrTTx2r5hwnN14+hBv2Stz32wP86jg=,iv:elUCuTCJMZRZOJ60Jy9bEhR0qNwj+mvgDPcTK3Htl1o=,tag:0LkNOGC1E3fAZwJivL+7yg==,type:comment]
 #ENC[AES256_GCM,data:DHbKkZH6sJQtaiTRxa8iZ398NiESpKmdkqAXIssfPJ5fW1ArQ8iRjFLd5Wgmag==,iv:tGpEam51zOgdWIH59myC+svhOtOTULe2BDonF89+iwY=,tag:a8IGxXG6ETRXTahXovlYdg==,type:comment]
-#ENC[AES256_GCM,data:AAbvZL+kztwJI72Qi2qd2qCnw2+Iezo=,iv:mly1cIlRvYoLAFGZ04h9bYEE/w2t2TUjhJHIgbEHWpY=,tag:5lgLDly70HdFZu6nX6/UTg==,type:comment]
-/bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:6aChyq3P6laHdNfH5aj28LFKYg+t8NLEYxtz4wdE9ltVhCgQYZ/d1urE+PHiz5bk/w==,iv:5qQcd3y4zrzqhxBx+BjUSyUS9nTG9LlSGUw0btFQVKA=,tag:Ggt1n2e0kz4YdxiXof4nqw==,type:str]
 #ENC[AES256_GCM,data:eqSwNkfVEIOOPKDwFna6f+YZ,iv:Whl8x/T2HACxk94WzDXGiklHA47WeALWmj5/n5mFPfU=,tag:3WB5hXk7NVmyh3YGslL8Fg==,type:comment]
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:9ilC,iv:79XECNDx0JoK99NSlF3DrlP88dzowbQ/bEsCsCh+etA=,tag:enbND5kgMgfB8l5/ErSDEQ==,type:str]
 #ENC[AES256_GCM,data:RURxN4cbcqyrGMMTwYsO4uudj9Muhoiv,iv:UdSALPF6S/r40jab9srnQ3tBSJ2kItVxf3BpBlhzrmA=,tag:38luxboVUGDQMe6fgIjW8g==,type:comment]
@@ -120,6 +118,7 @@
 /bcda/${env}/sensitive/worker/DATABASE_URL: ENC[AES256_GCM,data:ME8ABcz5RA/7ANRvlLUOKuitimR7yV0jds0/lYN0FyIt22Truwsbotq4ibjseUZJ+le47XooPN1tcH9ncqHhmJquUHFwQHVdNvqs3vOJJjTtloqDxWq3,iv:vmyuVx5ITxn9E7DxRCsYQ3jcHf0A29ynmxYj81XQG20=,tag:pyDCOG5CV2tdnyiWipQs/Q==,type:str]
 /bcda/${env}/sensitive/worker/DEPLOYMENT_TARGET: ENC[AES256_GCM,data:P638/5vm4Q==,iv:dGX7YHxAql22sqknP2AfnCcwVfW6NE5gFfHJl2Yn3Fg=,tag:d0NLheQxzBnekyBCmFftKA==,type:str]
 /bcda/${env}/sensitive/worker/EXPIRED_THRESHOLD_HR: ENC[AES256_GCM,data:BFo=,iv:RPrSL6D7vyuJr4cNw/uOhTAsLnGGP2MCaXv9IhYOmp8=,tag:Tze6MhAJC6E1CpCxuh5Fuw==,type:str]
+/bcda/${env}/sensitive/worker/EXPORT_FAIL_PCT: ENC[AES256_GCM,data:/7t7,iv:8LZEb/tyXpIoxJ1bClBrXqYnbMfGr538vEbrcRUAIdU=,tag:1lQGmxTexaymKEaOIJe/Yw==,type:int]
 /bcda/${env}/sensitive/worker/FHIR_ARCHIVE_DIR: ENC[AES256_GCM,data:OeVefzBq8TQA3TeQ+zfDUA==,iv:5NDJeusYmsZH48iLI/DjtMaDPJgHSr6jma+QsC3zkzQ=,tag:0xiqXyvGAMs0qLzdrXgSCQ==,type:str]
 /bcda/${env}/sensitive/worker/FHIR_EXPIRED_DIR: ENC[AES256_GCM,data:/uE9A0G5vuEqotx0J2OO+w==,iv:46rnfae30XQnli47ZeqARNgIq2WT4zpZjQTCd6GG5Bc=,tag:TRK3VDx8AoqLLj8fTta0TQ==,type:str]
 /bcda/${env}/sensitive/worker/FHIR_PAYLOAD_DIR: ENC[AES256_GCM,data:Ig2O68r+BFOpHGuseE1ktw==,iv:8Z+qgl4LI7BUmx6vnrai8SqxJQptCR98WZKFCoUdg1A=,tag:/fyZziZQrq/bbrLxWdnwDg==,type:str]
@@ -164,4 +163,4 @@ sops:
       aws_profile: ""
   unencrypted_regex: /nonsensitive/
   mac_only_encrypted: true
-  version: 3.11.0
+  version: 3.12.1

@@ -104,7 +104,7 @@ jobs:
   smoke_tests:
     environment: ${{ inputs.env || 'dev' }}
     name: run smoke tests
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     env:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
