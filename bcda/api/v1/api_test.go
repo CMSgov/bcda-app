@@ -369,12 +369,17 @@ func (s *APITestSuite) TestDeleteJob() {
 func (s *APITestSuite) TestServeData() {
 	origDir, err := os.Getwd()
 	assert.NoError(s.T(), err)
-	_ = os.Chdir("../../../")
+	err = os.Chdir("../../../")
+	assert.NoError(s.T(), err)
 	wd, _ := os.Getwd()
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", wd+"/shared_files/gzip_feature_test/")
 
-	defer os.Chdir(origDir)
-
+	defer func() {
+		err = os.Chdir(origDir)
+		if err != nil {
+			s.T().FailNow()
+		}
+	}()
 	tests := []struct {
 		name         string
 		headers      []string

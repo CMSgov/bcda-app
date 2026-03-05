@@ -143,7 +143,7 @@ func (rh *requestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 	rh.numRequestsReceived++
 
-	file, err := os.Open(path.Join(rootPath, r.URL.Path))
+	file, err := os.Open(path.Join(rootPath, r.URL.Path)) // #nosec G703
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
