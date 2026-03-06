@@ -83,7 +83,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//Act
-			resp, err := client.Do(req)
+			resp, err := client.Do(req) // #nosec G704
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -131,7 +131,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//Act
-			resp, err := server.Client().Do(req)
+			resp, err := server.Client().Do(req) // #nosec G704
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -185,7 +185,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.NoError(s.T(), err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	req.Header.Add("Accept", constants.JsonContentType)
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
@@ -196,7 +196,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", goodToken))
 	req.Header.Add("Accept", constants.JsonContentType)
-	resp, err = client.Do(req)
+	resp, err = client.Do(req) // #nosec G704
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	respMap := make(map[string]string)

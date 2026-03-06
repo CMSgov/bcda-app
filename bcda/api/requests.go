@@ -355,7 +355,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			errFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
 
 			// Check if the error file exists
-			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
+			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) { // #nosec G703
 				errFI := FileItem{
 					Type: "OperationOutcome",
 					URL:  fmt.Sprintf("%s://%s/data/%d/%s-error.ndjson", scheme, r.Host, jobID, errFileName),

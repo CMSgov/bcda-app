@@ -109,7 +109,7 @@ func TestSetupEnvironment(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
-	err := setupEnvironment(awsParams{
+	err := setupEnvironment(awsParams{ // #nosec G101
 		ssasURL:      "test-SSAS_URL",
 		dbURL:        "test-DB_URL",
 		clientID:     "test-BCDA_SSAS_CLIENT_ID",

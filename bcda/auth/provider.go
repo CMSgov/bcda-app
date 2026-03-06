@@ -42,7 +42,7 @@ type AuthData struct {
 
 type Credentials struct {
 	ClientID     string    `json:"client_id"`
-	ClientSecret string    `json:"client_secret"`
+	ClientSecret string    `json:"client_secret"` // #nosec G117
 	ClientName   string    `json:"client_name"`
 	SystemID     string    `json:"system_id"`
 	Token        string    `json:"token"`

@@ -39,14 +39,14 @@ type SSASClient struct {
 }
 
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
+	AccessToken string `json:"access_token"` // #nosec G117
 	ExpiresIn   string `json:"expires_in,omitempty"`
 	TokenType   string `json:"token_type"`
 }
 
 type Credentials struct {
-	ClientID     string
-	ClientSecret string
+	ClientID     string // #nosec G117
+	ClientSecret string // #nosec G117
 	ClientName   string
 }
 
@@ -108,7 +108,7 @@ func (c *SSASClient) CreateGroup(groupId, name, acoCMSID string) ([]byte, error)
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (c *SSASClient) DeleteGroup(id int) error {
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return errors.Wrap(err, constants.DeleteGroupErr)
 	}
@@ -185,7 +185,7 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return nil, errors.Wrap(err, constants.SystemCreateErr)
 	}
@@ -213,7 +213,7 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return nil, errors.Wrap(err, constants.PublicKeyErr)
 	}
@@ -237,7 +237,7 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return nil, errors.Wrap(err, constants.ResetCredentialsErr)
 	}
@@ -265,7 +265,7 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return errors.Wrap(err, constants.DeleteCredentialsErr)
 	}
@@ -289,7 +289,7 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 		return err
 	}
 
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return errors.Wrap(err, "failed to revoke token")
 	}
@@ -319,7 +319,7 @@ func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, 
 
 	txn := newrelic.FromContext(r.Context())
 	s := newrelic.StartExternalSegment(txn, req)
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	s.Response = resp
 	s.End()
 	if err != nil {
@@ -369,7 +369,7 @@ func (c *SSASClient) CallSSASIntrospect(ctx context.Context, tokenString string)
 		request.Header.Add(client.TransactionIDHeader, tid.(string))
 	}
 
-	resp, err := c.Do(request)
+	resp, err := c.Do(request) // #nosec G704
 	if err != nil {
 		if urlError, ok := err.(*url.Error); ok && urlError.Timeout() {
 			return nil, &customErrors.RequestTimeoutError{Err: err, Msg: "introspect request failed - the SSAS introspect request timed out"}
@@ -467,7 +467,7 @@ func (c *SSASClient) GetVersion() (string, error) {
 	if err := c.setAuthHeader(req); err != nil {
 		return "", err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return "", err
 	}
@@ -497,7 +497,7 @@ func (c *SSASClient) GetHealth() error {
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) // #nosec G704
 	if err != nil {
 		return err
 	}

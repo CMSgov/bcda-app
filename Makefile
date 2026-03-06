@@ -83,7 +83,7 @@ unit-test-db:
 
 	# Wait for the database to be ready
 # 	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
-	sleep 100
+	sleep 30
 
 	# Perform migrations to ensure matching schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
@@ -113,7 +113,7 @@ reset-db:
 	docker compose up -d db
 	echo "Wait for database to be ready..."
 # 	docker run --rm --network bcda-app-net willwill/wait-for-it db:5432 -t 100
-	sleep 100
+	sleep 30
 
 	# Initialize schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up

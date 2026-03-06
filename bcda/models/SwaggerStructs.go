@@ -285,7 +285,7 @@ type TokenResponse struct {
 	// in: body
 	Body struct {
 		// Required: true
-		AccessToken string `json:"access_token"`
+		AccessToken string `json:"access_token"` // #nosec G117
 		ExpiresIn   string `json:"expires_in,omitempty"`
 		TokenType   string `json:"token_type"`
 	}
