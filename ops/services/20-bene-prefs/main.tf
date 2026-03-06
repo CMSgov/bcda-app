@@ -155,13 +155,20 @@ resource "aws_iam_role" "this" {
   })
 
   force_detach_policies = true
-  managed_policy_arns = [
-    aws_iam_policy.assume_bucket_role.arn,
-    aws_iam_policy.default_function.arn,
-  ]
   name                 = "bcda-${local.env}-${local.service}"
   path                 = module.platform.iam_defaults.path
   permissions_boundary = module.platform.iam_defaults.boundary
+}
+
+resource "aws_iam_role_policy_attachment" "this" {
+  #TODO: Complexity below is for eventual targeting of `test` and `prod` environments
+  for_each = { for k, v in {
+    assume_bucket_role = try(aws_iam_policy.assume_bucket_role.arn, "")
+    default_function   = try(aws_iam_policy.default_function.arn, "")
+  } : k => v if length(v) > 0 }
+
+  role = aws_iam_role.this.name
+  policy_arn = each.value
 }
 
 module "bucket" {
