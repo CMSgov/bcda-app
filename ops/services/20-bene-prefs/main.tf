@@ -282,7 +282,7 @@ resource "aws_sqs_queue" "this" {
         Principal = {
           Service = "sns.amazonaws.com"
         }
-        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}" #TODO
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
         Sid      = "SnsSendMessage"
       },
     ]
