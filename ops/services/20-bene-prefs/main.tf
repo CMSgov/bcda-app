@@ -207,7 +207,7 @@ resource "aws_lambda_function" "this" {
   }
 }
 
-resource "aws_security_group" "this" { #FIXME TODO: Replace with e.g. module.platform.security_groups.egress_only PLT-ASK JULIA
+resource "aws_security_group" "this" {
   description = "Temporary SG for ${local.name_prefix}"
   egress = [
     {
@@ -227,5 +227,6 @@ resource "aws_security_group" "this" { #FIXME TODO: Replace with e.g. module.pla
     },
   ]
   name = local.name_prefix
-  tags = { name = local.name_prefix }
+  tags = { Name = local.name_prefix }
+}
 }
