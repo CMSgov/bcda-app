@@ -47,20 +47,21 @@ resource "aws_security_group_rule" "db" {
 # Managed policies
 # ---------------------------------------------------------------------------
 
+data "aws_iam_policy_document" "assume_bucket_role" {
+  statement {
+    sid       = "AssumeBucketRole"
+    actions   = ["sts:AssumeRole"]
+    resources = [module.platform.ssm.bene_prefs.iam_bucket_role_arn.value]
+  }
+}
+
 resource "aws_iam_policy" "assume_bucket_role" {
   name        = "bcda-${local.env}-${local.service}-assume-bucket-role"
   path        = module.platform.iam_defaults.path
   description = "Allows ${local.service} to assume the S3 bucket role from SSM."
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "AssumeBucketRole"
-        Action   = "sts:AssumeRole"
-        Effect   = "Allow"
-        Resource = module.platform.ssm.bene_prefs.iam_bucket_role_arn.value
-      },
+  policy = data.aws_iam_policy_document.assume_bucket_role.json
+}
     ]
   })
 }
