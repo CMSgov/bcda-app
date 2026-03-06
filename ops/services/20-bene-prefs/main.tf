@@ -277,4 +277,16 @@ resource "aws_sqs_queue" "this" {
   receive_wait_time_seconds  = 0
   visibility_timeout_seconds = 900
 }
+
+resource "aws_sns_topic_subscription" "this" {
+  endpoint  = aws_sqs_queue.this.arn
+  protocol  = "sqs"
+  topic_arn = module.platform.ssm.bene_prefs.sns_topic_arn.value
+}
+
+resource "aws_lambda_event_source_mapping" "this" {
+  event_source_arn = aws_sqs_queue.this.arn
+  function_name    = aws_lambda_function.this.function_name
+  batch_size       = 1
+  enabled          = true
 }
