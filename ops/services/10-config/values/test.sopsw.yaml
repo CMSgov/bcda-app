@@ -1,8 +1,6 @@
 #ENC[AES256_GCM,data:mJ0Kmf0+DZxgFRqj+LYm/RTCmvBBm3rLTM4zrUvCsSH0w+gq,iv:EU6CghcBsv7h6EJsbYVB33KsZrDE+XHxJi5QaDcuTJ0=,tag:byjSy45UIC1np8OokiDioA==,type:comment]
 #ENC[AES256_GCM,data:br5YVcKA8IWD2bmSRCGuxgT57BBRuZGuVuei06UoC9p6eRfJNA1ugtSffyPLGZzhJzKeDU6X9ezqKOWcviVtFEhyrIs=,iv:5gkBi9W1M1nNh9AHqrXkAjNPpJO5L4ANZdpNg2bF1x0=,tag:dLrTgGZkQyrIiU8ikJLVuA==,type:comment]
 #ENC[AES256_GCM,data:xUC3A0QeOivCgVAKUYOYtvc0lj63Woe180h1ODX14evAm6XvL8PfNT0fIw==,iv:EElJQMiIPjH8w1j9rsMWvtOfK2fGnTQY7zvERE/oZRc=,tag:x8vOIOXxGlH2TrRfJ6bt+g==,type:comment]
-#ENC[AES256_GCM,data:IZddRXCjYccLz7Cg8YvHNzqONBykgJE=,iv:CRPA9uBPzTriny1RbHzhi5aTXFFNuv8ySzyVUQMbcQ8=,tag:KN9aQi+lkI2G3PKbzMN84Q==,type:comment]
-/bcda/${env}/sensitive/aco_creds_bucket: ENC[AES256_GCM,data:DD0RdnMHTulqXK0TpvhyUWXQ00+N/wdcNEMgSWLRLSaTxIwAKV20o4k94TW7ag==,iv:DBMPKXYm7N32tgv5SPpWh1qEhULjfGHUcggeh/KNNc0=,tag:Rh23599XenWtCUzTViqNCw==,type:str]
 #ENC[AES256_GCM,data:GB+3EB0SLIroEZ7KzaDo3yBA,iv:+IUtL0BFfpBwDirykehDBtSz6myr5puW7OYbJBtR0W4=,tag:FiPnxZHlHRjh8M0iBcFcbg==,type:comment]
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:H/CB,iv:atGloib5mt7phyZeeE58XjID4K91Ho2FtOy80HbXtrg=,tag:cblfrIFx31TR9jhQRzwQDQ==,type:str]
 /bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:pcT6bw==,iv:ba2euw4TLAdrXdZUe0QoPytG6j+ThgoxHM3I6ZwrU9I=,tag:c0X7goSVTVe7OjxjsLPdLw==,type:str]
@@ -168,4 +166,4 @@ sops:
       aws_profile: ""
   unencrypted_regex: /nonsensitive/
   mac_only_encrypted: true
-  version: 3.11.0
+  version: 3.12.1
