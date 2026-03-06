@@ -62,8 +62,39 @@ resource "aws_iam_policy" "assume_bucket_role" {
 
   policy = data.aws_iam_policy_document.assume_bucket_role.json
 }
+
+data "aws_iam_policy_document" "default_function" {
+  statement {
+    sid = "SsmSqsLogsEc2"
+    actions = [
+      "ssm:GetParameters",
+      "ssm:GetParameter",
+      "sqs:ReceiveMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:DeleteMessage",
+      "logs:PutLogEvents",
+      "logs:CreateLogStream",
+      "logs:CreateLogGroup",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DescribeAccountAttributes",
+      "ec2:DeleteNetworkInterface",
+      "ec2:CreateNetworkInterface",
     ]
-  })
+    resources = ["*"] #TODO: Consider splitting into discrete statements/policy allowances 
+  }
+  statement {
+
+    sid = "KmsEncryptDecrypt"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Encrypt",
+      "kms:Decrypt",
+    ]
+    resources = [
+      local.kms_key_arn_primary,
+      local.kms_key_arn_secondary,
+    ]
+  }
 }
 
 resource "aws_iam_policy" "default_function" {
@@ -71,43 +102,7 @@ resource "aws_iam_policy" "default_function" {
   path        = module.platform.iam_defaults.path
   description = "SSM, SQS, CloudWatch Logs, EC2 networking, and KMS permissions for ${local.service}."
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid = "SsmSqsLogsEc2"
-        Action = [
-          "ssm:GetParameters",
-          "ssm:GetParameter",
-          "sqs:ReceiveMessage",
-          "sqs:GetQueueAttributes",
-          "sqs:DeleteMessage",
-          "logs:PutLogEvents",
-          "logs:CreateLogStream",
-          "logs:CreateLogGroup",
-          "ec2:DescribeNetworkInterfaces",
-          "ec2:DescribeAccountAttributes",
-          "ec2:DeleteNetworkInterface",
-          "ec2:CreateNetworkInterface",
-        ]
-        Effect   = "Allow"
-        Resource = "*"
-      },
-      {
-        Sid = "KmsEncryptDecrypt"
-        Action = [
-          "kms:GenerateDataKey",
-          "kms:Encrypt",
-          "kms:Decrypt",
-        ]
-        Effect = "Allow"
-        Resource = [
-          local.kms_key_arn_primary,
-          local.kms_key_arn_secondary,
-        ]
-      },
-    ]
-  })
+  policy = data.aws_iam_policy_document.default_function.json
 }
 
 # ---------------------------------------------------------------------------
