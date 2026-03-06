@@ -27,6 +27,22 @@ data "aws_rds_cluster" "this" {
   cluster_identifier = "${local.app}-${local.env}-aurora"
 }
 
+data "aws_security_groups" "db" {
+
+  tags = {
+    Name = "bcda-${local.env}-db"
+  }
+}
+
+resource "aws_security_group_rule" "db" {
+  type                     = "ingress"
+  from_port                = data.aws_rds_cluster.this.port
+  to_port                  = data.aws_rds_cluster.this.port
+  protocol                 = "tcp"
+  security_group_id        = one([data.aws_security_groups.db.ids])[0]
+  source_security_group_id = aws_security_group.this.id
+}
+
 resource "aws_iam_role" "this" {
   assume_role_policy = jsonencode(
     {
