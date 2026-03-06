@@ -6,7 +6,7 @@ locals {
   account_id            = module.platform.aws_caller_identity.account_id
   kms_key_arn_primary   = module.platform.kms_alias_primary.target_key_arn
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
-  name_prefix           = "${local.app}-${local.env}-${local.service}"
+  name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
 }
 
