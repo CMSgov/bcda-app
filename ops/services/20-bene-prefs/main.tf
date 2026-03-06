@@ -229,4 +229,36 @@ resource "aws_security_group" "this" {
   name = local.name_prefix
   tags = { Name = local.name_prefix }
 }
+
+resource "aws_sqs_queue" "this" {
+  content_based_deduplication       = false
+  delay_seconds                     = 0
+  fifo_queue                        = false
+  kms_data_key_reuse_period_seconds = 300
+  kms_master_key_id                 = local.kms_key_arn_primary
+  name                              = local.name_prefix
+  policy = jsonencode(
+    {
+      Statement = [
+        {
+          Action = "sqs:SendMessage"
+          Condition = {
+            ArnEquals = {
+              "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
+            }
+          }
+          Effect = "Allow"
+          Principal = {
+            Service = "sns.amazonaws.com"
+          }
+          Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}" #TODO
+          Sid      = "SnsSendMessage"
+        },
+      ]
+      Version = "2012-10-17"
+    }
+  )
+  receive_wait_time_seconds  = 0
+  visibility_timeout_seconds = 900
+}
 }
