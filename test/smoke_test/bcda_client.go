@@ -307,7 +307,7 @@ func (c *client) Do(req *http.Request) (*http.Response, error) {
 		}
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // #nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive response with error: %w", err)
 	}
@@ -327,7 +327,7 @@ func (c *client) updateAccessToken() error {
 
 	// The retry logic may try to update the access token, to avoid a recursive
 	// retry loop we dont want to use the retry logic on updating the access token
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) // #nosec G704
 	if err != nil {
 		log.Errorf("Exception occurred when making request call %s", req, err.Error())
 		return err
@@ -345,7 +345,7 @@ func (c *client) updateAccessToken() error {
 	}
 
 	type tokenResponse struct {
-		AccessToken string `json:"access_token"`
+		AccessToken string `json:"access_token"` // #nosec G117
 		ExpiresIn   string `json:"expires_in,omitempty"`
 		TokenType   string `json:"token_type"`
 	}

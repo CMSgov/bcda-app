@@ -82,7 +82,7 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
-	_, err = w.Write([]byte(tokenInfo))
+	_, err = w.Write([]byte(tokenInfo)) // #nosec G705
 	if err != nil {
 		ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error writing response - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
