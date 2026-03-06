@@ -147,10 +147,8 @@ module "bucket" {
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
-
-
 resource "aws_lambda_function" "this" {
-  s3_key       = "function-6f861e8517dd1cce3731b9a4864d1182f405875e.zip"
+  s3_key       = "function-3540b70393e3dc30f375eee2e8635a65c6f21036.zip"
   s3_bucket    = module.bucket.id
   package_type = "Zip"
   handler      = "bootstrap"
@@ -161,19 +159,19 @@ resource "aws_lambda_function" "this" {
   memory_size                    = 128
   reserved_concurrent_executions = 1
   role                           = aws_iam_role.this.arn
-  runtime                        = "provided.al2"
+  runtime                        = "provided.al2023"
   skip_destroy                   = false
   timeout                        = 900
   architectures = [
-    "arm64",
+    "x86_64",
   ]
 
   tags = {
-    code = "https://github.com/CMSgov/cdap/tree/main/terraform/services/opt-out-import" #FIXME
+    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/optout"
   }
 
   lifecycle {
-    # As of this writing, delivery of the opt-out function is separate from deployment of this module.
+    # FIXME: As of this writing, delivery of the opt-out function is separate from deployment of this module.
     # As such, we must ignore the specific s3_key and s3_object_version configuration.
     ignore_changes = [
       s3_object_version,
