@@ -8,7 +8,6 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.app}-${local.env}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
-  vpc_id                = module.platform.vpc_id
 }
 
 module "platform" {
@@ -30,7 +29,6 @@ data "aws_rds_cluster" "this" {
 }
 
 data "aws_security_groups" "db" {
-
   tags = {
     Name = "bcda-${local.env}-db"
   }
@@ -45,115 +43,129 @@ resource "aws_security_group_rule" "db" {
   source_security_group_id = aws_security_group.this.id
 }
 
-resource "aws_iam_role" "this" {
-  assume_role_policy = jsonencode(
-    {
-      Statement = [
-        {
-          Action = "sts:AssumeRole"
-          Effect = "Allow"
-          Principal = {
-            Service = "lambda.amazonaws.com"
-          }
-        },
-        {
-          Action = [
-            "sts:TagSession",
-            "sts:AssumeRoleWithWebIdentity",
-          ]
-          Condition = {
-            StringEquals = {
-              "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            }
-            StringLike = {
-              "token.actions.githubusercontent.com:sub" = "repo:CMSgov/bcda-app:*"
-            }
-          }
-          Effect = "Allow"
-          Principal = {
-            Federated = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
-          }
-        },
-        {
-          Action = [
-            "sts:TagSession",
-            "sts:AssumeRole",
-          ]
-          Effect = "Allow"
-          Principal = {
-            AWS = [
-              module.platform.kion_roles["ct-ado-dasg-application-admin"].arn,
-              module.platform.kion_roles["ct-ado-bcda-application-admin"].arn
-            ]
-          }
-        },
-      ]
-      Version = "2012-10-17"
-    }
-  )
-  force_detach_policies = true
-  managed_policy_arns   = [] #FIXME: populate with standalone policies that were once in-line
-  name                  = "bcda-${local.env}-${local.service}"
-  path                  = module.platform.iam_defaults.path
-  permissions_boundary  = module.platform.iam_defaults.boundary
+# ---------------------------------------------------------------------------
+# Managed policies
+# ---------------------------------------------------------------------------
 
-  #FIXME: convert into policy
-  inline_policy {
-    name = "assume-bucket-role"
-    policy = jsonencode(
+resource "aws_iam_policy" "assume_bucket_role" {
+  name        = "bcda-${local.env}-${local.service}-assume-bucket-role"
+  path        = module.platform.iam_defaults.path
+  description = "Allows ${local.service} to assume the S3 bucket role from SSM."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
       {
-        Statement = [
-          {
-            Action   = "sts:AssumeRole"
-            Effect   = "Allow"
-            Resource = module.platform.ssm.bene_prefs.iam_bucket_role_arn.value
-          },
-        ]
-        Version = "2012-10-17"
-      }
-    )
-  }
-  #FIXME: convert into appropriately scoped policy
-  inline_policy {
-    name = "default-function"
-    policy = jsonencode(
+        Sid      = "AssumeBucketRole"
+        Action   = "sts:AssumeRole"
+        Effect   = "Allow"
+        Resource = module.platform.ssm.bene_prefs.iam_bucket_role_arn.value
+      },
+    ]
+  })
+}
+
+resource "aws_iam_policy" "default_function" {
+  name        = "bcda-${local.env}-${local.service}-default-function"
+  path        = module.platform.iam_defaults.path
+  description = "SSM, SQS, CloudWatch Logs, EC2 networking, and KMS permissions for ${local.service}."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
       {
-        Statement = [
-          {
-            Action = [
-              "ssm:GetParameters",
-              "ssm:GetParameter",
-              "sqs:ReceiveMessage",
-              "sqs:GetQueueAttributes",
-              "sqs:DeleteMessage",
-              "logs:PutLogEvents",
-              "logs:CreateLogStream",
-              "logs:CreateLogGroup",
-              "ec2:DescribeNetworkInterfaces",
-              "ec2:DescribeAccountAttributes",
-              "ec2:DeleteNetworkInterface",
-              "ec2:CreateNetworkInterface",
-            ]
-            Effect   = "Allow"
-            Resource = "*"
-          },
-          {
-            Action = [
-              "kms:GenerateDataKey",
-              "kms:Encrypt",
-              "kms:Decrypt",
-            ]
-            Effect = "Allow"
-            Resource = [
-              local.kms_key_arn_primary,
-              local.kms_key_arn_secondary
-            ]
-          },
+        Sid = "SsmSqsLogsEc2"
+        Action = [
+          "ssm:GetParameters",
+          "ssm:GetParameter",
+          "sqs:ReceiveMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:DeleteMessage",
+          "logs:PutLogEvents",
+          "logs:CreateLogStream",
+          "logs:CreateLogGroup",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeAccountAttributes",
+          "ec2:DeleteNetworkInterface",
+          "ec2:CreateNetworkInterface",
         ]
-        Version = "2012-10-17"
-      }
-    )
-  }
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Sid = "KmsEncryptDecrypt"
+        Action = [
+          "kms:GenerateDataKey",
+          "kms:Encrypt",
+          "kms:Decrypt",
+        ]
+        Effect = "Allow"
+        Resource = [
+          local.kms_key_arn_primary,
+          local.kms_key_arn_secondary,
+        ]
+      },
+    ]
+  })
+}
+
+# ---------------------------------------------------------------------------
+# IAM role
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "this" {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      },
+      {
+        Action = [
+          "sts:TagSession",
+          "sts:AssumeRoleWithWebIdentity",
+        ]
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = "repo:CMSgov/bcda-app:*"
+          }
+        }
+        Effect = "Allow"
+        Principal = {
+          Federated = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+        }
+      },
+      {
+        Action = [
+          "sts:TagSession",
+          "sts:AssumeRole",
+        ]
+        Effect = "Allow"
+        Principal = {
+          AWS = [
+            module.platform.kion_roles["ct-ado-dasg-application-admin"].arn,
+            module.platform.kion_roles["ct-ado-bcda-application-admin"].arn,
+          ]
+        }
+      },
+    ]
+  })
+
+  force_detach_policies = true
+  managed_policy_arns = [
+    aws_iam_policy.assume_bucket_role.arn,
+    aws_iam_policy.default_function.arn,
+  ]
+  name                 = "bcda-${local.env}-${local.service}"
+  path                 = module.platform.iam_defaults.path
+  permissions_boundary = module.platform.iam_defaults.boundary
 }
 
 module "bucket" {
@@ -189,11 +201,9 @@ resource "aws_lambda_function" "this" {
   }
 
   lifecycle {
-    # FIXME: As of this writing, delivery of the opt-out function is separate from deployment of this module.
-    # As such, we must ignore the specific s3_key and s3_object_version configuration.
     ignore_changes = [
       s3_object_version,
-      s3_key
+      s3_key,
     ]
   }
 
@@ -255,27 +265,25 @@ resource "aws_sqs_queue" "this" {
   kms_data_key_reuse_period_seconds = 300
   kms_master_key_id                 = local.kms_key_arn_primary
   name                              = local.name_prefix
-  policy = jsonencode(
-    {
-      Statement = [
-        {
-          Action = "sqs:SendMessage"
-          Condition = {
-            ArnEquals = {
-              "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
-            }
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sqs:SendMessage"
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
           }
-          Effect = "Allow"
-          Principal = {
-            Service = "sns.amazonaws.com"
-          }
-          Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}" #TODO
-          Sid      = "SnsSendMessage"
-        },
-      ]
-      Version = "2012-10-17"
-    }
-  )
+        }
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}" #TODO
+        Sid      = "SnsSendMessage"
+      },
+    ]
+  })
   receive_wait_time_seconds  = 0
   visibility_timeout_seconds = 900
 }
