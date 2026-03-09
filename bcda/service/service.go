@@ -51,7 +51,8 @@ type service struct {
 	bbBasePath        string
 
 	// These are always searched in order and first matching config is used for any given ACO.
-	acoConfigs []ACOConfig
+	acoConfigs              []ACOConfig
+	v3NoPartialClaimsModels []string
 }
 
 func NewService(r models.Repository, cfg *Config, basePath string) Service {
@@ -68,8 +69,9 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 			claimThruDate:  cfg.RunoutConfig.claimThru,
 			CutoffDuration: cfg.RunoutConfig.CutoffDuration,
 		},
-		bbBasePath: basePath,
-		acoConfigs: cfg.ACOConfigs,
+		bbBasePath:              basePath,
+		acoConfigs:              cfg.ACOConfigs,
+		v3NoPartialClaimsModels: cfg.V3NoPartialClaimsModels,
 	}
 }
 
@@ -277,6 +279,30 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 		return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
 	}
 
+	effectiveDataTypes := acoCfg.Data
+	if args.BFDPath == constants.BFDV3Path {
+		excluded := false
+		for _, m := range s.v3NoPartialClaimsModels {
+			if m == acoCfg.Model {
+				excluded = true
+				break
+			}
+		}
+		if !excluded {
+			hasPartial := false
+			for _, d := range acoCfg.Data {
+				if d == constants.PartiallyAdjudicated {
+					hasPartial = true
+					break
+				}
+			}
+			if !hasPartial {
+				effectiveDataTypes = append([]string(nil), acoCfg.Data...)
+				effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
+			}
+		}
+	}
+
 	for _, rt := range args.ResourceTypes {
 		maxBeneficiaries, err := getMaxBeneCount(rt)
 		if err != nil {
@@ -290,7 +316,7 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 				// Create separate jobs for each data type if needed
-				for _, dataType := range acoCfg.Data {
+				for _, dataType := range effectiveDataTypes {
 					// conditions.TransactionTime references the last time adjudicated data
 					// was updated in the BB client. If we are queuing up a partially-adjudicated
 					// data job, we need to assume that the adjudicated and partially-adjudicated
