@@ -283,7 +283,7 @@ See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tes
 
 #### Benchmark Testing
 
-Benchmark tests live in *_test.go files.  They do not run as part of the normal testing suite.  To note the existing benchmark test assumes that you have existing data int he DB (ie have run `make load-fixtures`).  In order to run them you can do the following:
+Benchmark tests live in *_test.go files.  They do not run as part of the normal testing suite.  To note the existing benchmark test assumes that you have existing data in the DB (ie have run `make load-fixtures`).  In order to run them you can do the following:
 ```
 docker compose -f docker-compose.test.yml run tests go test -v ./... -bench=. -benchtime=10x -run=^$ -benchmem
 ```
