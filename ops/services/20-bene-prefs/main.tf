@@ -183,7 +183,7 @@ resource "aws_lambda_function" "this" {
   handler      = "bootstrap"
 
   function_name                  = local.name_prefix
-  description                    = "Ingests the most recent beneficiary opt-out list from BFD" #FIXME
+  description                    = "Ingests the most recent beneficiary opt-out list from BFD"
   kms_key_arn                    = local.kms_key_arn_primary
   memory_size                    = 128
   reserved_concurrent_executions = 1
