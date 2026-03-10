@@ -43,17 +43,15 @@ resource "aws_security_group_rule" "db" {
   source_security_group_id = aws_security_group.this.id
 }
 
-data "aws_iam_role" "this"{
-  name = "bcda-${local.env}-cclf-import-function"
-}
 # ---------------------------------------------------------------------------
 # Managed policies
 # ---------------------------------------------------------------------------
+
 data "aws_iam_policy_document" "assume_bucket_role" {
   statement {
     sid       = "AssumeBucketRole"
     actions   = ["sts:AssumeRole"]
-    resources = [data.aws_iam_role.this.arn]
+    resources = [module.platform.ssm.eft-nextgen.iam_bucket_role_arn.value]
   }
 }
 
@@ -159,8 +157,14 @@ resource "aws_iam_role" "this" {
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
+  #TODO: Complexity below is for eventual targeting of `test` and `prod` environments
+  for_each = { for k, v in {
+    assume_bucket_role = try(aws_iam_policy.assume_bucket_role.arn, "")
+    default_function   = try(aws_iam_policy.default_function.arn, "")
+  } : k => v if length(v) > 0 }
+
   role = aws_iam_role.this.name
-  policy_arn = aws_iam_policy.default_function.arn
+  policy_arn = each.value
 }
 
 module "bucket" {
@@ -172,8 +176,62 @@ module "bucket" {
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
-data "aws_lambda_function" "this" {
-  function_name                  = "bcda-${local.env}-cclf-import"
+resource "aws_lambda_function" "this" {
+  s3_key       = "function-3540b70393e3dc30f375eee2e8635a65c6f21036.zip" #fixme create zip
+  s3_bucket    = module.bucket.id
+  package_type = "Zip"
+  handler      = "bootstrap"
+
+  function_name                  = local.name_prefix
+  description                    = "Ingests the most recent eft file from BFD"
+  kms_key_arn                    = local.kms_key_arn_primary
+  memory_size                    = 128
+  reserved_concurrent_executions = 1
+  role                           = aws_iam_role.this.arn
+  runtime                        = "provided.al2023"
+  skip_destroy                   = false
+  timeout                        = 900
+  architectures = [
+    "x86_64",
+  ]
+
+  tags = {
+    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/cclf"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      s3_object_version,
+      s3_key,
+    ]
+  }
+
+  environment {
+    variables = {
+      APP_NAME = local.name_prefix
+      DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
+      ENV      = local.env
+    }
+  }
+
+  ephemeral_storage {
+    size = 512
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group  = "/aws/lambda/bcda-${local.env}-${local.service}"
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  vpc_config {
+    ipv6_allowed_for_dual_stack = false
+    security_group_ids          = [aws_security_group.this.id]
+    subnet_ids                  = local.private_subnets
+  }
 }
 
 resource "aws_security_group" "this" {
@@ -200,7 +258,7 @@ resource "aws_security_group" "this" {
 }
 
 data "aws_sqs_queue" "this"{
-  name = "${local.app}-${local.env}-cclf-import"
+  name = "${local.name_prefix}-cclf-import"
 }
 
 resource "aws_sns_topic" "eft_nextgen_topic" {
@@ -216,8 +274,8 @@ resource "aws_sns_topic_subscription" "this" {
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
-  event_source_arn = data.aws_sqs_queue.this.arn
-  function_name    = data.aws_lambda_function.this.function_name
+  event_source_arn = aws_sqs_queue.this.arn
+  function_name    = aws_lambda_function.this.function_name
   batch_size       = 1
   enabled          = true
 }
