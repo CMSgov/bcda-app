@@ -231,26 +231,22 @@ func BenchmarkAuthToken(b *testing.B) {
 	// set up db records
 	aco, err := repository.GetACOByCMSID(ctx, "A9994")
 	if err != nil {
-		b.Log("failed to get aco")
-		b.FailNow()
+		b.Fatal("failed to get aco")
 	}
 	err = repository.UpdateACO(ctx, aco.UUID, map[string]interface{}{"system_id": "2"})
 	if err != nil {
-		b.Logf("failed to update aco: %+v", err)
-		b.FailNow()
+		b.Fatalf("failed to update aco: %+v", err)
 	}
 	creds, err := provider.ResetSecret(aco.ClientID)
 	if err != nil {
-		b.Logf("failed to reset secrets: %+v", err)
-		b.FailNow()
+		b.Fatalf("failed to reset secrets: %+v", err)
 	}
 
 	// set up request
 	rr := httptest.NewRecorder()
 	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/auth/token", server.URL), nil)
 	if err != nil {
-		b.Log("failed to create request")
-		b.FailNow()
+		b.Fatal("failed to create request")
 	}
 	req.Header.Add("Accept", constants.JsonContentType)
 	req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
