@@ -5,6 +5,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -281,25 +282,10 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 
 	effectiveDataTypes := acoCfg.Data
 	if args.BFDPath == constants.BFDV3Path {
-		excluded := false
-		for _, m := range s.v3NoPartialClaimsModels {
-			if m == acoCfg.Model {
-				excluded = true
-				break
-			}
-		}
-		if !excluded {
-			hasPartial := false
-			for _, d := range acoCfg.Data {
-				if d == constants.PartiallyAdjudicated {
-					hasPartial = true
-					break
-				}
-			}
-			if !hasPartial {
-				effectiveDataTypes = append([]string(nil), acoCfg.Data...)
-				effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
-			}
+		excluded := slices.Contains(s.v3NoPartialClaimsModels, acoCfg.Model)
+		if !excluded && !slices.Contains(acoCfg.Data, constants.PartiallyAdjudicated) {
+			effectiveDataTypes = append([]string(nil), acoCfg.Data...)
+			effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
 		}
 	}
 
