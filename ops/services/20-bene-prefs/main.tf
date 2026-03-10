@@ -75,10 +75,6 @@ data "aws_iam_policy_document" "default_function" {
       "logs:PutLogEvents",
       "logs:CreateLogStream",
       "logs:CreateLogGroup",
-      "ec2:DescribeNetworkInterfaces",
-      "ec2:DescribeAccountAttributes",
-      "ec2:DeleteNetworkInterface",
-      "ec2:CreateNetworkInterface",
     ]
     resources = ["*"] #TODO: Consider splitting into discrete statements/policy allowances 
   }
