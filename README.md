@@ -281,6 +281,20 @@ make fhir_testing
 
 See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tests and the FHIR Scan workflow.
 
+#### Benchmark Testing
+
+Benchmark tests live in *_test.go files.  They do not run as part of the normal testing suite.  To note the existing benchmark test assumes that you have existing data in the DB (ie have run `make load-fixtures`).  In order to run them you can do the following:
+```
+docker compose -f docker-compose.test.yml run tests go test -v ./... -bench=. -benchtime=10x -run=^$ -benchmem
+```
+- `-v ./...` says to look for tests everywhere (not just current dir).
+- `-bench=.` sets to run all benchmark tests.  Alternatively you can give a specific name eg `-bench=BenchmarkAuthToken`
+- `-benchtime=10x` means run all bunchmarks ten times each.  This would normally be 1000's+.
+- `-run=^$` means run all tests starting with `$`.  Basically an easy way to say dont run any tests, just run the benchmarks.
+- `-benchmem` means to add memory allocations per operation.
+The end result will include average time spent (nanoseconds) per operation, average bytes used per op, and number of memory allocations per op.
+
+
 ### Environment variables
 
 The various BCDA services (api, worker, ssas) require multiple environment variables and config files.
