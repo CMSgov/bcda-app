@@ -34,6 +34,7 @@ type Config struct {
 	CutoffDuration          time.Duration
 	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
 	V1V2DenyRegexes         []string        `conf:"v1_v2_deny_regexes"`
+	V3NoPartialClaimsModels []string        `conf:"v3_no_partial_claims_models"`
 	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
 	// to be defined as a child of RunoutConfig.
 	// Ex: Without the ,squash, we would have to have RunoutConfig.RUNOUT_CUTOFF_DATE_DAYS

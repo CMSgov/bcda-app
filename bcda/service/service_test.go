@@ -1844,6 +1844,76 @@ func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
+func TestCreateQueueJobs_V3_SSP_GetsPartiallyAdjudicated(t *testing.T) {
+	// SSP with only adjudicated in config gets both adjudicated and partially-adjudicated jobs when using v3.
+	sspACO := ACOConfig{
+		Model:      "SSP",
+		patternExp: regexp.MustCompile(`^A\d{4}`),
+		Data:       []string{constants.Adjudicated},
+	}
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig:            RunoutConfig{CutoffDuration: defaultRunoutCutoff, claimThru: defaultRunoutClaimThru},
+		ACOConfigs:              []ACOConfig{sspACO},
+		V3NoPartialClaimsModels: []string{"CKCC"},
+	}
+	repository := models.NewMockRepository(t)
+	svc := NewService(repository, cfg, "").(*service)
+	ctx := context.WithValue(context.Background(), middleware.CtxTransactionKey, "test-txn")
+	args := worker_types.PrepareJobArgs{
+		Job:           models.Job{ID: 1, TransactionTime: time.Now()},
+		CMSID:         "A1234",
+		ACOID:         uuid.NewUUID(),
+		BFDPath:       constants.BFDV3Path,
+		ResourceTypes: []string{"ExplanationOfBenefit", "Claim"},
+		CreationTime:  time.Now(),
+	}
+	benes := []*models.CCLFBeneficiary{getCCLFBeneficiary(1, "MBI1")}
+	jobs, err := svc.createQueueJobs(ctx, args, time.Time{}, benes)
+	assert.NoError(t, err)
+	// EOB supports only adjudicated; Claim supports only partially-adjudicated. So we get 2 jobs (one of each data type).
+	assert.Len(t, jobs, 2)
+	dataTypes := make([]string, len(jobs))
+	for i, j := range jobs {
+		dataTypes[i] = j.DataType
+	}
+	assert.Contains(t, dataTypes, constants.Adjudicated)
+	assert.Contains(t, dataTypes, constants.PartiallyAdjudicated)
+}
+
+func TestCreateQueueJobs_V3_KCC_AdjudicatedOnly(t *testing.T) {
+	// KCC (CKCC) with only adjudicated in config gets only adjudicated jobs in v3 (no PAC).
+	kccACO := ACOConfig{
+		Model:      "CKCC",
+		patternExp: regexp.MustCompile(`C\d{4}`),
+		Data:       []string{constants.Adjudicated},
+	}
+	cfg := &Config{
+		CutoffDuration:          -50 * time.Hour,
+		SuppressionLookbackDays: int(30),
+		RunoutConfig:            RunoutConfig{CutoffDuration: defaultRunoutCutoff, claimThru: defaultRunoutClaimThru},
+		ACOConfigs:              []ACOConfig{kccACO},
+		V3NoPartialClaimsModels: []string{"CKCC"},
+	}
+	repository := models.NewMockRepository(t)
+	svc := NewService(repository, cfg, "").(*service)
+	ctx := context.WithValue(context.Background(), middleware.CtxTransactionKey, "test-txn")
+	args := worker_types.PrepareJobArgs{
+		Job:           models.Job{ID: 1, TransactionTime: time.Now()},
+		CMSID:         "C5678",
+		ACOID:         uuid.NewUUID(),
+		BFDPath:       constants.BFDV3Path,
+		ResourceTypes: []string{"ExplanationOfBenefit"},
+		CreationTime:  time.Now(),
+	}
+	benes := []*models.CCLFBeneficiary{getCCLFBeneficiary(1, "MBI1")}
+	jobs, err := svc.createQueueJobs(ctx, args, time.Time{}, benes)
+	assert.NoError(t, err)
+	assert.Len(t, jobs, 1)
+	assert.Equal(t, constants.Adjudicated, jobs[0].DataType)
+}
+
 func TestSetClaimsDate_Runout(t *testing.T) {
 	pArgs := worker_types.PrepareJobArgs{
 		CMSID:       "A0000",
