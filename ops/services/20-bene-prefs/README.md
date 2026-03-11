@@ -1,69 +1,3 @@
-# BCDA Config Root Module
-
-This root module is responsible for configuring the sops-enabled strategy for storing sensitive and nonsensitive configuration in AWS SSM Parameter Store.
-The environment-specific configuration values are located in the `values` directory.  You will need to have copied over AWS short term access keys for all of the following.  See cloudtamer to get keys.
-
-## Usage
-
-### Initial Setup
-
-First, initialize and apply the configuration with the `sopsw` script targeted.
-
-```bash
-cd ops/services/10-config
-export TF_VAR_env=dev
-tofu init
-tofu apply -target 'module.sops.local_file.sopsw[0]' -var=create_local_sops_wrapper=true
-```
-
-### Editing Encrypted Configuration
-
-The `sopsw` script should be automatically generated in the `bin/` directory in the initial setup. You can then edit the encrypted configuration files for each environment:
-
-```bash
-# Edit dev environment, for example
-./bin/sopsw -e values/dev.sopsw.yaml
-```
-
-### Deploying Configuration Changes
-
-After editing configuration files, deploy the changes to AWS Parameter Store:
-
-```bash
-# Review changes before applying
-tofu plan -var env=dev
-
-# Apply changes
-tofu apply -var env=dev
-```
-
-## Configuration Structure
-
-Configuration files follow this pattern:
-- `/bcda/${env}/<service>/<sensitivity>/<parameter>`
-- Values with `/nonsensitive/` in the path remain unencrypted
-- Values with `/sensitive/` in the path are encrypted
-
-### Example Configuration
-
-```yaml
-/bcda/${env}/core/sensitive/database_password: "encrypted-password"
-/bcda/${env}/core/nonsensitive/database_name: "bcda_dev"
-/bcda/${env}/api/sensitive/jwt_secret: "encrypted-jwt"
-/bcda/${env}/api/nonsensitive/api_version: "v1"
-```
-
-## Dependencies
-
-### Required Tools
-- **awscli** - For AWS authentication and KMS operations
-- **sops** - For encryption/decryption (`brew install sops`)
-- **yq** - For YAML processing (`brew install yq`)
-- **envsubst** - For environment variable substitution (`brew install gettext`)
-
-### External Tools
-- **tofu** - For deploying configuration to AWS Parameter Store (`brew install opentofu`)
-
 <!-- BEGIN_TF_DOCS -->
 <!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
      'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
@@ -72,7 +6,9 @@ Configuration files follow this pattern:
 -->
 ## Providers
 
-No providers.
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.100.0 |
 
 <!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
      'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
@@ -92,7 +28,6 @@ No requirements.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_create_local_sops_wrapper"></a> [create\_local\_sops\_wrapper](#input\_create\_local\_sops\_wrapper) | When `true`, creates sops wrapper file at `bin/sopsw`. | `bool` | `false` | no |
 | <a name="input_parent_env"></a> [parent\_env](#input\_parent\_env) | The parent environment of the current solution. Will correspond with `terraform.workspace`".<br/>Necessary on `tofu init` and `tofu workspace select` \_only\_. In all other situations, parent env<br/>will be divined from `terraform.workspace`. | `string` | `null` | no |
 | <a name="input_region"></a> [region](#input\_region) | n/a | `string` | `"us-east-1"` | no |
 | <a name="input_secondary_region"></a> [secondary\_region](#input\_secondary\_region) | n/a | `string` | `"us-west-2"` | no |
@@ -106,8 +41,8 @@ No requirements.
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_bucket"></a> [bucket](#module\_bucket) | github.com/CMSgov/cdap//terraform/modules/bucket | 787224b |
 | <a name="module_platform"></a> [platform](#module\_platform) | github.com/CMSgov/cdap//terraform/modules/platform | ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66 |
-| <a name="module_sops"></a> [sops](#module\_sops) | github.com/CMSgov/cdap//terraform/modules/sops | 8874310 |
 
 <!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
      'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
@@ -116,7 +51,22 @@ No requirements.
 -->
 ## Resources
 
-No resources.
+| Name | Type |
+|------|------|
+| [aws_iam_policy.assume_bucket_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_policy.default_function](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_lambda_event_source_mapping.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_event_source_mapping) | resource |
+| [aws_lambda_function.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
+| [aws_security_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_security_group_rule.db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
+| [aws_sns_topic_subscription.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription) | resource |
+| [aws_sqs_queue.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
+| [aws_iam_policy_document.assume_bucket_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.default_function](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_rds_cluster.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/rds_cluster) | data source |
+| [aws_security_groups.db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/security_groups) | data source |
 
 <!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
      'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
