@@ -1,3 +1,8 @@
+# Create a role in your account that allows writing to your desired S3 bucket
+# Add our role to the trust policy of your newly created role with `sts:AssumeRole` permission:
+# `arn:aws:iam::381492306573:role/misp-eft-impl-outbox-role`
+# Share with EFT: the Role ARN, your bucket name, and the folder name where you want us to drop the files.
+#  Add bucket param:  "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_bucket_name"
 locals {
   service      = "eft-nextgen"
   default_tags = module.platform.default_tags
@@ -43,7 +48,7 @@ resource "aws_security_group_rule" "db" {
   source_security_group_id = aws_security_group.this.id
 }
 
-data "aws_iam_role" "this"{
+data "aws_iam_role" "this" {
   name = "bcda-${local.env}-cclf-import-function"
 }
 # ---------------------------------------------------------------------------
@@ -119,6 +124,13 @@ resource "aws_iam_role" "this" {
         }
       },
       {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::381492306573:role/misp-eft-impl-outbox-role"
+        }
+      },
+      {
         Action = [
           "sts:TagSession",
           "sts:AssumeRoleWithWebIdentity",
@@ -153,13 +165,13 @@ resource "aws_iam_role" "this" {
   })
 
   force_detach_policies = true
-  name                 = "bcda-${local.env}-${local.service}"
-  path                 = module.platform.iam_defaults.path
-  permissions_boundary = module.platform.iam_defaults.boundary
+  name                  = "bcda-${local.env}-${local.service}"
+  path                  = module.platform.iam_defaults.path
+  permissions_boundary  = module.platform.iam_defaults.boundary
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  role = aws_iam_role.this.name
+  role       = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
 }
 
@@ -169,11 +181,11 @@ module "bucket" {
   app           = local.app
   env           = local.env
   name          = "${local.app}-${local.env}-${local.service}-lambda"
-  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_bucket_name"
 }
 
 data "aws_lambda_function" "this" {
-  function_name                  = "bcda-${local.env}-cclf-import"
+  function_name = "bcda-${local.env}-cclf-import"
 }
 
 resource "aws_security_group" "this" {
@@ -199,13 +211,13 @@ resource "aws_security_group" "this" {
   tags = { Name = local.name_prefix }
 }
 
-data "aws_sqs_queue" "this"{
+data "aws_sqs_queue" "this" {
   name = "${local.app}-${local.env}-cclf-import"
 }
 
 resource "aws_sns_topic" "eft_nextgen_topic" {
-  display_name      = local.service
-  name              = local.service
+  display_name      = "bfd-${local.env}-eft-inbound-received-s3-bcda"
+  name              = "bfd-${local.env}-eft-inbound-received-s3-bcda"
   kms_master_key_id = "alias/${module.platform.app}-${module.platform.env}"
 }
 
