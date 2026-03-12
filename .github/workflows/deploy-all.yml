@@ -164,6 +164,19 @@ jobs:
           params: |
             GITHUB_TOKEN=/ci/github/token
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/DATABASE_URL
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.ref }}
+      - name: apply SOPS
+        working-directory: ops/services/10-config
+        run: |
+          TF_VAR_parent_env=${{ env.RELEASE_ENV }}
+          tofu init
+          tofu plan \
+            -var 'env=${{ env.RELEASE_ENV }}' \
+            -out 'bcda-release-sops.tfplan'
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:

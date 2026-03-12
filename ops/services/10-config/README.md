@@ -11,7 +11,7 @@ First, initialize and apply the configuration with the `sopsw` script targeted.
 
 ```bash
 cd ops/services/10-config
-export TF_VAR_env=dev
+export TF_VAR_parent_env=dev
 tofu init
 tofu apply -target 'module.sops.local_file.sopsw[0]' -var=create_local_sops_wrapper=true
 ```
