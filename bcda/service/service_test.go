@@ -1844,8 +1844,8 @@ func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
-func TestCreateQueueJobs_V3_SSP_GetsPartiallyAdjudicated(t *testing.T) {
-	// SSP with only adjudicated in config gets both adjudicated and partially-adjudicated jobs when using v3.
+func TestCreateQueueJobs_V3_SSP_PatientAndCoverageOnly(t *testing.T) {
+	// v3 only includes Patient and Coverage (no EOB) until BFD-4461. SSP with adjudicated config.
 	sspACO := ACOConfig{
 		Model:      "SSP",
 		patternExp: regexp.MustCompile(`^A\d{4}`),
@@ -1866,24 +1866,23 @@ func TestCreateQueueJobs_V3_SSP_GetsPartiallyAdjudicated(t *testing.T) {
 		CMSID:         "A1234",
 		ACOID:         uuid.NewUUID(),
 		BFDPath:       constants.BFDV3Path,
-		ResourceTypes: []string{"ExplanationOfBenefit", "Claim"},
+		ResourceTypes: []string{"Patient", "Coverage"},
 		CreationTime:  time.Now(),
 	}
 	benes := []*models.CCLFBeneficiary{getCCLFBeneficiary(1, "MBI1")}
 	jobs, err := svc.createQueueJobs(ctx, args, time.Time{}, benes)
 	assert.NoError(t, err)
-	// EOB supports only adjudicated; Claim supports only partially-adjudicated. So we get 2 jobs (one of each data type).
 	assert.Len(t, jobs, 2)
-	dataTypes := make([]string, len(jobs))
+	resourceTypes := make([]string, len(jobs))
 	for i, j := range jobs {
-		dataTypes[i] = j.DataType
+		resourceTypes[i] = j.ResourceType
 	}
-	assert.Contains(t, dataTypes, constants.Adjudicated)
-	assert.Contains(t, dataTypes, constants.PartiallyAdjudicated)
+	assert.Contains(t, resourceTypes, "Patient")
+	assert.Contains(t, resourceTypes, "Coverage")
 }
 
-func TestCreateQueueJobs_V3_KCC_AdjudicatedOnly(t *testing.T) {
-	// KCC (CKCC) with only adjudicated in config gets only adjudicated jobs in v3 (no PAC).
+func TestCreateQueueJobs_V3_EOBExcluded(t *testing.T) {
+	// v3 excludes EOB (and other claim types); only Patient and Coverage are included until BFD-4461.
 	kccACO := ACOConfig{
 		Model:      "CKCC",
 		patternExp: regexp.MustCompile(`C\d{4}`),
@@ -1910,8 +1909,7 @@ func TestCreateQueueJobs_V3_KCC_AdjudicatedOnly(t *testing.T) {
 	benes := []*models.CCLFBeneficiary{getCCLFBeneficiary(1, "MBI1")}
 	jobs, err := svc.createQueueJobs(ctx, args, time.Time{}, benes)
 	assert.NoError(t, err)
-	assert.Len(t, jobs, 1)
-	assert.Equal(t, constants.Adjudicated, jobs[0].DataType)
+	assert.Len(t, jobs, 0, "v3 must not create EOB jobs; only Patient and Coverage are allowed")
 }
 
 func TestSetClaimsDate_Runout(t *testing.T) {
