@@ -281,15 +281,23 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 	}
 
 	effectiveDataTypes := acoCfg.Data
+	resourceTypes := args.ResourceTypes
 	if args.BFDPath == constants.BFDV3Path {
 		excluded := slices.Contains(s.v3NoPartialClaimsModels, acoCfg.Model)
 		if !excluded && !slices.Contains(acoCfg.Data, constants.PartiallyAdjudicated) {
 			effectiveDataTypes = append([]string(nil), acoCfg.Data...)
 			effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
 		}
+		// Temporary until BFD-4461: v3 only includes Patient and Coverage (no EOB).
+		resourceTypes = nil
+		for _, rt := range args.ResourceTypes {
+			if rt == "Patient" || rt == "Coverage" {
+				resourceTypes = append(resourceTypes, rt)
+			}
+		}
 	}
 
-	for _, rt := range args.ResourceTypes {
+	for _, rt := range resourceTypes {
 		maxBeneficiaries, err := getMaxBeneCount(rt)
 		if err != nil {
 			return nil, err
