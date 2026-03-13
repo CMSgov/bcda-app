@@ -168,4 +168,4 @@ sops:
       aws_profile: ""
   unencrypted_regex: /nonsensitive/
   mac_only_encrypted: true
-  version: 3.12.2
+  version: 3.12.1
