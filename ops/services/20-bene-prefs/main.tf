@@ -157,14 +157,8 @@ resource "aws_iam_role" "this" {
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  #TODO: Complexity below is for eventual targeting of `test` and `prod` environments
-  for_each = { for k, v in {
-    assume_bucket_role = try(aws_iam_policy.assume_bucket_role.arn, "")
-    default_function   = try(aws_iam_policy.default_function.arn, "")
-  } : k => v if length(v) > 0 }
-
   role = aws_iam_role.this.name
-  policy_arn = each.value
+  policy_arn = aws_iam_policy.default_function.arn
 }
 
 module "bucket" {
@@ -254,6 +248,7 @@ resource "aws_security_group" "this" {
     },
   ]
   name = local.name_prefix
+  vpc_id = module.platform.vpc_id
   tags = { Name = local.name_prefix }
 }
 
