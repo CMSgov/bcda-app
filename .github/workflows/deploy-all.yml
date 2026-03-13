@@ -176,7 +176,7 @@ jobs:
       - name: apply SOPS
         working-directory: ops/services/10-config
         run: |
-          TF_VAR_parent_env=${{ env.RELEASE_ENV }}
+          parent_env=${{ env.RELEASE_ENV }}
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
