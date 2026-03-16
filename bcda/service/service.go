@@ -269,99 +269,156 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 }
 
 func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
-	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
-	var sinceArg string
-	if !since.IsZero() {
-		sinceArg = "gt" + since.Format(time.RFC3339Nano)
+	sinceArg := formatSinceArg(since)
+	resourceTypes, effectiveDataTypes, err := s.getEffectiveQueueJobConfig(args)
+	if err != nil {
+		return nil, err
 	}
 
-	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
-	if !ok {
-		return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
-	}
-
-	effectiveDataTypes := acoCfg.Data
-	resourceTypes := args.ResourceTypes
-	if args.BFDPath == constants.BFDV3Path {
-		excluded := slices.Contains(s.v3NoPartialClaimsModels, acoCfg.Model)
-		if !excluded && !slices.Contains(acoCfg.Data, constants.PartiallyAdjudicated) {
-			effectiveDataTypes = append([]string(nil), acoCfg.Data...)
-			effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
-		}
-		// Temporary until BFD-4461: v3 only includes Patient and Coverage (no EOB).
-		resourceTypes = nil
-		for _, rt := range args.ResourceTypes {
-			if rt == "Patient" || rt == "Coverage" {
-				resourceTypes = append(resourceTypes, rt)
-			}
-		}
-	}
-
-	for _, rt := range resourceTypes {
-		maxBeneficiaries, err := getMaxBeneCount(rt)
+	for _, resourceType := range resourceTypes {
+		maxBeneficiaries, err := getMaxBeneCount(resourceType)
 		if err != nil {
 			return nil, err
 		}
 
-		rowCount := 0
-		jobIDs := make([]string, 0, maxBeneficiaries)
-		for _, b := range beneficiaries {
-			rowCount++
-			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
-			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				// Create separate jobs for each data type if needed
-				for _, dataType := range effectiveDataTypes {
-					// conditions.TransactionTime references the last time adjudicated data
-					// was updated in the BB client. If we are queuing up a partially-adjudicated
-					// data job, we need to assume that the adjudicated and partially-adjudicated
-					// data ingestion timelines don't line up, therefore for all
-					// partially-adjudicated jobs we will just use conditions.CreationTime as an
-					// upper bound
-					var transactionTime time.Time
-					if dataType == constants.PartiallyAdjudicated {
-						transactionTime = args.CreationTime
-					} else {
-						transactionTime = args.Job.TransactionTime
-					}
-					if resource, ok := GetClaimType(rt); ok {
-						if resource.SupportsClaimType(dataType) {
-							jobId, err := safecast.ToInt(args.Job.ID)
-							if err != nil {
-								log.API.Errorln(err)
-							}
-							enqueueArgs := worker_types.JobEnqueueArgs{
-								ID:              jobId,
-								ACOID:           args.ACOID.String(),
-								CMSID:           args.CMSID,
-								BeneficiaryIDs:  jobIDs,
-								ResourceType:    rt,
-								Since:           sinceArg,
-								TypeFilter:      args.TypeFilter,
-								TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
-								TransactionTime: transactionTime,
-								BBBasePath:      args.BFDPath,
-								DataType:        dataType,
-							}
-
-							ok := s.setClaimsDate(&enqueueArgs, args)
-							if !ok {
-								return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
-							}
-
-							jobs = append(jobs, &enqueueArgs)
-						}
-					} else {
-						// This should never be possible, would have returned earlier
-						return nil, errors.New("Invalid resource type: " + rt)
-					}
-				}
-
-				jobIDs = make([]string, 0, maxBeneficiaries)
+		for _, beneficiaryIDs := range chunkBeneficiaryIDs(beneficiaries, maxBeneficiaries) {
+			resourceJobs, err := s.createJobsForResourceChunk(ctx, args, sinceArg, resourceType, beneficiaryIDs, effectiveDataTypes)
+			if err != nil {
+				return nil, err
 			}
+			jobs = append(jobs, resourceJobs...)
 		}
 	}
 
 	return jobs, nil
+}
+
+func formatSinceArg(since time.Time) string {
+	if since.IsZero() {
+		return ""
+	}
+
+	// Persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'.
+	return "gt" + since.Format(time.RFC3339Nano)
+}
+
+func invalidACOConfigError(cmsID string) error {
+	return fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", cmsID)
+}
+
+func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) ([]string, []string, error) {
+	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
+	if !ok {
+		return nil, nil, invalidACOConfigError(args.CMSID)
+	}
+
+	resourceTypes := append([]string(nil), args.ResourceTypes...)
+	effectiveDataTypes := append([]string(nil), acoCfg.Data...)
+	if args.BFDPath != constants.BFDV3Path {
+		return resourceTypes, effectiveDataTypes, nil
+	}
+
+	excluded := slices.Contains(s.v3NoPartialClaimsModels, acoCfg.Model)
+	if !excluded && !slices.Contains(acoCfg.Data, constants.PartiallyAdjudicated) {
+		effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
+	}
+
+	return filterV3ResourceTypes(resourceTypes), effectiveDataTypes, nil
+}
+
+func filterV3ResourceTypes(resourceTypes []string) []string {
+	filtered := make([]string, 0, len(resourceTypes))
+	for _, resourceType := range resourceTypes {
+		if resourceType == "Patient" || resourceType == "Coverage" {
+			filtered = append(filtered, resourceType)
+		}
+	}
+
+	return filtered
+}
+
+func chunkBeneficiaryIDs(beneficiaries []*models.CCLFBeneficiary, maxBeneficiaries int) [][]string {
+	if len(beneficiaries) == 0 {
+		return nil
+	}
+
+	chunks := make([][]string, 0, (len(beneficiaries)+maxBeneficiaries-1)/maxBeneficiaries)
+	currentChunk := make([]string, 0, maxBeneficiaries)
+
+	for _, beneficiary := range beneficiaries {
+		currentChunk = append(currentChunk, fmt.Sprint(beneficiary.ID))
+		if len(currentChunk) < maxBeneficiaries {
+			continue
+		}
+
+		chunks = append(chunks, currentChunk)
+		currentChunk = make([]string, 0, maxBeneficiaries)
+	}
+
+	if len(currentChunk) > 0 {
+		chunks = append(chunks, currentChunk)
+	}
+
+	return chunks
+}
+
+func (s *service) createJobsForResourceChunk(ctx context.Context, args worker_types.PrepareJobArgs, sinceArg string, resourceType string, beneficiaryIDs []string, effectiveDataTypes []string) ([]*worker_types.JobEnqueueArgs, error) {
+	resource, ok := GetClaimType(resourceType)
+	if !ok {
+		// This should never be possible, would have returned earlier.
+		return nil, errors.New("Invalid resource type: " + resourceType)
+	}
+
+	jobs := make([]*worker_types.JobEnqueueArgs, 0, len(effectiveDataTypes))
+	for _, dataType := range effectiveDataTypes {
+		if !resource.SupportsClaimType(dataType) {
+			continue
+		}
+
+		enqueueArgs, err := s.buildQueueJobArgs(ctx, args, sinceArg, beneficiaryIDs, resourceType, dataType)
+		if err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, enqueueArgs)
+	}
+
+	return jobs, nil
+}
+
+func (s *service) buildQueueJobArgs(ctx context.Context, args worker_types.PrepareJobArgs, sinceArg string, beneficiaryIDs []string, resourceType string, dataType string) (*worker_types.JobEnqueueArgs, error) {
+	jobID, err := safecast.ToInt(args.Job.ID)
+	if err != nil {
+		log.API.Errorln(err)
+	}
+
+	enqueueArgs := worker_types.JobEnqueueArgs{
+		ID:              jobID,
+		ACOID:           args.ACOID.String(),
+		CMSID:           args.CMSID,
+		BeneficiaryIDs:  beneficiaryIDs,
+		ResourceType:    resourceType,
+		Since:           sinceArg,
+		TypeFilter:      args.TypeFilter,
+		TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
+		TransactionTime: getQueueJobTransactionTime(args, dataType),
+		BBBasePath:      args.BFDPath,
+		DataType:        dataType,
+	}
+
+	if !s.setClaimsDate(&enqueueArgs, args) {
+		return nil, invalidACOConfigError(args.CMSID)
+	}
+
+	return &enqueueArgs, nil
+}
+
+func getQueueJobTransactionTime(args worker_types.PrepareJobArgs, dataType string) time.Time {
+	// Partially-adjudicated data can lag adjudicated claims ingestion, so use job creation time.
+	if dataType == constants.PartiallyAdjudicated {
+		return args.CreationTime
+	}
+
+	return args.Job.TransactionTime
 }
 
 // Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
