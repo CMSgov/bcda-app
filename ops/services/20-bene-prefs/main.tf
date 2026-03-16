@@ -8,7 +8,6 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
-  lambda_filename       = "lambda_function.zip"
 }
 
 module "platform" {
@@ -90,7 +89,6 @@ data "aws_iam_policy_document" "default_function" {
     resources = [
       local.kms_key_arn_primary,
       local.kms_key_arn_secondary,
-      module.platform.ssm.bene_prefs.iam_bucket_role_arn.value
     ]
   }
 }
@@ -158,19 +156,9 @@ resource "aws_iam_role" "this" {
   permissions_boundary = module.platform.iam_defaults.boundary
 }
 
-resource "aws_iam_role_policy_attachment" "vpc_access" {
-  role       = aws_iam_role.this.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
 resource "aws_iam_role_policy_attachment" "this" {
   role = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
-}
-
-resource "aws_iam_role_policy_attachment" "assume_bucket_role" {
-  role = aws_iam_role.this.name
-  policy_arn = aws_iam_policy.assume_bucket_role.arn
 }
 
 module "bucket" {
@@ -179,31 +167,14 @@ module "bucket" {
   app           = local.app
   env           = local.env
   name          = "${local.app}-${local.env}-${local.service}"
-  ssm_parameter = "/${local.app}/${local.env}/bene_prefs/nonsensitive/bucket_name"
-}
-
-resource "aws_cloudwatch_log_group" "this" {
-  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
-  retention_in_days = 180
-  skip_destroy      = true
-
-  tags = {
-    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
-  }
-}
-
-resource "aws_s3_object" "dummy_file_upload" {
-  bucket = module.bucket.id
-  key    = local.lambda_filename
-  source = "${path.module}/${local.lambda_filename}"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
 resource "aws_lambda_function" "this" {
-  s3_bucket         = aws_s3_object.dummy_file_upload.bucket
-  s3_key            = aws_s3_object.dummy_file_upload.key
-  s3_object_version = aws_s3_object.dummy_file_upload.version_id
-  package_type     = "Zip"
-  handler          = "bootstrap"
+  s3_key       = "function-3540b70393e3dc30f375eee2e8635a65c6f21036.zip"
+  s3_bucket    = module.bucket.id
+  package_type = "Zip"
+  handler      = "bootstrap"
 
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
@@ -224,7 +195,8 @@ resource "aws_lambda_function" "this" {
 
   lifecycle {
     ignore_changes = [
-      filename,
+      s3_object_version,
+      s3_key,
     ]
   }
 
@@ -303,20 +275,6 @@ resource "aws_sqs_queue" "this" {
         }
         Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
         Sid      = "SnsSendMessage"
-      },
-      {
-        Action = "sns:Subscribe"
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
-          }
-        }
-        Effect = "Allow"
-        Principal = {
-          Service = "sns.amazonaws.com"
-        }
-        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
-        Sid      = "SnsSubscribe"
       },
     ]
   })
