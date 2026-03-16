@@ -166,7 +166,7 @@ module "bucket" {
 
   app           = local.app
   env           = local.env
-  name          = "${local.app}-${local.env}-${local.service}-lambda"
+  name          = "${local.app}-${local.env}-${local.service}"
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
