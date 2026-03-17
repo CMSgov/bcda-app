@@ -177,9 +177,8 @@ jobs:
         working-directory: ops/services/10-config
         run: |
           parent_env=${{ env.RELEASE_ENV }}
-          tofu init
-          tofu plan \
-            -var 'env=${{ env.RELEASE_ENV }}' \
+          TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
+          tofu plan 
             -out 'bcda-release-sops.tfplan'
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
