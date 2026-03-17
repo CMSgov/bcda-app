@@ -182,12 +182,13 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 
 	for _, tt := range tests {
 		s.Run(string(tt.status), func() {
+			now := time.Now()
 			j := models.Job{
 				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 				RequestURL: constants.V2Path + constants.PatientEOBPath,
 				Status:     tt.status,
-				CreatedAt:  time.Now(),
-				UpdatedAt:  time.Now(),
+				CreatedAt:  now,
+				UpdatedAt:  now,
 			}
 			var err error
 			r := postgres.NewRepository(s.db)
@@ -206,7 +207,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			case http.StatusInternalServerError:
 				assert.Contains(s.T(), rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(s.T(), j.UpdatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
 
 		})
@@ -215,12 +216,13 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 
 func (s *APITestSuite) TestJobStatusCompleted() {
 	var err error
+	now := time.Now()
 	j := models.Job{
 		ACOID:      acoUnderTest,
 		RequestURL: constants.V2Path + constants.PatientEOBPath,
 		Status:     models.JobStatusCompleted,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -243,7 +245,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
 	str := rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(s.apiV2.handler.JobTimeout), rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err = json.Unmarshal(rr.Body.Bytes(), &rb)
