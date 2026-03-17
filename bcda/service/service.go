@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	bcdaerrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -302,14 +303,10 @@ func formatSinceArg(since time.Time) string {
 	return "gt" + since.Format(time.RFC3339Nano)
 }
 
-func invalidACOConfigError(cmsID string) error {
-	return fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", cmsID)
-}
-
 func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) ([]string, []string, error) {
 	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
 	if !ok {
-		return nil, nil, invalidACOConfigError(args.CMSID)
+		return nil, nil, &bcdaerrors.InvalidACOConfigError{CMSID: args.CMSID}
 	}
 
 	resourceTypes := append([]string(nil), args.ResourceTypes...)
@@ -406,7 +403,7 @@ func (s *service) buildQueueJobArgs(ctx context.Context, args worker_types.Prepa
 	}
 
 	if !s.setClaimsDate(&enqueueArgs, args) {
-		return nil, invalidACOConfigError(args.CMSID)
+		return nil, &bcdaerrors.InvalidACOConfigError{CMSID: args.CMSID}
 	}
 
 	return &enqueueArgs, nil
@@ -533,7 +530,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 				}
 			}
 		} else {
-			return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+			return nil, &bcdaerrors.InvalidACOConfigError{CMSID: args.CMSID}
 		}
 
 	}
