@@ -269,6 +269,10 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
+// createQueueJobs expands a single "prepare job" request into concrete queue jobs by:
+// - choosing the effective resource + data types for the ACO/config (including BFD v3 rules)
+// - splitting beneficiaries into batches sized for the target resource type
+// - emitting one queue job per (resourceType × dataType × beneficiaryBatch)
 func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
 	sinceArg := formatSinceArg(since)
 	resourceTypes, effectiveDataTypes, err := s.getEffectiveQueueJobConfig(args)
@@ -294,6 +298,8 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 	return jobs, nil
 }
 
+// formatSinceArg converts a time into the "_lastUpdated" query parameter format expected by Blue Button.
+// A zero time means "no since filter", which is represented as the empty string.
 func formatSinceArg(since time.Time) string {
 	if since.IsZero() {
 		return ""
@@ -303,6 +309,8 @@ func formatSinceArg(since time.Time) string {
 	return "gt" + since.Format(time.RFC3339Nano)
 }
 
+// getEffectiveQueueJobConfig determines which resource types should be queued and which claim
+// data types should be requested, based on the matching ACO config and BFD API version.
 func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) ([]string, []string, error) {
 	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
 	if !ok {
@@ -323,6 +331,7 @@ func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) (
 	return filterV3ResourceTypes(resourceTypes), effectiveDataTypes, nil
 }
 
+// filterV3ResourceTypes enforces BFD v3 limitations by allowing only supported resource types.
 func filterV3ResourceTypes(resourceTypes []string) []string {
 	filtered := make([]string, 0, len(resourceTypes))
 	for _, resourceType := range resourceTypes {
@@ -334,6 +343,7 @@ func filterV3ResourceTypes(resourceTypes []string) []string {
 	return filtered
 }
 
+// chunkBeneficiaryIDs splits beneficiaries into fixed-size ID batches for queueing.
 func chunkBeneficiaryIDs(beneficiaries []*models.CCLFBeneficiary, maxBeneficiaries int) [][]string {
 	if len(beneficiaries) == 0 {
 		return nil
@@ -359,6 +369,8 @@ func chunkBeneficiaryIDs(beneficiaries []*models.CCLFBeneficiary, maxBeneficiari
 	return chunks
 }
 
+// createJobsForResourceChunk produces enqueue arguments for a single resource type and beneficiary batch,
+// creating a distinct job per compatible claim data type.
 func (s *service) createJobsForResourceChunk(ctx context.Context, args worker_types.PrepareJobArgs, sinceArg string, resourceType string, beneficiaryIDs []string, effectiveDataTypes []string) ([]*worker_types.JobEnqueueArgs, error) {
 	resource, ok := GetClaimType(resourceType)
 	if !ok {
