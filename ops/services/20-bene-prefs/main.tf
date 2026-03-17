@@ -156,6 +156,11 @@ resource "aws_iam_role" "this" {
   permissions_boundary = module.platform.iam_defaults.boundary
 }
 
+resource "aws_iam_role_policy_attachment" "vpc_access" {
+  role       = aws_iam_role.this.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy_attachment" "this" {
   role = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
@@ -170,11 +175,17 @@ module "bucket" {
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "../../../bcda/lambda/optout/main.go"
+  output_path = "lambda_function.zip"
+}
+
 resource "aws_lambda_function" "this" {
-  s3_key       = "function-3540b70393e3dc30f375eee2e8635a65c6f21036.zip"
-  s3_bucket    = module.bucket.id
-  package_type = "Zip"
-  handler      = "bootstrap"
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  package_type     = "Zip"
+  handler          = "bootstrap"
 
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
@@ -195,8 +206,7 @@ resource "aws_lambda_function" "this" {
 
   lifecycle {
     ignore_changes = [
-      s3_object_version,
-      s3_key,
+      filename,
     ]
   }
 
