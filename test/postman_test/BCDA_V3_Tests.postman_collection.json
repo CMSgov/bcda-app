@@ -706,8 +706,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -767,8 +768,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -829,8 +831,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -899,8 +902,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -982,8 +986,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1058,8 +1063,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1225,8 +1231,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1297,8 +1304,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1440,8 +1448,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1501,8 +1510,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1644,8 +1654,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
@@ -1716,8 +1727,9 @@
                       "type": "bearer",
                       "bearer": [
                         {
-                          "key": "undefined",
-                          "type": "any"
+                          "key": "token",
+                          "value": "{{token}}",
+                          "type": "string"
                         }
                       ]
                     },
