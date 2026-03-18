@@ -604,7 +604,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// This ensures they only get NCH data, not SharedSystem data
 	if h.apiVersion == constants.V3Version {
 		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
-			rp.TypeFilter = h.ensureNCHOnlyForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
+			rp.TypeFilter = h.omitSharedSystemForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
 		}
 	}
 
@@ -892,9 +892,9 @@ func extractTagCodeFromValue(tagValue string) string {
 	return tagValue
 }
 
-// ensureNCHOnlyForNonPAC ensures that non-PAC eligible ACOs in v3 only receive NCH data
-// by adding a NationalClaimsHistory tag filter if no explicit filter is provided
-func (h *Handler) ensureNCHOnlyForNonPAC(ctx context.Context, typeFilter [][]string, cmsID string) [][]string {
+// omitSharedSystemForNonPAC ensures that non-PAC eligible ACOs in v3 do not receive SharedSystem data
+// by adding a System-Type tag filter if no explicit filter is provided
+func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter [][]string, cmsID string) [][]string {
 	// Check if ACO has PAC access
 	acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
 	if !ok {
@@ -908,29 +908,30 @@ func (h *Handler) ensureNCHOnlyForNonPAC(ctx context.Context, typeFilter [][]str
 		return typeFilter
 	}
 
-	// Check if there's already a _tag parameter that filters to NCH
-	// If NCH is already specified, no need to add it again
-	hasNCHFilter := false
+	// Check if there's already a _tag parameter that filters out SharedSystem
+	// If it's already specified, no need to add it again
+	hasRelevantFilter := false
 	for _, paramPair := range typeFilter {
 		if len(paramPair) == 2 && paramPair[0] == "_tag" {
 			tagCode := extractTagCodeFromValue(paramPair[1])
-			if tagCode == "NationalClaimsHistory" {
-				hasNCHFilter = true
+			if tagCode == "NationalClaimsHistory" || tagCode == "DDPS" {
+				hasRelevantFilter = true
 				break
 			}
 		}
 	}
 
-	// If NCH filter is already present, no need to add default
-	if hasNCHFilter {
+	// If relevant filter is already present, no need to add default
+	if hasRelevantFilter {
 		return typeFilter
 	}
 
-	// For non-PAC ACOs without an explicit NCH filter, add NationalClaimsHistory filter
-	// to ensure they only get NCH data, not SharedSystem data
+	// For non-PAC ACOs without a qualifying filter, add System-Type filter
+	// to ensure they do not receive SharedSystem data.
+	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
-	nchTagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"
-	typeFilter = append(typeFilter, []string{"_tag", nchTagValue})
+	tagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
+	typeFilter = append(typeFilter, []string{"_tag", tagValue})
 
 	return typeFilter
 }

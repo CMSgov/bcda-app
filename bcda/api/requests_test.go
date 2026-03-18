@@ -1531,8 +1531,8 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 			cmsID:        "NOPAC0000",
 			typeFilter:   [][]string{},
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
-			description:  "Non-PAC ACO with no filter should get NCH filter added",
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			description:  "Non-PAC ACO with no filter should get filter added",
 		},
 		{
 			name:         "NonPACWithNCHFilter",
@@ -1540,15 +1540,23 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"}},
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
-			description:  "Non-PAC ACO with existing NCH filter should not duplicate it",
+			description:  "Non-PAC ACO with existing NCH filter should keep same filter",
+		},
+		{
+			name:         "NonPACWithDDPSFilter",
+			cmsID:        "NOPAC0000",
+			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"}},
+			acoConfig:    acoWithoutPAC,
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			description:  "Non-PAC ACO with existing DDPS filter should keep same filter",
 		},
 		{
 			name:         "NonPACWithFinalAction",
 			cmsID:        "NOPAC0000",
 			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"}},
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
-			description:  "Non-PAC ACO with FinalAction should still get NCH filter added",
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			description:  "Non-PAC ACO with FinalAction should still get filter added",
 		},
 		{
 			name:         "PACNoFilter",
@@ -1556,7 +1564,7 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 			typeFilter:   [][]string{},
 			acoConfig:    acoWithPAC,
 			expectedTags: []string{},
-			description:  "PAC ACO with no filter should not get NCH filter added",
+			description:  "PAC ACO with no filter should not get filter added",
 		},
 		{
 			name:         "PACWithSharedSystem",
@@ -1564,15 +1572,15 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
 			acoConfig:    acoWithPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
-			description:  "PAC ACO with SharedSystem should not get NCH filter added",
+			description:  "PAC ACO with SharedSystem should not get filter added",
 		},
 		{
 			name:         "NonPACWithServiceDate",
 			cmsID:        "NOPAC0000",
 			typeFilter:   [][]string{{"service-date", "ge2024-01-01"}},
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
-			description:  "Non-PAC ACO with service-date but no _tag should get NCH filter added",
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			description:  "Non-PAC ACO with service-date but no _tag should get filter added",
 		},
 	}
 
@@ -1582,7 +1590,7 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 			mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
 
 			// Call the function
-			result := h.ensureNCHOnlyForNonPAC(ctx, test.typeFilter, test.cmsID)
+			result := h.omitSharedSystemForNonPAC(ctx, test.typeFilter, test.cmsID)
 
 			// Extract _tag values from result
 			var actualTags []string
@@ -1646,7 +1654,7 @@ func TestEnsureNCHOnlyForNonPACWithDefaultEOB(t *testing.T) {
 	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
 
 	// Call ensureNCHOnlyForNonPAC (this is what gets called when EOB is in resourceTypes)
-	result := h.ensureNCHOnlyForNonPAC(ctx, typeFilter, "NOPAC0000")
+	result := h.omitSharedSystemForNonPAC(ctx, typeFilter, "NOPAC0000")
 
 	// Verify NCH filter was added
 	var actualTags []string
