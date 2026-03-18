@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
@@ -167,6 +168,7 @@ func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys []models.JobKey)
 	}
 
 	query, args := ib.Build()
+
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
 }
@@ -175,18 +177,6 @@ func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error
 	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
 	sb.Where(sb.NotLike("file_name", "%-error.ndjson%")) // Ignore error files from completed count.
-
-	query, args := sb.Build()
-	var count int
-	if err := r.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
-		return -1, err
-	}
-	return count, nil
-}
-
-func (r *Repository) GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int, error) {
-	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(DISTINCT que_job_id)").From("job_keys")
-	sb.Where(sb.Equal("job_id", jobID))
 
 	query, args := sb.Build()
 	var count int
@@ -223,6 +213,8 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, qjobID int64) (*
 		}
 		return nil, err
 	}
+
+	jk.FileName = strings.TrimSpace(jk.FileName)
 
 	return jk, nil
 }

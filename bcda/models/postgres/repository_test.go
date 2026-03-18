@@ -875,7 +875,8 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
 
-	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
+	err := r.repository.CreateJobKeys(ctx, []models.JobKey{jk1, jk2, jk3})
+	assert.Nil(err)
 
 	// Since we have other job keys that exist, we cannot guarantee length
 	keys, err := r.repository.GetJobKeys(ctx, jobID)
@@ -890,7 +891,7 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	assertDoesNotContainsFile(assert, otherKeys, jk1.FileName)
 	assertDoesNotContainsFile(assert, otherKeys, jk2.FileName)
 
-	// Verify all fields were saved on Create
+	// Verify all fields were saved on Create, also Verify GetJobKey
 	jobKey, err := r.repository.GetJobKey(ctx, jobID, jk1Filename)
 	assert.Nil(err)
 	assert.Equal(jobID, jobKey.JobID)
@@ -898,24 +899,6 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	assert.Equal("ExplanationOfBenefit", jobKey.ResourceType)
 	assert.Equal(10, jobKey.BenesWithData)
 	assert.Equal(100, jobKey.BenesRetrievedPercent)
-}
-
-// TestJobKeyMethods validates the CRUD operations associated with the job_keys table for single result
-func (r *RepositoryTestSuite) TestJobKeyMethods() {
-	ctx := context.Background()
-
-	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
-	fileName := uuid.New()
-	jk1 := models.JobKey{JobID: jobID, FileName: fileName}
-	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-
-	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
-
-	key, err := r.repository.GetJobKey(ctx, jobID, fileName)
-	assert.Nil(r.T(), err)
-	assert.Equal(r.T(), jobID, key.JobID)
-	assert.Equal(r.T(), fileName, strings.TrimSpace(key.FileName))
 }
 
 // TestCMSID verifies that we can store and retrieve the CMS_ID as expected

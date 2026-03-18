@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
@@ -534,6 +535,33 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 	return nil
 }
 
+func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys []models.JobKey) error {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
+	ib.Cols(
+		"job_id",
+		"que_job_id",
+		"file_name",
+		"resource_type",
+		"benes_with_data",
+		"benes_retrieved_percent",
+	)
+
+	for _, jobKey := range jobKeys {
+		ib.Values(
+			jobKey.JobID,
+			jobKey.QueJobID,
+			jobKey.FileName,
+			jobKey.ResourceType,
+			jobKey.BenesWithData,
+			jobKey.BenesRetrievedPercent,
+		)
+	}
+
+	query, args := ib.Build()
+	_, err := r.ExecContext(ctx, query, args...)
+	return err
+}
+
 func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobKey, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select(
 		"id",
@@ -563,6 +591,7 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 		); err != nil {
 			return nil, err
 		}
+		jk.FileName = strings.TrimSpace(jk.FileName)
 		keys = append(keys, &jk)
 	}
 
@@ -596,6 +625,8 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 	); err != nil {
 		return nil, err
 	}
+
+	jk.FileName = strings.TrimSpace(jk.FileName)
 
 	return jk, nil
 }
