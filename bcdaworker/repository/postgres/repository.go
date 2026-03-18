@@ -123,8 +123,21 @@ func (r *Repository) UpdateJobStatusCheckStatus(ctx context.Context, jobID uint,
 
 func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
-	ib.Cols("job_id", "que_job_id", "file_name", "resource_type").
-		Values(jobKey.JobID, jobKey.QueJobID, jobKey.FileName, jobKey.ResourceType)
+	ib.Cols(
+		"job_id",
+		"que_job_id",
+		"file_name",
+		"resource_type",
+		"benes_with_data",
+		"benes_retrieved_percent",
+	).Values(
+		jobKey.JobID,
+		jobKey.QueJobID,
+		jobKey.FileName,
+		jobKey.ResourceType,
+		jobKey.BenesWithData,
+		jobKey.BenesRetrievedPercent,
+	)
 
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
@@ -133,10 +146,24 @@ func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) err
 
 func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys []models.JobKey) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
-	ib.Cols("job_id", "que_job_id", "file_name", "resource_type")
+	ib.Cols(
+		"job_id",
+		"que_job_id",
+		"file_name",
+		"resource_type",
+		"benes_with_data",
+		"benes_retrieved_percent",
+	)
 
 	for _, jobKey := range jobKeys {
-		ib.Values(jobKey.JobID, jobKey.QueJobID, jobKey.FileName, jobKey.ResourceType)
+		ib.Values(
+			jobKey.JobID,
+			jobKey.QueJobID,
+			jobKey.FileName,
+			jobKey.ResourceType,
+			jobKey.BenesWithData,
+			jobKey.BenesRetrievedPercent,
+		)
 	}
 
 	query, args := ib.Build()
@@ -170,7 +197,13 @@ func (r *Repository) GetUniqueJobKeyCount(ctx context.Context, jobID uint) (int,
 }
 
 func (r *Repository) GetJobKey(ctx context.Context, jobID uint, qjobID int64) (*models.JobKey, error) {
-	sb := sqlFlavor.NewSelectBuilder().Select("id").From("job_keys")
+	sb := sqlFlavor.NewSelectBuilder().Select(
+		"id",
+		"file_name",
+		"resource_type",
+		"benes_with_data",
+		"benes_retrieved_percent",
+	).From("job_keys")
 	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("que_job_id", qjobID)))
 
 	query, args := sb.Build()
@@ -178,7 +211,13 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, qjobID int64) (*
 
 	jk := &models.JobKey{JobID: jobID, QueJobID: &qjobID}
 
-	if err := row.Scan(&jk.ID); err != nil {
+	if err := row.Scan(
+		&jk.ID,
+		&jk.FileName,
+		&jk.ResourceType,
+		&jk.BenesWithData,
+		&jk.BenesRetrievedPercent,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, repository.ErrJobKeyNotFound
 		}

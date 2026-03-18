@@ -9,6 +9,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -305,6 +306,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 	errorCount := 0
+	hasEntriesCount := 0
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
 	failed := false
@@ -338,7 +340,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				//MBI is appended inside file, not printed out to system logs
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
-			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir)
+			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir, &hasEntriesCount)
 			return "", 0, nil
 		}()
 
@@ -375,10 +377,14 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		return jobKeys, err
 	}
 
+	pr := &jobKeys[0]
 	if fstat.Size() != 0 {
-		pr := &jobKeys[0]
 		(*pr).FileName = fileUUID + ".ndjson"
 	}
+
+	successfullyRetrievedPercent := 100 - int(math.Round(failPct))
+	(*pr).BenesRetrievedPercent = successfullyRetrievedPercent
+	(*pr).BenesWithData = hasEntriesCount
 
 	if errorCount > 0 {
 		jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
@@ -443,15 +449,18 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	}
 }
 
-func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string) {
+func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string, hasEntriesCount *int) {
 	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
 	defer close()
 	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
+
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
 			continue
 		}
+
+		*hasEntriesCount++
 
 		entryJSON, err := json.Marshal(entry["resource"])
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.

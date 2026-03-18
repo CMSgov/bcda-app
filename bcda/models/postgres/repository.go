@@ -383,7 +383,17 @@ func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, file
 	return nil
 }
 
-var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at"}
+var jobColumns []string = []string{
+	"id",
+	"aco_id",
+	"request_url",
+	"status",
+	"transaction_time",
+	"job_count",
+	"created_at",
+	"updated_at",
+	"benes_attributed_to_aco",
+}
 
 func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
@@ -434,14 +444,22 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 	sb.From("jobs").Where(sb.Equal("id", jobID))
 
 	query, args := sb.Build()
-
 	var (
 		j                                     models.Job
 		transactionTime, createdAt, updatedAt sql.NullTime
 	)
 
-	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-		&j.JobCount, &createdAt, &updatedAt)
+	err := r.QueryRowContext(ctx, query, args...).Scan(
+		&j.ID,
+		&j.ACOID,
+		&j.RequestURL,
+		&j.Status,
+		&transactionTime,
+		&j.JobCount,
+		&createdAt,
+		&updatedAt,
+		&j.BenesAttributedToACO,
+	)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {
@@ -454,12 +472,24 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) {
 	// User raw builder since we need to retrieve the associated ID
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("jobs")
-	ib.Cols("aco_id", "request_url", "status",
-		"transaction_time", "job_count",
-		"created_at", "updated_at").
-		Values(j.ACOID, j.RequestURL, j.Status,
-			j.TransactionTime, j.JobCount,
-			sqlbuilder.Raw("NOW()"), sqlbuilder.Raw("NOW()"))
+	ib.Cols(
+		"aco_id",
+		"request_url",
+		"status",
+		"transaction_time",
+		"job_count",
+		"created_at",
+		"updated_at",
+		"benes_attributed_to_aco",
+	).Values(
+		j.ACOID,
+		j.RequestURL,
+		j.Status,
+		j.TransactionTime,
+		j.JobCount,
+		sqlbuilder.Raw("NOW()"), sqlbuilder.Raw("NOW()"),
+		j.BenesAttributedToACO,
+	)
 
 	query, args := ib.Build()
 	// Append the RETURNING id to retrieve the auto-generated ID value associated with the Job
@@ -482,6 +512,7 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 		ub.Assign("transaction_time", j.TransactionTime),
 		ub.Assign("job_count", j.JobCount),
 		ub.Assign("updated_at", sqlbuilder.Raw("NOW()")),
+		ub.Assign("benes_attributed_to_aco", j.BenesAttributedToACO),
 	)
 	ub.Where(ub.Equal("id", j.ID))
 	query, args := ub.Build()
@@ -504,7 +535,13 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 }
 
 func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobKey, error) {
-	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_name", "resource_type").From("job_keys")
+	sb := sqlFlavor.NewSelectBuilder().Select(
+		"id",
+		"file_name",
+		"resource_type",
+		"benes_with_data",
+		"benes_retrieved_percent",
+	).From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
 
 	query, args := sb.Build()
@@ -517,7 +554,13 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	var keys []*models.JobKey
 	for rows.Next() {
 		jk := models.JobKey{JobID: jobID}
-		if err = rows.Scan(&jk.ID, &jk.FileName, &jk.ResourceType); err != nil {
+		if err = rows.Scan(
+			&jk.ID,
+			&jk.FileName,
+			&jk.ResourceType,
+			&jk.BenesWithData,
+			&jk.BenesRetrievedPercent,
+		); err != nil {
 			return nil, err
 		}
 		keys = append(keys, &jk)
@@ -531,15 +574,26 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 }
 
 func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string) (*models.JobKey, error) {
-	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_name", "resource_type").From("job_keys")
+	sb := sqlFlavor.NewSelectBuilder().Select(
+		"id",
+		"file_name",
+		"resource_type",
+		"benes_with_data",
+		"benes_retrieved_percent",
+	).From("job_keys")
 	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("file_name", fileName)))
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 
 	jk := &models.JobKey{JobID: jobID}
-
-	if err := row.Scan(&jk.ID, &jk.FileName, &jk.ResourceType); err != nil {
+	if err := row.Scan(
+		&jk.ID,
+		&jk.FileName,
+		&jk.ResourceType,
+		&jk.BenesWithData,
+		&jk.BenesRetrievedPercent,
+	); err != nil {
 		return nil, err
 	}
 
@@ -559,8 +613,17 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 	)
 	for rows.Next() {
 		var j models.Job
-		if err = rows.Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-			&j.JobCount, &createdAt, &updatedAt); err != nil {
+		if err = rows.Scan(
+			&j.ID,
+			&j.ACOID,
+			&j.RequestURL,
+			&j.Status,
+			&transactionTime,
+			&j.JobCount,
+			&createdAt,
+			&updatedAt,
+			&j.BenesAttributedToACO,
+		); err != nil {
 			return nil, err
 		}
 		j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time

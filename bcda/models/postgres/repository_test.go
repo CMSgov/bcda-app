@@ -12,13 +12,14 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 
@@ -31,8 +32,9 @@ import (
 type RepositoryTestSuite struct {
 	suite.Suite
 
-	db         *sql.DB
-	repository *postgres.Repository
+	db          *sql.DB
+	repository  *postgres.Repository
+	dbContainer db.TestDatabaseContainer
 }
 
 func TestRepositoryTestSuite(t *testing.T) {
@@ -40,8 +42,22 @@ func TestRepositoryTestSuite(t *testing.T) {
 }
 
 func (r *RepositoryTestSuite) SetupSuite() {
-	r.db = database.Connect()
+	var err error
+	r.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(r.T(), err)
+}
+
+func (r *RepositoryTestSuite) SetupTest() {
+	var err error
+	r.db, err = r.dbContainer.NewSqlDbConnection()
+	require.NoError(r.T(), err)
 	r.repository = postgres.NewRepository(r.db)
+}
+
+func (r *RepositoryTestSuite) TearDownTest() {
+	r.db.Close()
+	err := r.dbContainer.RestoreSnapshot("Base")
+	require.NoError(r.T(), err)
 }
 
 func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
@@ -834,6 +850,14 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	assert.Equal(models.JobStatusCompleted, newCompleted.Status)
 	assert.True(newFailed.UpdatedAt.After(newCompleted.UpdatedAt))
 
+	// Verify BenesAttributedToACO
+	completed.BenesAttributedToACO = 10
+	err = r.repository.UpdateJob(ctx, completed)
+	assert.Nil(err)
+	updatedCompleted, err := r.repository.GetJobByID(ctx, completed.ID)
+	assert.Nil(err)
+	assert.Equal(10, updatedCompleted.BenesAttributedToACO)
+
 	// Negative cases
 	notExists := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted}
 	assert.EqualError(r.repository.UpdateJob(ctx, notExists), "expected to affect 1 row, affected 0")
@@ -845,9 +869,9 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	assert := r.Assert()
 
 	jk, _ := safecast.ToUint(testUtils.CryptoRandInt31())
-
+	jk1Filename := uuid.New()
 	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
-	jk1 := models.JobKey{JobID: jobID, FileName: uuid.New()}
+	jk1 := models.JobKey{JobID: jobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100}
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
 
@@ -865,6 +889,15 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	assertContainsFile(assert, otherKeys, jk3.FileName)
 	assertDoesNotContainsFile(assert, otherKeys, jk1.FileName)
 	assertDoesNotContainsFile(assert, otherKeys, jk2.FileName)
+
+	// Verify all fields were saved on Create
+	jobKey, err := r.repository.GetJobKey(ctx, jobID, jk1Filename)
+	assert.Nil(err)
+	assert.Equal(jobID, jobKey.JobID)
+	assert.Equal(jk1Filename, jobKey.FileName)
+	assert.Equal("ExplanationOfBenefit", jobKey.ResourceType)
+	assert.Equal(10, jobKey.BenesWithData)
+	assert.Equal(100, jobKey.BenesRetrievedPercent)
 }
 
 // TestJobKeyMethods validates the CRUD operations associated with the job_keys table for single result
