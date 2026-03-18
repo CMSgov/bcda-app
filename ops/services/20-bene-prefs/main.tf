@@ -178,7 +178,8 @@ module "bucket" {
 
 resource "aws_cloudwatch_log_group" "this" {
   name              = "/aws/lambda/bcda-${local.env}-${local.service}"
-  retention_in_days = 30
+  retention_in_days = 180
+  skip_destroy      = true
 
   tags = {
     Name = "/aws/lambda/bcda-${local.env}-${local.service}"
