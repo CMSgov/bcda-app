@@ -1534,6 +1534,9 @@
                       "listen": "test",
                       "script": {
                         "exec": [
+                          "// EOB is temporarily disabled in v3",
+                          "return;",
+                          "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
                           "if (v3Disabled) {",
                           "    console.log(\"Not running EOB export v3 job status, v3 endpoints have been disabled\");",
