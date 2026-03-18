@@ -62,7 +62,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET="bcda/${{ env.DEPLOY_ENV }}/bene-prefs/nonsensitive/bucket_name"
+            BUCKET="/bcda/${{ env.DEPLOY_ENV }}/bene-prefs/nonsensitive/bucket_name"
 
       - name: Upload and reload
         run: |
