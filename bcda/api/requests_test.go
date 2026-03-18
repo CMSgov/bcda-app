@@ -1497,7 +1497,7 @@ func TestExtractTagCodeFromValue(t *testing.T) {
 	}
 }
 
-func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
+func TestOmitSharedSystemForNonPAC(t *testing.T) {
 	ctx := context.Background()
 	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 
@@ -1627,9 +1627,9 @@ func TestEnsureNCHOnlyForNonPAC(t *testing.T) {
 	}
 }
 
-func TestEnsureNCHOnlyForNonPACWithDefaultEOB(t *testing.T) {
+func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	// This test verifies that when a non-PAC ACO makes a v3 request without _type parameter,
-	// ExplanationOfBenefit is included by default, and the NCH filter is added
+	// ExplanationOfBenefit is included by default, and the appropriate filter is added
 	ctx := context.Background()
 	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 
@@ -1653,7 +1653,7 @@ func TestEnsureNCHOnlyForNonPACWithDefaultEOB(t *testing.T) {
 	// Setup mock
 	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
 
-	// Call ensureNCHOnlyForNonPAC (this is what gets called when EOB is in resourceTypes)
+	// Call omitSharedSystemForNonPAC (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemForNonPAC(ctx, typeFilter, "NOPAC0000")
 
 	// Verify NCH filter was added
@@ -1664,8 +1664,8 @@ func TestEnsureNCHOnlyForNonPACWithDefaultEOB(t *testing.T) {
 		}
 	}
 
-	expectedNCHTag := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"
-	assert.Contains(t, actualTags, expectedNCHTag, "NCH filter should be added for non-PAC ACO when EOB is requested")
+	expectedNCHTag := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
+	assert.Contains(t, actualTags, expectedNCHTag, "filter should be added for non-PAC ACO when EOB is requested")
 
 	// Verify that ExplanationOfBenefit would trigger this logic
 	assert.True(t, utils.ContainsString(resourceTypes, "ExplanationOfBenefit"), "EOB should be in default resource types")
