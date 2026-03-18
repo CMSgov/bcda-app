@@ -175,6 +175,16 @@ module "bucket" {
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
+
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
+  retention_in_days = 30
+
+  tags = {
+    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
+  }
+}
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_file = "../../../bcda/lambda/optout/main.go"
