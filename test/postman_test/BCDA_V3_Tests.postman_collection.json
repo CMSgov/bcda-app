@@ -1604,6 +1604,9 @@
                       "listen": "prerequest",
                       "script": {
                         "exec": [
+                          "// EOB is temporarily disabled in v3",
+                          "return;",
+                          "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
                           "if (v3Disabled) {",
                           "    return;",
