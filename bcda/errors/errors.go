@@ -117,3 +117,11 @@ type AttributionFileMismatchedEnv struct {
 func (e *AttributionFileMismatchedEnv) Error() string {
 	return "Skipping import; env does not match path."
 }
+
+type InvalidACOConfigError struct {
+	CMSID string
+}
+
+func (e *InvalidACOConfigError) Error() string {
+	return fmt.Sprintf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", e.CMSID)
+}
