@@ -306,7 +306,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 	errorCount := 0
-	hasEntriesCount := 0
+	benesWithDataCount := 0
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
 	failed := false
@@ -340,7 +340,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				//MBI is appended inside file, not printed out to system logs
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
-			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir, &hasEntriesCount)
+			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir, &benesWithDataCount)
 			return "", 0, nil
 		}()
 
@@ -384,7 +384,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	successfullyRetrievedPercent := 100 - int(math.Round(failPct))
 	(*pr).BenesRetrievedPercent = successfullyRetrievedPercent
-	(*pr).BenesWithData = hasEntriesCount
+	(*pr).BenesWithData = benesWithDataCount
 
 	if errorCount > 0 {
 		jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})

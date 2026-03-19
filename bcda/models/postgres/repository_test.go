@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	bcdaworkerpostgres "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
@@ -875,7 +876,8 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
 	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
 
-	err := r.repository.CreateJobKeys(ctx, []models.JobKey{jk1, jk2, jk3})
+	bcdaworkerRepo := bcdaworkerpostgres.NewRepository(r.db)
+	err := bcdaworkerRepo.CreateJobKeys(ctx, []models.JobKey{jk1, jk2, jk3})
 	assert.Nil(err)
 
 	// Since we have other job keys that exist, we cannot guarantee length
