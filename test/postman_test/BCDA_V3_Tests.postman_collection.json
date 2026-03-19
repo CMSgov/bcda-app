@@ -1535,7 +1535,7 @@
                       "script": {
                         "exec": [
                           "// EOB is temporarily disabled in v3",
-                          "pm.environment.set(\"eobv3DataUrl\", {{scheme}}://{{host}});",
+                          "pm.environment.set(\"eobv3DataUrl\", (pm.environment.get(\"scheme\") + \"://\" + pm.environment.get(\"host\")));",
                           "return;",
                           "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
@@ -1835,7 +1835,7 @@
                       "script": {
                         "exec": [
                           "// EOB is temporarily disabled in v3",
-                          "pm.environment.set(\"groupRunoutv3DataUrl\", {{scheme}}://{{host}});",
+                          "pm.environment.set(\"groupRunoutv3DataUrl\", (pm.environment.get(\"scheme\") + \"://\" + pm.environment.get(\"host\")));",
                           "return;",
                           "",
                           "pm.test(\"Status code is 202 or 200\", function() {",
