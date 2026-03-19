@@ -181,9 +181,18 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "validTagNationalClaimsHistory",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
-			description: "Valid NotFinalAction tag should pass",
+			description: "Valid NCH tag should pass",
 			expectedTypeFilter: [][]string{
 				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			},
+		},
+		{
+			name:        "validTagDDPS",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CDDPS", baseV3),
+			shouldFail:  false,
+			description: "Valid DDPS tag should pass",
+			expectedTypeFilter: [][]string{
+				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
 			},
 		},
 		{
@@ -199,7 +208,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "validTagNotFinalAction",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  false,
-			description: "Valid NationalClaimsHistory tag should pass",
+			description: "Valid NotFinalAction tag should pass",
 			expectedTypeFilter: [][]string{
 				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
 			},
