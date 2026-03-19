@@ -161,7 +161,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			case http.StatusInternalServerError:
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(t, j.CreatedAt.Add(s.apiV3.handler.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(t, j.UpdatedAt.Add(s.apiV3.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
 	}
@@ -201,7 +201,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), constants.JsonContentType, rr.Header().Get(constants.ContentType))
 	str := rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV3.handler.JobTimeout), rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(s.apiV3.handler.JobTimeout), rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err := json.Unmarshal(rr.Body.Bytes(), &rb)
