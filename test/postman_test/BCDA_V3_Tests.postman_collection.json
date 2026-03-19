@@ -1535,7 +1535,7 @@
                       "script": {
                         "exec": [
                           "// EOB is temporarily disabled in v3",
-                          "pm.environment.set(\"eobv3DataUrl\", \"https:\/\/disabled.bcda.cms.gov\");",
+                          "pm.environment.set(\"eobv3DataUrl\", \"https:\/\/dev.bcda.cms.gov\");",
                           "return;",
                           "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
@@ -1835,7 +1835,7 @@
                       "script": {
                         "exec": [
                           "// EOB is temporarily disabled in v3",
-                          "pm.environment.set(\"groupRunoutv3DataUrl\", \"https:\/\/disabled.bcda.cms.gov\");",
+                          "pm.environment.set(\"groupRunoutv3DataUrl\", \"https:\/\/dev.bcda.cms.gov\");",
                           "return;",
                           "",
                           "pm.test(\"Status code is 202 or 200\", function() {",
