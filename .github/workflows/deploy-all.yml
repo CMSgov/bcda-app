@@ -191,218 +191,218 @@ jobs:
         run: |
           echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
           exit 1
-      - name: Started Deploy Alert
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-deploy
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: good
-                text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-                mrkdown_in:
-                  - text
+      # - name: Started Deploy Alert
+      #   uses: slackapi/slack-github-action@v2.0.0
+      #   with:
+      #     method: chat.postMessage
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     # Sends to bcda-deploy
+      #     payload: |
+      #       channel: "C03S23MJFJS"
+      #       attachments:
+      #         - color: good
+      #           text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+      #           mrkdown_in:
+      #             - text
 
-      - name: Init, Plan OpenTofu
-        working-directory: terraform/${{ env.RELEASE_ENV }}
-        run: |
-          IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
-          export APP_DB_PW=${STRS[2]}
-          export TF_VAR_api_image_tag=${SANITIZED_VERSION}
-          export TF_VAR_ssas_image_tag=${SANITIZED_SSAS_VERSION}
-          export TF_VAR_worker_image_tag=${SANITIZED_VERSION}
-          tofu init
-          tofu plan \
-            -var 'env=${{ env.RELEASE_ENV }}' \
-            -out 'bcda-release-api-worker.tfplan'
-      - name: OpenTofu Apply
-        working-directory: terraform/${{ env.RELEASE_ENV }}
-        run: |
-          tofu apply bcda-release-api-worker.tfplan
-      - name: Refresh Deployments
-        run: |
-          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
-          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
-          aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
-      - name: Upload notify script
-        uses: actions/upload-artifact@v4
-        with:
-          name: notify-script
-          path: ./scripts/mark_deployment.py
+      # - name: Init, Plan OpenTofu
+      #   working-directory: terraform/${{ env.RELEASE_ENV }}
+      #   run: |
+      #     IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
+      #     export APP_DB_PW=${STRS[2]}
+      #     export TF_VAR_api_image_tag=${SANITIZED_VERSION}
+      #     export TF_VAR_ssas_image_tag=${SANITIZED_SSAS_VERSION}
+      #     export TF_VAR_worker_image_tag=${SANITIZED_VERSION}
+      #     tofu init
+      #     tofu plan \
+      #       -var 'env=${{ env.RELEASE_ENV }}' \
+      #       -out 'bcda-release-api-worker.tfplan'
+      # - name: OpenTofu Apply
+      #   working-directory: terraform/${{ env.RELEASE_ENV }}
+      #   run: |
+      #     tofu apply bcda-release-api-worker.tfplan
+  #     - name: Refresh Deployments
+  #       run: |
+  #         aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
+  #         aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
+  #         aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
+  #     - name: Upload notify script
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: notify-script
+  #         path: ./scripts/mark_deployment.py
 
-  verify_api_version:
-    needs: [deploy]
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
-    environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - run: |
-          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
-          TRY=1
-          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-            if [[ $BCDA_API_VERSION != ${SANITIZED_VERSION} ]]; then
-              echo "BCDA API expected release version: ${SANITIZED_VERSION} did not match curled version: ${BCDA_API_VERSION}."
-              TRY=$(($TRY + 1))
-              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-                exit 1
-              else
-                sleep $VERIFICATION_SLEEP
-              fi
-            else
-              break
-            fi
-          done
-
-
-  verify_ssas_version:
-    needs: [deploy]
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
-    environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - run: |
-          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
-          TRY=1
-          until [ $TRY -gt $VERIFICATION_RETRIES ]; do
-            BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-            if [[ $BCDA_SSAS_VERSION != ${SANITIZED_SSAS_VERSION} ]]; then
-              echo "BCDA SSAS expected release version: ${SANITIZED_SSAS_VERSION} did not match curled version: ${BCDA_SSAS_VERSION}."
-              TRY=$(($TRY + 1))
-              if [ $TRY -gt $VERIFICATION_RETRIES ]; then
-                exit 1
-              else
-                sleep $VERIFICATION_SLEEP
-              fi
-            else
-              break
-            fi
-          done
+  # verify_api_version:
+  #   needs: [deploy]
+  #   runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+  #   environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
+  #   steps:
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ vars.AWS_REGION }}
+  #         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+  #     - run: |
+  #         aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
+  #         TRY=1
+  #         until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+  #           BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
+  #           if [[ $BCDA_API_VERSION != ${SANITIZED_VERSION} ]]; then
+  #             echo "BCDA API expected release version: ${SANITIZED_VERSION} did not match curled version: ${BCDA_API_VERSION}."
+  #             TRY=$(($TRY + 1))
+  #             if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+  #               exit 1
+  #             else
+  #               sleep $VERIFICATION_SLEEP
+  #             fi
+  #           else
+  #             break
+  #           fi
+  #         done
 
 
-  verify_worker_version:
-    needs: [deploy]
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
-    environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - run: |
-          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
-          WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
-          WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
-          WORKER_VERSION_NO_SHA=${WORKER_IMAGE##*:}
-          WORKER_VERSION_SHA=$(echo $WORKER_IMAGE | sed 's/.*:\(.*\)@.*/\1/')
-          if [[ $WORKER_VERSION_SHA != ${SANITIZED_VERSION} && $WORKER_VERSION_NO_SHA != ${SANITIZED_VERSION} ]]; then
-            echo "BCDA Worker expected release version: ${SANITIZED_VERSION} did not match AWS version: ${WORKER_VERSION_SHA} or ${WORKER_VERSION_NO_SHA}."
-            exit 1
-          fi
+  # verify_ssas_version:
+  #   needs: [deploy]
+  #   runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+  #   environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
+  #   steps:
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ vars.AWS_REGION }}
+  #         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+  #     - run: |
+  #         aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-ssas
+  #         TRY=1
+  #         until [ $TRY -gt $VERIFICATION_RETRIES ]; do
+  #           BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
+  #           if [[ $BCDA_SSAS_VERSION != ${SANITIZED_SSAS_VERSION} ]]; then
+  #             echo "BCDA SSAS expected release version: ${SANITIZED_SSAS_VERSION} did not match curled version: ${BCDA_SSAS_VERSION}."
+  #             TRY=$(($TRY + 1))
+  #             if [ $TRY -gt $VERIFICATION_RETRIES ]; then
+  #               exit 1
+  #             else
+  #               sleep $VERIFICATION_SLEEP
+  #             fi
+  #           else
+  #             break
+  #           fi
+  #         done
 
-  smoketests:
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    uses: ./.github/workflows/smoke-tests.yml
-    with:
-      ref: ${{ inputs.ref || 'main' }}
-      ssas_ref: ${{ inputs.ssas_ref || 'main' }}
-      env: ${{ inputs.env || 'dev' }}
-      test_aco: ${{ inputs.test_aco || 'dev' }}
-      smoke_tests: true
-      postman_tests: true
-      v3_tests: false
-    secrets: inherit
 
-  notify_newrelic:
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
-    steps:
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - name: Set env vars from AWS params
-        uses: cmsgov/cdap/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
-            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/sensitive/new-relic/app-id
-      - name: Download notify scripts
-        uses: actions/download-artifact@v4
-        with:
-          name: notify-script
-          path: scripts
-      - name: Notify NewRelic
-        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'sandbox' || env.RELEASE_ENV == 'test' }}
-        run: |
-          python3 scripts/mark_deployment.py \
-            --app_id ${{ env.NEWRELIC_APP_ID }} \
-            --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${SANITIZED_VERSION}
-      - name: Notify NewRelic (Dev)
-        if: ${{ env.RELEASE_ENV == 'dev' }}
-        run: |
-          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
-          API_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-api --query 'taskArns[0]' --output text)
-          API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[?name == 'api'].image" --output=text)
-          export API_VERSION=${API_IMAGE##*:}
-          python3 scripts/mark_deployment.py \
-            --app_id ${{ env.NEWRELIC_APP_ID }} \
-            --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${API_VERSION}
+  # verify_worker_version:
+  #   needs: [deploy]
+  #   runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+  #   environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
+  #   steps:
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ vars.AWS_REGION }}
+  #         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+  #     - run: |
+  #         aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-worker
+  #         WORKER_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-worker --query 'taskArns[0]' --output text)
+  #         WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
+  #         WORKER_VERSION_NO_SHA=${WORKER_IMAGE##*:}
+  #         WORKER_VERSION_SHA=$(echo $WORKER_IMAGE | sed 's/.*:\(.*\)@.*/\1/')
+  #         if [[ $WORKER_VERSION_SHA != ${SANITIZED_VERSION} && $WORKER_VERSION_NO_SHA != ${SANITIZED_VERSION} ]]; then
+  #           echo "BCDA Worker expected release version: ${SANITIZED_VERSION} did not match AWS version: ${WORKER_VERSION_SHA} or ${WORKER_VERSION_NO_SHA}."
+  #           exit 1
+  #         fi
 
-  slack_alerts:
-    if: ${{ always() }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
-    needs: [migrate_db, deploy, notify_newrelic]
-    steps:
-      - name: Publish Build Info
-        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-deploy
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: good
-                pretext: "Deployment information for BCDA environment *${{ env.RELEASE_ENV }}*"
-                footer: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|BCDA - Publish Release Information - Build ${{ github.run_id }}>)."
-                fields:
-                  - title: 'API'
-                    short: true
-                    value: ${{ env.SANITIZED_VERSION }}
-                  - title: 'SSAS'
-                    short: true
-                    value: ${{ env.SANITIZED_SSAS_VERSION }}
-                  - title: 'Worker'
-                    short: true
-                    value: ${{ env.SANITIZED_VERSION }}
-                mrkdown_in:
-                  - pretext
-                  - footer
-      - name: Failure Alert
-        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: danger
-                text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-                mrkdown_in:
-                  - text
+  # smoketests:
+  #   needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+  #   uses: ./.github/workflows/smoke-tests.yml
+  #   with:
+  #     ref: ${{ inputs.ref || 'main' }}
+  #     ssas_ref: ${{ inputs.ssas_ref || 'main' }}
+  #     env: ${{ inputs.env || 'dev' }}
+  #     test_aco: ${{ inputs.test_aco || 'dev' }}
+  #     smoke_tests: true
+  #     postman_tests: true
+  #     v3_tests: false
+  #   secrets: inherit
+
+  # notify_newrelic:
+  #   needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
+  #   environment: ${{ inputs.env || 'dev' }}
+  #   runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+  #   steps:
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ vars.AWS_REGION }}
+  #         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+  #     - name: Set env vars from AWS params
+  #       uses: cmsgov/cdap/actions/aws-params-env-action@main
+  #       env:
+  #         AWS_REGION: ${{ vars.AWS_REGION }}
+  #       with:
+  #         params: |
+  #           NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
+  #           NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/sensitive/new-relic/app-id
+  #     - name: Download notify scripts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: notify-script
+  #         path: scripts
+  #     - name: Notify NewRelic
+  #       if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'sandbox' || env.RELEASE_ENV == 'test' }}
+  #       run: |
+  #         python3 scripts/mark_deployment.py \
+  #           --app_id ${{ env.NEWRELIC_APP_ID }} \
+  #           --api_key ${{ env.NEWRELIC_API_KEY }} \
+  #           --version ${SANITIZED_VERSION}
+  #     - name: Notify NewRelic (Dev)
+  #       if: ${{ env.RELEASE_ENV == 'dev' }}
+  #       run: |
+  #         aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
+  #         API_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-api --query 'taskArns[0]' --output text)
+  #         API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[?name == 'api'].image" --output=text)
+  #         export API_VERSION=${API_IMAGE##*:}
+  #         python3 scripts/mark_deployment.py \
+  #           --app_id ${{ env.NEWRELIC_APP_ID }} \
+  #           --api_key ${{ env.NEWRELIC_API_KEY }} \
+  #           --version ${API_VERSION}
+
+  # slack_alerts:
+  #   if: ${{ always() }}
+  #   runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+  #   needs: [migrate_db, deploy, notify_newrelic]
+  #   steps:
+  #     - name: Publish Build Info
+  #       if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
+  #       uses: slackapi/slack-github-action@v2.0.0
+  #       with:
+  #         method: chat.postMessage
+  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
+  #         # Sends to bcda-deploy
+  #         payload: |
+  #           channel: "C03S23MJFJS"
+  #           attachments:
+  #             - color: good
+  #               pretext: "Deployment information for BCDA environment *${{ env.RELEASE_ENV }}*"
+  #               footer: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|BCDA - Publish Release Information - Build ${{ github.run_id }}>)."
+  #               fields:
+  #                 - title: 'API'
+  #                   short: true
+  #                   value: ${{ env.SANITIZED_VERSION }}
+  #                 - title: 'SSAS'
+  #                   short: true
+  #                   value: ${{ env.SANITIZED_SSAS_VERSION }}
+  #                 - title: 'Worker'
+  #                   short: true
+  #                   value: ${{ env.SANITIZED_VERSION }}
+  #               mrkdown_in:
+  #                 - pretext
+  #                 - footer
+  #     - name: Failure Alert
+  #       if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
+  #       uses: slackapi/slack-github-action@v2.0.0
+  #       with:
+  #         method: chat.postMessage
+  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
+  #         payload: |
+  #           channel: "C03S23MJFJS"
+  #           attachments:
+  #             - color: danger
+  #               text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+  #               mrkdown_in:
+  #                 - text
