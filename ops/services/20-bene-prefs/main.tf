@@ -8,6 +8,7 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
+  lambda_filename       = module.platform.ssm.bene_prefs.lambda-filename.value
 }
 
 module "platform" {
@@ -186,15 +187,9 @@ resource "aws_cloudwatch_log_group" "this" {
   }
 }
 
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source_file = "../../../bcda/lambda/optout/main.go"
-  output_path = "lambda_function.zip"
-}
-
 resource "aws_lambda_function" "this" {
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  s3_key = local.lambda_filename
+  s3_bucket = module.bucket.id
   package_type     = "Zip"
   handler          = "bootstrap"
 
