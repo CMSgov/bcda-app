@@ -1,4 +1,4 @@
-name: opt-out-import/bene-prefs dev deploy
+name: opt-out-import/bene-prefs deploy
 
 on:
   push:
@@ -71,5 +71,12 @@ jobs:
             --bucket $BUCKET \
             --key function-${{ github.sha }}.zip \
             --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
-          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-opt-out-import \
+          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-bene-prefs \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+      - name: Save deployed version to Parameter Store
+        run: |
+          aws ssm put-parameter \
+            --name "/bcda/${{ env.DEPLOY_ENV }}/bene-prefs/nonsensitive/lambda-filename" \
+            --value "function-${{ github.sha }}.zip" \
+            --type "String" \
+            --overwrite
