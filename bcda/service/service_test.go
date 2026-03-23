@@ -836,6 +836,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 
 			cfg := &Config{
 				CutoffDuration:          time.Hour,
@@ -986,6 +987,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 		repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 		repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return([]string{"old"}, nil)
+		repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
 		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
@@ -1070,6 +1072,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 
 			cfg := &Config{
 				CutoffDuration:          time.Hour,
