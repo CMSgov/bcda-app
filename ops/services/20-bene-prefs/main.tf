@@ -8,6 +8,7 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
+  lambda_filename       = "function.zip"
 }
 
 module "platform" {
@@ -156,6 +157,11 @@ resource "aws_iam_role" "this" {
   permissions_boundary = module.platform.iam_defaults.boundary
 }
 
+resource "aws_iam_role_policy_attachment" "vpc_access" {
+  role       = aws_iam_role.this.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy_attachment" "this" {
   role = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
@@ -166,15 +172,26 @@ module "bucket" {
 
   app           = local.app
   env           = local.env
-  name          = "${local.app}-${local.env}-${local.service}-lambda"
+  name          = "${local.app}-${local.env}-${local.service}"
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
+
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
+  retention_in_days = 180
+  skip_destroy      = true
+
+  tags = {
+    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
+  }
+}
+
 resource "aws_lambda_function" "this" {
-  s3_key       = "function-3540b70393e3dc30f375eee2e8635a65c6f21036.zip"
-  s3_bucket    = module.bucket.id
-  package_type = "Zip"
-  handler      = "bootstrap"
+  s3_key = local.lambda_filename
+  s3_bucket = "bcda-test-bene-prefs-20260317152046594000000001"
+  package_type     = "Zip"
+  handler          = "bootstrap"
 
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
@@ -195,8 +212,7 @@ resource "aws_lambda_function" "this" {
 
   lifecycle {
     ignore_changes = [
-      s3_object_version,
-      s3_key,
+      filename,
     ]
   }
 
