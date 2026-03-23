@@ -188,7 +188,10 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
-
+      - name: Install Cosign to verify tenv and tofu installs
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Install tenv
+        uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
       - name: Init, Plan OpenTofu
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
