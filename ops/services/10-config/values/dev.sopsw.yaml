@@ -4,6 +4,7 @@
 #ENC[AES256_GCM,data:0bKU77Jcwl0/9Cq6q8EDRw2N,iv:V8t8oFRZrCwoRcvuYJP0utL92yJWELInTrdCzzeNHz0=,tag:rcncD2KZ/2yY4gKbZOxaWg==,type:comment]
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:JY1y,iv:cEn1A8Kcs/jY6xHWjBlFpMw9GgqJUiR2EipPtNEqTc4=,tag:A5DdCA9zEtUtb+hm3IZmlw==,type:str]
 #ENC[AES256_GCM,data:ADEUs6xjKMBNnQXxGVKwlqjsN2o2MV2A,iv:D83A/IpC4WEbvjmhwDmYw/GVfE8897TnioLcr557/NA=,tag:sSBy6rOwSeU+e15YSyA7Ug==,type:comment]
+/bcda/${env}/nonsensitive/bene-prefs/bucket_name: bcda-dev-bene-prefs
 /bcda/${env}/nonsensitive/bcda-dev-admin-aco-deny-bucket: bcda-dev-admin-aco-deny-function-20250509215939999000000001
 /bcda/${env}/nonsensitive/bcda-dev-admin-create-aco-bucket: bcda-dev-admin-create-aco-function-20250515161920680200000001
 /bcda/${env}/nonsensitive/bcda-dev-admin-create-aco-creds-bucket: bcda-dev-admin-create-aco-creds-func-20250529142811721500000001
