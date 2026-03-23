@@ -14,9 +14,6 @@
 /bcda/${env}/nonsensitive/bcda-test-cclf-import-bucket: bcda-test-cclf-import-function-20250528160013829000000001
 /bcda/${env}/nonsensitive/bcda-test-opt-out-export-bucket: bcda-test-opt-out-export-function-20250528140632448800000001
 /bcda/${env}/nonsensitive/bcda-test-opt-out-import-bucket: bcda-test-opt-out-import-function-20250528140643897600000001
-#ENC[AES256_GCM,data:8dci6/AQSggi9olOfP7Km9UBo3CD,iv:3nO/R8O+MZNCxQw34miQpW7eoKkANm9+vzfDJVcOHyU=,tag:+vBGrKicSEwEEQvpsdqquA==,type:comment]
-#ENC[AES256_GCM,data:2azDuw5DaWLqH0asY0iM/6dcElR4iQGsmoSfXv21sTqKTmjjpYhwJiZwWCM=,iv:bQvtqQIMbxG3ucK2ZfNU1QGMjwDVY8B1LVZElKgqq+M=,tag:iDFiPDT8R0biDLXKyEPlpw==,type:comment]
-/bcda/${env}/sensitive/quicksight-rds/cidr-blocks: ENC[AES256_GCM,data:YEbihG7TB478hPMdKRBe9gqrRcAWbqAB7cjcTzgAFCY4LwHzQ1pccUV1AhyMAzcjtoRiR+QBAFnfQEw=,iv:UzL6IOAD9vNRC6ihqHrn+A6EpUldR8nT7ltX3rDs2AI=,tag:SRJmnUdxLKUYMp04ZlAsZg==,type:str]
 #ENC[AES256_GCM,data:Eoq+xMu3CDp2A29Q6nfGzWEIjP7f+u0a6O/D5A==,iv:WwoUn+pHv8ZMuTBIQv4v9iRIQSNnuVysCjk28uU7V14=,tag:5MoNtqsRIsbALudk3DD/Ow==,type:comment]
 /bcda/${env}/sensitive/api/ARCHIVE_THRESHOLD_HR: ENC[AES256_GCM,data:bRo=,iv:LboZw8eg33Crgd2ZN4vr3sFSrAr9IoacUbVXgf+arOk=,tag:bYFMfO0s3SNkKUCZviCs1A==,type:str]
 /bcda/${env}/sensitive/api/AUTH_HASH_ITERATIONS: ENC[AES256_GCM,data:P7/cjiU3,iv:41H9X8IEc3Qez+vbpbFbS+VDeGW3opwEfsIRHxzN+QM=,tag:J/aL7v/ocktcqElDYXDN3A==,type:str]
