@@ -74,31 +74,36 @@ func NewPrepareJobWorker(db *sql.DB) (*PrepareJobWorker, error) {
 }
 
 func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.PrepareJobArgs]) error {
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	ctx = context.WithValue(ctx, m.CtxTransactionKey, rjob.Args.TransactionID)
-	logger := log.GetCtxLogger(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+			ctx = context.WithValue(ctx, m.CtxTransactionKey, rjob.Args.TransactionID)
+			logger := log.GetCtxLogger(ctx)
 
-	exports, since, err := w.prepareExportJobs(ctx, rjob.Args)
-	if err != nil {
-		logger.Errorf("failed to add jobs to the main queue: %s", err)
-		return err
+			exports, since, err := w.prepareExportJobs(ctx, rjob.Args)
+			if err != nil {
+				logger.Errorf("failed to add jobs to the main queue: %s", err)
+				return err
+			}
+
+			client := river.ClientFromContext[pgxv5.Tx](ctx)
+			q := riverEnqueuer{client}
+			err = w.queueExportJobs(ctx, q, rjob.Args, exports, since)
+			if err != nil {
+				// TODO update job in jobs table as failed
+				logger.Errorf("failed to add jobs to the main queue: %s", err)
+				return err
+			}
+
+			return nil
+		}
 	}
-
-	client := river.ClientFromContext[pgxv5.Tx](ctx)
-	q := riverEnqueuer{client}
-	err = w.queueExportJobs(ctx, q, rjob.Args, exports, since)
-	if err != nil {
-		// TODO update job in jobs table as failed
-		logger.Errorf("failed to add jobs to the main queue: %s", err)
-		return err
-	}
-
-	return nil
-
 }
 
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
