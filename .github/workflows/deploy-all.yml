@@ -164,22 +164,6 @@ jobs:
           params: |
             GITHUB_TOKEN=/ci/github/token
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/DATABASE_URL
-      - name: Checkout BCDA
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-app
-          ref: ${{ inputs.ref }}
-      - name: Install Cosign to verify tenv and tofu installs
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
-      - name: Install tenv
-        uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
-      - name: apply SOPS
-        working-directory: ops/services/10-config
-        run: |
-          parent_env=${{ env.RELEASE_ENV }}
-          TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
-          tofu plan 
-            -out 'bcda-release-sops.tfplan'
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
