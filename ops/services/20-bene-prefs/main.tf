@@ -21,7 +21,7 @@ module "platform" {
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
   ssm_root_map = {
-    bene_prefs = "/bcda/${local.env}/bene_prefs/"
+    bene-prefs = "/bcda/${local.env}/bene-prefs/"
   }
 }
 
@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "assume_bucket_role" {
   statement {
     sid       = "AssumeBucketRole"
     actions   = ["sts:AssumeRole"]
-    resources = [module.platform.ssm.bene_prefs.iam_bucket_role_arn.value]
+    resources = [module.platform.ssm.bene-prefs.iam_bucket_role_arn.value]
   }
 }
 
@@ -282,7 +282,7 @@ resource "aws_sqs_queue" "this" {
         Action = "sqs:SendMessage"
         Condition = {
           ArnEquals = {
-            "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
+            "aws:SourceArn" = module.platform.ssm.bene-prefs.sns_topic_arn.value
           }
         }
         Effect = "Allow"
@@ -301,7 +301,7 @@ resource "aws_sqs_queue" "this" {
 resource "aws_sns_topic_subscription" "this" {
   endpoint  = aws_sqs_queue.this.arn
   protocol  = "sqs"
-  topic_arn = module.platform.ssm.bene_prefs.sns_topic_arn.value
+  topic_arn = module.platform.ssm.bene-prefs.sns_topic_arn.value
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
