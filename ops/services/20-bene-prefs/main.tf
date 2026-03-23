@@ -8,7 +8,7 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
-  lambda_filename       = module.platform.ssm.bene_prefs.lambda-filename.value
+  lambda_filename       = "function.zip"
 }
 
 module "platform" {
@@ -189,7 +189,7 @@ resource "aws_cloudwatch_log_group" "this" {
 
 resource "aws_lambda_function" "this" {
   s3_key = local.lambda_filename
-  s3_bucket = module.bucket.id
+  s3_bucket = "bcda-test-bene-prefs-20260317152046594000000001"
   package_type     = "Zip"
   handler          = "bootstrap"
 
