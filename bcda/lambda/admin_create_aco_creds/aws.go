@@ -110,7 +110,7 @@ func setupEnvironment(params awsParams) error {
 	return nil
 }
 
-func putObject(ctx context.Context, client *s3.Client, acoID, creds, credsBucket string) (string, error) {
+func putObject(ctx context.Context, client bcdaaws.CustomS3Client, acoID, creds, credsBucket string) (string, error) {
 	s3Input := &s3.PutObjectInput{
 		Body:   strings.NewReader(creds),
 		Bucket: aws.String(credsBucket),

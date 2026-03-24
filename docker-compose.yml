@@ -15,26 +15,26 @@ services:
       timeout: 15s
       retries: 5
       start_period: 2s
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      - AWS_DEFAULT_REGION=us-east-1
-      - GATEWAY_LISTEN=0.0.0.0:4566
-      - SERVICES=s3,ssm,sts,iam,cloudwatch
-      - DEBUG=1
-    ports:
-      - "4566-4583:4566-4583"
-    volumes:
-      - "./.localstack_volume:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./scripts/localstack_init.sh:/etc/localstack/init/ready.d/init-aws.sh"
-      - "./shared_files/decrypted:/etc/config"
-    healthcheck:
-      test: 'curl --silent --fail localstack:4566/_localstack/init/ready | grep -E "\"completed\": true"'
-      interval: 1m30s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
+  # localstack:
+  #   image: localstack/localstack:latest
+  #   environment:
+  #     - AWS_DEFAULT_REGION=us-east-1
+  #     - GATEWAY_LISTEN=0.0.0.0:4566
+  #     - SERVICES=s3,ssm,sts,iam,cloudwatch
+  #     - DEBUG=1
+  #   ports:
+  #     - "4566-4583:4566-4583"
+  #   volumes:
+  #     - "./.localstack_volume:/var/lib/localstack"
+  #     - "/var/run/docker.sock:/var/run/docker.sock"
+  #     - "./scripts/localstack_init.sh:/etc/localstack/init/ready.d/init-aws.sh"
+  #     - "./shared_files/decrypted:/etc/config"
+  #   healthcheck:
+  #     test: 'curl --silent --fail localstack:4566/_localstack/init/ready | grep -E "\"completed\": true"'
+  #     interval: 1m30s
+  #     retries: 5
+  #     start_period: 30s
+  #     timeout: 10s
   api:
     read_only: true
     build:
@@ -47,9 +47,9 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       # localstack
-      AWS_ACCESS_KEY_ID: foobar
-      AWS_SECRET_ACCESS_KEY: foobar
-      AWS_ENDPOINT_URL: http://localstack:4566
+      # AWS_ACCESS_KEY_ID: foobar
+      # AWS_SECRET_ACCESS_KEY: foobar
+      # AWS_ENDPOINT_URL: http://localstack:4566
       CONFIG_BUCKET: bcda-local-config
       # config files
       BCDA_API_CONFIG_PATH: /etc/sv/api/env/api.yml
@@ -76,8 +76,8 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-      localstack:
-        condition: service_healthy
+      # localstack:
+      #   condition: service_healthy
     develop:
       watch:
         - action: rebuild
@@ -99,9 +99,9 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       # localstack
-      AWS_ACCESS_KEY_ID: foobar
-      AWS_SECRET_ACCESS_KEY: foobar
-      AWS_ENDPOINT_URL: http://localstack:4566
+      # AWS_ACCESS_KEY_ID: foobar
+      # AWS_SECRET_ACCESS_KEY: foobar
+      # AWS_ENDPOINT_URL: http://localstack:4566
       CONFIG_BUCKET: bcda-local-config
       # config files
       BCDA_API_CONFIG_PATH: /etc/sv/worker/env/api.yml
@@ -125,8 +125,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      localstack:
-        condition: service_healthy
+      # localstack:
+      #   condition: service_healthy
     develop:
       watch:
         - action: rebuild

@@ -79,7 +79,6 @@ func handler(ctx context.Context, event json.RawMessage) error {
 }
 
 func handleACODenies(ctx context.Context, conn PgxConnection, data payload) error {
-
 	err := denyACOs(ctx, conn, data)
 	if err != nil {
 		log.Errorf("Error finding and denying ACOs: %+v", err)

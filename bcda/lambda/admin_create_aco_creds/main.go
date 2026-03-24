@@ -11,6 +11,7 @@ import (
 	"github.com/slack-go/slack"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
@@ -93,7 +94,7 @@ func handleCreateACOCreds(
 	ctx context.Context,
 	data payload,
 	provider auth.Provider,
-	s3Service *s3.Client,
+	s3Service bcdaaws.CustomS3Client,
 	credsBucket string,
 ) (string, error) {
 

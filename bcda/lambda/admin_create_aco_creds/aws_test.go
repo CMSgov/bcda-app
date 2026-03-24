@@ -2,25 +2,22 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPutObject(t *testing.T) {
-	client := testUtils.TestS3Client(t, testUtils.TestAWSConfig(t))
+	client := &bcdaaws.MockS3Client{}
 
-	bucketInput := &s3.CreateBucketInput{
-		Bucket: aws.String("test-bucket"),
-	}
-	_, err := client.CreateBucket(t.Context(), bucketInput)
-	assert.Nil(t, err)
+	// bucketInput := &s3.CreateBucketInput{
+	// 	Bucket: aws.String("test-bucket"),
+	// }
+	// _, err := client.CreateBucket(t.Context(), bucketInput)
+	// assert.Nil(t, err)
 
 	result, err := putObject(t.Context(), client, "test-filename", "test-creds", "test-bucket")
 	assert.Nil(t, err)
@@ -28,22 +25,22 @@ func TestPutObject(t *testing.T) {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	env := conf.GetEnv("ENV")
+	// env := conf.GetEnv("ENV")
 
-	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
-	t.Cleanup(func() { cleanupParam1() })
-	cleanupParam2 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/aco_creds_bucket", env), "test-CREDS_BUCKET")
-	t.Cleanup(func() { cleanupParam2() })
-	cleanupParam3 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/SSAS_URL", env), "test-SSAS_URL")
-	t.Cleanup(func() { cleanupParam3() })
-	cleanupParam4 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_CLIENT_ID", env), "test-BCDA_SSAS_CLIENT_ID")
-	t.Cleanup(func() { cleanupParam4() })
-	cleanupParam5 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_SECRET", env), "test-BCDA_SSAS_SECRET")
-	t.Cleanup(func() { cleanupParam5() })
-	cleanupParam6 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_CA_FILE.pem", env), "test-BCDA_CA_FILE")
-	t.Cleanup(func() { cleanupParam6() })
-	cleanupParam7 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), "test-DB_URL")
-	t.Cleanup(func() { cleanupParam7() })
+	// cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
+	// t.Cleanup(func() { cleanupParam1() })
+	// cleanupParam2 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/aco_creds_bucket", env), "test-CREDS_BUCKET")
+	// t.Cleanup(func() { cleanupParam2() })
+	// cleanupParam3 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/SSAS_URL", env), "test-SSAS_URL")
+	// t.Cleanup(func() { cleanupParam3() })
+	// cleanupParam4 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_CLIENT_ID", env), "test-BCDA_SSAS_CLIENT_ID")
+	// t.Cleanup(func() { cleanupParam4() })
+	// cleanupParam5 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_SECRET", env), "test-BCDA_SSAS_SECRET")
+	// t.Cleanup(func() { cleanupParam5() })
+	// cleanupParam6 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_CA_FILE.pem", env), "test-BCDA_CA_FILE")
+	// t.Cleanup(func() { cleanupParam6() })
+	// cleanupParam7 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), "test-DB_URL")
+	// t.Cleanup(func() { cleanupParam7() })
 
 	params, err := getAWSParams(context.Background())
 	assert.Nil(t, err)

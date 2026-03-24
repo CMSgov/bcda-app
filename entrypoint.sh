@@ -14,6 +14,9 @@ bootstrap_config() {
 if ! [[ -n "$SKIP_BOOTSTRAP" ]]; then
   echo "Bootstrapping config from S3"
   bootstrap_config
+else;
+  echo "Bootstrapping config from shared_files/decrypted"
+  cp -R shared_files/decrypted/. /etc/sv/$APP_NAME/env/
 fi
 
 echo "Starting main process"

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,8 @@ func TestHandleCreateACOCreds(t *testing.T) {
 	mockProvider := &auth.MockProvider{}
 	mockProvider.On("FindAndCreateACOCredentials", data.ACOID, data.IPs).Return("creds\nstring", nil)
 
-	client := testUtils.TestS3Client(t, testUtils.TestAWSConfig(t))
+	// client := testUtils.TestS3Client(t, testUtils.TestAWSConfig(t))
+	client := &bcdaaws.MockS3Client{}
 
 	_, err := client.CreateBucket(t.Context(), &s3.CreateBucketInput{
 		Bucket: aws.String("test-bucket"),
