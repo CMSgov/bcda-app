@@ -30,7 +30,7 @@ jobs:
   trigger:
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: ./bcda/lambda/admin_create_group
@@ -56,7 +56,7 @@ jobs:
   cleanup:
     if: ${{ always() }}
     needs: trigger
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: actions/checkout@v3
       - uses: aws-actions/configure-aws-credentials@v4
