@@ -189,7 +189,7 @@ resource "aws_cloudwatch_log_group" "this" {
 
 resource "aws_lambda_function" "this" {
   s3_key = local.lambda_filename
-  s3_bucket = "bcda-test-bene-prefs-20260317152046594000000001"
+  s3_bucket = module.bucket.id
   package_type     = "Zip"
   handler          = "bootstrap"
 
