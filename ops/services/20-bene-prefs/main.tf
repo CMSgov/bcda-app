@@ -167,7 +167,7 @@ resource "aws_iam_role_policy_attachment" "this" {
   policy_arn = aws_iam_policy.default_function.arn
 }
 
-resource "aws_iam_role_policy_attachment" "this" {
+resource "aws_iam_role_policy_attachment" "assume_bucket_role" {
   role = aws_iam_role.this.name
   policy_arn = aws_iam_policy.assume_bucket_role.arn
 }
