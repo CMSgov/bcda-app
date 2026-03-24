@@ -54,6 +54,21 @@ data "aws_iam_policy_document" "assume_bucket_role" {
     actions   = ["sts:AssumeRole"]
     resources = [module.platform.ssm.bene-prefs.iam_bucket_role_arn.value]
   }
+
+  statement {
+    sid     = "AllowBCDARoleKMSAccess"
+    effect  = "Allow"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+    ]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::830858426211:role/bfd-test-bene-prefs-bcda-bucket-access-role"]
+    }
+  }
 }
 
 resource "aws_iam_policy" "assume_bucket_role" {
@@ -171,7 +186,6 @@ resource "aws_iam_role_policy_attachment" "assume_bucket_role" {
   role = aws_iam_role.this.name
   policy_arn = aws_iam_policy.assume_bucket_role.arn
 }
-
 
 module "bucket" {
   source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=787224b"
