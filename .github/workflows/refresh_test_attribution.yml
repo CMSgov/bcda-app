@@ -14,7 +14,7 @@ permissions:
 jobs:
   refresh_attribution:
     name: Refresh Attribution
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     strategy:
       matrix:
         vars:
@@ -37,7 +37,7 @@ jobs:
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
-            DB_URL=/bcda/${{ matrix.vars.env }}/api/DATABASE_URL
+            DB_URL=/bcda/${{ matrix.vars.env }}/sensitive/api/DATABASE_URL
       - name: Install psql
         run: |
           sudo dnf install postgresql16 -y
