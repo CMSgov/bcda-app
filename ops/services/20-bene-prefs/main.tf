@@ -167,6 +167,12 @@ resource "aws_iam_role_policy_attachment" "this" {
   policy_arn = aws_iam_policy.default_function.arn
 }
 
+resource "aws_iam_role_policy_attachment" "this" {
+  role = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.assume_bucket_role.arn
+}
+
+
 module "bucket" {
   source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=787224b"
 
