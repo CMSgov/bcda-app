@@ -11,13 +11,14 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/optout"
@@ -34,7 +35,7 @@ type SuppressionS3TestSuite struct {
 func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
 	saver := optout.FakeSaver{}
 	s.ctx = context.Background()
-	client := testUtils.TestS3Client(s.T(), testUtils.TestAWSConfig(s.T()))
+	client := &bcdaaws.MockS3Client{}
 
 	return OptOutImporter{
 		FileHandler: &optout.S3FileHandler{
@@ -54,8 +55,9 @@ func TestSuppressionS3TestSuite(t *testing.T) {
 
 func (s *SuppressionS3TestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
-	bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	s.T().Cleanup(func() { cleanup() })
+	bucketName := uuid.NewString()
+	// bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
+	// s.T().Cleanup(func() { cleanup() })
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -88,8 +90,8 @@ func (s *SuppressionS3TestSuite) TestImportSuppression() {
 	assert.Equal("1-800", suppressions[3].SourceCode)
 
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
-	bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390")
-	s.T().Cleanup(func() { cleanup() })
+	// bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390")
+	// s.T().Cleanup(func() { cleanup() })
 
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
 	metadata = &optout.OptOutFilenameMetadata{
@@ -145,8 +147,9 @@ func (s *SuppressionS3TestSuite) TestImportSuppression_MissingData() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			bucketName, cleanup := testUtils.CopyToS3(s.T(), fmt.Sprintf("../../shared_files/suppressionfile_MissingData/%s", tt.name))
-			defer cleanup()
+			bucketName := uuid.NewString()
+			// bucketName, cleanup := testUtils.CopyToS3(s.T(), fmt.Sprintf("../../shared_files/suppressionfile_MissingData/%s", tt.name))
+			// defer cleanup()
 
 			fp := filepath.Join(bucketName, "suppressionfile_MissingData/"+tt.name)
 			metadata = &optout.OptOutFilenameMetadata{
@@ -185,8 +188,9 @@ func (s *SuppressionS3TestSuite) TestValidate() {
 	importer, _ := s.createImporter()
 
 	// positive
-	bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	defer cleanup()
+	bucketName := uuid.NewString()
+	// bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
+	// defer cleanup()
 
 	suppressionfilePath := filepath.Join(bucketName, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	metadata := &optout.OptOutFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
@@ -200,24 +204,24 @@ func (s *SuppressionS3TestSuite) TestValidate() {
 	assert.Contains(err.Error(), "could not read file "+metadata.FilePath)
 
 	// invalid file header
-	bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	defer cleanup()
+	// bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
+	// defer cleanup()
 
 	metadata.FilePath = filepath.Join(bucketName, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	err = importer.validate(s.ctx, metadata)
 	assert.EqualError(err, "invalid file header for file: "+metadata.FilePath)
 
 	// missing record count
-	bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-	defer cleanup()
+	// bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
+	// defer cleanup()
 
 	metadata.FilePath = filepath.Join(bucketName, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	err = importer.validate(s.ctx, metadata)
 	assert.EqualError(err, "failed to parse record count from file: "+metadata.FilePath)
 
 	// incorrect record count
-	bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
-	defer cleanup()
+	// bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
+	// defer cleanup()
 
 	metadata.FilePath = filepath.Join(bucketName, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
 	err = importer.validate(s.ctx, metadata)
@@ -228,8 +232,9 @@ func (s *SuppressionS3TestSuite) TestLoadOptOutFiles() {
 	assert := assert.New(s.T())
 	importer, _ := s.createImporter()
 
-	bucketName, cleanup := testUtils.CopyToS3(s.T(), fmt.Sprintf("../../shared_files/%s", constants.TestSynthMedFilesPath))
-	defer cleanup()
+	bucketName := uuid.NewString()
+	// bucketName, cleanup := testUtils.CopyToS3(s.T(), fmt.Sprintf("../../shared_files/%s", constants.TestSynthMedFilesPath))
+	// defer cleanup()
 
 	filePath := filepath.Join(bucketName, constants.TestSynthMedFilesPath)
 	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(s.ctx, filePath)
@@ -237,8 +242,8 @@ func (s *SuppressionS3TestSuite) TestLoadOptOutFiles() {
 	assert.Equal(2, len(*suppresslist))
 	assert.Equal(0, skipped)
 
-	bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_BadFileNames/")
-	defer cleanup()
+	// bucketName, cleanup = testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_BadFileNames/")
+	// defer cleanup()
 
 	filePath = filepath.Join(bucketName, "suppressionfile_BadFileNames/")
 	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(s.ctx, filePath)
@@ -277,8 +282,8 @@ func (s *SuppressionS3TestSuite) TestCleanupSuppression() {
 		DeliveryDate: fileTime,
 	}
 
-	bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420")
-	defer cleanup()
+	// bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420")
+	// defer cleanup()
 
 	// successful import: should move
 	metadata3 := &optout.OptOutFilenameMetadata{
@@ -293,7 +298,7 @@ func (s *SuppressionS3TestSuite) TestCleanupSuppression() {
 	err := importer.FileHandler.CleanupOptOutFiles(s.ctx, suppresslist)
 	assert.Nil(err)
 
-	client := testUtils.TestS3Client(s.T(), testUtils.TestAWSConfig(s.T()))
+	client := &bcdaaws.MockS3Client{}
 	output, _ := client.ListObjectsV2(s.T().Context(), &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucketName),
 	})
@@ -328,8 +333,9 @@ func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			bucketName, cleanup := testUtils.CopyToS3(s.T(), tt.directory)
-			defer cleanup()
+			bucketName := uuid.NewString()
+			// bucketName, cleanup := testUtils.CopyToS3(s.T(), tt.directory)
+			// defer cleanup()
 
 			if tt.insertCarriage {
 				bucketName += "\n"

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
@@ -74,6 +75,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.path, func(t *testing.T) {
+			bucketName := filepath.Join(s.basePath, tt.path)
 			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
 			// defer cleanup()
 
@@ -97,10 +99,12 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 	ctx := context.Background()
 	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "dev"}})
 	s.T().Cleanup(func() { cleanupEnvVars() })
-	// s3Bucket, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
+
+	bucketName := uuid.NewString()
+	// bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
 	// s.T().Cleanup(func() { cleanupS3() })
 
-	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, s3Bucket)
+	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, bucketName)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
@@ -109,6 +113,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 
 func (s *S3ProcessorTestSuite) TestLoadCclfFiles_DuplicateCCLFs() {
 	ctx := context.Background()
+	bucketName := uuid.NewString()
 	// bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(),
 	// 	// Multiple CCLF0s
 	// 	testUtils.ZipInput{
@@ -145,6 +150,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SingleFile() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.path, func(t *testing.T) {
+			bucketName := uuid.NewString()
 			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
 			// defer cleanup()
 
@@ -184,6 +190,7 @@ func (s *S3ProcessorTestSuite) TestMultipleFileTypes() {
 	cclfRefDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "201201")
 	s.T().Cleanup(func() { conf.SetEnv(s.T(), "CCLF_REF_DATE", cclfRefDate) })
+	bucketName := uuid.NewString()
 
 	// Create various CCLF files that have unique perfYear:fileType
 	// bucketName, cleanup := testUtils.CreateZipsInS3(s.T(),
@@ -226,6 +233,7 @@ func (s *S3ProcessorTestSuite) TestCleanupCCLF() {
 	cclfmap := make(map[string][]*cclfZipMetadata)
 	acoID := "A0001"
 
+	bucketName := uuid.NewString()
 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, constants.CCLF8CompPath))
 	// defer cleanup()
 
@@ -277,6 +285,7 @@ func (s *S3ProcessorTestSuite) TestCleanupCSV() {
 	assert := assert.New(s.T())
 	ctx := context.Background()
 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+	bucketName := uuid.NewString()
 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
 
 	tests := []struct {
@@ -310,6 +319,7 @@ func (s *S3ProcessorTestSuite) TestLoadCSV() {
 	ctx := context.Background()
 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
 
+	bucketName := uuid.NewString()
 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
 	// defer cleanup()
 
@@ -348,6 +358,7 @@ func (s *S3ProcessorTestSuite) TestLoadCSV_SkipOtherEnvs() {
 
 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
 
+	bucketName := uuid.NewString()
 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
 	// defer cleanup()
 	_, _, err := s.csvProcessor.LoadCSV(ctx, filepath.Join(bucketName, path))

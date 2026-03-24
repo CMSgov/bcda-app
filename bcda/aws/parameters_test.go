@@ -16,5 +16,4 @@ func TestGetParameters(t *testing.T) {
 	vals, err := GetParameters(t.Context(), &MockSSMClient{}, []string{"name", "other"})
 	assert.Nil(t, err)
 	assert.Equal(t, map[string]string{"name": "value1", "other": "value2"}, vals)
-	assert.Len(t, 2, len(vals))
 }

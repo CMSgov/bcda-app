@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 
 	log "github.com/sirupsen/logrus"
 
@@ -19,7 +17,7 @@ import (
 
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
-func getAWSParams(ctx context.Context) (awsParams, error) {
+func getAWSParams(ctx context.Context, client bcdaaws.CustomSSMClient) (awsParams, error) {
 	env := adjustedEnv()
 
 	slackParamName := "/slack/token/workflow-alerts"
@@ -40,13 +38,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 		credsBucketName,
 	}
 
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return awsParams{}, err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
-
-	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
+	params, err := bcdaaws.GetParameters(ctx, client, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}

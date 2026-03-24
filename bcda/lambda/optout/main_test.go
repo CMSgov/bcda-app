@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -30,18 +30,19 @@ func TestOptOutImportMainSuite(t *testing.T) {
 
 func (s *OptOutImportMainSuite) TestHandleOptOutImportSuccess() {
 	assert := assert.New(s.T())
-	cfg := testUtils.TestAWSConfig(s.T())
-	s3Client := testUtils.TestS3Client(s.T(), cfg)
+	// cfg := testUtils.TestAWSConfig(s.T())
+	s3Client := &bcdaaws.MockS3Client{}
 
-	path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/synthetic1800MedicareFiles/test2/")
-	defer cleanup()
+	path := "../../../shared_files/synthetic1800MedicareFiles/test2/"
+	// path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/synthetic1800MedicareFiles/test2/")
+	// defer cleanup()
 
 	env := uuid.NewUUID()
 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
 	defer cleanupEnv()
 
-	cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-	defer cleanupParam()
+	// cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
+	// defer cleanupParam()
 
 	res, err := handleOptOutImport(context.Background(), s.db, s3Client, path)
 	assert.Nil(err)
@@ -63,20 +64,21 @@ func (s *OptOutImportMainSuite) TestHandleOptOutImportSuccess() {
 
 func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Skipped() {
 	assert := assert.New(s.T())
-	cfg := testUtils.TestAWSConfig(s.T())
-	s3Client := testUtils.TestS3Client(s.T(), cfg)
+	// cfg := testUtils.TestAWSConfig(s.T())
+	s3Client := &bcdaaws.MockS3Client{}
 
-	path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadFileNames/")
-	defer cleanup()
+	path := "../../../shared_files/suppressionfile_BadFileNames/"
+	// path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadFileNames/")
+	// defer cleanup()
 
 	env := uuid.NewUUID()
 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
 	defer cleanupEnv()
 
-	cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
-	cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-	defer cleanupParam1()
-	defer cleanupParam2()
+	// cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
+	// cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
+	// defer cleanupParam1()
+	// defer cleanupParam2()
 
 	res, err := handleOptOutImport(context.Background(), s.db, s3Client, path)
 	assert.Nil(err)
@@ -88,20 +90,21 @@ func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Skipped() {
 
 func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Failed() {
 	assert := assert.New(s.T())
-	cfg := testUtils.TestAWSConfig(s.T())
-	s3Client := testUtils.TestS3Client(s.T(), cfg)
+	// cfg := testUtils.TestAWSConfig(s.T())
+	s3Client := &bcdaaws.MockS3Client{}
 
-	path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadHeader/")
-	defer cleanup()
+	path := "../../../shared_files/suppressionfile_BadHeader/"
+	// path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadHeader/")
+	// defer cleanup()
 
 	env := uuid.NewUUID()
 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
 	defer cleanupEnv()
 
-	cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
-	cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-	defer cleanupParam1()
-	defer cleanupParam2()
+	// cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
+	// cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
+	// defer cleanupParam1()
+	// defer cleanupParam2()
 
 	res, err := handleOptOutImport(context.Background(), s.db, s3Client, path)
 	assert.EqualError(err, "one or more suppression files failed to import correctly")

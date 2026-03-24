@@ -19,6 +19,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -54,7 +55,14 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	params, err := getAWSParams(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Errorf("Failed to load default config: %+v", err)
+		return "", err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	params, err := getAWSParams(ctx, ssmClient)
 	if err != nil {
 		log.Errorf("Unable to extract slack token from parameter store: %+v", err)
 		return "", err
@@ -67,11 +75,6 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	}
 
 	provider := auth.NewProvider(database.Connect())
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return "", err
-	}
 
 	s3Service := s3.NewFromConfig(cfg)
 	slackClient := slack.New(params.slackToken)

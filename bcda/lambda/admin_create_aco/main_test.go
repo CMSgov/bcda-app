@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/pborman/uuid"
@@ -139,7 +140,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	params, err := getAWSParams(context.Background())
+	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{})
 	assert.Nil(t, err)
 	assert.Equal(t, "value1", params.slackToken)
 	assert.Equal(t, "value2", params.dbURL)
