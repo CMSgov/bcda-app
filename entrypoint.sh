@@ -12,9 +12,9 @@ bootstrap_config() {
 }
 
 if [[ -n "$BOOTSTRAP_FROM_LOCAL" ]]; then
-  echo "Bootstrapping config from shared_files/decrypted"
-  cp -R shared_files/decrypted/. /etc/sv/$APP_NAME/env/
-else;
+  echo "Bootstrapping config from local files"
+  cp /etc/config/* /etc/sv/$APP_NAME/env/
+else
   # this should be the default for everything outside of local dev/testing
   echo "Bootstrapping config from S3"
   bootstrap_config
