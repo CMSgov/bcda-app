@@ -39,7 +39,7 @@ services:
     read_only: true
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.bcda
+      dockerfile: docker/Dockerfile.bcda
       args:
         ENVIRONMENT: development
     platform: linux/arm64
@@ -91,7 +91,7 @@ services:
     read_only: true
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.bcdaworker
+      dockerfile: docker/Dockerfile.bcdaworker
       args:
         ENVIRONMENT: development
     platform: linux/arm64
@@ -139,7 +139,7 @@ services:
   ssas:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.ssas
+      dockerfile: docker/Dockerfile.ssas
     platform: linux/arm64
     environment:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable

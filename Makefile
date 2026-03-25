@@ -172,7 +172,7 @@ fhir_testing:
 	$(eval TOKEN_URL = 'http://host.docker.internal:3000/auth/token')
 
 	# Run the tests
-	docker build --no-cache -t fhir_testing -f Dockerfiles/Dockerfile.fhir_testing .
+	docker build --no-cache -t fhir_testing -f docker/Dockerfile.fhir_testing .
 	@docker run --network=bridge --rm \
 	-e BULK_URL='${BULK_URL}' \
 	-e TOKEN_URL='${TOKEN_URL}' \
@@ -212,7 +212,7 @@ build-api:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
 	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
 	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-api)
-	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${RELEASE_VERSION}' -f Dockerfiles/Dockerfile.bcda .
+	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${RELEASE_VERSION}' -f docker/Dockerfile.bcda .
 
 publish-api:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
@@ -224,7 +224,7 @@ build-worker:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))
 	$(eval CURRENT_COMMIT=$(shell git log -n 1 --pretty=format:'%h'))
 	$(eval DOCKER_REGISTRY_URL=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/bcda-worker)
-	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${RELEASE_VERSION}' -f Dockerfiles/Dockerfile.bcdaworker .
+	docker build -t ${DOCKER_REGISTRY_URL}:latest -t '${DOCKER_REGISTRY_URL}:${RELEASE_VERSION}' -f docker/Dockerfile.bcdaworker .
 
 publish-worker:
 	$(eval ACCOUNT_ID =$(shell aws sts get-caller-identity --output text --query Account))

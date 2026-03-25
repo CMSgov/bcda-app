@@ -5,7 +5,7 @@ ENV GOARCH=arm64
 
 ARG GO_FLAGS
 ARG RELEASE_VERSION=main
-
+    
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
 # Download all dependencies
@@ -14,11 +14,11 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY go.mod go.sum tools.go ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
-RUN --mount=type=cache,target=/go/pkg/mod \
-    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %
+RUN --mount=type=cache,target=/go/pkg/mod \ 
+    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get % 
 
 COPY . .
-WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
@@ -28,34 +28,36 @@ FROM arm64v8/golang:1.26.0-alpine3.23
 
 RUN addgroup -S -g 1200 bcda && adduser -S -G bcda -u 1100 bcda && \
     apk update upgrade --no-cache && \
-    apk add --no-cache aws-cli
+    apk add --no-cache \
+        aws-cli \
+        curl
 
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
 RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
     go install github.com/go-delve/delve/cmd/dlv@latest
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
-COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/conf/configs/ /go/src/github.com/CMSgov/bcda-app/conf/configs/
 COPY --from=builder /go/bin/ /go/bin/
-COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/docker/entrypoint.sh .
 
 # configure directories
 RUN mkdir -p \
-        /etc/sv/worker/env \
-        /home/bcda/FHIR_TEMP_DIR \
+        /etc/sv/api/env \
         /var/efs \
     && chown -R bcda:bcda \
         /go/src/github.com/CMSgov/bcda-app \
-        /etc/sv/worker/env \
-        /home/bcda/FHIR_TEMP_DIR \
+        /etc/sv/api/env \
         /var/efs
 
-VOLUME [ "/etc/sv/worker/env", "/var/efs", "/home/bcda/FHIR_TEMP_DIR" ]
+EXPOSE 3000 3001
+VOLUME [ "/etc/sv/api/env", "/var/efs" ]
 USER bcda
 
-ENV APP_NAME="worker"
+ENV APP_NAME="api"
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["bcdaworker", "start-worker"]
+CMD ["bcda", "start-api"]

@@ -20,7 +20,7 @@ services:
   tests:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.tests
+      dockerfile: docker/Dockerfile.tests
     platform: linux/arm64
     env_file:
       - ./shared_files/decrypted/local.env
@@ -60,7 +60,7 @@ services:
   postman_test:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.postman_test
+      dockerfile: docker/Dockerfile.postman_test
 
 networks:
   default:
