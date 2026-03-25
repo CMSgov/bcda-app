@@ -177,12 +177,16 @@ jobs:
         uses: cmsgov/cdap/actions/setup-sops@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
       - name: Install YQ
         uses: cmsgov/cdap/actions/setup-yq@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
-      - name: Apply SOPS
+      - name: Plan SOPS
         working-directory: ops/services/10-config
         run: |
           TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
           tofu plan \
             -out 'bcda-release-sops.tfplan'
+      - name: Apply SOPS
+        working-directory: ops/services/10-config
+        run: |
+          tofu apply bcda-release-sops.tfplan
       # - name: Checkout bcda-ops
       #   uses: actions/checkout@v4
       #   with:
