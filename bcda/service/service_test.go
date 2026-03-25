@@ -836,6 +836,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 
 			cfg := &Config{
 				CutoffDuration:          time.Hour,
@@ -986,6 +987,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1, false, false), nil)
 		repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 		repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return([]string{"old"}, nil)
+		repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
 		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
@@ -1070,6 +1072,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 
 			cfg := &Config{
 				CutoffDuration:          time.Hour,
@@ -1798,232 +1801,315 @@ func TestGetBenesByFileID_Fail_ACOConfigMismatch(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
 }
 
-func TestCreateQueueJobs_Fail_NoACOConfig(t *testing.T) {
-	args := worker_types.PrepareJobArgs{
-		CMSID: "A0000",
-	}
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			CutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-		ACOConfigs: []ACOConfig{},
-	}
+func TestCreateQueueJobs(t *testing.T) {
+	t.Run("fails when no ACO config matches", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, nil, nil))
 
-	repository := models.NewMockRepository(t)
-	ctx := context.Background()
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	jobArgs, err := serviceInstance.createQueueJobs(ctx, args, time.Now(), nil)
-	assert.Nil(t, jobArgs)
-	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
+		jobArgs, err := svc.createQueueJobs(context.Background(), worker_types.PrepareJobArgs{CMSID: "A0000"}, time.Now(), nil)
+		assert.Nil(t, jobArgs)
+		assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
+	})
+
+	t.Run("fails when CMS ID does not match configured pattern", func(t *testing.T) {
+		cfg := newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, nil)
+		svc := newQueueJobTestService(t, cfg)
+
+		jobArgs, err := svc.createQueueJobs(context.Background(), worker_types.PrepareJobArgs{CMSID: "zxy00"}, time.Now(), nil)
+		assert.Nil(t, jobArgs)
+		assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
+	})
+
+	t.Run("v3 only creates patient and coverage jobs", func(t *testing.T) {
+		cfg := newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, []string{"CKCC"})
+		svc := newQueueJobTestService(t, cfg)
+		args := newQueueJobTestArgs("A1234", []string{"Patient", "Coverage"})
+		args.BFDPath = constants.BFDV3Path
+
+		jobs, err := svc.createQueueJobs(newQueueJobTestContext(), args, time.Time{}, []*models.CCLFBeneficiary{
+			getCCLFBeneficiary(1, "MBI1"),
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, jobs, 2)
+		assert.ElementsMatch(t, []string{"Patient", "Coverage"}, []string{
+			jobs[0].ResourceType,
+			jobs[1].ResourceType,
+		})
+	})
+
+	t.Run("v3 excludes EOB jobs", func(t *testing.T) {
+		cfg := newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("CKCC", `^C\d{4}`, []string{constants.Adjudicated}),
+		}, []string{"CKCC"})
+		svc := newQueueJobTestService(t, cfg)
+		args := newQueueJobTestArgs("C5678", []string{"ExplanationOfBenefit"})
+		args.BFDPath = constants.BFDV3Path
+
+		jobs, err := svc.createQueueJobs(newQueueJobTestContext(), args, time.Time{}, []*models.CCLFBeneficiary{
+			getCCLFBeneficiary(1, "MBI1"),
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, jobs, 0, "v3 must not create EOB jobs; only Patient and Coverage are allowed")
+	})
 }
 
-func TestCreateQueueJobs_Fail_ACOConfigMismatch(t *testing.T) {
-	args := worker_types.PrepareJobArgs{
-		CMSID: "zxy00",
-	}
-	acoConfigs, err := LoadConfig()
-	assert.Nil(t, err)
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			CutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-		ACOConfigs: acoConfigs.ACOConfigs,
-	}
+func TestFormatSinceArg(t *testing.T) {
+	assert.Equal(t, "", formatSinceArg(time.Time{}))
 
-	repository := models.NewMockRepository(t)
-	ctx := context.Background()
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	jobArgs, err := serviceInstance.createQueueJobs(ctx, args, time.Now(), nil)
-	assert.Nil(t, jobArgs)
-	assert.ErrorContains(t, err, "failed to load or match ACO config (or potentially no ACO Configs set), CMS ID:")
+	since := time.Date(2026, time.March, 16, 10, 30, 0, 0, time.UTC)
+	assert.Equal(t, "gt"+since.Format(time.RFC3339Nano), formatSinceArg(since))
 }
 
-func TestCreateQueueJobs_V3_SSP_GetsPartiallyAdjudicated(t *testing.T) {
-	// SSP with only adjudicated in config gets both adjudicated and partially-adjudicated jobs when using v3.
-	sspACO := ACOConfig{
-		Model:      "SSP",
-		patternExp: regexp.MustCompile(`^A\d{4}`),
-		Data:       []string{constants.Adjudicated},
+func TestGetEffectiveQueueJobConfig(t *testing.T) {
+	t.Run("fails when no config matches", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, nil, nil))
+
+		resourceTypes, dataTypes, err := svc.getEffectiveQueueJobConfig(worker_types.PrepareJobArgs{CMSID: "A0000"})
+		assert.Nil(t, resourceTypes)
+		assert.Nil(t, dataTypes)
+		assert.ErrorContains(t, err, "failed to load or match ACO config")
+	})
+
+	t.Run("returns original resource and data types for non-v3", func(t *testing.T) {
+		cfg := newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, nil)
+		svc := newQueueJobTestService(t, cfg)
+
+		resourceTypes, dataTypes, err := svc.getEffectiveQueueJobConfig(newQueueJobTestArgs("A1234", []string{"Patient", "ExplanationOfBenefit"}))
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"Patient", "ExplanationOfBenefit"}, resourceTypes)
+		assert.Equal(t, []string{constants.Adjudicated}, dataTypes)
+	})
+
+	t.Run("filters v3 resources and adds partial claims when model allows it", func(t *testing.T) {
+		cfg := newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, []string{"CKCC"})
+		svc := newQueueJobTestService(t, cfg)
+		args := newQueueJobTestArgs("A1234", []string{"Patient", "Coverage", "ExplanationOfBenefit"})
+		args.BFDPath = constants.BFDV3Path
+
+		resourceTypes, dataTypes, err := svc.getEffectiveQueueJobConfig(args)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"Patient", "Coverage"}, resourceTypes)
+		assert.Equal(t, []string{constants.Adjudicated, constants.PartiallyAdjudicated}, dataTypes)
+	})
+
+	t.Run("filters v3 resources without adding partial claims for excluded models", func(t *testing.T) {
+		cfg := newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("CKCC", `^C\d{4}`, []string{constants.Adjudicated}),
+		}, []string{"CKCC"})
+		svc := newQueueJobTestService(t, cfg)
+		args := newQueueJobTestArgs("C5678", []string{"Patient", "Coverage", "ExplanationOfBenefit"})
+		args.BFDPath = constants.BFDV3Path
+
+		resourceTypes, dataTypes, err := svc.getEffectiveQueueJobConfig(args)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"Patient", "Coverage"}, resourceTypes)
+		assert.Equal(t, []string{constants.Adjudicated}, dataTypes)
+	})
+}
+
+func TestFilterV3ResourceTypes(t *testing.T) {
+	filtered := filterV3ResourceTypes([]string{"Patient", "Coverage", "ExplanationOfBenefit", "Claim"})
+	assert.Equal(t, []string{"Patient", "Coverage"}, filtered)
+}
+
+func TestChunkBeneficiaryIDs(t *testing.T) {
+	beneficiaries := []*models.CCLFBeneficiary{
+		getCCLFBeneficiary(1, "MBI1"),
+		getCCLFBeneficiary(2, "MBI2"),
+		getCCLFBeneficiary(3, "MBI3"),
+		getCCLFBeneficiary(4, "MBI4"),
+		getCCLFBeneficiary(5, "MBI5"),
 	}
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig:            RunoutConfig{CutoffDuration: defaultRunoutCutoff, claimThru: defaultRunoutClaimThru},
-		ACOConfigs:              []ACOConfig{sspACO},
-		V3NoPartialClaimsModels: []string{"CKCC"},
-	}
-	repository := models.NewMockRepository(t)
-	svc := NewService(repository, cfg, "").(*service)
-	ctx := context.WithValue(context.Background(), middleware.CtxTransactionKey, "test-txn")
-	args := worker_types.PrepareJobArgs{
-		Job:           models.Job{ID: 1, TransactionTime: time.Now()},
-		CMSID:         "A1234",
-		ACOID:         uuid.NewUUID(),
-		BFDPath:       constants.BFDV3Path,
-		ResourceTypes: []string{"ExplanationOfBenefit", "Claim"},
-		CreationTime:  time.Now(),
-	}
-	benes := []*models.CCLFBeneficiary{getCCLFBeneficiary(1, "MBI1")}
-	jobs, err := svc.createQueueJobs(ctx, args, time.Time{}, benes)
+
+	assert.Nil(t, chunkBeneficiaryIDs(nil, 2))
+	assert.Equal(t, [][]string{
+		{"1", "2"},
+		{"3", "4"},
+		{"5"},
+	}, chunkBeneficiaryIDs(beneficiaries, 2))
+}
+
+func TestCreateJobsForResourceChunk(t *testing.T) {
+	cfg := newQueueJobTestConfig(t, []ACOConfig{
+		newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+	}, nil)
+	svc := newQueueJobTestService(t, cfg)
+	args := newQueueJobTestArgs("A1234", []string{"ExplanationOfBenefit"})
+
+	t.Run("returns error for invalid resource type", func(t *testing.T) {
+		jobs, err := svc.createJobsForResourceChunk(newQueueJobTestContext(), args, "", "NotAResource", []string{"1"}, []string{constants.Adjudicated})
+		assert.Nil(t, jobs)
+		assert.EqualError(t, err, "Invalid resource type: NotAResource")
+	})
+
+	t.Run("creates jobs only for supported data types", func(t *testing.T) {
+		args.BFDPath = constants.BFDV3Path
+		args.ResourceTypes = []string{"Claim"}
+
+		jobs, err := svc.createJobsForResourceChunk(newQueueJobTestContext(), args, "gt2026-03-16T10:30:00Z", "Claim", []string{"1", "2"}, []string{
+			constants.Adjudicated,
+			constants.PartiallyAdjudicated,
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, jobs, 1)
+		assert.Equal(t, constants.PartiallyAdjudicated, jobs[0].DataType)
+		assert.Equal(t, "Claim", jobs[0].ResourceType)
+		assert.Equal(t, []string{"1", "2"}, jobs[0].BeneficiaryIDs)
+	})
+}
+
+func TestBuildQueueJobArgs(t *testing.T) {
+	cfg := newQueueJobTestConfig(t, []ACOConfig{
+		newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+	}, nil)
+	svc := newQueueJobTestService(t, cfg)
+	args := newQueueJobTestArgs("A1234", []string{"Patient"})
+
+	enqueueArgs, err := svc.buildQueueJobArgs(newQueueJobTestContext(), args, "gt2026-03-16T10:30:00Z", []string{"1", "2"}, "Patient", constants.Adjudicated)
 	assert.NoError(t, err)
-	// EOB supports only adjudicated; Claim supports only partially-adjudicated. So we get 2 jobs (one of each data type).
-	assert.Len(t, jobs, 2)
-	dataTypes := make([]string, len(jobs))
-	for i, j := range jobs {
-		dataTypes[i] = j.DataType
-	}
-	assert.Contains(t, dataTypes, constants.Adjudicated)
-	assert.Contains(t, dataTypes, constants.PartiallyAdjudicated)
+	assert.Equal(t, 1, enqueueArgs.ID)
+	assert.Equal(t, args.ACOID.String(), enqueueArgs.ACOID)
+	assert.Equal(t, "A1234", enqueueArgs.CMSID)
+	assert.Equal(t, []string{"1", "2"}, enqueueArgs.BeneficiaryIDs)
+	assert.Equal(t, "Patient", enqueueArgs.ResourceType)
+	assert.Equal(t, "gt2026-03-16T10:30:00Z", enqueueArgs.Since)
+	assert.Equal(t, "test-txn", enqueueArgs.TransactionID)
+	assert.Equal(t, args.Job.TransactionTime, enqueueArgs.TransactionTime)
+	assert.Equal(t, args.ClaimsDate, enqueueArgs.ClaimsWindow.UpperBound)
+
+	acoCfg, ok := svc.GetACOConfigForID("A1234")
+	assert.True(t, ok)
+	assert.Equal(t, acoCfg.LookbackTime(), enqueueArgs.ClaimsWindow.LowerBound)
 }
 
-func TestCreateQueueJobs_V3_KCC_AdjudicatedOnly(t *testing.T) {
-	// KCC (CKCC) with only adjudicated in config gets only adjudicated jobs in v3 (no PAC).
-	kccACO := ACOConfig{
-		Model:      "CKCC",
-		patternExp: regexp.MustCompile(`C\d{4}`),
-		Data:       []string{constants.Adjudicated},
-	}
+func TestGetQueueJobTransactionTime(t *testing.T) {
+	args := newQueueJobTestArgs("A1234", []string{"Patient"})
+
+	assert.Equal(t, args.Job.TransactionTime, getQueueJobTransactionTime(args, constants.Adjudicated))
+	assert.Equal(t, args.CreationTime, getQueueJobTransactionTime(args, constants.PartiallyAdjudicated))
+}
+
+func newQueueJobTestService(t *testing.T, cfg *Config) *service {
+	t.Helper()
+	return NewService(models.NewMockRepository(t), cfg, "").(*service)
+}
+
+func newQueueJobTestConfig(t *testing.T, acoConfigs []ACOConfig, v3NoPartialClaimsModels []string) *Config {
+	t.Helper()
+
 	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
 		SuppressionLookbackDays: int(30),
-		RunoutConfig:            RunoutConfig{CutoffDuration: defaultRunoutCutoff, claimThru: defaultRunoutClaimThru},
-		ACOConfigs:              []ACOConfig{kccACO},
-		V3NoPartialClaimsModels: []string{"CKCC"},
+		CutoffDurationDays:      45,
+		ACOConfigs:              acoConfigs,
+		V3NoPartialClaimsModels: v3NoPartialClaimsModels,
+		RunoutConfig: RunoutConfig{
+			CutoffDurationDays: int(defaultRunoutCutoff / (24 * time.Hour)),
+			ClaimThruDate:      defaultRunoutClaimThru.Format("2006-01-02"),
+		},
 	}
-	repository := models.NewMockRepository(t)
-	svc := NewService(repository, cfg, "").(*service)
-	ctx := context.WithValue(context.Background(), middleware.CtxTransactionKey, "test-txn")
-	args := worker_types.PrepareJobArgs{
-		Job:           models.Job{ID: 1, TransactionTime: time.Now()},
-		CMSID:         "C5678",
+	assert.NoError(t, cfg.ComputeFields())
+
+	return cfg
+}
+
+func newQueueJobTestACO(model string, pattern string, data []string) ACOConfig {
+	return ACOConfig{
+		Model:              model,
+		Pattern:            pattern,
+		PerfYearTransition: "01/01",
+		LookbackYears:      1,
+		Data:               data,
+	}
+}
+
+func newQueueJobTestArgs(cmsID string, resourceTypes []string) worker_types.PrepareJobArgs {
+	creationTime := time.Date(2026, time.March, 16, 10, 0, 0, 0, time.UTC)
+
+	return worker_types.PrepareJobArgs{
+		Job: models.Job{
+			ID:              1,
+			TransactionTime: creationTime.Add(-1 * time.Hour),
+		},
 		ACOID:         uuid.NewUUID(),
-		BFDPath:       constants.BFDV3Path,
-		ResourceTypes: []string{"ExplanationOfBenefit"},
-		CreationTime:  time.Now(),
+		CMSID:         cmsID,
+		ResourceTypes: resourceTypes,
+		CreationTime:  creationTime,
+		ClaimsDate:    creationTime.Add(-2 * time.Hour),
 	}
-	benes := []*models.CCLFBeneficiary{getCCLFBeneficiary(1, "MBI1")}
-	jobs, err := svc.createQueueJobs(ctx, args, time.Time{}, benes)
-	assert.NoError(t, err)
-	assert.Len(t, jobs, 1)
-	assert.Equal(t, constants.Adjudicated, jobs[0].DataType)
 }
 
-func TestSetClaimsDate_Runout(t *testing.T) {
-	pArgs := worker_types.PrepareJobArgs{
-		CMSID:       "A0000",
-		RequestType: constants.Runout,
-	}
-	jArgs := worker_types.JobEnqueueArgs{
-		CMSID: "A0000",
-	}
-	acoConfigs, err := LoadConfig()
-	assert.Nil(t, err)
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			CutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-		ACOConfigs: acoConfigs.ACOConfigs,
-	}
-
-	repository := models.NewMockRepository(t)
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
-	assert.True(t, ok)
-
-	acoCfg, ok := serviceInstance.GetACOConfigForID("A0000")
-	assert.True(t, ok)
-	assert.Equal(t, jArgs.ClaimsWindow.UpperBound, defaultRunoutClaimThru)
-	assert.Equal(t, jArgs.ClaimsWindow.LowerBound, acoCfg.LookbackTime())
+func newQueueJobTestContext() context.Context {
+	return context.WithValue(context.Background(), middleware.CtxTransactionKey, "test-txn")
 }
 
-func TestSetClaimsDate_ClaimsDateSet(t *testing.T) {
-	now := time.Now()
-	pArgs := worker_types.PrepareJobArgs{
-		CMSID:       "A0000",
-		RequestType: constants.DefaultRequest,
-		ClaimsDate:  now,
-	}
-	jArgs := worker_types.JobEnqueueArgs{
-		CMSID: "A0000",
-	}
-	acoConfigs, err := LoadConfig()
-	assert.Nil(t, err)
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			CutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-		ACOConfigs: acoConfigs.ACOConfigs,
-	}
+func TestSetClaimsDate(t *testing.T) {
+	t.Run("uses runout claim thru date when request is runout", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, nil))
+		pArgs := worker_types.PrepareJobArgs{
+			CMSID:       "A0000",
+			RequestType: constants.Runout,
+		}
+		jArgs := worker_types.JobEnqueueArgs{CMSID: "A0000"}
 
-	repository := models.NewMockRepository(t)
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
-	assert.True(t, ok)
+		ok := svc.setClaimsDate(&jArgs, pArgs)
+		assert.True(t, ok)
 
-	acoCfg, ok := serviceInstance.GetACOConfigForID("A0000")
-	assert.True(t, ok)
-	assert.Equal(t, jArgs.ClaimsWindow.UpperBound, now)
-	assert.Equal(t, jArgs.ClaimsWindow.LowerBound, acoCfg.LookbackTime())
-}
+		acoCfg, ok := svc.GetACOConfigForID("A0000")
+		assert.True(t, ok)
+		assert.Equal(t, svc.rp.claimThruDate, jArgs.ClaimsWindow.UpperBound)
+		assert.Equal(t, acoCfg.LookbackTime(), jArgs.ClaimsWindow.LowerBound)
+	})
 
-func TestSetClaimsDate_Fail_NoACOConfig(t *testing.T) {
-	pArgs := worker_types.PrepareJobArgs{
-		CMSID: "A0000",
-	}
-	jArgs := worker_types.JobEnqueueArgs{
-		CMSID: "A0000",
-	}
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			CutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-		ACOConfigs: []ACOConfig{},
-	}
+	t.Run("uses explicit claims date for default requests", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, nil))
+		now := time.Date(2026, time.March, 16, 12, 0, 0, 0, time.UTC)
+		pArgs := worker_types.PrepareJobArgs{
+			CMSID:       "A0000",
+			RequestType: constants.DefaultRequest,
+			ClaimsDate:  now,
+		}
+		jArgs := worker_types.JobEnqueueArgs{CMSID: "A0000"}
 
-	repository := models.NewMockRepository(t)
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
-	assert.False(t, ok)
-}
+		ok := svc.setClaimsDate(&jArgs, pArgs)
+		assert.True(t, ok)
 
-func TestSetClaimsDate_Fail_ACOConfigMismatch(t *testing.T) {
-	pArgs := worker_types.PrepareJobArgs{
-		CMSID: "zxy00",
-	}
-	jArgs := worker_types.JobEnqueueArgs{
-		CMSID: "zxy00",
-	}
-	acoConfigs, err := LoadConfig()
-	assert.Nil(t, err)
-	cfg := &Config{
-		CutoffDuration:          -50 * time.Hour,
-		SuppressionLookbackDays: int(30),
-		RunoutConfig: RunoutConfig{
-			CutoffDuration: defaultRunoutCutoff,
-			claimThru:      defaultRunoutClaimThru,
-		},
-		ACOConfigs: acoConfigs.ACOConfigs,
-	}
+		acoCfg, ok := svc.GetACOConfigForID("A0000")
+		assert.True(t, ok)
+		assert.Equal(t, now, jArgs.ClaimsWindow.UpperBound)
+		assert.Equal(t, acoCfg.LookbackTime(), jArgs.ClaimsWindow.LowerBound)
+	})
 
-	repository := models.NewMockRepository(t)
-	serviceInstance := NewService(repository, cfg, "").(*service)
-	ok := serviceInstance.setClaimsDate(&jArgs, pArgs)
-	assert.False(t, ok)
+	t.Run("fails when no ACO config matches", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, nil, nil))
+		pArgs := worker_types.PrepareJobArgs{CMSID: "A0000"}
+		jArgs := worker_types.JobEnqueueArgs{CMSID: "A0000"}
+
+		assert.False(t, svc.setClaimsDate(&jArgs, pArgs))
+	})
+
+	t.Run("fails when CMS ID does not match configured pattern", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		}, nil))
+		pArgs := worker_types.PrepareJobArgs{CMSID: "zxy00"}
+		jArgs := worker_types.JobEnqueueArgs{CMSID: "zxy00"}
+
+		assert.False(t, svc.setClaimsDate(&jArgs, pArgs))
+	})
 }
 
 func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
