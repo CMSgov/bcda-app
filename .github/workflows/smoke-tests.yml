@@ -152,7 +152,7 @@ jobs:
           docker system prune -af
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -160,7 +160,7 @@ jobs:
           ref: ${{ inputs.ref || 'main' }}
       - name: Build API Postman Container
         run: |
-          docker compose -f docker-compose.test.yml build --force-rm postman_test
+          docker compose -f compose.test.yml build --force-rm postman_test
       - name: Run Postman Tests
         if: ${{ inputs.postman_tests }}
         run: |
@@ -170,7 +170,7 @@ jobs:
           DENYLIST_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           OUTDATED_ATTR_CLIENT_ID=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           OUTDATED_ATTR_CLIENT_SECRET=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
@@ -181,7 +181,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm  postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
+          docker compose -f compose.test.yml run --rm  postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET
@@ -191,7 +191,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET
@@ -200,7 +200,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
            -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
            --global-var clientId=${CLIENT_ID} \
            --global-var clientSecret=${CLIENT_SECRET} \

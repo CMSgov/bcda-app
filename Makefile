@@ -17,15 +17,15 @@ decrypt-secrets:
 
 setup-tests:
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker compose -f docker-compose.test.yml rm -fsv tests
-	docker compose -f docker-compose.test.yml build tests
+	docker compose -f compose.test.yml rm -fsv tests
+	docker compose -f compose.test.yml build tests
 
 LINT_TIMEOUT ?= 5m
 lint: setup-tests
-	docker compose -f docker-compose.test.yml run --rm \
+	docker compose -f compose.test.yml run --rm \
 		tests golangci-lint run --timeout=$(LINT_TIMEOUT) --verbose --new-from-merge-base=main --concurrency=1
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
-	docker compose -f docker-compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
+	docker compose -f compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
 
 smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env)
@@ -57,8 +57,8 @@ postman:
 	$(eval OUTDATED_ATTR_CLIENT_ID:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval OUTDATED_ATTR_CLIENT_SECRET:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$2}'))
 
-	docker compose -f docker-compose.test.yml build postman_test
-	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+	docker compose -f compose.test.yml build postman_test
+	@docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
 	--global-var outdatedAttrClientId=$(OUTDATED_ATTR_CLIENT_ID) --global-var outdatedAttrClientSecret=$(OUTDATED_ATTR_CLIENT_SECRET) \
@@ -66,10 +66,10 @@ postman:
 
 # make test-path TEST_PATH="bcdaworker/worker/*.go"
 test-path: setup-tests
-	@docker compose -f docker-compose.test.yml run --rm tests go test -v $(TEST_PATH)
+	@docker compose -f compose.test.yml run --rm tests go test -v $(TEST_PATH)
 
 unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas setup-tests
-	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
+	@docker compose -f compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-ssas:
 	docker compose up -d ssas
@@ -78,8 +78,8 @@ unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
 
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker compose -f docker-compose.test.yml rm -fsv db-unit-test
-	docker compose -f docker-compose.test.yml up -d db-unit-test
+	docker compose -f compose.test.yml rm -fsv db-unit-test
+	docker compose -f compose.test.yml up -d db-unit-test
 
 	# Wait for the database to be ready
 # 	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
@@ -90,15 +90,15 @@ unit-test-db:
 
 unit-test-localstack:
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker compose -f docker-compose.test.yml rm -fsv localstack-unit-test
-	docker compose -f docker-compose.test.yml up -d localstack-unit-test
+	docker compose -f compose.test.yml rm -fsv localstack-unit-test
+	docker compose -f compose.test.yml up -d localstack-unit-test
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
-	docker compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
+	docker compose -f compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
 performance-test: setup-tests
-	docker compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
+	docker compose -f compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
 	$(MAKE) lint
@@ -108,7 +108,7 @@ test:
 
 reset-db:
 	# Rebuild the databases to ensure that we're starting in a fresh state
-	docker compose -f docker-compose.yml rm -fsv db
+	docker compose -f compose.yml rm -fsv db
 
 	docker compose up -d db
 	echo "Wait for database to be ready..."
@@ -137,7 +137,7 @@ load-fixtures-ssas:
 
 docker-build:
 	docker compose build --force-rm
-	docker compose -f docker-compose.test.yml build --force-rm
+	docker compose -f compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
 
@@ -149,17 +149,17 @@ worker-shell:
 
 debug-api:
 	docker compose up --watch worker & \
-	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --watch api
+	docker compose -f compose.yml -f compose.debug.yml up --watch api
 
 debug-worker:
 	docker compose up --watch api & \
-	docker compose -f docker-compose.yml -f docker-compose.debug.yml up --watch worker
+	docker compose -f compose.yml -f compose.debug.yml up --watch worker
 
 fhir_testing:
 	# Set up inferno server
 	docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git#5bd61db090c5911792f33e12dca6981d7e22f9a0
-	docker compose -f fhir_testing/docker-compose.inferno.yml run inferno bundle exec inferno migrate
-	docker compose -f fhir_testing/docker-compose.inferno.yml up -d
+	docker compose -f fhir_testing/compose.inferno.yml run inferno bundle exec inferno migrate
+	docker compose -f fhir_testing/compose.inferno.yml up -d
 	sleep 10
 	docker stop fhir_testing-hl7_validator_service-1
 

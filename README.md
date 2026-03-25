@@ -285,7 +285,7 @@ See FHIR Testing [here](fhir_testing/README.md) for more info on the inferno tes
 
 Benchmark tests live in *_test.go files.  They do not run as part of the normal testing suite.  To note the existing benchmark test assumes that you have existing data in the DB (ie have run `make load-fixtures`).  In order to run them you can do the following:
 ```
-docker compose -f docker-compose.test.yml run tests go test -v ./... -bench=. -benchtime=10x -run=^$ -benchmem
+docker compose -f compose.test.yml run tests go test -v ./... -bench=. -benchtime=10x -run=^$ -benchmem
 ```
 - `-v ./...` says to look for tests everywhere (not just current dir).
 - `-bench=.` sets to run all benchmark tests.  Alternatively you can give a specific name eg `-bench=BenchmarkAuthToken`
@@ -362,7 +362,7 @@ You can use docker to run commands against the running containers.
 docker run --rm --network bcda-app-net -it postgres psql -h bcda-app-db-1 -U postgres bcda
 ```
 
-**Example:** See docker-compose.yml for the password.
+**Example:** See compose.yml for the password.
 
 Use docker to run the CLI against an API instance
 
