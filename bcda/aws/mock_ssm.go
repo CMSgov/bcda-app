@@ -19,7 +19,7 @@ type MockSSMClient struct{}
 func (m *MockSSMClient) GetParameter(ctx context.Context, input *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
 	output := &ssm.GetParameterOutput{
 		Parameter: &types.Parameter{
-			Name: input.Name,
+			Name:  input.Name,
 			Value: aws.String("value"),
 		},
 	}
@@ -30,11 +30,11 @@ func (m *MockSSMClient) GetParameters(ctx context.Context, input *ssm.GetParamet
 	params := []types.Parameter{}
 	for i, name := range input.Names {
 		params = append(params, types.Parameter{
-			Name: aws.String(name),
+			Name:  aws.String(name),
 			Value: aws.String(fmt.Sprintf("value%d", i+1)),
 		})
 	}
-	output := &ssm.GetParametersOutput{Parameters: params,}
+	output := &ssm.GetParametersOutput{Parameters: params}
 
 	return output, nil
 }
