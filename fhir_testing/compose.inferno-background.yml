@@ -1,4 +1,3 @@
-version: '3'
 services:
   hl7_validator_service:
     image: infernocommunity/inferno-resource-validator
