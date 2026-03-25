@@ -49,6 +49,13 @@ jobs:
         with:
           params: |
             BFD_BUCKET_ROLE=/bcda/test/bene-prefs/sensitive/iam_bucket_role_arn
+      - name: Get Test File Path
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            BFD_TEST_FILE_PATH=/bcda/test/bene-prefs/nonsensitive/test_file_path
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -61,7 +68,7 @@ jobs:
           fname=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1
           echo "FILENAME=$fname" >> "$GITHUB_ENV"
           aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
-            s3://bfd-test-eft/bfdeft01/bcda/in/test/$fname
+               ${{ env.BFD_TEST_FILE_PATH }}$fname
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
