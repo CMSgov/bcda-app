@@ -170,9 +170,9 @@ jobs:
           repository: CMSgov/bcda-app
           ref: ${{ inputs.ref }}
       - name: Install Cosign to verify tenv and tofu installs
-        uses: sigstore/cosign-installer@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013 # v4.7.6
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
-        uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
+        uses: cmsgov/cdap/actions/setup-tenv@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
       - name: Install Sops
         uses: cmsgov/cdap/actions/setup-sops@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
       - name: Install YQ
