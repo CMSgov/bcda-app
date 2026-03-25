@@ -1,7 +1,6 @@
 package suppression
 
 import (
-	"context"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -16,12 +15,12 @@ import (
 
 type SuppressionS3TestSuite struct {
 	suite.Suite
-	ctx context.Context
+	// ctx context.Context
 }
 
 func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
 	saver := optout.FakeSaver{}
-	s.ctx = context.Background()
+	// s.ctx = context.Background()
 	client := &bcdaaws.MockS3Client{}
 
 	return OptOutImporter{
