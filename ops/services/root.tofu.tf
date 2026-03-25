@@ -9,7 +9,7 @@ locals {
   parent_env = coalesce(
     var.parent_env,
     one([for x in local.established_envs : x if can(regex("${x}$$", terraform.workspace))]),
-    "invalid-parent-environment;do-better"
+    "invalid-parent-environment"
   )
 
   state_buckets = {

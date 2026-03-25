@@ -7,12 +7,25 @@ The environment-specific configuration values are located in the `values` direct
 
 ### Initial Setup
 
-First, initialize and apply the configuration with the `sopsw` script targeted.
+First, initialize terraform workspaces. `tofu init` is deprecated; please initialize with the appropriate env below:
 
 ```bash
-cd ops/services/10-config
-export TF_VAR_parent_env=dev
-tofu init
+### prod environment
+TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
+
+### sandbox environment
+TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
+
+### test environment
+TF_WORKSPACE=default tofu init -var parent_env=test -reconfigure && tofu workspace select -var parent_env=test -or-create test
+
+### dev environment
+TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
+```
+
+Second, create the sops wrapper so you can encrypt/decrypt the values files.
+
+```bash
 tofu apply -target 'module.sops.local_file.sopsw[0]' -var=create_local_sops_wrapper=true
 ```
 
