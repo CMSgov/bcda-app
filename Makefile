@@ -82,8 +82,7 @@ unit-test-db:
 	docker compose -f compose.test.yml up -d db-unit-test
 
 	# Wait for the database to be ready
-# 	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
-	sleep 30
+	./docker/await_service_healthy.sh -f compose.test.yml db-unit-test
 
 	# Perform migrations to ensure matching schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
@@ -111,9 +110,8 @@ reset-db:
 	docker compose -f compose.yml rm -fsv db
 
 	docker compose up -d db
-	echo "Wait for database to be ready..."
-# 	docker run --rm --network bcda-app-net willwill/wait-for-it db:5432 -t 100
-	sleep 30
+	echo "Wait for database to be ready..."	
+	./docker/await_service_healthy.sh db
 
 	# Initialize schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
@@ -125,13 +123,13 @@ load-fixtures: reset-db
 
 	# Ensure components are started as expected
 	docker compose up -d api worker ssas
-# 	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 30
-# 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 30
-	sleep 30
+
+	./docker/await_service_healthy.sh api
 	docker compose run --rm db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 load-fixtures-ssas:
 	docker compose up -d db
+	./docker/await_service_healthy.sh db
 	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
 	docker compose run --rm ssas --add-fixture-data
 

@@ -11,7 +11,7 @@ services:
       - ./db:/var/db
     healthcheck:
       test: ["CMD", "pg_isready", "-d", "bcda"]
-      interval: 1m30s
+      interval: 40s
       timeout: 15s
       retries: 5
       start_period: 2s
@@ -67,7 +67,7 @@ services:
       - "3001:3001"
     healthcheck:
       test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3000/_health"]
-      interval: 1m30s
+      interval: 40s
       retries: 5
       start_period: 10s
       timeout: 10s
@@ -118,7 +118,7 @@ services:
       - fhir_temp:/home/bcda/FHIR_TEMP_DIR
     healthcheck:
       test: ["CMD-SHELL", "bcdaworker health >> /proc/1/fd/1 2>&1  || exit 1"]
-      interval: 1m30s
+      interval: 40s
       retries: 5
       start_period: 10s
       timeout: 10s
@@ -176,7 +176,7 @@ services:
       - "3005:3005"
     healthcheck:
       test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3003/_health"]
-      interval: 1m30s
+      interval: 40s
       retries: 5
       start_period: 2s
       timeout: 10s
