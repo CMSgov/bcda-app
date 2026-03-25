@@ -1,43 +1,30 @@
 package suppression
 
-import (
-	"testing"
+// type SuppressionS3TestSuite struct {
+// 	suite.Suite
+// 	// ctx context.Context
+// }
 
-	log "github.com/sirupsen/logrus"
+// func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
+// 	saver := optout.FakeSaver{}
+// 	// s.ctx = context.Background()
+// 	client := &bcdaaws.MockS3Client{}
 
-	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/optout"
+// 	return OptOutImporter{
+// 		FileHandler: &optout.S3FileHandler{
+// 			Client:   client,
+// 			Logger:   log.StandardLogger(),
+// 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
+// 		},
+// 		Saver:                &saver,
+// 		Logger:               log.StandardLogger(),
+// 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
+// 	}, &saver
+// }
 
-	"github.com/stretchr/testify/suite"
-)
-
-type SuppressionS3TestSuite struct {
-	suite.Suite
-	// ctx context.Context
-}
-
-func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
-	saver := optout.FakeSaver{}
-	// s.ctx = context.Background()
-	client := &bcdaaws.MockS3Client{}
-
-	return OptOutImporter{
-		FileHandler: &optout.S3FileHandler{
-			Client:   client,
-			Logger:   log.StandardLogger(),
-			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
-		},
-		Saver:                &saver,
-		Logger:               log.StandardLogger(),
-		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
-	}, &saver
-}
-
-func TestSuppressionS3TestSuite(t *testing.T) {
-	suite.Run(t, new(SuppressionS3TestSuite))
-}
+// func TestSuppressionS3TestSuite(t *testing.T) {
+// 	suite.Run(t, new(SuppressionS3TestSuite))
+// }
 
 // func (s *SuppressionS3TestSuite) TestImportSuppression() {
 // 	assert := assert.New(s.T())
