@@ -148,8 +148,6 @@ services:
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
       - HTTP_ONLY=true
-      - BCDA_SSAS_CLIENT_ID=${BCDA_SSAS_CLIENT_ID}
-      - BCDA_SSAS_SECRET=${BCDA_SSAS_SECRET}
       - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem
       - SSAS_PUBLIC_SIGNING_KEY_PATH=../shared_files/ssas/public_test_signing_key.pem
       - SSAS_ADMIN_PORT=:3004
@@ -164,7 +162,6 @@ services:
       - SSAS_DEFAULT_SYSTEM_SCOPE=bcda-api
       - SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS=0
       - SSAS_MFA_TOKEN_TIMEOUT_MINUTES=60
-      - SSAS_MFA_PROVIDER=${SSAS_MFA_PROVIDER}
       - SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES=15
       - SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES=1440
       - SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES=5
