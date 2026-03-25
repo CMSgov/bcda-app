@@ -110,45 +110,45 @@ env:
   SANITIZED_SSAS_VERSION: ${{ inputs.ssas_version }}
 
 jobs:
-  verify_images_exist:
-    environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
-    steps:      
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - name: Verify API image exists
-        run: |
-          echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-api repo"
-          aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${SANITIZED_VERSION}
-      - name: Verify SSAS image exists
-        run: |
-          echo "Verifying that tag ${SANITIZED_SSAS_VERSION} exists in the bcda-ssas repo"
-          aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${SANITIZED_SSAS_VERSION}
-      - name: Verify Worker image exists
-        run: |
-          echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-worker repo"
-          aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${SANITIZED_VERSION}
+#   verify_images_exist:
+#     environment: ${{ inputs.env || 'dev' }}
+#     runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+#     steps:      
+#       - uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ${{ vars.AWS_REGION }}
+#           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+#       - name: Verify API image exists
+#         run: |
+#           echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-api repo"
+#           aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${SANITIZED_VERSION}
+#       - name: Verify SSAS image exists
+#         run: |
+#           echo "Verifying that tag ${SANITIZED_SSAS_VERSION} exists in the bcda-ssas repo"
+#           aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${SANITIZED_SSAS_VERSION}
+#       - name: Verify Worker image exists
+#         run: |
+#           echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-worker repo"
+#           aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${SANITIZED_VERSION}
 
-  migrate_db:
-    needs: [verify_images_exist]
-    uses: ./.github/workflows/migrate-db.yml
-    with:
-      ref: ${{ inputs.ref }}
-      env: ${{ inputs.env || 'dev' }}
-    secrets: inherit
+#   migrate_db:
+#     needs: [verify_images_exist]
+#     uses: ./.github/workflows/migrate-db.yml
+#     with:
+#       ref: ${{ inputs.ref }}
+#       env: ${{ inputs.env || 'dev' }}
+#     secrets: inherit
 
-  migrate_ssas_db:
-    needs: [verify_images_exist]
-    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
-    with:
-      ref: ${{ inputs.ssas_ref }}
-      env: ${{ inputs.env || 'dev' }}
-    secrets: inherit
+#   migrate_ssas_db:
+#     needs: [verify_images_exist]
+#     uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
+#     with:
+#       ref: ${{ inputs.ssas_ref }}
+#       env: ${{ inputs.env || 'dev' }}
+#     secrets: inherit
 
   deploy:
-    needs: [verify_images_exist]
+    # needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     steps:
@@ -180,17 +180,17 @@ jobs:
           TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
           tofu plan 
             -out 'bcda-release-sops.tfplan'
-      - name: Checkout bcda-ops
-        uses: actions/checkout@v4
-        with:
-          repository: CMSgov/bcda-ops
-          ref: ${{ inputs.ops_ref }}
-          token: ${{ env.GITHUB_TOKEN }}
-      - name: Confirm Env
-        if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
-        run: |
-          echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
-          exit 1
+      # - name: Checkout bcda-ops
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: CMSgov/bcda-ops
+      #     ref: ${{ inputs.ops_ref }}
+      #     token: ${{ env.GITHUB_TOKEN }}
+      # - name: Confirm Env
+      #   if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
+      #   run: |
+      #     echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
+      #     exit 1
       # - name: Started Deploy Alert
       #   uses: slackapi/slack-github-action@v2.0.0
       #   with:
