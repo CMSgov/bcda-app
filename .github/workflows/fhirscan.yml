@@ -12,7 +12,7 @@ jobs:
       contents: read
       id-token: write
     name: run fhir scan
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CLIENT_CREDENTIALS_PARAMS=/bcda/dev/dev_client_credentials
+            CLIENT_CREDENTIALS_PARAMS=/bcda/dev/sensitive/dev_client_credentials
       - name: Run Inferno
         id: run
         run: |

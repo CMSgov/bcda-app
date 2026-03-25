@@ -31,7 +31,7 @@ jobs:
   trigger:
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
@@ -109,7 +109,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            CONNECTION_INFO=/bcda/test/api/DATABASE_URL
+            CONNECTION_INFO=/bcda/test/sensitive/api/DATABASE_URL
       - name: Verify CCLF file was ingested
         env:
           PGSSLMODE: require

@@ -36,7 +36,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
@@ -48,8 +48,10 @@ jobs:
       - name: Build opt-out-import zip file
         env:
           CGO_ENABLED: 0
+        # Build for amd64 on arm64 runner since lambda infra has not been updated
+        # todo: Change while/after working on BCDA-9939
         run: |
-          go build -o bin/bootstrap ./lambda/optout/main.go
+          env GOOS=linux GOARCH=amd64 go build -o bin/bootstrap ./lambda/optout/main.go
           zip -j function.zip bin/bootstrap
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -62,7 +64,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/bcda-${{ env.DEPLOY_ENV }}-opt-out-import-bucket
+            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/nonsensitive/bcda-${{ env.DEPLOY_ENV }}-opt-out-import-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
