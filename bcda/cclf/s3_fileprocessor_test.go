@@ -23,25 +23,24 @@ type S3ProcessorTestSuite struct {
 	basePath      string
 	cclfProcessor CclfFileProcessor
 	csvProcessor  CSVFileProcessor
-	client        bcdaaws.CustomS3Client
 }
 
 func (s *S3ProcessorTestSuite) SetupSuite() {
 	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
-	s.client = &bcdaaws.MockS3Client{}
+	client := &bcdaaws.MockS3Client{}
 
 	s.basePath = "../../shared_files"
 	s.cclfProcessor = &S3FileProcessor{
 		Handler: optout.S3FileHandler{
-			Client:   s.client,
+			Client:   client,
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},
 	}
 	s.csvProcessor = &S3FileProcessor{
 		Handler: optout.S3FileHandler{
-			Client:   s.client,
+			Client:   client,
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},

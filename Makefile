@@ -68,7 +68,6 @@ postman:
 test-path: setup-tests
 	@docker compose -f docker-compose.test.yml run --rm tests go test -v $(TEST_PATH)
 
-# unit-test: unit-test-ssas unit-test-db unit-test-localstack load-fixtures-ssas setup-tests
 unit-test: unit-test-ssas unit-test-db load-fixtures-ssas setup-tests
 	@docker compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
@@ -88,11 +87,6 @@ unit-test-db:
 
 	# Perform migrations to ensure matching schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
-
-# unit-test-localstack:
-# 	# Clean up any existing data to ensure we spin up container in a known state.
-# 	docker compose -f docker-compose.test.yml rm -fsv localstack-unit-test
-# 	docker compose -f docker-compose.test.yml up -d localstack-unit-test
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file

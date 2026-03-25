@@ -19,7 +19,6 @@ func TestHandleCreateACOCreds(t *testing.T) {
 	mockProvider := &auth.MockProvider{}
 	mockProvider.On("FindAndCreateACOCredentials", data.ACOID, data.IPs).Return("creds\nstring", nil)
 
-	// client := testUtils.TestS3Client(t, testUtils.TestAWSConfig(t))
 	client := &bcdaaws.MockS3Client{}
 
 	_, err := client.CreateBucket(t.Context(), &s3.CreateBucketInput{
