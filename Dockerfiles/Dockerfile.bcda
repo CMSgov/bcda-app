@@ -46,10 +46,12 @@ COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 
 # configure directories
 RUN mkdir -p \
+        /etc/config \
         /etc/sv/api/env \
         /var/efs \
     && chown -R bcda:bcda \
         /go/src/github.com/CMSgov/bcda-app \
+        /etc/config \
         /etc/sv/api/env \
         /var/efs
 
