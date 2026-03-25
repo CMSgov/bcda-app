@@ -173,10 +173,13 @@ jobs:
         uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
         uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
-      - name: apply SOPS
+      - name: Install Sops
+        uses: cmsgov/cdap/actions/setup-sops@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
+      - name: Install YQ
+        uses: cmsgov/cdap/actions/setup-yq@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Apply SOPS
         working-directory: ops/services/10-config
         run: |
-          parent_env=${{ env.RELEASE_ENV }}
           TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
           tofu plan 
             -out 'bcda-release-sops.tfplan'
