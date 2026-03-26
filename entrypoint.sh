@@ -11,16 +11,9 @@ bootstrap_config() {
   aws s3 sync "s3://$CONFIG_BUCKET/$APP_NAME" /etc/sv/$APP_NAME/env/
 }
 
-if [[ -n "$BOOTSTRAP_FROM_LOCAL" ]]; then
-  echo "Bootstrapping config from local files"
-  echo "whoami in entrypoint:"
-  whoami
-  ls -als /etc/config
-  chown -R bcda:bcda /etc/config
-  ls -als /etc/config
-  cp /etc/config/* /etc/sv/$APP_NAME/env/
-else
+if ! [[ -n "$BOOTSTRAP_FROM_LOCAL" ]]; then
   # this should be the default for everything outside of local dev/testing
+  # for local dev/testing see bcda and bcdaworker dockerfiles
   echo "Bootstrapping config from S3"
   bootstrap_config
 fi

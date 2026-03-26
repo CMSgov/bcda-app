@@ -54,6 +54,13 @@ RUN mkdir -p \
         /home/bcda/FHIR_TEMP_DIR \
         /var/efs
 
+# make config files available for local dev/testing only
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/ /etc/config/
+RUN if [ "$ENVIRONMENT" != "development" ]; then \
+    echo "NOT DEVELOPMENT, DELETING config files"; \
+    rm -r /etc/config/*; \
+    fi
+
 VOLUME [ "/etc/sv/worker/env", "/var/efs", "/home/bcda/FHIR_TEMP_DIR" ]
 USER bcda
 
