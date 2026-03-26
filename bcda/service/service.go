@@ -195,6 +195,13 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 		return nil, err
 	}
 
+	totalJobBenes := len(newBeneficiaries) + len(beneficiaries)
+	args.Job.BenesAttributedToACO = totalJobBenes
+	err = s.repository.UpdateJob(ctx, args.Job)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update job with totalJobBenes: %+v", err)
+	}
+
 	queJobs = append(queJobs, jobs...)
 
 	return queJobs, nil

@@ -147,17 +147,18 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	ctx := context.Background()
 
 	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
+	jk1Filename := uuid.New()
+	jk2Filename := uuid.New()
 	queJobID := testUtils.CryptoRandInt63()
 	queJobID1 := testUtils.CryptoRandInt63()
 
-	jk := models.JobKey{JobID: jobID, QueJobID: &queJobID}
-	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID1}
+	jk := models.JobKey{JobID: jobID, QueJobID: &queJobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100}
+	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID1, FileName: jk2Filename, ResourceType: "Claim", BenesWithData: 20, BenesRetrievedPercent: 50}
 	jk2 := models.JobKey{JobID: jobID}
 	j, e := safecast.ToUint(testUtils.CryptoRandInt31())
 	assert.NoError(e)
 
 	otherJobID := models.JobKey{JobID: j}
-	defer postgrestest.DeleteJobKeysByJobIDs(r.T(), r.db, jobID, otherJobID.JobID)
 
 	assert.NoError(r.repository.CreateJobKey(ctx, jk))
 	assert.NoError(r.repository.CreateJobKeys(ctx, []models.JobKey{jk1, jk2}))
@@ -175,8 +176,22 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	assert.NoError(err)
 	assert.Equal(0, count)
 
-	_, err = r.repository.GetJobKey(ctx, jobID, queJobID)
+	// verify GetJobKey and verify all fields were saved on CreateJobKey and CreateJobKeys
+	jobKey1, err := r.repository.GetJobKey(ctx, jobID, queJobID)
 	assert.NoError(err)
+	assert.Equal(jobID, jobKey1.JobID)
+	assert.Equal(jk1Filename, jobKey1.FileName)
+	assert.Equal("ExplanationOfBenefit", jobKey1.ResourceType)
+	assert.Equal(10, jobKey1.BenesWithData)
+	assert.Equal(100, jobKey1.BenesRetrievedPercent)
+
+	jobKey2, err := r.repository.GetJobKey(ctx, jobID, queJobID1)
+	assert.NoError(err)
+	assert.Equal(jobID, jobKey2.JobID)
+	assert.Equal(jk2Filename, jobKey2.FileName)
+	assert.Equal("Claim", jobKey2.ResourceType)
+	assert.Equal(20, jobKey2.BenesWithData)
+	assert.Equal(50, jobKey2.BenesRetrievedPercent)
 
 	_, err = r.repository.GetJobKey(ctx, jobID, -1)
 	assert.EqualError(err, repository.ErrJobKeyNotFound.Error())
