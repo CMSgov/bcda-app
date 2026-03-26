@@ -13,6 +13,8 @@ bootstrap_config() {
 
 if [[ -n "$BOOTSTRAP_FROM_LOCAL" ]]; then
   echo "Bootstrapping config from local files"
+  echo "whoami in entrypoint:"
+  whoami
   ls -als /etc/config
   chown -R bcda:bcda /etc/config
   ls -als /etc/config

@@ -42,6 +42,15 @@ postman:
 		exit 1; \
 	fi
 
+	
+	echo "whoami in postman:"
+	whoami
+
+	docker compose up -d api worker ssas
+
+	sleep 30
+	docker compose logs -t
+
 	$(eval BLACKLIST_CLIENT_ID=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
 	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
 
@@ -51,13 +60,16 @@ postman:
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
+	echo $(CLIENT_TEMP)
+
 	# Set up valid client credentials for outdated attribution client
 	$(eval OUTDATED_ATTR_CMS_ID = TEST995)
 	$(eval OUTDATED_ATTR_CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(OUTDATED_ATTR_CMS_ID)'|tail -n2))
 	$(eval OUTDATED_ATTR_CLIENT_ID:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval OUTDATED_ATTR_CLIENT_SECRET:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$2}'))
 
-	sleep 90
+	echo "logs after cred runs"
+	docker compose logs -t
 
 	docker compose -f docker-compose.test.yml build postman_test
 	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
