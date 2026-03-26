@@ -5,7 +5,6 @@
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:H/CB,iv:atGloib5mt7phyZeeE58XjID4K91Ho2FtOy80HbXtrg=,tag:cblfrIFx31TR9jhQRzwQDQ==,type:str]
 /bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:pcT6bw==,iv:ba2euw4TLAdrXdZUe0QoPytG6j+ThgoxHM3I6ZwrU9I=,tag:c0X7goSVTVe7OjxjsLPdLw==,type:str]
 #ENC[AES256_GCM,data:3wxEuksNauPlFZbPdycCPr+NQHTvwVhf,iv:nuD8WRwbERBAiiiC/yo4mMkOGjuLwSR8teY/tPA/MjE=,tag:XFG5P/CptJ8YWXZ3RMuWeQ==,type:comment]
-/bcda/${env}/bene-prefs/nonsensitive/bucket_name: bcda-test-bene-prefs
 /bcda/${env}/nonsensitive/bcda-test-admin-aco-deny-bucket: bcda-test-admin-aco-deny-function-20250528140635182000000001
 /bcda/${env}/nonsensitive/bcda-test-admin-create-aco-bucket: bcda-test-admin-create-aco-function-20250528140632188700000001
 /bcda/${env}/nonsensitive/bcda-test-admin-create-aco-creds-bucket: bcda-test-admin-create-aco-creds-fun-20250529142812426400000001
