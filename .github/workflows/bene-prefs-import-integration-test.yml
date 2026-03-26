@@ -66,10 +66,10 @@ jobs:
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
         run: |
           fname=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1
+          BFD_BENEPREFS_BUCKET = $(echo "${{ env.BFD_TEST_FILE_PATH }}" | xargs)
           echo "FILENAME=$fname" >> "$GITHUB_ENV"
           aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
-               s3://bfd-test-bene-prefs-bcda20260225231712780400000002/bfdeft01/bcda/in/test/$fname
-          echo "JJR***s3://bfd-test-bene-prefs-bcda20260225231712780400000002/bfdeft01/bcda/in/test/$fname"
+               $BFD_BENEPREFS_BUCKET/$fname
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
