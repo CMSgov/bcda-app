@@ -11,7 +11,7 @@ bootstrap_config() {
   aws s3 sync "s3://$CONFIG_BUCKET/$APP_NAME" /etc/sv/$APP_NAME/env/
 }
 
-if ! [[ -n "$BOOTSTRAP_FROM_LOCAL" ]]; then
+if ! [[ -n "$SKIP_BOOTSTRAP" ]]; then
   # this should be the default for everything outside of local dev/testing
   # for local dev/testing see bcda and bcdaworker dockerfiles
   echo "Bootstrapping config from S3"

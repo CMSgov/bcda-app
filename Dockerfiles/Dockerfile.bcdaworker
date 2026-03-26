@@ -40,7 +40,6 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
 COPY --from=builder /go/bin/ /go/bin/
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
-# make config files available for local dev/testing only
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/ /etc/sv/worker/env/
 
 # configure directories

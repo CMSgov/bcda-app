@@ -26,7 +26,7 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      BOOTSTRAP_FROM_LOCAL: "true"
+      SKIP_BOOTSTRAP: "true"
       # config files
       BCDA_API_CONFIG_PATH: /etc/sv/api/env/api.yml
       BB_CLIENT_CERT_FILE: /etc/sv/api/env/bfd-dev-test-cert.pem
@@ -37,7 +37,6 @@ services:
       FHIR_STAGING_DIR: /var/efs/tmpdata
     volumes:
       - fhir:/var/efs
-      - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -72,7 +71,7 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      BOOTSTRAP_FROM_LOCAL: "true"
+      SKIP_BOOTSTRAP: "true"
       # config files
       BCDA_API_CONFIG_PATH: /etc/sv/worker/env/api.yml
       BB_CLIENT_CERT_FILE: /etc/sv/worker/env/bfd-dev-test-cert.pem
@@ -84,7 +83,6 @@ services:
       FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
     volumes:
       - fhir:/var/efs
-      - worker_config:/etc/sv/worker/env
       - fhir_temp:/home/bcda/FHIR_TEMP_DIR
     healthcheck:
       test: ["CMD-SHELL", "bcdaworker health >> /proc/1/fd/1 2>&1  || exit 1"]
@@ -154,8 +152,6 @@ services:
 
 volumes:
   fhir:
-  api_config:
-  worker_config:
   fhir_temp:
 
 networks:
