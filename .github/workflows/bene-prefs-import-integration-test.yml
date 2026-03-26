@@ -55,7 +55,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BFD_TEST_FILE_PATH=/bcda/test/bene_prefs/nonsensitive/test_file_path
+            BFD_BENE-PREFS_BUCKET=/bcda/test/bene_prefs/nonsensitive/bfd_bene-prefs_bucket
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
