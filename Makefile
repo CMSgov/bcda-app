@@ -133,7 +133,7 @@ load-fixtures-ssas:
 	docker compose run --rm ssas --add-fixture-data
 
 docker-build:
-	docker compose build --no-cache --force-rm --progress plain
+	docker compose build --force-rm
 	docker compose -f docker-compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
