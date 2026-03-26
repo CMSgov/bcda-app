@@ -9,18 +9,18 @@ The environment-specific configuration values are located in the `values` direct
 
 First, initialize terraform workspaces. `tofu init` is deprecated; please initialize with the appropriate env below:
 
-```bash
-### prod environment
-TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
-
-### sandbox environment
-TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
+```sh
+### dev environment
+TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
 
 ### test environment
 TF_WORKSPACE=default tofu init -var parent_env=test -reconfigure && tofu workspace select -var parent_env=test -or-create test
 
-### dev environment
-TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
+### sandbox environment
+TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
+
+### prod environment
+TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
 ```
 
 Second, create the sops wrapper so you can encrypt/decrypt the values files.
