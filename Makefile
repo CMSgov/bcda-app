@@ -42,11 +42,12 @@ postman:
 		exit 1; \
 	fi
 
-	
-# 	echo "whoami in postman:"
-# 	whoami
-
 	docker compose up -d api worker ssas
+
+# 	echo "whoami in postman:"
+	whoami
+	docker compose exec api ls -als /etc/sv/api/env
+	docker compose exec worker ls -als /etc/sv/worker/env
 
 # 	sleep 30
 	docker compose logs -t
