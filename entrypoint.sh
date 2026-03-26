@@ -13,6 +13,9 @@ bootstrap_config() {
 
 if [[ -n "$BOOTSTRAP_FROM_LOCAL" ]]; then
   echo "Bootstrapping config from local files"
+  ls -als /etc/config
+  chown -R bcda:bcda /etc/config
+  ls -als /etc/config
   cp /etc/config/* /etc/sv/$APP_NAME/env/
 else
   # this should be the default for everything outside of local dev/testing

@@ -57,6 +57,8 @@ postman:
 	$(eval OUTDATED_ATTR_CLIENT_ID:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval OUTDATED_ATTR_CLIENT_SECRET:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$2}'))
 
+	sleep 90
+
 	docker compose -f docker-compose.test.yml build postman_test
 	@docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
