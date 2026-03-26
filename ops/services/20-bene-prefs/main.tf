@@ -8,7 +8,7 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
-  lambda_filename       = "function.zip"
+  lambda_filename       = "lambda_function.zip"
 }
 
 module "platform" {
@@ -21,7 +21,7 @@ module "platform" {
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
   ssm_root_map = {
-    bene-prefs = "/bcda/${local.env}/bene-prefs/"
+    bene_prefs = "/bcda/${local.env}/bene_prefs/"
   }
 }
 
@@ -52,22 +52,7 @@ data "aws_iam_policy_document" "assume_bucket_role" {
   statement {
     sid       = "AssumeBucketRole"
     actions   = ["sts:AssumeRole"]
-    resources = [module.platform.ssm.bene-prefs.iam_bucket_role_arn.value]
-  }
-
-  statement {
-    sid     = "AllowBCDARoleKMSAccess"
-    effect  = "Allow"
-    actions = [
-      "kms:GenerateDataKey",
-      "kms:Decrypt",
-    ]
-    resources = ["*"]
-
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::830858426211:role/bfd-test-bene-prefs-bcda-bucket-access-role"]
-    }
+    resources = [module.platform.ssm.bene_prefs.iam_bucket_role_arn.value]
   }
 }
 
@@ -105,6 +90,7 @@ data "aws_iam_policy_document" "default_function" {
     resources = [
       local.kms_key_arn_primary,
       local.kms_key_arn_secondary,
+      module.platform.ssm.bene_prefs.iam_bucket_role_arn.value
     ]
   }
 }
@@ -193,9 +179,8 @@ module "bucket" {
   app           = local.app
   env           = local.env
   name          = "${local.app}-${local.env}-${local.service}"
-  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
+  ssm_parameter = "/${local.app}/${local.env}/bene-prefs/nonsensitive/bucket_name"
 }
-
 
 resource "aws_cloudwatch_log_group" "this" {
   name              = "/aws/lambda/bcda-${local.env}-${local.service}"
@@ -207,9 +192,16 @@ resource "aws_cloudwatch_log_group" "this" {
   }
 }
 
+resource "aws_s3_object" "dummy_file_upload" {
+  bucket = module.bucket.id
+  key    = local.lambda_filename
+  source = "${path.module}/${local.lambda_filename}"
+}
+
 resource "aws_lambda_function" "this" {
-  s3_key = local.lambda_filename
-  s3_bucket = module.bucket.id
+  s3_bucket         = aws_s3_object.dummy_file_upload.bucket
+  s3_key            = aws_s3_object.dummy_file_upload.key
+  s3_object_version = aws_s3_object.dummy_file_upload.version_id
   package_type     = "Zip"
   handler          = "bootstrap"
 
@@ -223,7 +215,7 @@ resource "aws_lambda_function" "this" {
   skip_destroy                   = false
   timeout                        = 900
   architectures = [
-    "x86_64",
+    "arm64",
   ]
 
   tags = {
@@ -302,7 +294,7 @@ resource "aws_sqs_queue" "this" {
         Action = "sqs:SendMessage"
         Condition = {
           ArnEquals = {
-            "aws:SourceArn" = module.platform.ssm.bene-prefs.sns_topic_arn.value
+            "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
           }
         }
         Effect = "Allow"
@@ -311,6 +303,20 @@ resource "aws_sqs_queue" "this" {
         }
         Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
         Sid      = "SnsSendMessage"
+      },
+      {
+        Action = "sns:Subscribe"
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
+          }
+        }
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
+        Sid      = "SnsSubscribe"
       },
     ]
   })
@@ -321,7 +327,7 @@ resource "aws_sqs_queue" "this" {
 resource "aws_sns_topic_subscription" "this" {
   endpoint  = aws_sqs_queue.this.arn
   protocol  = "sqs"
-  topic_arn = module.platform.ssm.bene-prefs.sns_topic_arn.value
+  topic_arn = module.platform.ssm.bene_prefs.sns_topic_arn.value
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
