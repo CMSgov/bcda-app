@@ -43,12 +43,12 @@ postman:
 	fi
 
 	
-	echo "whoami in postman:"
-	whoami
+# 	echo "whoami in postman:"
+# 	whoami
 
 	docker compose up -d api worker ssas
 
-	sleep 30
+# 	sleep 30
 	docker compose logs -t
 
 	$(eval BLACKLIST_CLIENT_ID=$(shell docker compose exec -T api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
@@ -60,7 +60,7 @@ postman:
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
-	echo $(CLIENT_TEMP)
+# 	echo $(CLIENT_TEMP)
 
 	# Set up valid client credentials for outdated attribution client
 	$(eval OUTDATED_ATTR_CMS_ID = TEST995)
@@ -68,7 +68,7 @@ postman:
 	$(eval OUTDATED_ATTR_CLIENT_ID:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval OUTDATED_ATTR_CLIENT_SECRET:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$2}'))
 
-	echo "logs after cred runs"
+# 	echo "logs after cred runs"
 	docker compose logs -t
 
 	docker compose -f docker-compose.test.yml build postman_test
@@ -145,7 +145,7 @@ load-fixtures-ssas:
 	docker compose run --rm ssas --add-fixture-data
 
 docker-build:
-	docker compose build --force-rm
+	docker compose build --no-cache --force-rm --progress plain
 	docker compose -f docker-compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures

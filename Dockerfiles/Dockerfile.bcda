@@ -46,21 +46,15 @@ COPY --from=builder /go/src/github.com/CMSgov/bcda-app/entrypoint.sh .
 
 # configure directories
 RUN mkdir -p \
-        /etc/config \
         /etc/sv/api/env \
         /var/efs \
     && chown -R bcda:bcda \
         /go/src/github.com/CMSgov/bcda-app \
-        /etc/config \
         /etc/sv/api/env \
         /var/efs
 
 # make config files available for local dev/testing only
-COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/ /etc/config/
-RUN if [ "$ENVIRONMENT" != "development" ]; then \
-    echo "NOT DEVELOPMENT, DELETING config files"; \
-    rm -r /etc/config/*; \
-    fi
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/ /etc/sv/api/env/
 
 EXPOSE 3000 3001
 VOLUME [ "/etc/sv/api/env", "/var/efs" ]
