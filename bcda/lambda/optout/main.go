@@ -91,7 +91,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	return "", nil
 }
 
-func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client *s3.Client, s3ImportPath string) (string, error) {
+func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
