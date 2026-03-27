@@ -11,6 +11,7 @@ import (
 	"github.com/slack-go/slack"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
@@ -18,6 +19,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -53,7 +55,14 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 		return "", err
 	}
 
-	params, err := getAWSParams(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Errorf("Failed to load default config: %+v", err)
+		return "", err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	params, err := getAWSParams(ctx, ssmClient)
 	if err != nil {
 		log.Errorf("Unable to extract slack token from parameter store: %+v", err)
 		return "", err
@@ -66,11 +75,6 @@ func handler(ctx context.Context, event json.RawMessage) (string, error) {
 	}
 
 	provider := auth.NewProvider(database.Connect())
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return "", err
-	}
 
 	s3Service := s3.NewFromConfig(cfg)
 	slackClient := slack.New(params.slackToken)
@@ -93,7 +97,7 @@ func handleCreateACOCreds(
 	ctx context.Context,
 	data payload,
 	provider auth.Provider,
-	s3Service *s3.Client,
+	s3Service bcdaaws.CustomS3Client,
 	credsBucket string,
 ) (string, error) {
 
