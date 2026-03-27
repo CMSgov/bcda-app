@@ -97,7 +97,7 @@ permissions:
 
 env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
-  REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+  REF: ${{ inputs.ref || github.sha }}
   COMPOSE_INTERACTIVE_NO_CLI: 1
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
