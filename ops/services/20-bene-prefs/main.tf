@@ -215,7 +215,7 @@ resource "aws_lambda_function" "this" {
   skip_destroy                   = false
   timeout                        = 900
   architectures = [
-    "arm64",
+    "x86_64",
   ]
 
   tags = {
