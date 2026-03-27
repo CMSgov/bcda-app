@@ -4,14 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
@@ -57,17 +54,8 @@ func TestDenyACOsQueryFailure(t *testing.T) {
 
 func TestDenyACOs_Integration(t *testing.T) {
 	ctx := context.Background()
-	env := conf.GetEnv("ENV")
 
-	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), os.Getenv("DATABASE_URL"))
-	t.Cleanup(func() { cleanupParam1() })
-	cleanupParam2 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "test-slack-token")
-	t.Cleanup(func() { cleanupParam2() })
-
-	params, err := getAWSParams(ctx)
-	assert.Nil(t, err)
-
-	conn, err := pgx.Connect(ctx, params.DBURL)
+	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
 	assert.Nil(t, err)
 	defer conn.Close(ctx)
 
