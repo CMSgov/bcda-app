@@ -6,7 +6,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/bene-prefs-import-integration-test.yml
-      - .github/workflows/bene-prefs-import-test-deploy.yml
+      - .github/workflows/bene-prefs-import-deploy.yml
       - optout/**
       - bcda/suppression/**
       - bcda/lambda/optout/**
