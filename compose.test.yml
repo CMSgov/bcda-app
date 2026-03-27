@@ -1,4 +1,4 @@
----
+name: bcda-app-test
 services:
   tests:
     build:

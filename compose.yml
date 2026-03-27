@@ -1,4 +1,4 @@
----
+name: bcda-app
 services:
   db:
     image: postgres:16
