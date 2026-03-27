@@ -49,13 +49,13 @@ postman:
 
 	# Set up valid client credentials
 	$(eval ACO_CMS_ID = A9994)
-	$(eval CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_TEMP := $(shell docker compose exec api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
 	# Set up valid client credentials for outdated attribution client
 	$(eval OUTDATED_ATTR_CMS_ID = TEST995)
-	$(eval OUTDATED_ATTR_CLIENT_TEMP := $(shell docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(OUTDATED_ATTR_CMS_ID)'|tail -n2))
+	$(eval OUTDATED_ATTR_CLIENT_TEMP := $(shell docker compose exec api sh -c 'bcda reset-client-credentials --cms-id $(OUTDATED_ATTR_CMS_ID)'|tail -n2))
 	$(eval OUTDATED_ATTR_CLIENT_ID:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval OUTDATED_ATTR_CLIENT_SECRET:=$(shell echo $(OUTDATED_ATTR_CLIENT_TEMP) |awk '{print $$2}'))
 
@@ -122,13 +122,13 @@ load-fixtures: reset-db
 	docker compose up -d api worker ssas
 
 	./docker/await_service_healthy.sh api
-	docker compose run --rm db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
+	docker compose exec db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 load-fixtures-ssas:
-	docker compose up -d db
+	docker compose up -d db ssas
 	./docker/await_service_healthy.sh db
 	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
-	docker compose run --rm ssas --add-fixture-data
+	docker compose exec ssas main --add-fixture-data
 
 docker-build:
 	docker compose build --force-rm
