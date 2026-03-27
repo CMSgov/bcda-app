@@ -70,7 +70,7 @@ postman:
 test-path: setup-tests
 	@docker compose -f compose.test.yml run --rm tests go test -v $(TEST_PATH)
 
-unit-test: unit-test-ssas unit-test-db load-fixtures-ssas setup-tests
+unit-test: unit-test-ssas unit-test-db setup-tests
 	@docker compose -f compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-ssas:
