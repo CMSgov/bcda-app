@@ -132,9 +132,6 @@ func TestCleanupJobWorker_Work(t *testing.T) {
 	var logger = logrus.New()
 	client.SetLogger(logger)
 
-	cleanupParam1 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "slack-val")
-	t.Cleanup(func() { cleanupParam1() })
-
 	// Create mock objects
 	mockCleanupJob := new(MockCleanupJob)
 	mockArchiveExpiring := new(MockArchiveExpiring)

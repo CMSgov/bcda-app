@@ -10,6 +10,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/jackc/pgx/v5"
 	"github.com/pborman/uuid"
 	"github.com/slack-go/slack"
@@ -20,9 +22,6 @@ import (
 	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -54,7 +53,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	params, err := getAWSParams(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Errorf("Failed to load default config: %+v", err)
+		return err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	params, err := getAWSParams(ctx, ssmClient)
 	if err != nil {
 		log.Errorf("Unable to extract DB URL from parameter store: %+v", err)
 		return err
@@ -134,19 +140,13 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 	return nil
 }
 
-func getAWSParams(ctx context.Context) (awsParams, error) {
+func getAWSParams(ctx context.Context, client bcdaaws.CustomSSMClient) (awsParams, error) {
 	env := conf.GetEnv("ENV")
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return awsParams{}, err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
 
 	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
 	slackParamName := "/slack/token/workflow-alerts"
 	paramNames := []string{slackParamName, dbURLName}
-	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
+	params, err := bcdaaws.GetParameters(ctx, client, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}
