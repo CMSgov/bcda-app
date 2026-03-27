@@ -14,7 +14,8 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 # since our tooling/dependencies do not frequently change.
 COPY go.mod go.sum tools.go ./
 RUN --mount=type=cache,target=/go/pkg/mod \ 
-    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get % 
+    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | \
+    awk -F '"' '{print $2}' | xargs -tI % go get % 
 
 COPY . .
 WORKDIR /go
@@ -36,8 +37,8 @@ RUN apk update upgrade --no-cache && \
         curl \
         openssl
 
-RUN openssl genrsa -out /var/local/private.pem 2048
-RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
+RUN openssl genrsa -out /var/local/private.pem 2048 && \
+    openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
 # Make sure we are in the directory to ensure the config files are resolved as expected
 COPY --from=base /go/bcda-ssas-app/ /go/bcda-ssas-app/
