@@ -1,4 +1,4 @@
-name: opt-out-import dev deploy
+name: opt-out-import/bene-prefs deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - optout/**
-      - .github/workflows/opt-out-import-deploy.yml
+      - .github/workflows/bene-prefs-import-deploy.yml
   workflow_dispatch:
     inputs:
       deploy_env:
@@ -36,7 +36,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
@@ -45,13 +45,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - name: Build opt-out-import zip file
+      - name: Build opt-out-import/bene-prefs zip file
         env:
           CGO_ENABLED: 0
-        # Build for amd64 on arm64 runner since lambda infra has not been updated
-        # todo: Change while/after working on BCDA-9939
         run: |
-          env GOOS=linux GOARCH=amd64 go build -o bin/bootstrap ./lambda/optout/main.go
+          go build -o bin/bootstrap ./lambda/optout/main.go
           zip -j function.zip bin/bootstrap
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -64,14 +62,14 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/nonsensitive/bcda-${{ env.DEPLOY_ENV }}-opt-out-import-bucket
+           BUCKET=/bcda/${{ env.DEPLOY_ENV }}/bene_prefs/nonsensitive/bucket_name
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function-${{ github.sha }}.zip
+            s3://$BUCKET/lambda_function.zip
           aws s3api put-object-tagging \
             --bucket $BUCKET \
-            --key function-${{ github.sha }}.zip \
+            --key lambda_function.zip \
             --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
-          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-opt-out-import \
-            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
+          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-bene-prefs \
+            --s3-bucket $BUCKET --s3-key lambda_function.zip

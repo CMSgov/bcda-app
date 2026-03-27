@@ -1,12 +1,12 @@
 # Integration test that triggers an Opt Out import in the test environment and
 # verifies the imported data in the test database.
-name: opt-out-import test integration
+name: opt-out-import/bene-prefs test integration
 
 on:
   pull_request:
     paths:
-      - .github/workflows/opt-out-import-integration-test.yml
-      - .github/workflows/opt-out-import-test-deploy.yml
+      - .github/workflows/bene-prefs-import-integration-test.yml
+      - .github/workflows/bene-prefs-import-deploy.yml
       - optout/**
       - bcda/suppression/**
       - bcda/lambda/optout/**
@@ -24,7 +24,7 @@ jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
-    uses: ./.github/workflows/opt-out-import-deploy.yml
+    uses: ./.github/workflows/bene-prefs-import-deploy.yml
     secrets: inherit
     with:
       deploy_env: test
@@ -32,7 +32,7 @@ jobs:
   trigger:
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: ./optout
@@ -41,19 +41,26 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-opt-out-import-function
-      - name: Get BFD Account
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-bene-prefs
+      - name: Get Bucket Role
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
-          params: | 
-            BFD_ACCOUNT_ID=/bfd/account-id
+          params: |
+            BFD_BUCKET_ROLE=/bcda/test/bene_prefs/sensitive/iam_bucket_role_arn
+      - name: Get Test File Path
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            BFD_BENE_PREFS_BUCKET=/bcda/test/bene_prefs/nonsensitive/bfd_bene_prefs_bucket
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
-          role-to-assume: arn:aws:iam::${{ env.BFD_ACCOUNT_ID }}:role/delegatedadmin/developer/bfd-test-eft-bcda-ct-bucket-role
+          role-to-assume: ${{ env.BFD_BUCKET_ROLE }}
           role-chaining: true
           role-skip-session-tagging: true
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
@@ -61,7 +68,7 @@ jobs:
           fname=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1
           echo "FILENAME=$fname" >> "$GITHUB_ENV"
           aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
-            s3://bfd-test-eft/bfdeft01/bcda/in/test/$fname
+               $(echo "${{env.BFD_BENE_PREFS_BUCKET}}" | xargs)/$fname
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
