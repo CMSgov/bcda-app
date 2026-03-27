@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/conf"
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/pborman/uuid"
@@ -142,16 +140,8 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	env := conf.GetEnv("ENV")
-
-	cleanupParam1 := testUtils.SetParameter(t, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env), "test-db-url")
-	t.Cleanup(func() { cleanupParam1() })
-	cleanupParam2 := testUtils.SetParameter(t, "/slack/token/workflow-alerts", "test-slack-token")
-	t.Cleanup(func() { cleanupParam2() })
-
-	params, err := getAWSParams(context.Background())
-
+	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{})
 	assert.Nil(t, err)
-	assert.Equal(t, "test-db-url", params.dbURL)
-	assert.Equal(t, "test-slack-token", params.slackToken)
+	assert.Equal(t, "value1", params.slackToken)
+	assert.Equal(t, "value2", params.dbURL)
 }
