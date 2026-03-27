@@ -131,8 +131,8 @@ load-fixtures-ssas:
 	docker compose exec ssas main --add-fixture-data
 
 docker-build:
-	docker compose build --force-rm
-	docker compose -f compose.test.yml build --force-rm
+	COMPOSE_BAKE=true docker compose build --force-rm
+	COMPOSE_BAKE=true docker compose -f compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
 
