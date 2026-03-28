@@ -39,49 +39,56 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-	logger := log.GetCtxLogger(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
+			logger := log.GetCtxLogger(ctx)
 
-	cutoff := getCutOffTime()
-	archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
-	stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
-	payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
-	environment := conf.GetEnv("DEPLOYMENT_TARGET")
-	slackToken := conf.GetEnv("SLACK_TOKEN")
+			cutoff := getCutOffTime()
+			archiveDir := conf.GetEnv("FHIR_ARCHIVE_DIR")
+			stagingDir := conf.GetEnv("FHIR_STAGING_DIR")
+			payloadDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
+			environment := conf.GetEnv("DEPLOYMENT_TARGET")
+			slackToken := conf.GetEnv("SLACK_TOKEN")
 
-	slackClient := slack.New(slackToken)
+			slackClient := slack.New(slackToken)
 
-	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), "")
+			msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("Started Archive and Clean Job Data for %s environment.", environment), "")
 
-	// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
-	if err := w.cleanupJob(w.db, cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.CleanupArchArg)))
-		msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
-		return err
+			// Cleanup archived jobs: remove job directory and files from archive and update job status to Expired
+			if err := w.cleanupJob(w.db, cutoff, models.JobStatusArchived, models.JobStatusExpired, archiveDir, stagingDir); err != nil {
+				logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.CleanupArchArg)))
+				msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
+				return err
+			}
+
+			// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
+			if err := w.cleanupJob(w.db, cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
+				logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.CleanupFailedArg)))
+				msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
+				return err
+			}
+
+			// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
+			if err := w.cleanupJob(w.db, cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
+				logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.CleanupCancelledArg)))
+				msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
+				return err
+			}
+
+			// Archive expiring jobs: update job statuses and move files to an inaccessible location
+			if err := w.archiveExpiring(w.db, cutoff); err != nil {
+				logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.ArchiveJobFiles)))
+				msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
+				return err
+			}
+
+			msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Archive and Clean Job Data for %s env.", msgr.SuccessMsg, environment), msgr.Good)
+
+			return nil
+		}
 	}
-
-	// Cleanup failed jobs: remove job directory and files from failed jobs and update job status to FailedExpired
-	if err := w.cleanupJob(w.db, cutoff, models.JobStatusFailed, models.JobStatusFailedExpired, stagingDir, payloadDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.CleanupFailedArg)))
-		msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
-		return err
-	}
-
-	// Cleanup cancelled jobs: remove job directory and files from cancelled jobs and update job status to CancelledExpired
-	if err := w.cleanupJob(w.db, cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired, stagingDir, payloadDir); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.CleanupCancelledArg)))
-		msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
-		return err
-	}
-
-	// Archive expiring jobs: update job statuses and move files to an inaccessible location
-	if err := w.archiveExpiring(w.db, cutoff); err != nil {
-		logger.Error(errors.Wrap(err, fmt.Sprintf("failed to process job ID: %d, CleanupJob type: %s", rjob.ID, constants.ArchiveJobFiles)))
-		msgr.SendSlackMessage(slackClient, msgr.AlertsChannel, fmt.Sprintf("%s: Archive and Clean Job in %s env.", msgr.FailureMsg, environment), msgr.Danger)
-		return err
-	}
-
-	msgr.SendSlackMessage(slackClient, msgr.OperationsChannel, fmt.Sprintf("%s: Archive and Clean Job Data for %s env.", msgr.SuccessMsg, environment), msgr.Good)
-
-	return nil
 }

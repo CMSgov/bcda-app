@@ -71,10 +71,9 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
-		// TODO: whats an appropriate timeout?
-		JobTimeout:   -1, // default for river is 1m, using -1 for no timeout
+		JobTimeout:   10 * time.Minute,
 		Logger:       logger,
-		MaxAttempts:  10, // This is a few hours worth of retries
+		MaxAttempts:  8, // This is roughly an hour of retries
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,
 	})
