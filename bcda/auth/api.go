@@ -53,7 +53,9 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ad, err := a.provider.GetAuthData(clientId)
-	if err == nil {
+	if err != nil {
+		ctxLogger.Warnf("Failed to retrieve AuthData: %v", err)
+	} else {
 		ctxLogger = ctxLogger.WithFields(logrus.Fields{"cms_id": ad.CMSID})
 	}
 
