@@ -10,6 +10,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 
@@ -23,9 +25,6 @@ import (
 	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -52,7 +51,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	slackToken, err := setupEnv(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Errorf("Failed to load default config: %+v", err)
+		return err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	slackToken, err := setupEnv(ctx, ssmClient)
 	if err != nil {
 		log.Errorf("Failed to retrieve parameter: %+v", err)
 		return err
@@ -133,7 +139,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 	return nil
 }
 
-func setupEnv(ctx context.Context) (string, error) {
+func setupEnv(ctx context.Context, client bcdaaws.CustomSSMClient) (string, error) {
 	env := conf.GetEnv("ENV")
 
 	err := os.Setenv("SSAS_USE_TLS", "true")
@@ -141,12 +147,6 @@ func setupEnv(ctx context.Context) (string, error) {
 		log.Errorf("Error setting SSAS_USE_TLS env var: %+v", err)
 		return "", err
 	}
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return "", err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
 
 	slackParamName := "/slack/token/workflow-alerts"
 	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
@@ -162,7 +162,7 @@ func setupEnv(ctx context.Context) (string, error) {
 		ssasSecretName,
 		caFileName,
 	}
-	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
+	params, err := bcdaaws.GetParameters(ctx, client, paramNames)
 	if err != nil {
 		return "", err
 	}

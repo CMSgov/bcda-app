@@ -11,6 +11,7 @@ import (
 func TestPutMetricSample(t *testing.T) {
 	err := PutMetricSample(
 		t.Context(),
+		&MockCloudwatchClient{},
 		"Namespace",
 		"Name",
 		"Count",

@@ -13,7 +13,7 @@ env:
 
 jobs:
   generate-docs:
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: actions/checkout@v4
         with:
