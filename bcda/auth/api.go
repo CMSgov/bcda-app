@@ -93,6 +93,8 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error writing response - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	} else {
+		ctxLogger.Info("Successfully generated access token")
 	}
 }
 
