@@ -12,6 +12,8 @@ bootstrap_config() {
 }
 
 if ! [[ -n "$SKIP_BOOTSTRAP" ]]; then
+  # this should be the default for everything outside of local dev/testing
+  # for local dev/testing see bcda and bcdaworker dockerfiles
   echo "Bootstrapping config from S3"
   bootstrap_config
 fi

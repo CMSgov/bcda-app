@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	bcdaerrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -194,6 +195,13 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 		return nil, err
 	}
 
+	totalJobBenes := len(newBeneficiaries) + len(beneficiaries)
+	args.Job.BenesAttributedToACO = totalJobBenes
+	err = s.repository.UpdateJob(ctx, args.Job)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update job with totalJobBenes: %+v", err)
+	}
+
 	queJobs = append(queJobs, jobs...)
 
 	return queJobs, nil
@@ -268,92 +276,165 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
+// createQueueJobs expands a single "prepare job" request into concrete queue jobs by:
+// - choosing the effective resource + data types for the ACO/config (including BFD v3 rules)
+// - splitting beneficiaries into batches sized for the target resource type
+// - emitting one queue job per (resourceType × dataType × beneficiaryBatch)
 func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
-	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
-	var sinceArg string
-	if !since.IsZero() {
-		sinceArg = "gt" + since.Format(time.RFC3339Nano)
+	sinceArg := formatSinceArg(since)
+	resourceTypes, effectiveDataTypes, err := s.getEffectiveQueueJobConfig(args)
+	if err != nil {
+		return nil, err
 	}
 
-	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
-	if !ok {
-		return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
-	}
-
-	effectiveDataTypes := acoCfg.Data
-	if args.BFDPath == constants.BFDV3Path {
-		excluded := slices.Contains(s.v3NoPartialClaimsModels, acoCfg.Model)
-		if !excluded && !slices.Contains(acoCfg.Data, constants.PartiallyAdjudicated) {
-			effectiveDataTypes = append([]string(nil), acoCfg.Data...)
-			effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
-		}
-	}
-
-	for _, rt := range args.ResourceTypes {
-		maxBeneficiaries, err := getMaxBeneCount(rt)
+	for _, resourceType := range resourceTypes {
+		maxBeneficiaries, err := getMaxBeneCount(resourceType)
 		if err != nil {
 			return nil, err
 		}
 
-		rowCount := 0
-		jobIDs := make([]string, 0, maxBeneficiaries)
-		for _, b := range beneficiaries {
-			rowCount++
-			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
-			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				// Create separate jobs for each data type if needed
-				for _, dataType := range effectiveDataTypes {
-					// conditions.TransactionTime references the last time adjudicated data
-					// was updated in the BB client. If we are queuing up a partially-adjudicated
-					// data job, we need to assume that the adjudicated and partially-adjudicated
-					// data ingestion timelines don't line up, therefore for all
-					// partially-adjudicated jobs we will just use conditions.CreationTime as an
-					// upper bound
-					var transactionTime time.Time
-					if dataType == constants.PartiallyAdjudicated {
-						transactionTime = args.CreationTime
-					} else {
-						transactionTime = args.Job.TransactionTime
-					}
-					if resource, ok := GetClaimType(rt); ok {
-						if resource.SupportsClaimType(dataType) {
-							jobId, err := safecast.ToInt(args.Job.ID)
-							if err != nil {
-								log.API.Errorln(err)
-							}
-							enqueueArgs := worker_types.JobEnqueueArgs{
-								ID:              jobId,
-								ACOID:           args.ACOID.String(),
-								CMSID:           args.CMSID,
-								BeneficiaryIDs:  jobIDs,
-								ResourceType:    rt,
-								Since:           sinceArg,
-								TypeFilter:      args.TypeFilter,
-								TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
-								TransactionTime: transactionTime,
-								BBBasePath:      args.BFDPath,
-								DataType:        dataType,
-							}
-
-							ok := s.setClaimsDate(&enqueueArgs, args)
-							if !ok {
-								return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
-							}
-
-							jobs = append(jobs, &enqueueArgs)
-						}
-					} else {
-						// This should never be possible, would have returned earlier
-						return nil, errors.New("Invalid resource type: " + rt)
-					}
-				}
-
-				jobIDs = make([]string, 0, maxBeneficiaries)
+		for _, beneficiaryIDs := range chunkBeneficiaryIDs(beneficiaries, maxBeneficiaries) {
+			resourceJobs, err := s.createJobsForResourceChunk(ctx, args, sinceArg, resourceType, beneficiaryIDs, effectiveDataTypes)
+			if err != nil {
+				return nil, err
 			}
+			jobs = append(jobs, resourceJobs...)
 		}
 	}
 
 	return jobs, nil
+}
+
+// formatSinceArg converts a time into the "_lastUpdated" query parameter format expected by Blue Button.
+// A zero time means "no since filter", which is represented as the empty string.
+func formatSinceArg(since time.Time) string {
+	if since.IsZero() {
+		return ""
+	}
+
+	// Persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'.
+	return "gt" + since.Format(time.RFC3339Nano)
+}
+
+// getEffectiveQueueJobConfig determines which resource types should be queued and which claim
+// data types should be requested, based on the matching ACO config and BFD API version.
+func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) ([]string, []string, error) {
+	acoCfg, ok := s.GetACOConfigForID(args.CMSID)
+	if !ok {
+		return nil, nil, &bcdaerrors.InvalidACOConfigError{CMSID: args.CMSID}
+	}
+
+	resourceTypes := append([]string(nil), args.ResourceTypes...)
+	effectiveDataTypes := append([]string(nil), acoCfg.Data...)
+	if args.BFDPath != constants.BFDV3Path {
+		return resourceTypes, effectiveDataTypes, nil
+	}
+
+	excluded := slices.Contains(s.v3NoPartialClaimsModels, acoCfg.Model)
+	if !excluded && !slices.Contains(acoCfg.Data, constants.PartiallyAdjudicated) {
+		effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
+	}
+
+	return filterV3ResourceTypes(resourceTypes), effectiveDataTypes, nil
+}
+
+// filterV3ResourceTypes enforces BFD v3 limitations by allowing only supported resource types.
+func filterV3ResourceTypes(resourceTypes []string) []string {
+	filtered := make([]string, 0, len(resourceTypes))
+	for _, resourceType := range resourceTypes {
+		if resourceType == "Patient" || resourceType == "Coverage" {
+			filtered = append(filtered, resourceType)
+		}
+	}
+
+	return filtered
+}
+
+// chunkBeneficiaryIDs splits beneficiaries into fixed-size ID batches for queueing.
+func chunkBeneficiaryIDs(beneficiaries []*models.CCLFBeneficiary, maxBeneficiaries int) [][]string {
+	if len(beneficiaries) == 0 {
+		return nil
+	}
+
+	chunks := make([][]string, 0, (len(beneficiaries)+maxBeneficiaries-1)/maxBeneficiaries)
+	currentChunk := make([]string, 0, maxBeneficiaries)
+
+	for _, beneficiary := range beneficiaries {
+		currentChunk = append(currentChunk, fmt.Sprint(beneficiary.ID))
+		if len(currentChunk) < maxBeneficiaries {
+			continue
+		}
+
+		chunks = append(chunks, currentChunk)
+		currentChunk = make([]string, 0, maxBeneficiaries)
+	}
+
+	if len(currentChunk) > 0 {
+		chunks = append(chunks, currentChunk)
+	}
+
+	return chunks
+}
+
+// createJobsForResourceChunk produces enqueue arguments for a single resource type and beneficiary batch,
+// creating a distinct job per compatible claim data type.
+func (s *service) createJobsForResourceChunk(ctx context.Context, args worker_types.PrepareJobArgs, sinceArg string, resourceType string, beneficiaryIDs []string, effectiveDataTypes []string) ([]*worker_types.JobEnqueueArgs, error) {
+	resource, ok := GetClaimType(resourceType)
+	if !ok {
+		// This should never be possible, would have returned earlier.
+		return nil, errors.New("Invalid resource type: " + resourceType)
+	}
+
+	jobs := make([]*worker_types.JobEnqueueArgs, 0, len(effectiveDataTypes))
+	for _, dataType := range effectiveDataTypes {
+		if !resource.SupportsClaimType(dataType) {
+			continue
+		}
+
+		enqueueArgs, err := s.buildQueueJobArgs(ctx, args, sinceArg, beneficiaryIDs, resourceType, dataType)
+		if err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, enqueueArgs)
+	}
+
+	return jobs, nil
+}
+
+func (s *service) buildQueueJobArgs(ctx context.Context, args worker_types.PrepareJobArgs, sinceArg string, beneficiaryIDs []string, resourceType string, dataType string) (*worker_types.JobEnqueueArgs, error) {
+	jobID, err := safecast.ToInt(args.Job.ID)
+	if err != nil {
+		log.API.Errorln(err)
+	}
+
+	enqueueArgs := worker_types.JobEnqueueArgs{
+		ID:              jobID,
+		ACOID:           args.ACOID.String(),
+		CMSID:           args.CMSID,
+		BeneficiaryIDs:  beneficiaryIDs,
+		ResourceType:    resourceType,
+		Since:           sinceArg,
+		TypeFilter:      args.TypeFilter,
+		TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
+		TransactionTime: getQueueJobTransactionTime(args, dataType),
+		BBBasePath:      args.BFDPath,
+		DataType:        dataType,
+	}
+
+	if !s.setClaimsDate(&enqueueArgs, args) {
+		return nil, &bcdaerrors.InvalidACOConfigError{CMSID: args.CMSID}
+	}
+
+	return &enqueueArgs, nil
+}
+
+func getQueueJobTransactionTime(args worker_types.PrepareJobArgs, dataType string) time.Time {
+	// Partially-adjudicated data can lag adjudicated claims ingestion, so use job creation time.
+	if dataType == constants.PartiallyAdjudicated {
+		return args.CreationTime
+	}
+
+	return args.Job.TransactionTime
 }
 
 // Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
@@ -468,7 +549,7 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, args wo
 				}
 			}
 		} else {
-			return nil, fmt.Errorf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", args.CMSID)
+			return nil, &bcdaerrors.InvalidACOConfigError{CMSID: args.CMSID}
 		}
 
 	}
