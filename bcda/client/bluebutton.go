@@ -231,6 +231,8 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 
 	if bbc.BBBasePath != constants.BFDV3Path { // TODO: V3
 		params.Set("excludeSAMHSA", "true")
+	} else {
+		params.Set("_security:not", "42CFRPart2")
 	}
 
 	updateParamWithServiceDate(&params, claimsWindow)
