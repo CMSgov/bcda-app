@@ -97,6 +97,7 @@ permissions:
 
 env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
+  REF: ${{ inputs.ref || github.sha }}
   COMPOSE_INTERACTIVE_NO_CLI: 1
   TEST_ACO: ${{ inputs.test_aco || 'dev' }}
 
@@ -145,22 +146,22 @@ jobs:
       - name: Build SSAS Postman Container
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
-          docker build -t postman_test -f ./Dockerfiles/Dockerfile.postman_test .
+          docker build -t postman_test -f ./docker/Dockerfile.postman_test .
       - name: Run SSAS tests
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
           docker system prune -af
           CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
           CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
+          docker compose -f compose.integration-test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           repository: CMSgov/bcda-app
-          ref: ${{ inputs.ref || 'main' }}
+          ref: ${{ env.REF }}
       - name: Build API Postman Container
         run: |
-          docker compose -f docker-compose.test.yml build --force-rm postman_test
+          docker compose -f compose.test.yml build --force-rm postman_test
       - name: Run Postman Tests
         if: ${{ inputs.postman_tests }}
         run: |
@@ -170,7 +171,7 @@ jobs:
           DENYLIST_CLIENT_SECRET=$(echo $DENYLIST_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
           OUTDATED_ATTR_CLIENT_ID=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           OUTDATED_ATTR_CLIENT_SECRET=$(echo $OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=${CLIENT_ID} --global-var clientSecret=${CLIENT_SECRET} \
           --global-var v2Disabled=false \
@@ -181,7 +182,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm  postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
+          docker compose -f compose.test.yml run --rm  postman_test test/postman_test/BCDA_Postman_Smoke_Tests.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET
@@ -191,7 +192,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $PACA_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_PAC_Postman_Smoke_Tests.postman_collection.json \
           -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
           --global-var clientId=$CLIENT_ID \
           --global-var clientSecret=$CLIENT_SECRET
@@ -200,7 +201,7 @@ jobs:
         run: |
           CLIENT_ID=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $V3_CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
-          docker compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
+          docker compose -f compose.test.yml run --rm postman_test test/postman_test/BCDA_V3_Tests.postman_collection.json \
            -e test/postman_test/${{ env.RELEASE_ENV }}.postman_environment.json \
            --global-var clientId=${CLIENT_ID} \
            --global-var clientSecret=${CLIENT_SECRET} \
@@ -216,7 +217,7 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: good
-                text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.ref || 'main' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
       - name: Failure Alert
@@ -229,6 +230,6 @@ jobs:
             channel: "C03S23MJFJS"
             attachments:
               - color: danger
-                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ inputs.ref || 'main' }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
