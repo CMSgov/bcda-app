@@ -54,7 +54,7 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	ad, err := a.provider.GetAuthData(clientId)
 	if err == nil {
-		ctxLogger = ctxLogger.WithFields(logrus.Fields{"aco_id": ad.ACOID, "cms_id": ad.CMSID})
+		ctxLogger = ctxLogger.WithFields(logrus.Fields{"cms_id": ad.CMSID})
 	}
 
 	tokenInfo, err := a.provider.MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret}, r)
