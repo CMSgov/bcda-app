@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -102,9 +101,4 @@ func (q queue) StopRiver() {
 	if err := q.client.Stop(q.ctx); err != nil {
 		panic(err)
 	}
-}
-
-func getCutOffTime() time.Time {
-	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
-	return cutoff
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	msgr "github.com/CMSgov/bcda-app/bcda/slackmessenger"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/cleanup"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -91,4 +92,9 @@ func (w *CleanupJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			return nil
 		}
 	}
+}
+
+func getCutOffTime() time.Time {
+	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	return cutoff
 }
