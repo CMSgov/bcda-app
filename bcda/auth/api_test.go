@@ -70,6 +70,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 		//setup mocks
 		mockP := &auth.MockProvider{}
+		mockP.On("GetAuthData", mock.Anything).Return(auth.AuthData{ACOID: "aco_test", CMSID: "cms_test"}, nil)
 		mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return("", tt.ErrorToReturn)
 
 		router := auth.NewAuthRouter(mockP)
@@ -119,6 +120,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 	for _, tt := range tests {
 		//setup mocks
 		mockP := &auth.MockProvider{}
+		mockP.On("GetAuthData", mock.Anything).Return(auth.AuthData{ACOID: "aco_test", CMSID: "cms_test"}, nil)
 		mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
 		// auth.SetMockProvider(s.T(), mockP)
 
