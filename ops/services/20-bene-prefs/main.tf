@@ -1,5 +1,5 @@
 locals {
-  service      = "bene-prefs"
+  service      = "bene_prefs"
   default_tags = module.platform.default_tags
   env          = terraform.workspace
 
