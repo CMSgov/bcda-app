@@ -179,7 +179,7 @@ module "bucket" {
   app           = local.app
   env           = local.env
   name          = "${local.app}-${local.env}-${local.service}"
-  ssm_parameter = "/${local.app}/${local.env}/bene-prefs/nonsensitive/bucket_name"
+  ssm_parameter = "/${local.app}/${local.env}/bene_prefs/nonsensitive/bucket_name"
 }
 
 resource "aws_cloudwatch_log_group" "this" {
