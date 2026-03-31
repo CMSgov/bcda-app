@@ -31,7 +31,7 @@ jobs:
   trigger:
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda

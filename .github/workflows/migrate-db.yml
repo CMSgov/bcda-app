@@ -36,7 +36,7 @@ jobs:
   migrate_db:
     environment: ${{ inputs.env || 'dev' }}
     name: Migrate DB
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app${{ contains(fromJSON('["dev", "test"]'), inputs.env) && '-non-prod' || ''}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout BCDA
         uses: actions/checkout@v4
