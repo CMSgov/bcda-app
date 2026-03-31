@@ -33,7 +33,7 @@ func (w *TestJobWorker) Work(ctx context.Context, rjob *river.Job[TestJobArgs]) 
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			time.Sleep(3 * time.Second)
+			time.Sleep(1 * time.Second)
 			return nil
 		}
 	}
@@ -53,4 +53,10 @@ func TestWorkerRespectsParentContext(t *testing.T) {
 	t.Cleanup(cancel)
 	err = (&TestJobWorker{}).Work(ctx, &river.Job[TestJobArgs]{Args: TestJobArgs{}})
 	assert.Equal(t, ctx.Err(), err)
+
+	// test No Cancellation/Timeout/Deadline
+	ctx, cancel = context.WithTimeout(bgCtx, (3 * time.Second))
+	t.Cleanup(cancel)
+	err = (&TestJobWorker{}).Work(ctx, &river.Job[TestJobArgs]{Args: TestJobArgs{}})
+	assert.Nil(t, err)
 }
