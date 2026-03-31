@@ -20,7 +20,7 @@ require (
 	github.com/huandu/go-sqlbuilder v1.14.1
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/mattn/go-colorable v0.1.14
-	github.com/newrelic/go-agent/v3 v3.18.1
+	github.com/newrelic/go-agent/v3 v3.42.0
 	github.com/newrelic/go-agent/v3/integrations/nrlogrus v1.0.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pborman/uuid v1.2.1
