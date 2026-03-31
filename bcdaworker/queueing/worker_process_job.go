@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -23,7 +24,8 @@ type JobWorker struct {
 // previously this was set to -1 which translates to no timeout, 30m seems like plenty of time
 // to handle a subjob, but could do with some future adjustment if needed
 func (w *JobWorker) Timeout(*river.Job[worker_types.JobEnqueueArgs]) time.Duration {
-	return 30 * time.Minute
+	minutes := utils.GetEnvInt("PROCESS_JOB_TIMEOUT_MINUTES", 30)
+	return time.Duration(minutes) * time.Minute
 }
 
 func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEnqueueArgs]) error {
