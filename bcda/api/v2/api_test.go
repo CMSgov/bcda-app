@@ -724,7 +724,7 @@ func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 		t.Fatalf("Failed to parse %s to time.Time %s", expiry, err)
 	}
 
-	assert.Equal(t, time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
+	assert.WithinDuration(t, expectedTime, expiryTime, time.Second)
 }
 
 func getOperationOutcome(t *testing.T, data []byte) *fhiroo.OperationOutcome {
