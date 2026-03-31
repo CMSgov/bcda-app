@@ -52,6 +52,13 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ad, err := a.provider.GetAuthData(clientId)
+	if err != nil {
+		ctxLogger.Warnf("Failed to retrieve AuthData: %v", err)
+	} else {
+		ctxLogger = ctxLogger.WithFields(logrus.Fields{"cms_id": ad.CMSID})
+	}
+
 	tokenInfo, err := a.provider.MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret}, r)
 	if err != nil {
 		switch err.(type) {
@@ -86,6 +93,8 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error writing response - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	} else {
+		ctxLogger.Info("Successfully generated access token")
 	}
 }
 
