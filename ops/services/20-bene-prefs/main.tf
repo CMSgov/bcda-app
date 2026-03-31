@@ -64,6 +64,23 @@ resource "aws_iam_policy" "assume_bucket_role" {
   policy = data.aws_iam_policy_document.assume_bucket_role.json
 }
 
+resource "aws_iam_policy" "admin_subscribe_bfd_topic" {
+  name        = "admin-subscribe-bfd-topic"
+  description = "Allows subscribing to the BFD bene-prefs-received SNS topic in account 830858426211"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowBFDSNSSubscribe"
+        Effect   = "Allow"
+        Action   = "sns:Subscribe"
+        Resource = "arn:aws:sns:us-east-1:830858426211:bfd-test-bene-prefs-received-s3-bcda"
+      }
+    ]
+  })
+}
+
 data "aws_iam_policy_document" "default_function" {
   statement {
     sid = "SsmSqsLogsEc2"
@@ -171,6 +188,11 @@ resource "aws_iam_role_policy_attachment" "this" {
 resource "aws_iam_role_policy_attachment" "assume_bucket_role" {
   role = aws_iam_role.this.name
   policy_arn = aws_iam_policy.assume_bucket_role.arn
+}
+
+resource "aws_iam_role_policy_attachment" "admin_subscribe_bfd_topic" {
+  role = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.admin_subscribe_bfd_topic.arn
 }
 
 module "bucket" {
