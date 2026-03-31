@@ -36,7 +36,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.environment) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
