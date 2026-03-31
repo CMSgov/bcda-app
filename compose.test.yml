@@ -1,14 +1,13 @@
----
+name: bcda-app-test
 services:
   tests:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.tests
+      dockerfile: docker/Dockerfile.tests
     platform: linux/arm64
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      - BFD_S3_ENDPOINT=${BFD_S3_ENDPOINT}
       - ENV=local
       - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
@@ -24,6 +23,8 @@ services:
         condition: service_started
   db-unit-test:
     image: postgres:16
+    # Pass a flag so we'll log all queries executed on the test db.
+    command: ["postgres", "-c", "log_statement=all"]
     environment:
       - POSTGRES_PASSWORD=toor
       - POSTGRES_DB=bcda_test
@@ -31,12 +32,16 @@ services:
       - "15432:5432"
     volumes:
       - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
-    # Pass a flag so we'll log all queries executed on the test db.
-    command: ["postgres", "-c", "log_statement=all"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "bcda_test"]
+      interval: 40s
+      timeout: 15s
+      retries: 5
+      start_period: 2s
   postman_test:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.postman_test
+      dockerfile: docker/Dockerfile.postman_test
 
 networks:
   default:
