@@ -200,8 +200,7 @@ module "bucket" {
 
   app           = local.app
   env           = local.env
-  # Hard-coded 'bene-prefs' instead of using local.service because underscore not allowed in aws bucket names
-  name          = "${local.app}-${local.env}-bene-prefs"
+  name          = "${local.app}-${local.env}-${local.service}"
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 

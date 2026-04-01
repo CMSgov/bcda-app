@@ -1,12 +1,8 @@
-# Integration test that triggers an Opt Out import in the test environment and
+# Integration test that triggers a bene-prefs import in the test environment and
 # verifies the imported data in the test database.
-name: opt-out-import/bene-prefs test integration
+name: bene-prefs import test integration
 
 on:
-  push:
-    branches:
-      - "bcda-9917_bene-prefs-test-env"
-      - main
   pull_request:
     paths:
       - .github/workflows/bene-prefs-import-integration-test.yml
@@ -22,7 +18,7 @@ permissions:
 
 # Ensure we have only one integration test running at a time
 concurrency:
-  group: opt-out-import-test-integration
+  group: bene-prefs-import-test-integration
 
 jobs:
   # Deploy first if triggered by pull_request
@@ -36,7 +32,7 @@ jobs:
   trigger:
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: ./optout
