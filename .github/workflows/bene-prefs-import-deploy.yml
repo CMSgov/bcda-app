@@ -49,7 +49,7 @@ jobs:
         env:
           CGO_ENABLED: 0
         run: |
-          GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/optout/main.go
+          go build -o bin/bootstrap ./lambda/optout/main.go
           zip -j function.zip bin/bootstrap
       - uses: aws-actions/configure-aws-credentials@v4
         with:
