@@ -38,6 +38,10 @@ jobs:
           sleep 20
           docker stop fhir_testing-hl7_validator_service-1
 
+          if [ -z "$CLIENT_CREDENTIALS_PARAMS" ]; then
+            echo "ERROR: CLIENT_CREDENTIALS_PARAMS is not set or empty"
+            exit 1
+          fi
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
 
