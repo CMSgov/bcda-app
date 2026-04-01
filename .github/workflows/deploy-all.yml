@@ -150,7 +150,7 @@ jobs:
   deploy:
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -164,6 +164,29 @@ jobs:
           params: |
             GITHUB_TOKEN=/ci/github/token
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/DATABASE_URL
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.ref }}
+      - name: Install Cosign to verify tenv and tofu installs
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Install tenv
+        uses: cmsgov/cdap/actions/setup-tenv@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Install Sops
+        uses: cmsgov/cdap/actions/setup-sops@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
+      - name: Install YQ
+        uses: cmsgov/cdap/actions/setup-yq@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Plan SOPS
+        working-directory: ops/services/10-config
+        run: |
+          TF_WORKSPACE=default tofu init -var parent_env=${{ env.RELEASE_ENV }} -reconfigure && tofu workspace select -var parent_env=${{ env.RELEASE_ENV }} -or-create ${{ env.RELEASE_ENV }}
+          tofu plan \
+            -out 'bcda-release-sops.tfplan'
+      - name: Apply SOPS
+        working-directory: ops/services/10-config
+        run: |
+          tofu apply bcda-release-sops.tfplan
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
@@ -302,7 +325,7 @@ jobs:
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
       postman_tests: true
-      v3_tests: false
+      v3_tests: true
     secrets: inherit
 
   notify_newrelic:
