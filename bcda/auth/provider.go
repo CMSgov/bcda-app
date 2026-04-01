@@ -87,4 +87,7 @@ type Provider interface {
 
 	//getAuthDataFromClaims gets AuthData from Token Claims
 	getAuthDataFromClaims(*CommonClaims) (AuthData, error)
+
+	// GetAuthData returns the auth data associated with the given client ID
+	GetAuthData(clientID string) (AuthData, error)
 }
