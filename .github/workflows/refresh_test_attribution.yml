@@ -14,7 +14,6 @@ permissions:
 jobs:
   refresh_attribution:
     name: Refresh Attribution
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     strategy:
       matrix:
         vars:
@@ -26,6 +25,7 @@ jobs:
             account_id: PROD_ACCOUNT_ID
           - env: prod
             account_id: PROD_ACCOUNT_ID
+    runs-on: codebuild-bcda-app${{ contains(fromJSON('["dev"]'), matrix.env) && '-non-prod' || ''}}-${{github.run_id}}-${{github.run_attempt}} 
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:

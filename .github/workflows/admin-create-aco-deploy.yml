@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app${{ contains(fromJSON('["dev", "test"]'), inputs.deploy_env) && '-non-prod' || ''}}-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda

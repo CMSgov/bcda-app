@@ -12,7 +12,7 @@ jobs:
       contents: read
       id-token: write
     name: run fhir scan
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,8 +38,14 @@ jobs:
           sleep 20
           docker stop fhir_testing-hl7_validator_service-1
 
-          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
+          CLIENT_ID=$(echo "$CLIENT_CREDENTIALS_PARAMS" | jq -r '.client_id // empty')
+          CLIENT_SECRET=$(echo "$CLIENT_CREDENTIALS_PARAMS" | jq -r '.client_secret // empty')
+          # Validate parsed values
+          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+            echo "ERROR: client_id or client_secret is null/empty in CLIENT_CREDENTIALS_PARAMS"
+            exit 1
+          fi
+          
 
           docker build --no-cache -t fhir_testing -f docker/Dockerfile.fhir_testing .
           docker run --add-host=host.docker.internal:host-gateway --rm -e BULK_URL="https://dev.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://dev.bcda.cms.gov/auth/token" fhir_testing
