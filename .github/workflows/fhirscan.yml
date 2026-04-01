@@ -38,12 +38,9 @@ jobs:
           sleep 20
           docker stop fhir_testing-hl7_validator_service-1
 
-          if [ -z "$CLIENT_CREDENTIALS_PARAMS" ]; then
-            echo "ERROR: CLIENT_CREDENTIALS_PARAMS is not set or empty"
-            exit 1
-          fi
+          echo "foo bar"
           CLIENT_ID=$(echo "$CLIENT_CREDENTIALS_PARAMS" | jq -r '.client_id // empty')
-          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r '.client_secret // empty')
+          CLIENT_SECRET=$(echo "$CLIENT_CREDENTIALS_PARAMS" | jq -r '.client_secret // empty')
           # Validate parsed values
           if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
             echo "ERROR: client_id or client_secret is null/empty in CLIENT_CREDENTIALS_PARAMS"
