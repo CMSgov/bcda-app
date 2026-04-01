@@ -38,7 +38,8 @@ jobs:
           sleep 20
           docker stop fhir_testing-hl7_validator_service-1
 
-          TEST={"foo":"bar"}
+          TEST={"foo":"bar"} | jq -r '.foo // empty'
+          echo $TEST
           CLIENT_ID=$(echo "$CLIENT_CREDENTIALS_PARAMS" | jq -r '.client_id // empty')
           CLIENT_SECRET=$(echo "$CLIENT_CREDENTIALS_PARAMS" | jq -r '.client_secret // empty')
           # Validate parsed values
