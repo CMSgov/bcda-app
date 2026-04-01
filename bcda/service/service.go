@@ -335,19 +335,7 @@ func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) (
 		effectiveDataTypes = append(effectiveDataTypes, constants.PartiallyAdjudicated)
 	}
 
-	return filterV3ResourceTypes(resourceTypes), effectiveDataTypes, nil
-}
-
-// filterV3ResourceTypes enforces BFD v3 limitations by allowing only supported resource types.
-func filterV3ResourceTypes(resourceTypes []string) []string {
-	filtered := make([]string, 0, len(resourceTypes))
-	for _, resourceType := range resourceTypes {
-		if resourceType == "Patient" || resourceType == "Coverage" {
-			filtered = append(filtered, resourceType)
-		}
-	}
-
-	return filtered
+	return resourceTypes, effectiveDataTypes, nil
 }
 
 // chunkBeneficiaryIDs splits beneficiaries into fixed-size ID batches for queueing.
