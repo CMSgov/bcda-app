@@ -65,7 +65,7 @@ resource "aws_iam_policy" "assume_bucket_role" {
 }
 
 resource "aws_iam_policy" "admin_subscribe_bfd_topic" {
-  name        = "admin-subscribe-bfd-topic"
+  name        = "admin-subscribe-bfd-topic2"
   description = "Allows subscribing to the BFD bene-prefs-received SNS topic in account 830858426211"
 
   policy = jsonencode({
