@@ -112,6 +112,7 @@ reset-db:
 
 	# Initialize schemas
 	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
+	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
 
 load-fixtures: reset-db
 # Start api service if it's not already running
@@ -127,7 +128,6 @@ load-fixtures: reset-db
 load-fixtures-ssas:
 	docker compose up -d db ssas
 	./docker/await_service_healthy.sh db
-	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#main' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
 	docker compose exec ssas main --add-fixture-data
 
 docker-build:
