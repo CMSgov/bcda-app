@@ -1,9 +1,8 @@
-name: opt-out-import/bene-prefs deploy
+name: bene-prefs import deploy
 
 on:
   push:
     branches:
-      - "jreynolds/bcda-9917"
       - main
     paths:
       - optout/**
