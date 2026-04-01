@@ -1,0 +1,73 @@
+name: opt-out-import/bene-prefs deploy
+
+on:
+  push:
+    branches:
+      - "jreynolds/bcda-9917"
+      - main
+    paths:
+      - optout/**
+      - .github/workflows/bene-prefs-import-deploy.yml
+  workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: 'Environment you want to deploy to (test, prod)'
+        required: true
+        default: test
+        type: choice
+        options:
+          - test
+          - prod
+  workflow_call:
+    inputs:
+      deploy_env:
+        description: 'Environment you want to deploy to (test, prod)'
+        required: true
+        default: test
+        type: string
+
+env:
+  DEPLOY_ENV: ${{ inputs.deploy_env || 'test' }}
+
+jobs:
+  test:
+    environment: ${{ inputs.deploy_env || 'test' }}
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.environment) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
+    defaults:
+      run:
+        working-directory: bcda
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - name: Build bene-prefs zip file
+        env:
+          CGO_ENABLED: 0
+        run: |
+          GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/optout/main.go
+          zip -j function.zip bin/bootstrap
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Get Bucket
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/bene-prefs/nonsensitive/bucket_name
+      - name: Upload and reload
+        run: |
+          aws s3 cp --no-progress function.zip \
+            s3://$BUCKET/function-${{ github.sha }}.zip
+          aws s3api put-object-tagging \
+            --bucket $BUCKET \
+            --key function-${{ github.sha }}.zip \
+            --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
+          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-bene-prefs \
+            --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
