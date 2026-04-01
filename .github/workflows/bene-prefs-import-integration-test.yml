@@ -42,19 +42,13 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-bene-prefs
-      - name: Get Bucket Role
+      - name: Get Bucket Role and Test File Path
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
             BFD_BUCKET_ROLE=/bcda/test/bene-prefs/sensitive/iam_bucket_role_arn
-      - name: Get Test File Path
-        uses: cmsgov/cdap/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
             BFD_BENE_PREFS_BUCKET=/bcda/test/bene-prefs/nonsensitive/bfd_bene_prefs_bucket
       - uses: aws-actions/configure-aws-credentials@v4
         with:
