@@ -48,14 +48,14 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BFD_BUCKET_ROLE=/bcda/test/bene_prefs/sensitive/iam_bucket_role_arn
+            BFD_BUCKET_ROLE=/bcda/test/bene-prefs/sensitive/iam_bucket_role_arn
       - name: Get Test File Path
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BFD_BENE_PREFS_BUCKET=/bcda/test/bene_prefs/nonsensitive/bfd_bene_prefs_bucket
+            BFD_BENE_PREFS_BUCKET=/bcda/test/bene-prefs/nonsensitive/bfd_bene_prefs_bucket
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
