@@ -3,6 +3,7 @@ name: opt-out-import/bene-prefs deploy
 on:
   push:
     branches:
+      - "bcda-9917_bene-prefs-test-env"
       - main
     paths:
       - optout/**
@@ -10,29 +11,27 @@ on:
   workflow_dispatch:
     inputs:
       deploy_env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        description: 'Environment you want to deploy to (test, prod)'
         required: true
-        default: dev
+        default: test
         type: choice
         options:
-          - dev
           - test
-          - sandbox
           - prod
   workflow_call:
     inputs:
       deploy_env:
-        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        description: 'Environment you want to deploy to (test, prod)'
         required: true
-        default: dev
+        default: test
         type: string
 
 env:
-  DEPLOY_ENV: ${{ inputs.deploy_env || 'dev' }}
+  DEPLOY_ENV: ${{ inputs.deploy_env || 'test' }}
 
 jobs:
   test:
-    environment: ${{ inputs.deploy_env || 'dev' }}
+    environment: ${{ inputs.deploy_env || 'test' }}
     permissions:
       contents: read
       id-token: write
@@ -45,7 +44,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - name: Build opt-out-import/bene-prefs zip file
+      - name: Build bene-prefs zip file
         env:
           CGO_ENABLED: 0
         run: |
@@ -70,5 +69,5 @@ jobs:
             --bucket $BUCKET \
             --key function-${{ github.sha }}.zip \
             --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
-          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-opt-out-import \
+          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-bene-prefs \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip

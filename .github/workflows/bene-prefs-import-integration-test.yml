@@ -3,6 +3,10 @@
 name: opt-out-import/bene-prefs test integration
 
 on:
+  push:
+    branches:
+      - "bcda-9917_bene-prefs-test-env"
+      - main
   pull_request:
     paths:
       - .github/workflows/bene-prefs-import-integration-test.yml
