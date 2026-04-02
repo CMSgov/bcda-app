@@ -8,6 +8,7 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
+  lambda_filename       = "lambda_function.zip"
 }
 
 module "platform" {
@@ -20,7 +21,7 @@ module "platform" {
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
   ssm_root_map = {
-    bene_prefs = "/bcda/${local.env}/bene_prefs/"
+    bene-prefs = "/bcda/${local.env}/${local.service}/"
   }
 }
 
@@ -51,7 +52,7 @@ data "aws_iam_policy_document" "assume_bucket_role" {
   statement {
     sid       = "AssumeBucketRole"
     actions   = ["sts:AssumeRole"]
-    resources = [module.platform.ssm.bene_prefs.iam_bucket_role_arn.value]
+    resources = [module.platform.ssm.bene-prefs.iam_bucket_role_arn.value]
   }
 }
 
@@ -61,6 +62,23 @@ resource "aws_iam_policy" "assume_bucket_role" {
   description = "Allows ${local.service} to assume the S3 bucket role from SSM."
 
   policy = data.aws_iam_policy_document.assume_bucket_role.json
+}
+
+resource "aws_iam_policy" "admin_subscribe_bfd_topic" {
+  name        = "admin-subscribe-bfd-topic2"
+  description = "Allows subscribing to the BFD bene-prefs-received SNS topic in account 830858426211"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowBFDSNSSubscribe"
+        Effect   = "Allow"
+        Action   = "sns:Subscribe"
+        Resource = "arn:aws:sns:us-east-1:830858426211:bfd-test-bene-prefs-received-s3-bcda"
+      }
+    ]
+  })
 }
 
 data "aws_iam_policy_document" "default_function" {
@@ -76,7 +94,7 @@ data "aws_iam_policy_document" "default_function" {
       "logs:CreateLogStream",
       "logs:CreateLogGroup",
     ]
-    resources = ["*"] #TODO: Consider splitting into discrete statements/policy allowances 
+    resources = ["*"] #TODO: Consider splitting into discrete statements/policy allowances
   }
   statement {
 
@@ -89,6 +107,7 @@ data "aws_iam_policy_document" "default_function" {
     resources = [
       local.kms_key_arn_primary,
       local.kms_key_arn_secondary,
+      module.platform.ssm.bene-prefs.iam_bucket_role_arn.value
     ]
   }
 }
@@ -156,15 +175,24 @@ resource "aws_iam_role" "this" {
   permissions_boundary = module.platform.iam_defaults.boundary
 }
 
-resource "aws_iam_role_policy_attachment" "this" {
-  #TODO: Complexity below is for eventual targeting of `test` and `prod` environments
-  for_each = { for k, v in {
-    assume_bucket_role = try(aws_iam_policy.assume_bucket_role.arn, "")
-    default_function   = try(aws_iam_policy.default_function.arn, "")
-  } : k => v if length(v) > 0 }
+resource "aws_iam_role_policy_attachment" "vpc_access" {
+  role       = aws_iam_role.this.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
 
+resource "aws_iam_role_policy_attachment" "this" {
   role = aws_iam_role.this.name
-  policy_arn = each.value
+  policy_arn = aws_iam_policy.default_function.arn
+}
+
+resource "aws_iam_role_policy_attachment" "assume_bucket_role" {
+  role = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.assume_bucket_role.arn
+}
+
+resource "aws_iam_role_policy_attachment" "admin_subscribe_bfd_topic" {
+  role = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.admin_subscribe_bfd_topic.arn
 }
 
 module "bucket" {
@@ -172,15 +200,32 @@ module "bucket" {
 
   app           = local.app
   env           = local.env
-  name          = "${local.app}-${local.env}-${local.service}-lambda"
+  name          = "${local.app}-${local.env}-${local.service}"
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/bucket_name"
 }
 
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
+  retention_in_days = 180
+  skip_destroy      = true
+
+  tags = {
+    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
+  }
+}
+
+resource "aws_s3_object" "dummy_file_upload" {
+  bucket = module.bucket.id
+  key    = local.lambda_filename
+  source = "${path.module}/${local.lambda_filename}"
+}
+
 resource "aws_lambda_function" "this" {
-  s3_key       = "function-3540b70393e3dc30f375eee2e8635a65c6f21036.zip"
-  s3_bucket    = module.bucket.id
-  package_type = "Zip"
-  handler      = "bootstrap"
+  s3_bucket         = aws_s3_object.dummy_file_upload.bucket
+  s3_key            = aws_s3_object.dummy_file_upload.key
+  s3_object_version = aws_s3_object.dummy_file_upload.version_id
+  package_type     = "Zip"
+  handler          = "bootstrap"
 
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
@@ -192,7 +237,7 @@ resource "aws_lambda_function" "this" {
   skip_destroy                   = false
   timeout                        = 900
   architectures = [
-    "x86_64",
+    "arm64",
   ]
 
   tags = {
@@ -201,8 +246,7 @@ resource "aws_lambda_function" "this" {
 
   lifecycle {
     ignore_changes = [
-      s3_object_version,
-      s3_key,
+      filename,
     ]
   }
 
@@ -254,6 +298,7 @@ resource "aws_security_group" "this" {
     },
   ]
   name = local.name_prefix
+  vpc_id = module.platform.vpc_id
   tags = { Name = local.name_prefix }
 }
 
@@ -271,7 +316,7 @@ resource "aws_sqs_queue" "this" {
         Action = "sqs:SendMessage"
         Condition = {
           ArnEquals = {
-            "aws:SourceArn" = module.platform.ssm.bene_prefs.sns_topic_arn.value
+            "aws:SourceArn" = module.platform.ssm.bene-prefs.sns_topic_arn.value
           }
         }
         Effect = "Allow"
@@ -280,6 +325,20 @@ resource "aws_sqs_queue" "this" {
         }
         Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
         Sid      = "SnsSendMessage"
+      },
+      {
+        Action = "sns:Subscribe"
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = module.platform.ssm.bene-prefs.sns_topic_arn.value
+          }
+        }
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
+        Sid      = "SnsSubscribe"
       },
     ]
   })
@@ -290,7 +349,7 @@ resource "aws_sqs_queue" "this" {
 resource "aws_sns_topic_subscription" "this" {
   endpoint  = aws_sqs_queue.this.arn
   protocol  = "sqs"
-  topic_arn = module.platform.ssm.bene_prefs.sns_topic_arn.value
+  topic_arn = module.platform.ssm.bene-prefs.sns_topic_arn.value
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
