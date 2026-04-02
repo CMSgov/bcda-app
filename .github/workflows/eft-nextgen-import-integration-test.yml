@@ -47,7 +47,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET="/bcda/${{ env.DEPLOY_ENV }}/nonsensitive/eft_bucket_name"
+            BUCKET="/bcda/${{ env.DEPLOY_ENV }}/nonsensitive/eft_file_bucket_name"
       - name: Upload test file to the eft-nextgen file bucket to trigger lambda function via SNS message
         run: |
           year=$(date +'%y')
