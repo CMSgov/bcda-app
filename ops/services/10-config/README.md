@@ -7,25 +7,12 @@ The environment-specific configuration values are located in the `values` direct
 
 ### Initial Setup
 
-First, initialize terraform workspaces. `tofu init` is deprecated; please initialize with the appropriate env below:
-
-```sh
-### dev environment
-TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
-
-### test environment
-TF_WORKSPACE=default tofu init -var parent_env=test -reconfigure && tofu workspace select -var parent_env=test -or-create test
-
-### sandbox environment
-TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
-
-### prod environment
-TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
-```
-
-Second, create the sops wrapper so you can encrypt/decrypt the values files.
+First, initialize and apply the configuration with the `sopsw` script targeted.
 
 ```bash
+cd ops/services/10-config
+export TF_VAR_env=dev
+tofu init
 tofu apply -target 'module.sops.local_file.sopsw[0]' -var=create_local_sops_wrapper=true
 ```
 
@@ -37,18 +24,25 @@ The `sopsw` script should be automatically generated in the `bin/` directory in 
 # Edit dev environment, for example
 ./bin/sopsw -e values/dev.sopsw.yaml
 ```
+## Applying Changes
+Applying changes for these modules requires initialization of the state **and** selection of the appropriate environmental workspace.
+Both can be achieved with the following commands:
 
-### Deploying Configuration Changes
+```sh
+### prod environment
+TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
 
-After editing configuration files, deploy the changes to AWS Parameter Store:
+### sandbox environment
+TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
 
-```bash
-# Review changes before applying
-tofu plan -var env=dev
+### test environment
+TF_WORKSPACE=default tofu init -var parent_env=test -reconfigure && tofu workspace select -var parent_env=test -or-create test
 
-# Apply changes
-tofu apply -var env=dev
+### dev environment
+TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
 ```
+
+After the state has been initialized and the workspace selected, users or automation can apply changes by running `tofu apply`.
 
 ## Configuration Structure
 

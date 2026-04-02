@@ -53,7 +53,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
-	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/bene_prefs/sensitive/iam_bucket_role_arn", env))
+	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/bene-prefs/sensitive/iam_bucket_role_arn", env))
 	if err != nil {
 		logger.Errorf("error getting param: %+v", err)
 		return "", err
