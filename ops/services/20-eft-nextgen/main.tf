@@ -86,6 +86,7 @@ resource "aws_security_group" "this" {
   ]
   name = local.name_prefix
   tags = { Name = local.name_prefix }
+  vpc_id = module.platform.vpc_id
 }
 
 # ---------------------------------------------------------------------------
