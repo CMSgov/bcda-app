@@ -1,4 +1,4 @@
-name: eft-nextgen-import lambda deploy
+name: eft-nextgen dev deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - cclf/**
-      - .github/workflows/eft-nextgen-import-deploy.yml
+      - .github/workflows/eft-nextgen-deploy.yml
   workflow_dispatch:
     inputs:
       deploy_env:
@@ -46,8 +46,10 @@ jobs:
       - name: Build eft-nextgen zip file
         env:
           CGO_ENABLED: 0
+        # Build for amd64 on arm64 runner since lambda infra has not been updated
+        # todo: Change while/after working on BCDA-9939
         run: |
-          env GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/cclf/main.go
+          env GOOS=linux GOARCH=amd64 go build -o bin/bootstrap ./lambda/cclf/main.go
           zip -j function.zip bin/bootstrap ../conf/configs/dev.yml ../conf/configs/test.yml ../conf/configs/prod.yml
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -60,7 +62,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/eft-nextgen/nonsensitive/eft_lambda_bucket_name
+            BUCKET="/bcda/${{ env.DEPLOY_ENV }}/nonsensitive/eft_lambda_bucket_name"
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \

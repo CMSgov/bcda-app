@@ -47,7 +47,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/test/eft-nextgen/nonsensitive/eft_file_bucket_name
+            BUCKET="/bcda/${{ env.DEPLOY_ENV }}/nonsensitive/eft_bucket_name"
       - name: Upload test file to the eft-nextgen file bucket to trigger lambda function via SNS message
         run: |
           year=$(date +'%y')
@@ -79,13 +79,13 @@ jobs:
           zip -jr $fname $new_dir
 
           aws s3 cp --no-progress $fname \
-            s3://$BUCKET/bfdeft01/bcda/in/test/$fname
+            $BUCKET/$fname
 
           aws s3 cp --no-progress ${csvname} \
-            s3://$BUCKET/bfdeft01/bcda/in/test/${csvname}
+            $BUCKET/${csvname}
 
           aws s3 cp --no-progress ${guidecsvname} \
-            s3://$BUCKET/bfdeft01/bcda/in/test/${guidecsvname}
+            $BUCKET/${guidecsvname}
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
