@@ -1,8 +1,3 @@
-# Create a role in your account that allows writing to your desired S3 bucket
-# Add our role to the trust policy of your newly created role with `sts:AssumeRole` permission:
-# `arn:aws:iam::381492306573:role/misp-eft-impl-outbox-role`
-# Share with EFT: the Role ARN, your bucket name, and the folder name where you want us to drop the files.
-#  Add bucket param:  "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_bucket_name"
 locals {
   service      = "eft-nextgen"
   default_tags = module.platform.default_tags
@@ -260,87 +255,63 @@ resource "aws_iam_role_policy_attachment" "eft_file_bucket_rw" {
 # EFT Lambda
 # -------------------------------------------------------
 
-# resource "aws_lambda_function" "this" {
-#   s3_key       = "lambda_function.zip"
-#   s3_bucket    = module.eft_lambda_bucket.id
-#   package_type = "Zip"
-#   handler      = "bootstrap"
-#
-#   function_name                  = local.name_prefix
-#   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
-#   kms_key_arn                    = local.kms_key_arn_primary
-#   memory_size                    = 128
-#   reserved_concurrent_executions = 1
-#   role                           = aws_iam_role.this.arn
-#   runtime                        = "provided.al2023"
-#   skip_destroy                   = false
-#   timeout                        = 900
-#   architectures = [
-#     "arm64",
-#   ]
-#
-#   tags = {
-#     code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/cclf"
-#   }
-#
-#   lifecycle {
-#     ignore_changes = [
-#       s3_object_version,
-#       s3_key,
-#     ]
-#   }
-#
-#   environment {
-#     variables = {
-#       APP_NAME = local.name_prefix
-#       DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
-#       ENV      = local.env
-#     }
-#   }
-#
-#   ephemeral_storage {
-#     size = 512
-#   }
-#
-#   logging_config {
-#     log_format = "Text"
-#     log_group  = "/aws/lambda/bcda-${local.env}-${local.service}"
-#   }
-#
-#   tracing_config {
-#     mode = "Active"
-#   }
-#
-#   vpc_config {
-#     ipv6_allowed_for_dual_stack = false
-#     security_group_ids          = [aws_security_group.this.id]
-#     subnet_ids                  = local.private_subnets
-#   }
-# }
-#
-# resource "aws_security_group" "this" {
-#   description = "Temporary SG for ${local.name_prefix}"
-#   egress = [
-#     {
-#       cidr_blocks = [
-#         "0.0.0.0/0",
-#       ]
-#       description = ""
-#       from_port   = 0
-#       ipv6_cidr_blocks = [
-#         "::/0",
-#       ]
-#       prefix_list_ids = []
-#       protocol        = "-1"
-#       security_groups = []
-#       self            = false
-#       to_port         = 0
-#     },
-#   ]
-#   name = local.name_prefix
-#   tags = { Name = local.name_prefix }
-# }
+resource "aws_lambda_function" "this" {
+  s3_key       = "function-06a1f641cc737cbfd0eb3c65e59a7e2b4d6e21c4.zip"
+  s3_bucket    = module.eft_lambda_bucket.id
+  package_type = "Zip"
+  handler      = "bootstrap"
 
+  function_name                  = local.name_prefix
+  description                    = "Ingests the most recent beneficiary opt-out list from BFD"
+  kms_key_arn                    = local.kms_key_arn_primary
+  memory_size                    = 128
+  reserved_concurrent_executions = 1
+  role                           = aws_iam_role.this.arn
+  runtime                        = "provided.al2023"
+  skip_destroy                   = false
+  timeout                        = 900
+  architectures = [
+    "arm64",
+  ]
+
+  tags = {
+    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/cclf"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      s3_object_version,
+      s3_key,
+    ]
+  }
+
+  environment {
+    variables = {
+      APP_NAME = local.name_prefix
+      DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
+      ENV      = local.env
+    }
+  }
+
+  ephemeral_storage {
+    size = 512
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group  = "/aws/lambda/bcda-${local.env}-${local.service}"
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  vpc_config {
+    ipv6_allowed_for_dual_stack = false
+    security_group_ids          = [aws_security_group.this.id]
+    subnet_ids                  = local.private_subnets
+  }
+}
 
 data "aws_rds_cluster" "this" {
   cluster_identifier = "${local.app}-${local.env}-aurora"
