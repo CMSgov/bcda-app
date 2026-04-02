@@ -1,4 +1,4 @@
-name: eft-nextgen dev deploy
+name: eft-nextgen-import lambda deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - cclf/**
-      - .github/workflows/eft-nextgen-deploy.yml
+      - .github/workflows/eft-nextgen-import-deploy.yml
   workflow_dispatch:
     inputs:
       deploy_env:
