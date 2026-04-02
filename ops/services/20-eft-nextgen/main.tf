@@ -48,8 +48,8 @@ module "eft_file_bucket" {
 
   app           = local.app
   env           = local.env
-  name          = "${local.app}-${local.env}-${local.service}"
-  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_bucket_name"
+  name          = "${local.app}-${local.env}-${local.service}-file"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_file_bucket_name"
 }
 
 # ---------------------------------------------------------------------------
