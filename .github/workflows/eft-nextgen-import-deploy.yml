@@ -62,7 +62,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET="/bcda/${{ env.DEPLOY_ENV }}/eft-nextgen/nonsensitive/eft_lambda_bucket_name"
+            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/eft-nextgen/nonsensitive/eft_lambda_bucket_name
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
