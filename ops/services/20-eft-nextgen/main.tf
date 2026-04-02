@@ -29,83 +29,63 @@ module "platform" {
   }
 }
 
-data "aws_rds_cluster" "this" {
-  cluster_identifier = "${local.app}-${local.env}-aurora"
-}
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
+  retention_in_days = 180
+  skip_destroy      = true
 
-data "aws_security_groups" "db" {
   tags = {
-    Name = "bcda-${local.env}-db"
+    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
   }
 }
 
-resource "aws_security_group_rule" "db" {
-  type                     = "ingress"
-  from_port                = data.aws_rds_cluster.this.port
-  to_port                  = data.aws_rds_cluster.this.port
-  protocol                 = "tcp"
-  security_group_id        = one([data.aws_security_groups.db.ids])[0]
-  source_security_group_id = aws_security_group.this.id
-}
-
-data "aws_iam_role" "this" {
-  name = "bcda-${local.env}-cclf-import-function"
-}
 # ---------------------------------------------------------------------------
-# Managed policies
+# File Bucket
 # ---------------------------------------------------------------------------
-data "aws_iam_policy_document" "assume_bucket_role" {
-  statement {
-    sid       = "AssumeBucketRole"
-    actions   = ["sts:AssumeRole"]
-    resources = [data.aws_iam_role.this.arn]
-  }
+
+module "eft_file_bucket" {
+  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=787224b"
+
+  app           = local.app
+  env           = local.env
+  name          = "${local.app}-${local.env}-${local.service}"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_bucket_name"
 }
 
-resource "aws_iam_policy" "assume_bucket_role" {
-  name        = "bcda-${local.env}-${local.service}-assume-bucket-role"
-  path        = module.platform.iam_defaults.path
-  description = "Allows ${local.service} to assume the S3 bucket role from SSM."
+# ---------------------------------------------------------------------------
+# Lambda Bucket
+# ---------------------------------------------------------------------------
 
-  policy = data.aws_iam_policy_document.assume_bucket_role.json
+module "eft_lambda_bucket" {
+  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=787224b"
+
+  app           = local.app
+  env           = local.env
+  name          = "${local.app}-${local.env}-${local.service}-lambda"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_lambda_bucket_name"
 }
 
-data "aws_iam_policy_document" "default_function" {
-  statement {
-    sid = "SsmSqsLogsEc2"
-    actions = [
-      "ssm:GetParameters",
-      "ssm:GetParameter",
-      "sqs:ReceiveMessage",
-      "sqs:GetQueueAttributes",
-      "sqs:DeleteMessage",
-      "logs:PutLogEvents",
-      "logs:CreateLogStream",
-      "logs:CreateLogGroup",
-    ]
-    resources = ["*"]
-  }
-  statement {
-
-    sid = "KmsEncryptDecrypt"
-    actions = [
-      "kms:GenerateDataKey",
-      "kms:Encrypt",
-      "kms:Decrypt",
-    ]
-    resources = [
-      local.kms_key_arn_primary,
-      local.kms_key_arn_secondary,
-    ]
-  }
-}
-
-resource "aws_iam_policy" "default_function" {
-  name        = "bcda-${local.env}-${local.service}-default-function"
-  path        = module.platform.iam_defaults.path
-  description = "SSM, SQS, CloudWatch Logs, EC2 networking, and KMS permissions for ${local.service}."
-
-  policy = data.aws_iam_policy_document.default_function.json
+resource "aws_security_group" "this" {
+  description = "Temporary SG for ${local.name_prefix}"
+  egress = [
+    {
+      cidr_blocks = [
+        "0.0.0.0/0",
+      ]
+      description = ""
+      from_port   = 0
+      ipv6_cidr_blocks = [
+        "::/0",
+      ]
+      prefix_list_ids = []
+      protocol        = "-1"
+      security_groups = []
+      self            = false
+      to_port         = 0
+    },
+  ]
+  name = local.name_prefix
+  tags = { Name = local.name_prefix }
 }
 
 # ---------------------------------------------------------------------------
@@ -127,7 +107,7 @@ resource "aws_iam_role" "this" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::381492306573:role/misp-eft-impl-outbox-role"
+          AWS = module.platform.ssm.eft-nextgen.misp-eft-role_arn.value
         }
       },
       {
@@ -171,48 +151,247 @@ resource "aws_iam_role" "this" {
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
+  role = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.default_function.arn
+}
+
+# ---------------------------------------------------------------------------
+# Managed policies
+# ---------------------------------------------------------------------------
+data "aws_iam_policy_document" "default_function" {
+  statement {
+    sid = "SsmSqsLogsEc2"
+    actions = [
+      "ssm:GetParameters",
+      "ssm:GetParameter",
+      "sqs:ReceiveMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:DeleteMessage",
+      "logs:PutLogEvents",
+      "logs:CreateLogStream",
+      "logs:CreateLogGroup",
+    ]
+    resources = ["*"]
+  }
+  statement {
+
+    sid = "KmsEncryptDecrypt"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Encrypt",
+      "kms:Decrypt",
+    ]
+    resources = [
+      local.kms_key_arn_primary,
+      local.kms_key_arn_secondary,
+    ]
+  }
+}
+
+resource "aws_iam_policy" "default_function" {
+  name        = "bcda-${local.env}-${local.service}-default-function"
+  path        = module.platform.iam_defaults.path
+  description = "SSM, SQS, CloudWatch Logs, EC2 networking, and KMS permissions for ${local.service}."
+
+  policy = data.aws_iam_policy_document.default_function.json
+}
+
+resource "aws_iam_role_policy_attachment" "default_function" {
   role       = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
 }
 
-module "bucket" {
-  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=787224b"
 
-  app           = local.app
-  env           = local.env
-  name          = "${local.app}-${local.env}-${local.service}-lambda"
-  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/eft_bucket_name"
+# -------------------------------------------------------
+# IAM Policy — S3 Read/Write on the EFT file bucket
+# -------------------------------------------------------
+data "aws_iam_policy_document" "eft_bucket_rw" {
+
+  statement {
+    sid    = "ListBucket"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      module.eft_file_bucket.arn,
+    ]
+  }
+
+  statement {
+    sid    = "ReadWriteObjects"
+    effect = "Allow"
+
+    actions = [
+      # Read
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:GetObjectTagging",
+      "s3:PutObject",
+      "s3:PutObjectTagging",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:AbortMultipartUpload",
+      "s3:ListMultipartUploadParts",
+    ]
+
+    resources = [
+      "${module.eft_file_bucket.arn}/*",
+    ]
+  }
 }
 
-data "aws_lambda_function" "this" {
-  function_name = "bcda-${local.env}-cclf-import"
+resource "aws_iam_policy" "eft_file_bucket" {
+  name        = "${local.app}-${local.env}-${local.service}-eft-bucket-rw"
+  description = "Read/write access to the ${local.app}-${local.env}-${local.service} EFT file bucket"
+  policy      = data.aws_iam_policy_document.eft_bucket_rw.json
 }
 
-resource "aws_security_group" "this" {
-  description = "Temporary SG for ${local.name_prefix}"
-  egress = [
-    {
-      cidr_blocks = [
-        "0.0.0.0/0",
-      ]
-      description = ""
-      from_port   = 0
-      ipv6_cidr_blocks = [
-        "::/0",
-      ]
-      prefix_list_ids = []
-      protocol        = "-1"
-      security_groups = []
-      self            = false
-      to_port         = 0
-    },
-  ]
-  name = local.name_prefix
-  tags = { Name = local.name_prefix }
+resource "aws_iam_role_policy_attachment" "eft_file_bucket_rw" {
+  role       = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.eft_file_bucket.arn
 }
 
-data "aws_sqs_queue" "this" {
-  name = "${local.app}-${local.env}-cclf-import"
+# -------------------------------------------------------
+# EFT Lambda
+# -------------------------------------------------------
+
+# resource "aws_lambda_function" "this" {
+#   s3_key       = "lambda_function.zip"
+#   s3_bucket    = module.eft_lambda_bucket.id
+#   package_type = "Zip"
+#   handler      = "bootstrap"
+#
+#   function_name                  = local.name_prefix
+#   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
+#   kms_key_arn                    = local.kms_key_arn_primary
+#   memory_size                    = 128
+#   reserved_concurrent_executions = 1
+#   role                           = aws_iam_role.this.arn
+#   runtime                        = "provided.al2023"
+#   skip_destroy                   = false
+#   timeout                        = 900
+#   architectures = [
+#     "arm64",
+#   ]
+#
+#   tags = {
+#     code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/cclf"
+#   }
+#
+#   lifecycle {
+#     ignore_changes = [
+#       s3_object_version,
+#       s3_key,
+#     ]
+#   }
+#
+#   environment {
+#     variables = {
+#       APP_NAME = local.name_prefix
+#       DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
+#       ENV      = local.env
+#     }
+#   }
+#
+#   ephemeral_storage {
+#     size = 512
+#   }
+#
+#   logging_config {
+#     log_format = "Text"
+#     log_group  = "/aws/lambda/bcda-${local.env}-${local.service}"
+#   }
+#
+#   tracing_config {
+#     mode = "Active"
+#   }
+#
+#   vpc_config {
+#     ipv6_allowed_for_dual_stack = false
+#     security_group_ids          = [aws_security_group.this.id]
+#     subnet_ids                  = local.private_subnets
+#   }
+# }
+#
+# resource "aws_security_group" "this" {
+#   description = "Temporary SG for ${local.name_prefix}"
+#   egress = [
+#     {
+#       cidr_blocks = [
+#         "0.0.0.0/0",
+#       ]
+#       description = ""
+#       from_port   = 0
+#       ipv6_cidr_blocks = [
+#         "::/0",
+#       ]
+#       prefix_list_ids = []
+#       protocol        = "-1"
+#       security_groups = []
+#       self            = false
+#       to_port         = 0
+#     },
+#   ]
+#   name = local.name_prefix
+#   tags = { Name = local.name_prefix }
+# }
+
+
+data "aws_rds_cluster" "this" {
+  cluster_identifier = "${local.app}-${local.env}-aurora"
+}
+
+data "aws_security_groups" "db" {
+  tags = {
+    Name = "bcda-${local.env}-db"
+  }
+}
+
+resource "aws_security_group_rule" "db" {
+  type                     = "ingress"
+  from_port                = data.aws_rds_cluster.this.port
+  to_port                  = data.aws_rds_cluster.this.port
+  protocol                 = "tcp"
+  security_group_id        = one([data.aws_security_groups.db.ids])[0]
+  source_security_group_id = aws_security_group.this.id
+}
+
+# -------------------------------------------------------
+# EFT SQS and SNS
+# -------------------------------------------------------
+
+resource "aws_sqs_queue" "this" {
+  content_based_deduplication       = false
+  delay_seconds                     = 0
+  fifo_queue                        = false
+  kms_data_key_reuse_period_seconds = 300
+  kms_master_key_id                 = local.kms_key_arn_primary
+  name                              = local.name_prefix
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sqs:SendMessage"
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_sns_topic.eft_nextgen_topic.arn
+          }
+        }
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
+        Sid      = "SnsSendMessage"
+      },
+    ]
+  })
+  receive_wait_time_seconds  = 0
+  visibility_timeout_seconds = 900
 }
 
 resource "aws_sns_topic" "eft_nextgen_topic" {
@@ -222,14 +401,17 @@ resource "aws_sns_topic" "eft_nextgen_topic" {
 }
 
 resource "aws_sns_topic_subscription" "this" {
-  endpoint  = data.aws_sqs_queue.this.arn
+  endpoint  = aws_sqs_queue.this.arn
   protocol  = "sqs"
   topic_arn = aws_sns_topic.eft_nextgen_topic.arn
 }
 
-resource "aws_lambda_event_source_mapping" "this" {
-  event_source_arn = data.aws_sqs_queue.this.arn
-  function_name    = data.aws_lambda_function.this.function_name
-  batch_size       = 1
-  enabled          = true
-}
+# resource "aws_lambda_event_source_mapping" "this" {
+#   event_source_arn = aws_sqs_queue.this.arn
+#   function_name    = aws_lambda_function.this.function_name
+#   batch_size       = 1
+#   enabled          = true
+# }
+
+
+
