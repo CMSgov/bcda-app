@@ -1534,10 +1534,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "// EOB is temporarily disabled in v3",
-                          "pm.environment.set(\"eobv3DataUrl\", (pm.environment.get(\"scheme\") + \"://\" + pm.environment.get(\"host\")));",
-                          "return;",
-                          "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
                           "if (v3Disabled) {",
                           "    console.log(\"Not running EOB export v3 job status, v3 endpoints have been disabled\");",
@@ -1605,9 +1601,6 @@
                       "listen": "prerequest",
                       "script": {
                         "exec": [
-                          "// EOB is temporarily disabled in v3",
-                          "return;",
-                          "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
                           "if (v3Disabled) {",
                           "    return;",
@@ -1698,9 +1691,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "// EOB is temporarily disabled in v3",
-                          "return;",
-                          "",
                           "var v3Disabled = pm.globals.get(\"v3Disabled\") == \"true\"",
                           "if (v3Disabled) {",
                           "    console.log(\"Not running EOB export v3 data, v3 endpoints have been disabled\");",
@@ -1834,10 +1824,6 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "// EOB is temporarily disabled in v3",
-                          "pm.environment.set(\"groupRunoutv3DataUrl\", (pm.environment.get(\"scheme\") + \"://\" + pm.environment.get(\"host\")));",
-                          "return;",
-                          "",
                           "pm.test(\"Status code is 202 or 200\", function() {",
                           "     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
                           "});",
@@ -1897,9 +1883,6 @@
                       "listen": "prerequest",
                       "script": {
                         "exec": [
-                          "// EOB is temporarily disabled in v3",
-                          "return;",
-                          "",
                           "const retryDelay = 5000;",
                           "const maxRetries = 25;",
                           "",
