@@ -1840,22 +1840,6 @@ func TestCreateQueueJobs(t *testing.T) {
 			jobs[1].ResourceType,
 		})
 	})
-
-	t.Run("v3 excludes EOB jobs", func(t *testing.T) {
-		cfg := newQueueJobTestConfig(t, []ACOConfig{
-			newQueueJobTestACO("CKCC", `^C\d{4}`, []string{constants.Adjudicated}),
-		}, []string{"CKCC"})
-		svc := newQueueJobTestService(t, cfg)
-		args := newQueueJobTestArgs("C5678", []string{"ExplanationOfBenefit"})
-		args.BFDPath = constants.BFDV3Path
-
-		jobs, err := svc.createQueueJobs(newQueueJobTestContext(), args, time.Time{}, []*models.CCLFBeneficiary{
-			getCCLFBeneficiary(1, "MBI1"),
-		})
-
-		assert.NoError(t, err)
-		assert.Len(t, jobs, 0, "v3 must not create EOB jobs; only Patient and Coverage are allowed")
-	})
 }
 
 func TestFormatSinceArg(t *testing.T) {
@@ -1897,7 +1881,7 @@ func TestGetEffectiveQueueJobConfig(t *testing.T) {
 
 		resourceTypes, dataTypes, err := svc.getEffectiveQueueJobConfig(args)
 		assert.NoError(t, err)
-		assert.Equal(t, []string{"Patient", "Coverage"}, resourceTypes)
+		assert.Equal(t, []string{"Patient", "Coverage", "ExplanationOfBenefit"}, resourceTypes)
 		assert.Equal(t, []string{constants.Adjudicated, constants.PartiallyAdjudicated}, dataTypes)
 	})
 
@@ -1911,14 +1895,9 @@ func TestGetEffectiveQueueJobConfig(t *testing.T) {
 
 		resourceTypes, dataTypes, err := svc.getEffectiveQueueJobConfig(args)
 		assert.NoError(t, err)
-		assert.Equal(t, []string{"Patient", "Coverage"}, resourceTypes)
+		assert.Equal(t, []string{"Patient", "Coverage", "ExplanationOfBenefit"}, resourceTypes)
 		assert.Equal(t, []string{constants.Adjudicated}, dataTypes)
 	})
-}
-
-func TestFilterV3ResourceTypes(t *testing.T) {
-	filtered := filterV3ResourceTypes([]string{"Patient", "Coverage", "ExplanationOfBenefit", "Claim"})
-	assert.Equal(t, []string{"Patient", "Coverage"}, filtered)
 }
 
 func TestChunkBeneficiaryIDs(t *testing.T) {
