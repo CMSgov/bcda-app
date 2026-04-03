@@ -31,3 +31,7 @@ terraform.tfvars
 !.terraform-docs.yml
 ops/services/10-config/bin/
 /ops/services/10-config/values/sopsw
+
+# test script files
+scripts/test_large_cclf/file*
+scripts/test_large_cclf/*.prof
