@@ -1,6 +1,6 @@
-# Integration test that triggers an eft-nextgen CCLF import in the test environment and
+# Integration test that triggers an attribution import in the test environment and
 # verifies the imported data in the test database for ACO A0001.
-name: eft-nextgen-import test integration
+name: attribution-import test integration
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ permissions:
 
 # Ensure we have only one integration test running at a time
 concurrency:
-  group: eft-nextgen-import-test-integration
+  group: attribution-import-test-integration
 
 jobs:
   # Deploy first if triggered by pull_request
@@ -40,15 +40,15 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-eft-nextgen
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-attribution-import
       - name: Get File Bucket
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/test/eft-nextgen/nonsensitive/eft_file_bucket_name
-      - name: Upload test file to the eft-nextgen file bucket to trigger lambda function via SNS message
+            BUCKET=/bcda/test/attribution-import/nonsensitive/file_bucket_name
+      - name: Upload test file to the attribution-import file bucket to trigger lambda function via SNS message
         run: |
           year=$(date +'%y')
           date=$(date +'%y%m%d')

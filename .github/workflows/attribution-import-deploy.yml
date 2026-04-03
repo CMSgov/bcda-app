@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - cclf/**
+      - attribution-import/**
       - .github/workflows/attribution-import-deploy.yml
   workflow_dispatch:
     inputs:
@@ -47,7 +47,7 @@ jobs:
         env:
           CGO_ENABLED: 0
         run: |
-          env GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/cclf/main.go
+          GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/cclf/main.go
           zip -j function.zip bin/bootstrap ../conf/configs/dev.yml ../conf/configs/test.yml ../conf/configs/prod.yml
 
       - uses: aws-actions/configure-aws-credentials@v4
