@@ -35,7 +35,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-    logger.Errorf("sqsEvent:%v", sqsEvent)
+
 	s3Event, err := bcdaaws.ParseSQSEventFromS3(sqsEvent)
 	if err != nil {
 		logger.Errorf("failed to parse S3 event: %v", err)
