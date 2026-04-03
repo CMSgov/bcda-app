@@ -166,15 +166,23 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 		shouldFail         bool
 		errMsg             string
 		description        string
-		expectedTypeFilter [][]string // when non-nil, we assert the parsed TypeFilter in context equals this making sure params are not dropped.
+		expectedTypeFilter []TypeFilterParameter // when non-nil, we assert the parsed TypeFilter in context equals this making sure params are not dropped.
 	}{
 		{
 			name:        "validTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
 			shouldFail:  false,
 			description: "Valid tag in URL format should pass",
-			expectedTypeFilter: [][]string{
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -182,8 +190,16 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
 			description: "Valid NCH tag should pass",
-			expectedTypeFilter: [][]string{
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -191,8 +207,16 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CDDPS", baseV3),
 			shouldFail:  false,
 			description: "Valid DDPS tag should pass",
-			expectedTypeFilter: [][]string{
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -200,8 +224,16 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid FinalAction tag should pass",
-			expectedTypeFilter: [][]string{
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -209,8 +241,16 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid NotFinalAction tag should pass",
-			expectedTypeFilter: [][]string{
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -239,20 +279,41 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
 			shouldFail:  false,
 			description: "Multiple valid tags should pass",
-			expectedTypeFilter: [][]string{
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						},
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
+						},
+					},
+				},
 			},
 		},
-
 		{
 			name:        "validTypeFilterServiceDateAndTag",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Subquery with service-date and _tag (FinalAction) should pass",
-			expectedTypeFilter: [][]string{
-				{"service-date", "lt2021-02-15"},
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "service-date",
+							Value: "lt2021-02-15",
+						},
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -260,9 +321,20 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dgt2001-04-01%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
 			description: "Subquery with service-date and _tag (NationalClaimsHistory) should pass",
-			expectedTypeFilter: [][]string{
-				{"service-date", "gt2001-04-01"},
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "service-date",
+							Value: "gt2001-04-01",
+						},
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -290,10 +362,29 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_type=ExplanationOfBenefit&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction&_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Multiple _typeFilter params (Bulk IG OR: FinalAction EOBs before 2021-02-15 OR all NotFinalAction EOBs) should pass validation",
-			expectedTypeFilter: [][]string{
-				{"service-date", "lt2021-02-15"},
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
-				{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction"},
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "service-date",
+							Value: "lt2021-02-15",
+						},
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						},
+					},
+				},
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						},
+					},
+				},
 			},
 		},
 	}
