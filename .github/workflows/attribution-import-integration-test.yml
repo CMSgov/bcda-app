@@ -1,6 +1,6 @@
-# Integration test that triggers an attribution import in the test environment and
+# Integration test that triggers an eft-nextgen CCLF import in the test environment and
 # verifies the imported data in the test database for ACO A0001.
-name: attribution-import test integration
+name: eft-nextgen-import test integration
 
 on:
   pull_request:
@@ -8,52 +8,47 @@ on:
       - .github/workflows/attribution-import-integration-test.yml
       - .github/workflows/attribution-import-deploy.yml
       - bcda/cclf/**
-      - bcda/lambda/attribution-import/**
+      - bcda/lambda/cclf/**
   workflow_dispatch:
 
 permissions:
   contents: read
+  id-token: write
 
 # Ensure we have only one integration test running at a time
 concurrency:
-  group: attribution-import-test-integration
+  group: eft-nextgen-import-test-integration
 
 jobs:
   # Deploy first if triggered by pull_request
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
     uses: ./.github/workflows/attribution-import-deploy.yml
-    permissions:
-      contents: read
-      id-token: write
     secrets: inherit
     with:
       deploy_env: test
 
   trigger:
-    permissions:
-      contents: read
-      id-token: write
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-${{'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
-      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-attribution-import-function
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-eft-nextgen
       - name: Get File Bucket
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/test/attribution-import/nonsensitive/file_bucket_name
-      - name: Upload test file to the attribution-import file bucket to trigger lambda function via SNS message
+            BUCKET=/bcda/test/eft-nextgen/nonsensitive/eft_file_bucket_name
+      - name: Upload test file to the eft-nextgen file bucket to trigger lambda function via SNS message
         run: |
           year=$(date +'%y')
           date=$(date +'%y%m%d')
@@ -91,9 +86,9 @@ jobs:
 
           aws s3 cp --no-progress ${guidecsvname} \
             s3://$BUCKET/bfdeft01/bcda/in/test/${guidecsvname}
-      - name: Wait for lambda processing
-        run: sleep 60
-      - uses: aws-actions/configure-aws-credentials@v6
+      # Give a bit of time for lambdas to process files
+      - run: sleep 60
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
@@ -108,7 +103,7 @@ jobs:
         with:
           params: |
             CONNECTION_INFO=/bcda/test/sensitive/api/DATABASE_URL
-      - name: Verify Attribution CCLF file was ingested
+      - name: Verify CCLF file was ingested
         env:
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
@@ -141,7 +136,7 @@ jobs:
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
-            echo "CSV: csv_file query returned zero results or command failed"
+            echo "csv_file query returned zero results or command failed"
             exit 1
           else
           
@@ -162,7 +157,7 @@ jobs:
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
-            echo "GUIDE CSV: csv_file query returned zero results or command failed"
+            echo "csv_file query returned zero results or command failed"
             exit 1
           else
           
@@ -170,7 +165,7 @@ jobs:
             CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
             echo "CSV_BENES: $CSV_BENES"
             if [[ $? -ne 0 || -z $CSV_BENES ]]; then
-              echo "GUIDE CSV: beneficiaries query returned zero results or command failed"
+              echo "CSV beneficiaries query returned zero results or command failed"
               exit 1
             fi
             if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then

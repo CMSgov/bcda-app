@@ -21,8 +21,10 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 func main() {
@@ -33,9 +35,8 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-
-	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
-
+    logger.Errorf("sqsEvent:%v", sqsEvent)
+	s3Event, err := bcdaaws.ParseSQSEventFromS3(sqsEvent)
 	if err != nil {
 		logger.Errorf("failed to parse S3 event: %v", err)
 		return "", err
@@ -51,7 +52,17 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
-	s3Client := s3.NewFromConfig(cfg)
+	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
+	if err != nil {
+		logger.Errorf("error getting param: %+v", err)
+		return "", err
+	}
+	stsClient := sts.NewFromConfig(cfg)
+	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
+
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.Credentials = appCreds
+	})
 
 	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
@@ -83,7 +94,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		}
 	}
 
-	logger.Info("No S3 ObjectCreated events found, skipping safely.")
+	logger.Info("No ObjectCreated events found, skipping safely.")
 	return "", nil
 }
 
@@ -147,14 +158,14 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	}
 
 	if failure > 0 || skipped > 0 {
-		result := fmt.Sprintf("Successfully imported Attribution %v files.  Failed to import Attribution %v files.  Skipped %v Attribution files.  See logs for more details.", success, failure, skipped)
+		result := fmt.Sprintf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 		logger.Error(result)
 
 		err = errors.New("files skipped or failed import. See logs for more details")
 		return result, err
 	}
 
-	result := fmt.Sprintf("Completed Attribution import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+	result := fmt.Sprintf("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 	logger.Info(result)
 
 	return result, nil
