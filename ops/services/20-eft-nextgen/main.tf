@@ -79,8 +79,8 @@ resource "aws_security_group" "this" {
       to_port         = 0
     },
   ]
-  name = local.name_prefix
-  tags = { Name = local.name_prefix }
+  name   = local.name_prefix
+  tags   = { Name = local.name_prefix }
   vpc_id = module.platform.vpc_id
 }
 
@@ -147,7 +147,7 @@ resource "aws_iam_role" "this" {
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  role = aws_iam_role.this.name
+  role       = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
 }
 
@@ -333,6 +333,7 @@ resource "aws_security_group_rule" "db" {
   from_port                = data.aws_rds_cluster.this.port
   to_port                  = data.aws_rds_cluster.this.port
   protocol                 = "tcp"
+  description              = "eft-nextgen lambda access"
   security_group_id        = one([data.aws_security_groups.db.ids])[0]
   source_security_group_id = aws_security_group.this.id
 }
@@ -390,5 +391,40 @@ resource "aws_lambda_event_source_mapping" "this" {
   enabled          = true
 }
 
+data "aws_iam_policy_document" "sqs_s3_policy" {
+  statement {
+    sid    = "AllowS3ToSendMessage"
+    effect = "Allow"
 
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
 
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.this.arn]
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = [module.eft_file_bucket.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "this" {
+  queue_url = aws_sqs_queue.this.id
+  policy    = data.aws_iam_policy_document.sqs_s3_policy.json
+}
+
+resource "aws_s3_bucket_notification" "this" {
+  bucket = module.eft_file_bucket
+
+  # Ensure the queue policy is in place before S3 tries to send to it
+  depends_on = [aws_sqs_queue_policy.this]
+
+  queue {
+    queue_arn = aws_sqs_queue.this.arn
+    events    = ["s3:ObjectCreated:*"]
+  }
+}
