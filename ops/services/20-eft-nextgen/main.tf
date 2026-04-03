@@ -8,6 +8,7 @@ locals {
   kms_key_arn_secondary = module.platform.kms_alias_secondary.target_key_arn
   name_prefix           = "${local.service_prefix}-${local.service}"
   private_subnets       = nonsensitive(toset(keys(module.platform.private_subnets)))
+  lambda_filename       = "lambda_function.zip"
 }
 
 module "platform" {
@@ -256,13 +257,21 @@ resource "aws_iam_role_policy_attachment" "eft_file_bucket_rw" {
   policy_arn = aws_iam_policy.eft_file_bucket.arn
 }
 
+
+
 # -------------------------------------------------------
 # EFT Lambda
 # -------------------------------------------------------
+resource "aws_s3_object" "dummy_file_upload" {
+  bucket = module.eft_lambda_bucket.id
+  key    = local.lambda_filename
+  source = "${path.module}/${local.lambda_filename}"
+}
 
 resource "aws_lambda_function" "this" {
-  s3_key       = "function-06a1f641cc737cbfd0eb3c65e59a7e2b4d6e21c4.zip"
-  s3_bucket    = module.eft_lambda_bucket.id
+  s3_bucket         = aws_s3_object.dummy_file_upload.bucket
+  s3_key            = aws_s3_object.dummy_file_upload.key
+  s3_object_version = aws_s3_object.dummy_file_upload.version_id
   package_type = "Zip"
   handler      = "bootstrap"
 
@@ -418,10 +427,9 @@ resource "aws_sqs_queue_policy" "this" {
 }
 
 resource "aws_s3_bucket_notification" "this" {
-  bucket = module.eft_file_bucket
+  bucket = module.eft_file_bucket.id
 
-  # Ensure the queue policy is in place before S3 tries to send to it
-  depends_on = [aws_sqs_queue_policy.this]
+   depends_on = [aws_sqs_queue_policy.this]
 
   queue {
     queue_arn = aws_sqs_queue.this.arn
