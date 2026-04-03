@@ -37,6 +37,46 @@ func ParseSQSEvent(event events.SQSEvent) (*events.S3Event, error) {
 	return &s3Event, nil
 }
 
+func ParseSQSEventFromS3(event events.SQSEvent) (*events.S3Event, error) {
+    var allRecords []events.S3EventRecord
+
+    for _, sqsRecord := range event.Records {
+        if len(sqsRecord.Body) == 0 {
+            log.Warn("Skipping empty SQS record body")
+            continue
+        }
+
+        var snsEntity events.SNSEntity
+        if err := json.Unmarshal([]byte(sqsRecord.Body), &snsEntity); err != nil {
+            var unmarshalTypeErr *json.UnmarshalTypeError
+            if errors.As(err, &unmarshalTypeErr) {
+                log.Warn("Skipping record due to unrecognized format for SNS")
+                continue
+            }
+            return nil, fmt.Errorf("failed to parse SNS entity: %w", err)
+        }
+
+        if snsEntity.Message == "" {
+            log.Warn("Skipping SNS entity with empty message")
+            continue
+        }
+
+        var s3Event events.S3Event
+        if err := json.Unmarshal([]byte(snsEntity.Message), &s3Event); err != nil {
+            var unmarshalTypeErr *json.UnmarshalTypeError
+            if errors.As(err, &unmarshalTypeErr) {
+                log.Warn("Skipping record due to unrecognized format for S3")
+                continue
+            }
+            return nil, fmt.Errorf("failed to parse S3 event: %w", err)
+        }
+
+        allRecords = append(allRecords, s3Event.Records...)
+    }
+
+    return &events.S3Event{Records: allRecords}, nil
+}
+
 func ParseS3Directory(bucket, key string) string {
 	lastSeparatorIdx := strings.LastIndex(key, "/")
 
