@@ -79,13 +79,13 @@ jobs:
           zip -jr $fname $new_dir
 
           aws s3 cp --no-progress $fname \
-            $BUCKET/$fname
+            s3://$BUCKET/bfdeft01/bcda/in/test/$fname
 
           aws s3 cp --no-progress ${csvname} \
-            $BUCKET/${csvname}
+            s3://$BUCKET/bfdeft01/bcda/in/test/${csvname}
 
           aws s3 cp --no-progress ${guidecsvname} \
-            $BUCKET/${guidecsvname}
+            s3://$BUCKET/bfdeft01/bcda/in/test/${guidecsvname}
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
