@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -70,9 +71,10 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
-		JobTimeout:   10 * time.Minute,
+		// TODO: whats an appropriate timeout?
+		JobTimeout:   -1, // default for river is 1m, using -1 for no timeout
 		Logger:       logger,
-		MaxAttempts:  8, // This is roughly an hour of retries
+		MaxAttempts:  10, // This is a few hours worth of retries
 		Workers:      workers,
 		PeriodicJobs: periodicJobs,
 	})
@@ -101,4 +103,9 @@ func (q queue) StopRiver() {
 	if err := q.client.Stop(q.ctx); err != nil {
 		panic(err)
 	}
+}
+
+func getCutOffTime() time.Time {
+	cutoff := time.Now().Add(-time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)))
+	return cutoff
 }
