@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-viper/mapstructure/v2"
+	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
