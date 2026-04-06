@@ -52,16 +52,16 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
-	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/attribution-import/sensitive/attribution-import-role_arn", env))
+// 	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
 	if err != nil {
 		logger.Errorf("error getting param: %+v", err)
 		return "", err
 	}
 	stsClient := sts.NewFromConfig(cfg)
-	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
+// 	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
 
 	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.Credentials = appCreds
+// 		o.Credentials = appCreds
 	})
 
 	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
@@ -82,7 +82,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
-			// Send the entire filepath into the Attribution Importer so we are only
+			// Send the entire filepath into the CCLF Importer so we are only
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
