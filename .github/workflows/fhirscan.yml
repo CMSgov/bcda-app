@@ -29,9 +29,7 @@ jobs:
             CLIENT_CREDENTIALS_PARAMS=/bcda/dev/sensitive/dev_client_credentials
       - name: Run Inferno
         id: run
-        shell: bash
         run: |
-          
           cd ${GITHUB_WORKSPACE}
 
           docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git#5bd61db090c5911792f33e12dca6981d7e22f9a0
