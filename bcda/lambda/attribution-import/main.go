@@ -21,7 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -57,7 +57,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		logger.Errorf("error getting param: %+v", err)
 		return "", err
 	}
-	stsClient := sts.NewFromConfig(cfg)
+// 	stsClient := sts.NewFromConfig(cfg)
 // 	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
 
 	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
