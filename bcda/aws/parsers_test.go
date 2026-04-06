@@ -61,6 +61,7 @@ func TestParseSQSEventFromS3(t *testing.T) {
 	}
 
 	var s3event events.S3Event
+
 	err = json.Unmarshal([]byte(byteValue), &s3event)
 	if err != nil {
 		fmt.Println(err)
@@ -72,16 +73,16 @@ func TestParseSQSEventFromS3(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	body := fmt.Sprintf("{\"Type\" : \"Notification\",\n  \"MessageId\" : \"123456-1234-1234-1234-6e06896db643\",\n  \"TopicArn\" : \"my-topic\",\n  \"Subject\" : \"Amazon S3 Notification\",\n  \"Message\" : %s}", strconv.Quote(string(val[:])))
+// 	body := fmt.Sprintf("{\"Type\" : \"Notification\",\n  \"MessageId\" : \"123456-1234-1234-1234-6e06896db643\",\n  \"TopicArn\" : \"my-topic\",\n  \"Subject\" : \"Amazon S3 Notification\",\n  \"Message\" : %s}", strconv.Quote(string(val[:])))
+//
+// 	event := events.SQSEvent{
+// 		Records: []events.SQSMessage{{Body: body}},
+// 	}
 
-	event := events.SQSEvent{
-		Records: []events.SQSMessage{{Body: body}},
-	}
-
-	s3Event, err := ParseSQSEventFromS3(event)
+	s3Event, err := ParseSQSEventFromS3(s3event)
 	assert.Nil(t, err)
 	assert.NotNil(t, s3Event)
-	assert.Equal(t, "demo-bucket", s3Event.Records[0].S3.Bucket.Name)
+	assert.Equal(t, "bcda-test-attribution-import-file-20260403213903766100000002", s3Event.Records[0].S3.Bucket.Name)
 }
 
 func TestParseS3Directory(t *testing.T) {
