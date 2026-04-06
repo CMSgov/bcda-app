@@ -2,9 +2,8 @@
 # _all_ Terraservices, so be careful!
 
 locals {
-  app              = "bcda"
   established_envs = ["dev", "test", "sandbox", "prod"]
-  service_prefix   = "${local.app}-${local.env}"
+  service_prefix   = "${local.app}-${var.env}"
 
   parent_env = coalesce(
     var.parent_env,
