@@ -82,7 +82,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
-			// Send the entire filepath into the CCLF Importer so we are only
+			// Send the entire filepath into the Attribution Importer so we are only
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
