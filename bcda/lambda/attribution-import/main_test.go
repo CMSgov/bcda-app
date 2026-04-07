@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
