@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy_env:
-        description: 'Environment you want to deploy to (test, sprod)'
+        description: 'Environment you want to deploy to (test, prod)'
         required: true
         default: test
         type: choice
