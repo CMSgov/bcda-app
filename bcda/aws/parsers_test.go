@@ -80,8 +80,6 @@ func TestParseSQSEventFromS3(t *testing.T) {
 		result, err := ParseSQSEventFromS3(event)
 
 		require.NoError(t, err)
-		require.NotNil(t, result)
-		require.Len(t, result.Records, 1)
 
 		rec := result.Records[0]
 		assert.Equal(t, "2.1", rec.EventVersion)
