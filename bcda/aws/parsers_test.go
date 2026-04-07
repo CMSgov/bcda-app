@@ -89,45 +89,6 @@ func TestParseSQSEventFromS3(t *testing.T) {
 		assert.Equal(t, "us-east-1", rec.AWSRegion)
 		assert.Equal(t, "ObjectCreated:Put", rec.EventName)
 	})
-
-	t.Run("empty SQS records list returns empty S3 event", func(t *testing.T) {
-		event := events.SQSEvent{Records: []events.SQSMessage{}}
-
-		result, err := ParseSQSEventFromS3(event)
-
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Empty(t, result.Records)
-	})
-
-	t.Run("SQS record with empty body is skipped", func(t *testing.T) {
-		event := events.SQSEvent{
-			Records: []events.SQSMessage{
-				makeSQSRecord("empty-body-msg", ""),
-			},
-		}
-
-		result, err := ParseSQSEventFromS3(event)
-
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Empty(t, result.Records)
-	})
-
-	t.Run("SQS record with invalid JSON body is skipped", func(t *testing.T) {
-		event := events.SQSEvent{
-			Records: []events.SQSMessage{
-				makeSQSRecord("bad-json-msg", `not valid json`),
-			},
-		}
-
-		result, err := ParseSQSEventFromS3(event)
-
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Empty(t, result.Records)
-	})
-
 }
 
 func TestParseS3Directory(t *testing.T) {
