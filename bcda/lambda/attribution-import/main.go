@@ -88,7 +88,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		}
 	}
 
-	logger.Info("No ObjectCreated events found, skipping safely.")
+	logger.Info("No S3 ObjectCreated events found, skipping safely.")
 	return "", nil
 }
 
