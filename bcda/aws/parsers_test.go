@@ -10,8 +10,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/assert"
-   	"github.com/stretchr/testify/require"
-
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseSQSEvent(t *testing.T) {
