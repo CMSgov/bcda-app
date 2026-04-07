@@ -7,8 +7,7 @@ on:
     paths:
       - .github/workflows/attribution-import-integration-test.yml
       - .github/workflows/attribution-import-deploy.yml
-      - bcda/cclf/**
-      - bcda/lambda/cclf/**
+      - bcda/lambda/attribution-import/**
   workflow_dispatch:
 
 permissions:
