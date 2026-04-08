@@ -159,7 +159,7 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 		return result, err
 	}
 
-	result := fmt.Sprintf("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+	result := fmt.Sprintf("Completed Attribution import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 	logger.Info(result)
 
 	return result, nil
