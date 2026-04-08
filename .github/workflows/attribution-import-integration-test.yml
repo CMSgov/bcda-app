@@ -135,7 +135,7 @@ jobs:
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
-            echo "csv_file query returned zero results or command failed"
+            echo "CSV: csv_file query returned zero results or command failed"
             exit 1
           else
           
@@ -156,7 +156,7 @@ jobs:
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
-            echo "csv_file query returned zero results or command failed"
+            echo "GUIDE CSV: csv_file query returned zero results or command failed"
             exit 1
           else
           
@@ -164,7 +164,7 @@ jobs:
             CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
             echo "CSV_BENES: $CSV_BENES"
             if [[ $? -ne 0 || -z $CSV_BENES ]]; then
-              echo "CSV beneficiaries query returned zero results or command failed"
+              echo "GUIDE CSV: beneficiaries query returned zero results or command failed"
               exit 1
             fi
             if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
