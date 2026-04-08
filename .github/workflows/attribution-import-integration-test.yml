@@ -78,14 +78,14 @@ jobs:
           mv T.BCD.A0001.ZC0Y18.D181120.T1000011 $new_dir/T.BCD.A0001.ZC0Y${year}.D${date}.T${time}1
           zip -jr $fname $new_dir
 
-#          aws s3 cp --no-progress $fname \
-#            s3://bcda-test-attribution-import-file-20260403213903766100000002/bfdeft01/bcda/in/test/$fname
+          aws s3 cp --no-progress $fname \
+            s3://$BUCKET/bfdeft01/bcda/in/test/$fname
 
           aws s3 cp --no-progress ${csvname} \
-            s3://bcda-test-attribution-import-file-20260403213903766100000002/bfdeft01/bcda/in/test/${csvname}
+            s3://$BUCKET/bfdeft01/bcda/in/test/${csvname}
 
-#          aws s3 cp --no-progress ${guidecsvname} \
-#            s3://bcda-test-attribution-import-file-20260403213903766100000002/bfdeft01/bcda/in/test/${guidecsvname}
+          aws s3 cp --no-progress ${guidecsvname} \
+            s3://$BUCKET/bfdeft01/bcda/in/test/${guidecsvname}
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v4
