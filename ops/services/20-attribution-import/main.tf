@@ -278,7 +278,7 @@ resource "aws_lambda_function" "this" {
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent attribution import from BFD"
   kms_key_arn                    = local.kms_key_arn_primary
-  memory_size                    = 128
+  memory_size                    = 2048
   reserved_concurrent_executions = 1
   role                           = aws_iam_role.this.arn
   runtime                        = "provided.al2023"
