@@ -276,7 +276,7 @@ resource "aws_lambda_function" "this" {
   handler      = "bootstrap"
 
   function_name                  = local.name_prefix
-  description                    = "Ingests the most recent beneficiary opt-out list from BFD"
+  description                    = "Ingests the most recent attribution import from BFD"
   kms_key_arn                    = local.kms_key_arn_primary
   memory_size                    = 128
   reserved_concurrent_executions = 1
@@ -289,7 +289,7 @@ resource "aws_lambda_function" "this" {
   ]
 
   tags = {
-    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/cclf"
+    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/attribution-import"
   }
 
   lifecycle {
