@@ -152,7 +152,7 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	}
 
 	if failure > 0 || skipped > 0 {
-		result := fmt.Sprintf("Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+		result := fmt.Sprintf("Successfully imported Attribution %v files.  Failed to import Attribution %v files.  Skipped %v Attribution files.  See logs for more details.", success, failure, skipped)
 		logger.Error(result)
 
 		err = errors.New("files skipped or failed import. See logs for more details")
