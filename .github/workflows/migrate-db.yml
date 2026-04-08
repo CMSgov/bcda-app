@@ -67,7 +67,7 @@ jobs:
         run: |
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ inputs.env || 'dev' }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
+          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up 2>&1
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
