@@ -28,11 +28,13 @@ func getCMSID(name string) (string, error) {
 }
 
 func CheckIfAttributionCSVFile(filePath string) bool {
-    log.API.Infof("CheckIfAttributionCSVFile %v", filePath)
+
 	MDTCOCPattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
 	CDACPattern := `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
 	MDTCOCRegexp := regexp.MustCompile(MDTCOCPattern)
 	CDACRegexp := regexp.MustCompile(CDACPattern)
+	log.API.Infof("CheckIfAttributionCSVFile %v", filePath)
+	log.API.Infof("CheckIfAttributionCSVFile Result", (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath)))
 	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath))
 }
 
