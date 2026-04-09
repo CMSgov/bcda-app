@@ -280,7 +280,7 @@ module "attribution_import_function" {
     ENV      = local.env
     APP_NAME = local.name_prefix
   }
-  extra_kms_key_arns = data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn
+  extra_kms_key_arns = [data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn]
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
@@ -355,7 +355,7 @@ resource "aws_sns_topic_subscription" "this" {
 
 resource "aws_lambda_event_source_mapping" "this" {
   event_source_arn = aws_sqs_queue.this.arn
-  function_name    = aws_lambda_function.this.function_name
+  function_name    = module.attribution_import_function.name
   batch_size       = 1
   enabled          = true
 }
