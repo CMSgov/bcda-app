@@ -400,18 +400,16 @@ resource "aws_lambda_event_source_mapping" "this" {
   enabled          = true
 }
 
-data "aws_iam_policy_document" "sqs_s3_policy" {
+data "aws_iam_policy_document" "attribution-import_topic" {
   statement {
-    sid    = "AllowS3ToSendMessage"
-    effect = "Allow"
+    sid     = "AllowS3Publish"
+    actions = ["sns:Publish"]
+    resources = [aws_sns_topic.attribution-import_nextgen_topic.arn]
 
     principals {
       type        = "Service"
       identifiers = ["s3.amazonaws.com"]
     }
-
-    actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.this.arn]
 
     condition {
       test     = "ArnLike"
@@ -421,18 +419,17 @@ data "aws_iam_policy_document" "sqs_s3_policy" {
   }
 }
 
-resource "aws_sqs_queue_policy" "this" {
-  queue_url = aws_sqs_queue.this.id
-  policy    = data.aws_iam_policy_document.sqs_s3_policy.json
+resource "aws_sns_topic_policy" "attribution-import_nextgen_topic" {
+  arn    = aws_sns_topic.attribution-import_nextgen_topic.arn
+  policy = data.aws_iam_policy_document.attribution-import_topic.json
 }
 
-resource "aws_s3_bucket_notification" "this" {
+resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = module.attribution-import_file_bucket.id
 
-  depends_on = [aws_sqs_queue_policy.this]
-
-  queue {
-    queue_arn = aws_sqs_queue.this.arn
-    events    = ["s3:ObjectCreated:*"]
+  topic {
+    topic_arn     = aws_sns_topic.attribution-import_nextgen_topic.arn
+    events        = ["s3:ObjectCreated:*"]
+    filter_suffix = ".log"
   }
 }
