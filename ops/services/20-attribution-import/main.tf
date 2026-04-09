@@ -247,8 +247,6 @@ resource "aws_iam_role_policy_attachment" "attribution-import_file_bucket_rw" {
   policy_arn = aws_iam_policy.attribution-import_file_bucket.arn
 }
 
-
-
 # -------------------------------------------------------
 # attribution-import Lambda
 # -------------------------------------------------------
