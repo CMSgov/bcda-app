@@ -25,6 +25,15 @@ module "platform" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
+  retention_in_days = 180
+
+  tags = {
+    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
+  }
+}
+
 # ---------------------------------------------------------------------------
 # File Bucket
 # ---------------------------------------------------------------------------
