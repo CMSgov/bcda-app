@@ -25,15 +25,15 @@ module "platform" {
   }
 }
 
-resource "aws_cloudwatch_log_group" "this" {
-  name              = "/aws/lambda/bcda-${local.env}-${local.service}"
-  retention_in_days = 180
-  skip_destroy      = true
-
-  tags = {
-    Name = "/aws/lambda/bcda-${local.env}-${local.service}"
-  }
-}
+# resource "aws_cloudwatch_log_group" "this" {
+#   name              = "/aws/lambda/bcda-${local.env}-${local.service}"
+#   retention_in_days = 180
+#   skip_destroy      = true
+#
+#   tags = {
+#     Name = "/aws/lambda/bcda-${local.env}-${local.service}"
+#   }
+# }
 
 # ---------------------------------------------------------------------------
 # File Bucket
@@ -272,8 +272,8 @@ resource "aws_lambda_function" "this" {
   s3_bucket         = module.attribution-import_lambda_bucket.id
   s3_key            = aws_s3_object.dummy_file_upload.key
   s3_object_version = aws_s3_object.dummy_file_upload.version_id
-  package_type = "Zip"
-  handler      = "bootstrap"
+  package_type      = "Zip"
+  handler           = "bootstrap"
 
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent attribution import from BFD"
@@ -331,10 +331,8 @@ data "aws_rds_cluster" "this" {
   cluster_identifier = "${local.app}-${local.env}-aurora"
 }
 
-data "aws_security_groups" "db" {
-  tags = {
-    Name = "bcda-${local.env}-db"
-  }
+data "aws_security_group" "db" {
+  name = "bcda-${local.env}-db"
 }
 
 resource "aws_security_group_rule" "db" {
@@ -343,7 +341,7 @@ resource "aws_security_group_rule" "db" {
   to_port                  = data.aws_rds_cluster.this.port
   protocol                 = "tcp"
   description              = "attribution-import lambda access"
-  security_group_id        = one([data.aws_security_groups.db.ids])[0]
+  security_group_id        = data.aws_security_group.db.id
   source_security_group_id = aws_security_group.this.id
 }
 
@@ -358,25 +356,7 @@ resource "aws_sqs_queue" "this" {
   kms_data_key_reuse_period_seconds = 300
   kms_master_key_id                 = local.kms_key_arn_primary
   name                              = local.name_prefix
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sqs:SendMessage"
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = aws_sns_topic.attribution-import_nextgen_topic.arn
-          }
-        }
-        Effect = "Allow"
-        Principal = {
-          Service = "sns.amazonaws.com"
-        }
-        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
-        Sid      = "SnsSendMessage"
-      },
-    ]
-  })
+
   receive_wait_time_seconds  = 0
   visibility_timeout_seconds = 900
 }
@@ -402,19 +382,20 @@ resource "aws_lambda_event_source_mapping" "this" {
 
 data "aws_iam_policy_document" "attribution-import_topic" {
   statement {
-    sid     = "AllowS3Publish"
-    actions = ["sns:Publish"]
-    resources = [aws_sns_topic.attribution-import_nextgen_topic.arn]
+    sid     = "SnsSendMessage"
+    actions = ["sqs:SendMessage"]
 
     principals {
       type        = "Service"
-      identifiers = ["s3.amazonaws.com"]
+      identifiers = ["sns.amazonaws.com"]
     }
 
+    resources = [aws_sqs_queue.this.arn]
+
     condition {
-      test     = "ArnLike"
+      test     = "ArnEquals"
       variable = "aws:SourceArn"
-      values   = [module.attribution-import_file_bucket.arn]
+      values   = [aws_sns_topic.attribution-import_nextgen_topic.arn]
     }
   }
 }
