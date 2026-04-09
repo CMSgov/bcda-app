@@ -393,13 +393,3 @@ resource "aws_sns_topic_policy" "attribution-import_nextgen_topic" {
   arn    = aws_sns_topic.attribution-import_nextgen_topic.arn
   policy = data.aws_iam_policy_document.attribution-import_topic.json
 }
-
-resource "aws_s3_bucket_notification" "bucket_notification" {
-  bucket = module.attribution-import_file_bucket.id
-
-  topic {
-    topic_arn     = aws_sns_topic.attribution-import_nextgen_topic.arn
-    events        = ["s3:ObjectCreated:*"]
-    filter_suffix = ".log"
-  }
-}
