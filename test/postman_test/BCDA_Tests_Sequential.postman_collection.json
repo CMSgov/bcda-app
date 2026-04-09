@@ -7832,7 +7832,7 @@
                   "});",
                   "",
                   "pm.test(\"Issue details text are attribution information not found\", function () {",
-                  "    pm.expect(respJson.issue[0].diagnostics).to.include(\"No up-to-date attribution information\")",
+                  "    pm.expect(respJson.issue[0].diagnostics).to.include(\"failed to start job; attribution file not found\")",
                   "});",
                   ""
                 ],
@@ -7905,7 +7905,7 @@
                   "});",
                   "",
                   "pm.test(\"Issue details text are attribution information not found\", function () {",
-                  "    pm.expect(respJson.issue[0].diagnostics).to.include(\"No up-to-date attribution information\")",
+                  "    pm.expect(respJson.issue[0].diagnostics).to.include(\"failed to start job; attribution file not found\")",
                   "});",
                   ""
                 ],
