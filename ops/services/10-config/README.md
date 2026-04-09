@@ -24,18 +24,25 @@ The `sopsw` script should be automatically generated in the `bin/` directory in 
 # Edit dev environment, for example
 ./bin/sopsw -e values/dev.sopsw.yaml
 ```
+## Applying Changes
+Applying changes for these modules requires initialization of the state **and** selection of the appropriate environmental workspace.
+Both can be achieved with the following commands:
 
-### Deploying Configuration Changes
+```sh
+### prod environment
+TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
 
-After editing configuration files, deploy the changes to AWS Parameter Store:
+### sandbox environment
+TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
 
-```bash
-# Review changes before applying
-tofu plan -var env=dev
+### test environment
+TF_WORKSPACE=default tofu init -var parent_env=test -reconfigure && tofu workspace select -var parent_env=test -or-create test
 
-# Apply changes
-tofu apply -var env=dev
+### dev environment
+TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
 ```
+
+After the state has been initialized and the workspace selected, users or automation can apply changes by running `tofu apply`.
 
 ## Configuration Structure
 
@@ -92,8 +99,8 @@ No requirements.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_env"></a> [env](#input\_env) | The application environment (dev, test, sandbox, prod) | `string` | n/a | yes |
 | <a name="input_create_local_sops_wrapper"></a> [create\_local\_sops\_wrapper](#input\_create\_local\_sops\_wrapper) | When `true`, creates sops wrapper file at `bin/sopsw`. | `bool` | `false` | no |
+| <a name="input_parent_env"></a> [parent\_env](#input\_parent\_env) | The parent environment of the current solution. Will correspond with `terraform.workspace`".<br/>Necessary on `tofu init` and `tofu workspace select` \_only\_. In all other situations, parent env<br/>will be divined from `terraform.workspace`. | `string` | `null` | no |
 | <a name="input_region"></a> [region](#input\_region) | n/a | `string` | `"us-east-1"` | no |
 | <a name="input_secondary_region"></a> [secondary\_region](#input\_secondary\_region) | n/a | `string` | `"us-west-2"` | no |
 

@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 
 	log "github.com/sirupsen/logrus"
 
@@ -19,16 +17,16 @@ import (
 
 var pemFilePath = "/tmp/BCDA_CA_FILE.pem"
 
-func getAWSParams(ctx context.Context) (awsParams, error) {
+func getAWSParams(ctx context.Context, client bcdaaws.CustomSSMClient) (awsParams, error) {
 	env := adjustedEnv()
 
 	slackParamName := "/slack/token/workflow-alerts"
-	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
-	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
-	clientIDName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
-	clientSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
-	ssasPEMName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
-	credsBucketName := fmt.Sprintf("/bcda/%s/aco_creds_bucket", env)
+	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
+	ssasURLName := fmt.Sprintf("/bcda/%s/sensitive/api/SSAS_URL", env)
+	clientIDName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_CLIENT_ID", env)
+	clientSecretName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_SECRET", env)
+	ssasPEMName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_CA_FILE.pem", env)
+	credsBucketName := fmt.Sprintf("/bcda/%s/sensitive/aco_creds_bucket", env)
 
 	paramNames := []string{
 		slackParamName,
@@ -40,13 +38,7 @@ func getAWSParams(ctx context.Context) (awsParams, error) {
 		credsBucketName,
 	}
 
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return awsParams{}, err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
-
-	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
+	params, err := bcdaaws.GetParameters(ctx, client, paramNames)
 	if err != nil {
 		return awsParams{}, err
 	}
@@ -110,7 +102,7 @@ func setupEnvironment(params awsParams) error {
 	return nil
 }
 
-func putObject(ctx context.Context, client *s3.Client, acoID, creds, credsBucket string) (string, error) {
+func putObject(ctx context.Context, client bcdaaws.CustomS3Client, acoID, creds, credsBucket string) (string, error) {
 	s3Input := &s3.PutObjectInput{
 		Body:   strings.NewReader(creds),
 		Bucket: aws.String(credsBucket),

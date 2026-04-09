@@ -1,0 +1,63 @@
+FROM arm64v8/golang:1.26.0-alpine3.23 AS builder
+
+ENV GOOS=linux
+ENV GOARCH=arm64
+
+ARG GO_FLAGS
+ARG RELEASE_VERSION=main
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+
+# Download all dependencies
+# By pulling this step out, we can leverage Docker caching
+# since our tooling/dependencies do not frequently change.
+COPY go.mod go.sum tools.go ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' \
+    | awk -F '"' '{print $2}' | xargs -tI % go get %
+
+COPY . .
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
+
+# ------------------------------------------------------------------------
+FROM arm64v8/golang:1.26.0-alpine3.23
+
+RUN addgroup -S -g 1200 bcda && adduser -S -G bcda -u 1100 bcda && \
+    apk update upgrade --no-cache && \
+    apk add --no-cache aws-cli
+
+# install dev packages if the environment argument was set to development
+ARG ENVIRONMENT
+RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
+
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
+COPY --from=builder /go/bin/ /go/bin/
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/docker/entrypoint.sh .
+COPY --from=builder /go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/ /etc/sv/worker/env/
+
+# configure directories
+RUN mkdir -p \
+        /etc/sv/worker/env \
+        /home/bcda/FHIR_TEMP_DIR \
+        /var/efs \
+    && chown -R bcda:bcda \
+        /go/src/github.com/CMSgov/bcda-app \
+        /etc/sv/worker/env \
+        /home/bcda/FHIR_TEMP_DIR \
+        /var/efs
+
+VOLUME [ "/etc/sv/worker/env", "/var/efs", "/home/bcda/FHIR_TEMP_DIR" ]
+USER bcda
+
+ENV APP_NAME="worker"
+
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["bcdaworker", "start-worker"]

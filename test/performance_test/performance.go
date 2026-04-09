@@ -179,7 +179,7 @@ func getAccessToken(clientID, clientSecret string) string {
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) // #nosec G704
 	if err != nil {
 		panic(err)
 	}

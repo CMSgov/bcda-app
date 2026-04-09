@@ -10,6 +10,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 
@@ -23,9 +25,6 @@ import (
 	"github.com/pborman/uuid"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type payload struct {
@@ -52,7 +51,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 		return err
 	}
 
-	slackToken, err := setupEnv(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Errorf("Failed to load default config: %+v", err)
+		return err
+	}
+	ssmClient := ssm.NewFromConfig(cfg)
+
+	slackToken, err := setupEnv(ctx, ssmClient)
 	if err != nil {
 		log.Errorf("Failed to retrieve parameter: %+v", err)
 		return err
@@ -133,7 +139,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 	return nil
 }
 
-func setupEnv(ctx context.Context) (string, error) {
+func setupEnv(ctx context.Context, client bcdaaws.CustomSSMClient) (string, error) {
 	env := conf.GetEnv("ENV")
 
 	err := os.Setenv("SSAS_USE_TLS", "true")
@@ -142,26 +148,21 @@ func setupEnv(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return "", err
-	}
-	ssmClient := ssm.NewFromConfig(cfg)
-
 	slackParamName := "/slack/token/workflow-alerts"
-	dbURLName := fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env)
-	ssasURLName := fmt.Sprintf("/bcda/%s/api/SSAS_URL", env)
-	ssasClientName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_CLIENT_ID", env)
-	ssasSecretName := fmt.Sprintf("/bcda/%s/api/BCDA_SSAS_SECRET", env)
-	caFileName := fmt.Sprintf("/bcda/%s/api/BCDA_CA_FILE.pem", env)
+	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
+	ssasURLName := fmt.Sprintf("/bcda/%s/sensitive/api/SSAS_URL", env)
+	ssasClientName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_CLIENT_ID", env)
+	ssasSecretName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_SECRET", env)
+	caFileName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_CA_FILE.pem", env)
 	paramNames := []string{
 		slackParamName,
+		dbURLName,
 		ssasURLName,
 		ssasClientName,
 		ssasSecretName,
 		caFileName,
 	}
-	params, err := bcdaaws.GetParameters(ctx, ssmClient, paramNames)
+	params, err := bcdaaws.GetParameters(ctx, client, paramNames)
 	if err != nil {
 		return "", err
 	}

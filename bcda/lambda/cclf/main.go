@@ -64,7 +64,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		o.Credentials = appCreds
 	})
 
-	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
 		logger.Error("failed to load DB URL")
 		return "", err
@@ -98,7 +98,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	return "", nil
 }
 
-func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Client, s3ImportPath string) (string, error) {
+func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
@@ -132,7 +132,7 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Clien
 	return result, nil
 }
 
-func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client *s3.Client, s3ImportPath string) (string, error) {
+func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)

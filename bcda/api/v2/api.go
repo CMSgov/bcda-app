@@ -363,7 +363,7 @@ func (a ApiV2) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(constants.ContentType, constants.JsonContentType)
-	if _, err = w.Write(b); err != nil {
+	if _, err = w.Write(b); err != nil { // #nosec G705
 		log.API.WithField("resp_status", http.StatusInternalServerError).Errorf("Failed to write data %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

@@ -600,3 +600,63 @@ func (_c *MockProvider_getAuthDataFromClaims_Call) RunAndReturn(run func(commonC
 	_c.Call.Return(run)
 	return _c
 }
+
+// GetAuthData provides a mock function for the type MockProvider
+func (_mock *MockProvider) GetAuthData(clientID string) (AuthData, error) {
+	ret := _mock.Called(clientID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAuthData")
+	}
+
+	var r0 AuthData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (AuthData, error)); ok {
+		return returnFunc(clientID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) AuthData); ok {
+		r0 = returnFunc(clientID)
+	} else {
+		r0 = ret.Get(0).(AuthData)
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(clientID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockProvider_GetAuthData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAuthData'
+type MockProvider_GetAuthData_Call struct {
+	*mock.Call
+}
+
+// GetAuthData is a helper method to define mock.On call
+//   - clientID string
+func (_e *MockProvider_Expecter) GetAuthData(clientID interface{}) *MockProvider_GetAuthData_Call {
+	return &MockProvider_GetAuthData_Call{Call: _e.mock.On("GetAuthData", clientID)}
+}
+
+func (_c *MockProvider_GetAuthData_Call) Run(run func(clientID string)) *MockProvider_GetAuthData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockProvider_GetAuthData_Call) Return(authData AuthData, err error) *MockProvider_GetAuthData_Call {
+	_c.Call.Return(authData, err)
+	return _c
+}
+
+func (_c *MockProvider_GetAuthData_Call) RunAndReturn(run func(clientID string) (AuthData, error)) *MockProvider_GetAuthData_Call {
+	_c.Call.Return(run)
+	return _c
+}

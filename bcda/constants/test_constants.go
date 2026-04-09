@@ -67,6 +67,7 @@ const DirectoryArg = "--directory"
 const FileSourceArg = "--filesource"
 const S3EndpointArg = "--s3endpoint"
 const TestExcludeSAMHSA = "excludeSAMHSA=true"
+const TestSecurityFilter = "_security%3Anot=42CFRPart2"
 const TestSvcDate = "service-date"
 const FakeClientID = "fake-client-id"
 const FakeClientIDBt = `"fake-client-id"`

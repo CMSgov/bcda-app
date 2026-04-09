@@ -8,6 +8,7 @@ import (
 	"time"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -16,6 +17,8 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/ccoveille/go-safecast"
 	pgxv5 "github.com/jackc/pgx/v5"
@@ -143,9 +146,19 @@ func checkIfCancelled(
 // Update the AWS Cloudwatch Metric for job queue count
 func updateJobQueueCountCloudwatchMetric(ctx context.Context, db *sql.DB, log logrus.FieldLogger) {
 	cloudWatchEnv := conf.GetEnv("DEPLOYMENT_TARGET")
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(constants.DefaultRegion))
+	if err != nil {
+		log.Errorf("error configuring cloudwatch client: %+v", err)
+		return
+	}
+
+	client := cloudwatch.NewFromConfig(cfg)
+
 	if cloudWatchEnv != "" {
 		err := bcdaaws.PutMetricSample(
 			ctx,
+			client,
 			"BCDA",
 			"JobQueueCount",
 			"Count",

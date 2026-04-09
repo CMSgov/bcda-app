@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -113,7 +113,7 @@ func loadConfigs(locations ...string) (config, configStatus) {
 	v.AllowEmptyEnv(true)
 
 	for _, loc := range locations {
-		if _, err := os.Stat(loc); err == nil {
+		if _, err := os.Stat(loc); err == nil { // #nosec G703
 			v.SetConfigFile(loc)
 			if err := v.MergeInConfig(); err != nil {
 				log.Warnf("Failed to read in config from %s %s", loc, err.Error())

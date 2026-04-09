@@ -75,7 +75,7 @@ func (s *SSASMiddlewareTestSuite) TestSSASToken() {
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.tokenString))
 	client := s.server.Client()
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	require.Nil(s.T(), err, "request failed; ", err)
 	assert.Equal(s.T(), "200 OK", resp.Status)
 

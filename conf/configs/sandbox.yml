@@ -87,3 +87,5 @@ rate_limit_config:
   acos: ["SBXBM0002"]
 v3_enabled_acos: []
 v1_v2_deny_regexes: []
+v3_no_partial_claims_models:
+  - "CKCC"

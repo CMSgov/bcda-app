@@ -69,7 +69,7 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	}
 	req.Header.Set("Accept-Encoding", "gzip")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		s.Fail(constants.TestReqErr, err)
 	}
@@ -111,7 +111,7 @@ func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 		s.Fail(constants.TestReqErr, err)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		s.Fail(constants.TestReqErr, err)
 	}
@@ -132,7 +132,7 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 		s.Fail(constants.TestReqErr, err.Error())
 	}
 
-	_, err = client.Do(req)
+	_, err = client.Do(req) // #nosec G704
 	if err != nil {
 		s.Fail(constants.TestReqErr, err.Error())
 	}

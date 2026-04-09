@@ -8,7 +8,7 @@ import (
 )
 
 // Returns the value of a single parameter from the SSM Parameter Store
-func GetParameter(ctx context.Context, client *ssm.Client, keyname string) (string, error) {
+func GetParameter(ctx context.Context, client CustomSSMClient, keyname string) (string, error) {
 	withDecryption := true
 	result, err := client.GetParameter(ctx, &ssm.GetParameterInput{
 		Name:           &keyname,
@@ -27,7 +27,7 @@ func GetParameter(ctx context.Context, client *ssm.Client, keyname string) (stri
 }
 
 // Returns a list of parameters from the SSM Parameter Store
-func GetParameters(ctx context.Context, client *ssm.Client, keynames []string) (map[string]string, error) {
+func GetParameters(ctx context.Context, client CustomSSMClient, keynames []string) (map[string]string, error) {
 	withDecryption := true
 	output, err := client.GetParameters(ctx, &ssm.GetParametersInput{
 		Names:          keynames,

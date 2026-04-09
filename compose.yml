@@ -1,0 +1,156 @@
+name: bcda-app
+services:
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=bcda
+      - POSTGRES_PASSWORD=toor
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db:/var/db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "bcda"]
+      interval: 40s
+      timeout: 15s
+      retries: 5
+      start_period: 2s
+  api:
+    read_only: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bcda
+      args:
+        ENVIRONMENT: development
+    platform: linux/arm64
+    env_file:
+      - ./shared_files/decrypted/local.env
+    environment:
+      SKIP_BOOTSTRAP: "true"
+      # config files
+      BCDA_API_CONFIG_PATH: /etc/sv/api/env/api.yml
+      BB_CLIENT_CERT_FILE: /etc/sv/api/env/bfd-dev-test-cert.pem
+      BB_CLIENT_KEY_FILE: /etc/sv/api/env/bfd-dev-test-key.pem
+      # mounted fhir volume
+      FHIR_ARCHIVE_DIR: /var/efs/archive
+      FHIR_PAYLOAD_DIR: /var/efs/data
+      FHIR_STAGING_DIR: /var/efs/tmpdata
+    volumes:
+      - fhir:/var/efs
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3000/_health"]
+      interval: 40s
+      retries: 5
+      start_period: 10s
+      timeout: 10s
+    depends_on:
+      ssas:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./bcda
+          ignore: ["!**/*.go"]
+        - action: rebuild
+          path: .
+          ignore: ["!go.mod", "!go.sum", "!tools.go"]
+    stop_grace_period: 1s
+  worker:
+    read_only: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bcdaworker
+      args:
+        ENVIRONMENT: development
+    platform: linux/arm64
+    env_file:
+      - ./shared_files/decrypted/local.env
+    environment:
+      SKIP_BOOTSTRAP: "true"
+      # config files
+      BCDA_API_CONFIG_PATH: /etc/sv/worker/env/api.yml
+      BB_CLIENT_CERT_FILE: /etc/sv/worker/env/bfd-dev-test-cert.pem
+      BB_CLIENT_KEY_FILE: /etc/sv/worker/env/bfd-dev-test-key.pem
+      # mounted fhir volume
+      FHIR_ARCHIVE_DIR: /var/efs/archive
+      FHIR_PAYLOAD_DIR: /var/efs/data
+      FHIR_STAGING_DIR: /var/efs/tmpdata
+      FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
+    volumes:
+      - fhir:/var/efs
+      - fhir_temp:/home/bcda/FHIR_TEMP_DIR
+    healthcheck:
+      test: ["CMD-SHELL", "bcdaworker health >> /proc/1/fd/1 2>&1  || exit 1"]
+      interval: 40s
+      retries: 5
+      start_period: 10s
+      timeout: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./bcdaworker
+          ignore: ["!**/*.go"]
+        - action: rebuild
+          path: .
+          ignore: ["!go.mod", "!go.sum", "!tools.go"]
+    stop_grace_period: 1s
+  ssas:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ssas
+    platform: linux/arm64
+    environment:
+      - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+      - DEPLOYMENT_TARGET=local
+      - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
+      - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
+      - DEBUG=true
+      - HTTP_ONLY=true
+      - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem
+      - SSAS_PUBLIC_SIGNING_KEY_PATH=../shared_files/ssas/public_test_signing_key.pem
+      - SSAS_ADMIN_PORT=:3004
+      - SSAS_PUBLIC_PORT=:3003
+      - SSAS_HTTP_TO_HTTPS_PORT=:3005
+      - SSAS_READ_TIMEOUT=10
+      - SSAS_WRITE_TIMEOUT=20
+      - SSAS_IDLE_TIMEOUT=120
+      - SSAS_HASH_ITERATIONS=130000
+      - SSAS_HASH_KEY_LENGTH=64
+      - SSAS_HASH_SALT_SIZE=32
+      - SSAS_DEFAULT_SYSTEM_SCOPE=bcda-api
+      - SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS=0
+      - SSAS_MFA_TOKEN_TIMEOUT_MINUTES=60
+      - SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES=15
+      - SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES=1440
+      - SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES=5
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
+    ports:
+      - "3003:3003"
+      - "3004:3004"
+      - "3005:3005"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3003/_health"]
+      interval: 40s
+      retries: 5
+      start_period: 2s
+      timeout: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  fhir:
+  fhir_temp:
+
+networks:
+  default:
+    name: bcda-app-net

@@ -76,7 +76,7 @@ func (s *CleanupTestSuite) setupJobFile(modified time.Time, status models.JobSta
 }
 
 func assertFileNotExists(t *testing.T, path string) {
-	_, err := os.Stat(path)
+	_, err := os.Stat(path) // #nosec G703
 	assert.True(t, os.IsNotExist(err), "file %s should not be found", path)
 }
 
@@ -293,7 +293,7 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 	// Check that we can clean up jobs that do not have data
 	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, staging)
 	dir, _ := path.Split(noData.Name())
-	os.RemoveAll(dir)
+	os.RemoveAll(dir) // #nosec G703
 	assertFileNotExists(s.T(), noData.Name())
 
 	shouldExist := []*os.File{afterPayload, afterStaging, completed}
@@ -301,7 +301,7 @@ func (s *CleanupTestSuite) TestCleanupFailed() {
 
 	defer func() {
 		for _, f := range append(shouldExist, shouldNotExist...) {
-			os.Remove(f.Name())
+			os.Remove(f.Name()) // #nosec G703
 			f.Close()
 		}
 	}()
@@ -351,7 +351,7 @@ func (s *CleanupTestSuite) TestCleanupCancelled() {
 	noDataID, noData := s.setupJobFile(modified, models.JobStatusCancelled, staging)
 
 	dir, _ := path.Split(noData.Name())
-	os.RemoveAll(dir)
+	os.RemoveAll(dir) // #nosec G703
 	assertFileNotExists(s.T(), noData.Name())
 
 	shouldExist := []*os.File{afterPayload, afterStaging, completed}
@@ -359,7 +359,7 @@ func (s *CleanupTestSuite) TestCleanupCancelled() {
 
 	defer func() {
 		for _, f := range append(shouldExist, shouldNotExist...) {
-			os.Remove(f.Name())
+			os.Remove(f.Name()) // #nosec G703
 			f.Close()
 		}
 	}()

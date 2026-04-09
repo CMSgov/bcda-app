@@ -153,7 +153,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			case http.StatusInternalServerError:
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
 			case http.StatusGone:
-				assertExpiryEquals(t, j.CreatedAt.Add(s.apiV1.handler.JobTimeout), rr.Header().Get("Expires"))
+				assertExpiryEquals(t, j.UpdatedAt.Add(s.apiV1.handler.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
 	}
@@ -186,7 +186,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get(constants.ContentType))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(s.apiV1.handler.JobTimeout), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(s.apiV1.handler.JobTimeout), s.rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -367,8 +367,19 @@ func (s *APITestSuite) TestDeleteJob() {
 }
 
 func (s *APITestSuite) TestServeData() {
-	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../shared_files/gzip_feature_test/")
+	origDir, err := os.Getwd()
+	assert.NoError(s.T(), err)
+	err = os.Chdir("../../../")
+	assert.NoError(s.T(), err)
+	wd, _ := os.Getwd()
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", wd+"/shared_files/gzip_feature_test/")
 
+	defer func() {
+		err = os.Chdir(origDir)
+		if err != nil {
+			s.T().FailNow()
+		}
+	}()
 	tests := []struct {
 		name         string
 		headers      []string

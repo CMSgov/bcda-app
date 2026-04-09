@@ -2,7 +2,6 @@ package testUtils
 
 import (
 	"archive/zip"
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -18,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -26,12 +24,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -148,227 +140,227 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 	return newPath, cleanup
 }
 
-func TestAWSConfig(t *testing.T) aws.Config {
-	ctx := context.Background()
+// func TestAWSConfig(t *testing.T) aws.Config {
+// 	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(constants.DefaultRegion),
-	)
-	assert.Nil(t, err)
+// 	cfg, err := config.LoadDefaultConfig(ctx,
+// 		config.WithRegion(constants.DefaultRegion),
+// 	)
+// 	assert.Nil(t, err)
 
-	return cfg
-}
+// 	return cfg
+// }
 
-func TestS3Client(t *testing.T, cfg aws.Config) *s3.Client {
-	return s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true // required for localstack buckets
-	})
-}
+// func TestS3Client(t *testing.T, cfg aws.Config) *s3.Client {
+// 	return s3.NewFromConfig(cfg, func(o *s3.Options) {
+// 		o.UsePathStyle = true // required for localstack buckets
+// 	})
+// }
 
-func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
-	return ssm.NewFromConfig(cfg)
-}
+// func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
+// 	return ssm.NewFromConfig(cfg)
+// }
 
 // CopyToS3 copies all of the content found at src into a temporary S3 folder within localstack.
 // The path to the temporary S3 directory is returned along with a function that can be called to clean up the data.
-func CopyToS3(t *testing.T, src string) (string, func()) {
-	ctx := context.Background()
-	tempBucket := uuid.NewUUID().String()
+// func CopyToS3(t *testing.T, src string) (string, func()) {
+// 	ctx := context.Background()
+// 	tempBucket := uuid.NewUUID().String()
 
-	client := TestS3Client(t, TestAWSConfig(t))
+// 	client := TestS3Client(t, TestAWSConfig(t))
 
-	bucketInput := &s3.CreateBucketInput{
-		Bucket: aws.String(tempBucket),
-	}
-	_, err := client.CreateBucket(ctx, bucketInput)
-	assert.Nil(t, err)
+// 	bucketInput := &s3.CreateBucketInput{
+// 		Bucket: aws.String(tempBucket),
+// 	}
+// 	_, err := client.CreateBucket(ctx, bucketInput)
+// 	assert.Nil(t, err)
 
-	if err != nil {
-		t.Fatalf("Failed to create bucket %s: %s", tempBucket, err.Error())
-	}
+// 	if err != nil {
+// 		t.Fatalf("Failed to create bucket %s: %s", tempBucket, err.Error())
+// 	}
 
-	uploader := manager.NewUploader(client)
+// 	uploader := manager.NewUploader(client)
 
-	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			t.Fatalf("Unexpected error reading path")
-		}
+// 	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+// 		if err != nil {
+// 			t.Fatalf("Unexpected error reading path")
+// 		}
 
-		if info.IsDir() {
-			return nil
-		}
+// 		if info.IsDir() {
+// 			return nil
+// 		}
 
-		f, err := os.Open(filepath.Clean(path))
-		if err != nil {
-			return err
-		}
+// 		f, err := os.Open(filepath.Clean(path))
+// 		if err != nil {
+// 			return err
+// 		}
 
-		key := path
-		parts := strings.Split(path, "shared_files/")
-		if len(parts) > 1 {
-			key = parts[1]
-		}
+// 		key := path
+// 		parts := strings.Split(path, "shared_files/")
+// 		if len(parts) > 1 {
+// 			key = parts[1]
+// 		}
 
-		_, err = uploader.Upload(ctx, &s3.PutObjectInput{
-			Bucket: aws.String(tempBucket),
-			Key:    aws.String(key),
-			Body:   f,
-		})
+// 		_, err = uploader.Upload(ctx, &s3.PutObjectInput{
+// 			Bucket: aws.String(tempBucket),
+// 			Key:    aws.String(key),
+// 			Body:   f,
+// 		})
 
-		if err != nil {
-			return err
-		}
+// 		if err != nil {
+// 			return err
+// 		}
 
-		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket, key)
-		return nil
-	})
+// 		fmt.Printf("Uploaded file in bucket %s, key %s\n", tempBucket, key)
+// 		return nil
+// 	})
 
-	if err != nil {
-		t.Fatalf("Failed to upload files to S3: %s", err.Error())
-	}
+// 	if err != nil {
+// 		t.Fatalf("Failed to upload files to S3: %s", err.Error())
+// 	}
 
-	cleanup := func() {
-		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-			Bucket: aws.String(tempBucket),
-		})
-		assert.Nil(t, err)
+// 	cleanup := func() {
+// 		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+// 			Bucket: aws.String(tempBucket),
+// 		})
+// 		assert.Nil(t, err)
 
-		var objIds []types.ObjectIdentifier
-		for _, obj := range output.Contents {
-			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
-		}
-		if len(objIds) > 0 {
-			input := s3.DeleteObjectsInput{
-				Bucket: aws.String(tempBucket),
-				Delete: &types.Delete{
-					Objects: objIds,
-					Quiet:   aws.Bool(true),
-				},
-			}
-			_, err = client.DeleteObjects(ctx, &input)
-			assert.Nil(t, err)
-		}
-	}
+// 		var objIds []types.ObjectIdentifier
+// 		for _, obj := range output.Contents {
+// 			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
+// 		}
+// 		if len(objIds) > 0 {
+// 			input := s3.DeleteObjectsInput{
+// 				Bucket: aws.String(tempBucket),
+// 				Delete: &types.Delete{
+// 					Objects: objIds,
+// 					Quiet:   aws.Bool(true),
+// 				},
+// 			}
+// 			_, err = client.DeleteObjects(ctx, &input)
+// 			assert.Nil(t, err)
+// 		}
+// 	}
 
-	return tempBucket, cleanup
-}
+// 	return tempBucket, cleanup
+// }
 
-type ZipInput struct {
-	ZipName   string
-	CclfNames []string
-}
+// type ZipInput struct {
+// 	ZipName   string
+// 	CclfNames []string
+// }
 
-func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
-	ctx := context.Background()
-	tempBucket := uuid.NewUUID().String()
+// func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
+// 	ctx := context.Background()
+// 	tempBucket := uuid.NewUUID().String()
 
-	client := TestS3Client(t, TestAWSConfig(t))
+// 	client := TestS3Client(t, TestAWSConfig(t))
 
-	bucketInput := &s3.CreateBucketInput{
-		Bucket: aws.String(tempBucket),
-	}
-	_, err := client.CreateBucket(ctx, bucketInput)
-	assert.Nil(t, err)
+// 	bucketInput := &s3.CreateBucketInput{
+// 		Bucket: aws.String(tempBucket),
+// 	}
+// 	_, err := client.CreateBucket(ctx, bucketInput)
+// 	assert.Nil(t, err)
 
-	for _, input := range zipInputs {
-		var b bytes.Buffer
-		f := bufio.NewWriter(&b)
-		w := zip.NewWriter(f)
+// 	for _, input := range zipInputs {
+// 		var b bytes.Buffer
+// 		f := bufio.NewWriter(&b)
+// 		w := zip.NewWriter(f)
 
-		for _, cclfName := range input.CclfNames {
-			_, err := w.Create(cclfName)
-			assert.NoError(t, err)
-		}
+// 		for _, cclfName := range input.CclfNames {
+// 			_, err := w.Create(cclfName)
+// 			assert.NoError(t, err)
+// 		}
 
-		assert.NoError(t, w.Close())
-		assert.NoError(t, f.Flush())
+// 		assert.NoError(t, w.Close())
+// 		assert.NoError(t, f.Flush())
 
-		uploader := manager.NewUploader(client)
+// 		uploader := manager.NewUploader(client)
 
-		_, s3Err := uploader.Upload(ctx, &s3.PutObjectInput{
-			Bucket: aws.String(tempBucket),
-			Key:    aws.String(input.ZipName),
-			Body:   bytes.NewReader(b.Bytes()),
-		})
+// 		_, s3Err := uploader.Upload(ctx, &s3.PutObjectInput{
+// 			Bucket: aws.String(tempBucket),
+// 			Key:    aws.String(input.ZipName),
+// 			Body:   bytes.NewReader(b.Bytes()),
+// 		})
 
-		assert.NoError(t, s3Err)
-	}
+// 		assert.NoError(t, s3Err)
+// 	}
 
-	cleanup := func() {
-		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-			Bucket: aws.String(tempBucket),
-		})
-		assert.Nil(t, err)
+// 	cleanup := func() {
+// 		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+// 			Bucket: aws.String(tempBucket),
+// 		})
+// 		assert.Nil(t, err)
 
-		var objIds []types.ObjectIdentifier
-		for _, obj := range output.Contents {
-			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
-		}
+// 		var objIds []types.ObjectIdentifier
+// 		for _, obj := range output.Contents {
+// 			objIds = append(objIds, types.ObjectIdentifier{Key: obj.Key})
+// 		}
 
-		if len(objIds) > 0 {
-			input := s3.DeleteObjectsInput{
-				Bucket: aws.String(tempBucket),
-				Delete: &types.Delete{
-					Objects: objIds,
-					Quiet:   aws.Bool(true),
-				},
-			}
-			_, err = client.DeleteObjects(ctx, &input)
-			assert.Nil(t, err)
-		}
-	}
+// 		if len(objIds) > 0 {
+// 			input := s3.DeleteObjectsInput{
+// 				Bucket: aws.String(tempBucket),
+// 				Delete: &types.Delete{
+// 					Objects: objIds,
+// 					Quiet:   aws.Bool(true),
+// 				},
+// 			}
+// 			_, err = client.DeleteObjects(ctx, &input)
+// 			assert.Nil(t, err)
+// 		}
+// 	}
 
-	return tempBucket, cleanup
-}
+// 	return tempBucket, cleanup
+// }
 
-// Inserts the provided parameter into localstack.
-func putParameter(t *testing.T, input ssm.PutParameterInput) error {
-	ctx := context.Background()
+// // Inserts the provided parameter into localstack.
+// func putParameter(t *testing.T, input ssm.PutParameterInput) error {
+// 	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(constants.DefaultRegion),
-	)
-	assert.Nil(t, err)
-	client := ssm.NewFromConfig(cfg)
+// 	cfg, err := config.LoadDefaultConfig(ctx,
+// 		config.WithRegion(constants.DefaultRegion),
+// 	)
+// 	assert.Nil(t, err)
+// 	client := ssm.NewFromConfig(cfg)
 
-	_, err = client.PutParameter(ctx, &input)
-	assert.Nil(t, err)
+// 	_, err = client.PutParameter(ctx, &input)
+// 	assert.Nil(t, err)
 
-	return nil
-}
+// 	return nil
+// }
 
-// Deletes the provided parameters from localstack.
-func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
-	ctx := context.Background()
+// // Deletes the provided parameters from localstack.
+// func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
+// 	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(constants.DefaultRegion),
-	)
-	assert.Nil(t, err)
-	client := ssm.NewFromConfig(cfg)
+// 	cfg, err := config.LoadDefaultConfig(ctx,
+// 		config.WithRegion(constants.DefaultRegion),
+// 	)
+// 	assert.Nil(t, err)
+// 	client := ssm.NewFromConfig(cfg)
 
-	_, err = client.DeleteParameters(ctx, &input)
-	assert.Nil(t, err)
+// 	_, err = client.DeleteParameters(ctx, &input)
+// 	assert.Nil(t, err)
 
-	return nil
-}
+// 	return nil
+// }
 
-// Insert all given parameters into localstack and return a method for deferring cleanup.
-func SetParameter(t *testing.T, name, value string) func() {
-	err := putParameter(t, ssm.PutParameterInput{
-		Name:  &name,
-		Value: &value,
-		Type:  "String",
-	})
-	assert.Nil(t, err)
+// // Insert all given parameters into localstack and return a method for deferring cleanup.
+// func SetParameter(t *testing.T, name, value string) func() {
+// 	err := putParameter(t, ssm.PutParameterInput{
+// 		Name:  &name,
+// 		Value: &value,
+// 		Type:  "String",
+// 	})
+// 	assert.Nil(t, err)
 
-	cleanup := func() {
-		err := deleteParameters(t, ssm.DeleteParametersInput{Names: []string{name}})
-		assert.Nil(t, err)
-	}
+// 	cleanup := func() {
+// 		err := deleteParameters(t, ssm.DeleteParametersInput{Names: []string{name}})
+// 		assert.Nil(t, err)
+// 	}
 
-	return cleanup
-}
+// 	return cleanup
+// }
 
 type EnvVar struct {
 	Name  string

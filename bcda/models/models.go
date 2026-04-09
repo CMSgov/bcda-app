@@ -25,14 +25,15 @@ var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgre
 
 type JobStatus string
 type Job struct {
-	ID              uint
-	ACOID           uuid.UUID `json:"aco_id"`
-	RequestURL      string    `json:"request_url"` // request_url
-	Status          JobStatus `json:"status"`      // status
-	TransactionTime time.Time // most recent data load transaction time from BFD
-	JobCount        int
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                   uint
+	ACOID                uuid.UUID `json:"aco_id"`
+	RequestURL           string    `json:"request_url"` // request_url
+	Status               JobStatus `json:"status"`      // status
+	TransactionTime      time.Time // most recent data load transaction time from BFD
+	JobCount             int
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	BenesAttributedToACO int // Total beneficiaries attributed to ACO at time of job request
 }
 
 func (j *Job) StatusMessage(numCompletedJobKeys int) string {
@@ -52,9 +53,11 @@ type JobKey struct {
 	JobID uint `json:"job_id"`
 	// Although que_job records are temporary, we store the ID to ensure
 	// that workers are never duplicating job keys.
-	QueJobID     *int64
-	FileName     string
-	ResourceType string
+	QueJobID              *int64
+	FileName              string
+	ResourceType          string
+	BenesWithData         int // count of beneficiaries with entry data
+	BenesRetrievedPercent int // percent of beneficiaries successfully retrieved from BFD
 }
 
 func (j *JobKey) IsError() bool {

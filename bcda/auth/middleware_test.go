@@ -83,7 +83,7 @@ func (s *MiddlewareTestSuite) TestReturn400WhenInvalidTokenAuthWithInvalidSignat
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, badT))
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 
 	assert.NotNil(s.T(), resp)
 	assert.Nil(s.T(), err)
@@ -114,7 +114,7 @@ func (s *MiddlewareTestSuite) TestReturn401WhenExpiredToken() {
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, tokenString))
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 
 	assert.NotNil(s.T(), resp)
 	assert.Nil(s.T(), err)
@@ -163,7 +163,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse200WhenValidBearer
 
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func (s *MiddlewareTestSuite) TestTokenVerificationErrorHandling() {
 			req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
 			//Act
-			resp, err := client.Do(req)
+			resp, err := client.Do(req) // #nosec G704
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -274,7 +274,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse403WhenEntityNotFo
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
 	//Act
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -310,7 +310,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturn401WhenNonEntityNotFoundEr
 	req.Header.Add("Authorization", fmt.Sprintf(bearerStringMsg, bearerString))
 
 	//Act
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func (s *MiddlewareTestSuite) TestAuthMiddlewareReturnResponse401WhenNoBearerTok
 
 	req.Header.Add("Authorization", "")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		log.Fatal(err)
 	}

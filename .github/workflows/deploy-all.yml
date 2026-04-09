@@ -106,11 +106,13 @@ env:
   TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERIFICATION_RETRIES: 30 # 30 retries with 10s sleep = max 300 or 5m.  Verification jobs run in parallel.
   VERIFICATION_SLEEP: 10
+  SANITIZED_VERSION: ${{ inputs.version }}
+  SANITIZED_SSAS_VERSION: ${{ inputs.ssas_version }}
 
 jobs:
   verify_images_exist:
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:      
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -118,16 +120,16 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Verify API image exists
         run: |
-          echo "Verifying that tag ${{ inputs.version }} exists in the bcda-api repo"
-          aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${{ inputs.version }}
+          echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-api repo"
+          aws ecr describe-images --repository-name bcda-api --image-ids imageTag=${SANITIZED_VERSION}
       - name: Verify SSAS image exists
         run: |
-          echo "Verifying that tag ${{ inputs.ssas_version }} exists in the bcda-ssas repo"
-          aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${{ inputs.ssas_version }}
+          echo "Verifying that tag ${SANITIZED_SSAS_VERSION} exists in the bcda-ssas repo"
+          aws ecr describe-images --repository-name bcda-ssas --image-ids imageTag=${SANITIZED_SSAS_VERSION}
       - name: Verify Worker image exists
         run: |
-          echo "Verifying that tag ${{ inputs.version }} exists in the bcda-worker repo"
-          aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${{ inputs.version }}
+          echo "Verifying that tag ${SANITIZED_VERSION} exists in the bcda-worker repo"
+          aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${SANITIZED_VERSION}
 
   migrate_db:
     needs: [verify_images_exist]
@@ -148,7 +150,7 @@ jobs:
   deploy:
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -161,7 +163,30 @@ jobs:
         with:
           params: |
             GITHUB_TOKEN=/ci/github/token
-            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/api/DATABASE_URL
+            DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/DATABASE_URL
+      - name: Checkout BCDA
+        uses: actions/checkout@v4
+        with:
+          repository: CMSgov/bcda-app
+          ref: ${{ inputs.ref }}
+      - name: Install Cosign to verify tenv and tofu installs
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Install tenv
+        uses: cmsgov/cdap/actions/setup-tenv@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Install Sops
+        uses: cmsgov/cdap/actions/setup-sops@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
+      - name: Install YQ
+        uses: cmsgov/cdap/actions/setup-yq@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Plan SOPS
+        working-directory: ops/services/10-config
+        run: |
+          TF_WORKSPACE=default tofu init -var parent_env=${{ env.RELEASE_ENV }} -reconfigure && tofu workspace select -var parent_env=${{ env.RELEASE_ENV }} -or-create ${{ env.RELEASE_ENV }}
+          tofu plan \
+            -out 'bcda-release-sops.tfplan'
+      - name: Apply SOPS
+        working-directory: ops/services/10-config
+        run: |
+          tofu apply bcda-release-sops.tfplan
       - name: Checkout bcda-ops
         uses: actions/checkout@v4
         with:
@@ -186,21 +211,18 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
-      - name: Install Cosign to verify tenv and tofu installs
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
-      - name: Install tenv
-        uses: cmsgov/cdap/actions/setup-tenv@8343fb96563ce4b74c4dececee9b268f42bd4a40
+
       - name: Init, Plan OpenTofu
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
           IFS=":@" read -r -a STRS <<< ${{ env.DATABASE_URL }}
           export APP_DB_PW=${STRS[2]}
+          export TF_VAR_api_image_tag=${SANITIZED_VERSION}
+          export TF_VAR_ssas_image_tag=${SANITIZED_SSAS_VERSION}
+          export TF_VAR_worker_image_tag=${SANITIZED_VERSION}
           tofu init
           tofu plan \
             -var 'env=${{ env.RELEASE_ENV }}' \
-            -var 'api_image_tag=${{ inputs.version }}' \
-            -var 'ssas_image_tag=${{ inputs.ssas_version }}' \
-            -var 'worker_image_tag=${{ inputs.version }}' \
             -out 'bcda-release-api-worker.tfplan'
       - name: OpenTofu Apply
         working-directory: terraform/${{ env.RELEASE_ENV }}
@@ -219,7 +241,7 @@ jobs:
 
   verify_api_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -231,8 +253,8 @@ jobs:
           TRY=1
           until [ $TRY -gt $VERIFICATION_RETRIES ]; do
             BCDA_API_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_version | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-            if [[ $BCDA_API_VERSION != ${{ inputs.version }} ]]; then
-              echo "BCDA API expected release version: ${{ inputs.version }} did not match curled version: ${BCDA_API_VERSION}."
+            if [[ $BCDA_API_VERSION != ${SANITIZED_VERSION} ]]; then
+              echo "BCDA API expected release version: ${SANITIZED_VERSION} did not match curled version: ${BCDA_API_VERSION}."
               TRY=$(($TRY + 1))
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
@@ -247,7 +269,7 @@ jobs:
 
   verify_ssas_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -259,8 +281,8 @@ jobs:
           TRY=1
           until [ $TRY -gt $VERIFICATION_RETRIES ]; do
             BCDA_SSAS_VERSION=$(curl -Ss https://${{ vars.API_BASE_URL }}/_auth | jq -R '. as $line | try (fromjson | .version) catch $line' | tr -d "\"'")
-            if [[ $BCDA_SSAS_VERSION != ${{ inputs.ssas_version }} ]]; then
-              echo "BCDA SSAS expected release version: ${{ inputs.ssas_version }} did not match curled version: ${BCDA_SSAS_VERSION}."
+            if [[ $BCDA_SSAS_VERSION != ${SANITIZED_SSAS_VERSION} ]]; then
+              echo "BCDA SSAS expected release version: ${SANITIZED_SSAS_VERSION} did not match curled version: ${BCDA_SSAS_VERSION}."
               TRY=$(($TRY + 1))
               if [ $TRY -gt $VERIFICATION_RETRIES ]; then
                 exit 1
@@ -275,7 +297,7 @@ jobs:
 
   verify_worker_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -288,8 +310,8 @@ jobs:
           WORKER_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$WORKER_ARN --query="tasks[0].containers[?name == 'worker'].image" --output=text)
           WORKER_VERSION_NO_SHA=${WORKER_IMAGE##*:}
           WORKER_VERSION_SHA=$(echo $WORKER_IMAGE | sed 's/.*:\(.*\)@.*/\1/')
-          if [[ $WORKER_VERSION_SHA != ${{ inputs.version }} && $WORKER_VERSION_NO_SHA != ${{ inputs.version }} ]]; then
-            echo "BCDA Worker expected release version: ${{ inputs.version }} did not match AWS version: ${WORKER_VERSION_SHA} or ${WORKER_VERSION_NO_SHA}."
+          if [[ $WORKER_VERSION_SHA != ${SANITIZED_VERSION} && $WORKER_VERSION_NO_SHA != ${SANITIZED_VERSION} ]]; then
+            echo "BCDA Worker expected release version: ${SANITIZED_VERSION} did not match AWS version: ${WORKER_VERSION_SHA} or ${WORKER_VERSION_NO_SHA}."
             exit 1
           fi
 
@@ -303,13 +325,13 @@ jobs:
       test_aco: ${{ inputs.test_aco || 'dev' }}
       smoke_tests: true
       postman_tests: true
-      v3_tests: false
+      v3_tests: true
     secrets: inherit
 
   notify_newrelic:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -322,7 +344,7 @@ jobs:
         with:
           params: |
             NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
-            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/new-relic/app-id
+            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/sensitive/new-relic/app-id
       - name: Download notify scripts
         uses: actions/download-artifact@v4
         with:
@@ -334,7 +356,7 @@ jobs:
           python3 scripts/mark_deployment.py \
             --app_id ${{ env.NEWRELIC_APP_ID }} \
             --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${{ inputs.version }}
+            --version ${SANITIZED_VERSION}
       - name: Notify NewRelic (Dev)
         if: ${{ env.RELEASE_ENV == 'dev' }}
         run: |
@@ -349,7 +371,7 @@ jobs:
 
   slack_alerts:
     if: ${{ always() }}
-    runs-on: codebuild-bcda-app-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
     needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info
@@ -368,13 +390,13 @@ jobs:
                 fields:
                   - title: 'API'
                     short: true
-                    value: ${{ inputs.version }}
+                    value: ${{ env.SANITIZED_VERSION }}
                   - title: 'SSAS'
                     short: true
-                    value: ${{ inputs.ssas_version }}
+                    value: ${{ env.SANITIZED_SSAS_VERSION }}
                   - title: 'Worker'
                     short: true
-                    value: ${{ inputs.version }}
+                    value: ${{ env.SANITIZED_VERSION }}
                 mrkdown_in:
                   - pretext
                   - footer

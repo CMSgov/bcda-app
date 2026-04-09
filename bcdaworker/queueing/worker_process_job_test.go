@@ -1,0 +1,106 @@
+package queueing
+
+import (
+	"context"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/conf"
+	"github.com/ccoveille/go-safecast"
+	"github.com/pborman/uuid"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+)
+
+// TestWork acts as an end-to-end verification of the entire process:
+// adding a job, picking up the job, processing the job, and closing the client
+func TestWork_Integration(t *testing.T) {
+	logger := logrus.New()
+	// Set up the logger since we're using the real client
+	client.SetLogger(logger)
+
+	env := conf.GetEnv("DEPLOYMENT_TARGET")
+	conf.SetEnv(t, "DEPLOYMENT_TARGET", uuid.New())
+	t.Cleanup(func() { conf.SetEnv(t, "DEPLOYMENT_TARGET", env) })
+
+	defer func(payload, staging string) {
+		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
+		conf.SetEnv(t, "FHIR_STAGING_DIR", staging)
+	}(conf.GetEnv("FHIR_PAYLOAD_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
+
+	defer func(cert, key, ca string) {
+		conf.SetEnv(t, "BB_CLIENT_CERT_FILE", cert)
+		conf.SetEnv(t, "BB_CLIENT_KEY_FILE", key)
+		conf.SetEnv(t, "BB_CLIENT_CA_FILE", ca)
+	}(conf.GetEnv("BB_CLIENT_CERT_FILE"), conf.GetEnv("BB_CLIENT_KEY_FILE"), conf.GetEnv("BB_CLIENT_CA_FILE"))
+
+	conf.SetEnv(t, "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	conf.SetEnv(t, "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
+	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+
+	// Ensure we do not clutter our working directory with any data
+	tempDir1, err := os.MkdirTemp("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	tempDir2, err := os.MkdirTemp("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
+	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
+
+	db := database.Connect()
+	pool := database.ConnectPool()
+
+	cmsID := testUtils.RandomHexID()[0:4]
+	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}
+	postgrestest.CreateACO(t, db, aco)
+	job := models.Job{ACOID: aco.UUID, Status: models.JobStatusPending}
+	postgrestest.CreateJobs(t, db, &job)
+
+	defer postgrestest.DeleteACO(t, db, aco.UUID)
+
+	q := StartRiver(db, 1)
+	defer q.StopRiver()
+
+	id, _ := safecast.ToInt(job.ID)
+	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
+
+	enqueuer := NewEnqueuer(db, pool)
+	assert.NoError(t, enqueuer.AddJob(context.Background(), jobArgs, 1))
+
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			t.Fatal("Job not completed in alloted time.")
+			return
+		default:
+			currentJob := postgrestest.GetJobByID(t, db, job.ID)
+			// don't wait for a job if it has a terminal status
+			if isTerminalStatus(currentJob.Status) {
+				return
+			}
+			logger.Infof("Waiting on job to be completed. Current status %s.", job.Status)
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+func isTerminalStatus(status models.JobStatus) bool {
+	switch status {
+	case models.JobStatusCompleted,
+		models.JobStatusCancelled,
+		models.JobStatusFailed:
+		return true
+	}
+	return false
+}

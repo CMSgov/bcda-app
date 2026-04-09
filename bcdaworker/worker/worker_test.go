@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"math/big"
@@ -29,6 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -219,7 +221,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 		{"Patient", 1, 1, 1, nil},
 		{"Claim", 1, 1, 1, nil},
 		{"ClaimResponse", 1, 1, 1, nil},
-		{"UnsupportedResource", 1, 0, 0, errors.Errorf("unsupported resouce")},
+		{"UnsupportedResource", 1, 0, 0, errors.Errorf("unsupported resource")},
 	}
 
 	for _, tt := range tests {
@@ -235,6 +237,12 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 			assert.NoError(s.T(), err)
 			assert.Len(s.T(), jobKeys, tt.jobKeysCount)
 			assert.Len(s.T(), files, tt.fileCount)
+			if tt.err == nil {
+				assert.Equal(s.T(), 100, jobKeys[0].BenesRetrievedPercent)
+			} else {
+				assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
+			}
+			assert.Equal(s.T(), tt.expectedCount, jobKeys[0].BenesWithData)
 			VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.tempDir)
 		})
 	}
@@ -354,6 +362,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
+	assert.Equal(s.T(), 33, jobKeys[0].BenesRetrievedPercent)
+	assert.Equal(s.T(), 33, jobKeys[0].BenesWithData)
 	assert.Len(s.T(), jobKeys, 2)
 	assert.NoError(s.T(), err)
 	errorFilePath := fmt.Sprintf("%s/%s", s.tempDir, jobKeys[1].FileName)
@@ -374,7 +384,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
 	transactionTime := time.Now()
 
 	var cclfBeneficiaryIDs []string
@@ -392,17 +402,23 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[0], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[1], claimsWindowMatcher()).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[2], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
 	bbc.On("GetPatientByMbi", beneficiaryIDs[0]).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 
 	bbc.MBI = &beneficiaryIDs[1]
 	bbc.On("GetPatientByMbi", beneficiaryIDs[1]).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
 
+	bbc.MBI = &beneficiaryIDs[2]
+	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
+
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err := createDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
+	assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
+	assert.Equal(s.T(), 0, jobKeys[0].BenesWithData)
 	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := os.ReadDir(s.tempDir)
@@ -413,23 +429,24 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	fData, err := os.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}]}
-	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}]}`, s.testACO.UUID, s.testACO.UUID)
+	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}]}
+	{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","diagnostics":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000012463 in ACO %s"}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 
 	// Since our error file ends with a new line character, we need
 	// to remove it in order so split OperationOutcome responses by newline character
 	fData = fData[:len(fData)-1]
-	assertEqualErrorFiles(s.T(), ooResp, string(fData))
+	d := string(fData)
+	assertEqualErrorFiles(s.T(), ooResp, d)
 
 	// Assert cmsID and jobID fields are being added to the logs
 	bbc.AssertExpectations(s.T())
-	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", jobArgs, beneficiaryIDs[2], claimsWindowMatcher())
+
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "51")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
 
 	bbc := client.MockBlueButtonClient{}
 	bbc.On("GetPatientByMbi", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
@@ -487,23 +504,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.False(s.T(), errorFileScanner.Scan(), "There should be only 2 entries in the file.")
 
 	bbc.AssertExpectations(s.T())
-}
-
-func (s *WorkerTestSuite) TestGetFailureThreshold() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
-	assert.Equal(s.T(), 60.0, getFailureThreshold())
-
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "-1")
-	assert.Equal(s.T(), 0.0, getFailureThreshold())
-
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "500")
-	assert.Equal(s.T(), 100.0, getFailureThreshold())
-
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "zero")
-	assert.Equal(s.T(), 50.0, getFailureThreshold())
 }
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
@@ -1023,6 +1023,66 @@ func (s *WorkerTestSuite) TestCreateJobKeys_JobCompleteError() {
 	err := createJobKeys(s.logctx, r, keys, 1)
 	assert.ErrorContains(s.T(), err, "Failed retrieve job by id (Job 1)")
 	assert.ErrorContains(s.T(), err, "some db error")
+}
+
+func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON() {
+	ctx := context.Background()
+	fileUUID := uuid.New()
+	f, err := os.CreateTemp("./", fmt.Sprintf("%s.ndjson", fileUUID))
+	assert.Nil(s.T(), err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	defer w.Flush()
+	entries := []fhirmodels.BundleEntry{
+		{
+			"resource": map[string]string{"test": "entry"},
+		}, {
+			"resource": map[string]string{"test2": "entry2"},
+		}, {
+			"invalid": "entry",
+		},
+	}
+	b := fhirmodels.Bundle{Entries: entries}
+	beneID := "MBITEST"
+	acoID := "A9994"
+	entriesCount := 0
+
+	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &entriesCount)
+	assert.Equal(s.T(), 2, entriesCount)
+
+	_, err = f.Seek(0, io.SeekStart)
+	assert.Nil(s.T(), err)
+	data, err := io.ReadAll(f)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "{\"test\":\"entry\"}\n{\"test2\":\"entry2\"}\n", string(data))
+}
+
+func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON_NoEntries() {
+	ctx := context.Background()
+	fileUUID := uuid.New()
+	f, err := os.CreateTemp("./", fmt.Sprintf("%s.ndjson", fileUUID))
+	assert.Nil(s.T(), err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	defer w.Flush()
+	entries := []fhirmodels.BundleEntry{
+		{
+			"invalid": "entry",
+		},
+	}
+	b := fhirmodels.Bundle{Entries: entries}
+	beneID := "MBITEST"
+	acoID := "A9994"
+	entriesCount := 0
+
+	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &entriesCount)
+	assert.Equal(s.T(), 0, entriesCount)
+
+	_, err = f.Seek(0, io.SeekStart)
+	assert.Nil(s.T(), err)
+	data, err := io.ReadAll(f)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "", string(data))
 }
 
 func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {

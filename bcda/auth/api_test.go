@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pborman/uuid"
@@ -21,6 +23,7 @@ import (
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/web"
 	bcdaLog "github.com/CMSgov/bcda-app/log"
 
 	"github.com/stretchr/testify/assert"
@@ -67,6 +70,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 		//setup mocks
 		mockP := &auth.MockProvider{}
+		mockP.On("GetAuthData", mock.Anything).Return(auth.AuthData{ACOID: "aco_test", CMSID: "cms_test"}, nil)
 		mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return("", tt.ErrorToReturn)
 
 		router := auth.NewAuthRouter(mockP)
@@ -83,7 +87,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//Act
-			resp, err := client.Do(req)
+			resp, err := client.Do(req) // #nosec G704
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -116,6 +120,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 	for _, tt := range tests {
 		//setup mocks
 		mockP := &auth.MockProvider{}
+		mockP.On("GetAuthData", mock.Anything).Return(auth.AuthData{ACOID: "aco_test", CMSID: "cms_test"}, nil)
 		mockP.On("MakeAccessToken", auth.Credentials{ClientID: "good", ClientSecret: "client"}, mock.Anything).Return(fmt.Sprintf(`{ "token_type": "bearer", "access_token": "goodToken", "expires_in": "%s" }`, constants.ExpiresInDefault), tt.ErrorToReturn)
 		// auth.SetMockProvider(s.T(), mockP)
 
@@ -131,7 +136,7 @@ func (s *AuthAPITestSuite) TestGetAuthToken() {
 
 		s.T().Run(tt.ScenarioName, func(t *testing.T) {
 			//Act
-			resp, err := server.Client().Do(req)
+			resp, err := server.Client().Do(req) // #nosec G704
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -185,7 +190,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.NoError(s.T(), err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	req.Header.Add("Accept", constants.JsonContentType)
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
@@ -196,7 +201,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", goodToken))
 	req.Header.Add("Accept", constants.JsonContentType)
-	resp, err = client.Do(req)
+	resp, err = client.Do(req) // #nosec G704
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	respMap := make(map[string]string)
@@ -211,4 +216,48 @@ func (s *AuthAPITestSuite) TestWelcome() {
 
 func TestAuthAPITestSuite(t *testing.T) {
 	suite.Run(t, new(AuthAPITestSuite))
+}
+
+// benchmark tests below
+
+func BenchmarkAuthToken(b *testing.B) {
+	// set up generic background needs
+	db := database.Connect()
+	repository := postgres.NewRepository(db)
+	provider := auth.NewProvider(db)
+	baseApi := auth.NewBaseApi(provider)
+	router := web.NewAuthRouter(provider)
+	server := httptest.NewServer(router)
+	ctx := context.Background()
+
+	// set up db records
+	aco, err := repository.GetACOByCMSID(ctx, "A9994")
+	if err != nil {
+		b.Fatal("failed to get aco")
+	}
+	err = repository.UpdateACO(ctx, aco.UUID, map[string]interface{}{"system_id": "2"})
+	if err != nil {
+		b.Fatalf("failed to update aco: %+v", err)
+	}
+	creds, err := provider.ResetSecret(aco.ClientID)
+	if err != nil {
+		b.Fatalf("failed to reset secrets: %+v", err)
+	}
+
+	// set up request
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/auth/token", server.URL), nil)
+	if err != nil {
+		b.Fatal("failed to create request")
+	}
+	req.Header.Add("Accept", constants.JsonContentType)
+	req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
+	handler := http.HandlerFunc(baseApi.GetAuthToken)
+
+	b.ResetTimer()
+
+	for b.Loop() {
+		handler.ServeHTTP(rr, req)
+	}
 }

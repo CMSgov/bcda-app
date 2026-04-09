@@ -127,7 +127,7 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	txn := newrelic.FromContext(req.Context())
 	s := newrelic.StartExternalSegment(txn, req)
 
-	resp, err := c.Do(req)
+	resp, err := c.Do(req) //#nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("BFD request failed: %s", err)
 	}

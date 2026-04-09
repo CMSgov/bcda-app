@@ -369,7 +369,7 @@ func validateTagSubqueryParameter(tag string) error {
 
 	// Validate that the _tag system and code are supported values
 	validTagTokens := map[string][]string{
-		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory"},
+		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
 		"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action": {"FinalAction", "NotFinalAction"},
 	}
 

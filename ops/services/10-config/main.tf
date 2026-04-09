@@ -1,5 +1,7 @@
 locals {
-  service = "config"
+  service      = "config"
+  default_tags = module.platform.default_tags
+  env          = terraform.workspace
 }
 
 module "platform" {

@@ -33,6 +33,17 @@ func GetEnvInt(varName string, defaultVal int) int {
 	return defaultVal
 }
 
+func GetEnvFloat(varName string, defaultVal float64) float64 {
+	v := conf.GetEnv(varName)
+	if v != "" {
+		i, err := strconv.ParseFloat(v, 64)
+		if err == nil {
+			return i
+		}
+	}
+	return defaultVal
+}
+
 func GetEnvBool(varName string, defaultVal bool) bool {
 	v := conf.GetEnv(varName)
 	if v != "" {

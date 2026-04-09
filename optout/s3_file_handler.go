@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -16,7 +17,7 @@ import (
 
 // S3FileHandler manages files located on AWS S3.
 type S3FileHandler struct {
-	Client *s3.Client
+	Client bcdaaws.CustomS3Client
 	Logger logrus.FieldLogger
 	// Optional S3 endpoint to use for connection.
 	Endpoint string

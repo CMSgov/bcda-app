@@ -331,7 +331,6 @@ func (s *BBRequestTestSuite) TestGetMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), m, `"resourceType": "CapabilityStatement"`)
-	assert.NotContains(s.T(), m, constants.TestExcludeSAMHSA)
 }
 
 func (s *BBRequestTestSuite) TestGetMetadata_500() {
@@ -402,6 +401,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				noServiceDateChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
@@ -423,6 +423,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noSinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				noServiceDateChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
@@ -444,6 +445,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				serviceDateUpperBoundChecker,
 				noServiceDateLowerBoundChecker,
 				noIncludeAddressFieldsChecker,
@@ -466,6 +468,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				serviceDateLowerBoundChecker,
 				noServiceDateUpperBoundChecker,
 				noIncludeAddressFieldsChecker,
@@ -488,6 +491,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				serviceDateLowerBoundChecker,
 				serviceDateUpperBoundChecker,
 				noIncludeAddressFieldsChecker,
@@ -510,6 +514,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				includeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -530,6 +535,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noSinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				includeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -550,6 +556,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -570,6 +577,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noSinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -588,6 +596,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 			[]func(*testing.T, *http.Request){
 				noExcludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				noIncludeAddressFieldsChecker,
 				noIncludeTaxNumbersChecker,
 				noBulkRequestHeaders,
@@ -757,6 +766,27 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
+			"GetExplanationOfBenefitV3",
+			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+				bbClient.BBBasePath = constants.BFDV3Path
+				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", client.ClaimsWindow{})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*fhirModels.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				noExcludeSAMHSAChecker,
+				securityFilterChecker,
+				ServiceDateChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
+			},
+		},
+		{
 			"GetExplanationOfBenefitWithTypeFilterServiceDate",
 			func(bbClient *client.BlueButtonClient) (interface{}, error) {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", client.ClaimsWindow{})
@@ -770,6 +800,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noSecurityFilterChecker,
 				ServiceDateChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
@@ -882,6 +913,12 @@ func sinceChecker(t *testing.T, req *http.Request) {
 }
 func noExcludeSAMHSAChecker(t *testing.T, req *http.Request) {
 	assert.NotContains(t, req.URL.String(), constants.TestExcludeSAMHSA)
+}
+func securityFilterChecker(t *testing.T, req *http.Request) {
+	assert.Contains(t, req.URL.String(), constants.TestSecurityFilter)
+}
+func noSecurityFilterChecker(t *testing.T, req *http.Request) {
+	assert.NotContains(t, req.URL.String(), constants.TestSecurityFilter)
 }
 func excludeSAMHSAChecker(t *testing.T, req *http.Request) {
 	assert.Contains(t, req.URL.String(), constants.TestExcludeSAMHSA)

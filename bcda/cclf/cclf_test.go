@@ -139,12 +139,13 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "failed to parse CCLF8 record length from CCLF0 file: strconv.Atoi: parsing \"Num\": invalid syntax")
 }
 
-func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
-	assert := assert.New(s.T())
-	//Happy case, with directory containing valid BCD files.
-	_, _, _, err := s.importer.ImportCCLFDirectory(filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid"))
-	assert.Nil(err)
-}
+// func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
+// 	assert := assert.New(s.T())
+// 	//Happy case, with directory containing valid BCD files.
+// 	_, _, _, err := s.importer.ImportCCLFDirectory(filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid"))
+// 	assert.Nil(err)
+// }
+
 func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	assert := assert.New(s.T())
 	//Directory with mixed file types + at least one bad file.

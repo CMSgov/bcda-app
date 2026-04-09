@@ -1,0 +1,32 @@
+# syntax = docker/dockerfile:1-experimental
+FROM arm64v8/golang:1.26.0-alpine3.23
+
+ENV GOOS=linux
+ENV GOARCH=arm64
+
+RUN apk update upgrade --no-cache && \
+    apk add --no-cache \
+        bash \
+        build-base \
+        curl
+
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | \
+    sh -s -- -b $(go env GOPATH)/bin v2.10.1
+
+RUN go install github.com/securego/gosec/v2/cmd/gosec@v2.22.8 && \
+    go install gotest.tools/gotestsum@v1.12.3
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+
+# Download all dependencies
+COPY go.mod go.sum tools.go ./
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    cat tools.go | awk '/[\/\/] test/{flag=1; next} /[\/\/] end/{flag=0} flag' | \
+    awk -F '"' '{print $2}' | xargs -tI % go get %
+
+COPY . .
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+ENTRYPOINT []

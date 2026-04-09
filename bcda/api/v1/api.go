@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -271,18 +272,28 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	dataDir := conf.GetEnv("FHIR_PAYLOAD_DIR")
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
-	filePath := fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName)
 
 	logger := log.GetCtxLogger(r.Context())
 
 	// Check file exists
-	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+	rootPath := filepath.Join(dataDir, jobID)
+	rootDir, err := os.OpenRoot(rootPath)
+	if err != nil {
 		logger.WithField("resp_status", http.StatusNotFound).Errorf("file not found: %s", err)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
-	encoded, err := isGzipEncoded(filePath)
+	defer rootDir.Close()
+	filePath := filepath.Join(rootPath, fileName)
+
+	if _, err := rootDir.Stat(fileName); errors.Is(err, os.ErrNotExist) {
+		logger.WithField("resp_status", http.StatusNotFound).Errorf("file not found: %s", err)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	encoded, err := isGzipEncoded(rootDir, fileName)
 	if err != nil {
 		logger.WithField("resp_status", http.StatusInternalServerError).Errorf("failed when checking if file is gzip encoded: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -313,7 +324,7 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 		log.API.Warnf("API request to serve data is being made without gzip for file %s for jobId %s", fileName, jobID)
 		if encoded {
 			// Open file
-			file, err := os.Open(filePath) // #nosec G304
+			file, err := rootDir.Open(fileName)
 			if err != nil {
 				logger.WithField("resp_status", http.StatusInternalServerError).Errorf("failed to open file: %s", err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -341,12 +352,12 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 }
 
 // This function reads a file's magic number, to determine if it is gzip-encoded or not.
-func isGzipEncoded(filePath string) (encoded bool, err error) {
-	file, err := os.Open(filePath) // #nosec G304
+func isGzipEncoded(root *os.Root, filePath string) (encoded bool, err error) {
+	file, err := root.Open(filePath) // #nosec G703
 	if err != nil {
 		return false, err
 	}
-	defer file.Close() //#nosec G307
+	defer file.Close() // #nosec G307
 
 	byteSlice := make([]byte, 2)
 	bytesRead, err := file.Read(byteSlice)

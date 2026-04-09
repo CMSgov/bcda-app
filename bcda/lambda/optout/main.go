@@ -53,7 +53,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
-	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/cclf-import/bcda/%s/bfd-bucket-role-arn", env))
+	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/bene-prefs/sensitive/iam_bucket_role_arn", env))
 	if err != nil {
 		logger.Errorf("error getting param: %+v", err)
 		return "", err
@@ -65,7 +65,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 		o.Credentials = appCreds
 	})
 
-	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env))
+	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
 		logger.Error("failed to load DB URL")
 		return "", err
@@ -91,7 +91,7 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	return "", nil
 }
 
-func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client *s3.Client, s3ImportPath string) (string, error) {
+func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
