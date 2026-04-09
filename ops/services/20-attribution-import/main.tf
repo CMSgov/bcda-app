@@ -25,16 +25,6 @@ module "platform" {
   }
 }
 
-# resource "aws_cloudwatch_log_group" "this" {
-#   name              = "/aws/lambda/bcda-${local.env}-${local.service}"
-#   retention_in_days = 180
-#   skip_destroy      = true
-#
-#   tags = {
-#     Name = "/aws/lambda/bcda-${local.env}-${local.service}"
-#   }
-# }
-
 # ---------------------------------------------------------------------------
 # File Bucket
 # ---------------------------------------------------------------------------
@@ -382,20 +372,19 @@ resource "aws_lambda_event_source_mapping" "this" {
 
 data "aws_iam_policy_document" "attribution-import_topic" {
   statement {
-    sid     = "SnsSendMessage"
-    actions = ["sqs:SendMessage"]
+    sid       = "AllowS3Publish"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.attribution-import_nextgen_topic.arn]
 
     principals {
       type        = "Service"
-      identifiers = ["sns.amazonaws.com"]
+      identifiers = ["s3.amazonaws.com"]
     }
 
-    resources = [aws_sqs_queue.this.arn]
-
     condition {
-      test     = "ArnEquals"
+      test     = "ArnLike"
       variable = "aws:SourceArn"
-      values   = [aws_sns_topic.attribution-import_nextgen_topic.arn]
+      values   = [module.attribution-import_file_bucket.arn]
     }
   }
 }
