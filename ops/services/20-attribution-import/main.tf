@@ -268,7 +268,7 @@ module "attribution_import_function" {
   app = local.app
   env = local.env
 
-  name        = local.service
+  name        = "bcda-${local.env}-${local.service}"
   description = "Ingests the most recent Attribution Import from est"
 
   handler = "bootstrap"
