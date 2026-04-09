@@ -1,11 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "5.81.0"
-    }
-  }
-}
 locals {
   service            = "attribution-import"
   full_name          = "${local.app}-${var.env}-attribution-import"
@@ -32,12 +24,52 @@ module "platform" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/${local.full_name}"
+  retention_in_days = 180
+
+  tags = {
+    Name = "/aws/lambda/bcda-${var.env}-${local.service}"
+  }
+}
 
 data "aws_iam_policy_document" "assume_bucket_role" {
   statement {
     actions = ["sts:AssumeRole"]
     resources = [
       module.platform.ssm.attribution-import.misp-eft-role_arn.value
+    ]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Managed policies
+# ---------------------------------------------------------------------------
+data "aws_iam_policy_document" "default_function" {
+  statement {
+    sid = "SsmSqsLogsEc2"
+    actions = [
+      "ssm:GetParameters",
+      "ssm:GetParameter",
+      "sqs:ReceiveMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:DeleteMessage",
+      "logs:PutLogEvents",
+      "logs:CreateLogStream",
+      "logs:CreateLogGroup",
+    ]
+    resources = ["*"]
+  }
+  statement {
+    sid = "KmsEncryptDecrypt"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Encrypt",
+      "kms:Decrypt",
+    ]
+    resources = [
+      module.platform.kms_alias_primary.arn,
+      module.platform.kms_alias_secondary.arn
     ]
   }
 }
@@ -73,10 +105,12 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
       "s3:DeleteObjectVersion",
       "s3:AbortMultipartUpload",
       "s3:ListMultipartUploadParts",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
     ]
-
     resources = [
-      "${module.attribution-import_file_bucket.arn}/*",
+      "${module.attribution-import_file_bucket.arn}/*", "arn:aws:logs:*:*:*"
     ]
   }
 }
@@ -108,8 +142,14 @@ module "attribution_import_function" {
 
 resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
   name   = "attribution-import-bucket-rw"
-  role   = module.attribution_import_function.role_arn
+  role   = "bcda-${var.env}-attribution-import-function"
   policy = data.aws_iam_policy_document.attribution-import_bucket_rw.json
+}
+
+resource "aws_iam_role_policy" "logging" {
+  name   = "attribution-import-logging"
+  role   = "bcda-${var.env}-attribution-import-function"
+  policy = data.aws_iam_policy_document.default_function.json
 }
 
 # Set up queue for receiving messages when a file is added to the bucket
