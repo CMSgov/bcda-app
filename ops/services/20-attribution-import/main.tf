@@ -202,7 +202,6 @@ resource "aws_iam_role_policy_attachment" "default_function" {
   policy_arn = aws_iam_policy.default_function.arn
 }
 
-
 # -------------------------------------------------------
 # IAM Policy — S3 Read/Write on the attribution-import file bucket
 # -------------------------------------------------------
@@ -368,13 +367,6 @@ resource "aws_sns_topic_subscription" "this" {
   endpoint  = aws_sqs_queue.this.arn
   protocol  = "sqs"
   topic_arn = aws_sns_topic.attribution-import_nextgen_topic.arn
-}
-
-resource "aws_lambda_event_source_mapping" "this" {
-  event_source_arn = aws_sqs_queue.this.arn
-  function_name    = aws_lambda_function.this.function_name
-  batch_size       = 1
-  enabled          = true
 }
 
 data "aws_iam_policy_document" "attribution-import_topic" {
