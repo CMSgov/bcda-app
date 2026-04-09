@@ -1,3 +1,11 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "5.81.0"
+    }
+  }
+}
 locals {
   service            = "attribution-import"
   full_name          = "${local.app}-${var.env}-attribution-import"
@@ -34,6 +42,45 @@ data "aws_iam_policy_document" "assume_bucket_role" {
   }
 }
 
+data "aws_iam_policy_document" "attribution-import_bucket_rw" {
+
+  statement {
+    sid    = "ListBucket"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      module.attribution-import_file_bucket.arn,
+    ]
+  }
+
+  statement {
+    sid    = "ReadWriteObjects"
+    effect = "Allow"
+
+    actions = [
+      # Read
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:GetObjectTagging",
+      "s3:PutObject",
+      "s3:PutObjectTagging",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:AbortMultipartUpload",
+      "s3:ListMultipartUploadParts",
+    ]
+
+    resources = [
+      "${module.attribution-import_file_bucket.arn}/*",
+    ]
+  }
+}
+
 module "attribution_import_function" {
   source = "github.com/CMSgov/cdap//terraform/modules/function?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
 
@@ -57,6 +104,12 @@ module "attribution_import_function" {
     APP_NAME = "${local.app}-${var.env}-attribution-import"
   }
   extra_kms_key_arns = local.extra_kms_key_arns
+}
+
+resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
+  name   = "attribution-import-bucket-rw"
+  role   = module.attribution_import_function.role_arn
+  policy = data.aws_iam_policy_document.attribution-import_bucket_rw.json
 }
 
 # Set up queue for receiving messages when a file is added to the bucket
