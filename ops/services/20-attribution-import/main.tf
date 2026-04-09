@@ -262,69 +262,29 @@ resource "aws_iam_role_policy_attachment" "attribution-import_file_bucket_rw" {
 # -------------------------------------------------------
 # attribution-import Lambda
 # -------------------------------------------------------
-resource "aws_s3_object" "dummy_file_upload" {
-  bucket = module.attribution-import_lambda_bucket.id
-  key    = local.lambda_filename
-  source = "${path.module}/${local.lambda_filename}"
+module "attribution_import_function" {
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
+
+  app = local.app
+  env = local.env
+
+  name        = local.service
+  description = "Ingests the most recent Attribution Import from est"
+
+  handler = "bootstrap"
+  runtime = "provided.al2023"
+
+  memory_size = 2048
+
+  environment_variables = {
+    ENV      = local.env
+    APP_NAME = local.name_prefix
+  }
+  extra_kms_key_arns = data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn
 }
 
-resource "aws_lambda_function" "this" {
-  s3_bucket         = aws_s3_object.dummy_file_upload.bucket
-  s3_key            = aws_s3_object.dummy_file_upload.key
-  s3_object_version = aws_s3_object.dummy_file_upload.version_id
-  package_type = "Zip"
-  handler      = "bootstrap"
-
-  function_name                  = local.name_prefix
-  description                    = "Ingests the most recent attribution import from BFD"
-  kms_key_arn                    = local.kms_key_arn_primary
-  memory_size                    = 2048
-  reserved_concurrent_executions = 1
-  role                           = aws_iam_role.this.arn
-  runtime                        = "provided.al2023"
-  skip_destroy                   = false
-  timeout                        = 900
-  architectures = [
-    "arm64",
-  ]
-
-  tags = {
-    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/attribution-import"
-  }
-
-  lifecycle {
-    ignore_changes = [
-      s3_object_version,
-      s3_key,
-    ]
-  }
-
-  environment {
-    variables = {
-      APP_NAME = local.name_prefix
-      DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
-      ENV      = local.env
-    }
-  }
-
-  ephemeral_storage {
-    size = 512
-  }
-
-  logging_config {
-    log_format = "Text"
-    log_group  = "/aws/lambda/bcda-${local.env}-${local.service}"
-  }
-
-  tracing_config {
-    mode = "Active"
-  }
-
-  vpc_config {
-    ipv6_allowed_for_dual_stack = false
-    security_group_ids          = [aws_security_group.this.id]
-    subnet_ids                  = local.private_subnets
-  }
+data "aws_kms_alias" "bcda_app_config_kms_key" {
+  name  = "alias/bcda-${local.env}-app-config-kms"
 }
 
 data "aws_rds_cluster" "this" {
