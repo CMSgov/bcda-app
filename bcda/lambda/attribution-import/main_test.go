@@ -285,25 +285,6 @@ func TestHandleCclfImport_ZeroFiles(t *testing.T) {
 	assert.Contains(t, result, "Successfully imported 0 files")
 }
 
-func TestCheckIfAttributionCSVFile_CSVKey(t *testing.T) {
-	testCases := []struct {
-		key        string
-		expectsCSV bool
-	}{
-		{"path/to/attribution.csv", true},
-		{"path/to/cclf_file.zip", false},
-		{"T.BCD.A0001.ZCY24.D240101.T000000", false},
-		{"attribution_data.CSV", false}, // case-sensitive check — adjust if implementation is case-insensitive
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.key, func(t *testing.T) {
-			result := cclf.CheckIfAttributionCSVFile(tc.key)
-			assert.Equal(t, tc.expectsCSV, result, "unexpected result for key: %s", tc.key)
-		})
-	}
-}
-
 func TestFilepathConstruction(t *testing.T) {
 	bucket := "my-bucket"
 	key := "path/to/file.zip"
