@@ -291,7 +291,7 @@ func TestCheckIfAttributionCSVFile_CSVKey(t *testing.T) {
 		{"path/to/attribution.csv", true},
 		{"path/to/cclf_file.zip", false},
 		{"T.BCD.A0001.ZCY24.D240101.T000000", false},
-		{"attribution_data.CSV", false}, // case-sensitive check — adjust if implementation is case-insensitive
+		{"attribution_data.CSV", false}, // case-sensitive check
 	}
 
 	for _, tc := range testCases {
