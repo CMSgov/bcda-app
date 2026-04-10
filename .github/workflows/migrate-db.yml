@@ -36,7 +36,7 @@ jobs:
   migrate_db:
     environment: ${{ inputs.env || 'dev' }}
     name: Migrate DB
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout BCDA
         uses: actions/checkout@v4
@@ -67,7 +67,7 @@ jobs:
         run: |
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ inputs.env || 'dev' }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
+          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up 2>&1
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0
