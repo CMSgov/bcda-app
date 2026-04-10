@@ -14,7 +14,7 @@ permissions:
 jobs:
   refresh_attribution:
     name: Refresh Attribution
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app${{ contains(fromJSON('["dev"]'), matrix.env) && '-non-prod' || ''}}-${{github.run_id}}-${{github.run_attempt}} 
     strategy:
       matrix:
         vars:
