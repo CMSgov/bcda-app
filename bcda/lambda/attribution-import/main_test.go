@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
