@@ -51,8 +51,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
-	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-	})
+	s3Client := s3.NewFromConfig(cfg)
 
 	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
