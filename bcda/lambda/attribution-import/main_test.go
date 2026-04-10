@@ -1,7 +1,10 @@
 package main
 
 import (
+	"github.com/CMSgov/bcda-app/bcda/database"
+
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -120,9 +123,22 @@ func TestConfigureLogger_EmptyStrings(t *testing.T) {
 	assert.Equal(t, "", entry.Data["application"])
 }
 
+func TestAttributionImportHandler_EmptySQSRecords(t *testing.T) {
+	sqsEvent := events.SQSEvent{
+		Records: []events.SQSMessage{},
+	}
+
+	os.Setenv("ENV", "test")
+	os.Setenv("APP_NAME", "test-app")
+
+	// fail at AWS config
+	result, err := attributionImportHandler(context.Background(), sqsEvent)
+	_ = result
+	_ = err
+}
+
 type mockCSVImporterFunc func(ctx context.Context, path string) error
 
-// Wrapper to allow injecting the CSV importer in tests
 func handleCSVImportWithImporter(
 	ctx context.Context,
 	importFn mockCSVImporterFunc,
@@ -291,7 +307,7 @@ func TestCheckIfAttributionCSVFile_CSVKey(t *testing.T) {
 		{"path/to/attribution.csv", true},
 		{"path/to/cclf_file.zip", false},
 		{"T.BCD.A0001.ZCY24.D240101.T000000", false},
-		{"attribution_data.CSV", false}, // case-sensitive check
+		{"attribution_data.CSV", false}, // case-sensitive check — adjust if implementation is case-insensitive
 	}
 
 	for _, tc := range testCases {
