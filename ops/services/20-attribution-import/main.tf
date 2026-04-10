@@ -116,7 +116,7 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
 }
 
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=a7850b1f5df3f7cdaf828b4cbb7dc08a7117d182"
 
   app = local.app
   env = var.env
