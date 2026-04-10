@@ -191,6 +191,11 @@ module "attribution-import_file_bucket" {
   ssm_parameter = "/${local.app}/${var.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
+resource "aws_sns_topic" "this" {
+  name              = "${local.full_name}-topic"
+  kms_master_key_id = "alias/bcda-${var.env}"
+}
+
 data "aws_iam_policy_document" "topic" {
   statement {
     principals {
@@ -209,14 +214,8 @@ data "aws_iam_policy_document" "topic" {
   }
 }
 
-resource "aws_sns_topic" "this" {
-  name              = "${local.full_name}-topic"
-  kms_master_key_id = "alias/bcda-${var.env}"
-}
-
 resource "aws_sns_topic_policy" "this" {
-  arn = aws_sns_topic.this.arn
-
+  arn    = aws_sns_topic.this.arn
   policy = data.aws_iam_policy_document.topic.json
 }
 
@@ -225,8 +224,6 @@ resource "aws_sns_topic_subscription" "this" {
   protocol  = "sqs"
   topic_arn = aws_sns_topic.this.arn
 }
-
-# Add a rule to the database security group to allow access from the function
 
 data "aws_security_group" "db" {
   name = local.db_sg_name
