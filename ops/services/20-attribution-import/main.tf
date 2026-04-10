@@ -105,9 +105,6 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
       "s3:DeleteObjectVersion",
       "s3:AbortMultipartUpload",
       "s3:ListMultipartUploadParts",
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents",
     ]
     resources = [
       "${module.attribution-import_file_bucket.arn}/*", "arn:aws:logs:*:*:*"
