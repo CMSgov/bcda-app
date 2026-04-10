@@ -245,3 +245,12 @@ resource "aws_security_group_rule" "function_access" {
   security_group_id        = data.aws_security_group.db.id
   source_security_group_id = module.attribution_import_function.security_group_id
 }
+
+resource "aws_s3_bucket_notification" "this" {
+  bucket = module.attribution-import_file_bucket.id
+
+  topic {
+    topic_arn = aws_sns_topic.this.arn
+    events    = ["s3:ObjectCreated:*"]
+  }
+}
