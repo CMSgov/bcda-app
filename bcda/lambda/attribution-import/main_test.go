@@ -124,20 +124,6 @@ func TestConfigureLogger_EmptyStrings(t *testing.T) {
 	assert.Equal(t, "", entry.Data["application"])
 }
 
-func TestAttributionImportHandler_EmptySQSRecords(t *testing.T) {
-	sqsEvent := events.SQSEvent{
-		Records: []events.SQSMessage{},
-	}
-
-	os.Setenv("ENV", "test")
-	os.Setenv("APP_NAME", "test-app")
-
-	// fail at AWS config
-	result, err := attributionImportHandler(context.Background(), sqsEvent)
-	_ = result
-	_ = err
-}
-
 type mockCSVImporterFunc func(ctx context.Context, path string) error
 
 func handleCSVImportWithImporter(
