@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 # Ensure we have only one integration test running at a time
 concurrency:
@@ -31,6 +30,9 @@ jobs:
       deploy_env: test
 
   trigger:
+    permissions:
+      contents: read
+      id-token: write
     if: ${{ always() }}
     needs: deploy
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.environment) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
