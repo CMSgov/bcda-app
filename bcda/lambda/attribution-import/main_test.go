@@ -42,13 +42,13 @@ func TestAttributionImportMainSuite(t *testing.T) {
 	suite.Run(t, new(AttributionImportMainSuite))
 }
 
-func TestHandleCSVImport_NoACOConfig(t *testing.T) {
+func TestHandleCSVImportNoACOConfig(t *testing.T) {
 	s3Client := &bcdaaws.MockS3Client{}
 	pool := database.ConnectPool()
 
-	path := "../../../shared_files/csv/valid.csv"
+	path := "../../../sharedfiles/csv/valid.csv"
 
-	_, err := handleCSVImport(context.Background(), pool, s3Client, path)
+	, err := handleCSVImport(context.Background(), pool, s3Client, path)
 	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
 }
 
@@ -92,7 +92,7 @@ func TestAttributionImportHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(AttributionImportHandlerTestSuite))
 }
 
-func TestConfigureLogger_ReturnsEntryWithFields(t *testing.T) {
+func TestConfigureLoggerReturnsEntryWithFields(t *testing.T) {
 	entry := configureLogger("test-env", "test-app")
 
 	assert.NotNil(t, entry)
@@ -100,7 +100,7 @@ func TestConfigureLogger_ReturnsEntryWithFields(t *testing.T) {
 	assert.Equal(t, "test-app", entry.Data["application"])
 }
 
-func TestConfigureLogger_JSONFormatter(t *testing.T) {
+func TestConfigureLoggerJSONFormatter(t *testing.T) {
 	entry := configureLogger("dev", "bcda")
 	assert.NotNil(t, entry)
 
@@ -111,12 +111,12 @@ func TestConfigureLogger_JSONFormatter(t *testing.T) {
 	assert.Equal(t, time.RFC3339Nano, formatter.TimestampFormat)
 }
 
-func TestConfigureLogger_ReportCallerEnabled(t *testing.T) {
+func TestConfigureLoggerReportCallerEnabled(t *testing.T) {
 	entry := configureLogger("prod", "bcda")
 	assert.True(t, entry.Logger.ReportCaller)
 }
 
-func TestConfigureLogger_EmptyStrings(t *testing.T) {
+func TestConfigureLoggerEmptyStrings(t *testing.T) {
 	entry := configureLogger("", "")
 	assert.NotNil(t, entry)
 	assert.Equal(t, "", entry.Data["environment"])
@@ -140,7 +140,7 @@ func handleCSVImportWithImporter(
 	return result, nil
 }
 
-func TestHandleCSVImport_Success(t *testing.T) {
+func TestHandleCSVImportSuccess(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 	called := false
 
@@ -158,7 +158,7 @@ func TestHandleCSVImport_Success(t *testing.T) {
 	assert.Contains(t, result, "bucket/some/csv/file.csv")
 }
 
-func TestHandleCSVImport_ImportError(t *testing.T) {
+func TestHandleCSVImportImportError(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 	importErr := errors.New("csv import failed")
 
@@ -200,7 +200,7 @@ func handleCclfImportWithImporter(
 	return result, nil
 }
 
-func TestHandleCclfImport_Success(t *testing.T) {
+func TestHandleCclfImportSuccess(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 
 	importFn := func(path string) (int, int, int, error) {
@@ -214,7 +214,7 @@ func TestHandleCclfImport_Success(t *testing.T) {
 	assert.Contains(t, result, "Successfully imported 5 files")
 }
 
-func TestHandleCclfImport_WithFailures(t *testing.T) {
+func TestHandleCclfImportWithFailures(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 
 	importFn := func(path string) (int, int, int, error) {
@@ -229,7 +229,7 @@ func TestHandleCclfImport_WithFailures(t *testing.T) {
 	assert.Contains(t, result, "Failed to import Attribution 2 files")
 }
 
-func TestHandleCclfImport_WithSkipped(t *testing.T) {
+func TestHandleCclfImportWithSkipped(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 
 	importFn := func(path string) (int, int, int, error) {
@@ -243,7 +243,7 @@ func TestHandleCclfImport_WithSkipped(t *testing.T) {
 	assert.Contains(t, result, "Skipped 1 Attribution files")
 }
 
-func TestHandleCclfImport_WithFailuresAndSkipped(t *testing.T) {
+func TestHandleCclfImportWithFailuresAndSkipped(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 
 	importFn := func(path string) (int, int, int, error) {
@@ -257,7 +257,7 @@ func TestHandleCclfImport_WithFailuresAndSkipped(t *testing.T) {
 	assert.Contains(t, result, "Skipped 3 Attribution files")
 }
 
-func TestHandleCclfImport_ImportError(t *testing.T) {
+func TestHandleCclfImportImportError(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 	importErr := errors.New("directory import failed")
 
@@ -272,7 +272,7 @@ func TestHandleCclfImport_ImportError(t *testing.T) {
 	assert.Empty(t, result)
 }
 
-func TestHandleCclfImport_ZeroFiles(t *testing.T) {
+func TestHandleCclfImportZeroFiles(t *testing.T) {
 	logger := configureLogger("test", "test-app")
 
 	importFn := func(path string) (int, int, int, error) {
@@ -294,7 +294,7 @@ func TestFilepathConstruction(t *testing.T) {
 	assert.Equal(t, expected, filepath)
 }
 
-func TestFilepathConstruction_NestedKey(t *testing.T) {
+func TestFilepathConstructionNestedKey(t *testing.T) {
 	bucket := "bcda-prod-bucket"
 	key := "cclf/T.BCD.A0001.ZCY24.D240101.T000000"
 	expected := "bcda-prod-bucket/cclf/T.BCD.A0001.ZCY24.D240101.T000000"
@@ -303,7 +303,7 @@ func TestFilepathConstruction_NestedKey(t *testing.T) {
 	assert.Equal(t, expected, filepath)
 }
 
-func TestSQSEventRouting_ObjectCreated(t *testing.T) {
+func TestSQSEventRoutingObjectCreated(t *testing.T) {
 	eventNames := []string{
 		"ObjectCreated:Put",
 		"ObjectCreated:Post",
@@ -311,40 +311,40 @@ func TestSQSEventRouting_ObjectCreated(t *testing.T) {
 		"ObjectCreated:CompleteMultipartUpload",
 	}
 
-	for _, name := range eventNames {
+	for , name := range eventNames {
 		t.Run(name, func(t *testing.T) {
 			assert.True(t, strings.Contains(name, "ObjectCreated"))
 		})
 	}
 }
 
-func TestSQSEventRouting_NoObjectCreated(t *testing.T) {
+func TestSQSEventRoutingNoObjectCreated(t *testing.T) {
 	eventNames := []string{
 		"ObjectRemoved:Delete",
 		"ObjectRestore:Post",
 		"ReducedRedundancyLostObject",
 	}
 
-	for _, name := range eventNames {
+	for , name := range eventNames {
 		t.Run(name, func(t *testing.T) {
 			assert.False(t, strings.Contains(name, "ObjectCreated"))
 		})
 	}
 }
 
-func TestLoadBCDAParams_SetsEnv(t *testing.T) {
+func TestLoadBCDAParamsSetsEnv(t *testing.T) {
 	os.Setenv("ENV", "test")
 	err := loadBCDAParams()
 	assert.NoError(t, err)
 }
 
-func TestResultMessage_CSVFormat(t *testing.T) {
+func TestResultMessageCSVFormat(t *testing.T) {
 	path := "my-bucket/path/to/file.csv"
 	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v.   See logs for more details.", path)
 	assert.Equal(t, "Completed CSV import.  Successfully imported my-bucket/path/to/file.csv.   See logs for more details.", result)
 }
 
-func TestResultMessage_CCLFSuccessFormat(t *testing.T) {
+func TestResultMessageCCLFSuccessFormat(t *testing.T) {
 	result := fmt.Sprintf(
 		"Completed Attribution import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.",
 		10, 0, 0,
@@ -354,7 +354,7 @@ func TestResultMessage_CCLFSuccessFormat(t *testing.T) {
 	assert.Contains(t, result, "Skipped 0 files")
 }
 
-func TestResultMessage_CCLFFailureFormat(t *testing.T) {
+func TestResultMessageCCLFFailureFormat(t *testing.T) {
 	result := fmt.Sprintf(
 		"Successfully imported Attribution %v files.  Failed to import Attribution %v files.  Skipped %v Attribution files.  See logs for more details.",
 		3, 2, 1,
@@ -365,8 +365,8 @@ func TestResultMessage_CCLFFailureFormat(t *testing.T) {
 }
 
 var (
-	_ = (*pgxpool.Pool)(nil)
-	_ = bcdaaws.CustomS3Client(nil)
-	_ = cclf.S3FileProcessor{}
-	_ = optout.S3FileHandler{}
+	 = (*pgxpool.Pool)(nil)
+	 = bcdaaws.CustomS3Client(nil)
+	 = cclf.S3FileProcessor{}
+	 = optout.S3FileHandler{}
 )
