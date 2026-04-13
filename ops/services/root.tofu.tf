@@ -2,7 +2,7 @@
 # _all_ Terraservices, so be careful!
 
 locals {
-  app              = "bcda"
+
   established_envs = ["dev", "test", "sandbox", "prod"]
 
   parent_env = coalesce(

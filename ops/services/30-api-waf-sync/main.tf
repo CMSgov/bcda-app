@@ -1,6 +1,6 @@
 locals {
-  app = "bcda"
-  service = "api-waf-sync"
+  app        = "bcda"
+  service    = "api-waf-sync"
   full_name  = "${local.app}-${var.env}-api-waf-sync"
   db_sg_name = "${local.app}-${var.env}-db"
 }
@@ -20,6 +20,20 @@ data "aws_rds_cluster" "this" {
 data "aws_security_groups" "db" {
   tags = {
     Name = "bcda-${var.env}-db"
+  }
+}
+
+module "platform" {
+  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
+
+  providers = { aws = aws, aws.secondary = aws.secondary }
+
+  app         = local.app
+  env         = var.env
+  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
+  service     = local.service
+  ssm_root_map = {
+    bene-prefs = "/bcda/${var.env}/${local.service}/"
   }
 }
 
@@ -43,7 +57,7 @@ module "api_waf_sync_function" {
 
   environment_variables = {
     ENV      = var.env
-    APP_NAME = "${local.service_prefix}-${local.service}"
+    APP_NAME = "${local.app}-${var.env}-${local.service}"
     DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
   }
 
