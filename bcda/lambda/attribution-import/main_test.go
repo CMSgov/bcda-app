@@ -131,7 +131,7 @@ func handleCSVImportWithImporter(
 	s3ImportPath string,
 	logger *logrus.Entry,
 ) (string, error) {
-	_, err := importFn(ctx, s3ImportPath)
+	err := importFn(ctx, s3ImportPath)
 	if err != nil {
 		logger.Error("error returned from ImportCSV: ", err)
 		return "", err
