@@ -177,6 +177,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 	return resourceTypes, true
 }
 
+// validateTypeFilterParameter parses the _typeFilter subquery and validates its contents.
+// For _tag, it validates each comma-separated token to correctly resolve compound query filters.
 func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([]TypeFilterParameter, bool) {
 	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -240,16 +242,19 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				return nil, false
 			}
 
-			if slices.Contains([]string{"service-date", "_tag"}, paramName) {
+			if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
 				if paramName == "_tag" {
-					if err := validateTagSubqueryParameter(paramValue); err != nil {
-						ctx, _ = log.WriteWarnWithFields(
-							ctx,
-							fmt.Sprintf("%s: %s", responseutils.RequestErr, err.Error()),
-							logrus.Fields{"resp_status": http.StatusBadRequest},
-						)
-						rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
-						return nil, false
+					tags := strings.Split(paramValue, ",")
+					for _, tag := range tags {
+						if err := validateTagSubqueryParameter(tag); err != nil {
+							ctx, _ = log.WriteWarnWithFields(
+								ctx,
+								fmt.Sprintf("%s: %s", responseutils.RequestErr, err.Error()),
+								logrus.Fields{"resp_status": http.StatusBadRequest},
+							)
+							rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+							return nil, false
+						}
 					}
 				}
 				// TODO: add service-date validation
