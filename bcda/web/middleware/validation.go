@@ -28,7 +28,18 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    [][]string
+	TypeFilter    []TypeFilterParameter
+}
+
+type TypeFilterParameter struct {
+	ResourceType    string
+	QueryParameters []TypeFilterSubqueryParam
+}
+
+type TypeFilterSubqueryParam struct {
+	Name     string
+	Modifier string
+	Value    string
 }
 
 // const BBSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Adjudication-Status"
@@ -166,14 +177,14 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 	return resourceTypes, true
 }
 
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([][]string, bool) {
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([]TypeFilterParameter, bool) {
 	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
 	if version != constants.V3Version || !ok {
 		return nil, true
 	}
 
-	var typeFilterParams [][]string
+	var typeFilterParams []TypeFilterParameter
 	for _, subQuery := range params {
 		// The subquery is url-encoded. So we will first decode so we can parse it
 		decodedQuery, err := url.QueryUnescape(subQuery)
@@ -213,6 +224,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 			return nil, false
 		}
 
+		var typeFilterSubqueryParams []TypeFilterSubqueryParam
 		// Loop through the param list from the subquery
 		paramAry := strings.Split(queryParams, "&")
 		for _, paramPair := range paramAry {
@@ -241,7 +253,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 					}
 				}
 				// TODO: add service-date validation
-				typeFilterParams = append(typeFilterParams, []string{paramName, paramValue})
+				typeFilterSubqueryParams = append(typeFilterSubqueryParams, TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
 			} else {
 				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
 				ctx, _ = log.WriteWarnWithFields(
@@ -253,6 +265,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				return nil, false
 			}
 		}
+		typeFilterParams = append(typeFilterParams, TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams})
 	}
 	return typeFilterParams, true
 }
