@@ -2,8 +2,8 @@
 # _all_ Terraservices, so be careful!
 
 locals {
+  app              = "bcda"
   established_envs = ["dev", "test", "sandbox", "prod"]
-  service_prefix   = "${local.app}-${var.env}"
 
   parent_env = coalesce(
     var.parent_env,
@@ -49,7 +49,7 @@ variable "parent_env" {
 provider "aws" {
   region = var.region
   default_tags {
-    tags = local.default_tags
+    tags = module.platform.default_tags
   }
 }
 
@@ -58,7 +58,7 @@ provider "aws" {
 
   region = var.secondary_region
   default_tags {
-    tags = local.default_tags
+    tags = module.platform.default_tags
   }
 }
 
