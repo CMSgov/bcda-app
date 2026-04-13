@@ -48,7 +48,7 @@ func TestHandleCSVImportNoACOConfig(t *testing.T) {
 
 	path := "../../../sharedfiles/csv/valid.csv"
 
-	err := handleCSVImport(context.Background(), pool, s3Client, path)
+	_,err := handleCSVImport(context.Background(), pool, s3Client, path)
 	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
 }
 
@@ -131,7 +131,7 @@ func handleCSVImportWithImporter(
 	s3ImportPath string,
 	logger *logrus.Entry,
 ) (string, error) {
-	err := importFn(ctx, s3ImportPath)
+	_, err := importFn(ctx, s3ImportPath)
 	if err != nil {
 		logger.Error("error returned from ImportCSV: ", err)
 		return "", err
@@ -334,7 +334,7 @@ func TestSQSEventRoutingNoObjectCreated(t *testing.T) {
 
 func TestLoadBCDAParamsSetsEnv(t *testing.T) {
 	os.Setenv("ENV", "test")
-	err := loadBCDAParams()
+	-, err := loadBCDAParams()
 	assert.NoError(t, err)
 }
 
