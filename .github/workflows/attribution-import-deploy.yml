@@ -26,11 +26,11 @@ on:
         type: string
 
 env:
-  DEPLOY_ENV: ${{ inputs.deploy_env || 'dev' }}
+  DEPLOY_ENV: ${{ inputs.deploy_env || 'test' }}
 
 jobs:
   test:
-    environment: ${{ inputs.deploy_env || 'dev' }}
+    environment: ${{ inputs.deploy_env || 'test' }}
     permissions:
       contents: read
       id-token: write
