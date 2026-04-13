@@ -3,6 +3,6 @@ variable "env" {
   type        = string
   validation {
     condition     = contains(["dev", "test", "sandbox", "prod"], var.env)
-    error_message = "Valid value for env is dev, test, sbx, sandbox, or prod."
+    error_message = "Valid value for env is dev, test, sandbox, or prod."
   }
 }

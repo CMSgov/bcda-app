@@ -1,30 +1,45 @@
 locals {
-  full_name   = "${var.app}-${var.env}-admin-create-group"
+  full_name   = "${local.app}-${var.env}-admin-create-group"
   db_sg_name  = "bcda-${var.env}-db"
   memory_size = 2048
+  service     = "admin-create-group"
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
   name = "alias/bcda-${var.env}-app-config-kms"
 }
 
-module "admin_create_group_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2f21bef1de2d6fd1326e7106699250f610f4c66c"
+module "platform" {
+  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
 
-  app = var.app
+  providers = { aws = aws, aws.secondary = aws.secondary }
+
+  app         = local.app
+  env         = var.env
+  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
+  service     = local.service
+  ssm_root_map = {
+    bene-prefs = "/bcda/${var.env}/${local.service}/"
+  }
+}
+
+module "admin_create_group_function" {
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
+
+  app = local.app
   env = var.env
 
   name        = local.full_name
   description = "Creates a group for the supplied CMS ID."
 
   handler = "bootstrap"
-  runtime = "provided.al2"
+  runtime = "provided.al2023"
 
   memory_size = local.memory_size
 
   environment_variables = {
     ENV      = var.env
-    APP_NAME = "${var.app}-${var.env}-admin-create-group"
+    APP_NAME = "${local.app}-${var.env}-admin-create-group"
   }
 
   extra_kms_key_arns = [data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn]
