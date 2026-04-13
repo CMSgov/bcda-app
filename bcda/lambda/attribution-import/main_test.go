@@ -364,6 +364,7 @@ func TestResultMessageCCLFFailureFormat(t *testing.T) {
 	assert.Contains(t, result, "Skipped 1 Attribution files")
 }
 
+// compile-time type check
 var (
 	_ = (*pgxpool.Pool)(nil)
 	_ = bcdaaws.CustomS3Client(nil)
