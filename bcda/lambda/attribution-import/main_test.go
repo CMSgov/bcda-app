@@ -48,7 +48,7 @@ func TestHandleCSVImportNoACOConfig(t *testing.T) {
 
 	path := "../../../sharedfiles/csv/valid.csv"
 
-	_,err := handleCSVImport(context.Background(), pool, s3Client, path)
+	_, err := handleCSVImport(context.Background(), pool, s3Client, path)
 	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
 }
 
