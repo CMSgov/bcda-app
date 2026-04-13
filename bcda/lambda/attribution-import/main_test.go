@@ -334,7 +334,7 @@ func TestSQSEventRoutingNoObjectCreated(t *testing.T) {
 
 func TestLoadBCDAParamsSetsEnv(t *testing.T) {
 	os.Setenv("ENV", "test")
-	-, err := loadBCDAParams()
+	_, err := loadBCDAParams()
 	assert.NoError(t, err)
 }
 
