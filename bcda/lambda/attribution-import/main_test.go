@@ -48,7 +48,7 @@ func TestHandleCSVImportNoACOConfig(t *testing.T) {
 
 	path := "../../../sharedfiles/csv/valid.csv"
 
-	, err := handleCSVImport(context.Background(), pool, s3Client, path)
+	err := handleCSVImport(context.Background(), pool, s3Client, path)
 	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
 }
 
@@ -311,7 +311,7 @@ func TestSQSEventRoutingObjectCreated(t *testing.T) {
 		"ObjectCreated:CompleteMultipartUpload",
 	}
 
-	for , name := range eventNames {
+	for _, name := range eventNames {
 		t.Run(name, func(t *testing.T) {
 			assert.True(t, strings.Contains(name, "ObjectCreated"))
 		})
@@ -325,7 +325,7 @@ func TestSQSEventRoutingNoObjectCreated(t *testing.T) {
 		"ReducedRedundancyLostObject",
 	}
 
-	for , name := range eventNames {
+	for _, name := range eventNames {
 		t.Run(name, func(t *testing.T) {
 			assert.False(t, strings.Contains(name, "ObjectCreated"))
 		})
@@ -365,8 +365,8 @@ func TestResultMessageCCLFFailureFormat(t *testing.T) {
 }
 
 var (
-	 = (*pgxpool.Pool)(nil)
-	 = bcdaaws.CustomS3Client(nil)
-	 = cclf.S3FileProcessor{}
-	 = optout.S3FileHandler{}
+	_ = (*pgxpool.Pool)(nil)
+	_ = bcdaaws.CustomS3Client(nil)
+	_ = cclf.S3FileProcessor{}
+	_ = optout.S3FileHandler{}
 )
