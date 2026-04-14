@@ -83,9 +83,9 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 
 			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
-				result, err = handleCSVImport(ctx, pool, s3Client, filepath)
+				_, err = handleCSVImport(ctx, pool, s3Client, filepath)
 			} else {
-				result, err = handleCclfImport(ctx, pool, s3Client, filepath)
+				_, err = handleCclfImport(ctx, pool, s3Client, filepath)
 			}
 		}
 	}
