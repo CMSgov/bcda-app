@@ -104,7 +104,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 }
 
 func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	log = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+	log := logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	err := loadBCDAParams()
 	if err != nil {
@@ -135,7 +135,7 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.C
 }
 
 func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	log = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+	log := logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	err := loadBCDAParams()
 	if err != nil {
