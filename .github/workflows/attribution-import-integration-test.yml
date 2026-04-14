@@ -123,6 +123,7 @@ jobs:
             echo "cclf_file query returned zero results or command failed"
             exit 1
           else
+          
             # Verify that the correct number of benes were imported into the database.
             CCLF_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
             echo "CCLF_BENES: $CCLF_BENES"
@@ -143,6 +144,7 @@ jobs:
             echo "CSV: csv_file query returned zero results or command failed"
             exit 1
           else
+          
             # Verify that the correct number of benes were imported into the database.
             CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
             echo "CSV_BENES: $CSV_BENES"
@@ -157,21 +159,22 @@ jobs:
           fi
 
           # Verify that we have a record of the GUIDE CSV file in the database
-          GUIDE_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$GUIDEFILENAME' LIMIT 1" 2>&1`
-          echo "GUIDE_FILE: $GUIDE_FILE"
-          if [[ $? -ne 0 || -z $GUIDE_FILE ]]; then
+          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
+          echo "CSV_FILE: $CSV_FILE"
+          if [[ $? -ne 0 || -z $CSV_FILE ]]; then
             echo "GUIDE CSV: csv_file query returned zero results or command failed"
             exit 1
           else
+          
             # Verify that the correct number of benes were imported into the database.
-            GUIDE_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $GUIDE_FILE" 2>&1`
-            echo "GUIDE_BENES: $GUIDE_BENES"
-            if [[ $? -ne 0 || -z $GUIDE_BENES ]]; then
+            CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
+            echo "CSV_BENES: $CSV_BENES"
+            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
               echo "GUIDE CSV: beneficiaries query returned zero results or command failed"
               exit 1
             fi
-            if [[ $(echo $GUIDE_BENES | xargs) != "5" ]]; then
-              echo "expected 5 beneficiaries imported from file, received $GUIDE_BENES".
+            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
               exit 1
             fi
           fi
