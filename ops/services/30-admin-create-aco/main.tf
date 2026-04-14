@@ -1,4 +1,5 @@
 locals {
+  app         = "bcda"
   service     = "admin-create-aco"
   full_name   = "${local.app}-${var.env}-admin-create-aco"
   db_sg_name  = "bcda-${var.env}-db"
@@ -18,9 +19,6 @@ module "platform" {
   env         = var.env
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
-  ssm_root_map = {
-    bene-prefs = "/bcda/${var.env}/${local.service}/"
-  }
 }
 
 

@@ -2,9 +2,7 @@
 # _all_ Terraservices, so be careful!
 
 locals {
-
   established_envs = ["dev", "test", "sandbox", "prod"]
-
   parent_env = coalesce(
     var.parent_env,
     one([for x in local.established_envs : x if can(regex("${x}$$", terraform.workspace))]),
