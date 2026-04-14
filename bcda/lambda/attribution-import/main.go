@@ -15,6 +15,7 @@ import (
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -59,6 +60,7 @@ func init() {
 			logger.Fatalf("failed to set DATABASE_URL: %v", err)
 		}
 	}
+	pool = database.ConnectPool()
 }
 
 func main() {
