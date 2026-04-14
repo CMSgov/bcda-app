@@ -66,8 +66,6 @@ func main() {
 }
 
 func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
-	env := conf.GetEnv("ENV")
-	appName := conf.GetEnv("APP_NAME")
 	// Reuse package-level logger with per-invocation fields if needed
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
@@ -101,8 +99,6 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 }
 
 func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	env := conf.GetEnv("ENV")
-	appName := conf.GetEnv("APP_NAME")
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	err := loadBCDAParams()
@@ -134,8 +130,6 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.C
 }
 
 func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	env := conf.GetEnv("ENV")
-	appName := conf.GetEnv("APP_NAME")
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	err := loadBCDAParams()
