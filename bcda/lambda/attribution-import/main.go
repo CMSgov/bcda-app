@@ -36,7 +36,6 @@ var (
 func init() {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
-	logger = configureLogger(env, appName)
 
 	ctx := context.Background()
 
@@ -68,7 +67,6 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	// Reuse package-level logger with per-invocation fields if needed
-	logger := configureLogger(env, appName)
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 	if err != nil {
