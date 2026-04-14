@@ -23,9 +23,7 @@ jobs:
   deploy:
     if: ${{ github.event_name == 'pull_request' }}
     uses: ./.github/workflows/attribution-import-deploy.yml
-    secrets:
-      NON_PROD_ACCOUNT_ID: ${{ secrets.NON_PROD_ACCOUNT_ID }}
-      required: true
+    secrets: secrets.NON_PROD_ACCOUNT_ID
     with:
       deploy_env: test
 
