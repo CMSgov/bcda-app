@@ -49,11 +49,6 @@ func init() {
 	ssmClient = ssm.NewFromConfig(cfg)
 	s3Client = s3.NewFromConfig(cfg)
 
-	// 	for unit testing
-	if env == "local" {
-		env := "test"
-	}
-
 	dbURL, err = bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
 		logger.Fatalf("failed to load DB URL: %v", err)
