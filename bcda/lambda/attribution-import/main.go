@@ -172,12 +172,10 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	return result, nil
 }
 
-func loadBCDAParams() error {
-    env := conf.GetEnv("ENV")
-    if err := conf.LoadLambdaEnvVars(env); err != nil {
-        return err
-    }
-    return nil
+func loadBCDAParams() {
+	env := conf.GetEnv("ENV")
+	conf.LoadLambdaEnvVars(env)
+	return nil
 }
 
 func configureLogger(env, appName string) *logrus.Entry {
