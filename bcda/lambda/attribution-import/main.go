@@ -49,7 +49,7 @@ func init() {
 	ssmClient = ssm.NewFromConfig(cfg)
 	s3Client = s3.NewFromConfig(cfg)
 
-dbURL = conf.GetEnv("DATABASE_URL")
+	dbURL = conf.GetEnv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL, err = bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 		if err != nil {
@@ -60,6 +60,7 @@ dbURL = conf.GetEnv("DATABASE_URL")
 			logger.Fatalf("failed to set DATABASE_URL: %v", err)
 		}
 	}
+}
 
 func main() {
 	lambda.Start(attributionImportHandler)
