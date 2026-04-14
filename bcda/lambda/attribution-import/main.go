@@ -39,7 +39,7 @@ func init() {
 
 	ctx := context.Background()
 
-	logger := configureLogger(env, appName)
+	logger = configureLogger(env, appName)
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -76,6 +76,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		logger.Info("No S3 event found, skipping safely.")
 		return "", nil
 	}
+	var errs []error
 
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
@@ -87,7 +88,15 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			} else {
 				_, err = handleCclfImport(ctx, pool, s3Client, filepath)
 			}
+
+			if err != nil {
+				errs = append(errs, err)
+			}
 		}
+	}
+
+	if len(errs) > 0 {
+		return "", errors.Join(errs...)
 	}
 
 	logger.Info("No S3 ObjectCreated events found, skipping safely.")
@@ -95,7 +104,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 }
 
 func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+	log = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	err := loadBCDAParams()
 	if err != nil {
@@ -103,30 +112,30 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.C
 	}
 
 	importer := cclf.CSVImporter{
-		Logger:  logger,
+		Logger:  log,
 		PgxPool: pool,
 		FileProcessor: &cclf.S3FileProcessor{
 			Handler: optout.S3FileHandler{
 				Client: s3Client,
-				Logger: logger,
+				Logger: log,
 			},
 		},
 	}
 
 	err = importer.ImportCSV(ctx, s3ImportPath)
 	if err != nil {
-		logger.Error("error returned from ImportCSV: ", err)
+		log.Error("error returned from ImportCSV: ", err)
 		return "", err
 	}
 
 	result := fmt.Sprintf("Completed CSV import.  Successfully imported %v.   See logs for more details.", s3ImportPath)
-	logger.Info(result)
+	log.Info(result)
 
 	return result, nil
 }
 
 func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+	log = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
 	err := loadBCDAParams()
 	if err != nil {
@@ -136,27 +145,27 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	fileProcessor := cclf.S3FileProcessor{
 		Handler: optout.S3FileHandler{
 			Client: s3Client,
-			Logger: logger,
+			Logger: log,
 		},
 	}
 
-	importer := cclf.NewCclfImporter(logger, &fileProcessor, pool)
+	importer := cclf.NewCclfImporter(log, &fileProcessor, pool)
 	success, failure, skipped, err := importer.ImportCCLFDirectory(s3ImportPath)
 	if err != nil {
-		logger.Error("error returned from ImportCCLFDirectory: ", err)
+		log.Error("error returned from ImportCCLFDirectory: ", err)
 		return "", err
 	}
 
 	if failure > 0 || skipped > 0 {
 		result := fmt.Sprintf("Successfully imported Attribution %v files.  Failed to import Attribution %v files.  Skipped %v Attribution files.  See logs for more details.", success, failure, skipped)
-		logger.Error(result)
+		log.Error(result)
 
 		err = errors.New("files skipped or failed import. See logs for more details")
 		return result, err
 	}
 
 	result := fmt.Sprintf("Completed Attribution import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
-	logger.Info(result)
+	log.Info(result)
 
 	return result, nil
 }
