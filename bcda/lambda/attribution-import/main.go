@@ -77,15 +77,11 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 		return "", nil
 	}
 
-	var results []string
-	var errs []error
-
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 
-			var result string
 			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
 				result, err = handleCSVImport(ctx, pool, s3Client, filepath)
 			} else {
