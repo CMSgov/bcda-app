@@ -1,4 +1,4 @@
-name: attribution-import-import lambda deploy
+name: attribution-import lambda deploy
 
 on:
   push:
