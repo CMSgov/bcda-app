@@ -830,7 +830,7 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 }
 
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
-// tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes. 
+// tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
 func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter [][]string, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
