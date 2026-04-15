@@ -52,7 +52,7 @@ jobs:
           export MANUAL_TAG_ARGS="-t ${{ env.PREVIOUS_RELEASE_VERSION }} ${{ env.NEXT_RELEASE_VERSION }}"
           echo "MANUAL_TAG_ARGS=$MANUAL_TAG_ARGS" >> $GITHUB_ENV
       - name: Checkout BCDA-OPS
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-ops
           ref: ${{ env.OPS_RELEASE_VERSION }}
@@ -69,7 +69,7 @@ jobs:
             ./scripts/tag_and_release/release.sh
             ./scripts/tag_and_release/github_release.py
       - name: Checkout BCDA
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-app 
           ref: ${{ env.RELEASE_VERSION }}

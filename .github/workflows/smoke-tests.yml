@@ -137,7 +137,7 @@ jobs:
             V3_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/${{ env.creds }}_v3_client_credentials
       - name: checkout bcda-ssas
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-ssas-app
           ref: ${{ inputs.ssas_release_version || 'main' }}
