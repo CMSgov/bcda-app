@@ -120,7 +120,7 @@ jobs:
         if: ${{ env.TEST_ACO != 'dev' }}
         run: |
           echo "creds=${{ env.TEST_ACO }}" >> $GITHUB_ENV
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
