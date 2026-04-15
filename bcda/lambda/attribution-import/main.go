@@ -65,9 +65,7 @@ func setup() error {
 }
 
 func main() {
-	if err := setup(); err != nil {
-		log.Fatalf("failed to initialize: %v", err)
-	}
+	setup();
 	lambda.Start(attributionImportHandler)
 }
 
