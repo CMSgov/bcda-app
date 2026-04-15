@@ -37,7 +37,7 @@ jobs:
         working-directory: bcda
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-cclf-import-function
@@ -48,7 +48,7 @@ jobs:
         with:
           params: | 
             BFD_ACCOUNT_ID=/bfd/account-id
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
@@ -95,7 +95,7 @@ jobs:
             s3://bfd-test-eft/bfdeft01/bcda/in/test/${guidecsvname}
       # Give a bit of time for lambdas to process files
       - run: sleep 60
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions
