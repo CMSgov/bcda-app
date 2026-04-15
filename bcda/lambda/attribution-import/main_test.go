@@ -45,6 +45,7 @@ func TestAttributionImportMainSuite(t *testing.T) {
 
 func TestHandleCSVImportNoACOConfig(t *testing.T) {
 	s3Client := &bcdaaws.MockS3Client{}
+  	pool := database.ConnectPool()
 
 	_, err := handleCSVImport(context.Background(), pool, s3Client, "../../../sharedfiles/csv/valid.csv")
 	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
