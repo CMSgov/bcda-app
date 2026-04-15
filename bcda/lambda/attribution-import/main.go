@@ -33,7 +33,7 @@ var (
 	logger    *logrus.Entry
 )
 
-func init() {
+func setup() error {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 
@@ -61,9 +61,13 @@ func init() {
 		}
 	}
 	pool = database.ConnectPool()
+	return nil
 }
 
 func main() {
+	if err := setup(); err != nil {
+		log.Fatalf("failed to initialize: %v", err)
+	}
 	lambda.Start(attributionImportHandler)
 }
 
