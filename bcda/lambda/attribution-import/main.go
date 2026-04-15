@@ -172,7 +172,7 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	return result, nil
 }
 
-func loadBCDAParams() error{
+func loadBCDAParams() error {
 	env := conf.GetEnv("ENV")
 	conf.LoadLambdaEnvVars(env)
 	return nil
