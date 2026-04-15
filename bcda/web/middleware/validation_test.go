@@ -203,6 +203,40 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			},
 		},
 		{
+			name:        "validTagSharedSystemComma",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem,https%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
+			shouldFail:  false,
+			description: "Valid comma-separated tags should pass",
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "_tag",
+							Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem,https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "validOutcomeComma",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Foutcome%%3Dpartial,complete", baseV3),
+			shouldFail:  false,
+			description: "Valid comma-separated outcome should pass",
+			expectedTypeFilter: []TypeFilterParameter{
+				{
+					ResourceType: "ExplanationOfBenefit",
+					QueryParameters: []TypeFilterSubqueryParam{
+						{
+							Name:  "outcome",
+							Value: "partial,complete",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:        "validTagDDPS",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CDDPS", baseV3),
 			shouldFail:  false,
