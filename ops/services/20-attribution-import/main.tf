@@ -145,7 +145,7 @@ resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
 
 resource "aws_iam_role_policy" "logging" {
   name   = "attribution-import-logging"
-  role   = "bcda-${var.env}-attribution-import-function"
+  role   = "${local.full_name}-function"
   policy = data.aws_iam_policy_document.default_function.json
 }
 
@@ -187,7 +187,7 @@ module "attribution-import_file_bucket" {
 
   app           = local.app
   env           = var.env
-  name          = "${local.app}-${var.env}-${local.service}-file"
+  name          = "${local.full_name}-file"
   ssm_parameter = "/${local.app}/${var.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
@@ -234,7 +234,7 @@ resource "aws_security_group_rule" "function_access" {
   from_port   = 5432
   to_port     = 5432
   protocol    = "tcp"
-  description = "attribution-import function access"
+  description = "${local.full_name} function access"
 
   security_group_id        = data.aws_security_group.db.id
   source_security_group_id = module.attribution_import_function.security_group_id
