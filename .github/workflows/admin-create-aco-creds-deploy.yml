@@ -37,7 +37,7 @@ jobs:
       run:
         working-directory: bcda
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
@@ -69,7 +69,7 @@ jobs:
         run: |
           echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=prod" >> $GITHUB_ENV
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions
