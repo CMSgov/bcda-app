@@ -243,19 +243,22 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 			}
 
 			if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
-				if paramName == "_tag" {
-					tags := strings.Split(paramValue, ",")
-					for _, tag := range tags {
-						if err := validateTagSubqueryParameter(tag); err != nil {
-							ctx, _ = log.WriteWarnWithFields(
-								ctx,
-								fmt.Sprintf("%s: %s", responseutils.RequestErr, err.Error()),
-								logrus.Fields{"resp_status": http.StatusBadRequest},
-							)
-							rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
-							return nil, false
-						}
-					}
+				var validationErr error
+				switch paramName {
+				case "_tag":
+					validationErr = validateSubqueryParameterList(paramValue, validateTagSubqueryParameter)
+				case "outcome":
+					validationErr = validateSubqueryParameterList(paramValue, validateOutcomeSubqueryParameter)
+				}
+
+				if validationErr != nil {
+					ctx, _ = log.WriteWarnWithFields(
+						ctx,
+						fmt.Sprintf("%s: %s", responseutils.RequestErr, validationErr.Error()),
+						logrus.Fields{"resp_status": http.StatusBadRequest},
+					)
+					rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, validationErr.Error())
+					return nil, false
 				}
 				// TODO: add service-date validation
 				typeFilterSubqueryParams = append(typeFilterSubqueryParams, TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
@@ -378,6 +381,17 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// validateSubqueryParameterList splits a comma-separated parameter value and validates each individual value
+// against the provided validation function. It returns the first error encountered, if any.
+func validateSubqueryParameterList(paramValue string, validateFunc func(string) error) error {
+	for _, val := range strings.Split(paramValue, ",") {
+		if err := validateFunc(val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // validateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
 func validateTagSubqueryParameter(tag string) error {
 
@@ -399,6 +413,14 @@ func validateTagSubqueryParameter(tag string) error {
 		return fmt.Errorf("invalid _tag value: %s", tag)
 	}
 
+	return nil
+}
+
+// validateOutcomeSubqueryParameter ensure that outcome param is a valid value (complete or partial)
+func validateOutcomeSubqueryParameter(outcome string) error {
+	if outcome != "complete" && outcome != "partial" {
+		return fmt.Errorf("invalid outcome value: %s. Supported outcome values are 'complete' and 'partial'", outcome)
+	}
 	return nil
 }
 
