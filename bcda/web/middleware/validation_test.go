@@ -155,6 +155,26 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 	}
 }
 
+func TestValidateOutcomeSubqueryParameter(t *testing.T) {
+	tests := []struct {
+		name         string
+		outcomeValue string
+		expected     error
+	}{
+		{"validComplete", "complete", nil},
+		{"validPartial", "partial", nil},
+		{"invalidValue", "invalid", fmt.Errorf("invalid outcome value: invalid. Supported outcome values are 'complete' and 'partial'")},
+		{"emptyValue", "", fmt.Errorf("invalid outcome value: . Supported outcome values are 'complete' and 'partial'")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateOutcomeSubqueryParameter(tt.outcomeValue)
+			assert.Equal(t, tt.expected, err)
+		})
+	}
+}
+
 func TestValidateTypeFilterTagCodes(t *testing.T) {
 	baseV3 := constants.V3Path + "Patient/$export?"
 	ctx := context.Background()
@@ -235,6 +255,13 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name:        "invalidOutcome",
+			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Foutcome%%3Dinvalid_status", baseV3),
+			shouldFail:  true,
+			errMsg:      "invalid outcome value: invalid_status. Supported outcome values are 'complete' and 'partial'",
+			description: "Outcome must be complete or partial",
 		},
 		{
 			name:        "validTagDDPS",
