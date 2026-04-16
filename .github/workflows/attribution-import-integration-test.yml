@@ -41,8 +41,8 @@ jobs:
       run:
         working-directory: bcda
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v5
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-attribution-import-function
