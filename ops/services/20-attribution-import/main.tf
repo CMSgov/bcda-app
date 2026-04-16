@@ -1,8 +1,7 @@
 locals {
-  service            = "attribution-import"
-  full_name          = "${local.app}-${var.env}-attribution-import"
-  db_sg_name         = "${local.app}-${var.env}-db"
-  extra_kms_key_arns = local.app == "bcda" ? [data.aws_kms_alias.bcda_app_config_kms_key[0].target_key_arn] : []
+  service    = "attribution-import"
+  full_name  = "${local.app}-${var.env}-attribution-import"
+  db_sg_name = "${local.app}-${var.env}-db"
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
@@ -29,7 +28,7 @@ resource "aws_cloudwatch_log_group" "this" {
   retention_in_days = 180
 
   tags = {
-    Name = "/aws/lambda/bcda-${var.env}-${local.service}"
+    Name = "/aws/lambda/${local.full_name}"
   }
 }
 
@@ -113,7 +112,7 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
 }
 
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=a7850b1f5df3f7cdaf828b4cbb7dc08a7117d182"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
 
   app = local.app
   env = var.env
@@ -124,7 +123,8 @@ module "attribution_import_function" {
   handler = "bootstrap"
   runtime = "provided.al2023"
 
-  memory_size = 2048
+  memory_size  = 2048
+  architecture = "arm64"
 
   function_role_inline_policies = {
     assume-bucket-role = data.aws_iam_policy_document.assume_bucket_role.json
@@ -134,7 +134,7 @@ module "attribution_import_function" {
     ENV      = var.env
     APP_NAME = "${local.app}-${var.env}-attribution-import"
   }
-  extra_kms_key_arns = local.extra_kms_key_arns
+  extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn]
 }
 
 resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
@@ -193,7 +193,7 @@ module "attribution-import_file_bucket" {
 
 resource "aws_sns_topic" "this" {
   name              = "${local.full_name}-topic"
-  kms_master_key_id = "alias/bcda-${var.env}"
+  kms_master_key_id = module.platform.kms_alias_primary.arn
 }
 
 data "aws_iam_policy_document" "topic" {
