@@ -4,7 +4,6 @@
 locals {
   app              = "bcda"
   established_envs = ["dev", "test", "sandbox", "prod"]
-  service_prefix   = "${local.app}-${var.env}"
 
   parent_env = coalesce(
     var.parent_env,
