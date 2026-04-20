@@ -1,7 +1,8 @@
 locals {
   service      = "config"
   default_tags = module.platform.default_tags
-  env          = terraform.workspace
+  env          = terraform.workspacegit
+  app          = "bcda"
 }
 
 module "platform" {
