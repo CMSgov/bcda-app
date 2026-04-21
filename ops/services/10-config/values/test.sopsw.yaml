@@ -152,6 +152,8 @@
 /bcda/${env}/bene-prefs/sensitive/iam_bucket_role_arn: ENC[AES256_GCM,data:x2th+yghg4iJXhHNULY//lv7ttOMFFg1BKkh9QntUiGMDEZ0XZTXwJdHd2w8MOSupTGRh46dALowWWwmsH0A4/AqUsQhvbqeuDd7BWsx8nNbT41T1MpCYAy/u2WzkoiVogac,iv:UIdpM5P4702VWYnm94Bfj76eyw28zPWOItAVb69Xu2k=,tag:eoUk2cWM7MfPAJIDcknOpQ==,type:str]
 /bcda/${env}/bene-prefs/sensitive/sns_topic_arn: ENC[AES256_GCM,data:76QcBFUTw5lQuXntlu1Ttu4MunyP5TIvDzkHqZ5N/r37TBVgPlLmfe/1g+xNmxNxGtE9u4ZyIne1tXt54RsTwDAhBJYpMSw=,iv:kYzRk1BaiGDeTSaTG6ycHp9TWfOsu7zNKxk+dvgGYFw=,tag:fgNtYkTRe0wiU5NnrOhYLA==,type:str]
 /bcda/${env}/bene-prefs/nonsensitive/bfd_bene_prefs_bucket: s3://bfd-test-bene-prefs-bcda20260225231712780400000002/bfdeft01/bcda/in/test
+/bcda/${env}/attribution-import/sensitive/misp-eft-role_arn: ENC[AES256_GCM,data:8eZ8QLkbt0N+pVDSMjwph7TvX4PWfBHvm6toaGj/hfktCksK4OoQcA241VHHClpWMYqvO7LD+QE=,iv:KeQmH7w521ZYMDy/ifVY1dZkW8uu5JoQdNJZ4nt4ZX0=,tag:OFYeDOI+kibULaHs5pDicw==,type:str]
+/bcda/${env}/attribution-import/sensitive/attribution-import-role_arn: ENC[AES256_GCM,data:AKp+DQiM5qo2knGlkYnl0Md5+OIyVaKrJjmUu7cNf6AFw72PhzajN1lTlP9dMh7KFktHx+M9rqV9kxb9Vb4FHY+y7kivP+i5WfcRCYYlWiZRTdC7kOKROIdSa8J4,iv:yOS6XysdYpgbTRURX0gBTTOMnqCSSCbA+fCwTpoTH1k=,tag:E3WKJdPISLomDc7YURO2SA==,type:str]
 /bcda/${env}/sensitive/outdated_attr_client_credentials: ENC[AES256_GCM,data:/aboIubqfDqA3REAFuV6HDUp6oBc6L8YsNqmtWcljA3R+sl6hoE1d+oUzGu6zmYiFcYhLWLjrQz/1RYYoSpN4SSGSNHaJ6zkNRuLe2tofv3dROQ04u5OtnuX/8IImVS+z9mTHFL0rD/2erYG80m5Y3dSnaSmxUUJSlEhwNnW/NNitQFFG96CtiifSiTgJ6rAjgso39UmWw==,iv:k/Npke/vEeKI/8AQKFjsGaVb81RJj4bnvfg6t8mAteQ=,tag:Geekc5Ka4uY0T+FvOYnYow==,type:str]
 sops:
   kms:
