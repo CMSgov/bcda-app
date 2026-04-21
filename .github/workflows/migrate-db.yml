@@ -72,7 +72,7 @@ jobs:
           ls ${{ github.workspace }}
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ env.ENV }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          migrate -database ${CONNECTION_URL}?x-migrations-table=schema_migrations_ssas -path ./bcda-ssas-app/db/migrations up
+          migrate -database ${CONNECTION_URL}?x-migrations-table=schema_migrations_ssas -path ./db/migrations up
       # - name: Checkout BCDA
       #   uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       #   with:
