@@ -139,13 +139,13 @@ jobs:
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
-  migrate_ssas_db:
-    needs: [verify_images_exist]
-    uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
-    with:
-      ref: ${{ inputs.ssas_ref }}
-      env: ${{ inputs.env || 'dev' }}
-    secrets: inherit
+  # migrate_ssas_db:
+  #   needs: [verify_images_exist]
+  #   uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
+  #   with:
+  #     ref: ${{ inputs.ssas_ref }}
+  #     env: ${{ inputs.env || 'dev' }}
+  #   secrets: inherit
 
   deploy:
     needs: [verify_images_exist]
