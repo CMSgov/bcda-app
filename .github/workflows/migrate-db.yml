@@ -41,22 +41,21 @@ jobs:
     name: Migrate DB
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - name: Checkout BCDA
+      - name: Checkout BCDA SSAS
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
-          repository: CMSgov/bcda-app
           ref: ${{ inputs.ref }}
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-${{ env.ENV }}-github-actions
       - name: Get AWS params
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            DB_URL=/bcda/${{ inputs.env }}/sensitive/api/DATABASE_URL
+            DB_URL=/bcda/${{ env.ENV }}/sensitive/api/DATABASE_URL
       - name: Get Go
         uses: actions/setup-go@v5
         with:
@@ -68,33 +67,65 @@ jobs:
           PGSSLMODE: require
         # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
         run: |
-          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ inputs.env || 'dev' }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
+          
+          ls ${{ github.workspace }}
+          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ env.ENV }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          migrate -database ${CONNECTION_URL} -path ./db/migrations/bcda up 2>&1
-      - name: Success Alert
-        if: ${{ success() }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          # Sends to bcda-deploy
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: good
-                text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-                mrkdown_in:
-                  - text
-      - name: Failure Alert
-        if: ${{ failure() }}
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: "C03S23MJFJS"
-            attachments:
-              - color: danger
-                text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
-                mrkdown_in:
-                  - text
+          migrate -database ${CONNECTION_URL}?x-migrations-table=schema_migrations_ssas -path ./bcda-ssas-app/db/migrations up
+      # - name: Checkout BCDA
+      #   uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+      #   with:
+      #     repository: CMSgov/bcda-app
+      #     ref: ${{ inputs.ref }}
+      # - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+      #   with:
+      #     aws-region: ${{ vars.AWS_REGION }}
+      #     role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      # - name: Get AWS params
+      #   uses: cmsgov/cdap/actions/aws-params-env-action@main
+      #   env:
+      #     AWS_REGION: ${{ vars.AWS_REGION }}
+      #   with:
+      #     params: |
+      #       DB_URL=/bcda/${{ inputs.env }}/sensitive/api/DATABASE_URL
+      # - name: Get Go
+      #   uses: actions/setup-go@v5
+      #   with:
+      #     go-version-file: 'go.mod'
+      # - name: Get golang-migrate
+      #   run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      # - name: Migrate DB
+      #   env:
+      #     PGSSLMODE: require
+      #   # CAUTION: if changing the script below, validate that sensitive information is not printed in the workflow
+      #   run: |
+      #     HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ inputs.env || 'dev' }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
+      #     CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
+      #     migrate -database ${CONNECTION_URL} -path ./db/migrations/bcda up 2>&1
+      # - name: Success Alert
+      #   if: ${{ success() }}
+      #   uses: slackapi/slack-github-action@v2.0.0
+      #   with:
+      #     method: chat.postMessage
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     # Sends to bcda-deploy
+      #     payload: |
+      #       channel: "C03S23MJFJS"
+      #       attachments:
+      #         - color: good
+      #           text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+      #           mrkdown_in:
+      #             - text
+      # - name: Failure Alert
+      #   if: ${{ failure() }}
+      #   uses: slackapi/slack-github-action@v2.0.0
+      #   with:
+      #     method: chat.postMessage
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     payload: |
+      #       channel: "C03S23MJFJS"
+      #       attachments:
+      #         - color: danger
+      #           text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
+      #           mrkdown_in:
+      #             - text
