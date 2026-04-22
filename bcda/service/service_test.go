@@ -1988,7 +1988,7 @@ func newQueueJobTestConfig(t *testing.T, acoConfigs []ACOConfig, v3NoPartialClai
 
 	cfg := &Config{
 		SuppressionLookbackDays: int(30),
-		CutoffDurationDays:      45,
+		CutoffDurationDays:      50,
 		ACOConfigs:              acoConfigs,
 		V3NoPartialClaimsModels: v3NoPartialClaimsModels,
 		RunoutConfig: RunoutConfig{

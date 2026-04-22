@@ -28,7 +28,7 @@ func LoadConfig() (cfg *Config, err error) {
 
 type Config struct {
 	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
-	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
+	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"50"`
 	ACOConfigs              []ACOConfig `conf:"aco_config"`
 	V3EnabledACOs           []string    `conf:"v3_enabled_acos"` // Simple list of ACOs with v3 access
 	CutoffDuration          time.Duration
