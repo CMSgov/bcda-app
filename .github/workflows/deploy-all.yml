@@ -112,9 +112,9 @@ env:
 jobs:
   verify_images_exist:
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:      
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -150,9 +150,9 @@ jobs:
   deploy:
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -165,12 +165,12 @@ jobs:
             GITHUB_TOKEN=/ci/github/token
             DATABASE_URL=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/DATABASE_URL
       - name: Checkout BCDA
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-app
           ref: ${{ inputs.ref }}
       - name: Install Cosign to verify tenv and tofu installs
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 #v4.1.1@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
         uses: cmsgov/cdap/actions/setup-tenv@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
       - name: Install Sops
@@ -188,7 +188,7 @@ jobs:
         run: |
           tofu apply bcda-release-sops.tfplan
       - name: Checkout bcda-ops
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-ops
           ref: ${{ inputs.ops_ref }}
@@ -241,10 +241,10 @@ jobs:
 
   verify_api_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -269,10 +269,10 @@ jobs:
 
   verify_ssas_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -297,10 +297,10 @@ jobs:
 
   verify_worker_version:
     needs: [deploy]
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -331,9 +331,9 @@ jobs:
   notify_newrelic:
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -371,7 +371,7 @@ jobs:
 
   slack_alerts:
     if: ${{ always() }}
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info

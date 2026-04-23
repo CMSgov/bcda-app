@@ -2,6 +2,7 @@ locals {
   service      = "bene-prefs"
   default_tags = module.platform.default_tags
   env          = terraform.workspace
+  service_prefix   = "${local.app}-${local.env}"
 
   account_id            = module.platform.aws_caller_identity.account_id
   kms_key_arn_primary   = module.platform.kms_alias_primary.target_key_arn

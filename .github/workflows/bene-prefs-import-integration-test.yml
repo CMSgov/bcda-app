@@ -32,13 +32,13 @@ jobs:
   trigger:
     if: ${{ always() }}
     needs: deploy
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: ./optout
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-bene-prefs
@@ -51,7 +51,7 @@ jobs:
             BFD_BUCKET_ROLE=/bcda/test/bene-prefs/sensitive/iam_bucket_role_arn
             BFD_BENE_PREFS_BUCKET=/bcda/test/bene-prefs/nonsensitive/bfd_bene_prefs_bucket
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
@@ -66,7 +66,7 @@ jobs:
                $(echo "${{env.BFD_BENE_PREFS_BUCKET}}" | xargs)/$fname
       # Give a bit of time for lambdas to process files
       - run: sleep 60
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{  secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-github-actions

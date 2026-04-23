@@ -36,14 +36,14 @@ jobs:
   migrate_db:
     environment: ${{ inputs.env || 'dev' }}
     name: Migrate DB
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout BCDA
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-app
           ref: ${{ inputs.ref }}
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
@@ -67,7 +67,7 @@ jobs:
         run: |
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ inputs.env || 'dev' }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
           CONNECTION_URL=$(echo $DB_URL 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up
+          migrate -database ${CONNECTION_URL} -path db/migrations/bcda up 2>&1
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@v2.0.0

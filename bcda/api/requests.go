@@ -582,9 +582,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
+	// TODO: remove this and updatet he downstream code to use the TypeFilter Param Struct, not the [][]string
+	flattenedTypeFilter := FlattenTypefilterParams(rp.TypeFilter)
+
 	// Validate PAC eligibility for v3 _typeFilter tags that require it
 	if h.apiVersion == constants.V3Version {
-		if err = h.validateTypeFilterPACEligibility(ctx, rp.TypeFilter, ad.CMSID, w); err != nil {
+		if err = h.validateTypeFilterPACEligibility(ctx, flattenedTypeFilter, ad.CMSID, w); err != nil {
 			return
 		}
 	}
@@ -604,7 +607,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// This ensures they only get NCH data, not SharedSystem data
 	if h.apiVersion == constants.V3Version {
 		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
-			rp.TypeFilter = h.omitSharedSystemForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
+			flattenedTypeFilter = h.omitSharedSystemForNonPAC(ctx, flattenedTypeFilter, ad.CMSID)
 		}
 	}
 
@@ -759,7 +762,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		ComplexDataRequestType: complexDataRequestType,
 		ResourceTypes:          resourceTypes,
 		Since:                  rp.Since,
-		TypeFilter:             rp.TypeFilter,
+		TypeFilter:             flattenedTypeFilter,
 		CreationTime:           time.Now(),
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
@@ -827,7 +830,8 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 }
 
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
-// tags in _typeFilter have PAC data access. Returns error if validation fails (and writes response).
+// tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
+// Returns error if validation fails (and writes response).
 func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter [][]string, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
@@ -838,8 +842,8 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 		if len(paramPair) == 2 && paramPair[0] == "_tag" {
 			tagValue := paramPair[1]
 			// Extract tag code from either short format or URL format
-			tagCode := extractTagCodeFromValue(tagValue)
-			requestedTagCodes = append(requestedTagCodes, tagCode)
+			tagCodes := extractTagCodeFromValue(tagValue)
+			requestedTagCodes = append(requestedTagCodes, tagCodes...)
 		}
 	}
 
@@ -881,15 +885,22 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 	return nil
 }
 
-// extractTagCodeFromValue extracts the tag code from either a short format (e.g., "SharedSystem")
-// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem")
-func extractTagCodeFromValue(tagValue string) string {
-	// Check if it's a URL format with pipe separator
-	if pipeIdx := strings.LastIndex(tagValue, "|"); pipeIdx != -1 {
-		return tagValue[pipeIdx+1:]
+// extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")
+// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem").
+// It supports processing a comma-separated list of tags, returning a slice of all extracted codes.
+func extractTagCodeFromValue(tagValue string) []string {
+	var codes []string
+	tags := strings.Split(tagValue, ",")
+	for _, tag := range tags {
+		// Check if it's a URL format with pipe separator
+		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
+			codes = append(codes, tag[pipeIdx+1:])
+		} else {
+			// Otherwise, it's short format, return as-is
+			codes = append(codes, tag)
+		}
 	}
-	// Otherwise, it's short format, return as-is
-	return tagValue
+	return codes
 }
 
 // omitSharedSystemForNonPAC ensures that non-PAC eligible ACOs in v3 do not receive SharedSystem data
@@ -913,9 +924,14 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter [][]
 	hasRelevantFilter := false
 	for _, paramPair := range typeFilter {
 		if len(paramPair) == 2 && paramPair[0] == "_tag" {
-			tagCode := extractTagCodeFromValue(paramPair[1])
-			if tagCode == "NationalClaimsHistory" || tagCode == "DDPS" {
-				hasRelevantFilter = true
+			tagCodes := extractTagCodeFromValue(paramPair[1])
+			for _, tagCode := range tagCodes {
+				if tagCode == "NationalClaimsHistory" || tagCode == "DDPS" {
+					hasRelevantFilter = true
+					break
+				}
+			}
+			if hasRelevantFilter {
 				break
 			}
 		}
@@ -943,6 +959,21 @@ func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {
 		err = goerrors.New("no auth data in context")
 	}
 	return
+}
+
+// Flatten the param from the struct into the 2D array that is already being used.
+// TODO: remove this, and pass as a struct. Then update the downstream logic to handle the struct
+func FlattenTypefilterParams(typefilterParams []middleware.TypeFilterParameter) [][]string {
+	var typeFilterParams [][]string
+	for _, typefilterParam := range typefilterParams {
+		if typefilterParam.ResourceType == "ExplanationOfBenefit" {
+			for _, subqueryParam := range typefilterParam.QueryParameters {
+				typeFilterParams = append(typeFilterParams, []string{subqueryParam.Name, subqueryParam.Value})
+			}
+		}
+	}
+
+	return typeFilterParams
 }
 
 // swagger:model fileItem

@@ -1435,9 +1435,14 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			requiresPACCheck := false
 			for _, paramPair := range test.typeFilter {
 				if len(paramPair) == 2 && paramPair[0] == "_tag" {
-					tagCode := extractTagCodeFromValue(paramPair[1])
-					if tagCode == "SharedSystem" {
-						requiresPACCheck = true
+					tagCodes := extractTagCodeFromValue(paramPair[1])
+					for _, code := range tagCodes {
+						if code == "SharedSystem" {
+							requiresPACCheck = true
+							break
+						}
+					}
+					if requiresPACCheck {
 						break
 					}
 				}
@@ -1479,14 +1484,16 @@ func TestExtractTagCodeFromValue(t *testing.T) {
 	tests := []struct {
 		name     string
 		tagValue string
-		expected string
+		expected []string
 	}{
-		{"shortFormat", "SharedSystem", "SharedSystem"},
-		{"shortFormatNotFinalAction", "NotFinalAction", "NotFinalAction"},
-		{"urlFormatSystemType", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem", "SharedSystem"},
-		{"urlFormatFinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "FinalAction"},
-		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", "SharedSystem"},
-		{"emptyString", "", ""},
+		{"shortFormat", "SharedSystem", []string{"SharedSystem"}},
+		{"shortFormatNotFinalAction", "NotFinalAction", []string{"NotFinalAction"}},
+		{"urlFormatSystemType", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem", []string{"SharedSystem"}},
+		{"urlFormatFinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", []string{"FinalAction"}},
+		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", []string{"SharedSystem"}},
+		{"emptyString", "", []string{""}},
+		{"commaSeparatedShort", "SharedSystem,NationalClaimsHistory", []string{"SharedSystem", "NationalClaimsHistory"}},
+		{"commaSeparatedUrl", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem,https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", []string{"SharedSystem", "FinalAction"}},
 	}
 
 	for _, tt := range tests {

@@ -12,11 +12,11 @@ jobs:
       contents: read
       id-token: write
     name: run fhir scan
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-dev-github-actions

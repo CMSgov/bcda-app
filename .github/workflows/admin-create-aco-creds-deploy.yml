@@ -32,12 +32,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.deploy_env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
         working-directory: bcda
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
@@ -45,8 +45,6 @@ jobs:
         env:
           CGO_ENABLED: 0
           SSAS_USE_TLS: true
-        # Build for amd64 on arm64 runner since lambda infra has not been updated
-        # todo: Change while/after working on BCDA-9939
         run: |
           env GOOS=linux GOARCH=amd64 go build -o bin/bootstrap ./lambda/admin_create_aco_creds/*.go
           zip -j function.zip bin/bootstrap
@@ -69,7 +67,7 @@ jobs:
         run: |
           echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "ROLE=prod" >> $GITHUB_ENV
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions

@@ -14,7 +14,7 @@ permissions:
 jobs:
   refresh_attribution:
     name: Refresh Attribution
-    runs-on: codebuild-bcda-app-arm64-${{github.run_id}}-${{github.run_attempt}}
+    runs-on: codebuild-bcda-app${{ contains(fromJSON('["dev"]'), matrix.env) && '-non-prod' || ''}}-${{github.run_id}}-${{github.run_attempt}} 
     strategy:
       matrix:
         vars:
@@ -27,7 +27,7 @@ jobs:
           - env: prod
             account_id: PROD_ACCOUNT_ID
     steps:
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets[matrix.vars.account_id] }}:role/delegatedadmin/developer/bcda-${{ matrix.vars.env }}-github-actions
@@ -42,7 +42,7 @@ jobs:
         run: |
           sudo dnf install postgresql16 -y
       - name: checkout bcda-ops
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           repository: CMSgov/bcda-ops
           ref: 'main'
