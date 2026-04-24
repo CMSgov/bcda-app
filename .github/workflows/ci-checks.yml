@@ -109,7 +109,7 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         with:
           args:
-            -Dsonar.scanner.arch=aarch64
+            -Dsonar.scanner.arch=arm64
             -Dsonar.projectKey=bcda-aco-api
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=testcoverage.out
