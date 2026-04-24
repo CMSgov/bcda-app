@@ -74,7 +74,7 @@ jobs:
           repository: CMSgov/bcda-app 
           ref: ${{ env.RELEASE_VERSION }}
       - name: Download release scripts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.2.1
         with:
           name: release-scripts
           path: scripts/tag_and_release
