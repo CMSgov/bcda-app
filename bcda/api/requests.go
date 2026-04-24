@@ -913,9 +913,8 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter [][]
 		return typeFilter
 	}
 
-	hasPACAccess := utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated)
-	if hasPACAccess {
-		// PAC eligible ACOs can access all data, no need to filter
+	if !h.Svc.IsV3NoPartialClaimsModel(acoConfig.Model) {
+		// Non-restricted ACOs can access all data, no need to filter
 		return typeFilter
 	}
 

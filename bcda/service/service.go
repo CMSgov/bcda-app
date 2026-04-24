@@ -40,6 +40,7 @@ type Service interface {
 	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
+	IsV3NoPartialClaimsModel(model string) bool
 }
 
 type service struct {
@@ -596,6 +597,11 @@ func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
 	}
 
 	return nil, false
+}
+
+// IsV3NoPartialClaimsModel checks if the provided model is listed in V3NoPartialClaimsModels
+func (s *service) IsV3NoPartialClaimsModel(model string) bool {
+	return slices.Contains(s.v3NoPartialClaimsModels, model)
 }
 
 // Checks to see if an ACO is priority ACO based on a regex pattern provided by an

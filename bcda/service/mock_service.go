@@ -847,3 +847,54 @@ func (_c *MockService_GetTimeConstraints_Call) RunAndReturn(run func(ctx context
 	_c.Call.Return(run)
 	return _c
 }
+
+// IsV3NoPartialClaimsModel provides a mock function for the type MockService
+func (_mock *MockService) IsV3NoPartialClaimsModel(model string) bool {
+	ret := _mock.Called(model)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsV3NoPartialClaimsModel")
+	}
+
+	var r0 bool
+	if returnFunc, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = returnFunc(model)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	return r0
+}
+
+// MockService_IsV3NoPartialClaimsModel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsV3NoPartialClaimsModel'
+type MockService_IsV3NoPartialClaimsModel_Call struct {
+	*mock.Call
+}
+
+// IsV3NoPartialClaimsModel is a helper method to define mock.On call
+//   - model string
+func (_e *MockService_Expecter) IsV3NoPartialClaimsModel(model interface{}) *MockService_IsV3NoPartialClaimsModel_Call {
+	return &MockService_IsV3NoPartialClaimsModel_Call{Call: _e.mock.On("IsV3NoPartialClaimsModel", model)}
+}
+
+func (_c *MockService_IsV3NoPartialClaimsModel_Call) Run(run func(model string)) *MockService_IsV3NoPartialClaimsModel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_IsV3NoPartialClaimsModel_Call) Return(_a0 bool) *MockService_IsV3NoPartialClaimsModel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_IsV3NoPartialClaimsModel_Call) RunAndReturn(run func(model string) bool) *MockService_IsV3NoPartialClaimsModel_Call {
+	_c.Call.Return(run)
+	return _c
+}
