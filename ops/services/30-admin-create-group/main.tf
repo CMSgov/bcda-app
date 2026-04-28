@@ -22,10 +22,11 @@ module "platform" {
 }
 
 module "admin_create_group_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
 
   app = local.app
   env = var.env
+  architecture = "arm64"
 
   name        = local.full_name
   description = "Creates a group for the supplied CMS ID."
