@@ -117,6 +117,7 @@ module "attribution_import_function" {
 
   app = local.app
   env = var.env
+  architecture = "arm64"
 
   name        = local.full_name
   description = "Ingests the most recent attribution from BFD"
@@ -125,7 +126,6 @@ module "attribution_import_function" {
   runtime = "provided.al2023"
 
   memory_size  = 2048
-  architecture = "arm64"
 
   function_role_inline_policies = {
     assume-bucket-role = data.aws_iam_policy_document.assume_bucket_role.json
