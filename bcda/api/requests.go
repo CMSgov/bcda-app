@@ -869,16 +869,15 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 			return fmt.Errorf("ACO configuration not found")
 		}
 
-		hasPACAccess := utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated)
-		if !hasPACAccess {
-			errMsg := fmt.Sprintf("Model entities in %s are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: %v", acoConfig.Model, tagsRequiringPAC)
+		if h.Svc.IsV3NoPartialClaimsModel(acoConfig.Model) {
+			errMsg := fmt.Sprintf("Model entities in %s are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: %v", acoConfig.Model, tagsRequiringPAC)
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
 			h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return fmt.Errorf("not eligible for partially adjudicated claims data")
+			return fmt.Errorf("not eligible for SharedSystem data")
 		}
 	}
 
