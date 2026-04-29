@@ -7,7 +7,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/aws/aws-lambda-go v1.49.0
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/render v1.0.1
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
