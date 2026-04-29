@@ -108,8 +108,8 @@ jobs:
       - name: Run quality gate scan
         uses: sonarsource/sonarqube-scan-action@v7.1.0
         with:
-          scannerVersion: 8.0.1.6346  # auto-downloads the AArch64 binary
           args:
+            -Dsonar.scanner.arch=aarch64
             -Dsonar.projectKey=bcda-aco-api
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=testcoverage.out
