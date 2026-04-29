@@ -106,7 +106,7 @@ jobs:
         with:
           name: code-coverage-report
       - name: Run quality gate scan
-        uses: sonarsource/sonarqube-scan-action@v8
+        uses: sonarsource/sonarqube-scan-action@v7.1.0
         with:
           scannerVersion: 8.0.1.6346  # auto-downloads the AArch64 binary
           args:
