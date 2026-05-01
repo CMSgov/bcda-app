@@ -1337,7 +1337,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: [SharedSystem]",
+			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
 			description:   "ACO without PAC access should be blocked from using SharedSystem tag",
 		},
 		{
@@ -1354,7 +1354,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			typeFilter:    [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: [SharedSystem]",
+			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
 			description:   "ACO without PAC access should be blocked from SharedSystem tag in URL format",
 		},
 		{
@@ -1395,7 +1395,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			typeFilter:    [][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}},
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access partially adjudicated claims data. Requests using the following tags require access to partially adjudicated claims data: [SharedSystem]",
+			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
 			description:   "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
 		},
 		{
@@ -1452,8 +1452,13 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			if requiresPACCheck {
 				if test.acoConfig != nil {
 					mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
+					if test.shouldFail {
+						mockSvc.On("IsV3NoPartialClaimsModel", test.acoConfig.Model).Return(true)
+					} else {
+						mockSvc.On("IsV3NoPartialClaimsModel", test.acoConfig.Model).Return(false)
+					}
 				} else {
-					mockSvc.On("GetACOConfigForID", test.cmsID).Return(nil, false)
+					mockSvc.On("GetACOConfigForID", test.cmsID).Return((*service.ACOConfig)(nil), false)
 				}
 			}
 
@@ -1595,6 +1600,11 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Setup mock
 			mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
+			if test.cmsID == "NOPAC0000" {
+				mockSvc.On("IsV3NoPartialClaimsModel", test.acoConfig.Model).Return(true)
+			} else {
+				mockSvc.On("IsV3NoPartialClaimsModel", test.acoConfig.Model).Return(false)
+			}
 
 			// Call the function
 			result := h.omitSharedSystemForNonPAC(ctx, test.typeFilter, test.cmsID)
@@ -1659,6 +1669,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 
 	// Setup mock
 	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
+	mockSvc.On("IsV3NoPartialClaimsModel", "Model Without PAC").Return(true)
 
 	// Call omitSharedSystemForNonPAC (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemForNonPAC(ctx, typeFilter, "NOPAC0000")

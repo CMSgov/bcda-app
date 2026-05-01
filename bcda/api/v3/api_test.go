@@ -565,6 +565,7 @@ func (s *APITestSuite) TestResourceTypes() {
 	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
 	mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.AnythingOfType("string")).Return(service.TimeConstraints{}, nil)
 	mockSvc.On("GetCutoffTime", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(time.Time{}, constants.GetExistingBenes)
+	mockSvc.On("IsV3NoPartialClaimsModel", mock.Anything).Return(false)
 	h.Svc = mockSvc
 
 	for idx, handler := range []http.HandlerFunc{h.BulkGroupRequest, h.BulkPatientRequest} {
