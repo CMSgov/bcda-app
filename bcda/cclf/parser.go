@@ -30,9 +30,11 @@ func getCMSID(name string) (string, error) {
 func CheckIfAttributionCSVFile(filePath string) bool {
 	MDTCOCPattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
 	CDACPattern := `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
+	GUIDEPattern := `(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
 	MDTCOCRegexp := regexp.MustCompile(MDTCOCPattern)
 	CDACRegexp := regexp.MustCompile(CDACPattern)
-	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath))
+	GUIDERegexp := regexp.MustCompile(GUIDEPattern)
+	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath) || GUIDERegexp.MatchString(filePath))
 }
 
 type CSVParser struct {
@@ -135,12 +137,13 @@ func validateCSVMetadata(attributionFile service.AttributionFile, subMatches []s
 		metadata.env = "production"
 	}
 
-	// if attributionFile.model_identifier == PCPB
 	switch attributionFile.ModelIdentifier {
 	case "PCPB":
 		metadata.acoID = "CT000000"
-	case "GUIDE", "BCD":
+	case "BCD":
 		metadata.acoID = subMatches[3]
+	case "GUIDE":
+		metadata.acoID = fmt.Sprintf("%s%s", subMatches[3], subMatches[4])
 	default:
 		return csvFileMetadata{}, errors.New("failed to get aco ID for attribution file")
 	}
