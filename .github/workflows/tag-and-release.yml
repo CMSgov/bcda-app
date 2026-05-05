@@ -61,7 +61,7 @@ jobs:
         uses: actions/download-artifact@v4.2.1
         with:
           name: release-scripts
-          path: ./scripts/scripts/tag_and_release
+          path: ./scripts/tag_and_release
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
