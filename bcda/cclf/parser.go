@@ -137,12 +137,13 @@ func validateCSVMetadata(attributionFile service.AttributionFile, subMatches []s
 		metadata.env = "production"
 	}
 
-	// if attributionFile.model_identifier == PCPB
 	switch attributionFile.ModelIdentifier {
 	case "PCPB":
 		metadata.acoID = "CT000000"
-	case "GUIDE", "BCD":
+	case "BCD":
 		metadata.acoID = subMatches[3]
+	case "GUIDE":
+		metadata.acoID = fmt.Sprintf("%s%s", subMatches[3], subMatches[4])
 	default:
 		return csvFileMetadata{}, errors.New("failed to get aco ID for attribution file")
 	}
