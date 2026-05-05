@@ -948,7 +948,7 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter util
 	}
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
-	if typeFilter.QueryParameters == nil {
+	if len(typeFilter.QueryParameters) == 0 {
 		return utils.TypeFilterParameter{
 			ResourceType:    "ExplanationOfBenefit",
 			QueryParameters: []utils.TypeFilterSubqueryParam{subqueryParam},
