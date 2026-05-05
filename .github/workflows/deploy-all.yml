@@ -12,10 +12,6 @@ on:
         description: 'Ref of bcda-app repo to apply migrations from (e.g. r123, main)'
         required: true
         type: string
-      ops_ref:
-        description: 'Ref of bcda-ops repo to deploy (e.g. r123, main)'
-        required: true
-        type: string
       ssas_version:
         description: 'Version of SSAS docker image to use (e.g. r456, ccdd3344)'
         required: true
@@ -64,10 +60,6 @@ on:
         type: string
       ref:
         description: 'Ref of bcda-app repo to apply migrations from (e.g. r123)'
-        required: true
-        type: string
-      ops_ref:
-        description: 'Ref of bcda-ops repo to deploy (e.g. r123)'
         required: true
         type: string
       ssas_version:
@@ -187,12 +179,6 @@ jobs:
         working-directory: ops/services/10-config
         run: |
           tofu apply bcda-release-sops.tfplan
-      - name: Checkout bcda-ops
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
-        with:
-          repository: CMSgov/bcda-ops
-          ref: ${{ inputs.ops_ref }}
-          token: ${{ env.GITHUB_TOKEN }}
       - name: Confirm Env
         if: ${{ env.RELEASE_ENV != env.CONFIRM_RELEASE_ENV }}
         run: |
