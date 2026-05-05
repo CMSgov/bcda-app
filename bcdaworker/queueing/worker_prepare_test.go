@@ -9,21 +9,20 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	cm "github.com/CMSgov/bcda-app/middleware"
-	"github.com/go-testfixtures/testfixtures/v3"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
@@ -36,31 +35,33 @@ import (
 
 type PrepareWorkerIntegrationTestSuite struct {
 	suite.Suite
-	r    models.Repository
-	db   *sql.DB
-	pool *pgxv5Pool.Pool
-	ctx  context.Context
+	r           models.Repository
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	ctx         context.Context
+	dbContainer db.TestDatabaseContainer
 }
 
 func TestCleanupTestSuite(t *testing.T) {
 	suite.Run(t, new(PrepareWorkerIntegrationTestSuite))
 }
 
+func (s *PrepareWorkerIntegrationTestSuite) SetupSuite() {
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
 func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
-	s.db, _, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	s.pool = database.ConnectPool()
-	tf, err := testfixtures.New(
-		testfixtures.Database(s.db),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("testdata/"),
-	)
-	if err != nil {
-		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-	}
-	if err := tf.Load(); err != nil {
-		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-	}
+	var err error
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
 	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
 
 	var lggr logrus.Logger
 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
@@ -68,6 +69,35 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{})
 	s.ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
 
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) TearDownTest() {
+	var err error
+	s.db.Close()
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) SetupSubTest() {
+	var err error
+	s.db.Close() // restore the database state for subtests, since SetupTest also sets up db container
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) TearDownSubTest() {
+	var err error
+	s.db.Close()
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integration() {
@@ -85,8 +115,8 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 	}
 
 	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			svc := service.NewMockService(t)
+		s.Run(tt.name, func() {
+			svc := service.NewMockService(s.T())
 			c := new(client.MockBlueButtonClient)
 
 			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
@@ -326,7 +356,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
-	q := NewEnqueuer(s.db, database.ConnectPool())
+	q := NewEnqueuer(s.db, s.pool)
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}

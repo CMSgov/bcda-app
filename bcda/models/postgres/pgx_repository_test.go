@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/db"
 	pgxv5 "github.com/jackc/pgx/v5"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -27,9 +27,10 @@ func rollbackTx(ctx context.Context, tx pgxv5.Tx) {
 
 type PgxRepositoryTestSuite struct {
 	suite.Suite
-	db   *sql.DB
-	pool *pgxv5Pool.Pool
-	repo *postgres.PgxRepository
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	repo        *postgres.PgxRepository
+	dbContainer db.TestDatabaseContainer
 }
 
 func TestPgxRepositoryTestSuite(t *testing.T) {
@@ -37,21 +38,24 @@ func TestPgxRepositoryTestSuite(t *testing.T) {
 }
 
 func (s *PgxRepositoryTestSuite) SetupSuite() {
-	s.db, s.pool, _ = databasetest.CreateDatabase(s.T(), "../../../db/migrations/bcda/", true)
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
+func (s *PgxRepositoryTestSuite) SetupTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
 	s.repo = postgres.NewPgxRepositoryWithPool(s.pool)
 }
 
-func (s *PgxRepositoryTestSuite) TearDownSuite() {
-	if s.pool != nil {
-		s.pool.Close()
-	}
-	if s.db != nil {
-		s.db.Close()
-	}
-}
-
 func (s *PgxRepositoryTestSuite) TearDownTest() {
-	s.cleanupTestData("TEST123")
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func (s *PgxRepositoryTestSuite) TestNewPgxRepositoryWithPool() {

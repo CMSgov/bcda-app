@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/go-testfixtures/testfixtures/v3"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockSSASClient struct {
@@ -33,25 +33,24 @@ func TestHandleCreateGroup(t *testing.T) {
 		{"valid ID but missing required fields", payload{GroupID: "", GroupName: "A9999-group", ACO_ID: "A9999"}, "missing one or more required field(s)"},
 	}
 
-	db, _, _ := databasetest.CreateDatabase(t, "../../../db/migrations/bcda/", true)
-	tf, err := testfixtures.New(
-		testfixtures.Database(db),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("testdata/"),
-	)
-
-	if err != nil {
-		assert.FailNowf(t, "Failed to setup test fixtures", err.Error())
-	}
-	if err = tf.Load(); err != nil {
-		assert.FailNowf(t, "Failed to load test fixtures", err.Error())
-	}
-
-	r := postgres.NewRepository(db) // test database
-	c := &mockSSASClient{}          // mock ssas client
+	dbContainer, err := db.NewTestDatabaseContainer()
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			err = dbContainer.ExecuteDir("testdata/")
+			require.NoError(t, err)
+			db, err := dbContainer.NewSqlDbConnection()
+			require.NoError(t, err)
+			defer func() {
+				db.Close()
+				err = dbContainer.RestoreSnapshot("Base")
+				if err != nil {
+					t.FailNow()
+				}
+			}()
+			r := postgres.NewRepository(db) // test database
+			c := &mockSSASClient{}          // mock ssas client
 			err = handleCreateGroup(c, r, tt.payload)
 			if tt.err != "" {
 				assert.Contains(t, err.Error(), tt.err)
