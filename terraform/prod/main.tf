@@ -1024,7 +1024,7 @@ module "platform" {
 
   app         = "bcda"
   env         = var.env
-  root_module = "github.com/CMSgov/bcda-ops/tree/main/terraform/${var.env}"
+  root_module = "github.com/CMSgov/bcda-app/tree/main/terraform/${var.env}"
   service     = "bcda"
 }
 
