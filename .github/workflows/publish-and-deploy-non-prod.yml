@@ -12,11 +12,6 @@ on:
         required: true
         default: main
         type: string
-      ops_ref:
-        description: 'Ref of bcda-ops to checkout (tag, branch name, or full SHA)'
-        required: true
-        default: main
-        type: string
       ssas_ref:
         description: 'Ref of ssas-app to checkout (tag, branch name, or full SHA)'
         required: true
@@ -49,7 +44,6 @@ jobs:
     with:
       version: ${{ needs.build_and_publish_all.outputs.api_version }}
       ref: ${{ inputs.ref || 'main' }}
-      ops_ref: ${{ inputs.ops_ref || 'main' }}
       ssas_version: ${{ needs.build_and_publish_all.outputs.ssas_version }}
       ssas_ref: ${{ inputs.ssas_ref || 'main' }}
       env: ${{ inputs.env || 'dev' }}
