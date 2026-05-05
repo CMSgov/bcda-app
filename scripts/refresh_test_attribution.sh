@@ -29,10 +29,6 @@ while getopts "c:e:f" opt; do
       echo "Option -$OPTARG requires an argument." >&2
       usage
       ;;
-    *)
-      echo "Option -$OPTARG requires an argument." >&2
-      usage
-      ;;
   esac
 done
 
