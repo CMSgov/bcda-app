@@ -179,7 +179,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
-		errMsg := fmt.Sprintf("failed to process request given more that one _typeFilter parameter")
+		errMsg := "failed to process request given more that one _typeFilter parameter"
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
 			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
