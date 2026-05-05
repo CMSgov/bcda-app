@@ -3,7 +3,7 @@
 -- These views will be used for various metrics and analytics so will be slightly more accessible than other tables.
 
 -- Active ACOs View table
--- Select query from https://github.com/CMSgov/bcda-ops/blob/main/terraform/insights/queries/get_active_acos.sql
+-- Select query from https://github.com/CMSgov/bcda-app/blob/main/terraform/insights/queries/get_active_acos.sql
 CREATE OR REPLACE VIEW active_acos AS
 select
   s.client_name,
