@@ -188,7 +188,8 @@ func TestValidateServiceDateSubqueryParameter(t *testing.T) {
 		{"fullDate", "2024-01-15", nil},
 		{"dateTimeNoTZ", "2024-01-15T10:30:00", nil},
 		{"dateTimeWithZ", "2024-01-15T10:30:00Z", nil},
-		{"dateTimeWithOffset", "2024-01-15T10:30:00-05:00", nil},
+		{"dateTimeMinusOffset", "2024-01-15T10:30:00-05:00", nil},
+		{"dateTimePlusOffset", "2024-01-15T10:30:00+05:00", nil},
 
 		// Valid with prefix
 		{"gtFullDate", "gt2024-01-15", nil},
