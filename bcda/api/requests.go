@@ -970,21 +970,6 @@ func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {
 	return
 }
 
-// Flatten the param from the struct into the 2D array that is already being used.
-// TODO: remove this, and pass as a struct. Then update the downstream logic to handle the struct
-func FlattenTypefilterParams(typefilterParams []utils.TypeFilterParameter) [][]string {
-	var typeFilterParams [][]string
-	for _, typefilterParam := range typefilterParams {
-		if typefilterParam.ResourceType == "ExplanationOfBenefit" {
-			for _, subqueryParam := range typefilterParam.QueryParameters {
-				typeFilterParams = append(typeFilterParams, []string{subqueryParam.Name, subqueryParam.Value})
-			}
-		}
-	}
-
-	return typeFilterParams
-}
-
 // swagger:model fileItem
 type FileItem struct {
 	// FHIR resource type of file contents
