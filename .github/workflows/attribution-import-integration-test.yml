@@ -159,7 +159,7 @@ jobs:
           fi
 
           # Verify that we have a record of the GUIDE CSV file in the database
-          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$CSVFILENAME' LIMIT 1" 2>&1`
+          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$GUIDEFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
             echo "GUIDE CSV: csv_file query returned zero results or command failed"
