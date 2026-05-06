@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -1565,6 +1566,14 @@ func (s *ServiceTestSuiteWithDatabase) SetupSuite() {
 	var err error
 	s.dbContainer, err = db.NewTestDatabaseContainer()
 	require.NoError(s.T(), err)
+}
+
+func (s *ServiceTestSuiteWithDatabase) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *ServiceTestSuiteWithDatabase) SetupTest() {

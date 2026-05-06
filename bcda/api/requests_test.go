@@ -19,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -90,6 +91,14 @@ func (s *RequestsTestSuite) SetupSuite() {
 
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BFDAPI)
+}
+
+func (s *RequestsTestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *RequestsTestSuite) SetupTest() {
@@ -1214,7 +1223,6 @@ func (s *RequestsTestSuite) genASRequest() *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/attribution_status", nil)
 	aco, err := s.r.GetACOByUUID(context.Background(), s.acoID)
 	require.NoError(s.T(), err)
-	//aco := postgrestest.GetACOByUUID(s.T(), s.db, )
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})

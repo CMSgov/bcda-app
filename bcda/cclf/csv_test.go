@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 type CSVTestSuite struct {
@@ -51,6 +52,11 @@ func (s *CSVTestSuite) SetupSuite() {
 func (s *CSVTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
 	os.RemoveAll(conf.GetEnv("PENDING_DELETION_DIR"))
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *CSVTestSuite) SetupTest() {
@@ -138,8 +144,7 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 			if len(cclfRecords) != 0 {
 				assert.Equal(s.T(), 1, len(cclfRecords))
 				assert.Equal(s.T(), filename, cclfRecords[0].Name)
-				id, _ := safecast.ToInt(cclfRecords[0].ID)
-				beneRecords, _ := r.GetCCLFBeneficiaries(context.Background(), uint(id), []string{})
+				beneRecords, _ := r.GetCCLFBeneficiaries(context.Background(), cclfRecords[0].ID, []string{})
 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
 				for _, v := range beneRecords {
 					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
@@ -206,6 +211,7 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 				r := postgres.NewRepository(s.db)
 				cclfRecord, err := r.GetCCLFFiles(context.Background(), "name", file.metadata.name)
 				assert.Equal(s.T(), 1, len(cclfRecord))
+				assert.Nil(s.T(), err)
 				err = s.importer.ProcessCSV(test.file)
 				assert.NotNil(s.T(), err)
 				assert.Contains(s.T(), err.Error(), test.err.Error())

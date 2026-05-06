@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -50,6 +52,14 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupSuite() {
 	var err error
 	s.dbContainer, err = db.NewTestDatabaseContainer()
 	require.NoError(s.T(), err)
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 type mockSSASClient struct {
@@ -35,6 +37,12 @@ func TestHandleCreateGroup(t *testing.T) {
 
 	dbContainer, err := db.NewTestDatabaseContainer()
 	require.NoError(t, err)
+
+	defer func() {
+		if err := testcontainers.TerminateContainer(dbContainer.Container); err != nil {
+			t.Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
