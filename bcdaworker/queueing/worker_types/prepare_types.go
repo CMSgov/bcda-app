@@ -3,6 +3,7 @@ package worker_types
 import (
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/pborman/uuid"
@@ -21,7 +22,7 @@ type PrepareJobArgs struct {
 	ComplexDataRequestType string
 	ResourceTypes          []string
 	Since                  time.Time
-	TypeFilter             [][]string
+	TypeFilter             fhir.TypeFilterParameter
 	CreationTime           time.Time
 	ClaimsDate             time.Time
 	OptOutDate             time.Time
