@@ -21,6 +21,7 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -829,7 +830,7 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter utils.TypeFilterParameter, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
@@ -901,7 +902,7 @@ func extractTagCodeFromValue(tagValue string) []string {
 
 // omitSharedSystemForNonPAC ensures that non-PAC eligible ACOs in v3 do not receive SharedSystem data
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter utils.TypeFilterParameter, cmsID string) utils.TypeFilterParameter {
+func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
 	// Check if ACO has PAC access
 	acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
 	if !ok {
@@ -942,16 +943,16 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter util
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
-	subqueryParam := utils.TypeFilterSubqueryParam{
+	subqueryParam := fhir.TypeFilterSubqueryParam{
 		Name:  "_tag",
 		Value: tagValue,
 	}
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
 	if len(typeFilter.QueryParameters) == 0 {
-		return utils.TypeFilterParameter{
+		return fhir.TypeFilterParameter{
 			ResourceType:    "ExplanationOfBenefit",
-			QueryParameters: []utils.TypeFilterSubqueryParam{subqueryParam},
+			QueryParameters: []fhir.TypeFilterSubqueryParam{subqueryParam},
 		}
 	}
 

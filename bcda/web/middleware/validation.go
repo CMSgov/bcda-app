@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 )
@@ -29,7 +29,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    utils.TypeFilterParameter
+	TypeFilter    fhir.TypeFilterParameter
 }
 
 // const BBSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Adjudication-Status"
@@ -169,8 +169,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 
 // validateTypeFilterParameter parses the _typeFilter subquery and validates its contents.
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (utils.TypeFilterParameter, bool) {
-	var typeFilterParam utils.TypeFilterParameter
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterParameter, bool) {
+	var typeFilterParam fhir.TypeFilterParameter
 	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
 	if version != constants.V3Version || !ok {
@@ -227,7 +227,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		return typeFilterParam, false
 	}
 
-	var typeFilterSubqueryParams []utils.TypeFilterSubqueryParam
+	var typeFilterSubqueryParams []fhir.TypeFilterSubqueryParam
 	// Loop through the param list from the subquery
 	paramAry := strings.Split(queryParams, "&")
 	for _, paramPair := range paramAry {
@@ -264,7 +264,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 				return typeFilterParam, false
 			}
 
-			typeFilterSubqueryParams = append(typeFilterSubqueryParams, utils.TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
+			typeFilterSubqueryParams = append(typeFilterSubqueryParams, fhir.TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
 		} else {
 			errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
 			ctx, _ = log.WriteWarnWithFields(
@@ -277,7 +277,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		}
 	}
 
-	typeFilterParam = utils.TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
+	typeFilterParam = fhir.TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
 	return typeFilterParam, true
 }
 
