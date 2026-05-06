@@ -23,6 +23,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -1323,7 +1324,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	tests := []struct {
 		name          string
 		cmsID         string
-		typeFilter    [][]string
+		typeFilter    fhir.TypeFilterParameter
 		acoConfig     *service.ACOConfig
 		shouldFail    bool
 		expectedError string
@@ -1332,7 +1333,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "SharedSystemWithPAC",
 			cmsID:       "PAC0000",
-			typeFilter:  [][]string{{"_tag", "SharedSystem"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
 			acoConfig:   acoWithPAC,
 			shouldFail:  false,
 			description: "ACO with PAC access should be able to use SharedSystem tag",
@@ -1340,7 +1341,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:          "SharedSystemWithoutPAC",
 			cmsID:         "NOPAC0000",
-			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
+			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
 			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
@@ -1349,7 +1350,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "SharedSystemURLFormatWithPAC",
 			cmsID:       "PAC0000",
-			typeFilter:  [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}}),
 			acoConfig:   acoWithPAC,
 			shouldFail:  false,
 			description: "ACO with PAC access should be able to use SharedSystem tag in URL format",
@@ -1357,7 +1358,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:          "SharedSystemURLFormatWithoutPAC",
 			cmsID:         "NOPAC0000",
-			typeFilter:    [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
+			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}}),
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
 			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
@@ -1366,7 +1367,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "FinalActionNoPACRequired",
 			cmsID:       "NOPAC0000",
-			typeFilter:  [][]string{{"_tag", "FinalAction"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "FinalAction"}}),
 			acoConfig:   acoWithoutPAC,
 			shouldFail:  false,
 			description: "FinalAction tag should not require PAC eligibility",
@@ -1374,7 +1375,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "NotFinalActionNoPACRequired",
 			cmsID:       "NOPAC0000",
-			typeFilter:  [][]string{{"_tag", "NotFinalAction"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "NotFinalAction"}}),
 			acoConfig:   acoWithoutPAC,
 			shouldFail:  false,
 			description: "NotFinalAction tag should not require PAC eligibility",
@@ -1382,7 +1383,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "NationalClaimsHistoryNoPACRequired",
 			cmsID:       "NOPAC0000",
-			typeFilter:  [][]string{{"_tag", "NationalClaimsHistory"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "NationalClaimsHistory"}}),
 			acoConfig:   acoWithoutPAC,
 			shouldFail:  false,
 			description: "NationalClaimsHistory tag should not require PAC eligibility",
@@ -1390,7 +1391,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "SharedSystemAndFinalActionWithPAC",
 			cmsID:       "PAC0000",
-			typeFilter:  [][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
 			acoConfig:   acoWithPAC,
 			shouldFail:  false,
 			description: "ACO with PAC should be able to combine SharedSystem with other tags",
@@ -1398,7 +1399,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:          "SharedSystemAndFinalActionWithoutPAC",
 			cmsID:         "NOPAC0000",
-			typeFilter:    [][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}},
+			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
 			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
@@ -1407,7 +1408,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "NoTypeFilter",
 			cmsID:       "NOPAC0000",
-			typeFilter:  [][]string{},
+			typeFilter:  makeTypeFilterParam([][]string{}),
 			acoConfig:   acoWithoutPAC,
 			shouldFail:  false,
 			description: "No typeFilter should pass validation",
@@ -1415,7 +1416,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "NonTagParameters",
 			cmsID:       "NOPAC0000",
-			typeFilter:  [][]string{{"service-date", "ge2020-01-01"}},
+			typeFilter:  makeTypeFilterParam([][]string{{"service-date", "ge2020-01-01"}}),
 			acoConfig:   acoWithoutPAC,
 			shouldFail:  false,
 			description: "Non-tag parameters should not require PAC eligibility",
@@ -1423,7 +1424,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:          "ACOConfigNotFound",
 			cmsID:         "UNKNOWN0000",
-			typeFilter:    [][]string{{"_tag", "SharedSystem"}},
+			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
 			acoConfig:     nil,
 			shouldFail:    true,
 			expectedError: "Unable to determine ACO configuration",
@@ -1439,9 +1440,9 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 
 			// Check if SharedSystem tag is present (which requires PAC check)
 			requiresPACCheck := false
-			for _, paramPair := range test.typeFilter {
-				if len(paramPair) == 2 && paramPair[0] == "_tag" {
-					tagCodes := extractTagCodeFromValue(paramPair[1])
+			for _, subQueryParam := range test.typeFilter.QueryParameters {
+				if subQueryParam.Name == "_tag" {
+					tagCodes := extractTagCodeFromValue(subQueryParam.Value)
 					for _, code := range tagCodes {
 						if code == "SharedSystem" {
 							requiresPACCheck = true
@@ -1539,15 +1540,18 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmsID        string
-		typeFilter   [][]string
+		typeFilter   fhir.TypeFilterParameter
 		acoConfig    *service.ACOConfig
 		expectedTags []string // Expected _tag values in the returned filter
 		description  string
 	}{
 		{
-			name:         "NonPACNoFilter",
-			cmsID:        "NOPAC0000",
-			typeFilter:   [][]string{},
+			name:  "NonPACNoFilter",
+			cmsID: "NOPAC0000",
+			typeFilter: fhir.TypeFilterParameter{
+				ResourceType:    "",
+				QueryParameters: []fhir.TypeFilterSubqueryParam{},
+			},
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
 			description:  "Non-PAC ACO with no filter should get filter added",
@@ -1555,7 +1559,7 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 		{
 			name:         "NonPACWithNCHFilter",
 			cmsID:        "NOPAC0000",
-			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"}},
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"}}),
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
 			description:  "Non-PAC ACO with existing NCH filter should keep same filter",
@@ -1563,7 +1567,7 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 		{
 			name:         "NonPACWithDDPSFilter",
 			cmsID:        "NOPAC0000",
-			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"}},
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"}}),
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
 			description:  "Non-PAC ACO with existing DDPS filter should keep same filter",
@@ -1571,15 +1575,18 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 		{
 			name:         "NonPACWithFinalAction",
 			cmsID:        "NOPAC0000",
-			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"}},
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"}}),
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
 			description:  "Non-PAC ACO with FinalAction should still get filter added",
 		},
 		{
-			name:         "PACNoFilter",
-			cmsID:        "PAC0000",
-			typeFilter:   [][]string{},
+			name:  "PACNoFilter",
+			cmsID: "PAC0000",
+			typeFilter: fhir.TypeFilterParameter{
+				ResourceType:    "",
+				QueryParameters: []fhir.TypeFilterSubqueryParam{},
+			},
 			acoConfig:    acoWithPAC,
 			expectedTags: []string{},
 			description:  "PAC ACO with no filter should not get filter added",
@@ -1587,7 +1594,7 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 		{
 			name:         "PACWithSharedSystem",
 			cmsID:        "PAC0000",
-			typeFilter:   [][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}},
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}}),
 			acoConfig:    acoWithPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
 			description:  "PAC ACO with SharedSystem should not get filter added",
@@ -1595,7 +1602,7 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 		{
 			name:         "NonPACWithServiceDate",
 			cmsID:        "NOPAC0000",
-			typeFilter:   [][]string{{"service-date", "ge2024-01-01"}},
+			typeFilter:   makeTypeFilterParam([][]string{{"service-date", "ge2024-01-01"}}),
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
 			description:  "Non-PAC ACO with service-date but no _tag should get filter added",
@@ -1617,9 +1624,9 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 
 			// Extract _tag values from result
 			var actualTags []string
-			for _, paramPair := range result {
-				if len(paramPair) == 2 && paramPair[0] == "_tag" {
-					actualTags = append(actualTags, paramPair[1])
+			for _, subqueryParam := range result.QueryParameters {
+				if subqueryParam.Name == "_tag" {
+					actualTags = append(actualTags, subqueryParam.Value)
 				}
 			}
 
@@ -1631,16 +1638,16 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 			}
 
 			// Verify other parameters are preserved
-			var otherParams [][]string
-			for _, paramPair := range result {
-				if len(paramPair) == 2 && paramPair[0] != "_tag" {
-					otherParams = append(otherParams, paramPair)
+			var otherParams []fhir.TypeFilterSubqueryParam
+			for _, subqueryParam := range result.QueryParameters {
+				if subqueryParam.Name != "_tag" {
+					otherParams = append(otherParams, subqueryParam)
 				}
 			}
-			var expectedOtherParams [][]string
-			for _, paramPair := range test.typeFilter {
-				if len(paramPair) == 2 && paramPair[0] != "_tag" {
-					expectedOtherParams = append(expectedOtherParams, paramPair)
+			var expectedOtherParams []fhir.TypeFilterSubqueryParam
+			for _, subqueryParam := range test.typeFilter.QueryParameters {
+				if subqueryParam.Name != "_tag" {
+					expectedOtherParams = append(expectedOtherParams, subqueryParam)
 				}
 			}
 			assert.Equal(t, expectedOtherParams, otherParams, "Other parameters should be preserved")
@@ -1671,7 +1678,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
-	typeFilter := [][]string{}
+	typeFilter := fhir.TypeFilterParameter{}
 
 	// Setup mock
 	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
@@ -1682,9 +1689,9 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 
 	// Verify NCH filter was added
 	var actualTags []string
-	for _, paramPair := range result {
-		if len(paramPair) == 2 && paramPair[0] == "_tag" {
-			actualTags = append(actualTags, paramPair[1])
+	for _, subqueryParam := range result.QueryParameters {
+		if subqueryParam.Name == "_tag" {
+			actualTags = append(actualTags, subqueryParam.Value)
 		}
 	}
 
@@ -1701,4 +1708,24 @@ type DatabaseError struct{}
 
 func (e DatabaseError) Error() string {
 	return "error"
+}
+
+func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
+	var typeFilterParam fhir.TypeFilterParameter
+	if len(params) == 0 {
+		return typeFilterParam
+	}
+
+	var subQueryParams []fhir.TypeFilterSubqueryParam
+	for _, param := range params {
+		subQueryParams = append(subQueryParams, fhir.TypeFilterSubqueryParam{
+			Name:  param[0],
+			Value: param[1],
+		})
+	}
+	typeFilterParam = fhir.TypeFilterParameter{
+		ResourceType:    "ExplanationOfBenefit",
+		QueryParameters: subQueryParams,
+	}
+	return typeFilterParam
 }

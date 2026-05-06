@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -376,7 +377,15 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
 	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
-	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: [][]string{{"service-date", "gt2022-06-26"}}, TransactionTime: now}
+	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: fhir.TypeFilterParameter{
+		ResourceType: "ExplanationOfBenefit",
+		QueryParameters: []fhir.TypeFilterSubqueryParam{
+			{
+				Name:  "service-date",
+				Value: "gt2022-06-26",
+			},
+		},
+	}, TransactionTime: now}
 	defer conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", old)
 	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0") // Need to ensure that requests do not have the _count parameter
 
