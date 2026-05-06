@@ -141,7 +141,6 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 			}
 			r := postgres.NewRepository(s.db)
 			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
-			assert.Nil(s.T(), err)
 			if len(cclfRecords) != 0 {
 				assert.Equal(s.T(), 1, len(cclfRecords))
 				assert.Equal(s.T(), filename, cclfRecords[0].Name)
