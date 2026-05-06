@@ -29,7 +29,7 @@ env:
   DEPLOY_ENV: ${{ inputs.deploy_env || 'test' }}
 
 jobs:
-  test:
+  deploy:
     environment: ${{ inputs.deploy_env || 'test' }}
     permissions:
       contents: read
