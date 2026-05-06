@@ -11,16 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type TypeFilterParameter struct {
-	ResourceType    string
-	QueryParameters []TypeFilterSubqueryParam
-}
-
-type TypeFilterSubqueryParam struct {
-	Name  string
-	Value string
-}
-
 // FromEnv always returns a string that is either a non-empty value from the environment variable named by key or
 // the string otherwise
 func FromEnv(key, otherwise string) string {
