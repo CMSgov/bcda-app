@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -139,7 +140,7 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 				assert.Contains(s.T(), err.Error(), test.err.Error())
 			}
 			r := postgres.NewRepository(s.db)
-			cclfRecords, err := r.GetCCLFFiles(s.T().Context(), "name", filepath.Clean(test.filepath))
+			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
 			assert.Nil(s.T(), err)
 			if len(cclfRecords) != 0 {
 				assert.Equal(s.T(), 1, len(cclfRecords))
@@ -208,8 +209,7 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 		s.Run(test.name, func() {
 			err := s.importer.ProcessCSV(test.file)
 			if test.err != nil {
-				r := postgres.NewRepository(s.db)
-				cclfRecord, err := r.GetCCLFFiles(context.Background(), "name", file.metadata.name)
+				cclfRecord := postgrestest.GetCCLFFilesByName(s.T(), s.db, file.metadata.name)
 				assert.Equal(s.T(), 1, len(cclfRecord))
 				assert.Nil(s.T(), err)
 				err = s.importer.ProcessCSV(test.file)
@@ -217,8 +217,7 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 				assert.Contains(s.T(), err.Error(), test.err.Error())
 			} else {
 				assert.Nil(s.T(), err)
-				r := postgres.NewRepository(s.db)
-				cclfRecord, err := r.GetCCLFFiles(context.Background(), "name", file.metadata.name)
+				cclfRecord := postgrestest.GetCCLFFilesByName(s.T(), s.db, file.metadata.name)
 				assert.Equal(s.T(), 1, len(cclfRecord))
 				assert.Nil(s.T(), err)
 				assert.Equal(s.T(), expectedFile.Name, cclfRecord[0].Name)
@@ -226,7 +225,7 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 				assert.Equal(s.T(), expectedFile.PerformanceYear, cclfRecord[0].PerformanceYear)
 				assert.Equal(s.T(), constants.ImportComplete, cclfRecord[0].ImportStatus)
 
-				beneRecords, _ := r.GetCCLFBeneficiaryMBIs(context.Background(), cclfRecord[0].ID)
+				beneRecords, _ := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(context.Background(), cclfRecord[0].ID)
 				sort.Strings(beneRecords)
 				assert.Equal(s.T(), 3, len(beneRecords))
 				for _, v := range beneRecords {

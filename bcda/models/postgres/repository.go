@@ -604,38 +604,6 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 	return jk, nil
 }
 
-func (r *Repository) GetCCLFFiles(ctx context.Context, field, value string) ([]models.CCLFFile, error) {
-	sb := sqlFlavor.NewSelectBuilder().
-		Select("id", "cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").
-		From("cclf_files")
-	sb.Where(sb.Equal(field, value))
-
-	query, args := sb.Build()
-	rows, err := r.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	var cclfFiles []models.CCLFFile
-	for rows.Next() {
-		var cclfFile models.CCLFFile
-		if err := rows.Scan(&cclfFile.ID, &cclfFile.CCLFNum, &cclfFile.Name,
-			&cclfFile.ACOCMSID, &cclfFile.Timestamp, &cclfFile.PerformanceYear,
-			&cclfFile.ImportStatus, &cclfFile.Type); err != nil {
-			return nil, err
-		}
-		cclfFiles = append(cclfFiles, cclfFile)
-	}
-
-	if rows.Err() != nil {
-		return nil, err
-	}
-
-	return cclfFiles, nil
-}
-
 func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {

@@ -27,6 +27,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -1194,8 +1195,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("groupId", groupID)
 
-	aco, err := s.r.GetACOByUUID(context.Background(), s.acoID)
-	require.NoError(s.T(), err)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
@@ -1210,8 +1210,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 
 func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
-	aco, err := s.r.GetACOByUUID(context.Background(), s.acoID)
-	require.NoError(s.T(), err)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	ctx = middleware.SetRequestParamsCtx(ctx, rp)
@@ -1222,8 +1221,7 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 
 func (s *RequestsTestSuite) genASRequest() *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/attribution_status", nil)
-	aco, err := s.r.GetACOByUUID(context.Background(), s.acoID)
-	require.NoError(s.T(), err)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
