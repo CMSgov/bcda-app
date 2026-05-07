@@ -14,19 +14,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -67,16 +65,13 @@ const v2JobRequestUrl = "http://bcda.cms.gov/api/v2/Jobs/1"
 
 type RequestsTestSuite struct {
 	suite.Suite
-
 	runoutEnabledEnvVar string
-
-	db *sql.DB
-
-	pool *pgxv5Pool.Pool
-
-	acoID uuid.UUID
-
-	resourceType map[string]service.ClaimType
+	db                  *sql.DB
+	pool                *pgxv5Pool.Pool
+	acoID               uuid.UUID
+	resourceType        map[string]service.ClaimType
+	dbContainer         db.TestDatabaseContainer
+	r                   *postgres.Repository
 }
 
 func TestRequestsTestSuite(t *testing.T) {
@@ -86,14 +81,9 @@ func TestRequestsTestSuite(t *testing.T) {
 func (s *RequestsTestSuite) SetupSuite() {
 	// See testdata/acos.yml
 	s.acoID = uuid.Parse("ba21d24d-cd96-4d7d-a691-b0e8c88e67a5")
-	db, _, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	s.db = db
-	s.pool = database.ConnectPool()
-	tf, err := testfixtures.New(
-		testfixtures.Database(db),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("testdata/"),
-	)
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
 
 	s.resourceType = map[string]service.ClaimType{
 		"Patient":              {Adjudicated: true},
@@ -101,24 +91,38 @@ func (s *RequestsTestSuite) SetupSuite() {
 		"ExplanationOfBenefit": {Adjudicated: true},
 	}
 
-	if err != nil {
-		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-	}
-	if err := tf.Load(); err != nil {
-		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-	}
-
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BFDAPI)
 }
 
+func (s *RequestsTestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
+}
+
 func (s *RequestsTestSuite) SetupTest() {
+	var err error
 	s.runoutEnabledEnvVar = conf.GetEnv("BCDA_ENABLE_RUNOUT")
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
+
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
 	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
 	assert.Empty(s.T(), err)
+	s.db.Close()
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
@@ -432,8 +436,7 @@ func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models
 
 func (s *RequestsTestSuite) TestAttributionStatus() {
 	tests := []struct {
-		name string
-
+		name        string
 		respCode    int
 		fileNames   []string
 		fileTypes   []string
@@ -1246,7 +1249,8 @@ func (s *RequestsTestSuite) genGetJobsRequest(version string, statuses []models.
 
 	req := httptest.NewRequest("GET", target, nil)
 
-	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
+	aco, err := s.r.GetACOByUUID(context.Background(), s.acoID)
+	require.NoError(s.T(), err)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)

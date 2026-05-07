@@ -14,20 +14,21 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
-	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -1554,6 +1555,7 @@ type ServiceTestSuiteWithDatabase struct {
 	priorityACOsEnvVar string
 	repository         *postgres.Repository
 	db                 *sql.DB
+	dbContainer        db.TestDatabaseContainer
 }
 
 func TestServiceTestSuiteWithDatabase(t *testing.T) {
@@ -1561,8 +1563,17 @@ func TestServiceTestSuiteWithDatabase(t *testing.T) {
 }
 
 func (s *ServiceTestSuiteWithDatabase) SetupSuite() {
-	s.db, _, _ = databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	s.repository = postgres.NewRepository(s.db)
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
+func (s *ServiceTestSuiteWithDatabase) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *ServiceTestSuiteWithDatabase) SetupTest() {
@@ -1571,6 +1582,20 @@ func (s *ServiceTestSuiteWithDatabase) SetupTest() {
 
 func (s *ServiceTestSuiteWithDatabase) TearDownTest() {
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", s.priorityACOsEnvVar)
+}
+
+func (s *ServiceTestSuiteWithDatabase) SetupSubTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.repository = postgres.NewRepository(s.db)
+}
+
+func (s *ServiceTestSuiteWithDatabase) TearDownSubTest() {
+	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", s.priorityACOsEnvVar)
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 // suppressions.yml
@@ -1589,7 +1614,6 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 	}
 
 	service := service{
-		repository: s.repository,
 		sp: suppressionParameters{
 			includeSuppressedBeneficiaries: false,
 			lookbackDays:                   60,
@@ -1609,18 +1633,10 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 	}
 
 	for _, test := range test_cases {
-		s.T().Run(test.name, func(t *testing.T) {
-			tf, err := testfixtures.New(
-				testfixtures.Database(s.db),
-				testfixtures.Dialect("postgres"),
-				testfixtures.Directory("fixtures"))
-			if err != nil {
-				assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-			}
-			if err := tf.Load(); err != nil {
-				assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-			}
-
+		s.Run(test.name, func() {
+			err = s.dbContainer.ExecuteDir("testdata/")
+			require.NoError(s.T(), err)
+			service.repository = s.repository
 			rc := worker_types.PrepareJobArgs{
 				CMSID: test.cmsID,
 			}
@@ -1628,9 +1644,9 @@ func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 			if err != nil {
 				s.T().Fatal(err)
 			}
-			assert.Equal(t, test.beneCount, len(actualBeneCount))
+			assert.Equal(s.T(), test.beneCount, len(actualBeneCount))
 			for i := 0; i < len(actualBeneCount); i++ {
-				assert.Equal(t, test.mbis[i], actualBeneCount[i].MBI)
+				assert.Equal(s.T(), test.mbis[i], actualBeneCount[i].MBI)
 			}
 		})
 	}

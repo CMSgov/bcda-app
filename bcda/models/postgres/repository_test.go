@@ -13,6 +13,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -46,6 +47,14 @@ func (r *RepositoryTestSuite) SetupSuite() {
 	var err error
 	r.dbContainer, err = db.NewTestDatabaseContainer()
 	require.NoError(r.T(), err)
+}
+
+func (s *RepositoryTestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (r *RepositoryTestSuite) SetupTest() {
