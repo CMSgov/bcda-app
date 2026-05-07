@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
@@ -28,18 +29,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    []TypeFilterParameter
-}
-
-type TypeFilterParameter struct {
-	ResourceType    string
-	QueryParameters []TypeFilterSubqueryParam
-}
-
-type TypeFilterSubqueryParam struct {
-	Name     string
-	Modifier string
-	Value    string
+	TypeFilter    fhir.TypeFilterParameter
 }
 
 // const BBSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Adjudication-Status"
@@ -179,103 +169,116 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 
 // validateTypeFilterParameter parses the _typeFilter subquery and validates its contents.
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) ([]TypeFilterParameter, bool) {
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterParameter, bool) {
+	var typeFilterParam fhir.TypeFilterParameter
 	ctx := r.Context()
 	params, ok := r.URL.Query()["_typeFilter"]
 	if version != constants.V3Version || !ok {
-		return nil, true
+		return typeFilterParam, true
 	}
 
-	var typeFilterParams []TypeFilterParameter
-	for _, subQuery := range params {
-		// The subquery is url-encoded. So we will first decode so we can parse it
-		decodedQuery, err := url.QueryUnescape(subQuery)
-		if err != nil {
-			errMsg := fmt.Sprintf("failed to unescape %s", subQuery)
-			ctx, _ = log.WriteWarnWithFields(
-				ctx,
-				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-				logrus.Fields{"resp_status": http.StatusBadRequest},
-			)
-			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return nil, false
-		}
+	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
+	if len(params) > 1 {
+		errMsg := "failed to process request given more that one _typeFilter parameter"
+		ctx, _ = log.WriteWarnWithFields(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		return typeFilterParam, false
+	}
 
-		// Expected format is: <resourceType>?<paramList>
-		resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
+	// The subquery is url-encoded. So we will first decode so we can parse it
+	decodedQuery, err := url.QueryUnescape(params[0])
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to unescape %s", params[0])
+		ctx, _ = log.WriteWarnWithFields(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		return typeFilterParam, false
+	}
+
+	// Expected format is: <resourceType>?<paramList>
+	resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
+	if !ok {
+		errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
+		ctx, _ = log.WriteWarnWithFields(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		return typeFilterParam, false
+	}
+
+	// Right now, we are only accepting ExplanationOfBenefit subqueries
+	if resourceType != "ExplanationOfBenefit" {
+		errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
+		ctx, _ = log.WriteWarnWithFields(
+			ctx,
+			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		return typeFilterParam, false
+	}
+
+	var typeFilterSubqueryParams []fhir.TypeFilterSubqueryParam
+	// Loop through the param list from the subquery
+	paramAry := strings.Split(queryParams, "&")
+	for _, paramPair := range paramAry {
+		paramName, paramValue, ok := strings.Cut(paramPair, "=")
 		if !ok {
-			errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
+			errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
 			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return nil, false
+			return typeFilterParam, false
 		}
 
-		// Right now, we are only accepting ExplanationOfBenefit subqueries
-		if resourceType != "ExplanationOfBenefit" {
-			errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
+		if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
+			var validationErr error
+			switch paramName {
+			case "_tag":
+				validationErr = validateSubqueryParameterList(paramValue, validateTagSubqueryParameter)
+			case "outcome":
+				validationErr = validateSubqueryParameterList(paramValue, validateOutcomeSubqueryParameter)
+			case "service-date":
+				validationErr = validateSubqueryParameterList(paramValue, validateServiceDateSubqueryParameter)
+			}
+
+			if validationErr != nil {
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: %s", responseutils.RequestErr, validationErr.Error()),
+					logrus.Fields{"resp_status": http.StatusBadRequest},
+				)
+				rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, validationErr.Error())
+				return typeFilterParam, false
+			}
+
+			typeFilterSubqueryParams = append(typeFilterSubqueryParams, fhir.TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
+		} else {
+			errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
 			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return nil, false
+			return typeFilterParam, false
 		}
-
-		var typeFilterSubqueryParams []TypeFilterSubqueryParam
-		// Loop through the param list from the subquery
-		paramAry := strings.Split(queryParams, "&")
-		for _, paramPair := range paramAry {
-			paramName, paramValue, ok := strings.Cut(paramPair, "=")
-			if !ok {
-				errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
-				ctx, _ = log.WriteWarnWithFields(
-					ctx,
-					fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-					logrus.Fields{"resp_status": http.StatusBadRequest},
-				)
-				rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-				return nil, false
-			}
-
-			if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
-				var validationErr error
-				switch paramName {
-				case "_tag":
-					validationErr = validateSubqueryParameterList(paramValue, validateTagSubqueryParameter)
-				case "outcome":
-					validationErr = validateSubqueryParameterList(paramValue, validateOutcomeSubqueryParameter)
-				}
-
-				if validationErr != nil {
-					ctx, _ = log.WriteWarnWithFields(
-						ctx,
-						fmt.Sprintf("%s: %s", responseutils.RequestErr, validationErr.Error()),
-						logrus.Fields{"resp_status": http.StatusBadRequest},
-					)
-					rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, validationErr.Error())
-					return nil, false
-				}
-				// TODO: add service-date validation
-				typeFilterSubqueryParams = append(typeFilterSubqueryParams, TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
-			} else {
-				errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
-				ctx, _ = log.WriteWarnWithFields(
-					ctx,
-					fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-					logrus.Fields{"resp_status": http.StatusBadRequest},
-				)
-				rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-				return nil, false
-			}
-		}
-		typeFilterParams = append(typeFilterParams, TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams})
 	}
-	return typeFilterParams, true
+
+	typeFilterParam = fhir.TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
+	return typeFilterParam, true
 }
 
 // ValidateRequestURL ensure that request matches certain expectations.
@@ -422,6 +425,39 @@ func validateOutcomeSubqueryParameter(outcome string) error {
 		return fmt.Errorf("invalid outcome value: %s. Supported outcome values are 'complete' and 'partial'", outcome)
 	}
 	return nil
+}
+
+// validateServiceDateSubqueryParameter ensure that service-date param is a valid FHIR Date param
+func validateServiceDateSubqueryParameter(dateParam string) error {
+	fhirDateTime := ""
+
+	// Check for the optional 2-character prefix
+	var validPrefixes = []string{"eq", "ne", "lt", "gt", "le", "ge", "sa", "eb", "ap"}
+	if len(dateParam) > 2 && slices.Contains(validPrefixes, dateParam[:2]) {
+		fhirDateTime = dateParam[2:]
+	} else {
+		fhirDateTime = dateParam
+	}
+
+	var validDateTimeFormats = []string{
+		"2006",
+		"2006-01",
+		"2006-01-02",
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04:05+07:00",
+		"2006-01-02T15:04:05-07:00",
+		"2006-01-02T15:04:05Z",
+	}
+
+	// Check the FHIR dateTime against each valid format. If any check is valid, then it is good
+	for _, format := range validDateTimeFormats {
+		if _, err := time.Parse(format, fhirDateTime); err == nil {
+			return nil
+		}
+	}
+
+	// if the FHIR dateTime does not match any of the valid formats, return an error
+	return fmt.Errorf("invalid service-date value: %s. Pass a valid FHIR date parameter", dateParam)
 }
 
 func getKeys(kv map[string]struct{}) []string {
