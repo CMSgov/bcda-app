@@ -21,6 +21,7 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -582,12 +583,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	// TODO: remove this and updatet he downstream code to use the TypeFilter Param Struct, not the [][]string
-	flattenedTypeFilter := FlattenTypefilterParams(rp.TypeFilter)
-
 	// Validate PAC eligibility for v3 _typeFilter tags that require it
 	if h.apiVersion == constants.V3Version {
-		if err = h.validateTypeFilterPACEligibility(ctx, flattenedTypeFilter, ad.CMSID, w); err != nil {
+		if err = h.validateTypeFilterPACEligibility(ctx, rp.TypeFilter, ad.CMSID, w); err != nil {
 			return
 		}
 	}
@@ -607,7 +605,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// This ensures they only get NCH data, not SharedSystem data
 	if h.apiVersion == constants.V3Version {
 		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
-			flattenedTypeFilter = h.omitSharedSystemForNonPAC(ctx, flattenedTypeFilter, ad.CMSID)
+			rp.TypeFilter = h.omitSharedSystemForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
 		}
 	}
 
@@ -762,7 +760,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		ComplexDataRequestType: complexDataRequestType,
 		ResourceTypes:          resourceTypes,
 		Since:                  rp.Since,
-		TypeFilter:             flattenedTypeFilter,
+		TypeFilter:             rp.TypeFilter,
 		CreationTime:           time.Now(),
 		ClaimsDate:             timeConstraints.ClaimsDate,
 		OptOutDate:             timeConstraints.OptOutDate,
@@ -832,15 +830,15 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter [][]string, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
 	// Extract all _tag parameter values
 	var requestedTagCodes []string
-	for _, paramPair := range typeFilter {
-		if len(paramPair) == 2 && paramPair[0] == "_tag" {
-			tagValue := paramPair[1]
+	for _, subqueryParam := range typeFilter.QueryParameters {
+		if subqueryParam.Name == "_tag" {
+			tagValue := subqueryParam.Value
 			// Extract tag code from either short format or URL format
 			tagCodes := extractTagCodeFromValue(tagValue)
 			requestedTagCodes = append(requestedTagCodes, tagCodes...)
@@ -904,7 +902,7 @@ func extractTagCodeFromValue(tagValue string) []string {
 
 // omitSharedSystemForNonPAC ensures that non-PAC eligible ACOs in v3 do not receive SharedSystem data
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter [][]string, cmsID string) [][]string {
+func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
 	// Check if ACO has PAC access
 	acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
 	if !ok {
@@ -920,9 +918,9 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter [][]
 	// Check if there's already a _tag parameter that filters out SharedSystem
 	// If it's already specified, no need to add it again
 	hasRelevantFilter := false
-	for _, paramPair := range typeFilter {
-		if len(paramPair) == 2 && paramPair[0] == "_tag" {
-			tagCodes := extractTagCodeFromValue(paramPair[1])
+	for _, subqueryParam := range typeFilter.QueryParameters {
+		if subqueryParam.Name == "_tag" {
+			tagCodes := extractTagCodeFromValue(subqueryParam.Value)
 			for _, tagCode := range tagCodes {
 				if tagCode == "NationalClaimsHistory" || tagCode == "DDPS" {
 					hasRelevantFilter = true
@@ -945,7 +943,21 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter [][]
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
-	typeFilter = append(typeFilter, []string{"_tag", tagValue})
+	subqueryParam := fhir.TypeFilterSubqueryParam{
+		Name:  "_tag",
+		Value: tagValue,
+	}
+
+	// if there is no _typeFilter param passed, create a new one and add this _tag filter
+	if len(typeFilter.QueryParameters) == 0 {
+		return fhir.TypeFilterParameter{
+			ResourceType:    "ExplanationOfBenefit",
+			QueryParameters: []fhir.TypeFilterSubqueryParam{subqueryParam},
+		}
+	}
+
+	// If there is an existing typeFilter, add the _tag subquery param to the existing _typeFilter param
+	typeFilter.QueryParameters = append(typeFilter.QueryParameters, subqueryParam)
 
 	return typeFilter
 }
@@ -957,21 +969,6 @@ func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {
 		err = goerrors.New("no auth data in context")
 	}
 	return
-}
-
-// Flatten the param from the struct into the 2D array that is already being used.
-// TODO: remove this, and pass as a struct. Then update the downstream logic to handle the struct
-func FlattenTypefilterParams(typefilterParams []middleware.TypeFilterParameter) [][]string {
-	var typeFilterParams [][]string
-	for _, typefilterParam := range typefilterParams {
-		if typefilterParam.ResourceType == "ExplanationOfBenefit" {
-			for _, subqueryParam := range typefilterParam.QueryParameters {
-				typeFilterParams = append(typeFilterParams, []string{subqueryParam.Name, subqueryParam.Value})
-			}
-		}
-	}
-
-	return typeFilterParams
 }
 
 // swagger:model fileItem

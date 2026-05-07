@@ -199,7 +199,7 @@ jobs:
           echo "Target deployment env ${{ env.RELEASE_ENV }} must match confirmed deployment env ${{ env.CONFIRM_RELEASE_ENV }}."
           exit 1
       - name: Started Deploy Alert
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -376,7 +376,7 @@ jobs:
     steps:
       - name: Publish Build Info
         if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -402,7 +402,7 @@ jobs:
                   - footer
       - name: Failure Alert
         if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
