@@ -32,16 +32,6 @@ resource "aws_cloudwatch_log_group" "this" {
     Name = "/aws/lambda/${local.full_name}"
   }
 }
-
-data "aws_iam_policy_document" "assume_bucket_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    resources = [
-      module.platform.ssm.attribution-import.misp-eft-role_arn.value
-    ]
-  }
-}
-
 # ---------------------------------------------------------------------------
 # Managed policies
 # ---------------------------------------------------------------------------
@@ -127,15 +117,30 @@ module "attribution_import_function" {
 
   memory_size  = 2048
 
-  function_role_inline_policies = {
-    assume-bucket-role = data.aws_iam_policy_document.assume_bucket_role.json
-  }
-
   environment_variables = {
     ENV      = var.env
     APP_NAME = "${local.app}-${var.env}-attribution-import"
   }
   extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn]
+}
+
+data "aws_iam_policy_document" "trust_policy_eft" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
+    }
+
+    actions = ["sts:TagSession","sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role_policy" "eft" {
+  name   = "attribution-import-eft"
+  role   = "${local.full_name}-function"
+  policy = data.aws_iam_policy_document.trust_policy_eft.json
 }
 
 resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
