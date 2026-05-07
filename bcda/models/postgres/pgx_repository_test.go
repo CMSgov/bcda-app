@@ -9,14 +9,15 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/db"
 	pgxv5 "github.com/jackc/pgx/v5"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 func rollbackTx(ctx context.Context, tx pgxv5.Tx) {
@@ -27,9 +28,10 @@ func rollbackTx(ctx context.Context, tx pgxv5.Tx) {
 
 type PgxRepositoryTestSuite struct {
 	suite.Suite
-	db   *sql.DB
-	pool *pgxv5Pool.Pool
-	repo *postgres.PgxRepository
+	db          *sql.DB
+	pool        *pgxv5Pool.Pool
+	repo        *postgres.PgxRepository
+	dbContainer db.TestDatabaseContainer
 }
 
 func TestPgxRepositoryTestSuite(t *testing.T) {
@@ -37,21 +39,32 @@ func TestPgxRepositoryTestSuite(t *testing.T) {
 }
 
 func (s *PgxRepositoryTestSuite) SetupSuite() {
-	s.db, s.pool, _ = databasetest.CreateDatabase(s.T(), "../../../db/migrations/bcda/", true)
-	s.repo = postgres.NewPgxRepositoryWithPool(s.pool)
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
 }
 
 func (s *PgxRepositoryTestSuite) TearDownSuite() {
-	if s.pool != nil {
-		s.pool.Close()
-	}
-	if s.db != nil {
-		s.db.Close()
-	}
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
+}
+
+func (s *PgxRepositoryTestSuite) SetupTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.repo = postgres.NewPgxRepositoryWithPool(s.pool)
 }
 
 func (s *PgxRepositoryTestSuite) TearDownTest() {
-	s.cleanupTestData("TEST123")
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func (s *PgxRepositoryTestSuite) TestNewPgxRepositoryWithPool() {
@@ -293,16 +306,6 @@ func createTestCCLFFile(name, acoCMSID string) models.CCLFFile {
 		ImportStatus:    "PENDING",
 		Type:            models.FileTypeDefault,
 	}
-}
-
-func (s *PgxRepositoryTestSuite) cleanupTestData(cmsID string) {
-	// Delete CCLF beneficiaries first due to foreign key constraints
-	_, err := s.db.Exec("DELETE FROM cclf_beneficiaries WHERE file_id IN (SELECT id FROM cclf_files WHERE aco_cms_id = $1)", cmsID)
-	assert.NoError(s.T(), err)
-
-	// Delete CCLF files
-	_, err = s.db.Exec("DELETE FROM cclf_files WHERE aco_cms_id = $1", cmsID)
-	assert.NoError(s.T(), err)
 }
 
 func TestPgxRepository_CCLFFileOperations(t *testing.T) {

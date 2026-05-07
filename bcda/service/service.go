@@ -152,12 +152,7 @@ func (s *service) FindOldCCLFFile(ctx context.Context, cmsID string, since time.
 		return 0, err
 	}
 
-	if cclfFileOld == nil {
-		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
-		return 0, nil
-	} else {
-		return cclfFileOld.ID, nil
-	}
+	return cclfFileOld.ID, nil
 }
 
 func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error) {

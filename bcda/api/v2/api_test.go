@@ -87,6 +87,14 @@ func (s *APITestSuite) SetupSuite() {
 	client.SetLogger(log.BFDAPI)
 }
 
+func (s *APITestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
+}
+
 func (s *APITestSuite) SetupTest() {
 	var err error
 	s.db, err = s.dbContainer.NewSqlDbConnection()
@@ -105,13 +113,6 @@ func (s *APITestSuite) SetupSubTest() {
 	require.NoError(s.T(), err)
 	s.apiV2 = NewApiV2(s.db, s.pool)
 
-}
-func (s *APITestSuite) TearDownSuite() {
-	defer func() {
-		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
-			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
-		}
-	}()
 }
 
 func (s *APITestSuite) TearDownTest() {
