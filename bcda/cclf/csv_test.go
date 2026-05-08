@@ -13,22 +13,22 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
-	"github.com/go-testfixtures/testfixtures/v3"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 type CSVTestSuite struct {
@@ -40,10 +40,24 @@ type CSVTestSuite struct {
 	pool               *pgxv5Pool.Pool
 	origDate           string
 	pendingDeletionDir string
+	dbContainer        db.TestDatabaseContainer
 }
 
 func (s *CSVTestSuite) SetupSuite() {
+	var err error
 	s.origDate = conf.GetEnv("CCLF_REF_DATE")
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
+func (s *CSVTestSuite) TearDownSuite() {
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
+	os.RemoveAll(conf.GetEnv("PENDING_DELETION_DIR"))
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *CSVTestSuite) SetupTest() {
@@ -55,20 +69,6 @@ func (s *CSVTestSuite) SetupTest() {
 	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
-	db, pool, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	tf, err := testfixtures.New(
-		testfixtures.Database(db),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("testdata/"),
-	)
-	if err != nil {
-		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-	}
-	if err = tf.Load(); err != nil {
-		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-	}
-	s.db = db
-	s.pool = pool
 	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if err != nil {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
@@ -83,19 +83,29 @@ func (s *CSVTestSuite) SetupTest() {
 	c := CSVImporter{
 		Logger:        log.API,
 		FileProcessor: fp,
-		PgxPool:       s.pool,
 	}
 	s.importer = c
 
 }
 
-func (s *CSVTestSuite) TearDownSuite() {
-	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
-	os.RemoveAll(conf.GetEnv("PENDING_DELETION_DIR"))
-}
-
 func (s *CSVTestSuite) TearDownTest() {
 	s.cleanup()
+
+}
+
+func (s *CSVTestSuite) SetupSubTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.importer.PgxPool = s.pool
+}
+
+func (s *CSVTestSuite) TearDownSubTest() {
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func TestCSVTestSuite(t *testing.T) {
@@ -118,27 +128,29 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 	}
 
 	for _, test := range tests {
-		s.T().Run(test.name, func(tt *testing.T) {
+		s.Run(test.name, func() {
+			err := s.dbContainer.ExecuteDir("testdata/")
+			require.NoError(s.T(), err)
 			filename := filepath.Clean(test.filepath)
-			err := s.importer.ImportCSV(context.Background(), test.filepath)
+			err = s.importer.ImportCSV(context.Background(), test.filepath)
 			if test.err == nil {
 				assert.Nil(s.T(), err)
 			} else {
 				assert.NotNil(s.T(), err)
 				assert.Contains(s.T(), err.Error(), test.err.Error())
 			}
-			cclfRecords := postgrestest.GetCCLFFilesByName(tt, s.db, filepath.Clean(test.filepath))
+			r := postgres.NewRepository(s.db)
+			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
 			if len(cclfRecords) != 0 {
-				assert.Equal(tt, 1, len(cclfRecords))
-				assert.Equal(tt, filename, cclfRecords[0].Name)
-				id, _ := safecast.ToInt(cclfRecords[0].ID)
-				beneRecords, _ := postgrestest.GetCCLFBeneficiaries(s.db, id)
+				assert.Equal(s.T(), 1, len(cclfRecords))
+				assert.Equal(s.T(), filename, cclfRecords[0].Name)
+				beneRecords, _ := r.GetCCLFBeneficiaries(context.Background(), cclfRecords[0].ID, []string{})
 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
 				for _, v := range beneRecords {
-					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v, " ", "")))
+					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
 				}
 			} else {
-				assert.Equal(tt, 0, len(cclfRecords))
+				assert.Equal(s.T(), 0, len(cclfRecords))
 			}
 		})
 	}
@@ -162,6 +174,20 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 		data: bytes.NewReader([]byte("MBIS\nMBI000001\nMBI000002\nMBI000003")),
 	}
 
+	dupeFile := csvFile{
+		metadata: csvFileMetadata{
+			name:         "P.PCPB.M2411.D191005.T0209260",
+			env:          "test",
+			acoID:        "FOOACO",
+			cclfNum:      8,
+			perfYear:     24,
+			timestamp:    time.Now(),
+			deliveryDate: time.Now(),
+			fileID:       0,
+			fileType:     1,
+		},
+		data: bytes.NewReader([]byte("MBIS\nMBI000004\nMBI000005\nMBI000006")),
+	}
 	expectedFile := models.CCLFFile{
 		Name:            "P.PCPB.M2411.D191005.T0209260",
 		ACOCMSID:        "FOOACO",
@@ -174,21 +200,25 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 		mbiRecord  []string
 		err        error
 	}{
+		{"Import CSV attribution that already exists", dupeFile, expectedFile, []string{"MBI000001", "MBI000002", "MBI000003"}, errors.New("already exists")},
 		{"Import CSV attribution success", file, expectedFile, []string{"MBI000001", "MBI000002", "MBI000003"}, nil},
-		{"Import CSV attribution that already exists", file, models.CCLFFile{}, []string{}, errors.New("already exists")},
 	}
 
 	for _, test := range tests {
-		s.T().Run(test.name, func(tt *testing.T) {
-			err := s.importer.ProcessCSV(file)
+		s.Run(test.name, func() {
+			err := s.importer.ProcessCSV(test.file)
 			if test.err != nil {
-				err := s.importer.ProcessCSV(file)
+				cclfRecord := postgrestest.GetCCLFFilesByName(s.T(), s.db, file.metadata.name)
+				assert.Equal(s.T(), 1, len(cclfRecord))
+				assert.Nil(s.T(), err)
+				err = s.importer.ProcessCSV(test.file)
 				assert.NotNil(s.T(), err)
 				assert.Contains(s.T(), err.Error(), test.err.Error())
 			} else {
-				assert.Nil(tt, err)
+				assert.Nil(s.T(), err)
 				cclfRecord := postgrestest.GetCCLFFilesByName(s.T(), s.db, file.metadata.name)
 				assert.Equal(s.T(), 1, len(cclfRecord))
+				assert.Nil(s.T(), err)
 				assert.Equal(s.T(), expectedFile.Name, cclfRecord[0].Name)
 				assert.Equal(s.T(), expectedFile.ACOCMSID, cclfRecord[0].ACOCMSID)
 				assert.Equal(s.T(), expectedFile.PerformanceYear, cclfRecord[0].PerformanceYear)
@@ -206,12 +236,10 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 	}
 }
 
-func TestPrepareCSVData(t *testing.T) {
-	pool := database.ConnectPool()
-	defer pool.Close()
+func (s *CSVTestSuite) TestPrepareCSVData() {
 
 	c := CSVImporter{
-		PgxPool: pool,
+		PgxPool: s.pool,
 	}
 	tests := []struct {
 		name     string
@@ -233,12 +261,12 @@ func TestPrepareCSVData(t *testing.T) {
 		}},
 	}
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		s.Run(test.name, func() {
 			fmt.Print(test.name)
 			rows, _, err := c.prepareCSVData(test.data, uint(1))
-			assert.Equal(t, test.expected, rows)
+			assert.Equal(s.T(), test.expected, rows)
 			if err != nil {
-				assert.Contains(t, err.Error(), test.err.Error())
+				assert.Contains(s.T(), err.Error(), test.err.Error())
 			}
 		})
 	}
