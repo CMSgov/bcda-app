@@ -177,6 +177,9 @@ jobs:
         uses: cmsgov/cdap/actions/setup-sops@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
       - name: Install YQ
         uses: cmsgov/cdap/actions/setup-yq@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Install OpenTofu for SOPS
+        working-directory: ops/services/10-config
+        run: tenv tofu install
       - name: Plan SOPS
         working-directory: ops/services/10-config
         run: |
@@ -212,6 +215,9 @@ jobs:
                 mrkdown_in:
                   - text
 
+      - name: Install OpenTofu for Application
+        working-directory: terraform/${{ env.RELEASE_ENV }}
+        run: tenv tofu install
       - name: Init, Plan OpenTofu
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: |
