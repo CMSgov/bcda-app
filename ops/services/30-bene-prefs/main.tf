@@ -1,8 +1,8 @@
 locals {
-  service      = "bene-prefs"
-  default_tags = module.platform.default_tags
-  env          = terraform.workspace
-  service_prefix   = "${local.app}-${local.env}"
+  service        = "bene-prefs"
+  default_tags   = module.platform.default_tags
+  env            = terraform.workspace
+  service_prefix = "${local.app}-${local.env}"
 
   account_id            = module.platform.aws_caller_identity.account_id
   kms_key_arn_primary   = module.platform.kms_alias_primary.target_key_arn
@@ -171,9 +171,9 @@ resource "aws_iam_role" "this" {
   })
 
   force_detach_policies = true
-  name                 = "bcda-${local.env}-${local.service}"
-  path                 = module.platform.iam_defaults.path
-  permissions_boundary = module.platform.iam_defaults.boundary
+  name                  = "bcda-${local.env}-${local.service}"
+  path                  = module.platform.iam_defaults.path
+  permissions_boundary  = module.platform.iam_defaults.boundary
 }
 
 resource "aws_iam_role_policy_attachment" "vpc_access" {
@@ -182,17 +182,17 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  role = aws_iam_role.this.name
+  role       = aws_iam_role.this.name
   policy_arn = aws_iam_policy.default_function.arn
 }
 
 resource "aws_iam_role_policy_attachment" "assume_bucket_role" {
-  role = aws_iam_role.this.name
+  role       = aws_iam_role.this.name
   policy_arn = aws_iam_policy.assume_bucket_role.arn
 }
 
 resource "aws_iam_role_policy_attachment" "admin_subscribe_bfd_topic" {
-  role = aws_iam_role.this.name
+  role       = aws_iam_role.this.name
   policy_arn = aws_iam_policy.admin_subscribe_bfd_topic.arn
 }
 
@@ -225,8 +225,8 @@ resource "aws_lambda_function" "this" {
   s3_bucket         = aws_s3_object.dummy_file_upload.bucket
   s3_key            = aws_s3_object.dummy_file_upload.key
   s3_object_version = aws_s3_object.dummy_file_upload.version_id
-  package_type     = "Zip"
-  handler          = "bootstrap"
+  package_type      = "Zip"
+  handler           = "bootstrap"
 
   function_name                  = local.name_prefix
   description                    = "Ingests the most recent beneficiary opt-out list from BFD"
@@ -298,9 +298,9 @@ resource "aws_security_group" "this" {
       to_port         = 0
     },
   ]
-  name = local.name_prefix
+  name   = local.name_prefix
   vpc_id = module.platform.vpc_id
-  tags = { Name = local.name_prefix }
+  tags   = { Name = local.name_prefix }
 }
 
 resource "aws_sqs_queue" "this" {
