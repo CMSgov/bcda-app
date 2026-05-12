@@ -1,0 +1,29 @@
+name: tofu-fmt
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ops/**"
+      - "terraform/**"
+      - ".github/workflows/tofu-fmt.yml"
+
+env:
+  TENV_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  check:
+    runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+      - uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 #v4.1.1
+      - uses: cmsgov/cdap/actions/setup-tenv@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
+      - name: Check ops directory
+        run: tofu fmt -check -diff -recursive ./ops
+      - name: Check terraform directory
+        run: |
+          if [ -d "./terraform" ]; then
+            tofu fmt -check -diff -recursive ./terraform
+          else
+            echo "Directory ./terraform does not exist yet. Skipping."
+          fi

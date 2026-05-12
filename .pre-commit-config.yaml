@@ -9,3 +9,7 @@ repos:
       - id: golangci-lint
         language_version: 1.26.0
         args: ['-v']
+  - repo: https://github.com/tofuutils/pre-commit-opentofu
+    rev: v2.2.2
+    hooks:
+      - id: tofu_fmt

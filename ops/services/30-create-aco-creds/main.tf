@@ -46,8 +46,8 @@ module "platform" {
 module "admin_create_aco_creds_function" {
   source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
 
-  app = var.app
-  env = var.env
+  app          = var.app
+  env          = var.env
   architecture = "arm64"
 
   name        = local.full_name
