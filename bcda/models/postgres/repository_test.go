@@ -439,6 +439,51 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	}
 }
 
+func (r *RepositoryTestSuite) TestGetCMSIDByClientID_Success() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	clientID := "test-client-id"
+	cmsID := "A9994"
+	xdataJSON := fmt.Sprintf(`{"cms_ids": ["%s"]}`, cmsID)
+
+	query := mock.ExpectQuery(`SELECT groups.xdata FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
+	query.WithArgs(clientID).WillReturnRows(
+		sqlmock.NewRows([]string{"xdata"}).AddRow(xdataJSON),
+	)
+
+	result, err := repository.GetCMSIDByClientID(context.Background(), clientID)
+
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), cmsID, result)
+}
+
+func (r *RepositoryTestSuite) TestGetCMSIDByClientID_NoRows() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	clientID := "test-client-id"
+
+	query := mock.ExpectQuery(`SELECT groups.xdata FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
+	query.WithArgs(clientID).WillReturnError(sql.ErrNoRows)
+
+	result, err := repository.GetCMSIDByClientID(context.Background(), clientID)
+
+	assert.Error(r.T(), err)
+	assert.Contains(r.T(), err.Error(), "no system record found")
+	assert.Empty(r.T(), result)
+}
+
 // TestDuplicateCCLFFileNames validates behavior of the cclf_files schema.
 // Therefore, we need to test against the real postgres instance.
 func (r *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
