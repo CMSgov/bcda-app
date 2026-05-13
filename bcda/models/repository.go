@@ -34,6 +34,8 @@ type acoRepository interface {
 	// For example, to update the group_id field, the caller should supply
 	// "group_id": "new_id_value"
 	UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error
+
+	GetCMSIDByClientID(ctx context.Context, clientID string) (string, error)
 }
 
 type cclfFileRepository interface {
