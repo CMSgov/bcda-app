@@ -510,18 +510,9 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 func (s *SSASPluginTestSuite) TestGetAuthDataSuccess() {
 	clientID := uuid.New()
 	cmsID := testUtils.RandomHexID()[0:4]
-	systemID := uuid.New()
-	acoUUID := uuid.NewUUID()
-
-	aco := &models.ACO{
-		UUID:     acoUUID,
-		CMSID:    &cmsID,
-		ClientID: clientID,
-		SystemID: systemID,
-	}
 
 	mock := &models.MockRepository{}
-	mock.On("GetACOByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return(aco, nil)
+	mock.On("GetCMSIDByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return(cmsID, nil)
 	models.SetMockRepository(s.T(), mock)
 
 	c, err := client.NewSSASClient()
@@ -530,11 +521,8 @@ func (s *SSASPluginTestSuite) TestGetAuthDataSuccess() {
 
 	ad, err := s.p.GetAuthData(clientID)
 	require.Nil(s.T(), err)
-	assert.Equal(s.T(), acoUUID.String(), ad.ACOID)
 	assert.Equal(s.T(), cmsID, ad.CMSID)
 	assert.Equal(s.T(), clientID, ad.ClientID)
-	assert.Equal(s.T(), systemID, ad.SystemID)
-	assert.False(s.T(), ad.Blacklisted)
 }
 
 func (s *SSASPluginTestSuite) TestGetAuthDataError() {
@@ -542,7 +530,7 @@ func (s *SSASPluginTestSuite) TestGetAuthDataError() {
 	dbErr := errors.New("DB Error")
 
 	mock := &models.MockRepository{}
-	mock.On("GetACOByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return(&models.ACO{}, dbErr)
+	mock.On("GetCMSIDByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return("", dbErr)
 	models.SetMockRepository(s.T(), mock)
 
 	c, err := client.NewSSASClient()
