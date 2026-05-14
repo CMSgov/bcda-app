@@ -682,7 +682,7 @@ func (r *Repository) GetCMSIDByClientID(ctx context.Context, clientID string) (s
 	var xdata string
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&xdata); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", fmt.Errorf("no system record found for client_id %s", clientID)
+			return "", fmt.Errorf("no system record found for client_id %s: %w", clientID, err)
 		}
 		return "", err
 	}
