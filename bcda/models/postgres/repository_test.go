@@ -463,6 +463,31 @@ func (r *RepositoryTestSuite) TestGetCMSIDByClientID_Success() {
 	assert.Equal(r.T(), cmsID, result)
 }
 
+func (r *RepositoryTestSuite) TestGetCMSIDByClientID_SuccessUnquotedJSON() {
+	db, mock, err := sqlmock.New()
+	assert.NoError(r.T(), err)
+	defer func() {
+		assert.NoError(r.T(), mock.ExpectationsWereMet())
+		db.Close()
+	}()
+	repository := postgres.NewRepository(db)
+
+	clientID := "test-client-id"
+	cmsID := "A9994"
+	// Create doubly-encoded stringified JSON
+	xdataJSON := fmt.Sprintf(`"{\"cms_ids\": [\"%s\"]}"`, cmsID)
+
+	query := mock.ExpectQuery(`SELECT groups.xdata FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
+	query.WithArgs(clientID).WillReturnRows(
+		sqlmock.NewRows([]string{"xdata"}).AddRow(xdataJSON),
+	)
+
+	result, err := repository.GetCMSIDByClientID(context.Background(), clientID)
+
+	assert.NoError(r.T(), err)
+	assert.Equal(r.T(), cmsID, result)
+}
+
 func (r *RepositoryTestSuite) TestGetCMSIDByClientID_NoRows() {
 	db, mock, err := sqlmock.New()
 	assert.NoError(r.T(), err)
