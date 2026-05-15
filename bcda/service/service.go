@@ -570,17 +570,11 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 // Priority is based on the request parameters that the job is executing on.
 // Note: River queue library requires a priority between 1 and 4 (inclusive)
 func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
-	var priority int16
 	if isPriorityACO(acoID) {
-		priority = int16(1) // priority level for jobs for synthetic ACOs that are used for smoke testing
-	} else if resourceType == "Patient" || resourceType == "Coverage" {
-		priority = int16(2) // priority level for jobs that only request smaller resources
-	} else if sinceParam {
-		priority = int16(3) // priority level for jobs that only request data for a limited timeframe
+		return int16(1) // priority level for jobs for synthetic ACOs that are used for smoke testing
 	} else {
-		priority = int16(4) // default priority level for jobs
+		return int16(4) // default priority level for jobs
 	}
-	return priority
 }
 
 // GetACOConfigForID gets first matching currently loaded ACOConfig for the specified cmsID
