@@ -450,11 +450,11 @@ func (r *RepositoryTestSuite) TestGetCMSIDByClientID_Success() {
 
 	clientID := "test-client-id"
 	cmsID := "A9994"
-	xdataJSON := fmt.Sprintf(`{"cms_ids": ["%s"]}`, cmsID)
+	xDataJSON := fmt.Sprintf(`{"cms_ids": ["%s"]}`, cmsID)
 
-	query := mock.ExpectQuery(`SELECT groups.xdata FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
+	query := mock.ExpectQuery(`SELECT groups.x_data FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
 	query.WithArgs(clientID).WillReturnRows(
-		sqlmock.NewRows([]string{"xdata"}).AddRow(xdataJSON),
+		sqlmock.NewRows([]string{"x_data"}).AddRow(xDataJSON),
 	)
 
 	result, err := repository.GetCMSIDByClientID(context.Background(), clientID)
@@ -475,11 +475,11 @@ func (r *RepositoryTestSuite) TestGetCMSIDByClientID_SuccessUnquotedJSON() {
 	clientID := "test-client-id"
 	cmsID := "A9994"
 	// Create doubly-encoded stringified JSON
-	xdataJSON := fmt.Sprintf(`"{\"cms_ids\": [\"%s\"]}"`, cmsID)
+	xDataJSON := fmt.Sprintf(`"{\"cms_ids\": [\"%s\"]}"`, cmsID)
 
-	query := mock.ExpectQuery(`SELECT groups.xdata FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
+	query := mock.ExpectQuery(`SELECT groups.x_data FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
 	query.WithArgs(clientID).WillReturnRows(
-		sqlmock.NewRows([]string{"xdata"}).AddRow(xdataJSON),
+		sqlmock.NewRows([]string{"x_data"}).AddRow(xDataJSON),
 	)
 
 	result, err := repository.GetCMSIDByClientID(context.Background(), clientID)
@@ -499,7 +499,7 @@ func (r *RepositoryTestSuite) TestGetCMSIDByClientID_NoRows() {
 
 	clientID := "test-client-id"
 
-	query := mock.ExpectQuery(`SELECT groups.xdata FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
+	query := mock.ExpectQuery(`SELECT groups.x_data FROM systems JOIN groups ON systems.g_id = groups.id WHERE systems.client_id = \$1`)
 	query.WithArgs(clientID).WillReturnError(sql.ErrNoRows)
 
 	result, err := repository.GetCMSIDByClientID(context.Background(), clientID)
