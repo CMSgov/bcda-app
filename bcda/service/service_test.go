@@ -1217,10 +1217,6 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 		s.T().Run(string(tt.name), func(t *testing.T) {
 			if isPriorityACO(tt.acoID) {
 				expectedPriority = 1
-			} else if tt.resourceType == "Patient" || tt.resourceType == "Coverage" {
-				expectedPriority = 2
-			} else if len(tt.expSince) > 0 || tt.RequestType == constants.RetrieveNewBeneHistData {
-				expectedPriority = 3
 			}
 
 			sinceParam := (len(tt.expSince) > 0) || tt.RequestType == constants.RetrieveNewBeneHistData
