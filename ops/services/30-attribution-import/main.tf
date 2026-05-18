@@ -106,8 +106,8 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
 module "attribution_import_function" {
   source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
 
-  app = local.app
-  env = var.env
+  app          = local.app
+  env          = var.env
   architecture = "arm64"
 
   name        = local.full_name
@@ -116,7 +116,7 @@ module "attribution_import_function" {
   handler = "bootstrap"
   runtime = "provided.al2023"
 
-  memory_size  = 2048
+  memory_size = 2048
 
   environment_variables = {
     ENV      = var.env

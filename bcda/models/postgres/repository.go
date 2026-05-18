@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -667,4 +668,44 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	aco.CMSID = &cmsID.String
 	aco.TerminationDetails = termination.Termination
 	return &aco, nil
+}
+
+func (r *Repository) GetCMSIDByClientID(ctx context.Context, clientID string) (string, error) {
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("groups.x_data")
+	sb.From("systems")
+	sb.Join("groups", "systems.g_id = groups.id")
+	sb.Where(sb.Equal("systems.client_id", clientID))
+
+	query, args := sb.Build()
+
+	var xData string
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&xData); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("no system record found for client_id %s: %w", clientID, err)
+		}
+		return "", err
+	}
+
+	type XData struct {
+		IDList []string `json:"cms_ids"`
+	}
+	var x XData
+
+	if err := json.Unmarshal([]byte(xData), &x); err != nil {
+		var unquoted string
+		if err2 := json.Unmarshal([]byte(xData), &unquoted); err2 == nil {
+			if err3 := json.Unmarshal([]byte(unquoted), &x); err3 != nil {
+				return "", fmt.Errorf("failed to parse x_data json: %w", err)
+			}
+		} else {
+			return "", fmt.Errorf("failed to parse x_data json: %w", err)
+		}
+	}
+
+	if len(x.IDList) != 1 {
+		return "", fmt.Errorf("expected one id in list; got %v; source %s", x.IDList, xData)
+	}
+
+	return x.IDList[0], nil
 }
