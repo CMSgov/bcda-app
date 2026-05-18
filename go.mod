@@ -88,7 +88,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -162,7 +162,7 @@ require (
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.20.2
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/slog-logrus v1.0.0
-	github.com/slack-go/slack v0.15.0
+	github.com/slack-go/slack v0.23.1
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
