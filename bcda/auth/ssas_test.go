@@ -409,7 +409,6 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsErrIsNilWhenHappyPath() {
 	//setup a mock repository (don't make actual repository call)
 	mock := &models.MockRepository{}
 	mock.On("GetACOByCMSID", m.MatchedBy(func(req context.Context) bool { return true }), cmsID).Return(aco, nil)
-	models.SetMockRepository(s.T(), mock)
 
 	//set the SSASPlugin to use the mock repository
 	c, err := client.NewSSASClient()
@@ -445,7 +444,6 @@ func (s *SSASPluginTestSuite) TestGetAuthDataFromClaimsReturnEntityNotFoundError
 	//setup a mock repository (don't make actual repository call)
 	mock := &models.MockRepository{}
 	mock.On("GetACOByCMSID", m.MatchedBy(func(req context.Context) bool { return true }), cmsID).Return(aco, expectedErr)
-	models.SetMockRepository(s.T(), mock)
 
 	//set the SSASPlugin to use the mock repository
 	c, err := client.NewSSASClient()
@@ -510,19 +508,9 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 func (s *SSASPluginTestSuite) TestGetAuthDataSuccess() {
 	clientID := uuid.New()
 	cmsID := testUtils.RandomHexID()[0:4]
-	systemID := uuid.New()
-	acoUUID := uuid.NewUUID()
-
-	aco := &models.ACO{
-		UUID:     acoUUID,
-		CMSID:    &cmsID,
-		ClientID: clientID,
-		SystemID: systemID,
-	}
 
 	mock := &models.MockRepository{}
-	mock.On("GetACOByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return(aco, nil)
-	models.SetMockRepository(s.T(), mock)
+	mock.On("GetCMSIDByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return(cmsID, nil)
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)
@@ -530,11 +518,8 @@ func (s *SSASPluginTestSuite) TestGetAuthDataSuccess() {
 
 	ad, err := s.p.GetAuthData(clientID)
 	require.Nil(s.T(), err)
-	assert.Equal(s.T(), acoUUID.String(), ad.ACOID)
 	assert.Equal(s.T(), cmsID, ad.CMSID)
 	assert.Equal(s.T(), clientID, ad.ClientID)
-	assert.Equal(s.T(), systemID, ad.SystemID)
-	assert.False(s.T(), ad.Blacklisted)
 }
 
 func (s *SSASPluginTestSuite) TestGetAuthDataError() {
@@ -542,8 +527,7 @@ func (s *SSASPluginTestSuite) TestGetAuthDataError() {
 	dbErr := errors.New("DB Error")
 
 	mock := &models.MockRepository{}
-	mock.On("GetACOByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return(&models.ACO{}, dbErr)
-	models.SetMockRepository(s.T(), mock)
+	mock.On("GetCMSIDByClientID", m.MatchedBy(func(req context.Context) bool { return true }), clientID).Return("", dbErr)
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, sSasClientErrorMsg, err)

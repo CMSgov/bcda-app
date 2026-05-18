@@ -235,7 +235,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 
 	r := &models.MockRepository{}
 	r.On("UpdateJob", mock.Anything, mock.Anything).Return(nil)
-	models.SetMockRepository(s.T(), r)
 
 	svc := &service.MockService{}
 	cmsID := testUtils.RandomHexID()[0:4]

@@ -889,8 +889,8 @@ func (_c *MockService_IsV3NoPartialClaimsModel_Call) Run(run func(model string))
 	return _c
 }
 
-func (_c *MockService_IsV3NoPartialClaimsModel_Call) Return(_a0 bool) *MockService_IsV3NoPartialClaimsModel_Call {
-	_c.Call.Return(_a0)
+func (_c *MockService_IsV3NoPartialClaimsModel_Call) Return(b bool) *MockService_IsV3NoPartialClaimsModel_Call {
+	_c.Call.Return(b)
 	return _c
 }
 

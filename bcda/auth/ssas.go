@@ -266,15 +266,12 @@ func checkTokenExpiration(bytes []byte) error {
 
 // GetAuthData fetches the ACO for the supplied BCDA clientID and returns the related AuthData
 func (s SSASPlugin) GetAuthData(clientID string) (AuthData, error) {
-	aco, err := s.repository.GetACOByClientID(context.Background(), clientID)
+	cmsID, err := s.repository.GetCMSIDByClientID(context.Background(), clientID)
 	if err != nil {
 		return AuthData{}, err
 	}
 	return AuthData{
-		ACOID:       aco.UUID.String(),
-		CMSID:       *aco.CMSID,
-		ClientID:    clientID,
-		SystemID:    aco.SystemID,
-		Blacklisted: aco.Denylisted(),
+		CMSID:    cmsID,
+		ClientID: clientID,
 	}, nil
 }
