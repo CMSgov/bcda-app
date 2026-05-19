@@ -754,7 +754,7 @@ resource "aws_sns_topic" "cloudwatch_alarms_topic" {
 
 # CDAP-managed alarm-to-slack service queue
 data "aws_sqs_queue" "alarm_to_slack" {
-  name = "bcda-test-alarm-to-slack"
+  name = "cdap-test-alarm-to-slack"
 }
 
 resource "aws_sns_topic_subscription" "alarm_to_slack" {
