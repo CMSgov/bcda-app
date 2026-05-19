@@ -1,9 +1,9 @@
 
 
 resource "aws_cloudwatch_metric_alarm" "ecs_alarms" {
-  for_each = {for idx in var.alarms : idx.alarm_name => idx }
-  
-  alarm_name        = "${each.value.alarm_name}"
+  for_each = { for idx in var.alarms : idx.alarm_name => idx }
+
+  alarm_name        = each.value.alarm_name
   alarm_description = "${each.value.alarm_description}: ${var.service_name}"
 
   metric_name = each.value.metric_name
@@ -25,5 +25,5 @@ resource "aws_cloudwatch_metric_alarm" "ecs_alarms" {
   ok_actions    = [var.ok_notification_arn]
 
   treat_missing_data = "ignore"
-  
+
 }

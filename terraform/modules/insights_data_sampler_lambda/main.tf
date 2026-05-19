@@ -1,6 +1,6 @@
- locals {
+locals {
   zip_file = "insights_data_sampler.zip"
- }
+}
 
 data "aws_ssm_parameter" "slack_webhook_url" {
   name = "/bcda/lambda/slack_webhook_url"

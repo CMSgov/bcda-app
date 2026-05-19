@@ -48,7 +48,7 @@ variable "database" {
 variable "db_conn_string_env_var" {
   type        = string
   description = "The variable name for the DB connection string.  This string does NOT reference an actual DB connection string; however, it references an env var in Parameter Store which maps to a connection string.  Most likely this value will be DATABASE_URL"
-  default = "DATABASE_URL"
+  default     = "DATABASE_URL"
 }
 
 variable "buffering_size" {
