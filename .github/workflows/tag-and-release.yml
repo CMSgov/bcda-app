@@ -8,6 +8,10 @@ on:
         description: 'Release version (or branch name)'
         required: true
         type: string
+      ops_release_version:
+        description: 'Release version for bcda-ops (or branch name)'
+        required: true
+        type: string
       next_release_version:
         description: 'Next version (tag or branch name) (OPTIONAL - If not set tag versions will be automatically figured out)'
         type: string
@@ -22,6 +26,7 @@ permissions:
 env:
   GPG_KEY_FILE_NAME: "bcda_ci_github_gpg.key"
   RELEASE_VERSION: ${{ inputs.release_version || 'main' }}
+  OPS_RELEASE_VERSION: ${{ inputs.ops_release_version || 'main' }}
   NEXT_RELEASE_VERSION: ${{ inputs.previous_release_version || '' }}
   PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || '' }}
   RELEASE_GITHUB_USER: carlpartridge

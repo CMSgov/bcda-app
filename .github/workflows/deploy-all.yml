@@ -239,11 +239,6 @@ jobs:
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
-      - name: Upload notify script
-        uses: actions/upload-artifact@v4
-        with:
-          name: notify-script
-          path: ./scripts/mark_deployment.py
 
   verify_api_version:
     needs: [deploy]
@@ -333,47 +328,6 @@ jobs:
       postman_tests: true
       v3_tests: true
     secrets: inherit
-
-  notify_newrelic:
-    needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
-    environment: ${{ inputs.env || 'dev' }}
-    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
-    steps:
-      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
-      - name: Set env vars from AWS params
-        uses: cmsgov/cdap/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            NEWRELIC_API_KEY=/bcda/all/new-relic/api-key
-            NEWRELIC_APP_ID=/bcda/${{ env.ENV_MODIFIER }}/sensitive/new-relic/app-id
-      - name: Download notify scripts
-        uses: actions/download-artifact@v4.2.1
-        with:
-          name: notify-script
-          path: scripts
-      - name: Notify NewRelic
-        if: ${{ env.RELEASE_ENV == 'prod' || env.RELEASE_ENV == 'sandbox' || env.RELEASE_ENV == 'test' }}
-        run: |
-          python3 scripts/mark_deployment.py \
-            --app_id ${{ env.NEWRELIC_APP_ID }} \
-            --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${SANITIZED_VERSION}
-      - name: Notify NewRelic (Dev)
-        if: ${{ env.RELEASE_ENV == 'dev' }}
-        run: |
-          aws ecs wait services-stable --cluster bcda-${{ env.RELEASE_ENV }} --services bcda-${{ env.RELEASE_ENV }}-api
-          API_ARN=$(aws ecs list-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --service-name=bcda-${{ env.RELEASE_ENV }}-api --query 'taskArns[0]' --output text)
-          API_IMAGE=$(aws ecs describe-tasks --cluster=bcda-${{ env.RELEASE_ENV }} --tasks=$API_ARN --query="tasks[0].containers[?name == 'api'].image" --output=text)
-          export API_VERSION=${API_IMAGE##*:}
-          python3 scripts/mark_deployment.py \
-            --app_id ${{ env.NEWRELIC_APP_ID }} \
-            --api_key ${{ env.NEWRELIC_API_KEY }} \
-            --version ${API_VERSION}
 
   slack_alerts:
     if: ${{ always() }}
