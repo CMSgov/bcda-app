@@ -239,11 +239,6 @@ jobs:
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-api --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
-      - name: Upload notify script
-        uses: actions/upload-artifact@v4
-        with:
-          name: notify-script
-          path: ./scripts/mark_deployment.py
 
   verify_api_version:
     needs: [deploy]

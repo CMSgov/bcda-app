@@ -1,5 +1,5 @@
 # Deploy terraform and API, SSAS, and Worker ECS services
-name: Deploy All From Monorepo
+name: Deploy All
 
 on:
   workflow_dispatch:
@@ -86,6 +86,10 @@ on:
         type: string
         default: 'dev'
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
@@ -99,12 +103,9 @@ env:
 
 jobs:
   verify_images_exist:
-    permissions:
-      id-token: write
-      contents: read
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
-    steps:
+    steps:      
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -123,35 +124,22 @@ jobs:
           aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${SANITIZED_VERSION}
 
   migrate_db:
-    permissions:
-      id-token: write
-      contents: read
     needs: [verify_images_exist]
     uses: ./.github/workflows/migrate-db.yml
     with:
       ref: ${{ inputs.ref }}
       env: ${{ inputs.env || 'dev' }}
-    secrets:
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   migrate_ssas_db:
-    permissions:
-      id-token: write
-      contents: read
     needs: [verify_images_exist]
     uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
     with:
       ref: ${{ inputs.ssas_ref }}
       env: ${{ inputs.env || 'dev' }}
-    secrets:
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   deploy:
-    permissions:
-      id-token: write
-      contents: read
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
@@ -209,6 +197,7 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
+
       - name: Install OpenTofu for Application
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: tenv tofu install
@@ -235,9 +224,6 @@ jobs:
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
 
   verify_api_version:
-    permissions:
-      id-token: write
-      contents: read
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
@@ -264,10 +250,8 @@ jobs:
             fi
           done
 
+
   verify_ssas_version:
-    permissions:
-      id-token: write
-      contents: read
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
@@ -294,10 +278,8 @@ jobs:
             fi
           done
 
+
   verify_worker_version:
-    permissions:
-      id-token: write
-      contents: read
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
@@ -318,9 +300,6 @@ jobs:
           fi
 
   smoketests:
-    permissions:
-      id-token: write
-      contents: read
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
@@ -331,19 +310,15 @@ jobs:
       smoke_tests: true
       postman_tests: true
       v3_tests: true
-    secrets:
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+    secrets: inherit
 
   slack_alerts:
-    permissions: {}
     if: ${{ always() }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
-    needs: [migrate_db, deploy]
+    needs: [migrate_db, deploy, notify_newrelic]
     steps:
       - name: Publish Build Info
-        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' }}
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
@@ -369,7 +344,7 @@ jobs:
                   - pretext
                   - footer
       - name: Failure Alert
-        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' }}
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
