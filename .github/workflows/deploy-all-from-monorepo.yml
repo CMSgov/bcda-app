@@ -315,10 +315,10 @@ jobs:
   slack_alerts:
     if: ${{ always() }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
-    needs: [migrate_db, deploy, notify_newrelic]
+    needs: [migrate_db, deploy]
     steps:
       - name: Publish Build Info
-        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' && needs.notify_newrelic.result == 'success' }}
+        if: ${{ success() && needs.migrate_db.result == 'success' && needs.deploy.result == 'success' }}
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
@@ -344,7 +344,7 @@ jobs:
                   - pretext
                   - footer
       - name: Failure Alert
-        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' || needs.notify_newrelic.result != 'success' }}
+        if: ${{ failure() || needs.migrate_db.result != 'success' || needs.deploy.result != 'success' }}
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
