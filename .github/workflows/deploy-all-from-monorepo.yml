@@ -1,5 +1,5 @@
 # Deploy terraform and API, SSAS, and Worker ECS services
-name: Deploy All
+name: Deploy All From Monorepo
 
 on:
   workflow_dispatch:
@@ -86,10 +86,6 @@ on:
         type: string
         default: 'dev'
 
-permissions:
-  id-token: write
-  contents: read
-
 env:
   RELEASE_ENV: ${{ inputs.env || 'dev' }}
   CONFIRM_RELEASE_ENV: ${{ inputs.confirm_env || 'dev' }}
@@ -103,6 +99,9 @@ env:
 
 jobs:
   verify_images_exist:
+    permissions:
+      id-token: write
+      contents: read
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:      
@@ -124,6 +123,9 @@ jobs:
           aws ecr describe-images --repository-name bcda-worker --image-ids imageTag=${SANITIZED_VERSION}
 
   migrate_db:
+    permissions:
+      id-token: write
+      contents: read
     needs: [verify_images_exist]
     uses: ./.github/workflows/migrate-db.yml
     with:
@@ -132,6 +134,9 @@ jobs:
     secrets: inherit
 
   migrate_ssas_db:
+    permissions:
+      id-token: write
+      contents: read
     needs: [verify_images_exist]
     uses: CMSgov/bcda-ssas-app/.github/workflows/migrate-db.yml@main
     with:
@@ -140,6 +145,9 @@ jobs:
     secrets: inherit
 
   deploy:
+    permissions:
+      id-token: write
+      contents: read
     needs: [verify_images_exist]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
@@ -224,6 +232,9 @@ jobs:
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
 
   verify_api_version:
+    permissions:
+      id-token: write
+      contents: read
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
@@ -252,6 +263,9 @@ jobs:
 
 
   verify_ssas_version:
+    permissions:
+      id-token: write
+      contents: read
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{inputs.env != '0' && inputs.env || 'dev' }}
@@ -280,6 +294,9 @@ jobs:
 
 
   verify_worker_version:
+    permissions:
+      id-token: write
+      contents: read
     needs: [deploy]
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     environment: ${{ inputs.env != '0' && inputs.env || 'dev' }}
@@ -300,6 +317,9 @@ jobs:
           fi
 
   smoketests:
+    permissions:
+      id-token: write
+      contents: read
     needs: [migrate_db, migrate_ssas_db, deploy, verify_api_version, verify_ssas_version, verify_worker_version]
     uses: ./.github/workflows/smoke-tests.yml
     with:
