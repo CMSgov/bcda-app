@@ -1024,7 +1024,7 @@ module "platform" {
 
   app         = "bcda"
   env         = var.env
-  root_module = "github.com/CMSgov/bcda-app/tree/main/terraform/${var.env}"
+  root_module = "github.com/CMSgov/bcda-ops/tree/main/terraform/${var.env}"
   service     = "bcda"
 }
 
@@ -1114,7 +1114,6 @@ module "db" {
   backup_window         = "04:17-04:47"
   cluster_identifier    = "bcda-${var.env}-aurora"
   deletion_protection   = !module.platform.is_ephemeral_env
-  engine_version        = "16.11"
   instance_class        = "db.r8g.large"
   instance_count        = 2
   maintenance_window    = "sun:23:08-sun:23:38"
@@ -1634,19 +1633,19 @@ resource "aws_appautoscaling_policy" "ecs_worker_policy" {
     }
 
     step_adjustment {
-      scaling_adjustment          = local.worker_desired_min + 4
+      scaling_adjustment          = local.worker_desired_min + 6
       metric_interval_lower_bound = 250
       metric_interval_upper_bound = 1000
     }
 
     step_adjustment {
-      scaling_adjustment          = local.worker_desired_min + 6
+      scaling_adjustment          = local.worker_desired_min + 8
       metric_interval_lower_bound = 1000
       metric_interval_upper_bound = 2500
     }
 
     step_adjustment {
-      scaling_adjustment          = local.worker_desired_min + 8
+      scaling_adjustment          = local.worker_desired_min + 10
       metric_interval_lower_bound = 2500
       metric_interval_upper_bound = 5000
     }

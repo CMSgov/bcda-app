@@ -90,9 +90,9 @@ locals {
   api_desired_min    = 2
   api_desired_max    = 4
   ssas_desired_min   = 4
-  ssas_desired_max   = 10
+  ssas_desired_max   = 12
   worker_desired_min = 2
-  worker_desired_max = 12
+  worker_desired_max = 16
 
   asg_notifications = [
     "autoscaling:EC2_INSTANCE_LAUNCH",
