@@ -995,6 +995,7 @@ module "db" {
   cluster_identifier    = "bcda-${var.env}-aurora"
   deletion_protection   = !module.platform.is_ephemeral_env
   instance_class        = "db.r8g.large"
+  engine_version        = "16.11"
   maintenance_window    = "sun:23:08-sun:23:38"
   monitoring_interval   = var.monitoring_interval
   monitoring_role_arn   = aws_iam_role.db_monitoring.arn

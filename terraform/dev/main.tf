@@ -982,6 +982,7 @@ module "db" {
   backup_window         = "04:17-04:47"
   cluster_identifier    = "bcda-${var.env}-aurora"
   deletion_protection   = !module.platform.is_ephemeral_env
+  engine_version        = "16.11"
   instance_class        = "db.r8g.large"
   maintenance_window    = "sun:23:08-sun:23:38"
   monitoring_interval   = var.monitoring_interval
