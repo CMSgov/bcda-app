@@ -34,7 +34,7 @@ resource "aws_s3_bucket" "this" {
 }
 
 # Needed to fix sonarqube error
-resource "aws_s3_bucket_public_access_block" "example-public-access-block" {
+resource "aws_s3_bucket_public_access_block" "public-access-block" {
   bucket = aws_s3_bucket.this.id
 
   block_public_acls       = true
