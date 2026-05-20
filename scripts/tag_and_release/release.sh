@@ -32,6 +32,10 @@ while getopts ":chtp" opt; do
             echo "Invalid option: -$OPTARG" >&2
             exit 1
             ;;
+        *)
+            usage
+            exit 0
+            ;;
     esac
 done
 

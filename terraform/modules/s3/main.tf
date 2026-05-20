@@ -30,6 +30,17 @@ data "aws_iam_policy_document" "this" {
 
 resource "aws_s3_bucket" "this" {
   bucket_prefix = "${var.name}-"
+
+}
+
+# Needed to fix sonarqube error
+resource "aws_s3_bucket_public_access_block" "example-public-access-block" {
+  bucket = aws_s3_bucket.this.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
