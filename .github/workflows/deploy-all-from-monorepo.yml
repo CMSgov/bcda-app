@@ -104,7 +104,7 @@ jobs:
       contents: read
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
-    steps:      
+    steps:
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -131,7 +131,9 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       env: ${{ inputs.env || 'dev' }}
-    secrets: inherit
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   migrate_ssas_db:
     permissions:
@@ -142,7 +144,9 @@ jobs:
     with:
       ref: ${{ inputs.ssas_ref }}
       env: ${{ inputs.env || 'dev' }}
-    secrets: inherit
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     permissions:
@@ -205,7 +209,6 @@ jobs:
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
                 mrkdown_in:
                   - text
-
       - name: Install OpenTofu for Application
         working-directory: terraform/${{ env.RELEASE_ENV }}
         run: tenv tofu install
@@ -261,7 +264,6 @@ jobs:
             fi
           done
 
-
   verify_ssas_version:
     permissions:
       id-token: write
@@ -291,7 +293,6 @@ jobs:
               break
             fi
           done
-
 
   verify_worker_version:
     permissions:
@@ -330,9 +331,13 @@ jobs:
       smoke_tests: true
       postman_tests: true
       v3_tests: true
-    secrets: inherit
+    secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
   slack_alerts:
+    permissions: {}
     if: ${{ always() }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     needs: [migrate_db, deploy]
