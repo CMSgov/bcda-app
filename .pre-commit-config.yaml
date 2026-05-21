@@ -7,7 +7,7 @@ repos:
     rev: v2.10.1
     hooks:
       - id: golangci-lint
-        language_version: 1.26.0
+        language_version: 1.26.2
         args: ['-v']
   - repo: https://github.com/tofuutils/pre-commit-opentofu
     rev: v2.2.2
