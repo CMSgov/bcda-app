@@ -19,8 +19,6 @@ require (
 	github.com/huandu/go-sqlbuilder v1.14.1
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/mattn/go-colorable v0.1.14
-	github.com/newrelic/go-agent/v3 v3.42.0
-	github.com/newrelic/go-agent/v3/integrations/nrlogrus v1.0.0
 	github.com/otiai10/copy v1.7.0
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
@@ -127,10 +125,12 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.39.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.39.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	gonum.org/v1/gonum v0.16.0 // indirect
 )
 
 require (
