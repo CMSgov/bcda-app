@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 type Client interface {
@@ -124,8 +123,8 @@ func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error
 }
 
 func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
-	txn := newrelic.FromContext(req.Context())
-	s := newrelic.StartExternalSegment(txn, req)
+	// txn := newrelic.FromContext(req.Context())
+	// s := newrelic.StartExternalSegment(txn, req)
 
 	resp, err := c.Do(req) //#nosec G704
 	if err != nil {
@@ -135,8 +134,8 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 		return nil, fmt.Errorf("BFD response is empty")
 	}
 	defer resp.Body.Close()
-	s.Response = resp
-	s.End()
+	// s.Response = resp
+	// s.End()
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		body, err = io.ReadAll(resp.Body)

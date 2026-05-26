@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"errors"
@@ -26,6 +27,7 @@ import (
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
 // begin the import of those files and delete them from the place they were copied to after successful import.
 func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment string, fileType models.CCLFFileType) (err error) {
+	ctx := context.Background()
 
 	dir, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -152,7 +154,7 @@ func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment
 
 	importer := cclf.NewCclfImporter(log.API, file_processor, pgxPool)
 
-	success, failure, skipped, err := importer.ImportCCLFDirectory(dir)
+	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, dir)
 	if err != nil {
 		return err
 	}

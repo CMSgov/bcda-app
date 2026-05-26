@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/ccoveille/go-safecast"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
@@ -61,8 +60,8 @@ func (importer *cclf8Importer) Next() bool {
 }
 
 func (importer *cclf8Importer) Values() ([]interface{}, error) {
-	close := metrics.NewChild(importer.ctx, "importCCLF8-benecreate")
-	defer close()
+	// close := metrics.NewChild(importer.ctx, "importCCLF8-benecreate")
+	// defer close()
 
 	// Verify record length
 	b := importer.scanner.Bytes()

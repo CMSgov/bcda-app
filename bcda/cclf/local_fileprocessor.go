@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -221,8 +220,8 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
 			func() {
-				close := metrics.NewChild(ctx, "cleanUpCCLFZip")
-				defer close()
+				// close := metrics.NewChild(ctx, "cleanUpCCLFZip")
+				// defer close()
 
 				processor.Handler.Logger.Infof("Cleaning up file %s.\n", cclfZipMetadata.filePath)
 				folderName := fp.Base(cclfZipMetadata.filePath)
@@ -287,8 +286,8 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 	var err error
 
 	func() {
-		close := metrics.NewChild(context.Background(), "cleanUpCSV")
-		defer close()
+		// close := metrics.NewChild(context.Background(), "cleanUpCSV")
+		// defer close()
 
 		processor.Handler.Logger.Infof("Cleaning up file %s.\n", file.metadata.name)
 		folderName := fp.Base(file.filepath)

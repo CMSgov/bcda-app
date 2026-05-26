@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -86,8 +85,8 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 		recordLengthStart, recordLengthEnd = 64, 69
 	)
 
-	close := metrics.NewChild(ctx, "importCCLF0")
-	defer close()
+	// close := metrics.NewChild(ctx, "importCCLF0")
+	// defer close()
 
 	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
@@ -196,8 +195,8 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	fileMetadata.fileID = cclfFile.ID
 
-	close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
-	defer close()
+	// close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
+	// defer close()
 
 	rc, err := zipMetadata.cclf8File.Open()
 	if err != nil {
@@ -241,17 +240,17 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	return nil
 }
 
-func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
+func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
 	success, failure, skipped = 0, 0, 0
-	t := metrics.GetTimer()
-	defer t.Close()
-	ctx := metrics.NewContext(context.Background(), t)
+	// t := metrics.GetTimer()
+	// defer t.Close()
+	// ctx := metrics.NewContext(context.Background(), t)
 
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
-	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
+	// _, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
 	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(ctx, filePath)
-	c()
+	// c()
 
 	if err != nil {
 		return success, failure, skipped, err
@@ -265,8 +264,8 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	for acoID := range cclfMap {
 		for _, zipMetadata := range cclfMap[acoID] {
 			func() {
-				ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
-				defer c()
+				// ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
+				// defer c()
 				defer zipMetadata.zipCloser()
 
 				cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
@@ -290,8 +289,8 @@ func (importer CclfImporter) ImportCCLFDirectory(filePath string) (success, fail
 	}
 
 	if err = func() error {
-		ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
-		defer c()
+		// ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
+		// defer c()
 		_, err := importer.fileProcessor.CleanUpCCLF(ctx, cclfMap)
 		return err
 	}(); err != nil {
