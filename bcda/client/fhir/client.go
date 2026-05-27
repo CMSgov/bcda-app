@@ -131,8 +131,6 @@ func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 		return nil, fmt.Errorf("BFD response is empty")
 	}
 	defer resp.Body.Close()
-	// s.Response = resp
-	// s.End()
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		body, err = io.ReadAll(resp.Body)
