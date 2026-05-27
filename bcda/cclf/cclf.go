@@ -85,9 +85,6 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 		recordLengthStart, recordLengthEnd = 64, 69
 	)
 
-	// close := metrics.NewChild(ctx, "importCCLF0")
-	// defer close()
-
 	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, zipMetadata.filePath)
@@ -195,9 +192,6 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	fileMetadata.fileID = cclfFile.ID
 
-	// close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
-	// defer close()
-
 	rc, err := zipMetadata.cclf8File.Open()
 	if err != nil {
 		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, zipMetadata.filePath)
@@ -242,15 +236,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
 	success, failure, skipped = 0, 0, 0
-	// t := metrics.GetTimer()
-	// defer t.Close()
-	// ctx := metrics.NewContext(context.Background(), t)
-
-	// We are not going to create any children from this parent so we can
-	// safely ignored the returned context.
-	// _, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
 	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(ctx, filePath)
-	// c()
 
 	if err != nil {
 		return success, failure, skipped, err
@@ -264,8 +250,6 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 	for acoID := range cclfMap {
 		for _, zipMetadata := range cclfMap[acoID] {
 			func() {
-				// ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
-				// defer c()
 				defer zipMetadata.zipCloser()
 
 				cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
@@ -289,8 +273,6 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 	}
 
 	if err = func() error {
-		// ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
-		// defer c()
 		_, err := importer.fileProcessor.CleanUpCCLF(ctx, cclfMap)
 		return err
 	}(); err != nil {

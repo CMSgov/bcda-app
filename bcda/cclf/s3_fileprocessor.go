@@ -126,9 +126,6 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
-			// close := metrics.NewChild(ctx, "cleanUpCCLFZip")
-			// defer close()
-
 			if !cclfZipMetadata.imported {
 				// Don't do anything. The S3 bucket should have a retention policy that
 				// automatically cleans up files after a specified period of time.
@@ -169,9 +166,6 @@ func (processor *S3FileProcessor) OpenZipArchive(ctx context.Context, filePath s
 }
 
 func (processor *S3FileProcessor) CleanUpCSV(ctx context.Context, file csvFile) error {
-	// close := metrics.NewChild(context.Background(), "cleanUpCCLFZip")
-	// defer close()
-
 	if !file.imported {
 		// Don't do anything. The S3 bucket should have a retention policy that
 		// automatically cleans up files after a specified period of time.

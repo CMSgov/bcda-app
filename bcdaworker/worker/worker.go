@@ -83,12 +83,6 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_t
 }
 
 func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs) error {
-	// t := metrics.GetTimer()
-	// defer t.Close()
-	// ctx = metrics.NewContext(ctx, t)
-	// ctx, c := metrics.NewParent(ctx, fmt.Sprintf("ProcessJob-%s", jobArgs.ResourceType))
-	// defer c()
-
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not retrieve ACO from database by UUID %s", job.ACOID))
@@ -249,8 +243,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: models.BlankFileName, ResourceType: jobArgs.ResourceType})
 
 	logger := log.GetCtxLogger(ctx)
-	// close := metrics.NewChild(ctx, "writeBBDataToFile")
-	// defer close()
 
 	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
 	// NOTE: Currently all Coverage/EOB/Patient requests are for adjudicated data and
@@ -418,8 +410,6 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, tempDir string) {
-	// close := metrics.NewChild(ctx, "appendErrorToFile")
-	// defer close()
 
 	logger := log.GetCtxLogger(ctx)
 	rw := responseutils.NewFhirResponseWriter()
@@ -449,8 +439,6 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 }
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string, hasEntriesCount *int) {
-	// close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
-	// defer close()
 	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
 
