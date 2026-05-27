@@ -235,9 +235,8 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 }
 
 func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
-	success, failure, skipped = 0, 0, 0
+	success = 0
 	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(ctx, filePath)
-
 	if err != nil {
 		return success, failure, skipped, err
 	}
