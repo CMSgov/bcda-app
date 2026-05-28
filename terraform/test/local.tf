@@ -9,14 +9,12 @@ locals {
 
   # Security Group Names
   zscaler_private_name = "zscaler-private"
-  zscaler_public_name  = "zscaler-public"
 
   # Route53 Zone
   local_zone_name = "bcda-${var.env}.local"
 
   # IAM related
   iam_path                       = "/delegatedadmin/developer/"
-  instance_profile_name          = "bcda-${var.env}-instance"
   instance_role_name             = "bcda-${var.env}-instance"
   instance_policy_name           = "bcda-${var.env}-instance"
   developer_boundary_policy_name = "developer-boundary-policy"
@@ -94,49 +92,6 @@ locals {
   # User must match user(s) defined in dockerfile(s)
   app_user_uid = 1100
   app_user_gid = 1200
-
-  # Test-specific CIDR blocks
-  # aco_ms_cidr_blocks = [
-  #   "10.247.240.0/22",
-  #   "10.247.252.0/22",
-  #   "10.131.64.0/22",
-  #   "10.242.104.0/21",
-  #   "10.223.38.0/25",
-  #   "10.242.100.0/22",
-  #   "10.223.38.128/25",
-  #   "10.149.62.0/23",
-  # ]
-
-  # aco_4i_cidr_blocks = [
-  #   "10.242.8.0/21",
-  #   "10.223.33.128/25",
-  #   "10.242.16.0/22",
-  #   "10.223.34.0/25",
-  #   "10.242.128.0/22",
-  #   "10.223.34.128/25",
-  # ]
-
-  # aco_ihp_cidr_blocks = [
-  #   // source: IHP test
-  #   "10.202.130.0/23",
-  #   "10.223.22.0/25",
-  #   "10.223.199.0/25",
-  #   // source: IHP dev
-  #   "10.202.106.0/23",
-  #   "10.223.18.128/25",
-  #   "10.223.198.128/25",
-  #   "100.92.0.0/16",
-  #   "100.126.0.0/16",
-  #   // source: IHP impl
-  #   "10.149.138.0/23",
-  #   "10.223.22.128/25",
-  #   "10.223.200.0/25",
-  # ]
-  #
-  # gha_runners_cidr_blocks = [
-  #   "10.232.248.0/22",
-  #   "10.234.252.0/22",
-  # ]
 
   param_names_api = [
     "ARCHIVE_THRESHOLD_HR",

@@ -493,7 +493,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_4i_public" {
   to_port   = local.https_port
   protocol  = "tcp"
 
-  cidr_blocks = local.ssas_4i_public_cidr_blocks
+  cidr_blocks = split(",", module.platform.ssm.aco_cidrs.aco_4i_cidr_blocks.value)
 
   security_group_id = aws_security_group.ssas_alb.id
 }
@@ -504,7 +504,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_4i_admin" {
   to_port   = local.admin_port
   protocol  = "tcp"
 
-  cidr_blocks = local.ssas_4i_admin_cidr_blocks
+  cidr_blocks = split(",", module.platform.ssm.aco_cidrs.aco_4i_cidr_blocks.value)
 
   security_group_id = aws_security_group.ssas_alb.id
 }
@@ -515,7 +515,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_gha_runners" {
   to_port   = local.admin_port
   protocol  = "tcp"
 
-  cidr_blocks = local.ssas_gha_runners_cidr_blocks
+  cidr_blocks = split(",", module.platform.ssm.aco_cidrs.gha_runners_cidr_blocks.value)
 
   security_group_id = aws_security_group.ssas_alb.id
 }
@@ -526,7 +526,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_gha_runners_public" {
   to_port   = local.https_port
   protocol  = "tcp"
 
-  cidr_blocks = local.ssas_gha_runners_cidr_blocks
+  cidr_blocks = split(",", module.platform.ssm.aco_cidrs.gha_runners_cidr_blocks.value)
 
   security_group_id = aws_security_group.ssas_alb.id
 }
@@ -874,38 +874,21 @@ resource "aws_ssm_parameter" "config_bucket_params" {
   overwrite = true
 }
 
-/* ---- Insights ----- */
-
-module "insights" {
-  source                = "../insights"
-  env                   = var.env
-  worker_security_group = aws_security_group.worker_sg.id
-  db_subnet_group       = "bcda-${var.env}-rds-subnets"
-}
-
-module "get_job_data" {
-  source            = "../modules/insights_data_sampler"
-  name              = "get_job_data"
-  description       = "gets data related to job requests over the last 30 days"
-  schedule          = "rate(10 minutes)"
-  query             = file("${path.module}/../insights/queries/get_job_data.sql")
-  env               = "sandbox"
-  insights_role_arn = module.insights.insights_role_arn
-  lambda_arn        = module.insights.lambda_arn
-}
-
 data "aws_ssm_parameter" "db_admin_password" {
   name = "/bcda/${var.env}/sensitive/db_admin_password"
 }
 
 module "platform" {
-  source    = "github.com/CMSgov/cdap.git//terraform/modules/platform?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
+  source    = "github.com/CMSgov/cdap.git//terraform/modules/platform?ref=941672f97adfd8a19ce6533313302c4c74bac7a8"
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app         = "bcda"
   env         = var.env
   root_module = "github.com/CMSgov/bcda-app/tree/main/terraform/${var.env}"
   service     = "bcda"
+  ssm_root_map = {
+    aco_cidrs = "/bcda/${var.env}/acos/"
+  }
 }
 
 data "aws_iam_policy_document" "kms" {

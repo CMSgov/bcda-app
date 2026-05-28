@@ -5,12 +5,10 @@ locals {
   app_cidr_block                = data.aws_vpc.main.cidr_block
   ssm_cdap_cidr_name            = "/cdap/sensitive/mgmt-vpc/cidr"
   management_cidr_block         = data.aws_ssm_parameter.cdap_cidr.value
-  ssas_domain                   = "ssas.${var.env}.bcda.cms.gov"
   web_domain                    = "api.bcda.cms.gov"
   private_subnet_tag_use        = "private"
   public_subnet_tag_use         = "public"
   zscaler_private_name          = "zscaler-private"
-  zscaler_public_name           = "zscaler-public"
   vpc_tag_name                  = "bcda-east-${var.env}"
 
   # Route53 Zone
@@ -18,11 +16,9 @@ locals {
 
   # IAM related
   iam_path                       = "/delegatedadmin/developer/"
-  instance_profile_name          = "bcda-${var.env}-instance"
   instance_role_name             = "bcda-${var.env}-instance"
   instance_policy_name           = "bcda-${var.env}-instance"
   developer_boundary_policy_name = "developer-boundary-policy"
-  ec2_ssh_policy_name_suffix     = "ec2-ssh-policy"
 
   # KMS related
   access_log_kms_description = "bcda-${var.env}-access-log-kms"
@@ -44,11 +40,6 @@ locals {
     "remote-management",
   ]
 
-  # ALB related
-  prod_alb_sg_name                = "bcda-app-alb-prod"
-  prod_alb_sg_description         = "Allow all HTTPS traffic"
-  prod_alb_sg_ingress_description = "Allow all HTTPS traffic"
-
   alb_sg_name                  = "app-alb-${var.env}"
   alb_sg_description           = "App ALB security group"
   alb_ingress_description      = "Ingress"
@@ -56,7 +47,6 @@ locals {
 
   alb_name                             = "bcda-api-${var.env}-01"
   alb_tag_name                         = "bcda-${var.env}-app-01"
-  alb_target_https_name_suffix         = "-https-01"
   alb_idle_timeout                     = 60
   alb_deregistration_delay             = 120 # Common value, can be centralized
   alb_health_check_interval            = 15
@@ -71,8 +61,6 @@ locals {
   ssas_alb_sg_description            = "SSAS ALB security group"
   ssas_alb_name                      = "bcda-ssas-${var.env}"
   ssas_alb_tag_name                  = "bcda-${var.env}-ssas"
-  ssas_alb_target_public_name_suffix = "-public"
-  ssas_alb_target_admin_name_suffix  = "-admin"
   ssas_alb_idle_timeout              = 60
   ssas_certificate_arn               = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/cc6c9246-54eb-423d-9d26-bc3ed1af48c2"
 
@@ -81,10 +69,6 @@ locals {
   app_sg_description      = "bcda api app security group"
   worker_sg_name          = "bcda-worker-${var.env}"
   worker_sg_description   = "bcda worker security group"
-  app_asg_service_name    = "api"
-  app_asg_processes       = "api, ssas"
-  worker_asg_service_name = "worker"
-  worker_asg_processes    = "worker"
 
   # Scaling
   api_desired_min    = 2
@@ -93,11 +77,6 @@ locals {
   ssas_desired_max   = 12
   worker_desired_min = 2
   worker_desired_max = 16
-
-  asg_notifications = [
-    "autoscaling:EC2_INSTANCE_LAUNCH",
-    "autoscaling:EC2_INSTANCE_TERMINATE"
-  ]
 
   # SNS related
   cloudwatch_alarms_topic_name          = "bcda-${var.env}-cloudwatch-alarms"
@@ -125,7 +104,6 @@ locals {
   ecs_task_def_cpu_ssas = 256
   ecs_task_def_mem_ssas = 512
 
-  container_name_worker   = "worker"
   ecs_task_def_cpu_worker = 2048
   ecs_task_def_mem_worker = 12288
 
@@ -133,37 +111,12 @@ locals {
   app_user_uid = 1100
   app_user_gid = 1200
 
-  # CIDR Blocks for SSAS ALB - Prod specific
-  ssas_aco_ms_admin_cidr_blocks = [
-    "10.152.132.0/23" # new VPC (official migration date 10/05/2024)
-  ]
-  ssas_4i_public_cidr_blocks = [
-    "10.242.196.0/22",
-    "10.223.64.128/25",
-  ]
-  ssas_4i_admin_cidr_blocks = [ # Same as public for 4i in prod
-    "10.242.196.0/22",
-    "10.223.64.128/25",
-  ]
-  ssas_ihp_cidr_blocks = [ // source: IHP prod
-    "10.148.218.0/23",
-    "10.223.103.0/25",
-    "10.223.76.128/25",
-  ]
-  ssas_gha_runners_cidr_blocks = [
-    "10.232.248.0/22",
-    "10.245.244.0/22",
-  ]
-
   # General egress CIDR
   all_zero_cidr = "0.0.0.0/0"
 
   # CloudWatch Alarm Defaults
   alarm_elb_no_backend_treat_missing_data   = "notBreaching"
   alarm_elb_high_latency_treat_missing_data = "notBreaching"
-
-  # DB related
-  db_instance_identifier_base = "bcda"
 
   # Param store vars needed by each service
   param_names_api = [

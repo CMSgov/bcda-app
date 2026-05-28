@@ -1019,13 +1019,16 @@ data "aws_ssm_parameter" "db_admin_password" {
 }
 
 module "platform" {
-  source    = "github.com/CMSgov/cdap.git//terraform/modules/platform?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
+  source    = "github.com/CMSgov/cdap.git//terraform/modules/platform?ref=941672f97adfd8a19ce6533313302c4c74bac7a8"
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app         = "bcda"
   env         = var.env
   root_module = "github.com/CMSgov/bcda-app/tree/main/terraform/${var.env}"
   service     = "bcda"
+  ssm_root_map = {
+    aco_cidrs = "/bcda/${var.env}/acos/"
+  }
 }
 
 data "aws_iam_policy_document" "kms" {

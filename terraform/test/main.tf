@@ -477,7 +477,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_ihp_public" {
   from_port         = local.https_port
   to_port           = local.https_port
   protocol          = "tcp"
-  cidr_blocks       = local.aco_ihp_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_ihp_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 

@@ -6,25 +6,21 @@ locals {
   vpc_id                 = data.aws_vpc.main.id
   app_cidr_block         = data.aws_vpc.main.cidr_block
   management_cidr_block  = data.aws_ssm_parameter.cdap_cidr.value
-  ssas_domain            = "ssas.${var.env}.bcda.cms.gov"
-  web_domain             = "${var.env}.bcda.cms.gov"
+
   private_subnet_tag_use = "private"
   public_subnet_tag_use  = "public"
 
   # Security Group Names
   zscaler_private_name = "zscaler-private"
-  zscaler_public_name  = "zscaler-public"
 
   # Route53 Zone
   local_zone_name = "bcda-${var.env}.local"
 
   # IAM related
   iam_path                       = "/delegatedadmin/developer/"
-  instance_profile_name          = "bcda-${var.env}-instance"
   instance_role_name             = "bcda-${var.env}-instance"
   instance_policy_name           = "bcda-${var.env}-instance"
   developer_boundary_policy_name = "developer-boundary-policy"
-  ec2_ssh_policy_name_suffix     = "ec2-ssh-policy"
 
   # KMS related
   access_log_kms_description = "bcda-${var.env}-access-log-kms"
@@ -41,9 +37,6 @@ locals {
   efs_instance_name = "bcda-${var.env}-efs"
 
   # ALB related
-  sandbox_alb_sg_name                = "bcda-app-alb-sandbox"
-  sandbox_alb_sg_description         = "BCDA SANDBOX ONLY : Allow all HTTPS traffic"
-  sandbox_alb_sg_ingress_description = "BCDA SANDBOX ONLY : Allow all HTTPS traffic"
   sg_compliance_attestation_url      = "https://confluence.cms.gov/pages/viewpage.action?pageId=448009355"
 
   alb_sg_name                  = "bcda-app-lb-${var.env}"
@@ -53,8 +46,6 @@ locals {
 
   alb_name                             = "bcda-api-${var.env}-01"
   alb_tag_name                         = "bcda-${var.env}-app-01" # Tag for the ALB
-  alb_target_https_name_suffix         = "-https-01"              # Appended to "bcda-api-${var.env}"
-  alb_target_http_name_suffix          = "-http-01"               # Appended to "bcda-api-${var.env}"
   alb_idle_timeout                     = 60
   alb_deregistration_delay             = 120
   alb_health_check_interval            = 15
@@ -70,8 +61,6 @@ locals {
   ssas_alb_sg_description            = "SSAS ALB security group"
   ssas_alb_name                      = "bcda-ssas-${var.env}"
   ssas_alb_tag_name                  = "bcda-${var.env}-ssas" # Tag for the SSAS ALB
-  ssas_alb_target_public_name_suffix = "-public"              # Appended to "bcda-ssas-${var.env}"
-  ssas_alb_target_admin_name_suffix  = "-admin"               # Appended to "bcda-ssas-${var.env}"
   ssas_alb_idle_timeout              = 60
   ssas_certificate_arn               = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/95d70efb-3dc6-485a-b8bd-2b93621b9091"
 
@@ -80,12 +69,6 @@ locals {
   app_sg_description    = "bcda api app security group"
   worker_sg_name        = "bcda-worker-${var.env}"
   worker_sg_description = "bcda worker security group"
-
-  # ASG related
-  app_asg_service_name    = "api"
-  app_asg_processes       = "api, ssas"
-  worker_asg_service_name = "worker"
-  worker_asg_processes    = "worker"
 
   # Scaling
   api_desired_min    = 2
@@ -122,34 +105,12 @@ locals {
   ecs_task_def_cpu_ssas = 256
   ecs_task_def_mem_ssas = 512
 
-  container_name_worker   = "worker"
   ecs_task_def_cpu_worker = 2048
   ecs_task_def_mem_worker = 4096
 
   # User must match user(s) defined in dockerfile(s)
   app_user_uid = 1100
   app_user_gid = 1200
-
-  # CIDR Blocks for SSAS ALB
-  ssas_4i_public_cidr_blocks = [
-    "10.242.128.0/22",
-    "10.223.34.128/25",
-  ]
-  ssas_4i_admin_cidr_blocks = [
-    "10.242.128.0/22",
-    "10.223.34.128/25",
-  ]
-  ssas_gha_runners_cidr_blocks = [
-    "10.232.248.0/22",
-    "10.133.148.0/22",
-    "10.233.20.0/22",
-  ]
-
-  # Default Autoscaling Notifications
-  asg_notifications = [
-    "autoscaling:EC2_INSTANCE_LAUNCH",
-    "autoscaling:EC2_INSTANCE_TERMINATE"
-  ]
 
   # CloudWatch Alarm Default - Treat Missing Data
   alarm_elb_no_backend_treat_missing_data   = "notBreaching"
