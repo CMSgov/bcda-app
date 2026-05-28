@@ -16,12 +16,10 @@ import (
 
 	"github.com/ccoveille/go-safecast"
 	backoff "github.com/cenkalti/backoff/v4"
-	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -279,10 +277,6 @@ func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jo
 }
 
 func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, *url.URL, error) {
-	m := monitoring.GetMonitor()
-	txn := m.Start(u.Path, nil, nil)
-	defer m.End(txn)
-
 	var (
 		result  *fhirModels.Bundle
 		nextURL *url.URL
@@ -299,7 +293,7 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 			logger.Error(err)
 			return err
 		}
-		req = newrelic.RequestWithTransactionContext(req, txn)
+
 		for key, values := range headers {
 			for _, value := range values {
 				req.Header.Add(key, value)
@@ -327,10 +321,6 @@ func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData
 }
 
 func (bbc *BlueButtonClient) getRawData(method string, jobData worker_types.JobEnqueueArgs, u *url.URL, headers http.Header, body io.Reader) (string, error) {
-	m := monitoring.GetMonitor()
-	txn := m.Start(u.Path, nil, nil)
-	defer m.End(txn)
-
 	eb := backoff.NewExponentialBackOff()
 	eb.InitialInterval = bbc.retryInterval
 	b := backoff.WithMaxRetries(eb, bbc.maxTries)
@@ -344,7 +334,6 @@ func (bbc *BlueButtonClient) getRawData(method string, jobData worker_types.JobE
 			return err
 		}
 
-		req = newrelic.RequestWithTransactionContext(req, txn)
 		for key, values := range headers {
 			for _, value := range values {
 				req.Header.Add(key, value)
