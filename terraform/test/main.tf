@@ -459,7 +459,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_aco_ms_public" {
   from_port         = local.https_port
   to_port           = local.https_port
   protocol          = "tcp"
-  cidr_blocks       = local.aco_ms_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_ms_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -468,7 +468,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_4i_public" {
   from_port         = local.https_port
   to_port           = local.https_port
   protocol          = "tcp"
-  cidr_blocks       = local.aco_4i_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_4i_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -495,7 +495,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_aco_ms_admin" {
   from_port         = local.admin_port
   to_port           = local.admin_port
   protocol          = "tcp"
-  cidr_blocks       = local.aco_ms_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_ms_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -504,7 +504,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_4i_admin" {
   from_port         = local.admin_port
   to_port           = local.admin_port
   protocol          = "tcp"
-  cidr_blocks       = local.aco_4i_cidr_blocks
+cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_4i_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -513,7 +513,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_ihp_admin" {
   from_port         = local.admin_port
   to_port           = local.admin_port
   protocol          = "tcp"
-  cidr_blocks       = local.aco_ihp_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_ihp_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -522,7 +522,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_gha_runners" {
   from_port         = local.admin_port
   to_port           = local.admin_port
   protocol          = "tcp"
-  cidr_blocks       = local.gha_runners_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.gha_runners_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -531,7 +531,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_gha_runners_public" {
   from_port         = local.https_port
   to_port           = local.https_port
   protocol          = "tcp"
-  cidr_blocks       = local.gha_runners_cidr_blocks
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.gha_runners_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
@@ -915,6 +915,9 @@ module "platform" {
   env         = var.env
   root_module = "github.com/CMSgov/bcda-app/tree/main/terraform/${var.env}"
   service     = "bcda"
+  ssm_root_map = {
+    aco_cidrs = "/bcda/${var.env}/acos/"
+  }
 }
 
 data "aws_iam_policy_document" "kms" {

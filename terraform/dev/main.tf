@@ -862,24 +862,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "clean_up_objects" {
 }
 
 /* ---- Insights ----- */
-
-module "insights" {
-  source                = "../insights"
-  env                   = var.env
-  worker_security_group = aws_security_group.worker_sg.id
-  db_subnet_group       = "bcda-${var.env}-rds-subnets"
-}
-
-module "get_job_data" {
-  source            = "../modules/insights_data_sampler"
-  name              = "get_job_data"
-  description       = "gets data related to job requests over the last 30 days"
-  schedule          = "rate(10 minutes)"
-  query             = file("${path.module}/../insights/queries/get_job_data.sql")
-  env               = "dev"
-  insights_role_arn = module.insights.insights_role_arn
-  lambda_arn        = module.insights.lambda_arn
-}
+#
+# module "insights" {
+#   source                = "../insights"
+#   env                   = var.env
+#   worker_security_group = aws_security_group.worker_sg.id
+#   db_subnet_group       = "bcda-${var.env}-rds-subnets"
+# }
+#
+# module "get_job_data" {
+#   source            = "../modules/insights_data_sampler"
+#   name              = "get_job_data"
+#   description       = "gets data related to job requests over the last 30 days"
+#   schedule          = "rate(10 minutes)"
+#   query             = file("${path.module}/../insights/queries/get_job_data.sql")
+#   env               = "dev"
+#   insights_role_arn = module.insights.insights_role_arn
+#   lambda_arn        = module.insights.lambda_arn
+# }
 
 data "aws_ssm_parameter" "db_admin_password" {
   name = "/bcda/${var.env}/sensitive/db_admin_password"
