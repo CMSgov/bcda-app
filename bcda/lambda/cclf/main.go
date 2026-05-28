@@ -151,7 +151,7 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	}
 
 	importer := cclf.NewCclfImporter(logger, &fileProcessor, pool)
-	success, failure, skipped, err := importer.ImportCCLFDirectory(s3ImportPath)
+	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, s3ImportPath)
 	if err != nil {
 		logger.Error("error returned from ImportCCLFDirectory: ", err)
 		return "", err
