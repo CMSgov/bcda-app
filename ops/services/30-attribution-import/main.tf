@@ -33,15 +33,6 @@ resource "aws_cloudwatch_log_group" "this" {
   }
 }
 
-data "aws_iam_policy_document" "assume_bucket_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    resources = [
-      module.platform.ssm.attribution-import.misp-eft-role_arn.value
-    ]
-  }
-}
-
 # ---------------------------------------------------------------------------
 # Managed policies
 # ---------------------------------------------------------------------------
@@ -126,10 +117,6 @@ module "attribution_import_function" {
   runtime = "provided.al2023"
 
   memory_size = 2048
-
-  function_role_inline_policies = {
-    assume-bucket-role = data.aws_iam_policy_document.assume_bucket_role.json
-  }
 
   environment_variables = {
     ENV      = var.env
