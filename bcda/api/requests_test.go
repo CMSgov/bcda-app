@@ -1618,7 +1618,7 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 			}
 
 			// Call the function
-			result := h.omitSharedSystemForNonPAC(ctx, test.typeFilter, test.cmsID)
+			result := h.omitSharedSystemByDefault(ctx, test.typeFilter, test.cmsID)
 
 			// Extract _tag values from result
 			var actualTags []string
@@ -1682,8 +1682,8 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
 	mockSvc.On("IsV3NoPartialClaimsModel", "Model Without PAC").Return(true)
 
-	// Call omitSharedSystemForNonPAC (this is what gets called when EOB is in resourceTypes)
-	result := h.omitSharedSystemForNonPAC(ctx, typeFilter, "NOPAC0000")
+	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
+	result := h.omitSharedSystemByDefault(ctx, typeFilter, "NOPAC0000")
 
 	// Verify NCH filter was added
 	var actualTags []string

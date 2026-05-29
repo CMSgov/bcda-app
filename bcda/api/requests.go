@@ -601,11 +601,11 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 		return
 	}
 
-	// For v3, ensure non-PAC eligible ACOs requesting ExplanationOfBenefit default to NCH-only data
-	// This ensures they only get NCH data, not SharedSystem data
+	// For v3, ensure any ACOs requesting ExplanationOfBenefit default to NCH and DDPS data only
+	// This ensures they do not get SharedSystem data by default
 	if h.apiVersion == constants.V3Version {
 		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
-			rp.TypeFilter = h.omitSharedSystemForNonPAC(ctx, rp.TypeFilter, ad.CMSID)
+			rp.TypeFilter = h.omitSharedSystemByDefault(ctx, rp.TypeFilter, ad.CMSID)
 		}
 	}
 
@@ -900,31 +900,22 @@ func extractTagCodeFromValue(tagValue string) []string {
 	return codes
 }
 
-// omitSharedSystemForNonPAC ensures that non-PAC eligible ACOs in v3 do not receive SharedSystem data
+// omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
-	// Check if ACO has PAC access
-	acoConfig, ok := h.Svc.GetACOConfigForID(cmsID)
-	if !ok {
-		// If we can't determine ACO config, don't modify the filter
-		return typeFilter
-	}
+func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
 
-	if !h.Svc.IsV3NoPartialClaimsModel(acoConfig.Model) {
-		// Non-restricted ACOs can access all data, no need to filter
-		return typeFilter
-	}
-
-	// Check if there's already a _tag parameter that filters out SharedSystem
-	// If it's already specified, no need to add it again
+	// Check if there's already a _tag parameter that specifies a System-Type value
+	// If one is specified, no need to set a default
 	hasRelevantFilter := false
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		if subqueryParam.Name == "_tag" {
-			tagCodes := extractTagCodeFromValue(subqueryParam.Value)
-			for _, tagCode := range tagCodes {
-				if tagCode == "NationalClaimsHistory" || tagCode == "DDPS" {
-					hasRelevantFilter = true
-					break
+			for _, tagToken := range strings.Split(subqueryParam.Value, ",") {
+				if pipeIdx := strings.LastIndex(tagToken, "|"); pipeIdx != -1 {
+					tagSystem := tagToken[:pipeIdx]
+					if tagSystem == "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type" {
+						hasRelevantFilter = true
+						break
+					}
 				}
 			}
 			if hasRelevantFilter {
@@ -938,8 +929,8 @@ func (h *Handler) omitSharedSystemForNonPAC(ctx context.Context, typeFilter fhir
 		return typeFilter
 	}
 
-	// For non-PAC ACOs without a qualifying filter, add System-Type filter
-	// to ensure they do not receive SharedSystem data.
+	// For all ACOs without a qualifying filter, add System-Type filter
+	// to ensure they do not receive SharedSystem data by default.
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
