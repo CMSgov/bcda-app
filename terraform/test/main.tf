@@ -504,7 +504,7 @@ resource "aws_security_group_rule" "ssas_alb_ingress_4i_admin" {
   from_port         = local.admin_port
   to_port           = local.admin_port
   protocol          = "tcp"
-cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_4i_cidr_blocks.value)
+  cidr_blocks       = split(",", module.platform.ssm.aco_cidrs.aco_4i_cidr_blocks.value)
   security_group_id = aws_security_group.ssas_alb.id
 }
 
