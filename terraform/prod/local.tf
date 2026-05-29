@@ -57,18 +57,18 @@ locals {
   health_check_start_period            = 10
 
   # SSAS ALB related
-  ssas_alb_sg_name                   = "ssas-alb"
-  ssas_alb_sg_description            = "SSAS ALB security group"
-  ssas_alb_name                      = "bcda-ssas-${var.env}"
-  ssas_alb_tag_name                  = "bcda-${var.env}-ssas"
-  ssas_alb_idle_timeout              = 60
-  ssas_certificate_arn               = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/cc6c9246-54eb-423d-9d26-bc3ed1af48c2"
+  ssas_alb_sg_name        = "ssas-alb"
+  ssas_alb_sg_description = "SSAS ALB security group"
+  ssas_alb_name           = "bcda-ssas-${var.env}"
+  ssas_alb_tag_name       = "bcda-${var.env}-ssas"
+  ssas_alb_idle_timeout   = 60
+  ssas_certificate_arn    = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/cc6c9246-54eb-423d-9d26-bc3ed1af48c2"
 
   # Security Groups (ASG)
-  app_sg_name             = "bcda-api-${var.env}"
-  app_sg_description      = "bcda api app security group"
-  worker_sg_name          = "bcda-worker-${var.env}"
-  worker_sg_description   = "bcda worker security group"
+  app_sg_name           = "bcda-api-${var.env}"
+  app_sg_description    = "bcda api app security group"
+  worker_sg_name        = "bcda-worker-${var.env}"
+  worker_sg_description = "bcda worker security group"
 
   # Scaling
   api_desired_min    = 2

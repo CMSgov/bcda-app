@@ -1,11 +1,11 @@
 locals {
   # VPC and Network related
-  app_name               = "bcda"
-  vpc_tag_name           = "bcda-east-${var.env}"
-  ssm_cdap_cidr_name     = "/cdap/sensitive/mgmt-vpc/cidr"
-  vpc_id                 = data.aws_vpc.main.id
-  app_cidr_block         = data.aws_vpc.main.cidr_block
-  management_cidr_block  = data.aws_ssm_parameter.cdap_cidr.value
+  app_name              = "bcda"
+  vpc_tag_name          = "bcda-east-${var.env}"
+  ssm_cdap_cidr_name    = "/cdap/sensitive/mgmt-vpc/cidr"
+  vpc_id                = data.aws_vpc.main.id
+  app_cidr_block        = data.aws_vpc.main.cidr_block
+  management_cidr_block = data.aws_ssm_parameter.cdap_cidr.value
 
   private_subnet_tag_use = "private"
   public_subnet_tag_use  = "public"
@@ -37,7 +37,7 @@ locals {
   efs_instance_name = "bcda-${var.env}-efs"
 
   # ALB related
-  sg_compliance_attestation_url      = "https://confluence.cms.gov/pages/viewpage.action?pageId=448009355"
+  sg_compliance_attestation_url = "https://confluence.cms.gov/pages/viewpage.action?pageId=448009355"
 
   alb_sg_name                  = "bcda-app-lb-${var.env}"
   alb_sg_description           = "For BCDA app load balancer"
@@ -57,12 +57,12 @@ locals {
   alb_certificate_arn                  = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/d5e80222-d5ec-4bba-99fe-3849c8a18f84"
 
   # SSAS ALB related
-  ssas_alb_sg_name                   = "ssas-alb"
-  ssas_alb_sg_description            = "SSAS ALB security group"
-  ssas_alb_name                      = "bcda-ssas-${var.env}"
-  ssas_alb_tag_name                  = "bcda-${var.env}-ssas" # Tag for the SSAS ALB
-  ssas_alb_idle_timeout              = 60
-  ssas_certificate_arn               = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/95d70efb-3dc6-485a-b8bd-2b93621b9091"
+  ssas_alb_sg_name        = "ssas-alb"
+  ssas_alb_sg_description = "SSAS ALB security group"
+  ssas_alb_name           = "bcda-ssas-${var.env}"
+  ssas_alb_tag_name       = "bcda-${var.env}-ssas" # Tag for the SSAS ALB
+  ssas_alb_idle_timeout   = 60
+  ssas_certificate_arn    = "arn:aws:acm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:certificate/95d70efb-3dc6-485a-b8bd-2b93621b9091"
 
   # Security Groups (ASG)
   app_sg_name           = "bcda-api-${var.env}"
