@@ -23,23 +23,6 @@ variable "ssl_policy" {
   default     = "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
 }
 
-variable "kms_key_id" {
-  #FIXME
-  type        = string
-  default     = "1fca833c-6d08-44d2-8088-9be2c37155f7"
-  description = "KMS Key ID for the ACO Creds KMS Key"
-}
-
-variable "eni_ips" {
-  type        = list(string)
-  description = "Private IP used to create the ENI"
-
-  #FIXME
-  default = [
-    "10.234.241.202",
-  ]
-}
-
 variable "monitoring_interval" {
   default     = 60
   description = "The Aurora cluster enhanced monitoring interval (seconds)."

@@ -124,16 +124,6 @@ resource "aws_iam_policy" "instance" {
          {
             "Effect": "Allow",
             "Action": [
-              "kms:Encrypt",
-              "kms:GenerateDataKey"
-            ],
-            "Resource": [
-              "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:key/${var.kms_key_id}"
-            ]
-         },
-         {
-            "Effect": "Allow",
-            "Action": [
               "kms:ListAliases"
             ],
             "Resource": "*"
@@ -788,10 +778,6 @@ module "cloudwatch_alarms_elb_http" {
   alarm_elb_high_latency_treat_missing_data = "notBreaching"
 }
 
-data "aws_rds_cluster" "clusterName" {
-  cluster_identifier = "bcda-${var.env}-aurora"
-}
-
 module "cloudwatch_alarms_efs" {
   source = "../modules/efs_alarms"
 
@@ -803,14 +789,6 @@ module "cloudwatch_alarms_efs" {
 }
 
 data "aws_route_table" "main" {
-  count = length(distinct(sort(data.aws_subnets.all_subnets.ids)))
-  subnet_id = element(
-    distinct(sort(data.aws_subnets.all_subnets.ids)),
-    count.index,
-  )
-}
-
-data "aws_route_table" "managed" {
   count = length(distinct(sort(data.aws_subnets.all_subnets.ids)))
   subnet_id = element(
     distinct(sort(data.aws_subnets.all_subnets.ids)),
