@@ -1514,7 +1514,7 @@ func TestExtractTagCodeFromValue(t *testing.T) {
 	}
 }
 
-func TestOmitSharedSystemForNonPAC(t *testing.T) {
+func TestOmitSharedSystemByDefault(t *testing.T) {
 	ctx := context.Background()
 	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
 
@@ -1586,7 +1586,7 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithPAC,
-			expectedTags: []string{},
+			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
 			description:  "PAC ACO with no filter should not get filter added",
 		},
 		{
@@ -1609,13 +1609,6 @@ func TestOmitSharedSystemForNonPAC(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Setup mock
-			mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
-			if test.cmsID == "NOPAC0000" {
-				mockSvc.On("IsV3NoPartialClaimsModel", test.acoConfig.Model).Return(true)
-			} else {
-				mockSvc.On("IsV3NoPartialClaimsModel", test.acoConfig.Model).Return(false)
-			}
 
 			// Call the function
 			result := h.omitSharedSystemByDefault(ctx, test.typeFilter, test.cmsID)
@@ -1667,20 +1660,11 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 		apiVersion: constants.V3Version,
 	}
 
-	acoWithoutPAC := &service.ACOConfig{
-		Model: "Model Without PAC",
-		Data:  []string{"adjudicated"},
-	}
-
 	// Simulate getResourceTypes returning default types (including EOB)
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
 	typeFilter := fhir.TypeFilterParameter{}
-
-	// Setup mock
-	mockSvc.On("GetACOConfigForID", "NOPAC0000").Return(acoWithoutPAC, true)
-	mockSvc.On("IsV3NoPartialClaimsModel", "Model Without PAC").Return(true)
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemByDefault(ctx, typeFilter, "NOPAC0000")
