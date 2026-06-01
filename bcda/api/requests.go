@@ -900,6 +900,25 @@ func extractTagCodeFromValue(tagValue string) []string {
 	return codes
 }
 
+// extractTagSystemFromValue extracts tag system urls from a full URL format
+// token (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem").
+// It supports processing a comma-separated list of tag tokens, returning a slice of
+// all extracted systems.
+func extractTagSystemFromValue(tagValue string) []string {
+	var systems []string
+	tags := strings.Split(tagValue, ",")
+	for _, tag := range tags {
+		// Check if it's a URL format with pipe separator
+		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
+			systems = append(systems, tag[:pipeIdx])
+		} else {
+			// Otherwise, it's short format, return as-is
+			systems = append(systems, tag)
+		}
+	}
+	return systems
+}
+
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
 func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
@@ -907,15 +926,14 @@ func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir
 	// Check if there's already a _tag parameter that specifies a System-Type value
 	// If one is specified, no need to set a default
 	hasRelevantFilter := false
+
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		if subqueryParam.Name == "_tag" {
-			for _, tagToken := range strings.Split(subqueryParam.Value, ",") {
-				if pipeIdx := strings.LastIndex(tagToken, "|"); pipeIdx != -1 {
-					tagSystem := tagToken[:pipeIdx]
-					if tagSystem == "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type" {
-						hasRelevantFilter = true
-						break
-					}
+			tagSystems := extractTagSystemFromValue(subqueryParam.Value)
+			for _, tagSystem := range tagSystems {
+				if tagSystem == "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type" {
+					hasRelevantFilter = true
+					break
 				}
 			}
 			if hasRelevantFilter {
