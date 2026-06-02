@@ -1,0 +1,7 @@
+enabled:
+  ecs: false
+  sqs: true
+  sns: false
+  lambda: true
+  s3: true
+  rds: false
