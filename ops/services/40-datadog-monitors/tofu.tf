@@ -38,7 +38,7 @@ provider "aws" {
 }
 
 locals {
-  service = "datadog-monitors"
+  service          = "datadog-monitors"
   established_envs = ["dev", "test", "sandbox", "prod"]
   parent_env = coalesce(
     var.parent_env,
