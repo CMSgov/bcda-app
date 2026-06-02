@@ -1,0 +1,17 @@
+shadow_mode: true
+
+notifications:
+  channels:
+    - "@bcda-alerts"
+
+
+lambda:
+  error_rate_threshold: 1
+
+enabled:
+  ecs: false
+  sqs: false
+  sns: false
+  lambda: false
+  s3: false
+  rds: false
