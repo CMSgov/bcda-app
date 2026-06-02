@@ -31,8 +31,9 @@ module "admin_aco_deny_function" {
   name        = local.full_name
   description = "Denies access to BCDA for supplied ACO IDs"
 
-  handler = "bootstrap"
-  runtime = "provided.al2023"
+  handler             = "bootstrap"
+  runtime             = "provided.al2023"
+  create_function_zip = false
 
   memory_size = local.memory_size
 
