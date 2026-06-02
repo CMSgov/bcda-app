@@ -21,7 +21,6 @@ module "platform" {
   service     = local.service
 }
 
-
 module "admin_create_aco_function" {
   source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
 
@@ -32,8 +31,9 @@ module "admin_create_aco_function" {
   name        = local.full_name
   description = "Creates an ACO for BCDA."
 
-  handler = "bootstrap"
-  runtime = "provided.al2023"
+  handler             = "bootstrap"
+  runtime             = "provided.al2023"
+  create_function_zip = false
 
   memory_size = local.memory_size
 

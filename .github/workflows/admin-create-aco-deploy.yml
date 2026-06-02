@@ -45,7 +45,7 @@ jobs:
         env:
           CGO_ENABLED: 0
         run: |
-          env GOOS=linux GOARCH=amd64 go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
+          env GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
           zip -j function.zip bin/bootstrap
       - name: Set ENVIRONMENT - no inputs
         if: ${{ inputs.deploy_env == '' }}
