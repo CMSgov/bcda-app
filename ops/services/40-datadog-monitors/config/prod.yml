@@ -4,7 +4,6 @@ notifications:
   channels:
     - "@bcda-alerts"
 
-
 lambda:
   error_rate_threshold: 1
 
