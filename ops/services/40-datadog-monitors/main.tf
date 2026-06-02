@@ -39,7 +39,7 @@ module "platform" {
   env          = var.env
   root_module  = "https://github.com/CMSgov/bcda/tree/main/terraform/services/${basename(abspath(path.module))}/"
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
-  ssm_root_map = { datadog = "/cdap/${var.env}/datadog/cicd/" }
+  ssm_root_map = { datadog = "/bcda/${var.env}/datadog/cicd/" }
 }
 
 ###################
