@@ -77,7 +77,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/${{ env.ENVIRONMENT }}/nonsensitive/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-bucket
+            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
