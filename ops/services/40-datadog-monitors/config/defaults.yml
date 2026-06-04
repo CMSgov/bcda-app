@@ -51,12 +51,12 @@ notifications:
 # RDS is opt-in (false by default) since not all apps use Aurora RDS.
 # -----------------------------------------------------------------------------
 enabled:
-  ecs: false
+  ecs: true
   sqs: true
   sns: false
   lambda: true
   s3: true
-  rds: false
+  rds: true
 
 # -----------------------------------------------------------------------------
 # ECS Monitors
@@ -74,7 +74,7 @@ enabled:
 ecs:
   cpu_threshold: 85
   memory_threshold: 85
-  notify_no_data: false
+  notify_no_data: true
   no_data_timeframe_minutes: 10
   timeframe: "last_10m"
 
@@ -94,7 +94,7 @@ ecs:
 sqs:
   dlq_message_threshold: 1       # any DLQ message is actionable
   max_message_age_seconds: 300   # 5 minutes — lower for real-time consumers
-  notify_no_data: false
+  notify_no_data: true
   no_data_timeframe_minutes: 10
   timeframe: "last_10m"
 
@@ -136,8 +136,8 @@ sns:
 lambda:
   error_rate_threshold: 5
   throttle_threshold: 10
-  duration_p99_threshold_ms: 8000
-  notify_no_data: false
+  duration_p99_threshold_ms: 900000
+  notify_no_data: true
   no_data_timeframe_minutes: 10
   timeframe: "last_10m"
 
@@ -158,7 +158,7 @@ lambda:
 s3:
   error_threshold_4xx: 50
   error_threshold_5xx: 10
-  notify_no_data: false
+  notify_no_data: true
   no_data_timeframe_minutes: 10
   timeframe: "last_10m"
 
@@ -192,6 +192,6 @@ rds:
   replica_lag_seconds: 30
   deadlock_threshold: 1               # any deadlock is worth investigating
   deadlocks_enabled: true             # set false without Enhanced Monitoring / Performance Insights
-  notify_no_data: false
+  notify_no_data: true
   no_data_timeframe_minutes: 10
   timeframe: "last_10m"

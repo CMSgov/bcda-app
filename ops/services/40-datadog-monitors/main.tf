@@ -3,9 +3,9 @@ locals {
   ## Evaluates config/defaults.yml and overwrites values with those from config/${var.env}.yml for each
   ## variable/key type. Creates a hierarchy of defaults, so the modules/datadog_monitors defaults are
   ## the least prioritized, followed by config/defaults.yml, followed by the environment specific settings.
-
+  env        = terraform.workspace
   defaults   = yamldecode(file("config/defaults.yml"))
-  env_config = yamldecode(file("config/${var.env}.yml"))
+  env_config = yamldecode(file("config/${local.env}.yml"))
 
   shadow_mode = lookup(local.env_config, "shadow_mode", local.defaults.shadow_mode)
 
@@ -36,10 +36,10 @@ module "platform" {
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app          = "bcda"
-  env          = var.env
+  env          = local.env
   root_module  = "https://github.com/CMSgov/bcda/tree/main/terraform/services/${basename(abspath(path.module))}/"
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
-  ssm_root_map = { datadog = "/bcda/${var.env}/datadog/cicd/" }
+  ssm_root_map = { datadog = "/bcda/${local.env}/datadog/cicd/" }
 }
 
 ###################
@@ -47,9 +47,9 @@ module "platform" {
 ###################
 
 module "common_datadog_monitors" {
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=PLT-1655/notify"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=06837df7747e3258986d2c89fa4bc31aaf92f29a"
 
   app            = "bcda"
-  env            = var.env
+  env            = local.env
   monitor_config = local.monitor_config
 }
