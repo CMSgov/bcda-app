@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - optout/**
+      - bcda/lambda/bene-prefs/**
+      - bcda/suppression/**
       - .github/workflows/bene-prefs-import-deploy.yml
   workflow_dispatch:
     inputs:
@@ -45,6 +47,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+      - name: Install Datadog Orchestrion APM
+        run: go install github.com/DataDog/orchestrion@v1.10.0
       - name: Build bene-prefs zip file
         env:
           CGO_ENABLED: 0

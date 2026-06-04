@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - attribution-import/**
+      - bcda/lambda/attribution-import/**
       - .github/workflows/attribution-import-deploy.yml
   workflow_dispatch:
     inputs:
@@ -45,6 +45,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+      - name: Install Datadog Orchestrion APM
+        run: go install github.com/DataDog/orchestrion@v1.10.0
       - name: Build attribution-import zip file
         env:
           CGO_ENABLED: 0
