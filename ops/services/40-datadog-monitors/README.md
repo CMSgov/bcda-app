@@ -1,71 +1,54 @@
-# Configuration hierarchy 
-Configuration is inherited from config/ and the hierarchy that is honored is: 
-defaults.yml < ${env}.yml.
+# OpenTofu for Datadog Monitors
 
-<!-- BEGIN_TF_DOCS -->
-<!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
-     'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
-     Manually updating sections between TF_DOCS tags may be overwritten.
-     See https://terraform-docs.io/user-guide/configuration/ for more information.
--->
-## Providers
+This service sets up the infrastructure for the Datadog Monitors for BCDA.
 
-| Name | Version |
-|------|---------|
-| <a name="provider_datadog"></a> [datadog](#provider\_datadog) | 4.9.0 |
+## Manual deploy / Applying Changes
+Applying changes for these modules requires initialization of the state **and** selection of the appropriate environmental workspace.
+Both can be achieved with the following commands:
 
-<!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
-     'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
-     Manually updating sections between TF_DOCS tags may be overwritten.
-     See https://terraform-docs.io/user-guide/configuration/ for more information.
--->
+```sh
+### prod environment
+TF_WORKSPACE=default tofu init -var parent_env=prod -reconfigure && tofu workspace select -var parent_env=prod -or-create prod
+
+### sandbox environment
+TF_WORKSPACE=default tofu init -var parent_env=sandbox -reconfigure && tofu workspace select -var parent_env=sandbox -or-create sandbox
+
+### test environment
+TF_WORKSPACE=default tofu init -var parent_env=test -reconfigure && tofu workspace select -var parent_env=test -or-create test
+
+### dev environment
+TF_WORKSPACE=default tofu init -var parent_env=dev -reconfigure && tofu workspace select -var parent_env=dev -or-create dev
+```
+
 ## Requirements
 
 | Name | Version |
 |------|---------|
 | <a name="requirement_datadog"></a> [datadog](#requirement\_datadog) | ~>4.4 |
 
-<!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
-     'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
-     Manually updating sections between TF_DOCS tags may be overwritten.
-     See https://terraform-docs.io/user-guide/configuration/ for more information.
--->
-## Inputs
+## Providers
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_env"></a> [env](#input\_env) | The application environment (test, prod) | `string` | n/a | yes |
+No providers.
 
-<!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
-     'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
-     Manually updating sections between TF_DOCS tags may be overwritten.
-     See https://terraform-docs.io/user-guide/configuration/ for more information.
--->
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_common_datadog_monitors"></a> [common\_datadog\_monitors](#module\_common\_datadog\_monitors) | ../../modules/datadog_monitors | n/a |
-| <a name="module_platform"></a> [platform](#module\_platform) | ../../modules/platform | n/a |
+| <a name="module_common_datadog_monitors"></a> [common\_datadog\_monitors](#module\_common\_datadog\_monitors) | github.com/CMSgov/cdap//terraform/modules/datadog_monitors | 06837df7747e3258986d2c89fa4bc31aaf92f29a |
+| <a name="module_platform"></a> [platform](#module\_platform) | github.com/CMSgov/cdap//terraform/modules/platform | 941672f97adfd8a19ce6533313302c4c74bac7a8 |
 
-<!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
-     'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
-     Manually updating sections between TF_DOCS tags may be overwritten.
-     See https://terraform-docs.io/user-guide/configuration/ for more information.
--->
 ## Resources
 
-| Name | Type |
-|------|------|
-| [datadog_monitor.codebuild_failed_builds](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/monitor) | resource |
-| [datadog_monitor.codebuild_queue_backup](https://registry.terraform.io/providers/DataDog/datadog/latest/docs/resources/monitor) | resource |
+No resources.
 
-<!--WARNING: GENERATED CONTENT with terraform-docs, e.g.
-     'terraform-docs --config "$(git rev-parse --show-toplevel)/.terraform-docs.yml" .'
-     Manually updating sections between TF_DOCS tags may be overwritten.
-     See https://terraform-docs.io/user-guide/configuration/ for more information.
--->
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_parent_env"></a> [parent\_env](#input\_parent\_env) | The parent environment of the current solution. Will correspond with `terraform.workspace`".<br/>Necessary on `tofu init` and `tofu workspace select` \_only\_. In all other situations, parent env<br/>will be divined from `terraform.workspace`. | `string` | `null` | no |
+| <a name="input_region"></a> [region](#input\_region) | n/a | `string` | `"us-east-1"` | no |
+| <a name="input_secondary_region"></a> [secondary\_region](#input\_secondary\_region) | n/a | `string` | `"us-west-2"` | no |
+
 ## Outputs
 
 No outputs.
-<!-- END_TF_DOCS -->

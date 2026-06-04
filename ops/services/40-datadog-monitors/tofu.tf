@@ -23,7 +23,7 @@ provider "datadog" {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = var.region
   default_tags {
     tags = module.platform.default_tags
   }
@@ -31,7 +31,7 @@ provider "aws" {
 
 provider "aws" {
   alias  = "secondary"
-  region = "us-west-2"
+  region = var.secondary_region
   default_tags {
     tags = module.platform.default_tags
   }
