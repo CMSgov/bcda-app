@@ -53,6 +53,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/testcontainers/testcontainers-go v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.38.0
+	gopkg.in/DataDog/dd-trace-go.v1 v1.74.8
 )
 
 require (
@@ -129,6 +130,7 @@ require (
 	github.com/DataDog/go-runtime-metrics-internal v0.0.4-0.20260217080614-b0f4edc38a6d // indirect
 	github.com/DataDog/go-sqllexer v0.1.13 // indirect
 	github.com/DataDog/go-tuf v1.1.1-0.5.2 // indirect
+	github.com/DataDog/gostackparse v0.7.0 // indirect
 	github.com/DataDog/sketches-go v1.4.8 // indirect
 	github.com/IBM/sarama v1.44.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
