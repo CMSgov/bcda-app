@@ -22,7 +22,7 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
+    orchestrion go install -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
 
 # ------------------------------------------------------------------------
 FROM arm64v8/golang:1.26.2-alpine3.23
@@ -34,7 +34,7 @@ RUN addgroup -S -g 1200 bcda && adduser -S -G bcda -u 1100 bcda && \
 # install dev packages if the environment argument was set to development
 ARG ENVIRONMENT
 RUN [ "$ENVIRONMENT" != "development" ] || apk add --no-cache bash && \
-    go install github.com/go-delve/delve/cmd/dlv@latest
+    orchestrion go install github.com/go-delve/delve/cmd/dlv@latest
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 

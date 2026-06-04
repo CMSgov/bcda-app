@@ -47,7 +47,7 @@ jobs:
         env:
           CGO_ENABLED: 0
         run: |
-          GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/attribution-import/main.go
+          GOOS=linux GOARCH=arm64 orchestrion go build -o bin/bootstrap ./lambda/attribution-import/main.go
           zip -j function.zip bin/bootstrap ../conf/configs/dev.yml ../conf/configs/test.yml ../conf/configs/prod.yml
 
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
