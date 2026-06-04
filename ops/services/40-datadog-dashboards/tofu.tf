@@ -3,7 +3,7 @@
 
 locals {
   app              = "bcda"
-  established_envs = ["dev", "test", "sandbox", "prod"]
+  established_envs = ["prod"]
   parent_env = coalesce(
     var.parent_env,
     one([for x in local.established_envs : x if can(regex("${x}$$", terraform.workspace))]),
@@ -11,9 +11,6 @@ locals {
   )
 
   state_buckets = {
-    dev     = "bcda-dev-tfstate-20250409202710600700000001"
-    test    = "bcda-test-tfstate-20250409171646342600000001"
-    sandbox = "bcda-sandbox-tfstate-20250416201512973800000001"
     prod    = "bcda-prod-tfstate-20250411203841436200000001"
   }
 }
