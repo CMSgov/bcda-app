@@ -47,7 +47,7 @@ module "platform" {
 ###################
 
 module "common_datadog_monitors" {
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=06837df7747e3258986d2c89fa4bc31aaf92f29a"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=945fbd644cc8d239bdf3f3a3a7241fb6066a0f55"
 
   app            = "bcda"
   env            = local.env
