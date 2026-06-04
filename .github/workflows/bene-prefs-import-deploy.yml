@@ -48,12 +48,12 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Install Datadog Orchestrion APM
-        run: go install github.com/DataDog/orchestrion@v1.10.0
+        run: go install github.com/DataDog/orchestrion@49ad05fbcde841361e6bcc953f78bb7e72b1ca69 # v1.10.0
       - name: Build bene-prefs zip file
         env:
           CGO_ENABLED: 0
         run: |
-          GOOS=linux GOARCH=arm64 orchestriongo build -o bin/bootstrap ./lambda/optout/main.go
+          GOOS=linux GOARCH=arm64 orchestrion go build -o bin/bootstrap ./lambda/optout/main.go
           zip -j function.zip bin/bootstrap
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:

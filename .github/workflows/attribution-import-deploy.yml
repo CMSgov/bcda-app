@@ -46,7 +46,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Install Datadog Orchestrion APM
-        run: go install github.com/DataDog/orchestrion@v1.10.0
+        run: go install github.com/DataDog/orchestrion@49ad05fbcde841361e6bcc953f78bb7e72b1ca69 # v1.10.0
       - name: Build attribution-import zip file
         env:
           CGO_ENABLED: 0
