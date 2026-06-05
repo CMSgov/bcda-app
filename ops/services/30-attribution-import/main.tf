@@ -5,11 +5,6 @@ locals {
   db_sg_name = "${local.app}-${var.env}-db"
 }
 
-data "aws_kms_alias" "bcda_app_config_kms_key" {
-  count = local.app == "bcda" ? 1 : 0
-  name  = "alias/bcda-${var.env}-app-config-kms"
-}
-
 module "platform" {
   source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
 
@@ -17,7 +12,7 @@ module "platform" {
 
   app         = "bcda"
   env         = var.env
-  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/20-attribution-import"
+  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/30-attribution-import"
   service     = local.service
   ssm_root_map = {
     attribution-import = "/bcda/${var.env}/${local.service}/"
@@ -63,6 +58,16 @@ data "aws_iam_policy_document" "default_function" {
       module.platform.kms_alias_secondary.arn
     ]
   }
+  statement {
+    sid = "VPCNetworkingENI"
+    actions = [
+      "ec2:CreateNetworkInterface",
+      "ec2:DeleteNetworkInterface",
+      "ec2:DescribeAccountAttributes",
+      "ec2:DescribeNetworkInterfaces",
+    ]
+    resources = ["*"]
+  }
 }
 
 data "aws_iam_policy_document" "attribution-import_bucket_rw" {
@@ -104,19 +109,28 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
 }
 
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=cbf179cb8c6707c92ad475560a54c061d00f75ff"
 
-  app          = local.app
-  env          = var.env
   architecture = "arm64"
 
-  name        = local.full_name
+  name        = local.service
   description = "Ingests the most recent attribution from BFD"
 
   handler = "bootstrap"
   runtime = "provided.al2023"
 
   memory_size = 2048
+
+  platform = {
+    app               = local.app
+    env               = var.env
+    service           = local.service
+    kms_alias_primary = { target_key_arn = module.platform.kms_alias_primary.target_key_arn }
+    primary_region    = { name = module.platform.region_name }
+    account_id        = module.platform.account_id
+  }
+
+  additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
 
   environment_variables = {
     ENV      = var.env
