@@ -19,8 +19,13 @@ module "platform" {
   }
 }
 
-data "aws_kms_alias" "bcda_app_config_kms_key" {
-  name = "alias/bcda-${var.env}-app-config-kms"
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/lambda/${local.full_name}"
+  retention_in_days = 180
+
+  tags = {
+    Name = "/aws/lambda/${local.full_name}"
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -72,7 +77,6 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
     effect = "Allow"
 
     actions = [
-      "s3:PutObject",
       "s3:ListBucket",
       "s3:GetBucketLocation",
     ]
@@ -104,17 +108,13 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
   }
 }
 
-data "aws_rds_cluster" "this" {
-  cluster_identifier = "${local.app}-${var.env}-aurora"
-}
-
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=8a6527c0689bb46ae0e74bd47e4087ab59cff1b0"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=cbf179cb8c6707c92ad475560a54c061d00f75ff"
 
   architecture = "arm64"
 
   name        = local.service
-  description = "Ingests the most recent attribution from EFT"
+  description = "Ingests the most recent attribution from BFD"
 
   handler = "bootstrap"
   runtime = "provided.al2023"
@@ -129,22 +129,14 @@ module "attribution_import_function" {
     primary_region    = { name = module.platform.region_name }
     account_id        = module.platform.account_id
   }
-  liveness_check_enabled = false
 
   additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
-  github_actions_repos       = ["bcda-app:*"]
 
   environment_variables = {
     ENV      = var.env
-    APP_NAME = "${local.app}-${var.env}-${local.service}"
-    DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
+    APP_NAME = "${local.app}-${var.env}-attribution-import"
   }
-
-  ssm_parameter_paths = [
-    "/bcda/${var.env}/sensitive/api/DATABASE_URL"
-  ]
-
-  extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn,data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn]
+  extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn]
 }
 
 resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
