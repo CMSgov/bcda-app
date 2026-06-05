@@ -1,25 +1,26 @@
 locals {
   app        = "bcda"
+  env        = terraform.workspace
   service    = "api-waf-sync"
-  full_name  = "${local.app}-${var.env}-api-waf-sync"
-  db_sg_name = "${local.app}-${var.env}-db"
+  full_name  = "${local.app}-${local.env}-api-waf-sync"
+  db_sg_name = "${local.app}-${local.env}-db"
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
-  name = "alias/bcda-${var.env}-app-config-kms"
+  name = "alias/bcda-${local.env}-app-config-kms"
 }
 
 data "aws_kms_alias" "environment_key" {
-  name = "alias/${local.app}-${var.env}"
+  name = "alias/${local.app}-${local.env}"
 }
 
 data "aws_rds_cluster" "this" {
-  cluster_identifier = "${local.app}-${var.env}-aurora"
+  cluster_identifier = "${local.app}-${local.env}-aurora"
 }
 
 data "aws_security_groups" "db" {
   tags = {
-    Name = "bcda-${var.env}-db"
+    Name = "bcda-${local.env}-db"
   }
 }
 
@@ -29,7 +30,7 @@ module "platform" {
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app         = local.app
-  env         = var.env
+  env         = local.env
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
 }
@@ -38,7 +39,7 @@ module "api_waf_sync_function" {
   source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
 
   app          = local.app
-  env          = var.env
+  env          = local.env
   architecture = "arm64"
 
   name        = local.full_name
@@ -55,8 +56,8 @@ module "api_waf_sync_function" {
   schedule_expression = "cron(0/10 * * * ? *)"
 
   environment_variables = {
-    ENV      = var.env
-    APP_NAME = "${local.app}-${var.env}-${local.service}"
+    ENV      = local.env
+    APP_NAME = "${local.app}-${local.env}-${local.service}"
     DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
   }
 
