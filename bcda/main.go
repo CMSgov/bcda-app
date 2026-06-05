@@ -42,13 +42,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
 
 func setupDirs() {
-	monitoring.GetMonitor()
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
