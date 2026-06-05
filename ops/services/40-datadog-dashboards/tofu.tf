@@ -11,7 +11,7 @@ locals {
   )
 
   state_buckets = {
-    prod    = "bcda-prod-tfstate-20250411203841436200000001"
+    prod = "bcda-prod-tfstate-20250411203841436200000001"
   }
 }
 
