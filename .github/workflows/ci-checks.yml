@@ -71,7 +71,7 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
-        run: make docker-bootstrap
+        run: make docker-bootstrap-no-bake
       - name: Lint and Test
         run: make test
       - name: Archive code coverage results
