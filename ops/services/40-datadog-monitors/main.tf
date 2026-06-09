@@ -3,7 +3,7 @@ locals {
   ## Evaluates config/defaults.yml and overwrites values with those from config/${var.env}.yml for each
   ## variable/key type. Creates a hierarchy of defaults, so the modules/datadog_monitors defaults are
   ## the least prioritized, followed by config/defaults.yml, followed by the environment specific settings.
-  env        = terraform.workspace
+  env        = local.parent_env
   defaults   = yamldecode(file("config/defaults.yml"))
   env_config = yamldecode(file("config/${local.env}.yml"))
 
