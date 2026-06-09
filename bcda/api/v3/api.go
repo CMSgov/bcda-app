@@ -333,8 +333,9 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_PATIENT},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "export"},
-								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+								Name:          &fhirdatatypes.String{Value: "export"},
+								Definition:    &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+								Documentation: &fhirdatatypes.Markdown{Value: "By default, the patient $export will return ExplanationOfBenefit resources with a meta.tag with a system of 'https://bluebutton.cms.gov/fhir/CodeSystem/System-Type' and code of either NationalClaimsHistory or DDPS. In order to return ExplanationOfBenefit resources with other system types (like SharedSystem), use the _typeFilter parameter."},
 							},
 						},
 						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
@@ -347,8 +348,9 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_GROUP},
 						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
 							{
-								Name:       &fhirdatatypes.String{Value: "export"},
-								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+								Name:          &fhirdatatypes.String{Value: "export"},
+								Definition:    &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+								Documentation: &fhirdatatypes.Markdown{Value: "By default, the group $export will return ExplanationOfBenefit resources with a meta.tag with a system of 'https://bluebutton.cms.gov/fhir/CodeSystem/System-Type' and code of either NationalClaimsHistory or DDPS. In order to return ExplanationOfBenefit resources with other system types (like SharedSystem), use the _typeFilter parameter."},
 							},
 						},
 						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
@@ -360,7 +362,8 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 					{
 						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_EXPLANATION_OF_BENEFIT},
 						SearchParam: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_SearchParam{
-							restResourceSearchParam("_tag", fhircodes.SearchParamTypeCode_STRING, "Filter claims by adjudication status: either Adjudicated or PartiallyAdjudicated"),
+							restResourceSearchParam("_tag", fhircodes.SearchParamTypeCode_TOKEN, "Filter ExplanationOfBenefit by the meta.tag element. Pass full token as <system>|<code>. Supported codes in the 'https://bluebutton.cms.gov/fhir/CodeSystem/System-Type' system are: 'SharedSystem', 'NationalClaimsHistory', and 'DDPS'. By Default, only NationalClaimsHistory and DDPS claims will be returned."),
+							restResourceSearchParam("outcome", fhircodes.SearchParamTypeCode_TOKEN, "Filter ExplanationOfBenefit by the outcome element. Supported values: 'partial' and 'complete'."),
 						},
 					},
 				},
