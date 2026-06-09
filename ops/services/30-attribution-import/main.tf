@@ -26,6 +26,7 @@ data "aws_iam_policy_document" "default_function" {
   statement {
     sid = "SsmSqsLogsEc2"
     actions = [
+      "sts:AssumeRoleWithWebIdentity",
       "ssm:GetParameters",
       "ssm:GetParameter",
       "sqs:ReceiveMessage",
