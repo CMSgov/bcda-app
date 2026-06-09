@@ -1,0 +1,12 @@
+shadow_mode: true
+
+lambda:
+  error_rate_threshold: 1
+
+enabled:
+  ecs: true
+  sqs: true
+  sns: false
+  lambda: true
+  s3: true
+  rds: true

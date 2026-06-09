@@ -1,0 +1,197 @@
+# =============================================================================
+# defaults.yml — Canonical baseline for all Datadog monitor configuration.
+#
+# This file must contain every key expected by the datadog_monitors module.
+# Your environment config files (e.g. prod.yml, dev.yml) only need to specify
+# values they override — everything else falls through to these defaults.
+#
+# If a new field is added to modules/datadog_monitors/variables.tf, a
+# corresponding default MUST be added here.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Shadow Mode
+#
+# When true, all monitors are active and visible in Datadog but send NO
+# notifications. Use this during initial rollout to review monitor behavior
+# before enabling alerting.
+#
+# Set to false in your environment config (e.g. prod.yml) when you are ready
+# to receive alerts. Monitors are tagged shadow-mode:true/false for filtering
+# in the Datadog UI.
+# -----------------------------------------------------------------------------
+shadow_mode: true
+
+# -----------------------------------------------------------------------------
+# Notifications
+#
+# The global platform channel is always included. Add your team's channels
+# in your environment config under notifications.channels.
+#
+# Supported handle formats:
+#   Slack:     @slack-your-channel-name
+#   VictorOps: @victorops-your-routing-key
+#   Email:     your-team@example.gov
+#
+# Example override in prod.yml:
+#   notifications:
+#     channels:
+#       - "@slack-your-team-alerts"
+#       - "@victorops-your-routing-key"
+# -----------------------------------------------------------------------------
+notifications:
+  channels:
+    - "@bcda-alerts"  # global — always notified
+
+# -----------------------------------------------------------------------------
+# Enabled Flags
+#
+# Set a service to false if your application does not use it.
+# This prevents unnecessary monitors from being created.
+# RDS is opt-in (false by default) since not all apps use Aurora RDS.
+# -----------------------------------------------------------------------------
+enabled:
+  ecs: true
+  sqs: true
+  sns: false
+  lambda: true
+  s3: true
+  rds: true
+
+# -----------------------------------------------------------------------------
+# ECS Monitors
+#
+# Monitors:  CPU utilization, memory utilization
+# Scoped by: servicename (one alert evaluation per ECS service)
+#
+# Thresholds are percentages (0–100).
+# Warning threshold is automatically set to 85% of the critical threshold.
+#
+# notify_no_data: alert if ECS metrics stop reporting entirely.
+# no_data_timeframe_minutes: minutes of silence before a no-data alert fires.
+#   Minimum: 2. Recommended: at least 2x your metric collection interval.
+# -----------------------------------------------------------------------------
+ecs:
+  cpu_threshold: 85
+  memory_threshold: 85
+  notify_no_data: true
+  no_data_timeframe_minutes: 10
+  timeframe: "last_10m"
+
+# -----------------------------------------------------------------------------
+# SQS Monitors
+#
+# Monitors:  DLQ messages visible, message age
+# Scoped by: queuename
+#
+# DLQ monitor uses a queuename:*dlq* filter — queues must follow a *dlq*
+# naming convention to be detected automatically.
+#
+# max_message_age_seconds: tune upward for batch workloads where messages are
+#   expected to age before processing. For real-time consumers, keep this low.
+#   Warning threshold is automatically set to 75% of the critical value.
+# -----------------------------------------------------------------------------
+sqs:
+  dlq_message_threshold: 1       # any DLQ message is actionable
+  max_message_age_seconds: 300   # 5 minutes — lower for real-time consumers
+  notify_no_data: true
+  no_data_timeframe_minutes: 10
+  timeframe: "last_10m"
+
+# -----------------------------------------------------------------------------
+# SNS Monitors
+#
+# Monitors:  Failed notification deliveries
+# Scoped by: topicname
+#
+# Warning threshold is automatically set to 50% of the critical value.
+# -----------------------------------------------------------------------------
+sns:
+  failed_notification_threshold: 5
+  notify_no_data: false
+  no_data_timeframe_minutes: 10
+  timeframe: "last_10m"
+
+# -----------------------------------------------------------------------------
+# Lambda Monitors
+#
+# Monitors:  Error rate (%), throttles, p99 duration
+# Scoped by: functionname
+#
+# error_rate_threshold: percentage of invocations that result in errors.
+#   Uses (errors / invocations) * 100 — ratio-based to avoid false positives
+#   on low-traffic functions. Override lower for latency-sensitive functions.
+#
+# throttle_threshold: raw throttle count over a 5-minute window.
+#
+# duration_p99_threshold_ms: p99 duration in milliseconds.
+#   Set to approximately 80% of your function's configured timeout.
+#   Example: for a 10s timeout, use 8000. For a 30s timeout, use 24000.
+#
+# notify_no_data: useful for scheduled functions. For a weekly Lambda, set
+#   no_data_timeframe_minutes to 10140 (7 days + 1hr buffer).
+#   Note: this applies to ALL Lambda functions for this app. For per-function
+#   no-data timeframes, manage those monitors outside this module.
+# -----------------------------------------------------------------------------
+lambda:
+  error_rate_threshold: 5
+  throttle_threshold: 10
+  duration_p99_threshold_ms: 900000
+  notify_no_data: true
+  no_data_timeframe_minutes: 10
+  timeframe: "last_10m"
+
+# -----------------------------------------------------------------------------
+# S3 Monitors
+#
+# Monitors:  4xx error rate, 5xx error rate
+# Scoped by: bucketname
+#
+# IMPORTANT: S3 request metrics must be enabled per bucket — they are NOT on
+# by default. Enable them in the S3 console under Metrics > Request metrics,
+# or via your bucket's OpenTofu configuration. Buckets without request metrics
+# enabled will remain in a no-data state.
+#
+# 4xx errors indicate client-side issues (access denied, missing objects).
+# 5xx errors indicate AWS-side issues — rare but high-signal when they occur.
+# -----------------------------------------------------------------------------
+s3:
+  error_threshold_4xx: 50
+  error_threshold_5xx: 10
+  notify_no_data: true
+  no_data_timeframe_minutes: 10
+  timeframe: "last_10m"
+
+# -----------------------------------------------------------------------------
+# RDS / Aurora Monitors
+#
+# Monitors:  CPU, freeable memory, DB connections, replica lag, deadlocks
+# Scoped by: dbclusteridentifier (CPU) and dbinstanceidentifier (others)
+#
+# Disabled by default (enabled.rds: false above). Set enabled.rds: true
+# in your environment config to activate.
+#
+# freeable_memory_threshold_mb: threshold in MB — converted to bytes in query.
+#   Aurora buffers heavily in memory; low freeable memory leads to swapping
+#   and degraded query performance.
+#
+# replica_lag_seconds: threshold in seconds — converted to milliseconds in
+#   the query. Only relevant if your cluster has read replicas.
+#
+# deadlocks_enabled: set false if Enhanced Monitoring or Performance Insights
+#   is NOT enabled on your Aurora cluster. The aws.rds.deadlocks metric
+#   requires one of these to be active.
+#
+# Storage capacity is intentionally omitted — Aurora auto-scales storage
+# up to 128 TiB, making disk-full alerts not applicable.
+# -----------------------------------------------------------------------------
+rds:
+  cpu_threshold: 85
+  freeable_memory_threshold_mb: 256   # alert when less than 256MB free
+  db_connections_threshold: 200       # tune to your instance's max_connections
+  replica_lag_seconds: 30
+  deadlock_threshold: 1               # any deadlock is worth investigating
+  deadlocks_enabled: true             # set false without Enhanced Monitoring / Performance Insights
+  notify_no_data: true
+  no_data_timeframe_minutes: 10
+  timeframe: "last_10m"
