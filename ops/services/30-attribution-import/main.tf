@@ -19,15 +19,6 @@ module "platform" {
   }
 }
 
-resource "aws_cloudwatch_log_group" "this" {
-  name              = "/aws/lambda/${local.full_name}"
-  retention_in_days = 180
-
-  tags = {
-    Name = "/aws/lambda/${local.full_name}"
-  }
-}
-
 # ---------------------------------------------------------------------------
 # Managed policies
 # ---------------------------------------------------------------------------
@@ -129,6 +120,7 @@ module "attribution_import_function" {
     primary_region    = { name = module.platform.region_name }
     account_id        = module.platform.account_id
   }
+  liveness_check_enabled = false
 
   additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
 
