@@ -21,13 +21,12 @@ on:
       - bcda/lambda/admin_aco_deny/**
       - .github/workflows/admin-aco-deny-deploy.yml
 
-
 env:
-  RELEASE_ENV: ${{ inputs.env || 'dev' }}
+  RELEASE_ENV: ${{ inputs.deploy_env || 'dev' }}
 
 jobs:
   deploy_tf:
-    environment: ${{ inputs.env || 'dev' }}
+    environment: ${{ inputs.deploy_env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.deploy_env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
@@ -57,7 +56,7 @@ jobs:
           tofu apply bcda-release-lambda.tfplan
 
   deploy_function:
-    environment: ${{ inputs.env || 'dev' }}
+    environment: ${{ inputs.deploy_env || 'dev' }}
     needs: [deploy_tf]
     permissions:
       contents: read
