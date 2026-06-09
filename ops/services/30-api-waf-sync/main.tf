@@ -36,18 +36,17 @@ module "platform" {
 }
 
 module "api_waf_sync_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=945fbd644cc8d239bdf3f3a3a7241fb6066a0f55"
 
-  app          = local.app
-  env          = local.env
+  platform     = module.platform
   architecture = "arm64"
 
-  name        = local.full_name
+  name        = local.service
   description = "Synchronizes the IP whitelist in ${local.app} with the WAF IP Set"
 
-  handler             = "bootstrap"
-  runtime             = "provided.al2023"
-  create_function_zip = false
+  handler                = "bootstrap"
+  runtime                = "provided.al2023"
+  liveness_check_enabled = false
 
   function_role_inline_policies = {
     waf-access = data.aws_iam_policy_document.aws_waf_access.json
@@ -61,12 +60,19 @@ module "api_waf_sync_function" {
     DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
   }
 
+  ssm_parameter_paths = [
+    "/bcda/${local.env}/sensitive/api/DATABASE_URL"
+  ]
+
   extra_kms_key_arns = concat(
     [
       data.aws_kms_alias.environment_key.target_key_arn,
       data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn
     ],
   )
+
+  github_actions_repos = ["CMSgov/bcda-ssas-app"]
+
 }
 
 # Add a rule to the database security group to allow access from the function
