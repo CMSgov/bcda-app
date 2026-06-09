@@ -28,8 +28,9 @@ module "admin_create_aco_function" {
   platform     = module.platform
   architecture = "arm64"
 
-  name        = local.service
-  description = "Creates an ACO for BCDA."
+  name                   = local.service
+  description            = "Creates an ACO for BCDA."
+  liveness_check_enabled = false
 
   handler = "bootstrap"
   runtime = "provided.al2023"
