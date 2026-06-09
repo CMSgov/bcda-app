@@ -643,25 +643,25 @@ func getMaxBeneCount(requestType string) (int, error) {
 
 // IsSupportedACO determines if the particular ACO is supported by checking
 // its CMS_ID against the supported formats.
-func IsSupportedACO(cmsID string) bool {
-	const (
-		ssp     = `^A\d{4}$`
-		ngaco   = `^V\d{3}$`
-		cec     = `^E\d{4}$`
-		ckcc    = `^C\d{4}$`
-		kcf     = `^K\d{4}$`
-		dc      = `^D\d{4}$`
-		mdtcoc  = `^CT\d{4,6}$`
-		cdac    = `^DA\d{4}$`
-		guide   = `^GUIDE-\d{5}$`
-		test    = `^TEST\d{3}$`
-		sandbox = `^SBX[A-Z]{2}\d{3}$`
-		iot     = `^IOTA\d{3}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)|(` + iot + `)`
-	)
+// func IsSupportedACO(cmsID string) bool {
+// 	const (
+// 		ssp     = `^A\\d{4}$`
+// 		ngaco   = `^V\\d{3}$`
+// 		cec     = `^E\\d{4}$`
+// 		ckcc    = `^C\\d{4}$`
+// 		kcf     = `^K\\d{4}$`
+// 		dc      = `^D\\d{4}$`
+// 		mdtcoc  = `^CT\d{4,6}$`
+// 		cdac    = `^DA\d{4}$`
+// 		guide   = `^GUIDE-\d{5}$`
+// 		test    = `^TEST\d{3}$`
+// 		sandbox = `^SBX[A-Z]{2}\d{3}$`
+// 		iot     = `^IOTA\d{3}$`
+// 		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + mdtcoc + `)|(` + cdac + `)|(` + guide + `)|(` + test + `)|(` + sandbox + `)|(` + iot + `)`
+// 	)
 
-	return regexp.MustCompile(pattern).MatchString(cmsID)
-}
+// 	return regexp.MustCompile(pattern).MatchString(cmsID)
+// }
 
 func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, constants.CCLF8FileNum, constants.ImportComplete, earlierTime, laterTime, fileType)

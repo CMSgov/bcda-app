@@ -121,9 +121,14 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 		return errors.New("CMSID must be provided")
 	}
 
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return errors.New("failed to load config")
+	}
+
 	var cmsIDPt *string
 	if data.CMSID != "" {
-		match := service.IsSupportedACO(data.CMSID)
+		match := cfg.IsSupportedACO(data.CMSID)
 		if !match {
 			return errors.New("ACO CMS ID is invalid")
 		}
@@ -132,7 +137,7 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 
 	aco := models.ACO{Name: data.Name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err := createACO(ctx, conn, aco)
+	err = createACO(ctx, conn, aco)
 	if err != nil {
 		return err
 	}

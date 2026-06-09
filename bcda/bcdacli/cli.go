@@ -419,7 +419,12 @@ func createGroup(r models.Repository, id, name, acoID string) (string, error) {
 		err error
 	)
 
-	if match := service.IsSupportedACO(acoID); match {
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+
+	if match := cfg.IsSupportedACO(acoID); match {
 		aco, err = r.GetACOByCMSID(context.Background(), acoID)
 		if err != nil {
 			return "", err
@@ -468,9 +473,14 @@ func createACO(r models.Repository, name, cmsID string) (string, error) {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
 
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+
 	var cmsIDPt *string
 	if cmsID != "" {
-		match := service.IsSupportedACO(cmsID)
+		match := cfg.IsSupportedACO(cmsID)
 		if !match {
 			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
 		}
@@ -480,7 +490,7 @@ func createACO(r models.Repository, name, cmsID string) (string, error) {
 	id := uuid.NewRandom()
 	aco := models.ACO{Name: name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err := r.CreateACO(context.Background(), aco)
+	err = r.CreateACO(context.Background(), aco)
 	if err != nil {
 		return "", err
 	}

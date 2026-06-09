@@ -19,13 +19,13 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Len(t, cfg.ACOConfigs, 14)
+	assert.Len(t, cfg.ACOConfigs, 15)
 	for _, acoCfg := range cfg.ACOConfigs {
 		assert.NotNil(t, acoCfg.patternExp)
 		if acoCfg.PerfYearTransition != "" {
 			assert.False(t, acoCfg.perfYear.IsZero(), "perfYear should be set")
 		}
-		t.Log(acoCfg.String())
+		t.Log(toJSON(acoCfg))
 	}
 	// Ensure that fields with the same name can be represented by different values
 	// NOTE: These values come from local.env
@@ -34,8 +34,8 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, false, cfg.RateLimitConfig.All)
 	assert.Equal(t, 1, len(cfg.RateLimitConfig.ACOs))
 	assert.Equal(t, "A4875", cfg.RateLimitConfig.ACOs[0])
-	t.Log(cfg.String())
-	t.Log(cfg.RunoutConfig.String())
+	t.Log(toJSON(cfg))
+	t.Log(toJSON(cfg.RunoutConfig))
 }
 
 func TestIsACODisabled(t *testing.T) {

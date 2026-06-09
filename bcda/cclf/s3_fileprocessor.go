@@ -25,6 +25,11 @@ func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string
 		return cclfMap, skipped, failed, err
 	}
 
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return cclfMap, skipped, failed, err
+	}
+
 	for _, obj := range s3Objects {
 		// ignore the opt out file, and don't add it to the skipped count
 		optOut, _ := optout.IsOptOut(*obj.Key)
@@ -46,7 +51,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string
 			continue
 		}
 
-		supported := service.IsSupportedACO(cmsID)
+		supported := cfg.IsSupportedACO(cmsID)
 		if !supported {
 			processor.Handler.Errorf("Skipping CCLF archive (%s/%s): cmsID %s not supported.", bucket, *obj.Key, cmsID)
 			continue

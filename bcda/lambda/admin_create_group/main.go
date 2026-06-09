@@ -96,7 +96,12 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 		return errors.New("missing one or more required field(s): group_id, group_name, aco_id")
 	}
 
-	if match := service.IsSupportedACO(data.ACO_ID); match {
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return errors.New("failed to load config")
+	}
+
+	if match := cfg.IsSupportedACO(data.ACO_ID); match {
 		aco, err = r.GetACOByCMSID(context.Background(), data.ACO_ID)
 		if err != nil {
 			return err

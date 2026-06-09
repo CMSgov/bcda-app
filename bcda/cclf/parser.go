@@ -31,10 +31,12 @@ func CheckIfAttributionCSVFile(filePath string) bool {
 	MDTCOCPattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
 	CDACPattern := `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
 	GUIDEPattern := `(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
+	ACCESSPattern := `(P|T)\.(ACCESS)\.(\d{4})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
 	MDTCOCRegexp := regexp.MustCompile(MDTCOCPattern)
 	CDACRegexp := regexp.MustCompile(CDACPattern)
 	GUIDERegexp := regexp.MustCompile(GUIDEPattern)
-	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath) || GUIDERegexp.MatchString(filePath))
+	ACCESSRegexp := regexp.MustCompile(ACCESSPattern)
+	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath) || GUIDERegexp.MatchString(filePath) || ACCESSRegexp.MatchString(filePath))
 }
 
 type CSVParser struct {
@@ -47,7 +49,6 @@ func getACOConfigs() ([]service.ACOConfig, error) {
 		return []service.ACOConfig{}, err
 	}
 	return configs.ACOConfigs, err
-
 }
 
 // GetCSVMetadata builds a metadata struct based on the filename parts.
@@ -65,13 +66,13 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	for _, v := range acos {
-		// skip files that aren't csvs
+		// skip aco configs that use cclf
 		if v.AttributionFile.FileType == "csv" {
 			filenameRegexp := regexp.MustCompile(v.AttributionFile.NamePattern)
 			matches := filenameRegexp.FindStringSubmatch(path)
 			// safely check slice that contains the model identifier
 			if len(matches) >= 2 {
-				// verify the regex submatch is the model identifier
+				// matches can happen with similarly named models, verify it using the full model name
 				if v.AttributionFile.ModelIdentifier == matches[2] {
 					metadata, err = validateCSVMetadata(v.AttributionFile, matches)
 					if err != nil {
@@ -144,6 +145,8 @@ func validateCSVMetadata(attributionFile service.AttributionFile, subMatches []s
 		metadata.acoID = subMatches[3]
 	case "GUIDE":
 		metadata.acoID = fmt.Sprintf("%s%s", subMatches[3], subMatches[4])
+	case "ACCESS":
+		metadata.acoID = subMatches[3]
 	default:
 		return csvFileMetadata{}, errors.New("failed to get aco ID for attribution file")
 	}

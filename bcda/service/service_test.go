@@ -40,6 +40,9 @@ var (
 )
 
 func TestSupportedACOs(t *testing.T) {
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
 	tests := []struct {
 		name        string
 		cmsID       string
@@ -109,7 +112,7 @@ func TestSupportedACOs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(sub *testing.T) {
-			match := IsSupportedACO(tt.cmsID)
+			match := cfg.IsSupportedACO(tt.cmsID)
 			assert.Equal(sub, tt.isSupported, match)
 		})
 	}

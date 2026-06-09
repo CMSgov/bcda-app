@@ -79,22 +79,6 @@ type RateLimitConfig struct {
 	ACOs []string `conf:"acos"` // rate-limit requests for specific ACOs
 }
 
-func (config Config) String() string {
-	return toJSON(config)
-}
-
-func (config RunoutConfig) String() string {
-	return toJSON(config)
-}
-
-func (config *ACOConfig) String() string {
-	return toJSON(config)
-}
-
-func (config RateLimitConfig) String() string {
-	return toJSON(config)
-}
-
 func toJSON(config interface{}) string {
 	d, err := json.Marshal(config)
 	if err != nil {
@@ -133,8 +117,8 @@ func (cfg *Config) ComputeFields() (err error) {
 	return nil
 }
 
-func (config *Config) IsACODisabled(CMSID string) bool {
-	for _, ACOcfg := range config.ACOConfigs {
+func (cfg *Config) IsACODisabled(CMSID string) bool {
+	for _, ACOcfg := range cfg.ACOConfigs {
 		if ACOcfg.patternExp.MatchString(CMSID) {
 			return ACOcfg.Disabled
 		}
@@ -143,13 +127,24 @@ func (config *Config) IsACODisabled(CMSID string) bool {
 	return true
 }
 
-func (config *Config) IsACOV3Enabled(ACOID string) bool {
+func (cfg *Config) IsACOV3Enabled(ACOID string) bool {
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		return true
 	}
 
-	for _, aco := range config.V3EnabledACOs {
+	for _, aco := range cfg.V3EnabledACOs {
 		if aco == ACOID {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSupportedACO determines if the particular ACO is supported by checking
+// its CMS_ID against the supported formats.
+func (cfg *Config) IsSupportedACO(cmsID string) bool {
+	for _, aco := range cfg.ACOConfigs {
+		if aco.patternExp.MatchString(cmsID) {
 			return true
 		}
 	}
