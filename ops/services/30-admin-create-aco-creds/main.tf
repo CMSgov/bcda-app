@@ -38,7 +38,7 @@ module "platform" {
 
   app         = local.app
   env         = local.env
-  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
+  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/30-admin-create-aco-creds"
   service     = local.service
   ssm_root_map = {
     bene-prefs = "/bcda/${local.env}/${local.service}/"
