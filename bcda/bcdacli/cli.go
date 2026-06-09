@@ -40,7 +40,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
+	"github.com/DataDog/dd-trace-go/v2/profiler"
 )
 
 // App Name and usage.  Edit them here to prevent breaking tests
