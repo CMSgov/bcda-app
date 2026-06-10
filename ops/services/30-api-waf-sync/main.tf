@@ -75,12 +75,9 @@ module "api_waf_sync_function" {
 
 }
 
-# Add a rule to the database security group to allow access from the function
-data "aws_security_group" "db" {
-  name = local.db_sg_name
-}
-
+# TODO: Delete after deploying BCDA-10031
 resource "aws_security_group_rule" "function_access" {
+  count       = 0
   type        = "ingress"
   from_port   = 5432
   to_port     = 5432
