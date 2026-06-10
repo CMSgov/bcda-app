@@ -64,7 +64,7 @@ jobs:
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
-            s3://$BUCKET/function.zip
+            s3://$BUCKET
           aws s3api put-object-tagging \
             --bucket $BUCKET \
             --key function-${{ github.sha }}.zip \
