@@ -68,6 +68,7 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
     effect = "Allow"
 
     actions = [
+      "s3:PutObject",
       "s3:ListBucket",
       "s3:GetBucketLocation",
     ]
