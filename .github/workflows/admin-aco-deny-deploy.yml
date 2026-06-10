@@ -35,8 +35,6 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Checkout BCDA
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
-        with:
-          repository: CMSgov/bcda-app
       - name: Install Cosign to verify tenv and tofu installs
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 #v4.1.1@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
       - name: Install tenv
