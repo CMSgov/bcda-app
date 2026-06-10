@@ -27,8 +27,43 @@ on:
       - bcda/lambda/admin_create_aco_creds/**
       - .github/workflows/admin-create-aco-creds-deploy.yml
 
+env:
+  RELEASE_ENV: ${{ inputs.deploy_env || 'dev' }}
+
 jobs:
-  test:
+  deploy_tf:
+    environment: ${{ inputs.deploy_env || 'dev' }}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.deploy_env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Checkout BCDA
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+        with:
+          repository: CMSgov/bcda-app
+      - name: Install Cosign to verify tenv and tofu installs
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 #v4.1.1@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Install tenv
+        uses: cmsgov/cdap/actions/setup-tenv@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Install OpenTofu
+        working-directory: ops/services/30-admin-create-aco-creds
+        run: tenv tofu install
+      - name: Init, Plan OpenTofu
+        working-directory: ops/services/30-admin-create-aco-creds
+        run: |
+          TF_WORKSPACE=default tofu init -var parent_env=${{ env.RELEASE_ENV }} -reconfigure && tofu workspace select -var parent_env=${{ env.RELEASE_ENV }} -or-create ${{ env.RELEASE_ENV }}
+          tofu plan \
+            -out 'bcda-release-lambda.tfplan'
+      - name: OpenTofu Apply
+        working-directory: ops/services/30-admin-create-aco-creds
+        run: |
+          tofu apply bcda-release-lambda.tfplan
+
+  deploy_function:
+    environment: ${{ inputs.deploy_env || 'dev' }}
+    needs: [deploy_tf]
     permissions:
       contents: read
       id-token: write
@@ -48,36 +83,17 @@ jobs:
         run: |
           env GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/admin_create_aco_creds/*.go
           zip -j function.zip bin/bootstrap
-      - name: Set ENVIRONMENT - no inputs
-        if: ${{ inputs.deploy_env == '' }}
-        run: echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-
-      - name: Set ENVIRONMENT - inputs
-        if: ${{ inputs.deploy_env != '' }}
-        run: echo "ENVIRONMENT=${{ inputs.deploy_env }}" >> $GITHUB_ENV
-
-      - name: Set ACCOUNT - non prod
-        if: ${{ env.ENVIRONMENT == 'dev' || env.ENVIRONMENT == 'test' }}
-        run: |
-          echo "ACC=${{ secrets.NON_PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
-          echo "ROLE=dev" >> $GITHUB_ENV
-
-      - name: Set ACCOUNT - prod
-        if: ${{ env.ENVIRONMENT == 'sandbox' || env.ENVIRONMENT == 'prod' }}
-        run: |
-          echo "ACC=${{ secrets.PROD_ACCOUNT_ID }}" >> $GITHUB_ENV
-          echo "ROLE=prod" >> $GITHUB_ENV
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ env.ACC }}:role/delegatedadmin/developer/bcda-${{ env.ROLE }}-github-actions
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Get Bucket
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/${{ env.ENVIRONMENT }}/bcda-${{ env.ENVIRONMENT }}-admin-create-aco-creds-bucket
+            BUCKET=/bcda/${{ env.RELEASE_ENV }}/admin-create-aco-creds-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
@@ -86,5 +102,5 @@ jobs:
             --bucket $BUCKET \
             --key function-${{ github.sha }}.zip \
             --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
-          aws lambda update-function-code --function-name bcda-$ENVIRONMENT-admin-create-aco-creds \
+          aws lambda update-function-code --function-name bcda-${{ env.RELEASE_ENV }}-admin-create-aco-creds \
             --s3-bucket $BUCKET --s3-key function-${{ github.sha }}.zip
