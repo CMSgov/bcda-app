@@ -43,7 +43,7 @@ module "admin_create_aco_function" {
   }
 
   ssm_parameter_paths = [
-    "/bcda/${local.env}/sensitive/DATABASE_URL",
+    "/bcda/${local.env}/sensitive/api/DATABASE_URL",
     "/slack/token/workflow-alerts"
   ]
 
