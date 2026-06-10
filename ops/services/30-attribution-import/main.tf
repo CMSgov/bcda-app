@@ -105,7 +105,7 @@ module "attribution_import_function" {
   architecture = "arm64"
 
   name        = local.service
-  description = "Ingests the most recent attribution from BFD"
+  description = "Ingests the most recent attribution from EFT"
 
   handler = "bootstrap"
   runtime = "provided.al2023"
@@ -123,7 +123,7 @@ module "attribution_import_function" {
   liveness_check_enabled = false
 
   additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
-  github_actions_repos       = ["bcda-app"]
+  github_actions_repos       = ["bcda-app:*"]
 
   environment_variables = {
     ENV      = var.env
