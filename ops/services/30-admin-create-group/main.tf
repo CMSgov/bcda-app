@@ -1,13 +1,14 @@
 locals {
   app         = "bcda"
-  full_name   = "${local.app}-${var.env}-admin-create-group"
-  db_sg_name  = "bcda-${var.env}-db"
+  env         = terraform.workspace
+  full_name   = "${local.app}-${local.env}-admin-create-group"
+  db_sg_name  = "bcda-${local.env}-db"
   memory_size = 2048
   service     = "admin-create-group"
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
-  name = "alias/bcda-${var.env}-app-config-kms"
+  name = "alias/bcda-${local.env}-app-config-kms"
 }
 
 module "platform" {
@@ -16,40 +17,48 @@ module "platform" {
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app         = local.app
-  env         = var.env
-  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
+  env         = local.env
+  root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/30-admin-create-group"
   service     = local.service
 }
 
 module "admin_create_group_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=2874c72ccd4c4821e5e3f77ccf61cf77ed05169f"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=945fbd644cc8d239bdf3f3a3a7241fb6066a0f55"
 
-  app          = local.app
-  env          = var.env
+  platform     = module.platform
   architecture = "arm64"
 
-  name        = local.full_name
+  name        = local.service
   description = "Creates a group for the supplied CMS ID."
 
-  handler = "bootstrap"
-  runtime = "provided.al2023"
+  handler                = "bootstrap"
+  runtime                = "provided.al2023"
+  liveness_check_enabled = false
 
   memory_size = local.memory_size
 
   environment_variables = {
-    ENV      = var.env
-    APP_NAME = "${local.app}-${var.env}-admin-create-group"
+    ENV      = local.env
+    APP_NAME = "${local.app}-${local.env}-admin-create-group"
   }
 
+  ssm_parameter_paths = [
+    "/slack/token/workflow-alerts",
+    "/bcda/${local.env}/sensitive/api/DATABASE_URL",
+    "/bcda/${local.env}/sensitive/api/SSAS_URL",
+    "/bcda/${local.env}/sensitive/api/BCDA_SSAS_CLIENT_ID",
+    "/bcda/${local.env}/sensitive/api/BCDA_SSAS_SECRET",
+    "/bcda/${local.env}/sensitive/api/BCDA_CA_FILE.pem"
+  ]
+
   extra_kms_key_arns = [data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn]
+
+  github_actions_repos = ["CMSgov/bcda-app"]
 }
 
-# Add a rule to the database security group to allow access from the function
-data "aws_security_group" "db" {
-  name = local.db_sg_name
-}
-
+# TODO: Delete after deploying BCDA-10031
 resource "aws_security_group_rule" "function_access" {
+  count       = 0
   type        = "ingress"
   from_port   = 5432
   to_port     = 5432
@@ -58,4 +67,9 @@ resource "aws_security_group_rule" "function_access" {
 
   security_group_id        = data.aws_security_group.db.id
   source_security_group_id = module.admin_create_group_function.security_group_id
+}
+
+import {
+  to = module.admin_create_group_function.aws_cloudwatch_log_group.function
+  id = "/aws/lambda/${local.full_name}"
 }

@@ -5,12 +5,7 @@
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:H/CB,iv:atGloib5mt7phyZeeE58XjID4K91Ho2FtOy80HbXtrg=,tag:cblfrIFx31TR9jhQRzwQDQ==,type:str]
 /bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:pcT6bw==,iv:ba2euw4TLAdrXdZUe0QoPytG6j+ThgoxHM3I6ZwrU9I=,tag:c0X7goSVTVe7OjxjsLPdLw==,type:str]
 #ENC[AES256_GCM,data:3wxEuksNauPlFZbPdycCPr+NQHTvwVhf,iv:nuD8WRwbERBAiiiC/yo4mMkOGjuLwSR8teY/tPA/MjE=,tag:XFG5P/CptJ8YWXZ3RMuWeQ==,type:comment]
-/bcda/${env}/nonsensitive/bcda-test-admin-aco-deny-bucket: bcda-test-admin-aco-deny-function-20250528140635182000000001
-/bcda/${env}/nonsensitive/bcda-test-admin-create-aco-bucket: bcda-test-admin-create-aco-function-20250528140632188700000001
-/bcda/${env}/nonsensitive/bcda-test-admin-create-aco-creds-bucket: bcda-test-admin-create-aco-creds-fun-20250529142812426400000001
-/bcda/${env}/nonsensitive/bcda-test-admin-create-group-bucket: bcda-test-admin-create-group-functio-20250528140633471600000001
 /bcda/${env}/nonsensitive/bcda-test-alarm-to-slack-bucket: bcda-test-alarm-to-slack-function-20250811163806563400000001
-/bcda/${env}/nonsensitive/bcda-test-api-waf-sync-bucket: bcda-test-api-waf-sync-function-20250528160014419500000001
 /bcda/${env}/nonsensitive/bcda-test-cclf-import-bucket: bcda-test-cclf-import-function-20250528160013829000000001
 /bcda/${env}/nonsensitive/bcda-test-opt-out-export-bucket: bcda-test-opt-out-export-function-20250528140632448800000001
 /bcda/${env}/nonsensitive/bcda-test-opt-out-import-bucket: bcda-test-opt-out-import-function-20250528140643897600000001
