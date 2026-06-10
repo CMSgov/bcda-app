@@ -97,3 +97,8 @@ resource "aws_security_group_rule" "function_access" {
   security_group_id        = data.aws_security_group.db.id
   source_security_group_id = module.admin_create_aco_creds_function.security_group_id
 }
+
+import {
+  to = module.admin_create_aco_creds_function.aws_cloudwatch_log_group.function
+  id = "/aws/lambda/${local.full_name}"
+}
