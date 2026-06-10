@@ -104,3 +104,8 @@ data "aws_iam_policy_document" "aws_waf_access" {
     ]
   }
 }
+
+import {
+  to = module.api_waf_sync_function.aws_cloudwatch_log_group.function
+  id = "/aws/lambda/${local.full_name}"
+}
