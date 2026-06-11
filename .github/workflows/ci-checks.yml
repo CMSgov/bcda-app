@@ -72,8 +72,10 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
         run: make docker-bootstrap-no-bake
+        timeout-minutes: 20
       - name: Lint and Test
         run: make test
+        timeout-minutes: 20
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4
         with:

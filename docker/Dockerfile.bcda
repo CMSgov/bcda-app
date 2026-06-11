@@ -23,7 +23,6 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/build-cache \
     orchestrion go install \
         -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=${RELEASE_VERSION}" "$GO_FLAGS"
 
