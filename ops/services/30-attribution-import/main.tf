@@ -235,18 +235,6 @@ resource "aws_sns_topic_subscription" "this" {
   topic_arn = aws_sns_topic.this.arn
 }
 
-resource "aws_security_group_rule" "function_access" {
-  count       = 0
-  type        = "ingress"
-  from_port   = 5432
-  to_port     = 5432
-  protocol    = "tcp"
-  description = "${local.full_name} function access"
-
-  security_group_id        = data.aws_security_group.db.id
-  source_security_group_id = module.attribution_import_function.security_group_id
-}
-
 resource "aws_s3_bucket_notification" "this" {
   bucket = module.attribution-import_file_bucket.id
 
