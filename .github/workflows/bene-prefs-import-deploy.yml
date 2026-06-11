@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - optout/**
-      - bcda/lambda/bene-prefs/**
+      - bcda/lambda/optout/**
       - bcda/suppression/**
       - .github/workflows/bene-prefs-import-deploy.yml
   workflow_dispatch:
