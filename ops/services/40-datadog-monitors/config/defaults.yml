@@ -20,7 +20,7 @@
 # to receive alerts. Monitors are tagged shadow-mode:true/false for filtering
 # in the Datadog UI.
 # -----------------------------------------------------------------------------
-shadow_mode: true
+shadow_mode: false
 
 # -----------------------------------------------------------------------------
 # Notifications
