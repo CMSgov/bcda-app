@@ -4,12 +4,7 @@
 #ENC[AES256_GCM,data:77b77+BfrcALlA4OHuTz6SfF,iv:iDEafDO0fN4uDwHohfZ81+VW3oSTL76tboWUjBUhxiQ=,tag:I88ReyI7XXVwpfFGIWNtew==,type:comment]
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:vWJp,iv:y+TeMV+EoHzDZb0vnFMJmro9aL4Fdu0pTHTUYLTB5RY=,tag:hGaBFzdRbD3d6mn2yYR37g==,type:str]
 #ENC[AES256_GCM,data:dgtHwOJdbEjiiUdTDwyNz/W4zvcE4aLO,iv:ybqlKnJcgwNWtHuOnPd9Tpu5OF30ySQODDyHAZovo/c=,tag:XdMoNCRnaJrjxxG9KY6sXQ==,type:comment]
-/bcda/${env}/nonsensitive/bcda-prod-admin-aco-deny-bucket: bcda-prod-admin-aco-deny-function-20250529213313178000000001
-/bcda/${env}/nonsensitive/bcda-prod-admin-create-aco-bucket: bcda-prod-admin-create-aco-function-20250529213239858800000001
-/bcda/${env}/nonsensitive/bcda-prod-admin-create-aco-creds-bucket: bcda-prod-admin-create-aco-creds-fun-20250616214559522100000001
-/bcda/${env}/nonsensitive/bcda-prod-admin-create-group-bucket: bcda-prod-admin-create-group-functio-20250529213345677000000001
 /bcda/${env}/nonsensitive/bcda-prod-alarm-to-slack-bucket: bcda-prod-alarm-to-slack-function-20250811163802556000000001
-/bcda/${env}/nonsensitive/bcda-prod-api-waf-sync-bucket: bcda-prod-api-waf-sync-function-20250529213244200100000001
 /bcda/${env}/nonsensitive/bcda-prod-cclf-import-bucket: bcda-prod-cclf-import-function-20250529213239883200000001
 /bcda/${env}/nonsensitive/bcda-prod-opt-out-export-bucket: bcda-prod-opt-out-export-function-20250529213242066900000001
 /bcda/${env}/nonsensitive/bcda-prod-opt-out-import-bucket: bcda-prod-opt-out-import-function-20250529213459381800000001
