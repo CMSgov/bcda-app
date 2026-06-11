@@ -40,8 +40,6 @@ jobs:
         working-directory: bcda
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
-        with:
-          ref: carl-10120-add-datadog
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'

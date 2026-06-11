@@ -103,7 +103,7 @@ func setUpApp() *cli.App {
 					profiler.WithVersion(constants.Version),
 				)
 				if err != nil {
-					log.API.Fatal(err)
+					log.API.Warn(err)
 				}
 				defer profiler.Stop()
 

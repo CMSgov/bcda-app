@@ -8,15 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataDog/dd-trace-go/v2/profiler"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -36,6 +39,16 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
+
+	err := profiler.Start(
+		profiler.WithService("BCDA Bene Prefs"),
+		profiler.WithEnv(env),
+		profiler.WithVersion(constants.Version),
+	)
+	if err != nil {
+		log.API.Warn(err)
+	}
+	defer profiler.Stop()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 	if err != nil {

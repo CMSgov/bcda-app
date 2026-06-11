@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataDog/dd-trace-go/v2/profiler"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,7 +16,9 @@ import (
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -33,6 +36,16 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
+
+	err := profiler.Start(
+		profiler.WithService("BCDA Attribution Import"),
+		profiler.WithEnv(env),
+		profiler.WithVersion(constants.Version),
+	)
+	if err != nil {
+		log.API.Warn(err)
+	}
+	defer profiler.Stop()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 
