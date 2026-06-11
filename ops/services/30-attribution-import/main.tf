@@ -72,7 +72,6 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
     effect = "Allow"
 
     actions = [
-      "s3:PutObject",
       "s3:ListBucket",
       "s3:GetBucketLocation",
     ]
@@ -99,7 +98,7 @@ data "aws_iam_policy_document" "attribution-import_bucket_rw" {
       "s3:ListMultipartUploadParts",
     ]
     resources = [
-      "${module.attribution-import_file_bucket.arn}/*", "arn:aws:logs:*:*:*"
+      "${module.attribution-import_file_bucket.arn}/*"
     ]
   }
 }
@@ -137,7 +136,6 @@ module "attribution_import_function" {
   environment_variables = {
     ENV      = var.env
     APP_NAME = "${local.app}-${var.env}-${local.service}"
-    DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
   }
 
   ssm_parameter_paths = [
