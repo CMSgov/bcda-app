@@ -75,19 +75,6 @@ module "api_waf_sync_function" {
 
 }
 
-# TODO: Delete after deploying BCDA-10031
-resource "aws_security_group_rule" "function_access" {
-  count       = 0
-  type        = "ingress"
-  from_port   = 5432
-  to_port     = 5432
-  protocol    = "tcp"
-  description = "api-waf-sync function access"
-
-  security_group_id        = data.aws_security_group.db.id
-  source_security_group_id = module.api_waf_sync_function.security_group_id
-}
-
 # Because we inline policies, we cannot just link to aws:policy/AWSWAFFullAccess
 data "aws_iam_policy_document" "aws_waf_access" {
   statement {
@@ -100,9 +87,4 @@ data "aws_iam_policy_document" "aws_waf_access" {
       "wafv2:UpdateIpSet",
     ]
   }
-}
-
-import {
-  to = module.api_waf_sync_function.aws_cloudwatch_log_group.function
-  id = "/aws/lambda/${local.full_name}"
 }
