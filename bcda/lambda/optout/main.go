@@ -32,6 +32,16 @@ import (
 )
 
 func main() {
+	err := profiler.Start(
+		profiler.WithService("BCDA Bene Prefs"),
+		profiler.WithEnv(conf.GetEnv("ENV")),
+		profiler.WithVersion(constants.Version),
+	)
+	if err != nil {
+		log.API.Warn(err)
+	}
+	defer profiler.Stop()
+
 	lambda.Start(optOutImportHandler)
 }
 
@@ -39,16 +49,6 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-
-	err := profiler.Start(
-		profiler.WithService("BCDA Bene Prefs"),
-		profiler.WithEnv(env),
-		profiler.WithVersion(constants.Version),
-	)
-	if err != nil {
-		log.API.Warn(err)
-	}
-	defer profiler.Stop()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 	if err != nil {

@@ -29,6 +29,16 @@ import (
 )
 
 func main() {
+	err := profiler.Start(
+		profiler.WithService("BCDA Attribution Import"),
+		profiler.WithEnv(conf.GetEnv("ENV")),
+		profiler.WithVersion(constants.Version),
+	)
+	if err != nil {
+		log.API.Warn(err)
+	}
+	defer profiler.Stop()
+
 	lambda.Start(attributionImportHandler)
 }
 
@@ -36,16 +46,6 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-
-	err := profiler.Start(
-		profiler.WithService("BCDA Attribution Import"),
-		profiler.WithEnv(env),
-		profiler.WithVersion(constants.Version),
-	)
-	if err != nil {
-		log.API.Warn(err)
-	}
-	defer profiler.Stop()
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 

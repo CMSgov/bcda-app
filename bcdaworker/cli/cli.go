@@ -9,12 +9,14 @@ import (
 	"syscall"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/DataDog/dd-trace-go/v2/profiler"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -70,6 +72,17 @@ func setUpApp() *cli.App {
 
 func startWorker() {
 	fmt.Println("Starting bcdaworker...")
+
+	err := profiler.Start(
+		profiler.WithService("BCDA"),
+		profiler.WithEnv(os.Getenv("ENV")),
+		profiler.WithVersion(constants.Version),
+	)
+	if err != nil {
+		log.Worker.Warn(err)
+	}
+	defer profiler.Stop()
+
 	createWorkerDirs()
 	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
 	defer queue.StopRiver()
