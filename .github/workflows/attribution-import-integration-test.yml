@@ -98,7 +98,8 @@ jobs:
             s3://$BUCKET/bfdeft01/bcda/in/test/${guidecsvname}
 
           aws s3 cp --no-progress ${accesscsvname} \
-            s3://bfd-test-eft/bfdeft01/bcda/in/test/${accesscsvname}
+            s3://$BUCKET/bfdeft01/bcda/in/test/${accesscsvname}
+            
       - name: Wait for lambda processing
         run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v6
@@ -167,43 +168,43 @@ jobs:
           fi
 
           # Verify that we have a record of the GUIDE CSV file in the database
-          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$GUIDEFILENAME' LIMIT 1" 2>&1`
-          echo "CSV_FILE: $CSV_FILE"
-          if [[ $? -ne 0 || -z $CSV_FILE ]]; then
+          GUIDE_CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$GUIDEFILENAME' LIMIT 1" 2>&1`
+          echo "GUIDE_CSV_FILE: $GUIDE_CSV_FILE"
+          if [[ $? -ne 0 || -z $GUIDE_CSV_FILE ]]; then
             echo "GUIDE CSV: csv_file query returned zero results or command failed"
             exit 1
           else
           
             # Verify that the correct number of benes were imported into the database.
-            CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
-            echo "CSV_BENES: $CSV_BENES"
-            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+            GUIDE_CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $GUIDE_CSV_FILE" 2>&1`
+            echo "GUIDE_CSV_BENES: $GUIDE_CSV_BENES"
+            if [[ $? -ne 0 || -z $GUIDE_CSV_BENES ]]; then
               echo "GUIDE CSV: beneficiaries query returned zero results or command failed"
               exit 1
             fi
-            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
-              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
+            if [[ $(echo $GUIDE_CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $GUIDE_CSV_BENES".
               exit 1
             fi
           fi
 
-           # Verify that we have a record of the ACCESS CSV file in the database
-          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$ACCESSFILENAME' LIMIT 1" 2>&1`
-          echo "CSV_FILE: $CSV_FILE"
-          if [[ $? -ne 0 || -z $CSV_FILE ]]; then
+          # Verify that we have a record of the ACCESS CSV file in the database
+          ACCESS_CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$ACCESSFILENAME' LIMIT 1" 2>&1`
+          echo "ACCESS_CSV_FILE: $ACCESS_CSV_FILE"
+          if [[ $? -ne 0 || -z $ACCESS_CSV_FILE ]]; then
             echo "csv_file query returned zero results or command failed"
             exit 1
           else
             
             # Verify that the correct number of benes were imported into the database.
-            CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
-            echo "CSV_BENES: $CSV_BENES"
-            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+            ACCESS_CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $ACCESS_CSV_FILE" 2>&1`
+            echo "ACCESS_CSV_BENES: $ACCESS_CSV_BENES"
+            if [[ $? -ne 0 || -z $ACCESS_CSV_BENES ]]; then
               echo "CSV beneficiaries query returned zero results or command failed"
               exit 1
             fi
-            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
-              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
+            if [[ $(echo $ACCESS_CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $ACCESS_CSV_BENES".
               exit 1
             fi
           fi

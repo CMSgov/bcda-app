@@ -14,6 +14,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	mdtcocPattern = `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
+	cdacPattern   = `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
+	guidePattern  = `(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
+	accessPattern = `(P|T)\.(ACCESS)\.(\d{4})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
+	mdtcocRegexp  = regexp.MustCompile(mdtcocPattern)
+	cdacRegexp    = regexp.MustCompile(cdacPattern)
+	guideRegexp   = regexp.MustCompile(guidePattern)
+	accessRegexp  = regexp.MustCompile(accessPattern)
+)
+
 func getCMSID(name string) (string, error) {
 	// CCLF foldername convention with BCD identifier: P.BCD.<ACO_ID>.ZC[Y|R]**.Dyymmdd.Thhmmsst
 	exp := regexp.MustCompile(`(?:T|P)\.BCD\.(.*)\.ZC[Y|R]\d{2}\.D\d{6}\.T\d{7}`)
@@ -28,15 +39,8 @@ func getCMSID(name string) (string, error) {
 }
 
 func CheckIfAttributionCSVFile(filePath string) bool {
-	MDTCOCPattern := `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
-	CDACPattern := `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
-	GUIDEPattern := `(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
-	ACCESSPattern := `(P|T)\.(ACCESS)\.(\d{4})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
-	MDTCOCRegexp := regexp.MustCompile(MDTCOCPattern)
-	CDACRegexp := regexp.MustCompile(CDACPattern)
-	GUIDERegexp := regexp.MustCompile(GUIDEPattern)
-	ACCESSRegexp := regexp.MustCompile(ACCESSPattern)
-	return (MDTCOCRegexp.MatchString(filePath) || CDACRegexp.MatchString(filePath) || GUIDERegexp.MatchString(filePath) || ACCESSRegexp.MatchString(filePath))
+
+	return (mdtcocRegexp.MatchString(filePath) || cdacRegexp.MatchString(filePath) || guideRegexp.MatchString(filePath) || accessRegexp.MatchString(filePath))
 }
 
 type CSVParser struct {
@@ -141,12 +145,10 @@ func validateCSVMetadata(attributionFile service.AttributionFile, subMatches []s
 	switch attributionFile.ModelIdentifier {
 	case "PCPB":
 		metadata.acoID = "CT000000"
-	case "BCD":
+	case "BCD", "ACCESS":
 		metadata.acoID = subMatches[3]
 	case "GUIDE":
 		metadata.acoID = fmt.Sprintf("%s%s", subMatches[3], subMatches[4])
-	case "ACCESS":
-		metadata.acoID = subMatches[3]
 	default:
 		return csvFileMetadata{}, errors.New("failed to get aco ID for attribution file")
 	}
