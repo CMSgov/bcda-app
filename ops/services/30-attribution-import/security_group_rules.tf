@@ -2,7 +2,7 @@ data "aws_security_group" "db" {
   name = local.db_sg_name
 }
 
-resource "aws_vpc_security_group_egress_rule" "default" {
+resource "aws_vpc_security_group_egress_rule" "egress_to_db" {
   security_group_id = module.attribution_import_function.security_group_id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "tcp"

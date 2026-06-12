@@ -121,7 +121,7 @@ module "attribution_import_function" {
   memory_size = 2048
 
   platform = {
-    app               = local.app
+    app               = module.platform.app
     env               = var.env
     service           = local.service
     kms_alias_primary = { target_key_arn = module.platform.kms_alias_primary.target_key_arn }
