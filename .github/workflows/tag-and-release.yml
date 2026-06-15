@@ -62,7 +62,7 @@ jobs:
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
           GITHUB_REPO_PATH='/CMSgov/bcda-ops' GITHUB_ACCESS_TOKEN=${{ env.OPS_GITHUB_TOKEN }} GITHUB_USER='${{ env.RELEASE_GITHUB_USER }}' GITHUB_EMAIL='${{ env.RELEASE_GITHUB_EMAIL }}' GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash scripts/tag_and_release/release.sh ${{ env.MANUAL_TAG_ARGS }}
       - name: Upload release scripts
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-scripts
           path: |
@@ -74,7 +74,7 @@ jobs:
           repository: CMSgov/bcda-app 
           ref: ${{ env.RELEASE_VERSION }}
       - name: Download release scripts
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-scripts
           path: scripts/tag_and_release
