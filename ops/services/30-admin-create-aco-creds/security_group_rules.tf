@@ -21,3 +21,13 @@ resource "aws_vpc_security_group_egress_rule" "db_tcp" {
   security_group_id            = module.admin_create_aco_creds_function.security_group_id
   referenced_security_group_id = data.aws_security_group.db.id
 }
+
+resource "aws_vpc_security_group_egress_rule" "ssas_admin" {
+  from_port   = 444
+  to_port     = 444
+  cidr_ipv4   = "0.0.0.0/0"
+  ip_protocol = "tcp"
+  description = "egress to SSAS admin port"
+
+  security_group_id = module.admin_create_aco_creds_function.security_group_id
+}
