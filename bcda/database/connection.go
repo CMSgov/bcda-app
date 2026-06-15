@@ -79,7 +79,7 @@ func createDB(cfg *Config) (*sql.DB, error) {
 func CreatePgxv5DB(cfg *Config) (*pgxv5Pool.Pool, error) {
 	ctx := context.Background()
 
-	pgxv5PoolConfig, err := pgxv5Pool.ParseConfig(cfg.DatabaseURL)
+	pgxv5PoolConfig, err := pgxv5Pool.ParseConfig(strings.TrimSpace(cfg.DatabaseURL))
 	if err != nil {
 		return nil, err
 	}

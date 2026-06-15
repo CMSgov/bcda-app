@@ -39,6 +39,8 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+
+	"github.com/DataDog/dd-trace-go/v2/profiler"
 )
 
 // App Name and usage.  Edit them here to prevent breaking tests
@@ -94,6 +96,16 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
+
+				err := profiler.Start(
+					profiler.WithService("BCDA"),
+					profiler.WithEnv(os.Getenv("ENV")),
+					profiler.WithVersion(constants.Version),
+				)
+				if err != nil {
+					log.API.Warn(err)
+				}
+				defer profiler.Stop()
 
 				var httpAddr, httpsAddr string
 				if httpPort != 0 {
