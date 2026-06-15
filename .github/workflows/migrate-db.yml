@@ -55,7 +55,7 @@ jobs:
           params: |
             DB_URL=/bcda/${{ inputs.env }}/sensitive/api/DATABASE_URL
       - name: Get Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: Get golang-migrate

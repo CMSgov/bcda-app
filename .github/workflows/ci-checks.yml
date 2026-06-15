@@ -32,7 +32,7 @@ jobs:
           repository: CMSgov/bcda-app
           ref: ${{ env.REF }}
       - name: Get Go # TEMP
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: Tidy modules
@@ -55,7 +55,7 @@ jobs:
           repository: CMSgov/bcda-app
           ref: ${{ env.REF }}
       - name: Get Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: Install Ansible
