@@ -1,4 +1,4 @@
-shadow_mode: true
+shadow_mode: false
 
 lambda:
   error_rate_threshold: 1
