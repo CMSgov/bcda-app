@@ -122,7 +122,7 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 	}
 
 	cfg, err := service.LoadConfig()
-	if err != nil {
+	if (err != nil) || (cfg == &service.Config{}) {
 		return errors.New("failed to load config")
 	}
 
