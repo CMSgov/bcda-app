@@ -1993,6 +1993,19 @@ func TestGetQueueJobTransactionTime(t *testing.T) {
 	assert.Equal(t, args.CreationTime, getQueueJobTransactionTime(args, constants.PartiallyAdjudicated))
 }
 
+func TestIsV3NoPartialClaimsModel(t *testing.T) {
+	cfg := newQueueJobTestConfig(t, []ACOConfig{
+		newQueueJobTestACO("SSP", `^A\d{4}`, []string{constants.Adjudicated}),
+		newQueueJobTestACO("GUIDE", `^GUIDE-\d{5}`, []string{constants.Adjudicated}),
+	}, []string{"GUIDE"})
+
+	svc := newQueueJobTestService(t, cfg)
+
+	assert.False(t, svc.IsV3NoPartialClaimsModel("SSP"))
+	assert.False(t, svc.IsV3NoPartialClaimsModel("Unknown"))
+	assert.True(t, svc.IsV3NoPartialClaimsModel("GUIDE"))
+}
+
 func newQueueJobTestService(t *testing.T, cfg *Config) *service {
 	t.Helper()
 	return NewService(models.NewMockRepository(t), cfg, "").(*service)
