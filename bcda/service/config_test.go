@@ -10,6 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLoadConfig verifies the configuration reference by BCDA_API_CONFIG_PATH
@@ -263,6 +264,85 @@ func TestIsACOV3Enabled_EnvironmentBased(t *testing.T) {
 			assert.Equal(t, tt.expected, result,
 				"Expected V3 access enabled=%v for CMS ID '%s' in test case '%s'",
 				tt.expected, tt.acoID, tt.name)
+		})
+	}
+}
+
+func TestSupportedACOs(t *testing.T) {
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		cmsID       string
+		isSupported bool
+	}{
+		{"SSP too short", "A999", false},
+		{"SSP too long", "A99999", false},
+		{"SSP invalid characters", "A999A", false},
+		{"valid SSP", "A9999", true},
+
+		{"NGACO too short", "V99", false},
+		{"NGACO too long", "V9999", false},
+		{"NGACO invalid characters", "V99V", false},
+		{"valid NGACO", "V999", true},
+
+		{"CEC too short", "E999", false},
+		{"CEC too long", "E99999", false},
+		{"CEC invalid characters", "E999E", false},
+		{"valid CEC", "E9999", true},
+
+		{"CKCC too short", "C999", false},
+		{"CKCC too long", "C99999", false},
+		{"CKCC invalid characters", "C999V", false},
+		{"valid CKCC", "C9999", true},
+
+		{"KCF too short", "K999", false},
+		{"KCF too long", "K99999", false},
+		{"KCF invalid characters", "K999V", false},
+		{"valid KCF", "K9999", true},
+
+		{"DC too short", "D999", false},
+		{"DC too long", "D99999", false},
+		{"DC invalid characters", "D999V", false},
+		{"valid DC", "D9999", true},
+
+		{"MDTCOC too short", "CT999", false},
+		{"MDTCOC too long", "CT9999999", false},
+		{"MDTCOC invalid characters", "CT999V", false},
+		{"valid MDTCOC", "CT99999", true},
+
+		{"CDAC too short", "DA999", false},
+		{"CDAC too long", "DA9999999", false},
+		{"CDAC invalid characters", "DA999V", false},
+		{"valid CDAC", "DA9999", true},
+
+		{"GUIDE too short", "GUIDE-999", false},
+		{"GUIDE too long", "GUIDE-9999999", false},
+		{"GUIDE invalid characters", "GUIDE99999", false},
+		{"valid GUIDE", "GUIDE-99999", true},
+
+		{"Iota too short", "IOTA12", false},
+		{"Iota too long", "IOTA0123", false},
+		{"Iota invalid characters 1", "IOTA12Z", false},
+		{"Iota invalid characters 2", "IOTA1YZ", false},
+		{"Iota invalid characters 3", "IOTAXYZ", false},
+		{"valid Iota", "IOTA123", true},
+
+		{"SBX too short", "SBXB1", false},
+		{"SBX too long", "SBXPA0123", false},
+		{"SBX invalid characters 1", "SBX0A123", false},
+		{"SBX invalid characters 2", "SBXA0123", false},
+		{"SBX invalid characters 3", "SBXADXYZ", false},
+		{"valid SBX", "SBXAD123", true},
+
+		{"Unregistered ACO", "Z1234", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			match := cfg.IsSupportedACO(tt.cmsID)
+			assert.Equal(sub, tt.isSupported, match)
 		})
 	}
 }
