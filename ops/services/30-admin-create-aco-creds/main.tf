@@ -77,21 +77,3 @@ module "admin_create_aco_creds_function" {
 
   github_actions_repos = ["CMSgov/bcda-app"]
 }
-
-# TODO: Delete after deploying BCDA-10031
-resource "aws_security_group_rule" "function_access" {
-  count       = 0
-  type        = "ingress"
-  from_port   = 5432
-  to_port     = 5432
-  protocol    = "tcp"
-  description = "admin-create-aco-creds function access"
-
-  security_group_id        = data.aws_security_group.db.id
-  source_security_group_id = module.admin_create_aco_creds_function.security_group_id
-}
-
-import {
-  to = module.admin_create_aco_creds_function.aws_cloudwatch_log_group.function
-  id = "/aws/lambda/${local.full_name}"
-}
