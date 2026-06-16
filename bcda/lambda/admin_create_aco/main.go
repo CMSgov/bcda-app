@@ -126,6 +126,10 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 		return errors.New("failed to load config")
 	}
 
+	if len(cfg.ACOConfigs) == 0 {
+		return errors.New("no aco configurations found")
+	}
+
 	var cmsIDPt *string
 	if data.CMSID != "" {
 		match := cfg.IsSupportedACO(data.CMSID)
