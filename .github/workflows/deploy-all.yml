@@ -240,7 +240,7 @@ jobs:
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-ssas --force-new-deployment
           aws ecs update-service --cluster bcda-${{ env.RELEASE_ENV }} --service bcda-${{ env.RELEASE_ENV }}-worker --force-new-deployment
       - name: Upload notify script
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: notify-script
           path: ./scripts/mark_deployment.py
