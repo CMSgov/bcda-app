@@ -80,7 +80,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           env GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./lambda/admin_create_aco/*.go
-          zip -j function.zip bin/bootstrap
+          zip -j function.zip bin/bootstrap ../conf/configs/dev.yml ../conf/configs/test.yml ../conf/configs/prod.yml
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
