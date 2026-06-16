@@ -39,6 +39,12 @@ func main() {
 	lambda.Start(handler)
 }
 
+func loadBCDAParams() error {
+	env := conf.GetEnv("ENV")
+	conf.LoadLambdaEnvVars(env)
+	return nil
+}
+
 func handler(ctx context.Context, event json.RawMessage) error {
 	log.SetFormatter(&log.JSONFormatter{
 		DisableHTMLEscape: true,
@@ -46,8 +52,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	})
 	log.Info("Starting Create ACO Task")
 
+	err := loadBCDAParams()
+	if err != nil {
+		log.Errorf("Failed to load config files: %v", err)
+		return err
+	}
+
 	var data payload
-	err := json.Unmarshal(event, &data)
+	err = json.Unmarshal(event, &data)
 	if err != nil {
 		log.Errorf("Failed to unmarshal event: %v", err)
 		return err
