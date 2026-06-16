@@ -39,8 +39,30 @@ func getCMSID(name string) (string, error) {
 }
 
 func CheckIfAttributionCSVFile(filePath string) bool {
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return false
+	}
+	match := false
 
-	return (mdtcocRegexp.MatchString(filePath) || cdacRegexp.MatchString(filePath) || guideRegexp.MatchString(filePath) || accessRegexp.MatchString(filePath))
+	for _, v := range cfg.ACOConfigs {
+		if v.AttributionFile.FileType == "csv" {
+			rgx := regexp.MustCompile(v.AttributionFile.NamePattern)
+			match = rgx.MatchString(filePath)
+			if match {
+				break
+			}
+		}
+	}
+
+	return match
+
+	// mdtcocRegexp = regexp.MustCompile(cfg.ACOConfigs[0].Model)
+	// cdacRegexp = regexp.MustCompile(cdacPattern)
+	// guideRegexp = regexp.MustCompile(guidePattern)
+	// accessRegexp = regexp.MustCompile(accessPattern)
+	// return (mdtcocRegexp.MatchString(filePath) || cdacRegexp.MatchString(filePath) || guideRegexp.MatchString(filePath) || accessRegexp.MatchString(filePath))
+
 }
 
 type CSVParser struct {
