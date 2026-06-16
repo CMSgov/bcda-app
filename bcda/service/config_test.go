@@ -337,6 +337,11 @@ func TestSupportedACOs(t *testing.T) {
 		{"valid SBX", "SBXAD123", true},
 
 		{"Unregistered ACO", "Z1234", false},
+
+		{"ACCESS too short", "ACCES999", false},
+		{"ACCESS too long", "ACCES9999999", false},
+		{"ACCESS invalid characters", "ACCES-99999", false},
+		{"valid ACCESS", "ACCES99999", true},
 	}
 
 	for _, tt := range tests {
