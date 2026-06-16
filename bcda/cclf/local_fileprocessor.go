@@ -107,7 +107,12 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return p.handleArchiveError(path, info, err)
 	}
 
-	supported := service.IsSupportedACO(cmsID)
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return p.handleArchiveError(path, info, fmt.Errorf("failed to load cfg: %s", err))
+	}
+
+	supported := cfg.IsSupportedACO(cmsID)
 	if !supported {
 		zipCloser()
 		return p.handleArchiveError(path, info, fmt.Errorf("cmsID %s not supported", cmsID))

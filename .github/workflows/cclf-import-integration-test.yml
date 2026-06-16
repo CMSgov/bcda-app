@@ -71,10 +71,15 @@ jobs:
           guidecsvname=T.GUIDE.GUIDE-00001.Y${year}.D${date}.T${time}1
           echo "GUIDEFILENAME=$guidecsvname" >> "$GITHUB_ENV"
 
+          accesscsvname=T.ACCESS.ACCES00001.Y${year}.D${date}.T${time}1
+          echo "ACCESSFILENAME=$accesscsvname" >> "$GITHUB_ENV"
+
           mv ../shared_files/cclf/archives/csv/P.PCPB.M2411.D181120.T1000000 ${csvname}
 
           mv ../shared_files/cclf/archives/csv/T.GUIDE.GUIDE-00001.Y25.D250630.T1000000 ${guidecsvname}
 
+          mv ../shared_files/cclf/archives/csv/T.ACCESS.ACCES00001.Y25.D250630.T1000000 ${accesscsvname}
+          
           unzip ../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000
 
           # Clone the synthetic zip file with updated years
@@ -93,6 +98,9 @@ jobs:
 
           aws s3 cp --no-progress ${guidecsvname} \
             s3://bfd-test-eft/bfdeft01/bcda/in/test/${guidecsvname}
+
+          aws s3 cp --no-progress ${accesscsvname} \
+            s3://bfd-test-eft/bfdeft01/bcda/in/test/${accesscsvname}
       # Give a bit of time for lambdas to process files
       - run: sleep 60
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
@@ -162,6 +170,27 @@ jobs:
 
           # Verify that we have a record of the GUIDE CSV file in the database
           CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$GUIDEFILENAME' LIMIT 1" 2>&1`
+          echo "CSV_FILE: $CSV_FILE"
+          if [[ $? -ne 0 || -z $CSV_FILE ]]; then
+            echo "csv_file query returned zero results or command failed"
+            exit 1
+          else
+            
+            # Verify that the correct number of benes were imported into the database.
+            CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
+            echo "CSV_BENES: $CSV_BENES"
+            if [[ $? -ne 0 || -z $CSV_BENES ]]; then
+              echo "CSV beneficiaries query returned zero results or command failed"
+              exit 1
+            fi
+            if [[ $(echo $CSV_BENES | xargs) != "5" ]]; then
+              echo "expected 5 beneficiaries imported from file, received $CSV_BENES".
+              exit 1
+            fi
+          fi
+
+          # Verify that we have a record of the ACCESS CSV file in the database
+          CSV_FILE=`psql -t "$CONNECTION_URL" -c "SELECT id FROM cclf_files WHERE name = '$ACCESSFILENAME' LIMIT 1" 2>&1`
           echo "CSV_FILE: $CSV_FILE"
           if [[ $? -ne 0 || -z $CSV_FILE ]]; then
             echo "csv_file query returned zero results or command failed"

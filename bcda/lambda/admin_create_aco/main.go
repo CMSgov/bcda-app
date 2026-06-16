@@ -39,6 +39,12 @@ func main() {
 	lambda.Start(handler)
 }
 
+func loadBCDAParams() error {
+	env := conf.GetEnv("ENV")
+	conf.LoadLambdaEnvVars(env)
+	return nil
+}
+
 func handler(ctx context.Context, event json.RawMessage) error {
 	log.SetFormatter(&log.JSONFormatter{
 		DisableHTMLEscape: true,
@@ -46,8 +52,14 @@ func handler(ctx context.Context, event json.RawMessage) error {
 	})
 	log.Info("Starting Create ACO Task")
 
+	err := loadBCDAParams()
+	if err != nil {
+		log.Errorf("Failed to load config files: %v", err)
+		return err
+	}
+
 	var data payload
-	err := json.Unmarshal(event, &data)
+	err = json.Unmarshal(event, &data)
 	if err != nil {
 		log.Errorf("Failed to unmarshal event: %v", err)
 		return err
@@ -121,9 +133,18 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 		return errors.New("CMSID must be provided")
 	}
 
+	cfg, err := service.LoadConfig()
+	if (err != nil) || (cfg == &service.Config{}) {
+		return errors.New("failed to load config")
+	}
+
+	if len(cfg.ACOConfigs) == 0 {
+		return errors.New("no aco configurations found")
+	}
+
 	var cmsIDPt *string
 	if data.CMSID != "" {
-		match := service.IsSupportedACO(data.CMSID)
+		match := cfg.IsSupportedACO(data.CMSID)
 		if !match {
 			return errors.New("ACO CMS ID is invalid")
 		}
@@ -132,7 +153,7 @@ func handleCreateACO(ctx context.Context, conn PgxConnection, data payload, id u
 
 	aco := models.ACO{Name: data.Name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-	err := createACO(ctx, conn, aco)
+	err = createACO(ctx, conn, aco)
 	if err != nil {
 		return err
 	}

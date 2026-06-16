@@ -87,12 +87,23 @@ func TestGetCSVMetadata(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
+		{"valid ACCESS csv filename", "P.ACCESS.ACCES00001.Y25." + fileDateTime, "", csvFileMetadata{
+			env:       "production",
+			name:      "P.ACCESS.ACCES00001.Y25." + fileDateTime,
+			cclfNum:   8,
+			acoID:     "ACCES00001",
+			timestamp: validTime,
+			perfYear:  25,
+			fileType:  models.FileTypeDefault,
+		},
+		},
 		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - dupe match", "P.P.GUIDE.GUIDE-.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - dupe match", "T.GUIDE.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - entity id length", "T.ACCESS.ACCES00001." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,6 +176,14 @@ func TestValidateCSVFileName(t *testing.T) {
 		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-00001.Y25." + fileDateTime, nil, csvFileMetadata{
 			env:       "production",
 			acoID:     "GUIDE-00001",
+			timestamp: validTime,
+			perfYear:  25,
+			fileType:  models.FileTypeDefault,
+		},
+		},
+		{"valid ACCESS csv filename", "P.ACCESS.ACCES00001.Y25." + fileDateTime, nil, csvFileMetadata{
+			env:       "production",
+			acoID:     "ACCES00001",
 			timestamp: validTime,
 			perfYear:  25,
 			fileType:  models.FileTypeDefault,

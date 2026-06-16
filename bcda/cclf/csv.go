@@ -98,7 +98,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 
 // ProcessCSV() will take provided metadata and write a new record to the cclf_files table and the contents of the file and write new record(s) to the cclf_beneficiaries table.
 // If any step of writing to the database should fail, the whole transaction will fail. If the new records are written successfully, then the new record in the cclf_files
-// table will have it's import status updated.
+// table will have its import status updated.
 func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 	ctx := context.Background()
 	if importer.PgxPool == nil {
@@ -131,7 +131,7 @@ func (importer CSVImporter) ProcessCSV(csv csvFile) error {
 
 	var records int
 
-	// CCLF model corresponds with a database record
+	// CCLF model corresponds with a database record, but can be any attribution file type
 	record := models.CCLFFile{
 		CCLFNum:         csv.metadata.cclfNum,
 		Name:            csv.metadata.name,
