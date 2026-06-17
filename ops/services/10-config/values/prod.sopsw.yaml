@@ -191,18 +191,18 @@
 /bcda/${env}/infra/sensitive/ssas_aco_ms_admin_cidr_blocks: ENC[AES256_GCM,data:KfFl2unQOvJVw7qmVYBl,iv:FY16htMlnCS76subhdepP7dL3QxXOYQtKy4WQeGCpig=,tag:quCHhP7w7AqjH+9nDAPh5A==,type:str]
 /bcda/${env}/infra/sensitive/ssas_4i_public_cidr_blocks: ENC[AES256_GCM,data:wBle2+4mFu7HUBZVMmAjkkZKDG2alWrbnKMgJ+Gs5CM=,iv:vJN3mR0ANhf9o32A7jKITNXAEqAChfO4CMsDJ/gepV4=,tag:cwbykSzkPvPhMq2qaGueVw==,type:str]
 /bcda/${env}/infra/sensitive/ssas_4i_admin_cidr_blocks: ENC[AES256_GCM,data:CBft3sqZL8jKOZn6jF2yZ/b5hxTXS4gOHTUtj6hNCEg=,iv:KR2wIqnlt/EqRHpVfqDt53Wfg+r39scbh4ZCWsnILaI=,tag:IVc32105UHgv3+oIJPwCNg==,type:str]
-/bcca/${env}/infra/sensitive/ssas_ihp_cidr_blocks: ENC[AES256_GCM,data:plbkIVdTWgeXSQAfnWxtDKMFgBXIgLAq3Xz6mZhJZkrrEDI3WbtfIktAKdoAiyFq,iv:8eABqTbVKDdaIeVaQFCxNES5b2TJ0oEEt7+mEYwgi+s=,tag:WXPqBbnI0wr2wQFQ4JeNXw==,type:str]
+/bcda/${env}/infra/sensitive/ssas_ihp_cidr_blocks: ENC[AES256_GCM,data:a1mEOg7UkNYGSGzKcpYGZNMLSbppoQxVeznop9LLoqMjTO7uZM/2Mg8tfTJDyKus,iv:43GKEGk1Aw5tuw97Z6OfWi6IOoIrMzwu826aOsa1w90=,tag:ewcTI1lEzcPPxGM7hllr9Q==,type:str]
 /bcda/${env}/infra/sensitive/ssas_gha_runners_cidr_blocks: ENC[AES256_GCM,data:lCYtvvxGxshnjlAALvYSoioEvIx+6giVF5A+chZzow==,iv:hoeNidwceD4JNyHBGZ3ThF1jVqIXfwjoGj+HKz5UitM=,tag:DIZtV/1y77pEeeRn0kxm+Q==,type:str]
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-prod
+      aws_profile: ""
       created_at: "2026-01-13T20:22:20Z"
       enc: AQICAHicZi6Khd1Mgf3RPAqtW8NmEjnaTdwhrxKnWki+l2YJfgH6DZ9uR2OXFFjGySriMTJPAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM8jEaUx3f7TJ92GG5AgEQgDu1CXWBsPLfB640qxY2WVFrtsx6Q8QzhLXMIzQllk0fFJPoLZRuA5lMrdefg/93LXkW1yScZY9exndN2Q==
-      aws_profile: ""
     - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-prod
+      aws_profile: ""
       created_at: "2026-01-13T20:22:20Z"
       enc: AQICAHhqHi6q4OjFLKNaaFdjINLmHJcgVXgEGEGxHD822/BJDAGTBcvEGFbirm8slnwyV/ijAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM34pdFrNOO/Es0F8LAgEQgDvIyBcKklGg7mwYPCytdiH8uQ1VzZSc6VZUbNucRbVANsrsBcN31lMtAmCzxZZ8v0vJ+JRR3IhfZmK4zQ==
-      aws_profile: ""
-  unencrypted_regex: /nonsensitive/
   mac_only_encrypted: true
+  unencrypted_regex: /nonsensitive/
   version: 3.13.1
