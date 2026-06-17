@@ -149,16 +149,20 @@
 /bcda/${env}/attribution-import/sensitive/misp-eft-role_arn: ENC[AES256_GCM,data:8eZ8QLkbt0N+pVDSMjwph7TvX4PWfBHvm6toaGj/hfktCksK4OoQcA241VHHClpWMYqvO7LD+QE=,iv:KeQmH7w521ZYMDy/ifVY1dZkW8uu5JoQdNJZ4nt4ZX0=,tag:OFYeDOI+kibULaHs5pDicw==,type:str]
 /bcda/${env}/attribution-import/sensitive/attribution-import-role_arn: ENC[AES256_GCM,data:Hzi2w/LL6lbRLqmZ5/e5hC3XI3DzxeKmwaZSHaAGhwdH9ZjJsFAMkqtE29vFUdsTqNzn3Cu9CedArz0f63AsyUgH32nrGAhL27gyD2QaQ/GnmWqR,iv:bFFb/xuj0xRKZjFSG6xMf/JBYulFpfBlTAFBAYUnTfk=,tag:xVWQvbe5/FEZRRIl4lH4uw==,type:str]
 /bcda/${env}/sensitive/outdated_attr_client_credentials: ENC[AES256_GCM,data:VimteuQkamDvbBjxEPsdIFRsphMDq2XXVlM2EmPno/O+Vh5sN9233ltUVQ14K+13dI38aSpFbiUT1nBLyKUSdzwkC7Xt15fuVm3Xc3W2MEgARQ12/V7aW99KOdD7mHbYJwnRtId25zm7A/aUk1Axx7SoZ+vx1GlEx6Vu1qZ0mpWSaUqdg9VAUiuPAfv70jxDJwZEJxyJKg==,iv:uFpqyTNIDT9ZKFHxd4BFD54Q1GCV+Ip/ZcJaNIjmd7o=,tag:hBoSIzL3moLXHECUtrYg2Q==,type:str]
+/bcda/${env}/infra/sensitive/aco_ms_cidr_blocks: ENC[AES256_GCM,data:Mn6SsLI4f4AMih/6l8VhVCXIJH2oH5sp4sqzxAjUNawduKWkse/Lywo/vB1/vVURY3Lo0rG2l34iqC6Y6ahcfhx8MJyJ2fLuPMROPoTB5UGUbM1fKXVFgT12S8CPu4YjhiIi3DptWtccdvGn/v1RAlxjkkqsGXXS+0S9ngA=,iv:2SqQ8y8/nob4yLg7BYAc7wbx2lsD1Ycywm7rI5nfML8=,tag:q5k4CUiS3QLUrKsZAQ/i6w==,type:str]
+/bcda/${env}/infra/sensitive/aco_4i_cidr_blocks: ENC[AES256_GCM,data:3QGN5Gt9Wl390hikL39dcksWCtd/c346fsHRmNu2ckngeH6+EAZQVDtcGdbS21OtJEkxndmo1TSUqx0MBVEK2TqBhZC4N3z8VxqWP7lJa8nUFAQH4V5mGaTia3pm,iv:AlyLh2lIrqIMOEosiSRRNRaCtPaKia9S8PbFXPyDxUA=,tag:5n5m4dLhPdaVcwRMK7llGQ==,type:str]
+/bcda/${env}/infra/sensitive/aco_ihp_cidr_blocks: ENC[AES256_GCM,data:bB674rp9AI5mx6L9PeFhmAtkgnQXL3g7BRD+nOZee5W+0nzZN7wiYptrb54nh6VT/YaYCyesFMNTuAtYaezBQ2SCTD68PmJPl/03ILE6vAmqkdKdNnXo3a8B5U6/HzjDSb5gcP/7+qmNt9u5iylH/G8Iggj2Hsjs3FSivwsOzmaT6qFTr9qY05d12GuyBXPTyY+NwimVlPd9H2znY+eqMBgo0hjlV4TR5aDaZZ/kIw==,iv:lFFgrdd6Tag7UlQfQad/wRzJcTymA8E37HMJcH866oI=,tag:hJPq4B8gNNMDEwPHMq3/9w==,type:str]
+/bcda/${env}/infra/sensitive/gha_runners_cidr_blocks: ENC[AES256_GCM,data:ohN3DNaFVzkppco2LQThGxB0btXp8d/FRntSSANA4A==,iv:K9nWxgmiJsOiHM+Tn/usfUlYUNvBxZswCa3j5XhwoGA=,tag:3Vz6yC77aZbFZ+5CZm5oZg==,type:str]
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-test
-      aws_profile: ""
       created_at: "2026-01-13T21:10:24Z"
       enc: AQICAHjmpdIoLQvhLo0ak4uYFiScF9EZlYU3g9HHyCuiUTXbOwHXINgVgmHhr7OhG9+O0sjkAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMpw1ynoxpoVIFdOgvAgEQgDs8q8r++W1V38V91v7eKL1T1+dvQxf6DSsB8t/g02gg9QMFCVjO0R9a/oN9Oze3PX3U/nl4ARd4C6ESgg==
-    - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-test
       aws_profile: ""
+    - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-test
       created_at: "2026-01-13T21:10:24Z"
       enc: AQICAHjitWa+2OWjli/U8aWEuMqUM8gyoTLLxkGOP0onI9kxGQFl25JcNsjNvW8pCpgEj5FEAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMjSZXsLth8lX39Y+LAgEQgDuSJbmoKhQgxwsuYis0Y+Zkf3kJfMcux0A8fxfg8fNI/HaxDwIz5fuxGYKoM4kJncBXqFZgZ0ltvSKdNw==
-  mac_only_encrypted: true
+      aws_profile: ""
   unencrypted_regex: /nonsensitive/
+  mac_only_encrypted: true
   version: 3.13.1
