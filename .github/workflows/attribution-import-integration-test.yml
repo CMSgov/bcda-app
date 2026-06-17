@@ -155,7 +155,7 @@ jobs:
           else
           
             # Verify that the correct number of benes were imported into the database.
-            TCOCMD_CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CSV_FILE" 2>&1`
+            TCOCMD_CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $TCOCMD_CSV_FILE" 2>&1`
             echo "TCOCMD_CSV_BENES: $TCOCMD_CSV_BENES"
             if [[ $? -ne 0 || -z $TCOCMD_CSV_BENES ]]; then
               echo "CSV beneficiaries query returned zero results or command failed"
