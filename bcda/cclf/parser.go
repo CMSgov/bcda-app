@@ -30,15 +30,14 @@ func getCMSID(name string) (string, error) {
 func CheckIfAttributionCSVFile(filePath string) bool {
 	cfg, err := service.LoadConfig()
 	if err != nil {
-		log.API.Error(fmt.Sprintf("failed to load config"))
+		log.API.Error("failed to load config")
 		return false
 	}
 
 	if len(cfg.ACOConfigs) == 0 {
-		log.API.Error(fmt.Sprintf("no aco configs found"))
+		log.API.Error("no aco configs found")
 		return false
 	}
-
 	match := false
 
 	for _, v := range cfg.ACOConfigs {
