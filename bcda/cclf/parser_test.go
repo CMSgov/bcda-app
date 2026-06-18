@@ -103,7 +103,7 @@ func TestGetCSVMetadata(t *testing.T) {
 		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - dupe match", "P.P.GUIDE.GUIDE-.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
 		{"invalid csv filename - dupe match", "T.GUIDE.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - entity id length", "T.ACCESS.ACCES00001." + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - entity id length", "T.ACCESS.ACCES0000001.Y25" + fileDateTime, "Invalid filename", csvFileMetadata{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -558,16 +558,20 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		{name: "Is not an Attribution GUIDE CSV File path (incorrect fifth)", path: "P.GUIDE.GUIDE-00001.Y25.D0x30x.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+
+		{name: "Is an Attribution ACCESS CSV File path", path: "T.ACCESS.ACCES00001.Y26.D260616.T2044071", testIsCSV: true},
+		{name: "Is not an Attribution ACCESS CSV File path (incorrect first)", path: "x.ACCESS.ACCES00001.Y26.D260616.T2044071", testIsCSV: false},
+		{name: "Is not an Attribution ACCESS CSV File path (incorrect second)", path: "T.ACCSS.ACCES00001.Y26.D260616.T2044071", testIsCSV: false},
+		{name: "Is not an Attribution ACCESS CSV File path (incorrect third)", path: "T.ACCESS.ACCESS00001.Y26.D260616.T2044071", testIsCSV: false},
+		{name: "Is not an Attribution ACCESS CSV File path (incorrect fourth)", path: "T.ACCESS.ACCES00001.Y2026.D260616.T2044071", testIsCSV: false},
+		{name: "Is not an Attribution ACCESS CSV File path (incorrect fifth)", path: "T.ACCESS.ACCES00001.Y26.D2X0616.T2044071", testIsCSV: false},
+		{name: "Is not an Attribution ACCESS CSV File path (CCLF file)", path: "T.ACCESS.A0001.Y26.D260616.T2044071", testIsCSV: false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(sub *testing.T) {
 			isCSV := CheckIfAttributionCSVFile(test.path)
-			if test.testIsCSV {
-				assert.True(sub, isCSV)
-			} else {
-				assert.False(sub, isCSV)
-			}
+			assert.Equal(t, test.testIsCSV, isCSV)
 		})
 	}
 }
