@@ -14,17 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	mdtcocPattern = `(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d`
-	cdacPattern   = `(P|T)\.(BCD)\.(DA)(\d{4})\.(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d`
-	guidePattern  = `(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
-	accessPattern = `(P|T)\.(ACCESS)\.(ACCES\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d`
-	mdtcocRegexp  = regexp.MustCompile(mdtcocPattern)
-	cdacRegexp    = regexp.MustCompile(cdacPattern)
-	guideRegexp   = regexp.MustCompile(guidePattern)
-	accessRegexp  = regexp.MustCompile(accessPattern)
-)
-
 func getCMSID(name string) (string, error) {
 	// CCLF foldername convention with BCD identifier: P.BCD.<ACO_ID>.ZC[Y|R]**.Dyymmdd.Thhmmsst
 	exp := regexp.MustCompile(`(?:T|P)\.BCD\.(.*)\.ZC[Y|R]\d{2}\.D\d{6}\.T\d{7}`)
@@ -39,7 +28,29 @@ func getCMSID(name string) (string, error) {
 }
 
 func CheckIfAttributionCSVFile(filePath string) bool {
-	return (mdtcocRegexp.MatchString(filePath) || cdacRegexp.MatchString(filePath) || guideRegexp.MatchString(filePath) || accessRegexp.MatchString(filePath))
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		log.API.Error("failed to load config")
+		return false
+	}
+
+	if len(cfg.ACOConfigs) == 0 {
+		log.API.Error("no aco configs found")
+		return false
+	}
+	match := false
+
+	for _, v := range cfg.ACOConfigs {
+		if v.AttributionFile.FileType == "csv" {
+			rgx := regexp.MustCompile(v.AttributionFile.NamePattern)
+			match = rgx.MatchString(filePath)
+			if match {
+				break
+			}
+		}
+	}
+
+	return match
 }
 
 type CSVParser struct {

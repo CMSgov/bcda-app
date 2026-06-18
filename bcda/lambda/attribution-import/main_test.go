@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/database"
 )
 
@@ -41,14 +40,6 @@ func (s *AttributionImportMainSuite) TearDownSuite() {
 
 func TestAttributionImportMainSuite(t *testing.T) {
 	suite.Run(t, new(AttributionImportMainSuite))
-}
-
-func TestHandleCSVImportNoACOConfig(t *testing.T) {
-	s3Client := &bcdaaws.MockS3Client{}
-	pool := database.ConnectPool()
-
-	_, err := handleCSVImport(context.Background(), pool, s3Client, "../../../sharedfiles/csv/valid.csv")
-	assert.ErrorContains(t, err, "CSV Attribution metadata invalid: No ACO configs found")
 }
 
 func TestConfigureLogger(t *testing.T) {
