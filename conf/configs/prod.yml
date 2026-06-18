@@ -1,128 +1,128 @@
 aco_config:
     # Kidney Care Choices (KCC) Model - Comprehensive Kidney Care Contracting
-    - model: "CKCC" # Active, managed by 4i
-      name_pattern: "C\\d{4}"
-      performance_year_transition: "01/01"
+    - model: 'CKCC' # Active, managed by 4i
+      name_pattern: '^C\d{4}$'
+      performance_year_transition: '01/01'
       lookback_period: 2
       data:
-        - "adjudicated"
+        - 'adjudicated'
     # Kidney Care Choices (KCC) Model - Kidney Care First
-    - model: "KCF" # Ended, managed by 4i
-      name_pattern: "K\\d{4}"
-      performance_year_transition: "01/01"
+    - model: 'KCF' # Ended, managed by 4i
+      name_pattern: '^K\d{4}$'
+      performance_year_transition: '01/01'
       lookback_period: 2
       data:
-        - "adjudicated"
+        - 'adjudicated'
     # ACO REACH Model, formerly Global and Professional Direct Contracting Model (GPDC) Model
-    - model: "DC" # Active, managed by 4i
-      name_pattern: "D\\d{4}"
-      performance_year_transition: "04/01"
+    - model: 'DC' # Active, managed by 4i
+      name_pattern: '^D\d{4}$'
+      performance_year_transition: '04/01'
       lookback_period: 3
       data:
-        - "partially-adjudicated"
-        - "adjudicated"
+        - 'partially-adjudicated'
+        - 'adjudicated'
     # Medicare Shared Savings Program
-    - model: "SSP" # Active, managed by ACO-MS
-      name_pattern: "^A\\d{4}"
+    - model: 'SSP' # Active, managed by ACO-MS
+      name_pattern: '^A\d{4}$'
       data:
-        - "adjudicated"
+        - 'adjudicated'
     # Comprehensive ESRD Care (CEC) Model
-    - model: "CEC" # Ended
-      name_pattern: "E\\d{4}"
+    - model: 'CEC' # Ended
+      name_pattern: '^E\d{4}$'
       data:
-        - "adjudicated"
+        - 'adjudicated'
     # Next Generation ACO Model
-    - model: "NGACO" # Ended
-      name_pattern: "V\\d{3}"
+    - model: 'NGACO' # Ended
+      name_pattern: '^V\d{3}$'
       data:
-        - "adjudicated"
+        - 'adjudicated'
     # A config for BCDA's test entities
-    - model: "TEST" # Active, managed by BCDA Admin
-      name_pattern: "TEST\\d{3}"
+    - model: 'TEST' # Active, managed by BCDA Admin
+      name_pattern: '^TEST\d{3}$'
       data:
-        - "adjudicated"
-        - "partially-adjudicated"
+        - 'adjudicated'
+        - 'partially-adjudicated'
     # Maryland Total Cost of Care (MD TCoC) Model
-    - model: "TCOCMD" # Active, managed by BCDA Admin
-      name_pattern: "CT\\d{6}"
+    - model: 'TCOCMD' # Active, managed by BCDA Admin
+      name_pattern: '^CT\d{6}$'
       data:
-        - "adjudicated"
-        - "partially-adjudicated"
+        - 'adjudicated'
+        - 'partially-adjudicated'
       attribution_file:
-        file_type: "csv"
+        file_type: 'csv'
         name_pattern: '(P|T)\.(PCPB)\.(M)([0-9][0-9])(\d{2})\.(D\d{6}\.T\d{6})\d'
-        model_identifier: "PCPB"
+        model_identifier: 'PCPB'
         file_performance_year: 4
         file_date: 6
         metadata_matches: 7
       ignore_suppressions: true
     # CMS Data Aggregation Contract
-    - model: "CDAC" # Active, managed by IHP
-      name_pattern: "DA\\d{4}"
+    - model: 'CDAC' # Active, managed by IHP
+      name_pattern: '^DA\d{4}$'
       data:
-        - "adjudicated"
-        - "partially-adjudicated"
+        - 'adjudicated'
+        - 'partially-adjudicated'
       attribution_file:
-        file_type: "csv"
+        file_type: 'csv'
         name_pattern: '(P|T)\.(BCD)\.(DA\d{4}).(MBIY)(\d{2})\.(D\d{6}\.T\d{6})\d'
-        model_identifier: "BCD"
+        model_identifier: 'BCD'
         file_performance_year: 5
         file_date: 6
         metadata_matches: 7
     # GUIDE (Guiding an Improved Dementia Experience) Model
-    - model: "GUIDE" # Pending, managed by IHP
-      name_pattern: "GUIDE-\\d{5}"
+    - model: 'GUIDE' # Pending, managed by IHP
+      name_pattern: '^GUIDE-\d{5}$'
       data:
       attribution_file:
-        file_type: "csv"
+        file_type: 'csv'
         name_pattern: '(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
-        model_identifier: "GUIDE"
+        model_identifier: 'GUIDE'
         file_performance_year: 6
         file_date: 7
         metadata_matches: 8
     # Increasing Organ Transplant Access (IOTA) Model
-    - model: "IOTA" # Pending, managed via 4i
-      name_pattern: "IOTA\\d{3}"
+    - model: 'IOTA' # Pending, managed via 4i
+      name_pattern: '^IOTA\d{3}$'
       data:
-        - "adjudicated"
-        - "partially-adjudicated"
+        - 'adjudicated'
+        - 'partially-adjudicated'
 rate_limit_config:
   all: true
   acos: []
 v3_enabled_acos:
-  - "TEST994"
-  - "A1001"
-  - "A3507"
-  - "A3578"
-  - "A4604"
-  - "A4692"
-  - "A4974"
-  - "A5160"
-  - "A5388"
-  - "A5407"
-  - "A5453"
-  - "A5483"
-  - "A5518"
-  - "A5542"
-  - "A5554"
-  - "A5557"
-  - "A5599"
-  - "A5600"
-  - "A5611"
-  - "A5645"
-  - "A5646"
-  - "A5666"
-  - "A5742"
-  - "A5861"
-  - "A5894"
-  - "A5895"
-  - "A5897"
-  - "D0129"
-  - "D0224"
-  - "D0242"
-  - "D0243"
-  - "D0315"
-  - "D0347"
-v1_v2_deny_regexes: ["IOTA\\d{3}"]
+  - 'TEST994'
+  - 'A1001'
+  - 'A3507'
+  - 'A3578'
+  - 'A4604'
+  - 'A4692'
+  - 'A4974'
+  - 'A5160'
+  - 'A5388'
+  - 'A5407'
+  - 'A5453'
+  - 'A5483'
+  - 'A5518'
+  - 'A5542'
+  - 'A5554'
+  - 'A5557'
+  - 'A5599'
+  - 'A5600'
+  - 'A5611'
+  - 'A5645'
+  - 'A5646'
+  - 'A5666'
+  - 'A5742'
+  - 'A5861'
+  - 'A5894'
+  - 'A5895'
+  - 'A5897'
+  - 'D0129'
+  - 'D0224'
+  - 'D0242'
+  - 'D0243'
+  - 'D0315'
+  - 'D0347'
+v1_v2_deny_regexes: ['IOTA\d{3}']
 v3_no_partial_claims_models:
-  - "GUIDE"
+  - 'GUIDE'
