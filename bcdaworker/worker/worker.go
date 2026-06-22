@@ -441,13 +441,13 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string, hasEntriesCount *int) {
 	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
+	hasAtLeastOneEntry := false
 
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
 			continue
 		}
-
-		*hasEntriesCount++
+		hasAtLeastOneEntry = true
 
 		entryJSON, err := json.Marshal(entry["resource"])
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.
@@ -464,6 +464,10 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), tmpDir)
 		}
+	}
+
+	if hasAtLeastOneEntry {
+		*hasEntriesCount++
 	}
 }
 
