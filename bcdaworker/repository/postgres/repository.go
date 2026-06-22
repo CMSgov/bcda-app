@@ -86,7 +86,7 @@ func (r *Repository) GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*mode
 
 func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
 	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at")
+	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at", "benes_attributed_to_aco")
 	sb.From("jobs").Where(sb.Equal("id", jobID))
 
 	query, args := sb.Build()
@@ -96,8 +96,17 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 		transactionTime, createdAt, updatedAt sql.NullTime
 	)
 
-	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-		&j.JobCount, &createdAt, &updatedAt)
+	err := r.QueryRowContext(ctx, query, args...).Scan(
+		&j.ID,
+		&j.ACOID,
+		&j.RequestURL,
+		&j.Status,
+		&transactionTime,
+		&j.JobCount,
+		&createdAt,
+		&updatedAt,
+		&j.BenesAttributedToACO,
+	)
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {

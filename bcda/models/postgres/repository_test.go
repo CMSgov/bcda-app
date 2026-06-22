@@ -844,7 +844,7 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 
 	failed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusFailed, JobCount: 10}
 	pending := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusPending, JobCount: 30}
-	completed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted, JobCount: 40}
+	completed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted, JobCount: 40, BenesAttributedToACO: 20}
 
 	failed.ID, err = r.repository.CreateJob(ctx, failed)
 	assert.NoError(err)
@@ -931,10 +931,13 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	assert.True(newFailed.UpdatedAt.After(newCompleted.UpdatedAt))
 
 	// Verify BenesAttributedToACO
+	updatedCompleted, err := r.repository.GetJobByID(ctx, completed.ID)
+	assert.NoError(err)
+	assert.Equal(20, updatedCompleted.BenesAttributedToACO)
 	completed.BenesAttributedToACO = 10
 	err = r.repository.UpdateJob(ctx, completed)
 	assert.Nil(err)
-	updatedCompleted, err := r.repository.GetJobByID(ctx, completed.ID)
+	updatedCompleted, err = r.repository.GetJobByID(ctx, completed.ID)
 	assert.Nil(err)
 	assert.Equal(10, updatedCompleted.BenesAttributedToACO)
 
