@@ -60,6 +60,7 @@ func (s *AuthAPITestSuite) TestGetAuthTokenErrorSwitchCases() {
 		{"Token Unexpected SSAS Error Return 500", &customErrors.UnexpectedSSASError{Err: errors.New(errorHappened), Msg: errMsg}, 500, constants.EmptyString},
 		{"Token Unauthorized SSAS Error Return 401", &customErrors.SSASErrorUnauthorized{Err: errors.New(errorHappened), Msg: errMsg}, 401, constants.EmptyString},
 		{"Token Bad Request SSAS Error Return 400", &customErrors.SSASErrorBadRequest{Err: errors.New(errorHappened), Msg: errMsg}, 400, constants.EmptyString},
+		{"Token Rate Limit Too Many Requests Error Return 429", &customErrors.SSASErrorTooManyRequests{Err: errors.New(errorHappened), Msg: errMsg}, 429, "300"},
 		{"Token Internal Parsing Error Return 500", &customErrors.InternalParsingError{Err: errors.New(errorHappened), Msg: errMsg}, 500, constants.EmptyString},
 		{"Token Default Error Return 500", errors.New(errorHappened), 500, constants.EmptyString},
 	}

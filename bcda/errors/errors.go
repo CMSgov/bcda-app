@@ -77,6 +77,16 @@ func (e *SSASErrorBadRequest) Error() string {
 	return fmt.Sprintf("Unexpected SSAS Error encountered - %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
 }
 
+type SSASErrorTooManyRequests struct {
+	Err            error
+	Msg            string
+	SsasStatusCode int
+}
+
+func (e *SSASErrorTooManyRequests) Error() string {
+	return fmt.Sprintf("Too Many Requests: %s. Status Code: %v, Err: %s", e.Msg, e.SsasStatusCode, e.Err)
+}
+
 type ExpiredTokenError struct {
 	Err error
 	Msg string

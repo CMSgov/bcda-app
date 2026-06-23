@@ -77,6 +77,10 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		case *customErrors.SSASErrorBadRequest:
 			ctxLogger.WithField("resp_status", http.StatusBadRequest).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusBadRequest)
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		case *customErrors.SSASErrorTooManyRequests:
+			w.Header().Set("Retry-After", "300")
+			ctxLogger.WithField("resp_status", http.StatusTooManyRequests).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusTooManyRequests)
+			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		default:
 			ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
