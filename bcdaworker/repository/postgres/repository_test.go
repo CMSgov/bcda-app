@@ -16,7 +16,6 @@ import (
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -237,9 +236,4 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 
 	_, err = r.repository.GetJobKey(ctx, jobID, -1)
 	assert.EqualError(err, repository.ErrJobKeyNotFound.Error())
-}
-
-func assertJobsEqual(assert *assert.Assertions, expected, actual models.Job) {
-	expected.TransactionTime, actual.TransactionTime = expected.TransactionTime.UTC(), actual.TransactionTime.UTC()
-	assert.Equal(expected, actual)
 }
