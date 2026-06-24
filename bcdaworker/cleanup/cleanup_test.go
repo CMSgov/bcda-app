@@ -86,11 +86,12 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 	// timestamp to ensure that the job gets archived (older than the default 24h window)
 	t := time.Now().Add(-48 * time.Hour)
 	j := models.Job{
-		ACOID:      uuid.Parse(constants.TestACOID),
-		RequestURL: constants.V1Path + constants.EOBExportPath,
-		Status:     models.JobStatusCompleted,
-		CreatedAt:  t,
-		UpdatedAt:  t,
+		ACOID:                uuid.Parse(constants.TestACOID),
+		RequestURL:           constants.V1Path + constants.EOBExportPath,
+		Status:               models.JobStatusCompleted,
+		CreatedAt:            t,
+		UpdatedAt:            t,
+		BenesAttributedToACO: 10,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
@@ -134,8 +135,11 @@ func (s *CleanupTestSuite) TestArchiveExpiring() {
 
 	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
 
-	// check the status of the job
+	// check the status of the job and that no other fields were modified
+	assert.Equal(uuid.Parse(constants.TestACOID), testJob.ACOID)
+	assert.Equal((constants.V1Path + constants.EOBExportPath), testJob.RequestURL)
 	assert.Equal(models.JobStatusArchived, testJob.Status)
+	assert.Equal(10, testJob.BenesAttributedToACO)
 
 	// clean up
 	os.RemoveAll(conf.GetEnv("FHIR_ARCHIVE_DIR"))
@@ -150,11 +154,12 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithoutPayloadDir() {
 	t := time.Now().Add(-48 * time.Hour)
 
 	j := models.Job{
-		ACOID:      uuid.Parse(constants.TestACOID),
-		RequestURL: constants.V1Path + constants.EOBExportPath,
-		Status:     models.JobStatusCompleted,
-		CreatedAt:  t,
-		UpdatedAt:  t,
+		ACOID:                uuid.Parse(constants.TestACOID),
+		RequestURL:           constants.V1Path + constants.EOBExportPath,
+		Status:               models.JobStatusCompleted,
+		CreatedAt:            t,
+		UpdatedAt:            t,
+		BenesAttributedToACO: 10,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
@@ -164,8 +169,11 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithoutPayloadDir() {
 
 	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
 
-	// check the status of the job
+	// check the status of the job and that no other fields were modified
+	assert.Equal(uuid.Parse(constants.TestACOID), testJob.ACOID)
+	assert.Equal((constants.V1Path + constants.EOBExportPath), testJob.RequestURL)
 	assert.Equal(models.JobStatusArchived, testJob.Status)
+	assert.Equal(10, testJob.BenesAttributedToACO)
 
 	// clean up
 	os.RemoveAll(conf.GetEnv("FHIR_ARCHIVE_DIR"))
@@ -174,9 +182,10 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithoutPayloadDir() {
 func (s *CleanupTestSuite) TestArchiveExpiringWithThreshold() {
 	// save a job to our db
 	j := models.Job{
-		ACOID:      uuid.Parse(constants.TestACOID),
-		RequestURL: constants.V1Path + constants.EOBExportPath,
-		Status:     models.JobStatusCompleted,
+		ACOID:                uuid.Parse(constants.TestACOID),
+		RequestURL:           constants.V1Path + constants.EOBExportPath,
+		Status:               models.JobStatusCompleted,
+		BenesAttributedToACO: 10,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
@@ -210,8 +219,11 @@ func (s *CleanupTestSuite) TestArchiveExpiringWithThreshold() {
 	assert.FileExists(s.T(), dataPath, "File not Found")
 
 	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
-	// check the status of the job
+	// check the status of the job and that no other fields were modified
+	assert.Equal(s.T(), uuid.Parse(constants.TestACOID), testJob.ACOID)
+	assert.Equal(s.T(), (constants.V1Path + constants.EOBExportPath), testJob.RequestURL)
 	assert.Equal(s.T(), models.JobStatusCompleted, testJob.Status)
+	assert.Equal(s.T(), 10, testJob.BenesAttributedToACO)
 
 	// clean up
 	os.Remove(dataPath)

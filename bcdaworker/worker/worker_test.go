@@ -210,18 +210,19 @@ func (s *WorkerTestSuite) TestGetBlueButtonID_NonHappyPaths() {
 
 func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 	tests := []struct {
-		resource      string
-		jobKeysCount  int
-		fileCount     int
-		expectedCount int
-		err           error
+		resource                   string
+		jobKeysCount               int
+		fileCount                  int
+		entriesCount               int
+		expectedBenesWithDataCount int
+		err                        error
 	}{
-		{"ExplanationOfBenefit", 1, 1, 33, nil},
-		{"Coverage", 1, 1, 3, nil},
-		{"Patient", 1, 1, 1, nil},
-		{"Claim", 1, 1, 1, nil},
-		{"ClaimResponse", 1, 1, 1, nil},
-		{"UnsupportedResource", 1, 0, 0, errors.Errorf("unsupported resource")},
+		{"ExplanationOfBenefit", 1, 1, 33, 1, nil},
+		{"Coverage", 1, 1, 3, 1, nil},
+		{"Patient", 1, 1, 1, 1, nil},
+		{"Claim", 1, 1, 1, 1, nil},
+		{"ClaimResponse", 1, 1, 1, 1, nil},
+		{"UnsupportedResource", 1, 0, 0, 0, errors.Errorf("unsupported resource")},
 	}
 
 	for _, tt := range tests {
@@ -242,8 +243,8 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 			} else {
 				assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
 			}
-			assert.Equal(s.T(), tt.expectedCount, jobKeys[0].BenesWithData)
-			VerifyFileContent(s.T(), files, tt.resource, tt.expectedCount, s.tempDir)
+			assert.Equal(s.T(), tt.expectedBenesWithDataCount, jobKeys[0].BenesWithData)
+			VerifyFileContent(s.T(), files, tt.resource, tt.entriesCount, s.tempDir)
 		})
 	}
 }
@@ -311,6 +312,7 @@ func VerifyFileContent(t *testing.T, files []fs.DirEntry, resource string, expec
 		}
 		scan := scanner.Scan()
 		assert.False(t, scan, "There should be only %d entries in the file.", expectedCount)
+		assert.NoError(t, scanner.Err())
 	}
 }
 
@@ -363,7 +365,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Equal(s.T(), 33, jobKeys[0].BenesRetrievedPercent)
-	assert.Equal(s.T(), 33, jobKeys[0].BenesWithData)
+	assert.Equal(s.T(), 1, jobKeys[0].BenesWithData)
 	assert.Len(s.T(), jobKeys, 2)
 	assert.NoError(s.T(), err)
 	errorFilePath := fmt.Sprintf("%s/%s", s.tempDir, jobKeys[1].FileName)
@@ -1045,10 +1047,9 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON() {
 	b := fhirmodels.Bundle{Entries: entries}
 	beneID := "MBITEST"
 	acoID := "A9994"
-	entriesCount := 0
 
-	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &entriesCount)
-	assert.Equal(s.T(), 2, entriesCount)
+	hasEntries := fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./")
+	assert.True(s.T(), hasEntries)
 
 	_, err = f.Seek(0, io.SeekStart)
 	assert.Nil(s.T(), err)
@@ -1073,10 +1074,9 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON_NoEntries() {
 	b := fhirmodels.Bundle{Entries: entries}
 	beneID := "MBITEST"
 	acoID := "A9994"
-	entriesCount := 0
 
-	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &entriesCount)
-	assert.Equal(s.T(), 0, entriesCount)
+	hasEntries := fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./")
+	assert.False(s.T(), hasEntries)
 
 	_, err = f.Seek(0, io.SeekStart)
 	assert.Nil(s.T(), err)

@@ -489,7 +489,8 @@ func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) 
 		j.Status,
 		j.TransactionTime,
 		j.JobCount,
-		sqlbuilder.Raw("NOW()"), sqlbuilder.Raw("NOW()"),
+		sqlbuilder.Raw("NOW()"),
+		sqlbuilder.Raw("NOW()"),
 		j.BenesAttributedToACO,
 	)
 
