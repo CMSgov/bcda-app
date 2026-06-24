@@ -1047,20 +1047,15 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON() {
 	b := fhirmodels.Bundle{Entries: entries}
 	beneID := "MBITEST"
 	acoID := "A9994"
-	benesWithDataCount := 0
 
-	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &benesWithDataCount)
-	assert.Equal(s.T(), 1, benesWithDataCount)
+	hasEntries := fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./")
+	assert.True(s.T(), hasEntries)
 
 	_, err = f.Seek(0, io.SeekStart)
 	assert.Nil(s.T(), err)
 	data, err := io.ReadAll(f)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "{\"test\":\"entry\"}\n{\"test2\":\"entry2\"}\n", string(data))
-
-	// test that we increment again with additional bene
-	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &benesWithDataCount)
-	assert.Equal(s.T(), 2, benesWithDataCount)
 }
 
 func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON_NoEntries() {
@@ -1079,10 +1074,9 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON_NoEntries() {
 	b := fhirmodels.Bundle{Entries: entries}
 	beneID := "MBITEST"
 	acoID := "A9994"
-	entriesCount := 0
 
-	fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./", &entriesCount)
-	assert.Equal(s.T(), 0, entriesCount)
+	hasEntries := fhirBundleToResourceNDJSON(ctx, w, &b, "ExplanationOfBenefit", beneID, acoID, fileUUID, "./")
+	assert.False(s.T(), hasEntries)
 
 	_, err = f.Seek(0, io.SeekStart)
 	assert.Nil(s.T(), err)

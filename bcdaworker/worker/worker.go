@@ -331,7 +331,11 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				//MBI is appended inside file, not printed out to system logs
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
-			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir, &benesWithDataCount)
+			hadData := fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir)
+			if hadData {
+				benesWithDataCount++
+			}
+
 			return "", 0, nil
 		}()
 
@@ -438,7 +442,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	}
 }
 
-func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string, hasEntriesCount *int) {
+func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string) (hadData bool) {
 	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
 	hasAtLeastOneEntry := false
@@ -466,9 +470,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		}
 	}
 
-	if hasAtLeastOneEntry {
-		*hasEntriesCount++
-	}
+	return hasAtLeastOneEntry
 }
 
 func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
