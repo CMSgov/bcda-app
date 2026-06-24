@@ -3,26 +3,30 @@ package postgres_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	bcdaPostgres "github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 type RepositoryTestSuite struct {
 	suite.Suite
 
-	db         *sql.DB
-	repository *postgres.Repository
+	db          *sql.DB
+	repository  *postgres.Repository
+	dbContainer db.TestDatabaseContainer
 }
 
 func TestRepositoryTestSuite(t *testing.T) {
@@ -30,8 +34,30 @@ func TestRepositoryTestSuite(t *testing.T) {
 }
 
 func (r *RepositoryTestSuite) SetupSuite() {
-	r.db = database.Connect()
+	var err error
+	r.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(r.T(), err)
+}
+
+func (s *RepositoryTestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
+}
+
+func (r *RepositoryTestSuite) SetupTest() {
+	var err error
+	r.db, err = r.dbContainer.NewSqlDbConnection()
+	require.NoError(r.T(), err)
 	r.repository = postgres.NewRepository(r.db)
+}
+
+func (r *RepositoryTestSuite) TearDownTest() {
+	r.db.Close()
+	err := r.dbContainer.RestoreSnapshot("Base")
+	require.NoError(r.T(), err)
 }
 
 // TestACOMethods validates the CRUD operations associated with the acos table
@@ -81,6 +107,7 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 
 // TestJobsMethods validates the CRUD operations associated with the jobs table
 func (r *RepositoryTestSuite) TestJobsMethods() {
+	var err error
 	// Account for time precision in postgres
 	now := time.Now().Round(time.Millisecond).UTC()
 
@@ -94,13 +121,22 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	postgrestest.CreateACO(r.T(), r.db, aco)
 	defer postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
 
-	failed := models.Job{ACOID: aco.UUID, Status: models.JobStatusFailed, TransactionTime: now}
-	completed := models.Job{ACOID: aco.UUID, Status: models.JobStatusCompleted, TransactionTime: now}
-	postgrestest.CreateJobs(r.T(), r.db, &failed, &completed)
+	failed := models.Job{ACOID: aco.UUID, Status: models.JobStatusFailed, TransactionTime: now, BenesAttributedToACO: 5}
+	completed := models.Job{ACOID: aco.UUID, Status: models.JobStatusCompleted, TransactionTime: now, BenesAttributedToACO: 10}
+	// postgrestest.CreateJobs(r.T(), r.db, &failed, &completed)
 
-	failed1, err := r.repository.GetJobByID(ctx, failed.ID)
+	bcdaRepo := bcdaPostgres.NewRepository(r.db)
+	failed.ID, err = bcdaRepo.CreateJob(ctx, failed)
 	assert.NoError(err)
-	assertJobsEqual(assert, failed, *failed1)
+	completed.ID, err = bcdaRepo.CreateJob(ctx, completed)
+	assert.NoError(err)
+
+	failedRetr, err := r.repository.GetJobByID(ctx, failed.ID)
+	assert.NoError(err)
+	assert.Equal(failed.ACOID, failedRetr.ACOID)
+	assert.Equal(failed.Status, failedRetr.Status)
+	assert.Equal(failed.TransactionTime, failedRetr.TransactionTime)
+	assert.Equal(failed.BenesAttributedToACO, failedRetr.BenesAttributedToACO)
 
 	failed.Status = models.JobStatusArchived
 	assert.NoError(r.repository.UpdateJobStatus(ctx, failed.ID, failed.Status))
@@ -108,23 +144,28 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	assert.NoError(err)
 
 	assert.True(afterUpdate.UpdatedAt.After(failed.UpdatedAt))
-	// Allows us to compare all of the Job fields
-	failed.UpdatedAt = afterUpdate.UpdatedAt
-	assertJobsEqual(assert, failed, *afterUpdate)
+	assert.Equal(failed.ACOID, afterUpdate.ACOID)
+	assert.Equal(failed.Status, afterUpdate.Status)
+	assert.Equal(failed.TransactionTime, afterUpdate.TransactionTime)
+	assert.Equal(failed.BenesAttributedToACO, afterUpdate.BenesAttributedToACO)
 
 	failed.Status = models.JobStatusExpired
 	assert.NoError(r.repository.UpdateJobStatusCheckStatus(ctx, failed.ID, models.JobStatusArchived, failed.Status))
 	afterUpdate, err = r.repository.GetJobByID(ctx, failed.ID)
 	assert.NoError(err)
 	assert.True(afterUpdate.UpdatedAt.After(failed.UpdatedAt))
-	// Allows us to compare all of the Job fields
-	failed.UpdatedAt = afterUpdate.UpdatedAt
-	assertJobsEqual(assert, failed, *afterUpdate)
+	assert.Equal(failed.ACOID, afterUpdate.ACOID)
+	assert.Equal(failed.Status, afterUpdate.Status)
+	assert.Equal(failed.TransactionTime, afterUpdate.TransactionTime)
+	assert.Equal(failed.BenesAttributedToACO, afterUpdate.BenesAttributedToACO)
 
 	// After all of these updates, the completed job should remain untouched
-	completed1, err := r.repository.GetJobByID(ctx, completed.ID)
+	completedRetr, err := r.repository.GetJobByID(ctx, completed.ID)
 	assert.NoError(err)
-	assertJobsEqual(assert, completed, *completed1)
+	assert.Equal(completed.ACOID, completedRetr.ACOID)
+	assert.Equal(completed.Status, completedRetr.Status)
+	assert.Equal(completed.TransactionTime, completedRetr.TransactionTime)
+	assert.Equal(completed.BenesAttributedToACO, completedRetr.BenesAttributedToACO)
 
 	// Negative cases
 	_, err = r.repository.GetJobByID(ctx, 0)
@@ -195,9 +236,4 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 
 	_, err = r.repository.GetJobKey(ctx, jobID, -1)
 	assert.EqualError(err, repository.ErrJobKeyNotFound.Error())
-}
-
-func assertJobsEqual(assert *assert.Assertions, expected, actual models.Job) {
-	expected.TransactionTime, actual.TransactionTime = expected.TransactionTime.UTC(), actual.TransactionTime.UTC()
-	assert.Equal(expected, actual)
 }
