@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 
 	"strconv"
@@ -83,7 +84,11 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 			retrySeconds := utils.MinutesToSeconds(conf.GetEnv("SSAS_RATE_LIMIT_DURATION_MINUTES"))
 			w.Header().Set("Retry-After", retrySeconds)
 			ctxLogger.WithField("resp_status", http.StatusTooManyRequests).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusTooManyRequests)
-			http.Error(w, "Rate limit exceeded. Access tokens last 20 minutes; please cache and reuse them.", http.StatusTooManyRequests)
+			entityID := ad.CMSID
+			if entityID == "" {
+				entityID = clientId
+			}
+			http.Error(w, fmt.Sprintf("%s exceeded the rate limit for /auth/token. Access tokens last 20 minutes; please cache and reuse them.", entityID), http.StatusTooManyRequests)
 		default:
 			ctxLogger.WithField("resp_status", http.StatusInternalServerError).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusInternalServerError)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
