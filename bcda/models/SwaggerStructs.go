@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 )
 
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process
@@ -160,7 +160,7 @@ type AuthResponse struct {
 // swagger:response MetadataResponse
 type MetadataResponse struct {
 	// in: body
-	Body fhirmodels.CapabilityStatement `json:"body,omitempty"`
+	Body stu3.CapabilityStatement `json:"body,omitempty"`
 }
 
 // JSON object containing a cclf_files field
