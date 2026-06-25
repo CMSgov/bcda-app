@@ -5,11 +5,13 @@ import (
 
 	"strconv"
 
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/sirupsen/logrus"
 
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 /*
@@ -78,7 +80,8 @@ func (a BaseApi) GetAuthToken(w http.ResponseWriter, r *http.Request) {
 			ctxLogger.WithField("resp_status", http.StatusBadRequest).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusBadRequest)
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		case *customErrors.SSASErrorTooManyRequests:
-			w.Header().Set("Retry-After", "300")
+			retrySeconds := utils.MinutesToSeconds(conf.GetEnv("SSAS_RATE_LIMIT_DURATION_MINUTES"))
+			w.Header().Set("Retry-After", retrySeconds)
 			ctxLogger.WithField("resp_status", http.StatusTooManyRequests).Errorf("Error making access token - %s | HTTPS Status Code: %v", err.Error(), http.StatusTooManyRequests)
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		default:
