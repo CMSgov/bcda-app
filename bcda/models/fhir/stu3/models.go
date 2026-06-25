@@ -47,16 +47,35 @@ type Period struct {
 	End   string `json:"end,omitempty"`
 }
 
+type IssueTypeCode string
+
+const (
+	IssueTypeCodeException  IssueTypeCode = "exception"
+	IssueTypeCodeNotFound   IssueTypeCode = "not-found"
+	IssueTypeCodeStructure  IssueTypeCode = "structure"
+	IssueTypeCodeProcessing IssueTypeCode = "processing"
+	IssueTypeCodeForbidden  IssueTypeCode = "forbidden"
+)
+
+type IssueSeverityCode string
+
+const (
+	IssueSeverityFatal       IssueSeverityCode = "fatal"
+	IssueSeverityError       IssueSeverityCode = "error"
+	IssueSeverityWarning     IssueSeverityCode = "warning"
+	IssueSeverityInformation IssueSeverityCode = "information"
+)
+
 type OperationOutcome struct {
 	ResourceType string  `json:"resourceType"`
 	Issue        []Issue `json:"issue"`
 }
 
 type Issue struct {
-	Severity    string           `json:"severity"`
-	Code        string           `json:"code"`
-	Diagnostics string           `json:"diagnostics,omitempty"`
-	Details     *CodeableConcept `json:"details,omitempty"`
+	Severity    IssueSeverityCode `json:"severity"`
+	Code        IssueTypeCode     `json:"code"`
+	Diagnostics string            `json:"diagnostics,omitempty"`
+	Details     *CodeableConcept  `json:"details,omitempty"`
 }
 
 type CapabilityStatement struct {
