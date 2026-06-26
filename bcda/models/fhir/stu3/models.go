@@ -96,15 +96,15 @@ type Issue struct {
 
 type CapabilityStatement struct {
 	ResourceType   string                    `json:"resourceType"`
-	Status         string                    `json:"status"`
+	Status         PublicationStatus         `json:"status"`
 	Date           string                    `json:"date"`
 	Publisher      string                    `json:"publisher,omitempty"`
-	Kind           string                    `json:"kind"`
+	Kind           CapabilityStatementKind   `json:"kind"`
 	Instantiates   []string                  `json:"instantiates,omitempty"`
 	Software       Software                  `json:"software,omitempty"`
 	Implementation Implementation            `json:"implementation,omitempty"`
 	FhirVersion    string                    `json:"fhirVersion"`
-	AcceptUnknown  string                    `json:"acceptUnknown"`
+	AcceptUnknown  UnknownContentCode        `json:"acceptUnknown"`
 	Format         []string                  `json:"format"`
 	Rest           []CapabilityStatementRest `json:"rest,omitempty"`
 }
@@ -121,10 +121,10 @@ type Implementation struct {
 }
 
 type CapabilityStatementRest struct {
-	Mode        string          `json:"mode"`
-	Security    *Security       `json:"security,omitempty"`
-	Interaction []Interaction   `json:"interaction,omitempty"`
-	Operation   []RestOperation `json:"operation,omitempty"`
+	Mode        RestfulCapabilityMode `json:"mode"`
+	Security    *Security             `json:"security,omitempty"`
+	Interaction []Interaction         `json:"interaction,omitempty"`
+	Operation   []RestOperation       `json:"operation,omitempty"`
 }
 
 type Security struct {
@@ -140,7 +140,7 @@ type Extension struct {
 }
 
 type Interaction struct {
-	Code string `json:"code"`
+	Code SystemRestfulInteraction `json:"code"`
 }
 
 type RestOperation struct {
@@ -151,3 +151,42 @@ type RestOperation struct {
 type Reference struct {
 	Reference string `json:"reference,omitempty"`
 }
+
+type PublicationStatus string
+
+const (
+	PublicationStatusActive PublicationStatus = "active"
+)
+
+type CapabilityStatementKind string
+
+const (
+	CapabilityStatementKindInstance CapabilityStatementKind = "instance"
+)
+
+type RestfulCapabilityMode string
+
+const (
+	RestfulCapabilityModeServer RestfulCapabilityMode = "server"
+)
+
+type SystemRestfulInteraction string
+
+const (
+	SystemRestfulInteractionBatch        SystemRestfulInteraction = "batch"
+	SystemRestfulInteractionSearchSystem SystemRestfulInteraction = "search-system"
+)
+
+type UnknownContentCode string
+
+const (
+	UnknownContentCodeExtensions UnknownContentCode = "extensions"
+)
+
+type ResourceTypeCode string
+
+const (
+	ResourceTypeCodePatient              ResourceTypeCode = "Patient"
+	ResourceTypeCodeGroup                ResourceTypeCode = "Group"
+	ResourceTypeCodeExplanationOfBenefit ResourceTypeCode = "ExplanationOfBenefit"
+)
