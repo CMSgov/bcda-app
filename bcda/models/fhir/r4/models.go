@@ -14,8 +14,8 @@ type BundleEntry struct {
 type Task struct {
 	ResourceType    string       `json:"resourceType"`
 	Identifier      []Identifier `json:"identifier,omitempty"`
-	Status          string       `json:"status"`
-	Intent          string       `json:"intent"`
+	Status          TaskStatus   `json:"status"`
+	Intent          TaskIntent   `json:"intent"`
 	Input           []Parameter  `json:"input,omitempty"`
 	ExecutionPeriod Period       `json:"executionPeriod,omitempty"`
 }
@@ -46,6 +46,22 @@ type Period struct {
 	Start string `json:"start,omitempty"`
 	End   string `json:"end,omitempty"`
 }
+
+type TaskStatus string
+
+const (
+	TaskStatusAccepted   TaskStatus = "accepted"
+	TaskStatusInProgress TaskStatus = "in-progress"
+	TaskStatusCompleted  TaskStatus = "completed"
+	TaskStatusFailed     TaskStatus = "failed"
+	TaskStatusCancelled  TaskStatus = "cancelled"
+)
+
+type TaskIntent string
+
+const (
+	TaskIntentOrder TaskIntent = "order"
+)
 
 type IssueTypeCode string
 

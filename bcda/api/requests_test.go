@@ -26,6 +26,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -47,12 +49,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/ccoveille/go-safecast"
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
-	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
-	fhirmodelv2CR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
-	fhircodesv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	fhirmodelsv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -214,14 +210,14 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 
 		respCode int
 		statuses []models.JobStatus
-		codes    []fhircodesv1.TaskStatusCode_Value
+		codes    []stu3.TaskStatus
 	}{
-		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
-		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
-		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED}},
+		{"Successful with no status(es)", http.StatusOK, nil, []stu3.TaskStatus{stu3.TaskStatusCompleted}},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []stu3.TaskStatus{stu3.TaskStatusCompleted}},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []stu3.TaskStatus{stu3.TaskStatusCompleted, stu3.TaskStatusFailed}},
 		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
-			[]fhircodesv1.TaskStatusCode_Value{
-				fhircodesv1.TaskStatusCode_ACCEPTED, fhircodesv1.TaskStatusCode_IN_PROGRESS, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED, fhircodesv1.TaskStatusCode_CANCELLED, fhircodesv1.TaskStatusCode_FAILED, fhircodesv1.TaskStatusCode_CANCELLED,
+			[]stu3.TaskStatus{
+				stu3.TaskStatusAccepted, stu3.TaskStatusInProgress, stu3.TaskStatusCompleted, stu3.TaskStatusCompleted, stu3.TaskStatusCompleted, stu3.TaskStatusFailed, stu3.TaskStatusCancelled, stu3.TaskStatusFailed, stu3.TaskStatusCancelled,
 			},
 		},
 		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
@@ -275,29 +271,21 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 			h.JobsStatus(rr, req)
 
-			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
-			assert.NoError(s.T(), err)
-
 			switch tt.respCode {
 			case http.StatusNotFound:
 				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 			case http.StatusOK:
 				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
 
-				resp, err := unmarshaller.Unmarshal(rr.Body.Bytes())
-				assert.NoError(s.T(), err)
-
-				bundle := resp.(*fhirmodelsv1.ContainedResource)
-				respB := bundle.GetBundle()
+				total, tasks := getTasksFromSTU3Bundle(s.T(), rr.Body.Bytes())
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
-				val, err := safecast.ToUint32(len(respB.Entry))
+				val, err := safecast.ToUint32(len(tasks))
 				assert.NoError(s.T(), err)
-				assert.Equal(s.T(), val, respB.Total.Value)
+				assert.Equal(s.T(), val, total)
 
-				for k, entry := range respB.Entry {
-					respT := entry.GetResource().GetTask()
-					assert.Equal(s.T(), respT.Status.Value, tt.codes[k])
-					assert.Equal(s.T(), respT.Input[0].Value.GetStringValue().Value, "GET https://bcda.test.gov/v1/this-is-a-test")
+				for k, task := range tasks {
+					assert.Equal(s.T(), task.Status, tt.codes[k])
+					assert.Equal(s.T(), task.Input[0].ValueString, "GET https://bcda.test.gov/v1/this-is-a-test")
 				}
 			}
 		})
@@ -312,22 +300,22 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 
 		respCode                 int
 		statuses                 []models.JobStatus
-		codes                    []fhircodesv2.TaskStatusCode_Value
+		codes                    []r4.TaskStatus
 		useMock                  bool
 		throwInternalServerError bool
 	}{
-		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}, true, false},
-		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}, true, false},
-		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}, true, false},
+		{"Successful with no status(es)", http.StatusOK, nil, []r4.TaskStatus{r4.TaskStatusCompleted}, true, false},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []r4.TaskStatus{r4.TaskStatusCompleted}, true, false},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []r4.TaskStatus{r4.TaskStatusCompleted, r4.TaskStatusFailed}, true, false},
 		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
-			[]fhircodesv2.TaskStatusCode_Value{
-				fhircodesv2.TaskStatusCode_ACCEPTED, fhircodesv2.TaskStatusCode_IN_PROGRESS, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED,
+			[]r4.TaskStatus{
+				r4.TaskStatusAccepted, r4.TaskStatusInProgress, r4.TaskStatusCompleted, r4.TaskStatusCompleted, r4.TaskStatusCompleted, r4.TaskStatusFailed, r4.TaskStatusCancelled, r4.TaskStatusFailed, r4.TaskStatusCancelled,
 			}, true, false},
 		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil, true, false},
 		{"Too Many Statuses", http.StatusBadRequest, []models.JobStatus{models.JobStatusCompleted, models.JobStatusCompleted}, nil, true, false},
 		{"Invalid Status Type", http.StatusBadRequest, []models.JobStatus{"Eaten by alligators"}, nil, false, false},
 		{"Invalid Auth Data", http.StatusBadRequest, []models.JobStatus{models.JobStatusCompleted}, nil, false, false},
-		{"Other error", http.StatusInternalServerError, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}, true, true},
+		{"Other error", http.StatusInternalServerError, []models.JobStatus{models.JobStatusCompleted}, []r4.TaskStatus{r4.TaskStatusCompleted, r4.TaskStatusFailed}, true, true},
 	}
 
 	for _, tt := range tests {
@@ -394,29 +382,21 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 			}
 			h.JobsStatus(rr, req)
 
-			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
-			assert.NoError(s.T(), err)
-
 			switch tt.respCode {
 			case http.StatusNotFound:
 				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 			case http.StatusOK:
 				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
 
-				resp, err := unmarshaller.Unmarshal(rr.Body.Bytes())
-				assert.NoError(s.T(), err)
-
-				bundle := resp.(*fhirmodelv2CR.ContainedResource)
-				respB := bundle.GetBundle()
+				total, tasks := getTasksFromR4Bundle(s.T(), rr.Body.Bytes())
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
-				val, err := safecast.ToUint32(len(respB.Entry))
+				val, err := safecast.ToUint32(len(tasks))
 				assert.NoError(s.T(), err)
-				assert.Equal(s.T(), val, respB.Total.Value)
+				assert.Equal(s.T(), val, total)
 
-				for k, entry := range respB.Entry {
-					respT := entry.GetResource().GetTask()
-					assert.Equal(s.T(), respT.Status.Value, tt.codes[k])
-					assert.Equal(s.T(), respT.Input[0].Value.GetStringValue().Value, "GET https://bcda.test.gov/v2/this-is-a-test")
+				for k, task := range tasks {
+					assert.Equal(s.T(), task.Status, tt.codes[k])
+					assert.Equal(s.T(), task.Input[0].Value, "GET https://bcda.test.gov/v2/this-is-a-test")
 				}
 			}
 		})
@@ -1710,4 +1690,32 @@ func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
 		QueryParameters: subQueryParams,
 	}
 	return typeFilterParam
+}
+
+func getTasksFromSTU3Bundle(t *testing.T, data []byte) (uint32, []*stu3.Task) {
+	var bundle stu3.Bundle
+	assert.NoError(t, json.Unmarshal(data, &bundle))
+	tasks := make([]*stu3.Task, len(bundle.Entry))
+	for i, entry := range bundle.Entry {
+		taskBytes, err := json.Marshal(entry.Resource)
+		assert.NoError(t, err)
+		var task stu3.Task
+		assert.NoError(t, json.Unmarshal(taskBytes, &task))
+		tasks[i] = &task
+	}
+	return bundle.Total, tasks
+}
+
+func getTasksFromR4Bundle(t *testing.T, data []byte) (uint32, []*r4.Task) {
+	var bundle r4.Bundle
+	assert.NoError(t, json.Unmarshal(data, &bundle))
+	tasks := make([]*r4.Task, len(bundle.Entry))
+	for i, entry := range bundle.Entry {
+		taskBytes, err := json.Marshal(entry.Resource)
+		assert.NoError(t, err)
+		var task r4.Task
+		assert.NoError(t, json.Unmarshal(taskBytes, &task))
+		tasks[i] = &task
+	}
+	return bundle.Total, tasks
 }
