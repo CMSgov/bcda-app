@@ -13,6 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -163,7 +164,9 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), uint32(len(bundle.Entry)), bundle.Total)
+	u, err := safecast.ToUint32(len(bundle.Entry))
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), u, bundle.Total)
 	assert.Equal(s.T(), "searchset", bundle.Type)
 
 	var task stu3.Task
