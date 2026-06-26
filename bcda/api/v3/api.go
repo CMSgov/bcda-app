@@ -252,7 +252,7 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 		Publisher:    constants.PublisherName,
 		Kind:         r4.CapabilityStatementKindInstance,
 		Instantiates: []string{
-			bbServer + "/baseDstu3/metadata/",
+			bbServer + "/v3/fhir/metadata",
 			"http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data",
 		},
 		Software: r4.Software{
