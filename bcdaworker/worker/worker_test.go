@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -31,6 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -510,7 +510,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(s.logctx, s.testACO.UUID.String(),
-		fhircodes.IssueTypeCode_CODE_INVALID,
+		stu3.IssueTypeCode("code-invalid"),
 		"", "", s.tempDir)
 
 	filePath := fmt.Sprintf("%s/%s-error.ndjson", s.tempDir, s.testACO.UUID)
