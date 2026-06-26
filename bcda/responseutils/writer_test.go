@@ -116,7 +116,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
 	baseurl := "bcda.cms.gov"
 	cs := rw.CreateCapabilityStatement(time.Now(), relversion, baseurl)
 	assert.Equal(s.T(), relversion, cs.Software.Version)
-	assert.Equal(s.T(), "Beneficiary Claims Data API", cs.Software.Name)
+	assert.Equal(s.T(), constants.SoftwareName, cs.Software.Name)
 	assert.Equal(s.T(), baseurl, cs.Implementation.Url)
 	assert.Equal(s.T(), "3.0.1", cs.FhirVersion)
 }
@@ -135,7 +135,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), relversion, respCS.Software.Version)
 	assert.Equal(s.T(), cs.Software.Version, respCS.Software.Version)
-	assert.Equal(s.T(), "Beneficiary Claims Data API", respCS.Software.Name)
+	assert.Equal(s.T(), constants.SoftwareName, respCS.Software.Name)
 	assert.Equal(s.T(), cs.Software.Name, respCS.Software.Name)
 	assert.Equal(s.T(), baseurl, respCS.Implementation.Url)
 	assert.Equal(s.T(), cs.Implementation.Url, respCS.Implementation.Url)

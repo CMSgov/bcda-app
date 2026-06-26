@@ -2,6 +2,7 @@ package responseutils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,16 +11,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
-	fhirmodelCR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
-	fhirmodelCS "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/capability_statement_go_proto"
-	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -28,35 +24,31 @@ import (
 
 type ResponseUtilsWriterTestSuite struct {
 	suite.Suite
-	rr           *httptest.ResponseRecorder
-	unmarshaller *jsonformat.Unmarshaller
+	rr *httptest.ResponseRecorder
 }
 
 func (s *ResponseUtilsWriterTestSuite) SetupTest() {
-	var err error
 	s.rr = httptest.NewRecorder()
-	s.unmarshaller, err = jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
-	assert.NoError(s.T(), err)
 }
 
 func TestResponseUtilsWriterTestSuite(t *testing.T) {
 	suite.Run(t, new(ResponseUtilsWriterTestSuite))
 }
+
 func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
 	rw := NewFhirResponseWriter()
 	logger := testUtils.GetLogger(log.API)
 	ctx := log.NewStructuredLoggerEntry(logger, context.Background())
 	rw.Exception(ctx, s.rr, http.StatusAccepted, responseutils.RequestErr, "TestResponseWriterExcepton")
 
-	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	var respOO r4.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
 	assert.NoError(s.T(), err)
-	cr := res.(*fhirmodelCR.ContainedResource)
-	respOO := cr.GetOperationOutcome()
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
+	assert.Equal(s.T(), r4.IssueSeverityError, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), r4.IssueTypeCodeException, respOO.Issue[0].Code)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 }
 
@@ -66,15 +58,14 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	rw.NotFound(ctx, s.rr, http.StatusAccepted, responseutils.RequestErr, "TestResponseWriterNotFound")
 
-	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	var respOO r4.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
 	assert.NoError(s.T(), err)
-	cr := res.(*fhirmodelCR.ContainedResource)
-	respOO := cr.GetOperationOutcome()
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_NOT_FOUND, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Diagnostics.Value)
+	assert.Equal(s.T(), r4.IssueSeverityError, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), r4.IssueTypeCodeNotFound, respOO.Issue[0].Code)
+	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Diagnostics)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 }
 
@@ -84,44 +75,42 @@ func (s *ResponseUtilsWriterTestSuite) TestResponseWriterOpOutcome() {
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
 	rw.OpOutcome(ctx, s.rr, http.StatusBadRequest, responseutils.RequestErr, "TestResponseWriterExcepton")
 
-	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	var respOO r4.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
 	assert.NoError(s.T(), err)
-	cr := res.(*fhirmodelCR.ContainedResource)
-	respOO := cr.GetOperationOutcome()
 
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_STRUCTURE, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics.Value)
+	assert.Equal(s.T(), r4.IssueSeverityError, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), r4.IssueTypeCodeStructure, respOO.Issue[0].Code)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Diagnostics)
 	assert.Equal(s.T(), constants.FHIRJsonContentType, s.rr.Header().Get("Content-Type"))
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 	rw := NewFhirResponseWriter()
-	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "TestCreateOpOutcome")
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Diagnostics.Value)
+	oo := rw.CreateOpOutcome(r4.IssueSeverityError, r4.IssueTypeCodeException, responseutils.RequestErr, "TestCreateOpOutcome")
+	assert.Equal(s.T(), r4.IssueSeverityError, oo.Issue[0].Severity)
+	assert.Equal(s.T(), r4.IssueTypeCodeException, oo.Issue[0].Code)
+	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Diagnostics)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	rw := NewFhirResponseWriter()
 	newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"foo": "bar"})
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
-	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "TestCreateOpOutcome")
+	oo := rw.CreateOpOutcome(r4.IssueSeverityError, r4.IssueTypeCodeException, responseutils.RequestErr, "TestCreateOpOutcome")
 	rw.WriteError(ctx, oo, s.rr, http.StatusAccepted)
 
-	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	var respOO r4.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
 	assert.NoError(s.T(), err)
-	cr := res.(*fhirmodelCR.ContainedResource)
-	respOO := cr.GetOperationOutcome()
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), oo.Issue[0].Severity.Value, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), oo.Issue[0].Code.Value, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Diagnostics.Value)
+	assert.Equal(s.T(), r4.IssueSeverityError, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), oo.Issue[0].Severity, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), r4.IssueTypeCodeException, respOO.Issue[0].Code)
+	assert.Equal(s.T(), oo.Issue[0].Code, respOO.Issue[0].Code)
+	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Diagnostics)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
@@ -129,10 +118,10 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
 	relversion := "r1"
 	baseurl := "bcda.cms.gov"
 	cs := rw.CreateCapabilityStatement(time.Now(), relversion, baseurl)
-	assert.Equal(s.T(), relversion, cs.Software.Version.Value)
-	assert.Equal(s.T(), "Beneficiary Claims Data API", cs.Software.Name.Value)
-	assert.Equal(s.T(), baseurl, cs.Implementation.Url.Value)
-	assert.Equal(s.T(), fhircodes.FHIRVersionCode_V_3_0_1, cs.FhirVersion.Value)
+	assert.Equal(s.T(), relversion, cs.Software.Version)
+	assert.Equal(s.T(), constants.SoftwareName, cs.Software.Name)
+	assert.Equal(s.T(), baseurl, cs.Implementation.Url)
+	assert.Equal(s.T(), "3.0.1", cs.FhirVersion)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
@@ -141,23 +130,20 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 	baseurl := "bcda.cms.gov"
 	cs := rw.CreateCapabilityStatement(time.Now(), relversion, baseurl)
 	rw.WriteCapabilityStatement(context.Background(), cs, s.rr)
-	var respCS *fhirmodelCS.CapabilityStatement
 
-	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
-	cr := res.(*fhirmodelCR.ContainedResource)
-	respCS = cr.GetCapabilityStatement()
-
+	var respCS r4.CapabilityStatement
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respCS)
 	assert.NoError(s.T(), err)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), relversion, respCS.Software.Version.Value)
-	assert.Equal(s.T(), cs.Software.Version.Value, respCS.Software.Version.Value)
-	assert.Equal(s.T(), "Beneficiary Claims Data API", respCS.Software.Name.Value)
-	assert.Equal(s.T(), cs.Software.Name.Value, respCS.Software.Name.Value)
-	assert.Equal(s.T(), baseurl, respCS.Implementation.Url.Value)
-	assert.Equal(s.T(), cs.Implementation.Url.Value, respCS.Implementation.Url.Value)
-	assert.Equal(s.T(), fhircodes.FHIRVersionCode_V_3_0_1, respCS.FhirVersion.Value)
-	assert.Equal(s.T(), cs.FhirVersion.Value, respCS.FhirVersion.Value)
+	assert.Equal(s.T(), relversion, respCS.Software.Version)
+	assert.Equal(s.T(), cs.Software.Version, respCS.Software.Version)
+	assert.Equal(s.T(), constants.SoftwareName, respCS.Software.Name)
+	assert.Equal(s.T(), cs.Software.Name, respCS.Software.Name)
+	assert.Equal(s.T(), baseurl, respCS.Implementation.Url)
+	assert.Equal(s.T(), cs.Implementation.Url, respCS.Implementation.Url)
+	assert.Equal(s.T(), "3.0.1", respCS.FhirVersion)
+	assert.Equal(s.T(), cs.FhirVersion, respCS.FhirVersion)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
@@ -175,36 +161,38 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 	jb := rw.CreateJobsBundle(jobs, constants.TestAPIUrl)
 	rw.WriteBundleResponse(jb, s.rr)
 
-	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	var bundle r4.Bundle
+	err := json.Unmarshal(s.rr.Body.Bytes(), &bundle)
 	assert.NoError(s.T(), err)
-	cr := res.(*fhirmodelCR.ContainedResource)
-	bundle := cr.GetBundle()
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	u, err := safecast.ToUint32(len(bundle.Entry))
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), u, bundle.Total.Value)
-	assert.Equal(s.T(), fhircodes.BundleTypeCode_SEARCHSET, bundle.Type.Value)
+	assert.Equal(s.T(), u, bundle.Total)
+	assert.Equal(s.T(), "searchset", bundle.Type)
 
-	task := bundle.Entry[0].GetResource().GetTask()
+	var task r4.Task
+	taskBytes, err := json.Marshal(bundle.Entry[0].Resource)
+	assert.NoError(s.T(), err)
+	assert.NoError(s.T(), json.Unmarshal(taskBytes, &task))
 
-	assert.Equal(s.T(), jobs[0].CreatedAt.UTC().UnixNano()/int64(time.Microsecond), task.ExecutionPeriod.Start.ValueUs)
-	assert.Equal(s.T(), jobs[0].UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), task.ExecutionPeriod.End.ValueUs)
-	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", task.Identifier[0].System.Value)
-	assert.Equal(s.T(), fhircodes.IdentifierUseCode_OFFICIAL, task.Identifier[0].Use.Value)
-	assert.Equal(s.T(), fmt.Sprint(jobs[0].ID), task.Identifier[0].Value.Value)
-	assert.Equal(s.T(), "BULK FHIR Export", task.Input[0].Type.Text.Value)
-	assert.Equal(s.T(), "GET "+jobs[0].RequestURL, task.Input[0].Value.GetStringValue().Value)
-	assert.Equal(s.T(), fhirvaluesets.TaskIntentValueSet_ORDER, task.Intent.Value)
-	assert.Equal(s.T(), fhircodes.TaskStatusCode_COMPLETED, task.Status.Value)
+	assert.Equal(s.T(), jobs[0].CreatedAt.UTC().Format("2006-01-02T15:04:05Z"), task.ExecutionPeriod.Start)
+	assert.Equal(s.T(), jobs[0].UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"), task.ExecutionPeriod.End)
+	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", task.Identifier[0].System)
+	assert.Equal(s.T(), "official", task.Identifier[0].Use)
+	assert.Equal(s.T(), fmt.Sprint(jobs[0].ID), task.Identifier[0].Value)
+	assert.Equal(s.T(), "BULK FHIR Export", task.Input[0].Type.Text)
+	assert.Equal(s.T(), "GET "+jobs[0].RequestURL, task.Input[0].Value.(string))
+	assert.Equal(s.T(), r4.TaskIntentOrder, task.Intent)
+	assert.Equal(s.T(), r4.TaskStatusCompleted, task.Status)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundle() {
 	rw := NewFhirResponseWriter()
 	jb := rw.CreateJobsBundle(nil, constants.TestAPIUrl)
 
-	assert.Equal(s.T(), uint32(0), jb.Total.Value)
-	assert.Equal(s.T(), fhircodes.BundleTypeCode_SEARCHSET, jb.Type.Value)
+	assert.Equal(s.T(), uint32(0), jb.Total)
+	assert.Equal(s.T(), "searchset", jb.Type)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
@@ -217,17 +205,17 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateJobsBundleEntry() {
 		CreatedAt:  time.Now().Add(-24 * time.Hour).Truncate(time.Second),
 		UpdatedAt:  time.Now().Truncate(time.Second),
 	}
-	jbe := rw.CreateJobsBundleEntry(&job, constants.TestAPIUrl).Resource.GetTask()
+	jbe := rw.CreateJobsBundleEntry(&job, constants.TestAPIUrl).Resource.(*r4.Task)
 
-	assert.Equal(s.T(), job.CreatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.Start.ValueUs)
-	assert.Equal(s.T(), job.UpdatedAt.UTC().UnixNano()/int64(time.Microsecond), jbe.ExecutionPeriod.End.ValueUs)
-	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", jbe.Identifier[0].System.Value)
-	assert.Equal(s.T(), fhircodes.IdentifierUseCode_OFFICIAL, jbe.Identifier[0].Use.Value)
-	assert.Equal(s.T(), fmt.Sprint(job.ID), jbe.Identifier[0].Value.Value)
-	assert.Equal(s.T(), "BULK FHIR Export", jbe.Input[0].Type.Text.Value)
-	assert.Equal(s.T(), "GET "+job.RequestURL, jbe.Input[0].Value.GetStringValue().Value)
-	assert.Equal(s.T(), fhirvaluesets.TaskIntentValueSet_ORDER, jbe.Intent.Value)
-	assert.Equal(s.T(), fhircodes.TaskStatusCode_COMPLETED, jbe.Status.Value)
+	assert.Equal(s.T(), job.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"), jbe.ExecutionPeriod.Start)
+	assert.Equal(s.T(), job.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"), jbe.ExecutionPeriod.End)
+	assert.Equal(s.T(), "https://www.api.com/api/v2/jobs", jbe.Identifier[0].System)
+	assert.Equal(s.T(), "official", jbe.Identifier[0].Use)
+	assert.Equal(s.T(), fmt.Sprint(job.ID), jbe.Identifier[0].Value)
+	assert.Equal(s.T(), "BULK FHIR Export", jbe.Input[0].Type.Text)
+	assert.Equal(s.T(), "GET "+job.RequestURL, jbe.Input[0].Value.(string))
+	assert.Equal(s.T(), r4.TaskIntentOrder, jbe.Intent)
+	assert.Equal(s.T(), r4.TaskStatusCompleted, jbe.Status)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestGetFhirStatusCode() {
@@ -236,17 +224,17 @@ func (s *ResponseUtilsWriterTestSuite) TestGetFhirStatusCode() {
 		name string
 
 		status models.JobStatus
-		code   fhircodes.TaskStatusCode_Value
+		code   r4.TaskStatus
 	}{
-		{"Job Failed returns fhir task status Failed", models.JobStatusFailed, fhircodes.TaskStatusCode_FAILED},
-		{"Job FailedExpired returns fhir task status Failed", models.JobStatusFailedExpired, fhircodes.TaskStatusCode_FAILED},
-		{"Job Pending returns fhir task status Accepted", models.JobStatusPending, fhircodes.TaskStatusCode_ACCEPTED},
-		{"Job In Progress returns fhir task status In Progress", models.JobStatusInProgress, fhircodes.TaskStatusCode_IN_PROGRESS},
-		{"Job Completed returns fhir task status Completed", models.JobStatusCompleted, fhircodes.TaskStatusCode_COMPLETED},
-		{"Job Archived returns fhir task status Completed", models.JobStatusArchived, fhircodes.TaskStatusCode_COMPLETED},
-		{"Job Expired returns fhir task status Completed", models.JobStatusExpired, fhircodes.TaskStatusCode_COMPLETED},
-		{"Job Cancelled returns fhir task status Cancelled", models.JobStatusCancelled, fhircodes.TaskStatusCode_CANCELLED},
-		{"Job CancelledExpired returns fhir task status Cancelled", models.JobStatusCancelledExpired, fhircodes.TaskStatusCode_CANCELLED},
+		{"Job Failed returns fhir task status Failed", models.JobStatusFailed, r4.TaskStatusFailed},
+		{"Job FailedExpired returns fhir task status Failed", models.JobStatusFailedExpired, r4.TaskStatusFailed},
+		{"Job Pending returns fhir task status Accepted", models.JobStatusPending, r4.TaskStatusAccepted},
+		{"Job In Progress returns fhir task status In Progress", models.JobStatusInProgress, r4.TaskStatusInProgress},
+		{"Job Completed returns fhir task status Completed", models.JobStatusCompleted, r4.TaskStatusCompleted},
+		{"Job Archived returns fhir task status Completed", models.JobStatusArchived, r4.TaskStatusCompleted},
+		{"Job Expired returns fhir task status Completed", models.JobStatusExpired, r4.TaskStatusCompleted},
+		{"Job Cancelled returns fhir task status Cancelled", models.JobStatusCancelled, r4.TaskStatusCancelled},
+		{"Job CancelledExpired returns fhir task status Cancelled", models.JobStatusCancelledExpired, r4.TaskStatusCancelled},
 	}
 
 	for _, tt := range tests {
