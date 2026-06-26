@@ -48,6 +48,8 @@
 /bcda/${env}/sensitive/api/RUNOUT_CLAIM_THRU_DATE: ENC[AES256_GCM,data:dbbVZiAkehj2EA==,iv:YwZ7ZRnKJ0xxurYOAP33GNelHtXDuCUBwh4tAwQVjW4=,tag:R0GwfwEyKwE0TpuKTyRnXw==,type:str]
 /bcda/${env}/sensitive/api/RUNOUT_CUTOFF_DATE_DAYS: ENC[AES256_GCM,data:0Brc,iv:4h2N4Q84os6QkfbOwk9YORYL2np/I7MEo4siDZuRzOY=,tag:7bZh00PkCksRcYdOud1uoQ==,type:str]
 /bcda/${env}/sensitive/api/SSAS_PUBLIC_URL: ENC[AES256_GCM,data:oSFspeD+JlgNUlub9BtZVGH6SF9sATJ1l2Vr0t4pVnnG3+Y8eTqmgMcBrZI4XKbSYswELkmjrCeczj/wbxwmswrx05GN/ZJxcqM=,iv:qTGyXVQa5qmQGKYZWj/6sW5MWxl8aBfTfXdNTtMYsQ0=,tag:mflSY3ujGWJfca2YbSHJkQ==,type:str]
+/bcda/${env}/sensitive/api/SSAS_RATE_LIMIT_DURATION_MINUTES: ENC[AES256_GCM,data:8A==,iv:ldbkEh3/lGFtV3dv5DOr5yv+Fs+nimoOl042CsQ629M=,tag:aC6UYDl7I2iwKnCzDcZG2g==,type:str]
+/bcda/${env}/sensitive/api/SSAS_RATE_LIMIT_THRESHOLD: ENC[AES256_GCM,data:WtckCw==,iv:jvHOxPgLqV1WB6Mw9Lwe2lCUdkKs5zCpznSz3JHVwN4=,tag:j7ckL3kJMqXch/62g30wzg==,type:str]
 /bcda/${env}/sensitive/api/SSAS_TIMEOUT_MS: ENC[AES256_GCM,data:OfV+Sg==,iv:CEa6XCW7Nu/BgqHoDlUUIrsrTIoXNlEbPQRvomBpgJc=,tag:crd21Ve6cks1MNZvhMLjHA==,type:str]
 /bcda/${env}/sensitive/api/SSAS_URL: ENC[AES256_GCM,data:ifTDvLqvlfVRhIrB2eNyrNRGW78I7Oa/Qsen9hcf4ZvD45JlKqkOfvK46/werbx08NT6QxMUFANiC4DZBJzeAzLX6O7aaDUzcjY=,iv:EKgolJdiGpouOYOIvei58jFEUpyDzAMGyMAtBdesJfQ=,tag:i4/XXMdOkNna2dECkaRxKQ==,type:str]
 /bcda/${env}/sensitive/api/SSAS_USE_TLS: ENC[AES256_GCM,data:AeshOg==,iv:4zRcAM1i9Et6aObKxIGh+aq/BKyHf5PTdC0ZLbalNe4=,tag:3QhEWkM4NuojdCoMRPqBIQ==,type:str]
@@ -88,6 +90,8 @@
 /bcda/${env}/sensitive/ssas/SSAS_MFA_TOKEN_TIMEOUT_MINUTES: ENC[AES256_GCM,data:i1Y=,iv:qPoCwSV28BYKlNvoF0KJ0zW8DlVzmU67Ogp97YeAXQs=,tag:cqHssUA0r8mrnYNXePcCxA==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_PUBLIC_SIGNING_KEY_PATH: ENC[AES256_GCM,data:zzreMYURWFw7e4Bhc2Xvwo8LLGGPTWlek3idUQo6mLab1iIwrk1tau9A7VE=,iv:Z7z2Qp9yX98w8FqPEDo8u2yAbEz0+771BPjFWmHfKls=,tag:YTTN2bTmlERlhyzxSJXQbg==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_PUBLIC_URL: ENC[AES256_GCM,data:AgQfKY1u2EW/0tGpd88W3SU1nT1oEviGwvcEdlm/0LeckIyhAv7+HaXRdVSLuXqlxtekQAN7GyVE7gUsf8Jvw7PzOfI3Vvr6vA==,iv:CQ6NX7MREFfSGgSBzTSa8nQ81TCR2t60uiitcDYGT+E=,tag:p01JOBgqYt/QNRTP83NK5g==,type:str]
+/bcda/${env}/sensitive/ssas/SSAS_RATE_LIMIT_DURATION_MINUTES: ENC[AES256_GCM,data:9A==,iv:D7teYniOpdP7+5IoCIqs0Yfqw+PpxdAG4uPH4SYz6AE=,tag:S4NV2EuJ4BOE+4iqWJKO3w==,type:str]
+/bcda/${env}/sensitive/ssas/SSAS_RATE_LIMIT_THRESHOLD: ENC[AES256_GCM,data:YXN/Lw==,iv:cYPkvVy9EFZEnrxL+kFS+hLjE+Nzq9QXsWkSfz4XsbQ=,tag:3OsoHE4HM8e1G5vuZnom/w==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_READ_TIMEOUT: ENC[AES256_GCM,data:+8s=,iv:62bv6aGE2CUxbK930luzxgqc0qpjZpUQVIlRERR3MPY=,tag:PkItq2yCuw6ArESuPz3kRQ==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES: ENC[AES256_GCM,data:lhk=,iv:RTowqREL7ZUMenqFTq61KrR8xiIeRT7D2Ae0Z2kiUP0=,tag:/PVUCXlIBiMSjjCaypF9lg==,type:str]
 /bcda/${env}/sensitive/ssas/SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES: ENC[AES256_GCM,data:Rz5DMw==,iv:7OmYujnXzTL6TrohcpDJEcfyIRoXOdHo/jDAddo8L/M=,tag:xzJzjtmsyE2ONq88rV+Dww==,type:str]
@@ -156,13 +160,13 @@
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-test
+      aws_profile: ""
       created_at: "2026-01-13T21:10:24Z"
       enc: AQICAHjmpdIoLQvhLo0ak4uYFiScF9EZlYU3g9HHyCuiUTXbOwHXINgVgmHhr7OhG9+O0sjkAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMpw1ynoxpoVIFdOgvAgEQgDs8q8r++W1V38V91v7eKL1T1+dvQxf6DSsB8t/g02gg9QMFCVjO0R9a/oN9Oze3PX3U/nl4ARd4C6ESgg==
-      aws_profile: ""
     - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-test
+      aws_profile: ""
       created_at: "2026-01-13T21:10:24Z"
       enc: AQICAHjitWa+2OWjli/U8aWEuMqUM8gyoTLLxkGOP0onI9kxGQFl25JcNsjNvW8pCpgEj5FEAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMjSZXsLth8lX39Y+LAgEQgDuSJbmoKhQgxwsuYis0Y+Zkf3kJfMcux0A8fxfg8fNI/HaxDwIz5fuxGYKoM4kJncBXqFZgZ0ltvSKdNw==
-      aws_profile: ""
-  unencrypted_regex: /nonsensitive/
   mac_only_encrypted: true
+  unencrypted_regex: /nonsensitive/
   version: 3.13.1

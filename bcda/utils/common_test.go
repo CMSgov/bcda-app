@@ -34,6 +34,28 @@ func (s *CommonTestSuite) TestCountUniq() {
 	assert.Equal(s.T(), 2, CountUniq([]string{"abc", "bcd", "ab"}, firstLetter))
 }
 
+func (s *CommonTestSuite) TestMinutesToSeconds() {
+	tests := []struct {
+		name       string
+		minutesStr string
+		expected   string
+	}{
+		{"valid positive minutes", "5", "300"},
+		{"valid positive minutes larger", "10", "600"},
+		{"invalid format non-numeric", "invalid", "300"},
+		{"empty string", "", "300"},
+		{"zero minutes", "0", "300"},
+		{"negative minutes", "-5", "300"},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			actual := MinutesToSeconds(tt.minutesStr)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestCommonTestSuite(t *testing.T) {
 	suite.Run(t, new(CommonTestSuite))
 }

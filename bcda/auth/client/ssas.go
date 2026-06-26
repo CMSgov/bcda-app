@@ -336,6 +336,8 @@ func (c *SSASClient) GetToken(credentials Credentials, r http.Request) (string, 
 				return "", &customErrors.SSASErrorUnauthorized{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
 			case 400:
 				return "", &customErrors.SSASErrorBadRequest{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
+			case 429:
+				return "", &customErrors.SSASErrorTooManyRequests{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("SSAS rate limit exceeded, Response Body: %s", string(b))}
 			default:
 				return "", &customErrors.UnexpectedSSASError{Err: err, SsasStatusCode: resp.StatusCode, Msg: fmt.Sprintf("%s, Response Body: %s", constants.TokenRequestUnexpectedErr, string(b))}
 			}

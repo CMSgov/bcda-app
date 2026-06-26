@@ -142,3 +142,13 @@ func CountUniq[S []E, E any, F comparable](arr S, f func(E) F) int {
 
 	return n
 }
+
+// MinutesToSeconds converts a minute string to a second string.
+// If the string is invalid or <= 0, it defaults to 5 minutes (300 seconds).
+func MinutesToSeconds(minutesStr string) string {
+	minutes, err := strconv.Atoi(minutesStr)
+	if err != nil || minutes <= 0 {
+		minutes = 5
+	}
+	return strconv.Itoa(minutes * 60)
+}
