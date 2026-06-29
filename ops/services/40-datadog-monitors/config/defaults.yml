@@ -40,8 +40,9 @@ shadow_mode: false
 #       - "@victorops-your-routing-key"
 # -----------------------------------------------------------------------------
 notifications:
+  victorops: true
   channels:
-    - "@bcda-alerts"  # global — always notified
+    - "@bcda-alerts"
 
 # -----------------------------------------------------------------------------
 # Enabled Flags
