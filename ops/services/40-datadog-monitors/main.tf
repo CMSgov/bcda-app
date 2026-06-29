@@ -32,7 +32,7 @@ locals {
 # Use platform module to derive datadog keys via ssm_root_map
 # Can be replaced with direct data lookups 
 module "platform" {
-  source    = "github.com/CMSgov/cdap//terraform/modules/platform?ref=941672f97adfd8a19ce6533313302c4c74bac7a8"
+  source    = "github.com/CMSgov/cdap//terraform/modules/platform?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app          = "bcda"
@@ -47,7 +47,7 @@ module "platform" {
 ###################
 
 module "common_datadog_monitors" {
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=945fbd644cc8d239bdf3f3a3a7241fb6066a0f55"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
 
   app            = "bcda"
   env            = local.env
