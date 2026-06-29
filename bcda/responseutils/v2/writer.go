@@ -160,7 +160,6 @@ func (r FhirResponseWriter) WriteOperationOutcome(w io.Writer, outcome *r4.Opera
 	return w.Write(outcomeJSON)
 }
 
-
 func (r FhirResponseWriter) WriteBundleResponse(bundle *r4.Bundle, w http.ResponseWriter) {
 	bundleJSON, err := json.Marshal(bundle)
 	if err != nil {
