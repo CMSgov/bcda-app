@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 )
@@ -162,102 +160,6 @@ func (r FhirResponseWriter) WriteOperationOutcome(w io.Writer, outcome *r4.Opera
 	return w.Write(outcomeJSON)
 }
 
-func (r FhirResponseWriter) CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *r4.CapabilityStatement {
-	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
-	statement := &r4.CapabilityStatement{
-		ResourceType: "CapabilityStatement",
-		Status:       r4.PublicationStatusActive,
-		Date:         reldate.UTC().Format("2006-01-02T15:04:05Z"),
-		Publisher:    constants.PublisherName,
-		Kind:         r4.CapabilityStatementKindInstance,
-		Instantiates: []string{
-			bbServer + "/baseDstu3/metadata/",
-			"http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data",
-		},
-		Software: r4.Software{
-			Name:        constants.SoftwareName,
-			Version:     relversion,
-			ReleaseDate: reldate.UTC().Format("2006-01-02T15:04:05Z"),
-		},
-		Implementation: r4.Implementation{
-			Description: constants.SoftwareDescription,
-			Url:         baseurl,
-		},
-		FhirVersion: "3.0.1",
-		Format: []string{
-			constants.JsonContentType,
-			constants.FHIRJsonContentType,
-		},
-		Rest: []r4.CapabilityStatementRest{
-			{
-				Mode: r4.RestfulCapabilityModeServer,
-				Security: &r4.Security{
-					Cors: true,
-					Service: []r4.CodeableConcept{
-						{
-							Coding: []r4.Coding{
-								{
-									Display: "OAuth",
-									Code:    "OAuth",
-									System:  constants.RestfulSecurityServiceSystem,
-								},
-							},
-							Text: "OAuth",
-						},
-					},
-					Extension: []r4.Extension{
-						{
-							Url: constants.SmartOAuthURIsExtensionURL,
-							Extension: []r4.Extension{
-								{
-									Url:      "token",
-									ValueUri: baseurl + "/auth/token",
-								},
-							},
-						},
-					},
-				},
-				Interaction: []r4.Interaction{
-					{
-						Code: r4.SystemRestfulInteractionBatch,
-					},
-					{
-						Code: r4.SystemRestfulInteractionSearchSystem,
-					},
-				},
-				Operation: []r4.RestOperation{
-					{
-						Name:       "patient-export",
-						Definition: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
-					},
-					{
-						Name:       "group-export",
-						Definition: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
-					},
-				},
-			},
-		},
-	}
-	return statement
-}
-
-func (r FhirResponseWriter) WriteCapabilityStatement(ctx context.Context, statement *r4.CapabilityStatement, w http.ResponseWriter) {
-	statementJSON, err := json.Marshal(statement)
-	if err != nil {
-		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set(constants.ContentType, constants.JsonContentType)
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(statementJSON)
-	if err != nil {
-		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 func (r FhirResponseWriter) WriteBundleResponse(bundle *r4.Bundle, w http.ResponseWriter) {
 	bundleJSON, err := json.Marshal(bundle)
