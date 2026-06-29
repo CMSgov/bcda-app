@@ -113,7 +113,6 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Diagnostics)
 }
 
-
 func (s *ResponseUtilsWriterTestSuite) TestWriteJobsBundle() {
 	rw := NewFhirResponseWriter()
 	jobs := []*models.Job{
