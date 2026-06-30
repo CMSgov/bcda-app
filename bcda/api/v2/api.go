@@ -44,7 +44,7 @@ swagger:route GET /api/v2/Patient/$export bulkDataV2 bulkPatientRequestV2
 
 Start FHIR R4 data export for all supported resource types.
 
-Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+Initiates a job to collect data from the BFD for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 Produces:
 - application/fhir+json
@@ -70,7 +70,7 @@ swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
 
 # Start FHIR R4 data export (for the specified group identifier) for all supported resource types
 
-Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system are `all` and `runout`.
+Initiates a job to collect data from the BFD for your ACO. The only Group identifier supported by the system are `all` and `runout`.
 
 The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
 
