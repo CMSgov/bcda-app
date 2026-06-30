@@ -510,7 +510,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(s.logctx, s.testACO.UUID.String(),
-		stu3.IssueTypeCode("code-invalid"),
+		stu3.IssueTypeCodeException,
 		"", "", s.tempDir)
 
 	filePath := fmt.Sprintf("%s/%s-error.ndjson", s.tempDir, s.testACO.UUID)
