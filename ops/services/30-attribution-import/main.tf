@@ -23,6 +23,17 @@ data "aws_kms_alias" "bcda_app_config_kms_key" {
   name = "alias/bcda-${var.env}-app-config-kms"
 }
 
+resource "aws_kms_key" "attribution-import_bucket" {
+  description             = "Custom KMS key for encrypting the attribution import file bucket"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "attribution-import_bucket" {
+  name          = "alias/bcda-${var.env}-attribution-import-bucket-key"
+  target_key_id = aws_kms_key.attribution-import_bucket.key_id
+}
+
 # ---------------------------------------------------------------------------
 # Managed policies
 # ---------------------------------------------------------------------------
@@ -142,7 +153,7 @@ module "attribution_import_function" {
     "/bcda/${var.env}/sensitive/api/DATABASE_URL"
   ]
 
-  extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn, data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn]
+  extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn, data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn, aws_kms_key.attribution-import_bucket.arn]
 }
 
 resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
@@ -191,11 +202,12 @@ data "aws_iam_policy_document" "sns_send_message" {
 }
 
 module "attribution-import_file_bucket" {
-  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=787224b"
+  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
 
   app           = local.app
   env           = var.env
   name          = "${local.full_name}-file"
+  kms_key_arn   = join("", ["", aws_kms_key.attribution-import_bucket.arn])
   ssm_parameter = "/${local.app}/${var.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
