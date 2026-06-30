@@ -195,7 +195,7 @@ func (a ApiV3) DeleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-swagger:route GET /api/v3/attribution_status attributionStatusv3 attributionStatusv3
+swagger:route GET /api/v3/attribution_status attributionStatusv3 attributionStatus
 
 # Get attribution status
 
