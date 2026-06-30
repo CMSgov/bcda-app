@@ -317,9 +317,9 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 							},
 						},
 						SearchParam: []r4.SearchParam{
-							restResourceSearchParam("_since", "date", "Return resources updated after the date provided for existing and newly attributed enrollees."),
-							restResourceSearchParam("_type", "string", "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."),
-							restResourceSearchParam("_typeFilter", "string", "Use a URL-encoded FHIR subquery to further-refine patient export results."),
+							restResourceSearchParam("_since", r4.SearchParamTypeDate, "Return resources updated after the date provided for existing and newly attributed enrollees."),
+							restResourceSearchParam("_type", r4.SearchParamTypeString, "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."),
+							restResourceSearchParam("_typeFilter", r4.SearchParamTypeString, "Use a URL-encoded FHIR subquery to further-refine patient export results."),
 						},
 					},
 					{
@@ -332,16 +332,16 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 							},
 						},
 						SearchParam: []r4.SearchParam{
-							restResourceSearchParam("_since", "date", "Return resources updated after the date provided for existing enrollees and all resources for newly attributed enrollees."),
-							restResourceSearchParam("_type", "string", "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."),
-							restResourceSearchParam("_typeFilter", "string", "Use a URL-encoded FHIR subquery to further-refine group export results."),
+							restResourceSearchParam("_since", r4.SearchParamTypeDate, "Return resources updated after the date provided for existing enrollees and all resources for newly attributed enrollees."),
+							restResourceSearchParam("_type", r4.SearchParamTypeString, "Comma-delimited list of FHIR resource types to include in the export. By default, all supported resource types are returned."),
+							restResourceSearchParam("_typeFilter", r4.SearchParamTypeString, "Use a URL-encoded FHIR subquery to further-refine group export results."),
 						},
 					},
 					{
 						Type: r4.ResourceTypeCodeExplanationOfBenefit,
 						SearchParam: []r4.SearchParam{
-							restResourceSearchParam("_tag", "token", "Filter ExplanationOfBenefit by the meta.tag element. Pass full token as <system>|<code>. Supported codes in the 'https://bluebutton.cms.gov/fhir/CodeSystem/System-Type' system are: 'SharedSystem', 'NationalClaimsHistory', and 'DDPS'. By Default, only NationalClaimsHistory and DDPS claims will be returned."),
-							restResourceSearchParam("outcome", "token", "Filter ExplanationOfBenefit by the outcome element. Supported values: 'partial' and 'complete'."),
+							restResourceSearchParam("_tag", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the meta.tag element. Pass full token as <system>|<code>. Supported codes in the 'https://bluebutton.cms.gov/fhir/CodeSystem/System-Type' system are: 'SharedSystem', 'NationalClaimsHistory', and 'DDPS'. By Default, only NationalClaimsHistory and DDPS claims will be returned."),
+							restResourceSearchParam("outcome", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the outcome element. Supported values: 'partial' and 'complete'."),
 						},
 					},
 				},
@@ -363,7 +363,7 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func restResourceSearchParam(n string, t string, d string) r4.SearchParam {
+func restResourceSearchParam(n string, t r4.SearchParamType, d string) r4.SearchParam {
 	p := r4.SearchParam{
 		Name:          n,
 		Type:          t,

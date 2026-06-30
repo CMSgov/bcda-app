@@ -134,10 +134,24 @@ type RestResource struct {
 }
 
 type SearchParam struct {
-	Name          string `json:"name"`
-	Type          string `json:"type"`
-	Documentation string `json:"documentation,omitempty"`
+	Name          string          `json:"name"`
+	Type          SearchParamType `json:"type"`
+	Documentation string          `json:"documentation,omitempty"`
 }
+
+type SearchParamType string
+
+const (
+	SearchParamTypeNumber    SearchParamType = "number"
+	SearchParamTypeDate      SearchParamType = "date"
+	SearchParamTypeString    SearchParamType = "string"
+	SearchParamTypeToken     SearchParamType = "token"
+	SearchParamTypeReference SearchParamType = "reference"
+	SearchParamTypeComposite SearchParamType = "composite"
+	SearchParamTypeQuantity  SearchParamType = "quantity"
+	SearchParamTypeURI       SearchParamType = "uri"
+	SearchParamTypeSpecial   SearchParamType = "special"
+)
 
 type Security struct {
 	Cors      bool              `json:"cors,omitempty"`
