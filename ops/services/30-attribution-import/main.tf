@@ -61,7 +61,8 @@ data "aws_iam_policy_document" "default_function" {
     ]
     resources = [
       module.platform.kms_alias_primary.arn,
-      module.platform.kms_alias_secondary.arn
+      module.platform.kms_alias_secondary.arn,
+      aws_kms_key.attribution-import_bucket.arn
     ]
   }
   statement {
@@ -153,7 +154,12 @@ module "attribution_import_function" {
     "/bcda/${var.env}/sensitive/api/DATABASE_URL"
   ]
 
-  extra_kms_key_arns = [module.platform.kms_alias_primary.target_key_arn, module.platform.kms_alias_secondary.target_key_arn, data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn, aws_kms_key.attribution-import_bucket.arn]
+  extra_kms_key_arns = [
+    module.platform.kms_alias_primary.target_key_arn,
+    module.platform.kms_alias_secondary.target_key_arn,
+    data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn,
+    aws_kms_key.attribution-import_bucket.arn
+  ]
 }
 
 resource "aws_iam_role_policy" "attribution-import_bucket_rw" {

@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "delivery_assume_role" {
 
 data "aws_iam_policy_document" "attribution-import_bucket_upload" {
   statement {
-    sid    = "UploadObjects"
+    sid    = "AllowS3Upload"
     effect = "Allow"
 
     actions = [
@@ -40,6 +40,17 @@ data "aws_iam_policy_document" "attribution-import_bucket_upload" {
     resources = [
       "${module.attribution-import_file_bucket.arn}/bfdeft01/bcda/in/${var.env}/*"
     ]
+  }
+  statement {
+    sid    = "AllowKMSEncryption"
+    effect = "Allow"
+
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Encrypt",
+      "kms:Decrypt",
+    ]
+    resources = [aws_kms_key.attribution-import_bucket.arn]
   }
 }
 
