@@ -2,62 +2,42 @@ package responseutils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-
 	"net/http"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
-
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
-
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
-	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
-	fhirmodelCR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
-	fhirmodelCS "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/capability_statement_go_proto"
-	fhirmodelOO "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/operation_outcome_go_proto"
-	fhirmodelT "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/task_go_proto"
-	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
 )
 
-type FhirResponseWriter struct {
-	marshaller *jsonformat.Marshaller
-}
+type FhirResponseWriter struct{}
 
 func NewFhirResponseWriter() FhirResponseWriter {
-	// Ensure that we write the serialized FHIR resources as a single line.
-	// Needed to comply with the NDJSON format that we are using.
-	m, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
-	if err != nil {
-		log.API.Fatalf("Failed to create marshaller %s", err)
-	}
-	return FhirResponseWriter{marshaller: m}
+	return FhirResponseWriter{}
 }
 
 func (r FhirResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
-	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, errType, errMsg)
+	oo := r.CreateOpOutcome(r4.IssueSeverityError, r4.IssueTypeCodeException, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
 func (r FhirResponseWriter) NotFound(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
-	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND, errType, errMsg)
+	oo := r.CreateOpOutcome(r4.IssueSeverityError, r4.IssueTypeCodeNotFound, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
 func (r FhirResponseWriter) OpOutcome(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
-	respStatusToFHIRStatusMap := map[int]fhircodes.IssueTypeCode_Value{
-		400: fhircodes.IssueTypeCode_STRUCTURE,
-		401: fhircodes.IssueTypeCode_FORBIDDEN,
-		403: fhircodes.IssueTypeCode_FORBIDDEN,
-		410: fhircodes.IssueTypeCode_NOT_FOUND,
+	respStatusToFHIRStatusMap := map[int]r4.IssueTypeCode{
+		400: r4.IssueTypeCodeStructure,
+		401: r4.IssueTypeCodeForbidden,
+		403: r4.IssueTypeCodeForbidden,
+		410: r4.IssueTypeCodeNotFound,
 	}
-	oo := r.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, respStatusToFHIRStatusMap[statusCode], errType, errMsg)
+	oo := r.CreateOpOutcome(r4.IssueSeverityError, respStatusToFHIRStatusMap[statusCode], errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
@@ -66,111 +46,95 @@ func (r FhirResponseWriter) JobsBundle(ctx context.Context, w http.ResponseWrite
 	r.WriteBundleResponse(jb, w)
 }
 
-func (r FhirResponseWriter) CreateJobsBundle(jobs []*models.Job, host string) *fhirmodelCR.Bundle {
-	var entries []*fhirmodelCR.Bundle_Entry
+func (r FhirResponseWriter) CreateJobsBundle(jobs []*models.Job, host string) *r4.Bundle {
+	var entries []r4.BundleEntry
 
 	// generate bundle task entries
 	for _, job := range jobs {
 		entry := r.CreateJobsBundleEntry(job, host)
-		entries = append(entries, entry)
+		entries = append(entries, *entry)
 	}
 
 	jobLength, err := safecast.ToUint32(len(jobs))
-
 	if err != nil {
 		log.API.Errorln(err)
 	}
 
-	return &fhirmodelCR.Bundle{
-		Type:  &fhirmodelCR.Bundle_TypeCode{Value: fhircodes.BundleTypeCode_SEARCHSET},
-		Total: &fhirdatatypes.UnsignedInt{Value: jobLength},
-		Entry: entries,
+	return &r4.Bundle{
+		ResourceType: "Bundle",
+		Type:         "searchset",
+		Total:        jobLength,
+		Entry:        entries,
 	}
 }
 
-func (r FhirResponseWriter) CreateJobsBundleEntry(job *models.Job, host string) *fhirmodelCR.Bundle_Entry {
+func (r FhirResponseWriter) CreateJobsBundleEntry(job *models.Job, host string) *r4.BundleEntry {
 	fhirStatusCode := r.GetFhirStatusCode(job.Status)
 
-	return &fhirmodelCR.Bundle_Entry{
-		Resource: &fhirmodelCR.ContainedResource{
-			OneofResource: &fhirmodelCR.ContainedResource_Task{
-				Task: &fhirmodelT.Task{
-					Identifier: []*fhirdatatypes.Identifier{
-						{
-							Use:    &fhirdatatypes.Identifier_UseCode{Value: fhircodes.IdentifierUseCode_OFFICIAL},
-							System: &fhirdatatypes.Uri{Value: host + "/api/v3/jobs"},
-							Value:  &fhirdatatypes.String{Value: fmt.Sprint(job.ID)},
-						},
-					},
-					Status: &fhirmodelT.Task_StatusCode{Value: fhirStatusCode},
-					Intent: &fhirmodelT.Task_IntentCode{Value: fhirvaluesets.TaskIntentValueSet_ORDER},
-					Input: []*fhirmodelT.Task_Parameter{
-						{
-							Type:  &fhirdatatypes.CodeableConcept{Text: &fhirdatatypes.String{Value: "BULK FHIR Export"}},
-							Value: &fhirmodelT.Task_Parameter_ValueX{Choice: &fhirmodelT.Task_Parameter_ValueX_StringValue{StringValue: &fhirdatatypes.String{Value: "GET " + job.RequestURL}}},
-						},
-					},
-					ExecutionPeriod: &fhirdatatypes.Period{
-						Start: &fhirdatatypes.DateTime{
-							ValueUs:   job.CreatedAt.UTC().UnixNano() / int64(time.Microsecond),
-							Timezone:  time.UTC.String(),
-							Precision: fhirdatatypes.DateTime_SECOND,
-						},
-						End: &fhirdatatypes.DateTime{
-							ValueUs:   job.UpdatedAt.UTC().UnixNano() / int64(time.Microsecond),
-							Timezone:  time.UTC.String(),
-							Precision: fhirdatatypes.DateTime_SECOND,
-						},
-					},
+	return &r4.BundleEntry{
+		Resource: &r4.Task{
+			ResourceType: "Task",
+			Identifier: []r4.Identifier{
+				{
+					Use:    "official",
+					System: host + "/api/v3/jobs",
+					Value:  fmt.Sprint(job.ID),
 				},
+			},
+			Status: r4.TaskStatus(fhirStatusCode),
+			Intent: r4.TaskIntentOrder,
+			Input: []r4.Parameter{
+				{
+					Type: r4.CodeableConcept{
+						Text: "BULK FHIR Export",
+					},
+					Value: "GET " + job.RequestURL,
+				},
+			},
+			ExecutionPeriod: r4.Period{
+				Start: job.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+				End:   job.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 			},
 		},
 	}
 }
 
-func (r FhirResponseWriter) GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
-	var fhirStatus fhircodes.TaskStatusCode_Value
-
+func (r FhirResponseWriter) GetFhirStatusCode(status models.JobStatus) r4.TaskStatus {
 	switch status {
-
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
-		fhirStatus = fhircodes.TaskStatusCode_FAILED
+		return r4.TaskStatusFailed
 	case models.JobStatusPending:
-		fhirStatus = fhircodes.TaskStatusCode_ACCEPTED
+		return r4.TaskStatusAccepted
 	case models.JobStatusInProgress:
-		fhirStatus = fhircodes.TaskStatusCode_IN_PROGRESS
+		return r4.TaskStatusInProgress
 	case models.JobStatusCompleted:
-		fhirStatus = fhircodes.TaskStatusCode_COMPLETED
+		return r4.TaskStatusCompleted
 	case models.JobStatusArchived, models.JobStatusExpired:
-		fhirStatus = fhircodes.TaskStatusCode_COMPLETED // fhir task status does not have an equivalent to `expired` or `archived`
+		return r4.TaskStatusCompleted // fhir task status does not have an equivalent to `expired` or `archived`
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
-		fhirStatus = fhircodes.TaskStatusCode_CANCELLED
+		return r4.TaskStatusCancelled
 	}
-
-	return fhirStatus
+	return ""
 }
 
-func (r FhirResponseWriter) CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
-	errType, diagnostics string) *fhirmodelOO.OperationOutcome {
-
-	return &fhirmodelOO.OperationOutcome{
-		Issue: []*fhirmodelOO.OperationOutcome_Issue{
+func (r FhirResponseWriter) CreateOpOutcome(severity r4.IssueSeverityCode, code r4.IssueTypeCode, errType, diagnostics string) *r4.OperationOutcome {
+	return &r4.OperationOutcome{
+		ResourceType: "OperationOutcome",
+		Issue: []r4.Issue{
 			{
-				Severity:    &fhirmodelOO.OperationOutcome_Issue_SeverityCode{Value: severity},
-				Code:        &fhirmodelOO.OperationOutcome_Issue_CodeType{Value: code},
-				Diagnostics: &fhirdatatypes.String{Value: diagnostics},
-				Details: &fhirdatatypes.CodeableConcept{
+				Severity:    severity,
+				Code:        code,
+				Diagnostics: diagnostics,
+				Details: &r4.CodeableConcept{
 					// Coding is intentionally omitted for v3 to conform with FHIR base profile
-					Text: &fhirdatatypes.String{Value: diagnostics},
+					Text: diagnostics,
 				},
 			},
 		},
 	}
 }
 
-func (r FhirResponseWriter) WriteError(ctx context.Context, outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
-	//Write application/fhir+json header on OperationOutcome responses
-	//https://build.fhir.org/ig/HL7/bulk-data/export.html#response---error-status-1
+func (r FhirResponseWriter) WriteError(ctx context.Context, outcome *r4.OperationOutcome, w http.ResponseWriter, code int) {
 	logger := log.GetCtxLogger(ctx)
 	w.Header().Set(constants.ContentType, constants.FHIRJsonContentType)
 	w.WriteHeader(code)
@@ -181,137 +145,16 @@ func (r FhirResponseWriter) WriteError(ctx context.Context, outcome *fhirmodelOO
 	}
 }
 
-func (r FhirResponseWriter) WriteOperationOutcome(w io.Writer, outcome *fhirmodelOO.OperationOutcome) (int, error) {
-	resource := &fhirmodelCR.ContainedResource{
-		OneofResource: &fhirmodelCR.ContainedResource_OperationOutcome{OperationOutcome: outcome},
-	}
-	outcomeJSON, err := r.marshaller.Marshal(resource)
+func (r FhirResponseWriter) WriteOperationOutcome(w io.Writer, outcome *r4.OperationOutcome) (int, error) {
+	outcomeJSON, err := json.Marshal(outcome)
 	if err != nil {
 		return -1, err
 	}
-
 	return w.Write(outcomeJSON)
 }
 
-func (r FhirResponseWriter) CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodelCS.CapabilityStatement {
-	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
-	statement := &fhirmodelCS.CapabilityStatement{
-		Status: &fhirmodelCS.CapabilityStatement_StatusCode{Value: fhircodes.PublicationStatusCode_ACTIVE},
-		Date: &fhirdatatypes.DateTime{
-			ValueUs:   reldate.UTC().UnixNano() / int64(time.Microsecond),
-			Timezone:  time.UTC.String(),
-			Precision: fhirdatatypes.DateTime_SECOND,
-		},
-		Publisher: &fhirdatatypes.String{Value: "Centers for Medicare & Medicaid Services"},
-		Kind:      &fhirmodelCS.CapabilityStatement_KindCode{Value: fhircodes.CapabilityStatementKindCode_INSTANCE},
-		Instantiates: []*fhirdatatypes.Canonical{
-			{Value: bbServer + "/baseDstu3/metadata/"},
-			{Value: "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
-		},
-		Software: &fhirmodelCS.CapabilityStatement_Software{
-			Name:    &fhirdatatypes.String{Value: "Beneficiary Claims Data API"},
-			Version: &fhirdatatypes.String{Value: relversion},
-			ReleaseDate: &fhirdatatypes.DateTime{
-				ValueUs:   reldate.UTC().UnixNano() / int64(time.Microsecond),
-				Timezone:  time.UTC.String(),
-				Precision: fhirdatatypes.DateTime_SECOND,
-			},
-		},
-		Implementation: &fhirmodelCS.CapabilityStatement_Implementation{
-			Description: &fhirdatatypes.String{Value: "The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their prospectively assigned or assignable beneficiaries."},
-			Url:         &fhirdatatypes.Url{Value: baseurl},
-		},
-		FhirVersion: &fhirmodelCS.CapabilityStatement_FhirVersionCode{Value: fhircodes.FHIRVersionCode_V_3_0_1},
-		Format: []*fhirmodelCS.CapabilityStatement_FormatCode{
-			{Value: constants.JsonContentType},
-			{Value: "application/fhir+json"},
-		},
-		Rest: []*fhirmodelCS.CapabilityStatement_Rest{
-			{
-				Mode: &fhirmodelCS.CapabilityStatement_Rest_ModeCode{Value: fhircodes.RestfulCapabilityModeCode_SERVER},
-				Security: &fhirmodelCS.CapabilityStatement_Rest_Security{
-					Cors: &fhirdatatypes.Boolean{Value: true},
-					Service: []*fhirdatatypes.CodeableConcept{
-						{
-							Coding: []*fhirdatatypes.Coding{
-								{
-									Display: &fhirdatatypes.String{Value: "OAuth"},
-									Code:    &fhirdatatypes.Code{Value: "OAuth"},
-									System:  &fhirdatatypes.Uri{Value: "http://terminology.hl7.org/CodeSystem/restful-security-service"},
-								},
-							},
-							Text: &fhirdatatypes.String{Value: "OAuth"},
-						},
-					},
-					Extension: []*fhirdatatypes.Extension{
-						{
-							Url: &fhirdatatypes.Uri{Value: "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"},
-							Extension: []*fhirdatatypes.Extension{
-								{
-									Url: &fhirdatatypes.Uri{Value: "token"},
-									Value: &fhirdatatypes.Extension_ValueX{
-										Choice: &fhirdatatypes.Extension_ValueX_Uri{
-											Uri: &fhirdatatypes.Uri{Value: baseurl + "/auth/token"},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				Interaction: []*fhirmodelCS.CapabilityStatement_Rest_SystemInteraction{
-					{
-						Code: &fhirmodelCS.CapabilityStatement_Rest_SystemInteraction_CodeType{Value: fhirvaluesets.SystemRestfulInteractionValueSet_BATCH},
-					},
-					{
-						Code: &fhirmodelCS.CapabilityStatement_Rest_SystemInteraction_CodeType{Value: fhirvaluesets.SystemRestfulInteractionValueSet_SEARCH_SYSTEM},
-					},
-				},
-				Operation: []*fhirmodelCS.CapabilityStatement_Rest_Resource_Operation{
-					{
-						Name: &fhirdatatypes.String{Value: "patient-export"},
-						Definition: &fhirdatatypes.Canonical{
-							Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
-						},
-					},
-					{
-						Name: &fhirdatatypes.String{Value: "group-export"},
-						Definition: &fhirdatatypes.Canonical{
-							Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
-						},
-					},
-				},
-			},
-		},
-	}
-	return statement
-}
-func (r FhirResponseWriter) WriteCapabilityStatement(ctx context.Context, statement *fhirmodelCS.CapabilityStatement, w http.ResponseWriter) {
-	resource := &fhirmodelCR.ContainedResource{
-		OneofResource: &fhirmodelCR.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
-	}
-	statementJSON, err := r.marshaller.Marshal(resource)
-	if err != nil {
-		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set(constants.ContentType, constants.JsonContentType)
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(statementJSON)
-	if err != nil {
-		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (r FhirResponseWriter) WriteBundleResponse(bundle *fhirmodelCR.Bundle, w http.ResponseWriter) {
-	resource := &fhirmodelCR.ContainedResource{
-		OneofResource: &fhirmodelCR.ContainedResource_Bundle{Bundle: bundle},
-	}
-	bundleJSON, err := r.marshaller.Marshal(resource)
+func (r FhirResponseWriter) WriteBundleResponse(bundle *r4.Bundle, w http.ResponseWriter) {
+	bundleJSON, err := json.Marshal(bundle)
 	if err != nil {
 		log.API.WithField("resp_status", http.StatusInternalServerError).Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

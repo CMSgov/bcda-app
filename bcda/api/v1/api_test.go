@@ -16,10 +16,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -85,11 +82,11 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 	tests := []struct {
 		name        string
 		jobID       string
-		expFHIRCode fhircodes.IssueTypeCode_Value
+		expFHIRCode stu3.IssueTypeCode
 		expErrCode  string
 	}{
-		{"InvalidJobID", "abcd", fhircodes.IssueTypeCode_STRUCTURE, "could not parse job id"},
-		{"DoesNotExist", "0", fhircodes.IssueTypeCode_NOT_FOUND, "Job not found."},
+		{"InvalidJobID", "abcd", stu3.IssueTypeCodeStructure, "could not parse job id"},
+		{"DoesNotExist", "0", stu3.IssueTypeCodeNotFound, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -109,9 +106,9 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
-			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(t, tt.expFHIRCode, respOO.Issue[0].Code.Value)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
+			assert.Equal(t, stu3.IssueSeverityError, respOO.Issue[0].Severity)
+			assert.Equal(t, tt.expFHIRCode, respOO.Issue[0].Code)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Diagnostics)
 		})
 	}
 }
@@ -298,11 +295,11 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 	tests := []struct {
 		name        string
 		jobID       string
-		expFHIRCode fhircodes.IssueTypeCode_Value
+		expFHIRCode stu3.IssueTypeCode
 		expErrCode  string
 	}{
-		{"InvalidJobID", "abcd", fhircodes.IssueTypeCode_STRUCTURE, "could not parse job id"},
-		{"DoesNotExist", "0", fhircodes.IssueTypeCode_NOT_FOUND, "Job not found."},
+		{"InvalidJobID", "abcd", stu3.IssueTypeCodeStructure, "could not parse job id"},
+		{"DoesNotExist", "0", stu3.IssueTypeCodeNotFound, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -322,9 +319,9 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
-			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(t, tt.expFHIRCode, respOO.Issue[0].Code.Value)
-			assert.Contains(t, respOO.Issue[0].Diagnostics.Value, tt.expErrCode)
+			assert.Equal(t, stu3.IssueSeverityError, respOO.Issue[0].Severity)
+			assert.Equal(t, tt.expFHIRCode, respOO.Issue[0].Code)
+			assert.Contains(t, respOO.Issue[0].Diagnostics, tt.expErrCode)
 		})
 	}
 }
@@ -656,12 +653,10 @@ func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 	assert.Equal(t, time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
 }
 
-func getOperationOutcome(t *testing.T, data []byte) *fhirmodels.OperationOutcome {
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.STU3)
-	assert.NoError(t, err)
-	container, err := unmarshaller.Unmarshal(data)
-	assert.NoError(t, err)
-	return container.(*fhirmodels.ContainedResource).GetOperationOutcome()
+func getOperationOutcome(t *testing.T, data []byte) *stu3.OperationOutcome {
+	var outcome stu3.OperationOutcome
+	assert.NoError(t, json.Unmarshal(data, &outcome))
+	return &outcome
 }
 
 func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *log.StructuredLoggerEntry {

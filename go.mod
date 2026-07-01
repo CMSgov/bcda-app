@@ -12,8 +12,6 @@ require (
 	github.com/go-chi/render v1.0.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
-	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/fhir/go v0.7.4
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/howeyc/fsnotify v0.9.0
@@ -298,7 +296,6 @@ require (
 	github.com/samber/lo v1.44.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.10.0 // indirect
 	github.com/segmentio/kafka-go v0.4.42 // indirect
-	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/shirou/gopsutil/v4 v4.26.2 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -367,7 +364,6 @@ require (
 )
 
 require (
-	bitbucket.org/creachadair/stringset v0.0.10 // indirect
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect

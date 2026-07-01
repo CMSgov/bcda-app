@@ -56,3 +56,10 @@ const GetExistingBenes = "GetExistingBenes"
 const GetNewAndExistingBenes = "GetNewAndExistingBenes"
 
 const DefaultRegion = "us-east-1"
+
+const PublisherName = "Centers for Medicare & Medicaid Services"
+const SoftwareName = "Beneficiary Claims Data API"
+const SoftwareDescription = "The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their prospectively assigned or assignable beneficiaries."
+
+const SmartOAuthURIsExtensionURL = "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"
+const RestfulSecurityServiceSystem = "http://terminology.hl7.org/CodeSystem/restful-security-service"

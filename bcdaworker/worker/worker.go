@@ -17,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -27,7 +28,6 @@ import (
 	"github.com/ccoveille/go-safecast"
 	"github.com/sirupsen/logrus"
 
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 )
@@ -309,10 +309,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			break
 		}
 
-		fileErrMsg, code, err := func() (string, fhircodes.IssueTypeCode_Value, error) {
+		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
 			id, err := strconv.ParseUint(beneID, 10, 64)
 			if err != nil {
-				return fmt.Sprintf("Error failed to convert %s to uint", beneID), fhircodes.IssueTypeCode_EXCEPTION, err
+				return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
 			}
 
 			// NOTE: with adjudicated data sets, we first need to lookup the Patient ID
@@ -323,20 +323,20 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
-				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_NOT_FOUND, err
+				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
 			}
 
 			b, err := bundleFunc(bene)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
-				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
+				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), stu3.IssueTypeCodeNotFound, err
 			}
 			hadData := fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, tmpDir)
 			if hadData {
 				benesWithDataCount++
 			}
 
-			return "", 0, nil
+			return "", stu3.IssueTypeCode(""), nil
 		}()
 
 		if err != nil {
@@ -360,7 +360,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	if failed {
 		if ctx.Err() == context.Canceled {
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_PROCESSING, responseutils.BbErr, "Parent job was cancelled", tmpDir)
+			appendErrorToFile(ctx, fileUUID, stu3.IssueTypeCodeProcessing, responseutils.BbErr, "Parent job was cancelled", tmpDir)
 			return jobKeys, errors.New("Parent job was cancelled")
 		}
 		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
@@ -412,12 +412,12 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 }
 
 func appendErrorToFile(ctx context.Context, fileUUID string,
-	code fhircodes.IssueTypeCode_Value,
+	code stu3.IssueTypeCode,
 	detailsCode, detailsDisplay string, tempDir string) {
 
 	logger := log.GetCtxLogger(ctx)
 	rw := responseutils.NewFhirResponseWriter()
-	oo := rw.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
+	oo := rw.CreateOpOutcome(stu3.IssueSeverityError, code, detailsCode, detailsDisplay)
 
 	fileName := fmt.Sprintf("%s/%s-error.ndjson", tempDir, fileUUID)
 	/* #nosec -- opening file defined by variable */
@@ -457,7 +457,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.
 		if err != nil {
 			logger.Error(err)
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
+			appendErrorToFile(ctx, fileUUID, stu3.IssueTypeCodeException,
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), tmpDir)
 			continue
 		}
@@ -465,7 +465,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		_, err = w.Write(append(entryJSON, '\n'))
 		if err != nil {
 			logger.Error(err)
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
+			appendErrorToFile(ctx, fileUUID, stu3.IssueTypeCodeException,
 				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), tmpDir)
 		}
 	}

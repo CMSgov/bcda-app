@@ -2,20 +2,14 @@ package v2
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
-	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
-	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
-	fhircapabilitystatement "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/capability_statement_go_proto"
-	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
-
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
@@ -24,9 +18,8 @@ import (
 )
 
 type ApiV2 struct {
-	handler    *api.Handler
-	marshaller *jsonformat.Marshaller
-	db         *sql.DB
+	handler *api.Handler
+	db      *sql.DB
 }
 
 func NewApiV2(db *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
@@ -42,13 +35,7 @@ func NewApiV2(db *sql.DB, pool *pgxv5Pool.Pool) *ApiV2 {
 		panic("Failed to configure resource DataTypes")
 	} else {
 		h := api.NewHandler(resources, "/v2/fhir", "v2", db, pool)
-		// Ensure that we write the serialized FHIR resources as a single line.
-		// Needed to comply with the NDJSON format that we are using.
-		marshaller, err := jsonformat.NewMarshaller(false, "", "", fhirversion.R4)
-		if err != nil {
-			log.API.Fatalf("Failed to create marshaller %s", err)
-		}
-		return &ApiV2{marshaller: marshaller, handler: h, db: db}
+		return &ApiV2{handler: h, db: db}
 	}
 }
 
@@ -57,7 +44,7 @@ swagger:route GET /api/v2/Patient/$export bulkDataV2 bulkPatientRequestV2
 
 Start FHIR R4 data export for all supported resource types.
 
-Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+Initiates a job to collect data from the BFD for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 Produces:
 - application/fhir+json
@@ -79,28 +66,30 @@ func (a ApiV2) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-		swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
+swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
 
-	    Start FHIR R4 data export (for the specified group identifier) for all supported resource types
+# Start FHIR R4 data export (for the specified group identifier) for all supported resource types
 
-		Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system are `all` and `runout`.
+Initiates a job to collect data from the BFD for your ACO. The only Group identifier supported by the system are `all` and `runout`.
 
-		The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
+The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
 
-		The `runout` identifier returns claims runouts data.
+The `runout` identifier returns claims runouts data.
 
-		Produces:
-		- application/fhir+json
+Produces:
+- application/fhir+json
 
-		Security:
-			bearer_token:
+Security:
 
-		Responses:
-			202: BulkRequestResponse
-			400: badRequestResponse
-			401: invalidCredentials
-			429: tooManyRequestsResponse
-			500: errorResponse
+	bearer_token:
+
+Responses:
+
+	202: BulkRequestResponse
+	400: badRequestResponse
+	401: invalidCredentials
+	429: tooManyRequestsResponse
+	500: errorResponse
 */
 func (a ApiV2) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	a.handler.BulkGroupRequest(w, r)
@@ -256,94 +245,83 @@ func (a ApiV2) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 
-	statement := &fhircapabilitystatement.CapabilityStatement{
-		Status: &fhircapabilitystatement.CapabilityStatement_StatusCode{Value: fhircodes.PublicationStatusCode_ACTIVE},
-		Date: &fhirdatatypes.DateTime{
-			ValueUs:   dt.UTC().UnixNano() / int64(time.Microsecond),
-			Timezone:  time.UTC.String(),
-			Precision: fhirdatatypes.DateTime_SECOND,
+	statement := &r4.CapabilityStatement{
+		ResourceType: "CapabilityStatement",
+		Status:       r4.PublicationStatusActive,
+		Date:         dt.UTC().Format("2006-01-02T15:04:05Z"),
+		Publisher:    constants.PublisherName,
+		Kind:         r4.CapabilityStatementKindInstance,
+		Instantiates: []string{
+			bbServer + "/v2/fhir/metadata",
+			"http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data",
 		},
-		Publisher: &fhirdatatypes.String{Value: "Centers for Medicare & Medicaid Services"},
-		Kind:      &fhircapabilitystatement.CapabilityStatement_KindCode{Value: fhircodes.CapabilityStatementKindCode_INSTANCE},
-		Instantiates: []*fhirdatatypes.Canonical{
-			{Value: bbServer + "/v2/fhir/metadata"},
-			{Value: "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
+		Software: r4.Software{
+			Name:        constants.SoftwareName,
+			Version:     constants.Version,
+			ReleaseDate: dt.UTC().Format("2006-01-02T15:04:05Z"),
 		},
-		Software: &fhircapabilitystatement.CapabilityStatement_Software{
-			Name:    &fhirdatatypes.String{Value: "Beneficiary Claims Data API"},
-			Version: &fhirdatatypes.String{Value: constants.Version},
-			ReleaseDate: &fhirdatatypes.DateTime{
-				ValueUs:   dt.UTC().UnixNano() / int64(time.Microsecond),
-				Timezone:  time.UTC.String(),
-				Precision: fhirdatatypes.DateTime_SECOND,
-			},
+		Implementation: r4.Implementation{
+			Description: constants.SoftwareDescription,
+			Url:         baseURL,
 		},
-		Implementation: &fhircapabilitystatement.CapabilityStatement_Implementation{
-			Description: &fhirdatatypes.String{Value: "The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their prospectively assigned or assignable beneficiaries."},
-			Url:         &fhirdatatypes.Url{Value: baseURL},
+		FhirVersion: "4.0.1",
+		Format: []string{
+			constants.JsonContentType,
+			constants.FHIRJsonContentType,
 		},
-		FhirVersion: &fhircapabilitystatement.CapabilityStatement_FhirVersionCode{Value: fhircodes.FHIRVersionCode_V_4_0_1},
-		Format: []*fhircapabilitystatement.CapabilityStatement_FormatCode{
-			{Value: "application/json"},
-			{Value: "application/fhir+json"},
-		},
-		Rest: []*fhircapabilitystatement.CapabilityStatement_Rest{
+		Rest: []r4.CapabilityStatementRest{
 			{
-				Mode: &fhircapabilitystatement.CapabilityStatement_Rest_ModeCode{Value: fhircodes.RestfulCapabilityModeCode_SERVER},
-				Security: &fhircapabilitystatement.CapabilityStatement_Rest_Security{
-					Cors: &fhirdatatypes.Boolean{Value: true},
-					Service: []*fhirdatatypes.CodeableConcept{
+				Mode: r4.RestfulCapabilityModeServer,
+				Security: &r4.Security{
+					Cors: true,
+					Service: []r4.CodeableConcept{
 						{
-							Coding: []*fhirdatatypes.Coding{
+							Coding: []r4.Coding{
 								{
-									Display: &fhirdatatypes.String{Value: "OAuth"},
-									Code:    &fhirdatatypes.Code{Value: "OAuth"},
-									System:  &fhirdatatypes.Uri{Value: "http://terminology.hl7.org/CodeSystem/restful-security-service"},
+									Display: "OAuth",
+									Code:    "OAuth",
+									System:  constants.RestfulSecurityServiceSystem,
 								},
 							},
-							Text: &fhirdatatypes.String{Value: "OAuth"},
+							Text: "OAuth",
 						},
 					},
-					Extension: []*fhirdatatypes.Extension{
+					Extension: []r4.Extension{
 						{
-							Url: &fhirdatatypes.Uri{Value: "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"},
-							Extension: []*fhirdatatypes.Extension{
+							Url: constants.SmartOAuthURIsExtensionURL,
+							Extension: []r4.Extension{
 								{
-									Url: &fhirdatatypes.Uri{Value: "token"},
-									Value: &fhirdatatypes.Extension_ValueX{
-										Choice: &fhirdatatypes.Extension_ValueX_Uri{
-											Uri: &fhirdatatypes.Uri{Value: baseURL + "/auth/token"},
-										},
-									},
+									Url:      "token",
+									ValueUri: baseURL + "/auth/token",
 								},
 							},
 						},
 					},
 				},
-				Interaction: []*fhircapabilitystatement.CapabilityStatement_Rest_SystemInteraction{
+				Interaction: []r4.Interaction{
 					{
-						Code: &fhircapabilitystatement.CapabilityStatement_Rest_SystemInteraction_CodeType{Value: fhirvaluesets.SystemRestfulInteractionValueSet_BATCH},
+						Code: r4.SystemRestfulInteractionBatch,
 					},
 					{
-						Code: &fhircapabilitystatement.CapabilityStatement_Rest_SystemInteraction_CodeType{Value: fhirvaluesets.SystemRestfulInteractionValueSet_SEARCH_SYSTEM},
+						Code: r4.SystemRestfulInteractionSearchSystem,
 					},
 				},
-				Resource: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource{
+				Resource: []r4.RestResource{
 					{
-						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_PATIENT},
-						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
+						Type: r4.ResourceTypeCodePatient,
+						Operation: []r4.RestOperation{
 							{
-								Name:       &fhirdatatypes.String{Value: "patient-export"},
-								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+								Name:       "patient-export",
+								Definition: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
 							},
 						},
 					},
 					{
-						Type: &fhircapabilitystatement.CapabilityStatement_Rest_Resource_TypeCode{Value: fhircodes.ResourceTypeCode_GROUP},
-						Operation: []*fhircapabilitystatement.CapabilityStatement_Rest_Resource_Operation{
+						Type: r4.ResourceTypeCodeGroup,
+						Operation: []r4.RestOperation{
 							{
-								Name:       &fhirdatatypes.String{Value: "group-export"},
-								Definition: &fhirdatatypes.Canonical{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+								Name:       "group-export",
+								Definition: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
 							},
 						},
 					},
@@ -352,10 +330,7 @@ func (a ApiV2) Metadata(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	resource := &fhirresources.ContainedResource{
-		OneofResource: &fhirresources.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
-	}
-	b, err := a.marshaller.Marshal(resource)
+	b, err := json.Marshal(statement)
 	if err != nil {
 		log.API.WithField("resp_status", http.StatusInternalServerError).Errorf("Failed to marshal Capability Statement %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
