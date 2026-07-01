@@ -38,7 +38,8 @@ data "aws_iam_policy_document" "attribution-import_bucket_upload" {
       "s3:ListMultipartUploadParts"
     ]
     resources = [
-      "${module.attribution-import_file_bucket.arn}/bfdeft01/bcda/in/${var.env}/*"
+      "${module.attribution-import_file_bucket.arn}/bfdeft01/bcda/in/*",
+      "${module.attribution-import_file_bucket.arn}/bfdeft01/bcda/in/test/*"
     ]
   }
   statement {
