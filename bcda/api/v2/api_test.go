@@ -30,14 +30,10 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
-	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
-	fhiroo "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/operation_outcome_go_proto"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -135,11 +131,11 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 	tests := []struct {
 		name        string
 		jobID       string
-		expFHIRCode fhircodes.IssueTypeCode_Value
+		expFHIRCode r4.IssueTypeCode
 		expErrCode  string
 	}{
-		{"InvalidJobID", "abcd", fhircodes.IssueTypeCode_STRUCTURE, "could not parse job id"},
-		{"DoesNotExist", "0", fhircodes.IssueTypeCode_NOT_FOUND, "Job not found."},
+		{"InvalidJobID", "abcd", r4.IssueTypeCodeStructure, "could not parse job id"},
+		{"DoesNotExist", "0", r4.IssueTypeCodeNotFound, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -159,9 +155,9 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			respOO := getOperationOutcome(s.T(), rr.Body.Bytes())
 
-			assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(s.T(), tt.expFHIRCode, respOO.Issue[0].Code.Value)
-			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
+			assert.Equal(s.T(), r4.IssueSeverityError, respOO.Issue[0].Severity)
+			assert.Equal(s.T(), tt.expFHIRCode, respOO.Issue[0].Code)
+			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics)
 		})
 	}
 }
@@ -457,11 +453,11 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 	tests := []struct {
 		name        string
 		jobID       string
-		expFHIRCode fhircodes.IssueTypeCode_Value
+		expFHIRCode r4.IssueTypeCode
 		expErrCode  string
 	}{
-		{"InvalidJobID", "abcd", fhircodes.IssueTypeCode_STRUCTURE, "could not parse job id"},
-		{"DoesNotExist", "0", fhircodes.IssueTypeCode_NOT_FOUND, "Job not found."},
+		{"InvalidJobID", "abcd", r4.IssueTypeCodeStructure, "could not parse job id"},
+		{"DoesNotExist", "0", r4.IssueTypeCodeNotFound, "Job not found."},
 	}
 
 	for _, tt := range tests {
@@ -480,9 +476,9 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 			respOO := getOperationOutcome(s.T(), rr.Body.Bytes())
 
-			assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-			assert.Equal(s.T(), tt.expFHIRCode, respOO.Issue[0].Code.Value)
-			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics.Value)
+			assert.Equal(s.T(), r4.IssueSeverityError, respOO.Issue[0].Severity)
+			assert.Equal(s.T(), tt.expFHIRCode, respOO.Issue[0].Code)
+			assert.Equal(s.T(), tt.expErrCode, respOO.Issue[0].Diagnostics)
 		})
 	}
 }
@@ -529,9 +525,6 @@ func (s *APITestSuite) TestMetadataResponse() {
 	ts := httptest.NewServer(http.HandlerFunc(s.apiV2.Metadata))
 	defer ts.Close()
 
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
-	assert.NoError(s.T(), err)
-
 	res, err := http.Get(ts.URL)
 	assert.NoError(s.T(), err)
 
@@ -541,32 +534,31 @@ func (s *APITestSuite) TestMetadataResponse() {
 	resp, err := io.ReadAll(res.Body)
 	assert.NoError(s.T(), err)
 
-	resource, err := unmarshaller.Unmarshal(resp)
-	assert.NoError(s.T(), err)
-	cs := resource.(*fhirresources.ContainedResource).GetCapabilityStatement()
+	var cs r4.CapabilityStatement
+	assert.NoError(s.T(), json.Unmarshal(resp, &cs))
 
 	// Expecting an R4 response so we'll evaluate some fields to reflect that
-	assert.Equal(s.T(), fhircodes.FHIRVersionCode_V_4_0_1, cs.FhirVersion.Value)
+	assert.Equal(s.T(), "4.0.1", cs.FhirVersion)
 	assert.Equal(s.T(), 1, len(cs.Rest))
 	assert.Equal(s.T(), 2, len(cs.Rest[0].Resource))
 	assert.Len(s.T(), cs.Instantiates, 2)
-	assert.Contains(s.T(), cs.Instantiates[0].Value, "/v2/fhir/metadata")
+	assert.Contains(s.T(), cs.Instantiates[0], "/v2/fhir/metadata")
 	resourceData := []struct {
-		rt           fhircodes.ResourceTypeCode_Value
+		rt           r4.ResourceTypeCode
 		opName       string
 		opDefinition string
 	}{
-		{fhircodes.ResourceTypeCode_PATIENT, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
-		{fhircodes.ResourceTypeCode_GROUP, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+		{r4.ResourceTypeCodePatient, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+		{r4.ResourceTypeCodeGroup, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 	}
 
 	for _, rd := range resourceData {
 		for _, r := range cs.Rest[0].Resource {
-			if r.Type.Value == rd.rt {
+			if r.Type == rd.rt {
 				assert.NotNil(s.T(), r)
 				assert.Equal(s.T(), 1, len(r.Operation))
-				assert.Equal(s.T(), rd.opName, r.Operation[0].Name.Value)
-				assert.Equal(s.T(), rd.opDefinition, r.Operation[0].Definition.Value)
+				assert.Equal(s.T(), rd.opName, r.Operation[0].Name)
+				assert.Equal(s.T(), rd.opDefinition, r.Operation[0].Definition)
 				break
 			}
 		}
@@ -574,13 +566,12 @@ func (s *APITestSuite) TestMetadataResponse() {
 
 	extensions := cs.Rest[0].Security.Extension
 	assert.Len(s.T(), extensions, 1)
-	assert.Equal(s.T(), "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", extensions[0].Url.Value)
+	assert.Equal(s.T(), "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", extensions[0].Url)
 
 	subExtensions := extensions[0].Extension
 	assert.Len(s.T(), subExtensions, 1)
-	assert.Equal(s.T(), "token", subExtensions[0].Url.Value)
-	assert.Equal(s.T(), ts.URL+"/auth/token", subExtensions[0].GetValue().GetUri().Value)
-
+	assert.Equal(s.T(), "token", subExtensions[0].Url)
+	assert.Equal(s.T(), ts.URL+"/auth/token", subExtensions[0].ValueUri)
 }
 
 func (s *APITestSuite) TestResourceTypes() {
@@ -728,12 +719,10 @@ func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 	assert.WithinDuration(t, expectedTime, expiryTime, time.Second)
 }
 
-func getOperationOutcome(t *testing.T, data []byte) *fhiroo.OperationOutcome {
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", fhirversion.R4)
-	assert.NoError(t, err)
-	container, err := unmarshaller.Unmarshal(data)
-	assert.NoError(t, err)
-	return container.(*fhirresources.ContainedResource).GetOperationOutcome()
+func getOperationOutcome(t *testing.T, data []byte) *r4.OperationOutcome {
+	var outcome r4.OperationOutcome
+	assert.NoError(t, json.Unmarshal(data, &outcome))
+	return &outcome
 }
 
 func MakeTestStructuredLoggerEntry(logFields logrus.Fields) *log.StructuredLoggerEntry {
