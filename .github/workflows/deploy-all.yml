@@ -147,8 +147,16 @@ jobs:
       env: ${{ inputs.env || 'dev' }}
     secrets: inherit
 
-  deploy:
+  sync_config:
     needs: [verify_images_exist]
+    uses: ./.github/workflows/sync-config.yml
+    with:
+      ref: ${{ inputs.ref }}
+      env: ${{ inputs.env || 'dev' }}
+    secrets: inherit
+
+  deploy:
+    needs: [verify_images_exist, sync_config]
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
