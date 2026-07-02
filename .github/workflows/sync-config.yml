@@ -49,7 +49,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Get AWS params
-        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        uses: cmsgov/cdap/actions/aws-params-env-action@6ded520857376f46bb317dca898e5df6a9ecc93b
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
