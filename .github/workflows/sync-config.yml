@@ -60,6 +60,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           ref: ${{ inputs.ref || 'main' }}
+      - name: Install yamllint
+        run: |
+          sudo dnf install -y yamllint
       - name: Verify yml file
         run: |
           yamllint ./conf/configs/${{ env.RELEASE_ENV }}.yml
