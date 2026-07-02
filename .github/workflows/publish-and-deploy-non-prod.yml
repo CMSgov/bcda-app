@@ -4,7 +4,7 @@ name: Publish and Deploy Non-Prod
 
 on:
   schedule:
-    - cron: 0 10 * * 1-5 # every workday at 10am UTC (6am EST)
+    - cron: 0 9 * * 1-5 # every workday at 9am UTC
   workflow_dispatch:
     inputs:
       ref:

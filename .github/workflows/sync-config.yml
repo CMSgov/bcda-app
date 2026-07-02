@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Ref of bcda-app repo to apply migrations from (e.g. r123, main)'
+        description: 'Ref of bcda-app repo to sync config file from (e.g. r123, main)'
         required: true
         type: string
         default: main
@@ -22,7 +22,7 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'Ref of bcda-app repo to apply migrations from (e.g. r123)'
+        description: 'Ref of bcda-app repo to sync config file from (e.g. r123)'
         required: true
         type: string
         default: main
@@ -44,9 +44,6 @@ jobs:
     environment: ${{ inputs.env || 'dev' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:    
-      - name: Verify yml file
-        run: |
-          yamllint ./conf/configs/${{ env.RELEASE_ENV }}.yml
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -63,6 +60,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           ref: ${{ inputs.ref || 'main' }}
+      - name: Verify yml file
+        run: |
+          yamllint ./conf/configs/${{ env.RELEASE_ENV }}.yml
       - name: Sync to API s3 bucket
         run: |
           aws s3 cp ./conf/configs/${{ env.RELEASE_ENV }}.yml s3://$CONFIG_BUCKET/api/config.yml --region ${{ vars.AWS_REGION }}
