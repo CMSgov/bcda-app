@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/optout"
 )
@@ -35,12 +34,6 @@ func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string
 		optOut, _ := optout.IsOptOut(*obj.Key)
 		if optOut {
 			processor.Handler.Infof("Skipping opt-out file: %s/%s", bucket, *obj.Key)
-			continue
-		}
-
-		// ignore files for different environments, and don't add it to the skipped count
-		if !optout.IsForCurrentEnv(*obj.Key) {
-			processor.Handler.Infof("Skipping file for different environment: %s/%s", bucket, *obj.Key)
 			continue
 		}
 
@@ -191,10 +184,6 @@ func (processor *S3FileProcessor) CleanUpCSV(ctx context.Context, file csvFile) 
 }
 
 func (processor *S3FileProcessor) LoadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
-	if !optout.IsForCurrentEnv(filepath) {
-		processor.Handler.Infof("Skipping file for different environment: %s", filepath)
-		return nil, nil, &ers.AttributionFileMismatchedEnv{}
-	}
 	byte_arr, err := processor.Handler.OpenFileBytes(ctx, filepath)
 	if err != nil {
 		processor.Handler.Errorf("Failed to download %s\n", filepath)

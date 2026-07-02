@@ -74,12 +74,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 
 	data, _, err := importer.FileProcessor.LoadCSV(ctx, filepath)
 	if err != nil {
-		if errors.Is(err, &ers.AttributionFileMismatchedEnv{}) {
-			importer.Logger.WithFields(logrus.Fields{"file": filepath}).Info(err)
-			return nil
-		} else {
-			return err
-		}
+		return err
 	}
 
 	file.data = data

@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pkg/errors"
 )
 
@@ -29,11 +27,6 @@ func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
 	isOptOut, matches := IsOptOut(filename)
 	if !isOptOut {
 		return metadata, fmt.Errorf("invalid filename for file: %s", filename)
-	}
-
-	// ignore files for different environments
-	if !IsForCurrentEnv(filename) {
-		return metadata, fmt.Errorf("skipping file for different environment: %s", filename)
 	}
 
 	filenameDate := matches[3]
@@ -100,17 +93,4 @@ func ConvertDt(s string) (time.Time, error) {
 		return t, err
 	}
 	return t, nil
-}
-
-// Checks if the given S3 filePath is for the current environment; this is necessary for lower environments
-// since they share a single BFD S3 bucket and will upload files under a subdirectory for the given env.
-func IsForCurrentEnv(filePath string) bool {
-	env := conf.GetEnv("ENV")
-
-	// We do not expect or require subdirectories for local dev or production; always return true.
-	if env != "dev" && env != "test" {
-		return true
-	}
-
-	return strings.Contains(filePath, fmt.Sprintf("/%s/", env))
 }

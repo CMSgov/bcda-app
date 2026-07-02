@@ -54,21 +54,6 @@ func (s *OptOutTestSuite) TestParseMetadata_CorrectEnv() {
 	assert.Nil(err)
 }
 
-func (s *OptOutTestSuite) TestParseMetadata_DifferentEnv() {
-	assert := assert.New(s.T())
-
-	originalValue := conf.GetEnv("ENV")
-	if err := conf.SetEnv(s.T(), "ENV", "dev"); err != nil {
-		assert.Failf("Error %s env value %s to %s\n", err.Error(), "ENV", "dev")
-	}
-	defer func() {
-		conf.SetEnv(s.T(), "ENV", originalValue)
-	}()
-
-	_, err := ParseMetadata("blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
-	assert.EqualError(err, "skipping file for different environment: blah/not-someenv/T#EFT.ON.ACO.NGD1800.DPRF.D191220.T2109420")
-}
-
 func (s *OptOutTestSuite) TestParseMetadata_InvalidData() {
 	assert := assert.New(s.T())
 
