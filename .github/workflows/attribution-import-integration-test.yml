@@ -53,6 +53,11 @@ jobs:
         with:
           params: |
             BUCKET=/bcda/test/attribution-import/nonsensitive/file_bucket_name
+      - name: Assume attribution file delivery role
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/bcda-test-attribution-import-delivery
       - name: Upload test file to the attribution-import file bucket to trigger lambda function via SNS message
         run: |
           year=$(date +'%y')
@@ -89,16 +94,16 @@ jobs:
           zip -jr $fname $new_dir
 
           aws s3 cp --no-progress $fname \
-            s3://$BUCKET/bfdeft01/bcda/in/test/$fname
+            s3://$BUCKET/$fname
 
           aws s3 cp --no-progress ${tcocmdcsvname} \
-            s3://$BUCKET/bfdeft01/bcda/in/test/${tcocmdcsvname}
+            s3://$BUCKET/${tcocmdcsvname}
 
           aws s3 cp --no-progress ${guidecsvname} \
-            s3://$BUCKET/bfdeft01/bcda/in/test/${guidecsvname}
+            s3://$BUCKET/${guidecsvname}
 
           aws s3 cp --no-progress ${accesscsvname} \
-            s3://$BUCKET/bfdeft01/bcda/in/test/${accesscsvname}
+            s3://$BUCKET/${accesscsvname}
             
       - name: Wait for lambda processing
         run: sleep 60
