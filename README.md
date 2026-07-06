@@ -298,8 +298,8 @@ The end result will include average time spent (nanoseconds) per operation, aver
 ### Environment variables
 
 The various BCDA services (api, worker, ssas) require multiple environment variables and config files.
-1. Environment variables are injected directly into the container environment. For the local docker container, this is done via docker-compose. Deployed Fargate environments may require a larger superset of environment variables, which are managed in param store and listed explicitly in bcda-ops.
-2. Configuration files (api yaml, certificates, etc.) are stored in S3 and synced to each container via its entrypoint script. For the local environment, this setup is replicated via localstack.
+1. Environment variables are injected directly into the container environment. For the local docker container, this is done via docker-compose. Deployed Fargate environments may require a larger superset of environment variables, which are managed via SOPS (which handles setting things in param store) and are listed explicitly in bcda-ops per service.
+2. Configuration files (api yaml, certificates, etc.) are stored in S3 and synced to each container via its entrypoint script. These config files are synced to s3 on each deploy via the sync-config workflow.  You can also run this manually if need be.  If you do it run it manually know that it does not rotate instances by itself so if you need immediate changes you will need to do that manually.  For the local dev environment we use the decrypted shared_files/decrypted/api.yml file.
 
 While both environment variables and config files are managed in shared_files and injected into docker containers, they can be configured for running the `bcda` and `bcdaworker` apps outside of docker by setting the following environment variables. The full list of required variables may be referenced in the docker-compose file for the local environment, and in bcda-ops for deployed environments.
 

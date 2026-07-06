@@ -1,0 +1,74 @@
+# Sync our config.yml file to an env (upload to s3 bucket for api and worker)
+name: Sync Config
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref of bcda-app repo to sync config file from (e.g. r123, main)'
+        required: true
+        type: string
+        default: main
+      env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - test
+          - sandbox
+          - prod
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Ref of bcda-app repo to sync config file from (e.g. r123)'
+        required: true
+        type: string
+        default: main
+      env:
+        description: 'Environment you want to deploy to (dev, test, sandbox, prod)'
+        required: true
+        type: string
+        default: dev
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RELEASE_ENV: ${{ inputs.env || 'dev' }}
+
+jobs:
+  sync_config:
+    environment: ${{ inputs.env || 'dev' }}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
+    steps:    
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Get AWS params
+        uses: cmsgov/cdap/actions/aws-params-env-action@6ded520857376f46bb317dca898e5df6a9ecc93b
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            GITHUB_TOKEN=/ci/github/token
+            CONFIG_BUCKET=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/CONFIG_BUCKET
+      - name: Checkout bcda-app
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+        with:
+          ref: ${{ inputs.ref || 'main' }}
+      - name: Install yamllint
+        run: |
+          sudo dnf install -y yamllint
+      - name: Verify yml file
+        run: |
+          yamllint ./conf/configs/${{ env.RELEASE_ENV }}.yml
+      - name: Sync to API s3 bucket
+        run: |
+          aws s3 cp ./conf/configs/${{ env.RELEASE_ENV }}.yml s3://$CONFIG_BUCKET/api/config.yml --region ${{ vars.AWS_REGION }}
+      - name: Sync to Worker s3 bucket
+        run: |
+          aws s3 cp ./conf/configs/${{ env.RELEASE_ENV }}.yml s3://$CONFIG_BUCKET/worker/config.yml --region ${{ vars.AWS_REGION }} 

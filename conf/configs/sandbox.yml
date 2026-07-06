@@ -82,6 +82,16 @@ aco_config:
         file_performance_year: 6
         file_date: 7
         metadata_matches: 8
+    - model: 'ACCESS'
+      name_pattern: '^ACCES\d{5}$' # only one 's' due to character limits
+      data:
+      attribution_file:
+        file_type: 'csv'
+        name_pattern: '(P|T)\.(ACCESS)\.(ACCES\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
+        model_identifier: 'ACCESS'
+        file_performance_year: 5
+        file_date: 6
+        metadata_matches: 7
 rate_limit_config:
   all: false
   acos: ['SBXBM0002']
