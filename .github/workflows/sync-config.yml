@@ -61,8 +61,7 @@ jobs:
         with:
           ref: ${{ inputs.ref || 'main' }}
       - name: Install yq to lint yaml file
-        run: |
-          sudo dnf install -y yq
+        uses: cmsgov/cdap/actions/setup-yq@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
       - name: Verify yml file
         run: |
           yq conf/configs/${{ env.RELEASE_ENV }}.yml
