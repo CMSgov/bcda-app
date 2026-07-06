@@ -60,12 +60,11 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
           ref: ${{ inputs.ref || 'main' }}
-      - name: Install yamllint
-        run: |
-          sudo dnf install -y yamllint
+      - name: Install yq to lint yaml file
+        uses: cmsgov/cdap/actions/setup-yq@f4c14d47cc20e7f6de9112d7155af1213c9bca5a
       - name: Verify yml file
         run: |
-          yamllint ./conf/configs/${{ env.RELEASE_ENV }}.yml
+          yq conf/configs/${{ env.RELEASE_ENV }}.yml
       - name: Sync to API s3 bucket
         run: |
           aws s3 cp ./conf/configs/${{ env.RELEASE_ENV }}.yml s3://$CONFIG_BUCKET/api/config.yml --region ${{ vars.AWS_REGION }}
