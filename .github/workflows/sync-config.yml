@@ -62,6 +62,8 @@ jobs:
           ref: ${{ inputs.ref || 'main' }}
       - name: Install yamllint
         run: |
+          sudo dnf install epel-release -y
+          sudo dnf clean all && sudo dnf makecache
           sudo dnf install yamllint -y
       - name: Verify yml file
         run: |
