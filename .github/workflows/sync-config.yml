@@ -65,10 +65,6 @@ jobs:
           sudo dnf install -y yq
       - name: Verify yml file
         run: |
-          ls -als
-          ls -als conf
-          ls -als conf/configs
-          echo conf/configs/${{ env.RELEASE_ENV }}.yml
           yq conf/configs/${{ env.RELEASE_ENV }}.yml
       - name: Sync to API s3 bucket
         run: |
