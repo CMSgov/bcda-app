@@ -62,7 +62,7 @@ jobs:
           ref: ${{ inputs.ref || 'main' }}
       - name: Install yamllint
         run: |
-          sudo dnf install -y yamllint
+          sudo dnf install yamllint -y
       - name: Verify yml file
         run: |
           yamllint ./conf/configs/${{ env.RELEASE_ENV }}.yml
