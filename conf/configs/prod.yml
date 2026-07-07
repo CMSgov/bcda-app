@@ -147,7 +147,7 @@ v3_enabled_acos:
   - 'D0324'
   - 'D0347'
 v1_v2_deny_regexes:
-  - 'IOTA\d{3}'
+  - '^IOTA\d{3}'
   - '^ACCES\d{5}$'
   - '^GUIDE-\d{5}$'
 v3_no_partial_claims_models:
