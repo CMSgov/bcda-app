@@ -81,7 +81,7 @@ aco_config:
         file_performance_year: 5
         file_date: 6
         metadata_matches: 7
-    - model: 'IOTA' 
+    - model: 'IOTA'
       name_pattern: '^IOTA\d{3}$'
       data:
         - 'adjudicated'
@@ -92,6 +92,7 @@ rate_limit_config:
   acos: []
 v3_enabled_acos: []
 v1_v2_deny_regexes:
+  - '^IOTA\d{3}'
   - '^ACCES\d{5}$'
   - '^GUIDE-\d{5}$'
 v3_no_partial_claims_models:
