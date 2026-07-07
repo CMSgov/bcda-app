@@ -90,8 +90,8 @@ jobs:
           mv T.BCD.A0001.ZC0Y18.D181120.T1000011 $new_dir/T.BCD.A0001.ZC0Y${year}.D${date}.T${time}1
           zip -jr $fname $new_dir
 
-          aws s3 cp --no-progress $fname \
-            s3://$BUCKET/$fname
+          aws s3 cp --no-progress ${fname} \
+            s3://$BUCKET/${fname}
 
           aws s3 cp --no-progress ${tcocmdcsvname} \
             s3://$BUCKET/${tcocmdcsvname}
