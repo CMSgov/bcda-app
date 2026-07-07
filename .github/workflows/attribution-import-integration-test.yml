@@ -31,6 +31,7 @@ jobs:
       deploy_env: test
 
   trigger:
+    environment: 'test'
     permissions:
       contents: read
       id-token: write
