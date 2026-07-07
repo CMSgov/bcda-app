@@ -153,6 +153,7 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       env: ${{ inputs.env || 'dev' }}
+    secrets: inherit
 
   deploy:
     needs: [verify_images_exist, sync_config]
