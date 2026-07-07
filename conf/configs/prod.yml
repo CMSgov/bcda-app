@@ -80,6 +80,19 @@ aco_config:
         file_performance_year: 6
         file_date: 7
         metadata_matches: 8
+    # ACCESS (Advancing Chronic Care with Effective, Scalable Solutions) Model
+    - model: 'ACCESS'
+      name_pattern: '^ACCES\d{5}$' # only one 's' due to character limits
+      lookback_period: 3
+      data:
+        - 'adjudicated'
+      attribution_file:
+        file_type: 'csv'
+        name_pattern: '(P|T)\.(ACCESS)\.(ACCES\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
+        model_identifier: 'ACCESS'
+        file_performance_year: 5
+        file_date: 6
+        metadata_matches: 7
     # Increasing Organ Transplant Access (IOTA) Model
     - model: 'IOTA' # Pending, managed via 4i
       name_pattern: '^IOTA\d{3}$'
@@ -133,6 +146,9 @@ v3_enabled_acos:
   - 'D0315'
   - 'D0324'
   - 'D0347'
-v1_v2_deny_regexes: ['IOTA\d{3}']
+v1_v2_deny_regexes:
+  - 'IOTA\d{3}'
+  - '^ACCES\d{5}$'
+  - '^GUIDE-\d{5}$'
 v3_no_partial_claims_models:
   - 'GUIDE'
