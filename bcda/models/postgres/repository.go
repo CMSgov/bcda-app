@@ -269,6 +269,8 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 		sb.Where(sb.NotIn("mbi", ignored...))
 	}
 
+	sb.OrderBy("blue_button_id ASC NULLS LAST")
+
 	query, args := sb.Build()
 	rows, err := r.QueryContext(ctx, query, args...)
 
