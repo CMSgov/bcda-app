@@ -62,6 +62,7 @@ aco_config:
     - model: 'GUIDE'
       name_pattern: '^GUIDE-\d{5}$'
       data:
+        - 'adjudicated'
       attribution_file:
         file_type: 'csv'
         name_pattern: '(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
@@ -71,7 +72,9 @@ aco_config:
         metadata_matches: 8
     - model: 'ACCESS'
       name_pattern: '^ACCES\d{5}$' # only one 's' due to character limits
+      lookback_period: 3
       data:
+        - 'adjudicated'
       attribution_file:
         file_type: 'csv'
         name_pattern: '(P|T)\.(ACCESS)\.(ACCES\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
@@ -79,7 +82,7 @@ aco_config:
         file_performance_year: 5
         file_date: 6
         metadata_matches: 7
-    - model: 'IOTA' 
+    - model: 'IOTA'
       name_pattern: '^IOTA\d{3}$'
       data:
         - 'adjudicated'
@@ -89,6 +92,8 @@ rate_limit_config:
   all: false
   acos: []
 v3_enabled_acos: []
-v1_v2_deny_regexes: []
+v1_v2_deny_regexes:
+  - '^ACCES\d{5}$'
+  - '^GUIDE-\d{5}$'
 v3_no_partial_claims_models:
   - 'GUIDE'
