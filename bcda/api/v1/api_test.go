@@ -372,15 +372,14 @@ func (s *APITestSuite) TestServeData() {
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", wd+"/shared_files/gzip_feature_test/")
 
 	// set up dir named "1" to simulate job id 1, then copy test ndjson files into it
-	err = os.MkdirAll(conf.GetEnv("FHIR_PAYLOAD_DIR")+"/1", 0755)
-	if err != nil {
-		s.T().FailNow()
-	}
-	srcFS := os.DirFS(conf.GetEnv("FHIR_PAYLOAD_DIR"))
-	err = os.CopyFS(conf.GetEnv("FHIR_PAYLOAD_DIR")+"/1", srcFS)
-	if err != nil {
-		fmt.Printf("Error copying directory: %v\n", err)
-		return
+	jobDir := conf.GetEnv("FHIR_PAYLOAD_DIR") + "/1"
+	s.Require().NoError(os.MkdirAll(jobDir, 0755))
+	s.T().Cleanup(func() { os.RemoveAll(jobDir) })
+	fixtures := []string{"test_gzip_encoded.ndjson", "test_no_encoding.ndjson", "single_byte_file.bin", "corrupt_gz_file.ndjson"}
+	for _, name := range fixtures {
+		b, err := os.ReadFile(conf.GetEnv("FHIR_PAYLOAD_DIR") + "/" + name)
+		s.Require().NoError(err)
+		s.Require().NoError(os.WriteFile(jobDir+"/"+name, b, 0600))
 	}
 
 	defer func() {
