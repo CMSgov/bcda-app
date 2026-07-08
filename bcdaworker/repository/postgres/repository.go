@@ -84,6 +84,17 @@ func (r *Repository) GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*mode
 	return &bene, nil
 }
 
+func (r *Repository) UpdateCCLFBeneficiaryBlueButtonID(ctx context.Context, id uint, blueButtonID string) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("cclf_beneficiaries")
+	ub.Set(ub.Assign("blue_button_id", blueButtonID))
+	ub.SetMore(ub.Assign("updated_at", sqlbuilder.Raw("NOW()")))
+	ub.Where(ub.Equal("id", id))
+
+	query, args := ub.Build()
+	_, err := r.ExecContext(ctx, query, args...)
+	return err
+}
+
 func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("id", "aco_id", "request_url", "status", "transaction_time", "job_count", "created_at", "updated_at", "benes_attributed_to_aco")
