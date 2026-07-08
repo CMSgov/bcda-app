@@ -89,7 +89,7 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 
 		return nil, errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database"), false
 	} else if goerrors.Is(err, worker.ErrQueJobProcessed) {
-		cfg.Logger.Warnf("QJob %d already processed for parent Job: %d. Checking completion status and removing job from queue.", cfg.Args.ID, cfg.JobID)
+		cfg.Logger.Warnf("QJob %d already processed for parent Job: %d. Checking completion status and removing job from queue.", cfg.QJobID, cfg.JobID)
 
 		u, err := safecast.ToUint(cfg.JobID)
 		if err != nil {
