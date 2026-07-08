@@ -1,5 +1,5 @@
 locals {
-  assume_role_arns = split(",", module.platform.ssm.attribution-import.delivery_role_arns.value)
+  assume_role_arns = compact(split(",", module.platform.ssm.attribution-import.delivery_role_arns.value))
 }
 
 data "aws_iam_role" "admin" {
