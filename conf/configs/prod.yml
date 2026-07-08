@@ -73,6 +73,7 @@ aco_config:
     - model: 'GUIDE' # Pending, managed by IHP
       name_pattern: '^GUIDE-\d{5}$'
       data:
+        - 'adjudicated'
       attribution_file:
         file_type: 'csv'
         name_pattern: '(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
