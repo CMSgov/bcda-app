@@ -120,14 +120,6 @@ func (e *AttributionFileAlreadyExists) Error() string {
 	return fmt.Sprintf("Attribution csv file %s already exists, skipping import...", e.Filename)
 }
 
-type AttributionFileMismatchedEnv struct {
-	Msg string
-}
-
-func (e *AttributionFileMismatchedEnv) Error() string {
-	return "Skipping import; env does not match path."
-}
-
 type InvalidACOConfigError struct {
 	CMSID string
 }

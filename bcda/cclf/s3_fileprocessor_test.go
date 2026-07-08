@@ -2,7 +2,6 @@ package cclf
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
@@ -344,22 +343,3 @@ func TestS3ProcessorTestSuite(t *testing.T) {
 // 		})
 // 	}
 // }
-
-func (s *S3ProcessorTestSuite) TestLoadCSV_InvalidPath() {
-}
-
-func (s *S3ProcessorTestSuite) TestLoadCSV_SkipOtherEnvs() {
-	ctx := context.Background()
-	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "dev"}})
-	defer cleanupEnvVars()
-
-	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
-
-	bucketName := uuid.NewString()
-	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
-	// defer cleanup()
-	_, _, err := s.csvProcessor.LoadCSV(ctx, filepath.Join(bucketName, path))
-	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "Skipping import")
-
-}
