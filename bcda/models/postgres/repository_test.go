@@ -301,7 +301,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 	}{
 		{
 			"NoIgnoreMBIs",
-			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi)`,
+			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi) ORDER BY blue_button_id ASC NULLS LAST`,
 			nil,
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
@@ -313,7 +313,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"IgnoredMBIs",
-			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi) AND mbi NOT IN ($2, $3)`,
+			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi) AND mbi NOT IN ($2, $3) ORDER BY blue_button_id ASC NULLS LAST`,
 			[]string{"123", "456"},
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
@@ -322,7 +322,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi)`,
+			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi) ORDER BY blue_button_id ASC NULLS LAST`,
 			nil,
 			nil,
 			fmt.Errorf(constants.SQLErr),
