@@ -275,18 +275,18 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 
 	logger := log.GetCtxLogger(r.Context())
 
-	// Check file exists
+	// Check job dir exists
 	rootPath := filepath.Join(dataDir, jobID)
 	rootDir, err := os.OpenRoot(rootPath)
 	if err != nil {
-		logger.WithField("resp_status", http.StatusNotFound).Errorf("file not found: %s", err)
+		logger.WithField("resp_status", http.StatusNotFound).Errorf("job dir not found: %s", err)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
+	// Check file exists
 	defer rootDir.Close()
 	filePath := filepath.Join(rootPath, fileName)
-
 	if _, err := rootDir.Stat(fileName); errors.Is(err, os.ErrNotExist) {
 		logger.WithField("resp_status", http.StatusNotFound).Errorf("file not found: %s", err)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
