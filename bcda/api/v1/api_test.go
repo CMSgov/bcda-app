@@ -371,6 +371,17 @@ func (s *APITestSuite) TestServeData() {
 	wd, _ := os.Getwd()
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", wd+"/shared_files/gzip_feature_test/")
 
+	// set up dir named "1" to simulate job id 1, then copy test ndjson files into it
+	jobDir := conf.GetEnv("FHIR_PAYLOAD_DIR") + "/1"
+	s.Require().NoError(os.MkdirAll(jobDir, 0755))
+	s.T().Cleanup(func() { os.RemoveAll(jobDir) })
+	fixtures := []string{"test_gzip_encoded.ndjson", "test_no_encoding.ndjson", "single_byte_file.bin", "corrupt_gz_file.ndjson"}
+	for _, name := range fixtures {
+		b, err := os.ReadFile(conf.GetEnv("FHIR_PAYLOAD_DIR") + "/" + name)
+		s.Require().NoError(err)
+		s.Require().NoError(os.WriteFile(jobDir+"/"+name, b, 0600))
+	}
+
 	defer func() {
 		err = os.Chdir(origDir)
 		if err != nil {
@@ -381,26 +392,29 @@ func (s *APITestSuite) TestServeData() {
 		name         string
 		headers      []string
 		gzipExpected bool
+		jobID        string
 		fileName     string
 		validFile    bool
 		respStatus   int
 	}{
-		{"no-header-gzip-encoded", []string{""}, false, "test_gzip_encoded.ndjson", true, http.StatusOK},
-		{"yes-header-gzip-encoded", []string{"gzip"}, true, "test_gzip_encoded.ndjson", true, http.StatusOK},
-		{"yes-header-not-encoded", []string{"gzip"}, true, "test_no_encoding.ndjson", true, http.StatusOK},
-		{"bad file name", []string{""}, false, "not_a_real_file", false, http.StatusNotFound},
-		{"file doesn't exist", []string{"gzip"}, true, "foo.ndjson", false, http.StatusNotFound},
-		{"single byte file", []string{""}, false, "single_byte_file.bin", false, http.StatusInternalServerError},
-		{"no-header-corrupt-file", []string{""}, false, "corrupt_gz_file.ndjson", false, http.StatusInternalServerError}, //This file is kind of cool. has magic number, but otherwise arbitrary data.
+		{"no-header-gzip-encoded", []string{""}, false, "1", "test_gzip_encoded.ndjson", true, http.StatusOK},
+		{"yes-header-gzip-encoded", []string{"gzip"}, true, "1", "test_gzip_encoded.ndjson", true, http.StatusOK},
+		{"yes-header-not-encoded", []string{"gzip"}, true, "1", "test_no_encoding.ndjson", true, http.StatusOK},
+		{"bad file name", []string{""}, false, "1", "not_a_real_file", false, http.StatusNotFound},
+		{"bad job dir", []string{""}, false, "x", "test_gzip_encoded.ndjson", false, http.StatusNotFound},
+		{"file doesn't exist", []string{"gzip"}, true, "1", "foo.ndjson", false, http.StatusNotFound},
+		{"single byte file", []string{""}, false, "1", "single_byte_file.bin", false, http.StatusInternalServerError},
+		{"no-header-corrupt-file", []string{""}, false, "1", "corrupt_gz_file.ndjson", false, http.StatusInternalServerError}, //This file is kind of cool. has magic number, but otherwise arbitrary data.
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			defer s.SetupTest()
-			req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s", tt.fileName), nil)
+			req := httptest.NewRequest("GET", fmt.Sprintf("/data/%s/%s", tt.jobID, tt.fileName), nil)
 
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("fileName", tt.fileName)
+			rctx.URLParams.Add("jobID", tt.jobID)
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 			var useGZIP bool
