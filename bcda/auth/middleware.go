@@ -270,6 +270,7 @@ func (m AuthMiddleware) RequireTokenJobMatch(db *sql.DB) func(next http.Handler)
 					logrus.Fields{"resp_status": http.StatusNotFound},
 				)
 				rw.NotFound(log.NewStructuredLoggerEntry(log.Auth, ctx), w, http.StatusNotFound, responseutils.JobExpiredErr, "")
+				return
 			}
 
 			// ACO did not create the job

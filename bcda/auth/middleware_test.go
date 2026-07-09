@@ -479,7 +479,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchExpiredJob() {
 	archivedJob := models.Job{
 		ACOID:      uuid.Parse(constants.TestACOID),
 		RequestURL: constants.V1Path + constants.EOBExportPath,
-		Status:     models.JobStatusExpired,
+		Status:     models.JobStatusArchived,
 	}
 
 	postgrestest.CreateJobs(s.T(), s.db, &expiredJob)
@@ -506,14 +506,20 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchExpiredJob() {
 		{"Archive Job", archivedJobID, archivedJob.ACOID.String(), http.StatusNotFound},
 	}
 
+	// Sentinel handler so we can assert the request never reaches the
+	// downstream handler for an expired or archived job.
+	nextCalled := false
+	sentinel := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { nextCalled = true })
+
 	p := auth.NewProvider(s.db)
 	am := auth.NewAuthMiddleware(p)
-	handler := am.RequireTokenJobMatch(s.db)(mockHandler)
+	handler := am.RequireTokenJobMatch(s.db)(sentinel)
 	server := s.CreateServer(p)
 	defer server.Close()
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
+			nextCalled = false
 			s.rr = httptest.NewRecorder()
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("jobID", tt.jobID)
@@ -527,6 +533,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchExpiredJob() {
 			req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 			handler.ServeHTTP(s.rr, req)
 			assert.Equal(s.T(), tt.errCode, s.rr.Code)
+			assert.False(t, nextCalled, "downstream handler must not run for an expired or archived job")
 		})
 	}
 }
