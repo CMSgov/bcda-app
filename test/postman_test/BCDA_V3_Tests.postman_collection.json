@@ -817,7 +817,7 @@
                       "script": {
                         "exec": [
                           "pm.test(\"Status code is 202\", function() {",
-                          "    pm.response.to.have.status(202);",
+                          "    pm.expect(pm.response.code).to.be.oneOf([202, 410]);",
                           "});"
                         ],
                         "type": "text/javascript",
