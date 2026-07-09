@@ -266,19 +266,14 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 
 	switch resource {
 	case "ExplanationOfBenefit":
-		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 	case "Coverage":
-		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetCoverage", jobArgs, beneID).Return(bbc.GetBundleData("Coverage", beneID))
 	case "Patient":
-		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetPatient", jobArgs, beneID).Return(bbc.GetBundleData("Patient", beneID))
 	case "Claim":
-		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetClaim", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("Claim", beneID))
 	case "ClaimResponse":
-		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetClaimResponse", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ClaimResponse", beneID))
 
 	}
@@ -353,7 +348,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneficiaryID))
 	}
 
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
@@ -405,14 +399,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[0], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[1], claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, beneficiaryIDs[2], claimsWindowMatcher()).Return(nil, errors.New("error"))
-	bbc.MBI = &beneficiaryIDs[0]
-	bbc.On("GetPatientByMbi", beneficiaryIDs[0]).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
-
-	bbc.MBI = &beneficiaryIDs[1]
-	bbc.On("GetPatientByMbi", beneficiaryIDs[1]).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
-
-	bbc.MBI = &beneficiaryIDs[2]
-	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err := createDir(s.tempDir)
@@ -1164,4 +1150,58 @@ func (s *WorkerTestSuite) TestGetBeneficiary_CachedBlueButtonID() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), blueButtonID, res.BlueButtonID)
 	assert.Equal(s.T(), mbi, res.MBI)
+}
+
+func (s *WorkerTestSuite) TestWriteBBDataToFile_RetrieveAndCacheBlueButtonID() {
+	bbc := &client.MockBlueButtonClient{}
+	mbi := testUtils.RandomMBI(s.T())
+	resolvedBlueButtonID := "resolved-bb-id-" + testUtils.RandomHexID()
+
+	bene := models.CCLFBeneficiary{
+		FileID:       s.cclfFile.ID,
+		MBI:          mbi,
+		BlueButtonID: "",
+	}
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &bene)
+
+	jobArgs := worker_types.JobEnqueueArgs{
+		ID:             s.jobID,
+		ResourceType:   "ExplanationOfBenefit",
+		BeneficiaryIDs: []string{strconv.FormatUint(uint64(bene.ID), 10)},
+		BBBasePath:     constants.TestFHIRPath,
+	}
+	cw := client.ClaimsWindow{}
+
+	// Expect GetPatientByMbi to be called because BlueButtonID was empty in the DB
+	bbc.On("GetPatientByMbi", mbi).
+		Return(fmt.Sprintf(`{
+			"id": "%s",
+			"entry": [
+				{
+					"resource": {
+						"id": "%s",
+						"identifier": [
+							{"system": "us-mbi", "value": "%s"},
+							{"system": "bene_id", "value": "%s"}
+						]
+					}
+				}
+			]
+		}`, resolvedBlueButtonID, resolvedBlueButtonID, mbi, resolvedBlueButtonID), nil)
+
+	// Expect GetExplanationOfBenefit to be called with the resolved ID
+	emptyBundle := &fhirmodels.Bundle{}
+	bbc.On("GetExplanationOfBenefit", jobArgs, resolvedBlueButtonID, cw).
+		Return(emptyBundle, nil)
+
+	defer bbc.AssertExpectations(s.T())
+
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	assert.NoError(s.T(), err)
+	assert.NotEmpty(s.T(), jobKeys)
+
+	// Verify database is updated with the resolved ID
+	updatedBene, err := s.r.GetCCLFBeneficiaryByID(context.Background(), bene.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), resolvedBlueButtonID, updatedBene.BlueButtonID)
 }
