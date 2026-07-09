@@ -816,8 +816,8 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "pm.test(\"Status code is 202\", function() {",
-                          "    pm.response.to.have.status(202);",
+                          "pm.test(\"Status code is either 202 or 410 (job already finished)\", function() {",
+                          "    pm.expect(pm.response.code).to.be.oneOf([202, 410]);",
                           "});"
                         ],
                         "type": "text/javascript",
