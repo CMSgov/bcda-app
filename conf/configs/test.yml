@@ -60,12 +60,12 @@ aco_config:
         file_date: 6
         metadata_matches: 7
     - model: 'GUIDE'
-      name_pattern: '^GUIDE-\d{5}$'
+      name_pattern: '^GUIDE-\d{4}$'
       data:
         - 'adjudicated'
       attribution_file:
         file_type: 'csv'
-        name_pattern: '(P|T)\.(GUIDE)\.(GUIDE-)(\d{5})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
+        name_pattern: '(P|T)\.(GUIDE)\.(GUIDE-)(\d{4})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
         model_identifier: 'GUIDE'
         file_performance_year: 6
         file_date: 7
@@ -95,6 +95,6 @@ v3_enabled_acos: []
 v1_v2_deny_regexes:
   - '^IOTA\d{3}'
   - '^ACCES\d{5}$'
-  - '^GUIDE-\d{5}$'
+  - '^GUIDE-\d{4}$'
 v3_no_partial_claims_models:
   - 'GUIDE'

@@ -69,22 +69,25 @@ func TestLookbackTime(t *testing.T) {
 
 	tests := []struct {
 		name        string
+		ACOID       string
 		cfg         *ACOConfig
 		expPerfYear time.Time
 	}{
 		// We make the call before the performance year transition, we use the previous year as the reference time and then subtract
 		// the lookback period. That's why we do the lookback+1
-		{"BeforePerfYearTransition", &ACOConfig{perfYear: perfYearFuture, LookbackYears: lookback}, expectedPerfYear(perfYearFuture, lookback+1)},
+		{"BeforePerfYearTransition", "A1234", &ACOConfig{perfYear: perfYearFuture, LookbackYears: lookback}, expectedPerfYear(perfYearFuture, lookback+1)},
 		// We make the call after the performance year transition, so we use the current year as the baseline, then subtract lookback.
-		{"AfterPerfYearTransition", &ACOConfig{perfYear: perfYearPast, LookbackYears: lookback}, expectedPerfYear(perfYearPast, lookback)},
-		{"noPerfYear", &ACOConfig{LookbackYears: lookback}, time.Time{}},
-		{"noLookback", &ACOConfig{perfYear: now}, time.Time{}},
-		{"noPerfYearNoLookback", &ACOConfig{}, time.Time{}},
+		{"AfterPerfYearTransition", "A1234", &ACOConfig{perfYear: perfYearPast, LookbackYears: lookback}, expectedPerfYear(perfYearPast, lookback)},
+		{"noPerfYear", "A1234", &ACOConfig{LookbackYears: lookback}, time.Time{}},
+		{"noLookback", "A1234", &ACOConfig{perfYear: now}, time.Time{}},
+		{"noPerfYearNoLookback", "A1234", &ACOConfig{}, time.Time{}},
+		{"GUIDE EPT", "GUIDE-0001", &ACOConfig{}, GUIDEEPTLookbackDate},
+		{"GUIDE NPT", "GUIDE-0000", &ACOConfig{}, GUIDENPTLookbackDate},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.True(t, tt.expPerfYear.Equal(tt.cfg.LookbackTime()),
-				"Times should equal. Have %s. Expected %s.", tt.cfg.LookbackTime(), tt.expPerfYear)
+			assert.True(t, tt.expPerfYear.Equal(tt.cfg.LookbackTime(tt.ACOID)),
+				"Times should equal. Have %s. Expected %s.", tt.cfg.LookbackTime(tt.ACOID), tt.expPerfYear)
 		})
 	}
 }
@@ -320,7 +323,7 @@ func TestSupportedACOs(t *testing.T) {
 		{"GUIDE too short", "GUIDE-999", false},
 		{"GUIDE too long", "GUIDE-9999999", false},
 		{"GUIDE invalid characters", "GUIDE99999", false},
-		{"valid GUIDE", "GUIDE-99999", true},
+		{"valid GUIDE", "GUIDE-9999", true},
 
 		{"Iota too short", "IOTA12", false},
 		{"Iota too long", "IOTA0123", false},
