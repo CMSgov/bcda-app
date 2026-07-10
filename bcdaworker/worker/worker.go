@@ -405,7 +405,13 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 			return cclfBeneficiary, err
 		}
 
-		cclfBeneficiary.BlueButtonID = bbID
+		if cclfBeneficiary.BlueButtonID != bbID {
+			err = r.UpdateCCLFBeneficiaryBlueButtonID(ctx, beneID, bbID)
+			if err != nil {
+				log.GetCtxLogger(ctx).Warnf("failed to update blueButtonId in DB for cclfBeneficiaryId %d: %s", beneID, err.Error())
+			}
+			cclfBeneficiary.BlueButtonID = bbID
+		}
 	}
 
 	return cclfBeneficiary, nil
