@@ -1142,26 +1142,3 @@ func cryptoRandInt64() (int64, error) {
 	}
 	return n.Int64(), nil
 }
-
-func (s *WorkerTestSuite) TestGetBeneficiary_CachedBlueButtonID() {
-	ctx := context.Background()
-	mbi := testUtils.RandomMBI(s.T())
-	blueButtonID := "cached-blue-button-id"
-
-	bene := models.CCLFBeneficiary{
-		FileID:       s.cclfFile.ID,
-		MBI:          mbi,
-		BlueButtonID: blueButtonID,
-	}
-	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &bene)
-
-	bbc := &client.MockBlueButtonClient{}
-	defer bbc.AssertExpectations(s.T())
-
-	jobData := worker_types.JobEnqueueArgs{}
-
-	res, err := getBeneficiary(ctx, s.r, bene.ID, bbc, true, jobData)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), blueButtonID, res.BlueButtonID)
-	assert.Equal(s.T(), mbi, res.MBI)
-}

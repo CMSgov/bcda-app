@@ -398,10 +398,6 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 	cclfBeneficiary := *bene
 
 	if fetchBBId {
-		if cclfBeneficiary.BlueButtonID != "" {
-			return cclfBeneficiary, nil
-		}
-
 		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI, jobData)
 
 		if err != nil {
