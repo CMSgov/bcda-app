@@ -97,6 +97,14 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 	assert.NoError(err)
 	assert.Equal(bene, *bene1)
 
+	newBlueButtonID := testUtils.RandomHexID()
+	err = r.repository.UpdateCCLFBeneficiaryBlueButtonID(ctx, bene.ID, newBlueButtonID)
+	assert.NoError(err)
+
+	bene2, err := r.repository.GetCCLFBeneficiaryByID(ctx, bene.ID)
+	assert.NoError(err)
+	assert.Equal(newBlueButtonID, bene2.BlueButtonID)
+
 	id, err := safecast.ToUint(testUtils.CryptoRandInt31())
 	if err != nil {
 		panic(err)
