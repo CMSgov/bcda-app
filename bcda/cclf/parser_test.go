@@ -77,11 +77,11 @@ func TestGetCSVMetadata(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
-		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-00001.Y25." + fileDateTime, "", csvFileMetadata{
+		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-0001.Y25." + fileDateTime, "", csvFileMetadata{
 			env:       "production",
-			name:      "P.GUIDE.GUIDE-00001.Y25." + fileDateTime,
+			name:      "P.GUIDE.GUIDE-0001.Y25." + fileDateTime,
 			cclfNum:   8,
-			acoID:     "GUIDE-00001",
+			acoID:     "GUIDE-0001",
 			timestamp: validTime,
 			perfYear:  25,
 			fileType:  models.FileTypeDefault,
@@ -173,9 +173,9 @@ func TestValidateCSVFileName(t *testing.T) {
 		},
 		{"invalid CDAC csv - file date too old", "P.BCD.DA0000.MBIY11.D201101.T0000001", errors.New("out of range"), csvFileMetadata{}},
 		{"invalid CDAC csv - file date in the future", "P.BCD.DA0000.MBIY11." + futureTime.Format(dateFormat), errors.New("out of range"), csvFileMetadata{}},
-		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-00001.Y25." + fileDateTime, nil, csvFileMetadata{
+		{"valid GUIDE csv filename", "P.GUIDE.GUIDE-0001.Y25." + fileDateTime, nil, csvFileMetadata{
 			env:       "production",
-			acoID:     "GUIDE-00001",
+			acoID:     "GUIDE-0001",
 			timestamp: validTime,
 			perfYear:  25,
 			fileType:  models.FileTypeDefault,
@@ -550,12 +550,12 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		{name: "Is not an Attribution CDAC CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
 		{name: "Is not an Attribution CDAC CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 
-		{name: "Is an Attribution GUIDE CSV File path", path: "P.GUIDE.GUIDE-00001.Y25.D003026.T0000001", testIsCSV: true},
-		{name: "Is not an Attribution GUIDE CSV File path (incorrect first)", path: "x.GUIDE.GUIDE-00001.Y25.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution GUIDE CSV File path (incorrect second)", path: "P.Gxide.GUIDE-00001.Y25.T2420001", testIsCSV: false},
+		{name: "Is an Attribution GUIDE CSV File path", path: "P.GUIDE.GUIDE-0001.Y25.D003026.T0000001", testIsCSV: true},
+		{name: "Is not an Attribution GUIDE CSV File path (incorrect first)", path: "x.GUIDE.GUIDE-0001.Y25.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution GUIDE CSV File path (incorrect second)", path: "P.Gxide.GUIDE-0001.Y25.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (incorrect third)", path: "P.GUIDE.Gxide-x00x1.Y25.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution GUIDE CSV File path (incorrect fourth)", path: "P.GUIDE.GUIDE-00001.Y2x.D00302.T2420001", testIsCSV: false},
-		{name: "Is not an Attribution GUIDE CSV File path (incorrect fifth)", path: "P.GUIDE.GUIDE-00001.Y25.D0x30x.T24200011", testIsCSV: false},
+		{name: "Is not an Attribution GUIDE CSV File path (incorrect fourth)", path: "P.GUIDE.GUIDE-0001.Y2x.D00302.T2420001", testIsCSV: false},
+		{name: "Is not an Attribution GUIDE CSV File path (incorrect fifth)", path: "P.GUIDE.GUIDE-0001.Y25.D0x30x.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 

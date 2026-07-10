@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -153,14 +154,26 @@ func (cfg *Config) IsSupportedACO(cmsID string) bool {
 
 // LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
 // We compute lookback time by evaluating the performance year transition and the number of lookback years.
-func (config *ACOConfig) LookbackTime() time.Time {
+func (config *ACOConfig) LookbackTime(ACOID string) time.Time {
+	// GUIDE has very specific lookback windows
+	isGUIDE := GUIDEPattern.MatchString(ACOID)
+	if isGUIDE {
+		_, isEPT := slices.BinarySearch(GUIDEEPTACOs, ACOID)
+		if isEPT {
+			return GUIDEEPTLookbackDate
+		} else {
+			return GUIDENPTLookbackDate
+		}
+	}
+
+	// default lookback windows (lookback_period not set in ACOs config)
 	if config.perfYear.IsZero() || config.LookbackYears == 0 {
 		return time.Time{}
 	}
+
+	// calculated lookback windows
 	now := time.Now()
-
 	var year int
-
 	// If we passed our perf year transition, we consider us to be in the new performance year.
 	// Otherwise we are still in the previous performance year.
 	if now.Month() > config.perfYear.Month() || (now.Month() == config.perfYear.Month() &&
@@ -171,4 +184,107 @@ func (config *ACOConfig) LookbackTime() time.Time {
 	}
 
 	return time.Date(year, config.perfYear.Month(), config.perfYear.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// GUIDE has two specific lookback period windows, one for Established Program Tracks (EPTs)
+// and one for New Program Tracks (NPTs).  See: https://jira.cms.gov/browse/BCDA-10152
+var GUIDEPattern = regexp.MustCompile(`^GUIDE-\d{4}$`)
+var GUIDEEPTLookbackDate = time.Date(2021, 7, 1, 0, 0, 0, 0, time.UTC)
+var GUIDENPTLookbackDate = time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC)
+var GUIDEEPTACOs = []string{
+	"GUIDE-0001",
+	"GUIDE-0016",
+	"GUIDE-0034",
+	"GUIDE-0037",
+	"GUIDE-0045",
+	"GUIDE-0058",
+	"GUIDE-0062",
+	"GUIDE-0068",
+	"GUIDE-0074",
+	"GUIDE-0076",
+	"GUIDE-0085",
+	"GUIDE-0092",
+	"GUIDE-0106",
+	"GUIDE-0115",
+	"GUIDE-0117",
+	"GUIDE-0118",
+	"GUIDE-0130",
+	"GUIDE-0156",
+	"GUIDE-0166",
+	"GUIDE-0168",
+	"GUIDE-0169",
+	"GUIDE-0173",
+	"GUIDE-0188",
+	"GUIDE-0208",
+	"GUIDE-0209",
+	"GUIDE-0237",
+	"GUIDE-0247",
+	"GUIDE-0254",
+	"GUIDE-0259",
+	"GUIDE-0263",
+	"GUIDE-0266",
+	"GUIDE-0271",
+	"GUIDE-0280",
+	"GUIDE-0284",
+	"GUIDE-0334",
+	"GUIDE-0336",
+	"GUIDE-0342",
+	"GUIDE-0345",
+	"GUIDE-0408",
+	"GUIDE-0420",
+	"GUIDE-0429",
+	"GUIDE-0441",
+	"GUIDE-0446",
+	"GUIDE-0448",
+	"GUIDE-0452",
+	"GUIDE-0468",
+	"GUIDE-0473",
+	"GUIDE-0475",
+	"GUIDE-0485",
+	"GUIDE-0499",
+	"GUIDE-0521",
+	"GUIDE-0525",
+	"GUIDE-0526",
+	"GUIDE-0529",
+	"GUIDE-0534",
+	"GUIDE-0540",
+	"GUIDE-0552",
+	"GUIDE-0563",
+	"GUIDE-0573",
+	"GUIDE-0578",
+	"GUIDE-0591",
+	"GUIDE-0634",
+	"GUIDE-0651",
+	"GUIDE-0665",
+	"GUIDE-0671",
+	"GUIDE-0677",
+	"GUIDE-0682",
+	"GUIDE-0689",
+	"GUIDE-0693",
+	"GUIDE-0707",
+	"GUIDE-0708",
+	"GUIDE-0721",
+	"GUIDE-0756",
+	"GUIDE-0765",
+	"GUIDE-0777",
+	"GUIDE-0779",
+	"GUIDE-0782",
+	"GUIDE-0783",
+	"GUIDE-0790",
+	"GUIDE-0806",
+	"GUIDE-0838",
+	"GUIDE-0841",
+	"GUIDE-0844",
+	"GUIDE-0864",
+	"GUIDE-0877",
+	"GUIDE-0883",
+	"GUIDE-0893",
+	"GUIDE-0903",
+	"GUIDE-0937",
+	"GUIDE-0962",
+	"GUIDE-0977",
+	"GUIDE-0979",
+	"GUIDE-1008",
+	"GUIDE-1023",
+	"GUIDE-1033",
 }
