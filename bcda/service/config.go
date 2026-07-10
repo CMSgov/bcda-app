@@ -156,9 +156,10 @@ func (cfg *Config) IsSupportedACO(cmsID string) bool {
 // We compute lookback time by evaluating the performance year transition and the number of lookback years.
 func (config *ACOConfig) LookbackTime(ACOID string) time.Time {
 	// GUIDE has very specific lookback windows
-	isGUIDE := regexp.MustCompile(`^GUIDE-\d{4}$`).MatchString(ACOID)
+	isGUIDE := GUIDEPattern.MatchString(ACOID)
 	if isGUIDE {
-		if slices.Contains(GUIDEEPTACOs, ACOID) {
+		_, isEPT := slices.BinarySearch(GUIDEEPTACOs, ACOID)
+		if isEPT {
 			return GUIDEEPTLookbackDate
 		} else {
 			return GUIDENPTLookbackDate
@@ -187,6 +188,7 @@ func (config *ACOConfig) LookbackTime(ACOID string) time.Time {
 
 // GUIDE has two specific lookback period windows, one for Established Program Tracks (EPTs)
 // and one for New Program Tracks (NPTs).  See: https://jira.cms.gov/browse/BCDA-10152
+var GUIDEPattern = regexp.MustCompile(`^GUIDE-\d{4}$`)
 var GUIDEEPTLookbackDate = time.Date(2021, 7, 1, 0, 0, 0, 0, time.UTC)
 var GUIDENPTLookbackDate = time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC)
 var GUIDEEPTACOs = []string{
