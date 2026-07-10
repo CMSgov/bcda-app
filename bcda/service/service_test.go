@@ -719,8 +719,8 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 		{"New Benes With Since Before Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceBeforeTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
 
 		// ACO with lookback period
-		{"ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime()}, benes1, nil, nil},
-		{"Terminated ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(lookbackACOID)}, benes1, nil, nil},
+		{"Terminated ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(lookbackACOID), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 	}
 
 	// Add all combinations of resource types
@@ -1904,7 +1904,7 @@ func TestBuildQueueJobArgs(t *testing.T) {
 
 	acoCfg, ok := svc.GetACOConfigForID("A1234")
 	assert.True(t, ok)
-	assert.Equal(t, acoCfg.LookbackTime(), enqueueArgs.ClaimsWindow.LowerBound)
+	assert.Equal(t, acoCfg.LookbackTime(enqueueArgs.ACOID), enqueueArgs.ClaimsWindow.LowerBound)
 }
 
 func TestGetQueueJobTransactionTime(t *testing.T) {
@@ -1997,7 +1997,7 @@ func TestSetClaimsDate(t *testing.T) {
 		acoCfg, ok := svc.GetACOConfigForID("A0000")
 		assert.True(t, ok)
 		assert.Equal(t, svc.rp.claimThruDate, jArgs.ClaimsWindow.UpperBound)
-		assert.Equal(t, acoCfg.LookbackTime(), jArgs.ClaimsWindow.LowerBound)
+		assert.Equal(t, acoCfg.LookbackTime(pArgs.CMSID), jArgs.ClaimsWindow.LowerBound)
 	})
 
 	t.Run("uses explicit claims date for default requests", func(t *testing.T) {
@@ -2018,7 +2018,7 @@ func TestSetClaimsDate(t *testing.T) {
 		acoCfg, ok := svc.GetACOConfigForID("A0000")
 		assert.True(t, ok)
 		assert.Equal(t, now, jArgs.ClaimsWindow.UpperBound)
-		assert.Equal(t, acoCfg.LookbackTime(), jArgs.ClaimsWindow.LowerBound)
+		assert.Equal(t, acoCfg.LookbackTime("A0000"), jArgs.ClaimsWindow.LowerBound)
 	})
 
 	t.Run("fails when no ACO config matches", func(t *testing.T) {
@@ -2037,6 +2037,46 @@ func TestSetClaimsDate(t *testing.T) {
 		jArgs := worker_types.JobEnqueueArgs{CMSID: "zxy00"}
 
 		assert.False(t, svc.setClaimsDate(&jArgs, pArgs))
+	})
+
+	t.Run("test GUIDE EPT", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("GUIDE", `^GUIDE-\d{4}`, []string{constants.Adjudicated}),
+		}, []string{"GUIDE"}))
+		pArgs := worker_types.PrepareJobArgs{
+			CMSID:       "GUIDE-0001",
+			RequestType: constants.DefaultRequest,
+			ClaimsDate:  time.Date(2026, time.March, 16, 12, 0, 0, 0, time.UTC),
+		}
+		jArgs := worker_types.JobEnqueueArgs{CMSID: "GUIDE-0001"}
+
+		ok := svc.setClaimsDate(&jArgs, pArgs)
+		assert.True(t, ok)
+
+		acoCfg, ok := svc.GetACOConfigForID("GUIDE-0001")
+		assert.True(t, ok)
+		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.UpperBound)
+		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0001"), jArgs.ClaimsWindow.LowerBound)
+	})
+
+	t.Run("test GUIDE NPT", func(t *testing.T) {
+		svc := newQueueJobTestService(t, newQueueJobTestConfig(t, []ACOConfig{
+			newQueueJobTestACO("GUIDE", `^GUIDE-\d{4}`, []string{constants.Adjudicated}),
+		}, []string{"GUIDE"}))
+		pArgs := worker_types.PrepareJobArgs{
+			CMSID:       "GUIDE-0000",
+			RequestType: constants.DefaultRequest,
+			ClaimsDate:  time.Date(2026, time.March, 16, 12, 0, 0, 0, time.UTC),
+		}
+		jArgs := worker_types.JobEnqueueArgs{CMSID: "GUIDE-0000"}
+
+		ok := svc.setClaimsDate(&jArgs, pArgs)
+		assert.True(t, ok)
+
+		acoCfg, ok := svc.GetACOConfigForID("GUIDE-0000")
+		assert.True(t, ok)
+		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.UpperBound)
+		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0000"), jArgs.ClaimsWindow.LowerBound)
 	})
 }
 

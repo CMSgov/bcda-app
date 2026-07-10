@@ -22,6 +22,7 @@ type acoRepository interface {
 
 type cclfBeneficiaryRepository interface {
 	GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*models.CCLFBeneficiary, error)
+	UpdateCCLFBeneficiaryBlueButtonID(ctx context.Context, id uint, blueButtonID string) error
 }
 type jobRepository interface {
 	GetJobByID(ctx context.Context, jobID uint) (*models.Job, error)

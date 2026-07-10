@@ -560,7 +560,7 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 	// Applies the lower bound from the first matching ACOConfig
 	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
 	if ok {
-		args.ClaimsWindow.LowerBound = cfg.LookbackTime()
+		args.ClaimsWindow.LowerBound = cfg.LookbackTime(prepareArgs.CMSID)
 	}
 
 	return ok
