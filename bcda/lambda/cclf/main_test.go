@@ -85,6 +85,7 @@ func TestAttributionImportMainSuite(t *testing.T) {
 func TestHandleCSVImport_NoACOConfig(t *testing.T) {
 	s3Client := &bcdaaws.MockS3Client{}
 	pool := database.ConnectPool()
+	defer pool.Close()
 
 	path := "../../../shared_files/csv/valid.csv"
 

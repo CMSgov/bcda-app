@@ -229,6 +229,8 @@ func TestAuthAPITestSuite(t *testing.T) {
 func BenchmarkAuthToken(b *testing.B) {
 	// set up generic background needs
 	db := database.Connect()
+	defer db.Close()
+
 	repository := postgres.NewRepository(db)
 	provider := auth.NewProvider(db)
 	baseApi := auth.NewBaseApi(provider)
