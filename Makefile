@@ -130,17 +130,13 @@ load-fixtures-ssas:
 	./docker/await_service_healthy.sh db
 	docker compose exec ssas main --add-fixture-data
 
-docker-build:
-	COMPOSE_BAKE=true docker compose build --force-rm
-	COMPOSE_BAKE=true docker compose -f compose.test.yml build --force-rm
+COMPOSE_BAKE ?= true
 
-docker-build-no-bake:
-	docker compose build --force-rm
-	docker compose -f compose.test.yml build --force-rm
+docker-build:
+	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose build --force-rm
+	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose -f compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
-
-docker-bootstrap-no-bake: docker-build-no-bake load-fixtures
 
 api-shell:
 	docker compose exec -T api bash
