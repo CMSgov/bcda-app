@@ -42,7 +42,7 @@ func NewEnqueuer(db *sql.DB, pool *pgxv5Pool.Pool) Enqueuer {
 		panic(err)
 	}
 
-	return riverEnqueuer{pool, riverClient}
+	return riverEnqueuer{pool: pool, Client: riverClient}
 }
 
 // RIVER implementation https://github.com/riverqueue/river

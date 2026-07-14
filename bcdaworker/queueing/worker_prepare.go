@@ -107,7 +107,7 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			}()
 
 			client := river.ClientFromContext[pgxv5.Tx](ctx)
-			q := riverEnqueuer{w.pool, client}
+			q := riverEnqueuer{pool: w.pool, Client: client}
 			err = w.queueExportJobs(ctx, tx, q, rjob.Args, exports, since)
 			if err != nil {
 				// TODO update job in jobs table as failed
@@ -115,7 +115,8 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 				return err
 			}
 
-			return tx.Commit(ctx)
+			err = tx.Commit(ctx)
+			return err
 		}
 	}
 }

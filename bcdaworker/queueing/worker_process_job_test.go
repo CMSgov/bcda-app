@@ -89,7 +89,8 @@ func TestWork_Integration(t *testing.T) {
 	}()
 
 	enqueuer := NewEnqueuer(db, pool)
-	assert.NoError(t, enqueuer.AddJob(ctx, tx, jobArgs, 1))
+	err = enqueuer.AddJob(ctx, tx, jobArgs, 1)
+	assert.NoError(t, err)
 
 	err = tx.Commit(ctx)
 	if err != nil {

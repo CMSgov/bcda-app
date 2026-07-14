@@ -56,7 +56,9 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 		}
 	}()
 
-	assert.NoError(t, enqueuer.AddJob(ctx, tx, jobArgs, 3))
+	err = enqueuer.AddJob(ctx, tx, jobArgs, 3)
+	assert.NoError(t, err)
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		t.Fatalf("failed to commit transaction: %v\n", err)
