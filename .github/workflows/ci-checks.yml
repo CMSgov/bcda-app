@@ -71,7 +71,7 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Build the stack
-        run: make docker-bootstrap-no-bake
+        run: make docker-bootstrap
         timeout-minutes: 20
       - name: Lint and Test
         run: make test
