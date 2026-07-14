@@ -1,7 +1,6 @@
 package queueing
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -58,7 +57,9 @@ func TestWork_Integration(t *testing.T) {
 	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
 
 	db := database.Connect()
+	defer db.Close()
 	pool := database.ConnectPool()
+	defer pool.Close()
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}
@@ -74,8 +75,27 @@ func TestWork_Integration(t *testing.T) {
 	id, _ := safecast.ToInt(job.ID)
 	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
+	ctx := t.Context()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer func() {
+		if err != nil {
+			if err1 := tx.Rollback(ctx); err1 != nil {
+				t.Logf("Failed to rollback pgx transaction: %s", err1.Error())
+			}
+		}
+	}()
+
 	enqueuer := NewEnqueuer(db, pool)
-	assert.NoError(t, enqueuer.AddJob(context.Background(), jobArgs, 1))
+	err = enqueuer.AddJob(ctx, tx, jobArgs, 1)
+	assert.NoError(t, err)
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
 	timeout := time.After(10 * time.Second)
 	for {

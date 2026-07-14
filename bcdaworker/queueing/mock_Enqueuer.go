@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/jackc/pgx/v5"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -39,16 +40,16 @@ func (_m *MockEnqueuer) EXPECT() *MockEnqueuer_Expecter {
 }
 
 // AddJob provides a mock function for the type MockEnqueuer
-func (_mock *MockEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
-	ret := _mock.Called(ctx, job, priority)
+func (_mock *MockEnqueuer) AddJob(ctx context.Context, tx pgx.Tx, job worker_types.JobEnqueueArgs, priority int) error {
+	ret := _mock.Called(ctx, tx, job, priority)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddJob")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, worker_types.JobEnqueueArgs, int) error); ok {
-		r0 = returnFunc(ctx, job, priority)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, pgx.Tx, worker_types.JobEnqueueArgs, int) error); ok {
+		r0 = returnFunc(ctx, tx, job, priority)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -62,30 +63,36 @@ type MockEnqueuer_AddJob_Call struct {
 
 // AddJob is a helper method to define mock.On call
 //   - ctx context.Context
+//   - tx pgx.Tx
 //   - job worker_types.JobEnqueueArgs
 //   - priority int
-func (_e *MockEnqueuer_Expecter) AddJob(ctx interface{}, job interface{}, priority interface{}) *MockEnqueuer_AddJob_Call {
-	return &MockEnqueuer_AddJob_Call{Call: _e.mock.On("AddJob", ctx, job, priority)}
+func (_e *MockEnqueuer_Expecter) AddJob(ctx interface{}, tx interface{}, job interface{}, priority interface{}) *MockEnqueuer_AddJob_Call {
+	return &MockEnqueuer_AddJob_Call{Call: _e.mock.On("AddJob", ctx, tx, job, priority)}
 }
 
-func (_c *MockEnqueuer_AddJob_Call) Run(run func(ctx context.Context, job worker_types.JobEnqueueArgs, priority int)) *MockEnqueuer_AddJob_Call {
+func (_c *MockEnqueuer_AddJob_Call) Run(run func(ctx context.Context, tx pgx.Tx, job worker_types.JobEnqueueArgs, priority int)) *MockEnqueuer_AddJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 worker_types.JobEnqueueArgs
+		var arg1 pgx.Tx
 		if args[1] != nil {
-			arg1 = args[1].(worker_types.JobEnqueueArgs)
+			arg1 = args[1].(pgx.Tx)
 		}
-		var arg2 int
+		var arg2 worker_types.JobEnqueueArgs
 		if args[2] != nil {
-			arg2 = args[2].(int)
+			arg2 = args[2].(worker_types.JobEnqueueArgs)
+		}
+		var arg3 int
+		if args[3] != nil {
+			arg3 = args[3].(int)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -96,7 +103,7 @@ func (_c *MockEnqueuer_AddJob_Call) Return(err error) *MockEnqueuer_AddJob_Call 
 	return _c
 }
 
-func (_c *MockEnqueuer_AddJob_Call) RunAndReturn(run func(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error) *MockEnqueuer_AddJob_Call {
+func (_c *MockEnqueuer_AddJob_Call) RunAndReturn(run func(ctx context.Context, tx pgx.Tx, job worker_types.JobEnqueueArgs, priority int) error) *MockEnqueuer_AddJob_Call {
 	_c.Call.Return(run)
 	return _c
 }

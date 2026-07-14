@@ -22,6 +22,7 @@ import (
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
 	pgxv5 "github.com/jackc/pgx/v5"
+	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 )
 
@@ -35,9 +36,10 @@ type PrepareJobWorker struct {
 	v2Client client.APIClient
 	v3Client client.APIClient
 	r        models.Repository
+	pool     *pgxv5Pool.Pool
 }
 
-func NewPrepareJobWorker(db *sql.DB) (*PrepareJobWorker, error) {
+func NewPrepareJobWorker(db *sql.DB, pool *pgxv5Pool.Pool) (*PrepareJobWorker, error) {
 
 	logger := log.Worker
 	client.SetLogger(logger)
@@ -69,7 +71,7 @@ func NewPrepareJobWorker(db *sql.DB) (*PrepareJobWorker, error) {
 		return &PrepareJobWorker{}, err
 	}
 
-	return &PrepareJobWorker{svc: svc, v1Client: v1, v2Client: v2, v3Client: v3, r: repository}, nil
+	return &PrepareJobWorker{svc: svc, v1Client: v1, v2Client: v2, v3Client: v3, r: repository, pool: pool}, nil
 
 }
 
@@ -92,23 +94,35 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 				return err
 			}
 
+			tx, err := w.pool.Begin(ctx)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err != nil {
+					if err1 := tx.Rollback(ctx); err1 != nil {
+						logger.Errorf("Failed to rollback pgx transaction: %s", err1.Error())
+					}
+				}
+			}()
+
 			client := river.ClientFromContext[pgxv5.Tx](ctx)
-			q := riverEnqueuer{client}
-			err = w.queueExportJobs(ctx, q, rjob.Args, exports, since)
+			q := riverEnqueuer{pool: w.pool, Client: client}
+			err = w.queueExportJobs(ctx, tx, q, rjob.Args, exports, since)
 			if err != nil {
 				// TODO update job in jobs table as failed
 				logger.Errorf("failed to add jobs to the main queue: %s", err)
 				return err
 			}
 
-			return nil
+			err = tx.Commit(ctx)
+			return err
 		}
 	}
 }
 
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
 func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, time.Time, error) {
-
 	var err error
 	exports := []*worker_types.JobEnqueueArgs{}
 	logger := log.GetCtxLogger(ctx)
@@ -173,12 +187,12 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 	}
 }
 
-func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs, since time.Time) error {
+func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs, since time.Time) error {
 	for _, j := range exports {
 		sinceParam := !since.IsZero() || args.RequestType == constants.RetrieveNewBeneHistData
 		jobPriority := p.svc.GetJobPriority(args.CMSID, j.ResourceType, sinceParam)
 
-		if err := q.AddJob(ctx, *j, int(jobPriority)); err != nil {
+		if err := q.AddJob(ctx, tx, *j, int(jobPriority)); err != nil {
 			return err
 		}
 	}

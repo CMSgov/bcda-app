@@ -1,7 +1,6 @@
 package queueing
 
 import (
-	"context"
 	"crypto/rand"
 	"math"
 	"math/big"
@@ -33,7 +32,9 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 
 	// Need access to the queue database to ensure we've enqueued the job successfully
 	db := database.Connect()
+	defer db.Close()
 	pool := database.ConnectPool()
+	defer pool.Close()
 
 	enqueuer := NewEnqueuer(db, pool)
 	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
@@ -42,8 +43,26 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	}
 	jobArgs := worker_types.JobEnqueueArgs{ID: int(jobID.Int64()), ACOID: uuid.New()}
 
-	ctx := context.Background()
-	assert.NoError(t, enqueuer.AddJob(ctx, jobArgs, 3))
+	ctx := t.Context()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("failed to begin transaction: %v\n", err)
+	}
+	defer func() {
+		if err != nil {
+			if err1 := tx.Rollback(ctx); err1 != nil {
+				t.Logf("Failed to rollback pgx transaction: %s", err1.Error())
+			}
+		}
+	}()
+
+	err = enqueuer.AddJob(ctx, tx, jobArgs, 3)
+	assert.NoError(t, err)
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		t.Fatalf("failed to commit transaction: %v\n", err)
+	}
 
 	// Use river test helper to assert job was inserted
 	checkJob := rivertest.RequireInserted(ctx, t, riverpgxv5.New(pool), jobArgs, nil)
@@ -72,6 +91,6 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	)
 	query, args = delete.Build()
 
-	_, err := db.Exec(query, args...)
+	_, err = db.Exec(query, args...)
 	assert.NoError(t, err)
 }

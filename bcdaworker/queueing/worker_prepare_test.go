@@ -83,7 +83,8 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 
 func (s *PrepareWorkerIntegrationTestSuite) TearDownTest() {
 	var err error
-	s.db.Close()
+	err = s.db.Close()
+	require.NoError(s.T(), err)
 	err = s.dbContainer.RestoreSnapshot("Base")
 	require.NoError(s.T(), err)
 }
@@ -105,7 +106,8 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupSubTest() {
 
 func (s *PrepareWorkerIntegrationTestSuite) TearDownSubTest() {
 	var err error
-	s.db.Close()
+	err = s.db.Close()
+	require.NoError(s.T(), err)
 	err = s.dbContainer.RestoreSnapshot("Base")
 	require.NoError(s.T(), err)
 }
@@ -267,6 +269,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 		v1Client: c,
 		v2Client: &client.MockBlueButtonClient{},
 		r:        r,
+		pool:     s.pool,
 	}
 	w := rivertest.NewWorker(s.T(), driver, &river.Config{}, worker)
 	d := s.pool
@@ -277,9 +280,12 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 
 	result, err := w.Work(s.ctx, s.T(), tx, j.Args, &river.InsertOpts{})
 	assert.Nil(s.T(), err)
+
+	err = tx.Commit(s.ctx)
+	assert.Nil(s.T(), err)
+
 	assert.Equal(s.T(), river.EventKindJobCompleted, result.EventKind)
 	assert.Equal(s.T(), rivertype.JobStateCompleted, result.Job.State)
-
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() {
@@ -316,7 +322,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 		},
 	}
 
-	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r, pool: s.pool}
 	driver := riverpgxv5.New(s.pool)
 	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
@@ -344,7 +350,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
-	w, err := NewPrepareJobWorker(s.db)
+	w, err := NewPrepareJobWorker(s.db, s.pool)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)
 }
@@ -354,7 +360,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 	svc := &service.MockService{}
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
-	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r, pool: s.pool}
 	_, err := worker.GetBundleLastUpdated(basepath, worker_types.JobEnqueueArgs{})
 	assert.Nil(s.T(), err)
 }
@@ -364,22 +370,36 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms := &service.MockService{}
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
-	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r}
+	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r, pool: s.pool}
 	q := NewEnqueuer(s.db, s.pool)
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}
 
 	driver := riverpgxv5.New(s.pool)
-	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	_, err := driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
 	assert.Nil(s.T(), err)
 
-	err = worker.queueExportJobs(context.Background(), q, prepArgs, []*worker_types.JobEnqueueArgs{a}, time.Time{})
+	tx, err := s.pool.Begin(s.ctx)
 	assert.Nil(s.T(), err)
+	defer func() {
+		if err != nil {
+			if err1 := tx.Rollback(s.ctx); err1 != nil {
+				s.T().Logf("Failed to rollback pgx transaction: %s", err1.Error())
+			}
+		}
+	}()
+
+	err = worker.queueExportJobs(s.ctx, tx, q, prepArgs, []*worker_types.JobEnqueueArgs{a}, time.Time{})
+	assert.Nil(s.T(), err)
+
+	err = tx.Commit(s.ctx)
+	assert.Nil(s.T(), err)
+
 	re := rivertest.RequireInserted(s.ctx, s.T(), driver, worker_types.JobEnqueueArgs{}, nil)
 	assert.Equal(s.T(), re.State, rivertype.JobState("available"))
 
 	// Cleanup the queue data
-	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	_, err = driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
 	assert.Nil(s.T(), err)
 }

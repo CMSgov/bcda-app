@@ -19,7 +19,7 @@ import (
 
 // Enqueuer only handles inserting job entries into the appropriate table
 type Enqueuer interface {
-	AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error
+	AddJob(ctx context.Context, tx pgxv5.Tx, job worker_types.JobEnqueueArgs, priority int) error
 	AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error
 }
 
@@ -28,39 +28,39 @@ type Enqueuer interface {
 func NewEnqueuer(db *sql.DB, pool *pgxv5Pool.Pool) Enqueuer {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &JobWorker{db: db})
-	prepareWorker, err := NewPrepareJobWorker(db)
+	prepareWorker, err := NewPrepareJobWorker(db, pool)
 	if err != nil {
 		panic(err)
 	}
 	river.AddWorker(workers, prepareWorker)
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		MaxAttempts: 10, // This is a few hours worth of retries
+		MaxAttempts: 8, // This is a few hours worth of retries
 		Workers:     workers,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	return riverEnqueuer{riverClient}
+	return riverEnqueuer{pool: pool, Client: riverClient}
 }
 
 // RIVER implementation https://github.com/riverqueue/river
 type riverEnqueuer struct {
+	pool *pgxv5Pool.Pool
+
 	*river.Client[pgxv5.Tx]
 }
 
-func (q riverEnqueuer) AddJob(ctx context.Context, job worker_types.JobEnqueueArgs, priority int) error {
-	// TODO: convert this to use transactions (q.InsertTx), likely only possible after upgrade to pgxv5
-	// This could also be refactored to a batch insert: riverClient.InsertManyTx or riverClient.InsertMany
-	_, err := q.Insert(ctx, job, &river.InsertOpts{
+func (q riverEnqueuer) AddJob(ctx context.Context, tx pgxv5.Tx, job worker_types.JobEnqueueArgs, priority int) error {
+	_, err := q.InsertTx(ctx, tx, job, &river.InsertOpts{
 		Priority: priority,
 	})
 	if err != nil {
 		return err
 	}
 
-	return err
+	return nil
 }
 
 func (q riverEnqueuer) AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error {

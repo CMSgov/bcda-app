@@ -40,7 +40,7 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 	pool := database.ConnectPool()
 
 	workers := river.NewWorkers()
-	prepareWorker, err := NewPrepareJobWorker(db)
+	prepareWorker, err := NewPrepareJobWorker(db, pool)
 	if err != nil {
 		panic(err)
 	}
