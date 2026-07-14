@@ -24,7 +24,6 @@ import (
 	pgxv5 "github.com/jackc/pgx/v5"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
 
 // PrepareJobWorker has two BFD clients because it depends on a configuration variable that is not available until Work() is called.
@@ -113,11 +112,6 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			if err != nil {
 				// TODO update job in jobs table as failed
 				logger.Errorf("failed to add jobs to the main queue: %s", err)
-				return err
-			}
-
-			_, err = river.JobCompleteTx[*riverpgxv5.Driver](ctx, tx, rjob)
-			if err != nil {
 				return err
 			}
 
