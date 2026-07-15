@@ -18,12 +18,12 @@ package queueing
 import (
 	"context"
 	"database/sql"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -36,7 +36,8 @@ type Notifier interface {
 }
 
 // TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
-func StartRiver(db *sql.DB, numWorkers int) *queue {
+func StartRiver(db *sql.DB, numWorkers int) {
+	ctx := context.Background()
 	pool := database.ConnectPool()
 
 	workers := river.NewWorkers()
@@ -70,11 +71,12 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
-		JobTimeout:   10 * time.Minute,
-		Logger:       logger,
-		MaxAttempts:  8, // This is roughly an hour of retries
-		Workers:      workers,
-		PeriodicJobs: periodicJobs,
+		JobTimeout:      10 * time.Minute,
+		Logger:          logger,
+		MaxAttempts:     8, // This is roughly an hour of retries
+		Workers:         workers,
+		PeriodicJobs:    periodicJobs,
+		SoftStopTimeout: 30 * time.Second,
 	})
 
 	if err != nil {
@@ -82,23 +84,17 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		panic(err)
 	}
 
-	if err := riverClient.Start(context.Background()); err != nil {
+	signalCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if err := riverClient.Start(signalCtx); err != nil {
 		logger.Error("failed to start river client", "error", err)
 		panic(err)
 	}
 
-	q := &queue{
-		ctx:        context.Background(),
-		client:     riverClient,
-		worker:     worker.NewWorker(db),
-		repository: postgres.NewRepository(db),
-	}
+	<-signalCtx.Done()
+	stop()
 
-	return q
-}
-
-func (q queue) StopRiver() {
-	if err := q.client.Stop(q.ctx); err != nil {
-		panic(err)
-	}
+	logger.Info("Received SIGINT/SIGTERM; initiating soft stop (waiting for cancelled jobs to finish)")
+	<-riverClient.Stopped()
 }

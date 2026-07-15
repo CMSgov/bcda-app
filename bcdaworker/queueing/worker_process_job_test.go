@@ -69,8 +69,7 @@ func TestWork_Integration(t *testing.T) {
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-	q := StartRiver(db, 1)
-	defer q.StopRiver()
+	StartRiver(db, 1)
 
 	id, _ := safecast.ToInt(job.ID)
 	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
