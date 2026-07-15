@@ -21,26 +21,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/ccoveille/go-safecast"
-	pgxv5 "github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
-	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
 
 // manager is designed to be the shared space for common logic and structs between
 // the specific queue library implementations
-
-// queue is responsible for setting the required components necessary for queue clients
-// to pick up and handle work
-type queue struct {
-	worker worker.Worker
-
-	// Resources associated with River library
-	client *river.Client[pgxv5.Tx]
-
-	ctx        context.Context
-	repository repository.Repository
-}
 
 type ValidateJobConfig struct {
 	WorkerInstance worker.Worker

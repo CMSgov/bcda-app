@@ -123,9 +123,6 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 }
 
 func TestCheckIfCancelled(t *testing.T) {
-	q := queue{
-		repository: nil,
-	}
 
 	mockRepo := repository.MockRepository{}
 	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
@@ -140,7 +137,7 @@ func TestCheckIfCancelled(t *testing.T) {
 		},
 		nil,
 	)
-	q.repository = &mockRepo
+	repo := &mockRepo
 
 	ctx, cancel := context.WithCancel(context.Background())
 	jobs := worker_types.JobEnqueueArgs{}
@@ -149,7 +146,7 @@ func TestCheckIfCancelled(t *testing.T) {
 	assert.NoError(t, err)
 
 	// In production we wait 15 second intervals, for test we do 1
-	go checkIfCancelled(ctx, q.repository, cancel, jobID, 1)
+	go checkIfCancelled(ctx, repo, cancel, jobID, 1)
 
 	// Check if the context has been cancelled
 	var cnt uint8
