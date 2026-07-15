@@ -18,13 +18,12 @@ package queueing
 import (
 	"context"
 	"database/sql"
-	"os/signal"
-	"syscall"
+	"log/slog"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/log"
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/robfig/cron/v3"
@@ -35,11 +34,8 @@ type Notifier interface {
 	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
-// TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
-func StartRiver(db *sql.DB, numWorkers int) {
-	ctx := context.Background()
+func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.Client[pgx.Tx] {
 	pool := database.ConnectPool()
-
 	workers := river.NewWorkers()
 	prepareWorker, err := NewPrepareJobWorker(db, pool)
 	if err != nil {
@@ -65,8 +61,6 @@ func StartRiver(db *sql.DB, numWorkers int) {
 		),
 	}
 
-	logger := log.NewSlogLogger("worker")
-
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
@@ -84,17 +78,5 @@ func StartRiver(db *sql.DB, numWorkers int) {
 		panic(err)
 	}
 
-	signalCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	if err := riverClient.Start(signalCtx); err != nil {
-		logger.Error("failed to start river client", "error", err)
-		panic(err)
-	}
-
-	<-signalCtx.Done()
-	stop()
-
-	logger.Info("Received SIGINT/SIGTERM; initiating soft stop (waiting for cancelled jobs to finish)")
-	<-riverClient.Stopped()
+	return riverClient
 }

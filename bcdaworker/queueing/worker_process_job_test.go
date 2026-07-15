@@ -12,6 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -69,12 +70,21 @@ func TestWork_Integration(t *testing.T) {
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-	StartRiver(db, 1)
+	ctx := t.Context()
+
+	riverLogger := log.NewSlogLogger("worker")
+	riverClient := CreateRiverClient(riverLogger, db, 1)
+
+	err = riverClient.Start(ctx)
+	assert.Nil(t, err)
+	defer func() {
+		err := riverClient.Stop(ctx)
+		assert.Nil(t, err)
+	}()
 
 	id, _ := safecast.ToInt(job.ID)
 	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
 
-	ctx := t.Context()
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -108,7 +118,7 @@ func TestWork_Integration(t *testing.T) {
 			if isTerminalStatus(currentJob.Status) {
 				return
 			}
-			logger.Infof("Waiting on job to be completed. Current status %s.", job.Status)
+			logger.Infof("Waiting on job to be completed. Current status %s.", currentJob.Status)
 			time.Sleep(100 * time.Millisecond)
 		}
 	}

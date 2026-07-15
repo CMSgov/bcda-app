@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -69,7 +71,9 @@ func setUpApp() *cli.App {
 }
 
 func startWorker() {
-	fmt.Println("Starting bcdaworker...")
+
+	logger := log.NewSlogLogger("worker")
+	logger.Info("Starting bcdaworker...")
 
 	err := profiler.Start(
 		profiler.WithService("BCDA"),
@@ -82,7 +86,21 @@ func startWorker() {
 	defer profiler.Stop()
 
 	createWorkerDirs()
-	queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
+
+	ctx := context.Background()
+	signalCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	riverClient := queueing.CreateRiverClient(logger, db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
+	if err := riverClient.Start(ctx); err != nil {
+		logger.Error("failed to start river client", "error", err)
+		panic(err)
+	}
+
+	<-signalCtx.Done()
+	stop()
+	logger.Info("Received exit signal; initiating soft stop (waiting for cancelled jobs to finish)")
+	<-riverClient.Stopped()
 }
 
 func createWorkerDirs() {
