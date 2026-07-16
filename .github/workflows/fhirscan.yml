@@ -25,8 +25,8 @@ jobs:
         with:
           params: |
             CLIENT_CREDENTIALS_PARAMS=/bcda/dev/sensitive/dev_client_credentials
-      - name: Run Inferno
-        id: run
+            CLIENT_CREDENTIALS_PARAMS_V3=/bcda/dev/sensitive/dev_v3_client_credentials
+      - name: Set up inferno
         run: |
           cd ${GITHUB_WORKSPACE}
 
@@ -36,8 +36,16 @@ jobs:
           sleep 20
           docker stop fhir_testing-hl7_validator_service-1
 
+          docker build --no-cache -t fhir_testing -f docker/Dockerfile.fhir_testing .
+      - name: Run fhir scan v2
+        run: |
           CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_id)
           CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS | jq -r .client_secret)
 
-          docker build --no-cache -t fhir_testing -f docker/Dockerfile.fhir_testing .
           docker run --add-host=host.docker.internal:host-gateway --rm -e BULK_URL="https://dev.bcda.cms.gov/api/v2/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://dev.bcda.cms.gov/auth/token" fhir_testing
+      - name: Run fhir scan v3
+        run: |
+          CLIENT_ID=$(echo $CLIENT_CREDENTIALS_PARAMS_V3 | jq -r .client_id)
+          CLIENT_SECRET=$(echo $CLIENT_CREDENTIALS_PARAMS_V3 | jq -r .client_secret)
+
+          docker run --add-host=host.docker.internal:host-gateway --rm -e BULK_URL="https://dev.bcda.cms.gov/api/v3/" -e CLIENT_ID="$CLIENT_ID" -e CLIENT_SECRET="$CLIENT_SECRET" -e TOKEN_URL="https://dev.bcda.cms.gov/auth/token" fhir_testing
