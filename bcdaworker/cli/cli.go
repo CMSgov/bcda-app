@@ -87,8 +87,7 @@ func startWorker() {
 
 	createWorkerDirs()
 
-	ctx := context.Background()
-	signalCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	riverClient := queueing.CreateRiverClient(logger, db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
@@ -97,7 +96,7 @@ func startWorker() {
 		panic(err)
 	}
 
-	<-signalCtx.Done()
+	<-ctx.Done()
 	stop()
 	logger.Info("Received exit signal; initiating soft stop (waiting for cancelled jobs to finish)")
 	<-riverClient.Stopped()
