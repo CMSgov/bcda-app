@@ -109,7 +109,7 @@ services:
         - action: rebuild
           path: .
           ignore: ["!go.mod", "!go.sum", "!tools.go"]
-    stop_grace_period: 1s
+    stop_grace_period: 30s
   ssas:
     build:
       context: .

@@ -54,8 +54,8 @@ require (
 	github.com/ccoveille/go-safecast v1.6.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/pashagolub/pgxmock/v4 v4.5.0
-	github.com/riverqueue/river v0.20.2
-	github.com/riverqueue/river/rivertype v0.20.2
+	github.com/riverqueue/river v0.38.0
+	github.com/riverqueue/river/rivertype v0.38.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/testcontainers/testcontainers-go v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.38.0
@@ -186,8 +186,8 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/richardartoul/molecule v1.0.1-0.20240531184615-7ca0df43c0b3 // indirect
-	github.com/riverqueue/river/riverdriver v0.20.2 // indirect
-	github.com/riverqueue/river/rivershared v0.20.2 // indirect
+	github.com/riverqueue/river/riverdriver v0.38.0 // indirect
+	github.com/riverqueue/river/rivershared v0.38.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
@@ -196,8 +196,8 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.4 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/tidwall/gjson v1.18.0 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/gjson v1.19.0 // indirect
+	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tinylib/msgp v1.6.3 // indirect
@@ -256,7 +256,7 @@ require (
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.20.2
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.38.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/slog-logrus v1.0.0
 	github.com/slack-go/slack v0.23.1
