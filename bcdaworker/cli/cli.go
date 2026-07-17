@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -71,7 +71,9 @@ func setUpApp() *cli.App {
 }
 
 func startWorker() {
-	fmt.Println("Starting bcdaworker...")
+
+	logger := log.NewSlogLogger("worker")
+	logger.Info("Starting bcdaworker...")
 
 	err := profiler.Start(
 		profiler.WithService("BCDA"),
@@ -84,9 +86,20 @@ func startWorker() {
 	defer profiler.Stop()
 
 	createWorkerDirs()
-	queue := queueing.StartRiver(db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
-	defer queue.StopRiver()
-	waitForSig()
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	riverClient := queueing.CreateRiverClient(logger, db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
+	if err := riverClient.Start(ctx); err != nil {
+		logger.Error("failed to start river client", "error", err)
+		panic(err)
+	}
+
+	<-ctx.Done()
+	stop()
+	logger.Info("Received exit signal; initiating soft stop (waiting for cancelled jobs to finish)")
+	<-riverClient.Stopped()
 }
 
 func createWorkerDirs() {
@@ -124,39 +137,6 @@ func clearTempDirectory(tempDir string) error {
 		return err
 	}
 	return nil
-}
-
-func waitForSig() {
-	signalChan := make(chan os.Signal, 1)
-	defer close(signalChan)
-
-	signal.Notify(signalChan,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-
-	exitChan := make(chan int)
-	defer close(exitChan)
-
-	go func() {
-		for {
-			s := <-signalChan
-			switch s {
-			case syscall.SIGINT:
-				fmt.Println("interrupt")
-				exitChan <- 0
-			case syscall.SIGTERM:
-				fmt.Println("force stop")
-				exitChan <- 0
-			case syscall.SIGQUIT:
-				fmt.Println("stop and core dump")
-				exitChan <- 0
-			}
-		}
-	}()
-
-	code := <-exitChan
-	os.Exit(code)
 }
 
 func checkHealth(healthChecker health.HealthChecker) bool {

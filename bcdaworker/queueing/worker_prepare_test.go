@@ -260,7 +260,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	}
 
 	driver := riverpgxv5.New(s.pool)
-	_, err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	err := driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
 		s.T().Log(err)
 	}
@@ -324,7 +324,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r, pool: s.pool}
 	driver := riverpgxv5.New(s.pool)
-	_, err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
 		s.T().Log(err)
 	}
@@ -377,7 +377,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	}
 
 	driver := riverpgxv5.New(s.pool)
-	_, err := driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
+	err := driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
 	assert.Nil(s.T(), err)
 
 	tx, err := s.pool.Begin(s.ctx)
@@ -400,6 +400,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	assert.Equal(s.T(), re.State, rivertype.JobState("available"))
 
 	// Cleanup the queue data
-	_, err = driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
+	err = driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
 	assert.Nil(s.T(), err)
 }

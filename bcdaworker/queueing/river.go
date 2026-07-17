@@ -18,13 +18,12 @@ package queueing
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
-	"github.com/CMSgov/bcda-app/log"
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/robfig/cron/v3"
@@ -35,10 +34,8 @@ type Notifier interface {
 	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
-// TODO: better dependency injection (db, worker, logger).  Waiting for pgxv5 upgrade
-func StartRiver(db *sql.DB, numWorkers int) *queue {
+func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.Client[pgx.Tx] {
 	pool := database.ConnectPool()
-
 	workers := river.NewWorkers()
 	prepareWorker, err := NewPrepareJobWorker(db, pool)
 	if err != nil {
@@ -64,17 +61,16 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		),
 	}
 
-	logger := log.NewSlogLogger("worker")
-
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: numWorkers},
 		},
-		JobTimeout:   10 * time.Minute,
-		Logger:       logger,
-		MaxAttempts:  8, // This is roughly an hour of retries
-		Workers:      workers,
-		PeriodicJobs: periodicJobs,
+		JobTimeout:      10 * time.Minute,
+		Logger:          logger,
+		MaxAttempts:     8, // This is roughly an hour of retries
+		Workers:         workers,
+		PeriodicJobs:    periodicJobs,
+		SoftStopTimeout: 29 * time.Second, // Client stops fetching new jobs and waits for in-progress jobs to complete before canceling them; ECS cancels after 30s
 	})
 
 	if err != nil {
@@ -82,23 +78,5 @@ func StartRiver(db *sql.DB, numWorkers int) *queue {
 		panic(err)
 	}
 
-	if err := riverClient.Start(context.Background()); err != nil {
-		logger.Error("failed to start river client", "error", err)
-		panic(err)
-	}
-
-	q := &queue{
-		ctx:        context.Background(),
-		client:     riverClient,
-		worker:     worker.NewWorker(db),
-		repository: postgres.NewRepository(db),
-	}
-
-	return q
-}
-
-func (q queue) StopRiver() {
-	if err := q.client.Stop(q.ctx); err != nil {
-		panic(err)
-	}
+	return riverClient
 }

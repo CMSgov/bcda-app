@@ -8,18 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/dd-trace-go/v2/profiler"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -32,16 +29,6 @@ import (
 )
 
 func main() {
-	err := profiler.Start(
-		profiler.WithService("BCDA Bene Prefs"),
-		profiler.WithEnv(conf.GetEnv("ENV")),
-		profiler.WithVersion(constants.Version),
-	)
-	if err != nil {
-		log.API.Warn(err)
-	}
-	defer profiler.Stop()
-
 	lambda.Start(optOutImportHandler)
 }
 
