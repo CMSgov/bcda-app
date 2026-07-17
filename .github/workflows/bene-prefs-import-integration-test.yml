@@ -7,9 +7,8 @@ on:
     paths:
       - .github/workflows/bene-prefs-import-integration-test.yml
       - .github/workflows/bene-prefs-import-test-deploy.yml
-      - optout/**
-      - bcda/suppression/**
-      - bcda/lambda/optout/**
+      - bcda/bene-prefs/**
+      - bcda/lambda/bene-prefs/**
   workflow_dispatch:
 
 permissions:
@@ -35,7 +34,7 @@ jobs:
     runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
     defaults:
       run:
-        working-directory: ./optout
+        working-directory: ./bcda/bene-prefs
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0

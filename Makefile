@@ -25,7 +25,7 @@ lint: setup-tests
 	docker compose -f compose.test.yml run --rm \
 		tests golangci-lint run --timeout=$(LINT_TIMEOUT) --verbose --new-from-merge-base=main --concurrency=1
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
-	docker compose -f compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
+	docker compose -f compose.test.yml run --rm tests gosec -exclude=G301 ./...
 
 smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env)
@@ -190,18 +190,6 @@ credentials:
 
 dbdocs:
 	docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --rm-dist "postgres://postgres:toor@db:5432/bcda?sslmode=disable" dbdocs/bcda
-
-# ==== Lambda ====
-
-package-opt-out: export GOOS=linux
-package-opt-out: export GOARCH=amd64
-package-opt-out:
-	cd bcda && go build -o bin/opt-out-import ./lambda/optout/main.go
-
-package-cclf-import: export GOOS=linux
-package-cclf-import: export GOARCH=amd64
-package-cclf-import:
-	cd bcda && go build -o bin/cclf-import ./lambda/cclf/main.go
 
 # Build and publish images to ECR
 # make build-api ACCOUNT_ID={AWS account ID} RELEASE_VERSION={release tag eg r270 (or main)}

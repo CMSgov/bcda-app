@@ -215,11 +215,17 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 		{"Successful with no status(es)", http.StatusOK, nil, []stu3.TaskStatus{stu3.TaskStatusCompleted}},
 		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []stu3.TaskStatus{stu3.TaskStatusCompleted}},
 		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []stu3.TaskStatus{stu3.TaskStatusCompleted, stu3.TaskStatusFailed}},
-		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
-			[]stu3.TaskStatus{
-				stu3.TaskStatusAccepted, stu3.TaskStatusInProgress, stu3.TaskStatusCompleted, stu3.TaskStatusCompleted, stu3.TaskStatusCompleted, stu3.TaskStatusFailed, stu3.TaskStatusCancelled, stu3.TaskStatusFailed, stu3.TaskStatusCancelled,
-			},
-		},
+		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses, []stu3.TaskStatus{
+			stu3.TaskStatusCompleted,
+			stu3.TaskStatusCancelled,
+			stu3.TaskStatusCancelled,
+			stu3.TaskStatusCompleted,
+			stu3.TaskStatusCompleted,
+			stu3.TaskStatusFailed,
+			stu3.TaskStatusFailed,
+			stu3.TaskStatusInProgress,
+			stu3.TaskStatusAccepted,
+		}},
 		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
 	}
 
@@ -278,12 +284,14 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
 
 				total, tasks := getTasksFromSTU3Bundle(s.T(), rr.Body.Bytes())
+				fmt.Printf("-----total: %d, tasks: %v\n", total, tasks)
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
 				val, err := safecast.ToUint32(len(tasks))
 				assert.NoError(s.T(), err)
 				assert.Equal(s.T(), val, total)
 
 				for k, task := range tasks {
+					fmt.Printf("-----task: %+v, code: %+v\n", task.Status, tt.codes[k])
 					assert.Equal(s.T(), task.Status, tt.codes[k])
 					assert.Equal(s.T(), task.Input[0].ValueString, "GET https://bcda.test.gov/v1/this-is-a-test")
 				}
@@ -307,10 +315,17 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 		{"Successful with no status(es)", http.StatusOK, nil, []r4.TaskStatus{r4.TaskStatusCompleted}, true, false},
 		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []r4.TaskStatus{r4.TaskStatusCompleted}, true, false},
 		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []r4.TaskStatus{r4.TaskStatusCompleted, r4.TaskStatusFailed}, true, false},
-		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
-			[]r4.TaskStatus{
-				r4.TaskStatusAccepted, r4.TaskStatusInProgress, r4.TaskStatusCompleted, r4.TaskStatusCompleted, r4.TaskStatusCompleted, r4.TaskStatusFailed, r4.TaskStatusCancelled, r4.TaskStatusFailed, r4.TaskStatusCancelled,
-			}, true, false},
+		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses, []r4.TaskStatus{
+			r4.TaskStatusCompleted,
+			r4.TaskStatusCancelled,
+			r4.TaskStatusCancelled,
+			r4.TaskStatusCompleted,
+			r4.TaskStatusCompleted,
+			r4.TaskStatusFailed,
+			r4.TaskStatusFailed,
+			r4.TaskStatusInProgress,
+			r4.TaskStatusAccepted,
+		}, true, false},
 		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil, true, false},
 		{"Too Many Statuses", http.StatusBadRequest, []models.JobStatus{models.JobStatusCompleted, models.JobStatusCompleted}, nil, true, false},
 		{"Invalid Status Type", http.StatusBadRequest, []models.JobStatus{"Eaten by alligators"}, nil, false, false},

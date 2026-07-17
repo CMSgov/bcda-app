@@ -22,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	bcdaworkerpostgres "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/db"
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -743,34 +742,34 @@ func (r *RepositoryTestSuite) TestCCLFBeneficiariesMethods() {
 	assert.Len(benes, 0)
 }
 
-// TestSuppressionsMethods validates the CRUD operations associated with the suppressions table
-func (r *RepositoryTestSuite) TestSuppresionsMethods() {
+// TestBenePrefsRecordMethods validates the CRUD operations associated with the suppressions table
+func (r *RepositoryTestSuite) TestBenePrefsRecordMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 	fileID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
-	tooOld := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	tooOld := models.BenePrefsRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-365 * 24 * time.Hour)}
 	// Effective date is after the upper bound
-	tooNew := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	tooNew := models.BenePrefsRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now()}
 	// Mismatching preference indicators
-	mismatch1 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
+	mismatch1 := models.BenePrefsRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	mismatch2 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "",
+	mismatch2 := models.BenePrefsRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	suppressed1 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	suppressed1 := models.BenePrefsRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-time.Hour)}
-	suppressed2 := optout.OptOutRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+	suppressed2 := models.BenePrefsRecord{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-time.Hour)}
 
-	assert.NoError(r.repository.CreateSuppression(ctx, tooOld))
-	assert.NoError(r.repository.CreateSuppression(ctx, tooNew))
-	assert.NoError(r.repository.CreateSuppression(ctx, mismatch1))
-	assert.NoError(r.repository.CreateSuppression(ctx, mismatch2))
-	assert.NoError(r.repository.CreateSuppression(ctx, suppressed1))
-	assert.NoError(r.repository.CreateSuppression(ctx, suppressed2))
+	assert.NoError(r.repository.CreateBenePrefsRecord(ctx, tooOld))
+	assert.NoError(r.repository.CreateBenePrefsRecord(ctx, tooNew))
+	assert.NoError(r.repository.CreateBenePrefsRecord(ctx, mismatch1))
+	assert.NoError(r.repository.CreateBenePrefsRecord(ctx, mismatch2))
+	assert.NoError(r.repository.CreateBenePrefsRecord(ctx, suppressed1))
+	assert.NoError(r.repository.CreateBenePrefsRecord(ctx, suppressed2))
 
 	defer postgrestest.DeleteSuppressionFileByID(r.T(), r.db, fileID)
 
@@ -786,46 +785,46 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	assert.NotContains(mbis, mismatch2.MBI)
 }
 
-// TestSuppressionFilesMethods validates the CRUD operations associated with the suppression_files table
-func (r *RepositoryTestSuite) TestSuppressionFileMethods() {
+// TestBenePrefsFileMethods validates the CRUD operations associated with the suppression_files table
+func (r *RepositoryTestSuite) TestBenePrefsFileMethods() {
 	// Account for time precision in postgres
 	now := time.Now().Round(time.Millisecond)
 	var err error
 	ctx := context.Background()
 	assert := r.Assert()
 
-	inProgress := optout.OptOutFile{
+	inProgress := models.BenePrefsFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: constants.ImportInprog,
 	}
-	failed := optout.OptOutFile{
+	failed := models.BenePrefsFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: constants.ImportFail,
 	}
-	other := optout.OptOutFile{
+	other := models.BenePrefsFile{
 		Name:         uuid.New(),
 		Timestamp:    now,
 		ImportStatus: "Other",
 	}
 
-	inProgress.ID, err = r.repository.CreateSuppressionFile(ctx, inProgress)
+	inProgress.ID, err = r.repository.CreateBenePrefsFile(ctx, inProgress)
 	assert.NoError(err)
-	failed.ID, err = r.repository.CreateSuppressionFile(ctx, failed)
+	failed.ID, err = r.repository.CreateBenePrefsFile(ctx, failed)
 	assert.NoError(err)
-	other.ID, err = r.repository.CreateSuppressionFile(ctx, other)
+	other.ID, err = r.repository.CreateBenePrefsFile(ctx, other)
 	assert.NoError(err)
 
 	inProgress.ImportStatus = "Completed"
-	assert.NoError(r.repository.UpdateSuppressionFileImportStatus(ctx, inProgress.ID, inProgress.ImportStatus))
+	assert.NoError(r.repository.UpdateBenePrefsImportStatus(ctx, inProgress.ID, inProgress.ImportStatus))
 
-	assertEqualSuppressionFile(assert, inProgress, postgrestest.GetSuppressionFileByName(r.T(), r.db, inProgress.Name)[0])
-	assertEqualSuppressionFile(assert, failed, postgrestest.GetSuppressionFileByName(r.T(), r.db, failed.Name)[0])
-	assertEqualSuppressionFile(assert, other, postgrestest.GetSuppressionFileByName(r.T(), r.db, other.Name)[0])
+	assertEqualBenePrefsFile(assert, inProgress, postgrestest.GetSuppressionFileByName(r.T(), r.db, inProgress.Name)[0])
+	assertEqualBenePrefsFile(assert, failed, postgrestest.GetSuppressionFileByName(r.T(), r.db, failed.Name)[0])
+	assertEqualBenePrefsFile(assert, other, postgrestest.GetSuppressionFileByName(r.T(), r.db, other.Name)[0])
 
 	// Negative cases
-	assert.EqualError(r.repository.UpdateSuppressionFileImportStatus(ctx, 0, "SomeOtherStatus"), "SuppressionFile 0 not updated, no row found")
+	assert.EqualError(r.repository.UpdateBenePrefsImportStatus(ctx, 0, "SomeOtherStatus"), "SuppressionFile 0 not updated, no row found")
 }
 
 // TestJobsMethods validates the CRUD operations associated with the jobs table
@@ -1106,7 +1105,7 @@ func assertEqualCCLFFile(assert *assert.Assertions, expected, actual models.CCLF
 	assert.Equal(expected, actual)
 }
 
-func assertEqualSuppressionFile(assert *assert.Assertions, expected, actual optout.OptOutFile) {
+func assertEqualBenePrefsFile(assert *assert.Assertions, expected, actual models.BenePrefsFile) {
 	// normalize timestamps so we can use equality checks
 	expected.Timestamp = expected.Timestamp.UTC()
 	actual.Timestamp = actual.Timestamp.UTC()

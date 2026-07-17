@@ -19,12 +19,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/suppression"
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 
-	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/utils"
+	cclfUtils "github.com/CMSgov/bcda-app/bcda/attribution-import/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -327,17 +326,15 @@ func setUpApp() *cli.App {
 				ignoreSignals()
 				r := postgres.NewRepository(db)
 
-				var file_handler optout.OptOutFileHandler = &optout.LocalFileHandler{
+				var file_handler bp.BenePrefsFileHandler = &bp.LocalFileHandler{
 					Logger:                 log.API,
 					PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 					FileArchiveThresholdHr: hours,
 				}
 
-				importer := suppression.OptOutImporter{
-					FileHandler: file_handler,
-					Saver: &suppression.BCDASaver{
-						Repo: r,
-					},
+				importer := bp.BenePrefsImporter{
+					FileHandler:          file_handler,
+					Repo:                 r,
 					Logger:               log.API,
 					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 				}
