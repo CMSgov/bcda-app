@@ -173,7 +173,7 @@ func (s *BenePrefsTestSuite) TestImport_MissingData() {
 		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "failed to parse the effective date '20191301' from file", false},
 		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012", "failed to parse the samhsa effective date '20191301' from file", false},
 		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013", "failed to parse beneficiary link key from file", false},
-		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "could not create suppression file record for file", true},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "could not create bene-prefs file record for file", true},
 	}
 
 	for _, tt := range tests {

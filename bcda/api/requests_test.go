@@ -284,14 +284,12 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
 
 				total, tasks := getTasksFromSTU3Bundle(s.T(), rr.Body.Bytes())
-				fmt.Printf("-----total: %d, tasks: %v\n", total, tasks)
 				assert.Equal(s.T(), http.StatusOK, rr.Code)
 				val, err := safecast.ToUint32(len(tasks))
 				assert.NoError(s.T(), err)
 				assert.Equal(s.T(), val, total)
 
 				for k, task := range tasks {
-					fmt.Printf("-----task: %+v, code: %+v\n", task.Status, tt.codes[k])
 					assert.Equal(s.T(), task.Status, tt.codes[k])
 					assert.Equal(s.T(), task.Input[0].ValueString, "GET https://bcda.test.gov/v1/this-is-a-test")
 				}

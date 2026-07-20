@@ -61,7 +61,7 @@ jobs:
         run: |
           fname=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1
           echo "FILENAME=$fname" >> "$GITHUB_ENV"
-          aws s3 cp --no-progress ../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
+          aws s3 cp --no-progress ../../shared_files/synthetic1800MedicareFiles/test/T\#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009 \
                $(echo "${{env.BFD_BENE_PREFS_BUCKET}}" | xargs)/$fname
       # Give a bit of time for lambdas to process files
       - run: sleep 60
