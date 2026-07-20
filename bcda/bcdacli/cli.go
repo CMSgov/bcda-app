@@ -339,7 +339,7 @@ func setUpApp() *cli.App {
 					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 				}
 				ctx := context.Background()
-				s, f, sk, err := importer.ImportSuppressionDirectory(ctx, filePath)
+				s, f, sk, err := importer.ImportDirectory(ctx, filePath)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				return err
 			},

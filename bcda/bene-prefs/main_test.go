@@ -68,7 +68,7 @@ func TestBenePrefsTestSuite(t *testing.T) {
 	suite.Run(t, new(BenePrefsTestSuite))
 }
 
-// func (s *BenePrefsTestSuite) TestImportSuppression() {
+// func (s *BenePrefsTestSuite) TestImport() {
 // 	assert := assert.New(s.T())
 // 	ctx := context.Background()
 
@@ -83,7 +83,7 @@ func TestBenePrefsTestSuite(t *testing.T) {
 // 	}
 
 // 	importer, saver := s.createImporter()
-// 	err := importer.ImportSuppressionData(ctx, metadata)
+// 	err := importer.ImportData(ctx, metadata)
 // 	assert.Nil(err)
 // 	assert.Len(saver.Files, 1)
 
@@ -113,7 +113,7 @@ func TestBenePrefsTestSuite(t *testing.T) {
 // 	}
 
 // 	importer, saver = s.createImporter()
-// 	err = importer.ImportSuppressionData(ctx, metadata)
+// 	err = importer.ImportData(ctx, metadata)
 // 	assert.Nil(err)
 // 	assert.Len(saver.Files, 1)
 
@@ -150,7 +150,7 @@ func TestBenePrefsTestSuite(t *testing.T) {
 
 // }
 
-func (s *BenePrefsTestSuite) TestImportSuppression_MissingData() {
+func (s *BenePrefsTestSuite) TestImport_MissingData() {
 	assert := assert.New(s.T())
 	ctx := context.Background()
 	testUint := uint(0)
@@ -161,7 +161,7 @@ func (s *BenePrefsTestSuite) TestImportSuppression_MissingData() {
 	repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(testUint, nil)
 	repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	importer := s.createImporter(repo)
-	err := importer.ImportSuppressionData(ctx, metadata)
+	err := importer.ImportData(ctx, metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
@@ -195,7 +195,7 @@ func (s *BenePrefsTestSuite) TestImportSuppression_MissingData() {
 			}
 			importer := s.createImporter(repo)
 
-			err = importer.ImportSuppressionData(ctx, metadata)
+			err = importer.ImportData(ctx, metadata)
 			assert.NotNil(err)
 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 		})
@@ -447,7 +447,7 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression_RenameFileError() {
 	assert.EqualError(err, "1 files could not be cleaned up")
 }
 
-// func (s *BenePrefsTestSuite) TestImportSuppressionDirectoryTable() {
+// func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
 // 	assert := assert.New(s.T())
 // 	importer := s.createImporter()
 // 	db := database.Connect()
@@ -483,7 +483,7 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression_RenameFileError() {
 // 				path += "\n"
 // 			}
 
-// 			success, failure, skipped, err := importer.ImportSuppressionDirectory(ctx, path)
+// 			success, failure, skipped, err := importer.ImportDirectory(ctx, path)
 // 			if tt.errorExpected {
 // 				assert.Equal(true, strings.Contains(err.Error(), tt.errMessage))
 // 			} else {

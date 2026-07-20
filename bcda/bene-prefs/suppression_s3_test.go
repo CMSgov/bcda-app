@@ -1,5 +1,8 @@
 package beneprefs
 
+// these integration tests are currently disabled because they require a local S3 instance to run.
+// They are useful for testing the import of bene-prefs files from S3 but are not part of the normal test suite.
+
 // type SuppressionS3TestSuite struct {
 // 	suite.Suite
 // 	// ctx context.Context
@@ -26,7 +29,7 @@ package beneprefs
 // 	suite.Run(t, new(SuppressionS3TestSuite))
 // }
 
-// func (s *SuppressionS3TestSuite) TestImportSuppression() {
+// func (s *SuppressionS3TestSuite) TestImport() {
 // 	assert := assert.New(s.T())
 // 	bucketName := uuid.NewString()
 // 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
@@ -42,7 +45,7 @@ package beneprefs
 // 	}
 
 // 	importer, saver := s.createImporter()
-// 	err := importer.ImportSuppressionData(s.ctx, metadata)
+// 	err := importer.ImportData(s.ctx, metadata)
 // 	assert.Nil(err)
 // 	assert.Len(saver.Files, 1)
 
@@ -75,7 +78,7 @@ package beneprefs
 // 	}
 
 // 	importer, saver = s.createImporter()
-// 	err = importer.ImportSuppressionData(s.ctx, metadata)
+// 	err = importer.ImportData(s.ctx, metadata)
 // 	assert.Nil(err)
 // 	assert.Len(saver.Files, 1)
 
@@ -97,13 +100,13 @@ package beneprefs
 // 	assert.Equal("", suppressions[249].PrefIndicator)
 // }
 
-// func (s *SuppressionS3TestSuite) TestImportSuppression_MissingData() {
+// func (s *SuppressionS3TestSuite) TestImport_MissingData() {
 // 	assert := assert.New(s.T())
 
 // 	// Verify empty file is rejected
 // 	metadata := &optout.BenePrefsFilenameMetadata{}
 // 	importer, _ := s.createImporter()
-// 	err := importer.ImportSuppressionData(s.ctx, metadata)
+// 	err := importer.ImportData(s.ctx, metadata)
 // 	assert.NotNil(err)
 // 	assert.Contains(err.Error(), "could not read file")
 
@@ -144,7 +147,7 @@ package beneprefs
 // 				}
 // 			}
 
-// 			err = importer.ImportSuppressionData(s.ctx, metadata)
+// 			err = importer.ImportData(s.ctx, metadata)
 // 			assert.NotNil(err)
 // 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
@@ -278,7 +281,7 @@ package beneprefs
 // 	assert.True(len(output.Contents) == 0)
 // }
 
-// func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
+// func (s *SuppressionS3TestSuite) TestImportDirectoryTable() {
 // 	assert := assert.New(s.T())
 // 	importer, _ := s.createImporter()
 // 	db := database.Connect()
@@ -314,7 +317,7 @@ package beneprefs
 // 				bucketName += "\n"
 // 			}
 
-// 			success, failure, skipped, err := importer.ImportSuppressionDirectory(s.ctx, bucketName)
+// 			success, failure, skipped, err := importer.ImportDirectory(s.ctx, bucketName)
 // 			if tt.errorExpected {
 // 				assert.Equal(true, strings.Contains(err.Error(), tt.errMessage))
 // 			} else {

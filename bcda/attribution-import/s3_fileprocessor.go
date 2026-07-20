@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/service"
 )
@@ -17,7 +18,7 @@ type S3FileProcessor struct {
 
 func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
-	bucket, prefix := bp.ParseS3Uri(path)
+	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := processor.Handler.ListFiles(ctx, bucket, prefix)
 
 	if err != nil {
@@ -30,7 +31,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string
 	}
 
 	for _, obj := range s3Objects {
-		// ignore the opt out file, and don't add it to the skipped count
+		// ignore the bene-prefs file, and don't add it to the skipped count
 		optOut, _ := bp.IsOptOut(*obj.Key)
 		if optOut {
 			processor.Handler.Infof("Skipping opt-out file: %s/%s", bucket, *obj.Key)

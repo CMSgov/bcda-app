@@ -1522,10 +1522,10 @@ func (s *ServiceTestSuiteWithDatabase) TearDownSubTest() {
 // MBI00000001: (opted out) opted out 1 day ago and has an older record with no preference
 // MBI00000002: (opted out) opted out 10 days ago and opted in 30 days ago
 // MBI00000003: (opted out) has no previous records and opted out 1 day ago
-// MBI00000004: has a single record with no opt out preference ("")
+// MBI00000004: has a single record with no bene-prefs preference ("")
 // MBI00000005: has no previous record but has opted in
-// MBI00000006: has previous opt out records and opted in
-// MBI00000007: has no opt out records
+// MBI00000006: has previous bene-prefs records and opted in
+// MBI00000007: has no bene-prefs records
 // MBIs 1,2,3 should be suppressed for ACOs that have the ignore_suppressions set in config
 func (s *ServiceTestSuiteWithDatabase) TestGetBenesByID_Integration() {
 	cfg, err := LoadConfig()

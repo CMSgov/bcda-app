@@ -62,7 +62,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	// ignore the opt out file, and don't add it to the skipped count
+	// ignore the bene-prefs file, and don't add it to the skipped count
 	optOut, _ := bp.IsOptOut(info.Name())
 	if optOut {
 		fmt.Print("Skipping opt-out file: ", info.Name())

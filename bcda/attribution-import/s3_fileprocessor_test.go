@@ -50,6 +50,9 @@ func (s *S3ProcessorTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.cclfRefDate)
 }
 
+// some of these integration tests are disabled because they require a local S3 instance to run.
+// They are useful for testing the import of CCLF files from S3 but are not part of the normal test suite.
+
 // func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 // 	ctx := context.Background()
 // 	cmsID := "A0001"

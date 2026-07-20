@@ -100,13 +100,13 @@ func (handler *LocalFileHandler) OpenFile(ctx context.Context, metadata *models.
 
 func (handler *LocalFileHandler) CleanupBenePrefsFiles(ctx context.Context, suppresslist []*models.BenePrefsFilenameMetadata) error {
 	errCount := 0
-	for _, suppressionFile := range suppresslist {
-		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
-		handler.Logger.Infof("Cleaning up file %s", suppressionFile)
-		newpath := fmt.Sprintf("%s/%s", handler.PendingDeletionDir, suppressionFile.Name)
-		if !suppressionFile.Imported {
+	for _, bpFile := range suppresslist {
+		fmt.Printf("Cleaning up file %s.\n", bpFile)
+		handler.Logger.Infof("Cleaning up file %s", bpFile)
+		newpath := fmt.Sprintf("%s/%s", handler.PendingDeletionDir, bpFile.Name)
+		if !bpFile.Imported {
 			// check the timestamp on the failed files
-			elapsed := time.Since(suppressionFile.DeliveryDate).Hours()
+			elapsed := time.Since(bpFile.DeliveryDate).Hours()
 
 			f, err, done := convertFileArchiveThreshold(handler)
 			if done {
@@ -114,28 +114,28 @@ func (handler *LocalFileHandler) CleanupBenePrefsFiles(ctx context.Context, supp
 			}
 
 			if int(elapsed) > int(f) {
-				err := os.Rename(suppressionFile.FilePath, newpath)
+				err := os.Rename(bpFile.FilePath, newpath)
 				if err != nil {
 					errCount++
-					errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", suppressionFile, err)
+					errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", bpFile, err)
 					fmt.Println(errMsg)
 					handler.Logger.Error(errMsg)
 				} else {
-					fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", suppressionFile)
-					handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", suppressionFile)
+					fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", bpFile)
+					handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", bpFile)
 				}
 			}
 		} else {
 			// move the successful files to the deletion dir
-			err := os.Rename(suppressionFile.FilePath, newpath)
+			err := os.Rename(bpFile.FilePath, newpath)
 			if err != nil {
 				errCount++
-				errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", suppressionFile, err)
+				errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", bpFile, err)
 				fmt.Println(errMsg)
 				handler.Logger.Error(errMsg)
 			} else {
-				fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", suppressionFile)
-				handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", suppressionFile)
+				fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", bpFile)
+				handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", bpFile)
 			}
 		}
 	}

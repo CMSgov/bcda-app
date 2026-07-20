@@ -42,7 +42,7 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 func (handler *S3FileHandler) LoadBenePrefsFiles(ctx context.Context, path string) (suppressList *[]*models.BenePrefsFilenameMetadata, skipped int, err error) {
 	var result []*models.BenePrefsFilenameMetadata
 
-	bucket, prefix := ParseS3Uri(path)
+	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := handler.ListFiles(ctx, bucket, prefix)
 	if err != nil {
 		return &result, skipped, err
@@ -95,7 +95,7 @@ func (handler *S3FileHandler) OpenFile(ctx context.Context, metadata *models.Ben
 
 func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string) ([]byte, error) {
 	handler.Infof("Opening file %s\n", filePath)
-	bucket, file := ParseS3Uri(filePath)
+	bucket, file := bcdaaws.ParseS3Uri(filePath)
 
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
@@ -127,23 +127,23 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 func (handler *S3FileHandler) CleanupBenePrefsFiles(ctx context.Context, suppresslist []*models.BenePrefsFilenameMetadata) error {
 	errCount := 0
 
-	for _, suppressionFile := range suppresslist {
-		if !suppressionFile.Imported {
+	for _, bpFile := range suppresslist {
+		if !bpFile.Imported {
 			// Don't do anything. The S3 bucket should have a retention policy that
 			// automatically cleans up files after a specified period of time,
-			handler.Warningf("File %s was not imported successfully. Skipping cleanup", suppressionFile)
+			handler.Warningf("File %s was not imported successfully. Skipping cleanup", bpFile)
 			continue
 		}
 
-		handler.Infof("Cleaning up file %s\n", suppressionFile)
-		err := handler.Delete(ctx, suppressionFile.FilePath)
+		handler.Infof("Cleaning up file %s\n", bpFile)
+		err := handler.Delete(ctx, bpFile.FilePath)
 
 		if err != nil {
 			errCount++
 			continue
 		}
 
-		handler.Infof("File %s successfully ingested and deleted from S3", suppressionFile)
+		handler.Infof("File %s successfully ingested and deleted from S3", bpFile)
 	}
 
 	if errCount > 0 {
@@ -154,7 +154,7 @@ func (handler *S3FileHandler) CleanupBenePrefsFiles(ctx context.Context, suppres
 }
 
 func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error {
-	bucket, path := ParseS3Uri(filePath)
+	bucket, path := bcdaaws.ParseS3Uri(filePath)
 
 	_, err := handler.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
