@@ -158,7 +158,7 @@ func (m BenePrefsFilenameMetadata) String() string {
 	return m.Name
 }
 
-// An BenePrefsRecord represents a single record parsed from an bene-prefs file.
+// A BenePrefsRecord represents a single record parsed from an bene-prefs file.
 type BenePrefsRecord struct {
 	ID                  uint
 	FileID              uint

@@ -101,7 +101,7 @@ type IsBenePrefsFile struct {
 }
 
 func (e *IsBenePrefsFile) Error() string {
-	return "File is type: opt-out. Skipping attribution import."
+	return "File is type: bene-prefs. Skipping attribution import."
 }
 
 type InvalidCSVMetadata struct {
