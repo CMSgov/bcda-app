@@ -63,8 +63,8 @@ func NewSSASClient() (*SSASClient, error) {
 
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("SSAS_TIMEOUT_MS")); err != nil {
-		log.SSAS.Warn(errors.Wrap(err, "Could not get SSAS timeout from environment variable; using default value of 5000."))
-		timeout = 5000
+		log.SSAS.Warn(errors.Wrap(err, "Could not get SSAS timeout from environment variable; using default value of 20000."))
+		timeout = 20000
 	}
 
 	ssasURL := strings.TrimSpace(conf.GetEnv("SSAS_URL"))
