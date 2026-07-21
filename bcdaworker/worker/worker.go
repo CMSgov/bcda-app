@@ -15,6 +15,7 @@ import (
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
@@ -296,8 +297,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	w := bufio.NewWriter(f)
 	defer w.Flush()
-	errorCount := 0
-	benesWithDataCount := 0
+
+	errorCount := 0          // count of bene requests that had some unexpected error when retrieving data from BFD (ie 4xx/5xx error)
+	benesRetrievedCount := 0 // count of benes that were successfully retrieved from BFD (ie not a 4xx/5xx error)
+	benesWithDataCount := 0  // count of benes that had at least one resource returned from BFD (ie not an empty bundle)
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
 	failed := false
@@ -340,9 +343,16 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}()
 
 		if err != nil {
-			logger.Error(err)
-			errorCount++
+			switch err.(type) {
+			case *bcdaErrs.RequestedBeneficiaryNotFoundError:
+				logger.Warn(err)
+			default:
+				errorCount++
+				logger.Error(err)
+			}
 			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, fileErrMsg, tmpDir)
+		} else {
+			benesRetrievedCount++
 		}
 
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -351,8 +361,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			break
 		}
 	}
+
 	failPct := (float64(errorCount) / totalBeneIDs) * 100
-	logger.Infof("Job Failure: %.2f%%", failPct)
+	benesRetrievedPercent := int(math.Round((float64(benesRetrievedCount) / totalBeneIDs) * 100))
+	logger.Infof("Job Failure: %.2f%%, benesRetrieved: %d%, benesWithData: %d", failPct, benesRetrievedPercent, benesWithDataCount)
 
 	if err = w.Flush(); err != nil {
 		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
@@ -377,8 +389,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		(*pr).FileName = fileUUID + ".ndjson"
 	}
 
-	successfullyRetrievedPercent := 100 - int(math.Round(failPct))
-	(*pr).BenesRetrievedPercent = successfullyRetrievedPercent
+	(*pr).BenesRetrievedPercent = benesRetrievedPercent
 	(*pr).BenesWithData = benesWithDataCount
 
 	if errorCount > 0 {
@@ -399,10 +410,8 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 
 	if fetchBBId {
 		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI, jobData)
-
 		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("failed to get blueButtonId for cclfBeneficiaryId %d", beneID))
-			return cclfBeneficiary, err
+			return cclfBeneficiary, &bcdaErrs.RequestedBeneficiaryNotFoundError{BeneficiaryID: beneID}
 		}
 
 		if cclfBeneficiary.BlueButtonID != bbID {

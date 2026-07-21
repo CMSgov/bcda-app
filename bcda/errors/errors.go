@@ -127,3 +127,11 @@ type InvalidACOConfigError struct {
 func (e *InvalidACOConfigError) Error() string {
 	return fmt.Sprintf("failed to load or match ACO config (or potentially no ACO Configs set), CMS ID: %+v", e.CMSID)
 }
+
+type RequestedBeneficiaryNotFoundError struct {
+	BeneficiaryID uint
+}
+
+func (e *RequestedBeneficiaryNotFoundError) Error() string {
+	return fmt.Sprintf("requested beneficiary not found in BFD, beneficiary ID: %+v", e.BeneficiaryID)
+}
