@@ -133,7 +133,7 @@ func setUpApp() *cli.App {
 				auth := &http.Server{
 					Handler:           web.NewAuthRouter(provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 60)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 					ReadHeaderTimeout: 2 * time.Second,
 				}
@@ -141,7 +141,7 @@ func setUpApp() *cli.App {
 				api := &http.Server{
 					Handler:           web.NewAPIRouter(db, pool, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					WriteTimeout:      time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 60)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 					ReadHeaderTimeout: 2 * time.Second,
 				}
@@ -149,7 +149,7 @@ func setUpApp() *cli.App {
 				fileserver := &http.Server{
 					Handler:           web.NewDataRouter(db, provider),
 					ReadTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					WriteTimeout:      time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 900)) * time.Second,
 					IdleTimeout:       time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 					ReadHeaderTimeout: 2 * time.Second,
 				}
