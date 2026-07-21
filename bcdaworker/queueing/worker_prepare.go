@@ -157,7 +157,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		return exports, args.Since, err
 	}
 
-	exports, err = p.svc.GetQueJobs(ctx, args)
+	exports, benesAttributed, err := p.svc.GetQueJobs(ctx, args)
 	if err != nil {
 		logger.Error(err)
 		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok {
@@ -166,7 +166,9 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 			return exports, args.Since, err
 		}
 	}
+
 	args.Job.JobCount = len(exports)
+	args.Job.BenesAttributedToACO = benesAttributed
 
 	return exports, args.Since, err
 }

@@ -31,7 +31,7 @@ var _ Service = &service{}
 type Service interface {
 	GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string)
 	FindOldCCLFFile(ctx context.Context, cmsID string, since time.Time, cclfTimestamp time.Time) (uint, error)
-	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error)
+	GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, benesAttributed int, err error)
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
@@ -155,7 +155,7 @@ func (s *service) FindOldCCLFFile(ctx context.Context, cmsID string, since time.
 	return cclfFileOld.ID, nil
 }
 
-func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, err error) {
+func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) (queJobs []*worker_types.JobEnqueueArgs, benesAttributed int, err error) {
 	var (
 		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
 		jobs                            []*worker_types.JobEnqueueArgs
@@ -167,40 +167,40 @@ func (s *service) GetQueJobs(ctx context.Context, args worker_types.PrepareJobAr
 	case constants.GetExistingBenes:
 		beneficiaries, err = s.getBeneficiaries(ctx, args)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	case constants.GetNewAndExistingBenes:
 		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, args)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		// add new beneficiaries to the job queue; use a default time value to ensure
 		// that we retrieve the full history for these beneficiaries
 		jobs, err = s.createQueueJobs(ctx, args, time.Time{}, newBeneficiaries)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		queJobs = append(queJobs, jobs...)
 	default:
-		return nil, fmt.Errorf("unsupported RequestType %d", args.RequestType)
+		return nil, 0, fmt.Errorf("unsupported RequestType %d", args.RequestType)
 	}
 
 	// add existiing beneficiaries to the job queue
 	jobs, err = s.createQueueJobs(ctx, args, args.Since, beneficiaries)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	totalJobBenes := len(newBeneficiaries) + len(beneficiaries)
-	args.Job.BenesAttributedToACO = totalJobBenes
+	benesAttributed = len(newBeneficiaries) + len(beneficiaries)
+	args.Job.BenesAttributedToACO = benesAttributed
 	err = s.repository.UpdateJob(ctx, args.Job)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update job with totalJobBenes: %+v", err)
+		return nil, 0, fmt.Errorf("failed to update job with benesAttributed: %+v", err)
 	}
 
 	queJobs = append(queJobs, jobs...)
 
-	return queJobs, nil
+	return queJobs, benesAttributed, nil
 }
 
 func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error) {

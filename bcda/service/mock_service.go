@@ -715,7 +715,7 @@ func (_c *MockService_GetLatestCCLFFile_Call) RunAndReturn(run func(ctx context.
 }
 
 // GetQueJobs provides a mock function for the type MockService
-func (_mock *MockService) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
+func (_mock *MockService) GetQueJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, int, error) {
 	ret := _mock.Called(ctx, args)
 
 	if len(ret) == 0 {
@@ -723,8 +723,9 @@ func (_mock *MockService) GetQueJobs(ctx context.Context, args worker_types.Prep
 	}
 
 	var r0 []*worker_types.JobEnqueueArgs
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, error)); ok {
+	var r1 int
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, int, error)); ok {
 		return returnFunc(ctx, args)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, worker_types.PrepareJobArgs) []*worker_types.JobEnqueueArgs); ok {
@@ -734,12 +735,17 @@ func (_mock *MockService) GetQueJobs(ctx context.Context, args worker_types.Prep
 			r0 = ret.Get(0).([]*worker_types.JobEnqueueArgs)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, worker_types.PrepareJobArgs) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, worker_types.PrepareJobArgs) int); ok {
 		r1 = returnFunc(ctx, args)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
-	return r0, r1
+	if returnFunc, ok := ret.Get(2).(func(context.Context, worker_types.PrepareJobArgs) error); ok {
+		r2 = returnFunc(ctx, args)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
 }
 
 // MockService_GetQueJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQueJobs'
@@ -772,12 +778,12 @@ func (_c *MockService_GetQueJobs_Call) Run(run func(ctx context.Context, args wo
 	return _c
 }
 
-func (_c *MockService_GetQueJobs_Call) Return(queJobs []*worker_types.JobEnqueueArgs, err error) *MockService_GetQueJobs_Call {
-	_c.Call.Return(queJobs, err)
+func (_c *MockService_GetQueJobs_Call) Return(queJobs []*worker_types.JobEnqueueArgs, benesAttributed int, err error) *MockService_GetQueJobs_Call {
+	_c.Call.Return(queJobs, benesAttributed, err)
 	return _c
 }
 
-func (_c *MockService_GetQueJobs_Call) RunAndReturn(run func(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, error)) *MockService_GetQueJobs_Call {
+func (_c *MockService_GetQueJobs_Call) RunAndReturn(run func(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, int, error)) *MockService_GetQueJobs_Call {
 	_c.Call.Return(run)
 	return _c
 }

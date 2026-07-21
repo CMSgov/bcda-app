@@ -154,9 +154,9 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 			if tt.bfdErr {
 				// code returns before GetQueJobs
 			} else if tt.qErr {
-				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, errors.New("an error occurred"))
+				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, 0, errors.New("an error occurred"))
 			} else {
-				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*worker_types.JobEnqueueArgs{{ID: 52}}, nil)
+				svc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*worker_types.JobEnqueueArgs{{ID: 52}}, 0, nil)
 			}
 
 			if tt.bfdErr {
@@ -243,7 +243,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	clientID := uuid.New()
 	aco := &models.ACO{Name: "ACO Test Name", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: clientID, TerminationDetails: nil}
 	svc.On("GetACOByCMSID", mock.Anything, mock.Anything).Return(aco, nil)
-	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{{ID: 2}}, nil)
+	svc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{{ID: 2}}, 0, nil)
 	svc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	j := &river.Job[worker_types.PrepareJobArgs]{

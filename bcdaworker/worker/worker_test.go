@@ -533,10 +533,11 @@ func (s *WorkerTestSuite) TestAppendErrorToFile() {
 
 func (s *WorkerTestSuite) TestProcessJobEOB() {
 	j := models.Job{
-		ACOID:      uuid.Parse(constants.TestACOID),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     models.JobStatusPending,
-		JobCount:   1,
+		ACOID:                uuid.Parse(constants.TestACOID),
+		RequestURL:           "/api/v1/ExplanationOfBenefit/$export",
+		Status:               models.JobStatusPending,
+		JobCount:             1,
+		BenesAttributedToACO: 19,
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
@@ -562,6 +563,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
 	fmt.Printf("%+v", completedJob)
 	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), j.BenesAttributedToACO, completedJob.BenesAttributedToACO)
 	// As this test actually connects to BB, we can't be sure it will succeed
 	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
 }
