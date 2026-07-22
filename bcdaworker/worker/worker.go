@@ -364,7 +364,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	failPct := (float64(errorCount) / totalBeneIDs) * 100
 	benesRetrievedPercent := int(math.Round((float64(benesRetrievedCount) / totalBeneIDs) * 100))
-	logger.Infof("Job Failure: %.2f%%, benesRetrieved: %d%, benesWithData: %d", failPct, benesRetrievedPercent, benesWithDataCount)
+	logger.Infof("Job Failure: %.2f%%, benesRetrieved %: %d, benesWithData: %d", failPct, benesRetrievedPercent, benesWithDataCount)
 
 	if err = w.Flush(); err != nil {
 		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
@@ -411,7 +411,7 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 	if fetchBBId {
 		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI, jobData)
 		if err != nil {
-			return cclfBeneficiary, &bcdaErrs.RequestedBeneficiaryNotFoundError{BeneficiaryID: beneID}
+			return cclfBeneficiary, err
 		}
 
 		if cclfBeneficiary.BlueButtonID != bbID {

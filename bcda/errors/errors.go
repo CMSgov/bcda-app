@@ -129,9 +129,9 @@ func (e *InvalidACOConfigError) Error() string {
 }
 
 type RequestedBeneficiaryNotFoundError struct {
-	BeneficiaryID uint
+	Msg string
 }
 
 func (e *RequestedBeneficiaryNotFoundError) Error() string {
-	return fmt.Sprintf("requested beneficiary not found in BFD, beneficiary ID: %+v", e.BeneficiaryID)
+	return fmt.Sprintf("requested beneficiary not found, err: %s", e.Msg)
 }
