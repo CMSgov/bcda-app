@@ -22,10 +22,8 @@ const (
 	recCountStart, recCountEnd   = 23, 33
 )
 
-// An BenePrefsImporter imports bene-prefs files based on the provided file handler and saver.
 type BenePrefsImporter struct {
-	FileHandler BenePrefsFileHandler
-	// Saver                Saver
+	FileHandler          BenePrefsFileHandler
 	Repo                 models.Repository
 	Logger               logrus.FieldLogger
 	ImportStatusInterval int
