@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"archive/zip"
@@ -14,13 +14,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/ccoveille/go-safecast"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +63,7 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 	}
 
 	s.cclfProcessor = &LocalFileProcessor{
-		Handler: optout.LocalFileHandler{
+		Handler: bp.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,
@@ -71,7 +71,7 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 	}
 	s.pendingDeletionDir = dir
 	s.csvProcessor = &LocalFileProcessor{
-		Handler: optout.LocalFileHandler{
+		Handler: bp.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,

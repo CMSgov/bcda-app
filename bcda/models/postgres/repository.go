@@ -15,7 +15,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/optout"
 )
 
 const (
@@ -297,18 +296,72 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	return beneficiaries, nil
 }
 
-func (r *Repository) CreateSuppression(ctx context.Context, suppression optout.OptOutRecord) error {
-	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppressions").
-		Cols("file_id", "mbi", "source_code", "effective_date", "preference_indicator",
-			"samhsa_source_code", "samhsa_effective_date", "samhsa_preference_indicator",
-			"beneficiary_link_key", "aco_cms_id").
-		Values(suppression.FileID, suppression.MBI, suppression.SourceCode, suppression.EffectiveDt, suppression.PrefIndicator,
-			suppression.SAMHSASourceCode, suppression.SAMHSAEffectiveDt, suppression.SAMHSAPrefIndicator,
-			suppression.BeneficiaryLinkKey, suppression.ACOCMSID)
+func (r *Repository) CreateBenePrefsFile(ctx context.Context, file models.BenePrefsFile) (uint, error) {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppression_files")
+	ib.Cols("name", "timestamp", "import_status").Values(file.Name, file.Timestamp, file.ImportStatus)
+	query, args := ib.Build()
+
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the suppression file
+	query = fmt.Sprintf(constants.CCLFFileRetID, query)
+
+	var id uint
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (r *Repository) CreateBenePrefsRecord(ctx context.Context, record models.BenePrefsRecord) error {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppressions").Cols(
+		"file_id",
+		"mbi",
+		"source_code",
+		"effective_date",
+		"preference_indicator",
+		"samhsa_source_code",
+		"samhsa_effective_date",
+		"samhsa_preference_indicator",
+		"beneficiary_link_key",
+		"aco_cms_id",
+	).Values(record.FileID,
+		record.MBI,
+		record.SourceCode,
+		record.EffectiveDt,
+		record.PrefIndicator,
+		record.SAMHSASourceCode,
+		record.SAMHSAEffectiveDt,
+		record.SAMHSAPrefIndicator,
+		record.BeneficiaryLinkKey,
+		record.ACOCMSID,
+	)
 	query, args := ib.Build()
 
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
+}
+
+func (r *Repository) UpdateBenePrefsImportStatus(ctx context.Context, fileID uint, status string) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("suppression_files")
+	ub.Set(ub.Assign("import_status", status))
+	ub.Where(ub.Equal("id", fileID))
+
+	query, args := ub.Build()
+	result, err := r.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return fmt.Errorf("SuppressionFile %d not updated, no row found", fileID)
+	}
+
+	return nil
 }
 
 func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, upperBound time.Time) ([]string, error) {
@@ -347,44 +400,6 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, up
 	}
 
 	return suppressedMBIs, nil
-}
-
-func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile optout.OptOutFile) (uint, error) {
-	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppression_files")
-	ib.Cols("name", "timestamp", "import_status").
-		Values(suppressionFile.Name, suppressionFile.Timestamp, suppressionFile.ImportStatus)
-	query, args := ib.Build()
-	// Append the RETURNING id to retrieve the auto-generated ID value associated with the suppression file
-	query = fmt.Sprintf(constants.CCLFFileRetID, query)
-	var id uint
-	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
-		return 0, err
-	}
-
-	return id, nil
-}
-
-func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
-	ub := sqlFlavor.NewUpdateBuilder().Update("suppression_files")
-	ub.Set(ub.Assign("import_status", importStatus))
-	ub.Where(ub.Equal("id", fileID))
-
-	query, args := ub.Build()
-	result, err := r.ExecContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
-		return fmt.Errorf("SuppressionFile %d not updated, no row found", fileID)
-	}
-
-	return nil
 }
 
 var jobColumns []string = []string{

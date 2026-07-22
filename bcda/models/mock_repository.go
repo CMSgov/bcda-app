@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/pborman/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -93,6 +92,129 @@ func (_c *MockRepository_CreateACO_Call) Return(err error) *MockRepository_Creat
 }
 
 func (_c *MockRepository_CreateACO_Call) RunAndReturn(run func(ctx context.Context, aco ACO) error) *MockRepository_CreateACO_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateBenePrefsFile provides a mock function for the type MockRepository
+func (_mock *MockRepository) CreateBenePrefsFile(ctx context.Context, file BenePrefsFile) (uint, error) {
+	ret := _mock.Called(ctx, file)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBenePrefsFile")
+	}
+
+	var r0 uint
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, BenePrefsFile) (uint, error)); ok {
+		return returnFunc(ctx, file)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, BenePrefsFile) uint); ok {
+		r0 = returnFunc(ctx, file)
+	} else {
+		r0 = ret.Get(0).(uint)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, BenePrefsFile) error); ok {
+		r1 = returnFunc(ctx, file)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRepository_CreateBenePrefsFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBenePrefsFile'
+type MockRepository_CreateBenePrefsFile_Call struct {
+	*mock.Call
+}
+
+// CreateBenePrefsFile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - file BenePrefsFile
+func (_e *MockRepository_Expecter) CreateBenePrefsFile(ctx interface{}, file interface{}) *MockRepository_CreateBenePrefsFile_Call {
+	return &MockRepository_CreateBenePrefsFile_Call{Call: _e.mock.On("CreateBenePrefsFile", ctx, file)}
+}
+
+func (_c *MockRepository_CreateBenePrefsFile_Call) Run(run func(ctx context.Context, file BenePrefsFile)) *MockRepository_CreateBenePrefsFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 BenePrefsFile
+		if args[1] != nil {
+			arg1 = args[1].(BenePrefsFile)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRepository_CreateBenePrefsFile_Call) Return(v uint, err error) *MockRepository_CreateBenePrefsFile_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockRepository_CreateBenePrefsFile_Call) RunAndReturn(run func(ctx context.Context, file BenePrefsFile) (uint, error)) *MockRepository_CreateBenePrefsFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateBenePrefsRecord provides a mock function for the type MockRepository
+func (_mock *MockRepository) CreateBenePrefsRecord(ctx context.Context, record BenePrefsRecord) error {
+	ret := _mock.Called(ctx, record)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBenePrefsRecord")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, BenePrefsRecord) error); ok {
+		r0 = returnFunc(ctx, record)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRepository_CreateBenePrefsRecord_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBenePrefsRecord'
+type MockRepository_CreateBenePrefsRecord_Call struct {
+	*mock.Call
+}
+
+// CreateBenePrefsRecord is a helper method to define mock.On call
+//   - ctx context.Context
+//   - record BenePrefsRecord
+func (_e *MockRepository_Expecter) CreateBenePrefsRecord(ctx interface{}, record interface{}) *MockRepository_CreateBenePrefsRecord_Call {
+	return &MockRepository_CreateBenePrefsRecord_Call{Call: _e.mock.On("CreateBenePrefsRecord", ctx, record)}
+}
+
+func (_c *MockRepository_CreateBenePrefsRecord_Call) Run(run func(ctx context.Context, record BenePrefsRecord)) *MockRepository_CreateBenePrefsRecord_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 BenePrefsRecord
+		if args[1] != nil {
+			arg1 = args[1].(BenePrefsRecord)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRepository_CreateBenePrefsRecord_Call) Return(err error) *MockRepository_CreateBenePrefsRecord_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRepository_CreateBenePrefsRecord_Call) RunAndReturn(run func(ctx context.Context, record BenePrefsRecord) error) *MockRepository_CreateBenePrefsRecord_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -225,129 +347,6 @@ func (_c *MockRepository_CreateJob_Call) Return(jobID uint, err error) *MockRepo
 }
 
 func (_c *MockRepository_CreateJob_Call) RunAndReturn(run func(ctx context.Context, j Job) (uint, error)) *MockRepository_CreateJob_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// CreateSuppression provides a mock function for the type MockRepository
-func (_mock *MockRepository) CreateSuppression(ctx context.Context, suppression optout.OptOutRecord) error {
-	ret := _mock.Called(ctx, suppression)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreateSuppression")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, optout.OptOutRecord) error); ok {
-		r0 = returnFunc(ctx, suppression)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockRepository_CreateSuppression_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateSuppression'
-type MockRepository_CreateSuppression_Call struct {
-	*mock.Call
-}
-
-// CreateSuppression is a helper method to define mock.On call
-//   - ctx context.Context
-//   - suppression optout.OptOutRecord
-func (_e *MockRepository_Expecter) CreateSuppression(ctx interface{}, suppression interface{}) *MockRepository_CreateSuppression_Call {
-	return &MockRepository_CreateSuppression_Call{Call: _e.mock.On("CreateSuppression", ctx, suppression)}
-}
-
-func (_c *MockRepository_CreateSuppression_Call) Run(run func(ctx context.Context, suppression optout.OptOutRecord)) *MockRepository_CreateSuppression_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 optout.OptOutRecord
-		if args[1] != nil {
-			arg1 = args[1].(optout.OptOutRecord)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockRepository_CreateSuppression_Call) Return(err error) *MockRepository_CreateSuppression_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockRepository_CreateSuppression_Call) RunAndReturn(run func(ctx context.Context, suppression optout.OptOutRecord) error) *MockRepository_CreateSuppression_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// CreateSuppressionFile provides a mock function for the type MockRepository
-func (_mock *MockRepository) CreateSuppressionFile(ctx context.Context, suppressionFile optout.OptOutFile) (uint, error) {
-	ret := _mock.Called(ctx, suppressionFile)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreateSuppressionFile")
-	}
-
-	var r0 uint
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, optout.OptOutFile) (uint, error)); ok {
-		return returnFunc(ctx, suppressionFile)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, optout.OptOutFile) uint); ok {
-		r0 = returnFunc(ctx, suppressionFile)
-	} else {
-		r0 = ret.Get(0).(uint)
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, optout.OptOutFile) error); ok {
-		r1 = returnFunc(ctx, suppressionFile)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockRepository_CreateSuppressionFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateSuppressionFile'
-type MockRepository_CreateSuppressionFile_Call struct {
-	*mock.Call
-}
-
-// CreateSuppressionFile is a helper method to define mock.On call
-//   - ctx context.Context
-//   - suppressionFile optout.OptOutFile
-func (_e *MockRepository_Expecter) CreateSuppressionFile(ctx interface{}, suppressionFile interface{}) *MockRepository_CreateSuppressionFile_Call {
-	return &MockRepository_CreateSuppressionFile_Call{Call: _e.mock.On("CreateSuppressionFile", ctx, suppressionFile)}
-}
-
-func (_c *MockRepository_CreateSuppressionFile_Call) Run(run func(ctx context.Context, suppressionFile optout.OptOutFile)) *MockRepository_CreateSuppressionFile_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 optout.OptOutFile
-		if args[1] != nil {
-			arg1 = args[1].(optout.OptOutFile)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockRepository_CreateSuppressionFile_Call) Return(v uint, err error) *MockRepository_CreateSuppressionFile_Call {
-	_c.Call.Return(v, err)
-	return _c
-}
-
-func (_c *MockRepository_CreateSuppressionFile_Call) RunAndReturn(run func(ctx context.Context, suppressionFile optout.OptOutFile) (uint, error)) *MockRepository_CreateSuppressionFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1515,6 +1514,69 @@ func (_c *MockRepository_UpdateACO_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
+// UpdateBenePrefsImportStatus provides a mock function for the type MockRepository
+func (_mock *MockRepository) UpdateBenePrefsImportStatus(ctx context.Context, fileID uint, status string) error {
+	ret := _mock.Called(ctx, fileID, status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateBenePrefsImportStatus")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uint, string) error); ok {
+		r0 = returnFunc(ctx, fileID, status)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRepository_UpdateBenePrefsImportStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateBenePrefsImportStatus'
+type MockRepository_UpdateBenePrefsImportStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateBenePrefsImportStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fileID uint
+//   - status string
+func (_e *MockRepository_Expecter) UpdateBenePrefsImportStatus(ctx interface{}, fileID interface{}, status interface{}) *MockRepository_UpdateBenePrefsImportStatus_Call {
+	return &MockRepository_UpdateBenePrefsImportStatus_Call{Call: _e.mock.On("UpdateBenePrefsImportStatus", ctx, fileID, status)}
+}
+
+func (_c *MockRepository_UpdateBenePrefsImportStatus_Call) Run(run func(ctx context.Context, fileID uint, status string)) *MockRepository_UpdateBenePrefsImportStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uint
+		if args[1] != nil {
+			arg1 = args[1].(uint)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateBenePrefsImportStatus_Call) Return(err error) *MockRepository_UpdateBenePrefsImportStatus_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRepository_UpdateBenePrefsImportStatus_Call) RunAndReturn(run func(ctx context.Context, fileID uint, status string) error) *MockRepository_UpdateBenePrefsImportStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateCCLFFileImportStatus provides a mock function for the type MockRepository
 func (_mock *MockRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
 	ret := _mock.Called(ctx, fileID, importStatus)
@@ -1631,69 +1693,6 @@ func (_c *MockRepository_UpdateJob_Call) Return(err error) *MockRepository_Updat
 }
 
 func (_c *MockRepository_UpdateJob_Call) RunAndReturn(run func(ctx context.Context, j Job) error) *MockRepository_UpdateJob_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateSuppressionFileImportStatus provides a mock function for the type MockRepository
-func (_mock *MockRepository) UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
-	ret := _mock.Called(ctx, fileID, importStatus)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateSuppressionFileImportStatus")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uint, string) error); ok {
-		r0 = returnFunc(ctx, fileID, importStatus)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockRepository_UpdateSuppressionFileImportStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSuppressionFileImportStatus'
-type MockRepository_UpdateSuppressionFileImportStatus_Call struct {
-	*mock.Call
-}
-
-// UpdateSuppressionFileImportStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - fileID uint
-//   - importStatus string
-func (_e *MockRepository_Expecter) UpdateSuppressionFileImportStatus(ctx interface{}, fileID interface{}, importStatus interface{}) *MockRepository_UpdateSuppressionFileImportStatus_Call {
-	return &MockRepository_UpdateSuppressionFileImportStatus_Call{Call: _e.mock.On("UpdateSuppressionFileImportStatus", ctx, fileID, importStatus)}
-}
-
-func (_c *MockRepository_UpdateSuppressionFileImportStatus_Call) Run(run func(ctx context.Context, fileID uint, importStatus string)) *MockRepository_UpdateSuppressionFileImportStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uint
-		if args[1] != nil {
-			arg1 = args[1].(uint)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockRepository_UpdateSuppressionFileImportStatus_Call) Return(err error) *MockRepository_UpdateSuppressionFileImportStatus_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockRepository_UpdateSuppressionFileImportStatus_Call) RunAndReturn(run func(ctx context.Context, fileID uint, importStatus string) error) *MockRepository_UpdateSuppressionFileImportStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

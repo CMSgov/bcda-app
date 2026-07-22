@@ -1,16 +1,19 @@
-package suppression
+package beneprefs
+
+// these integration tests are currently disabled because they require a local S3 instance to run.
+// They are useful for testing the import of bene-prefs files from S3 but are not part of the normal test suite.
 
 // type SuppressionS3TestSuite struct {
 // 	suite.Suite
 // 	// ctx context.Context
 // }
 
-// func (s *SuppressionS3TestSuite) createImporter() (OptOutImporter, *optout.FakeSaver) {
+// func (s *SuppressionS3TestSuite) createImporter() (BenePrefsImporter, *optout.FakeSaver) {
 // 	saver := optout.FakeSaver{}
 // 	// s.ctx = context.Background()
 // 	client := &bcdaaws.MockS3Client{}
 
-// 	return OptOutImporter{
+// 	return BenePrefsImporter{
 // 		FileHandler: &optout.S3FileHandler{
 // 			Client:   client,
 // 			Logger:   log.StandardLogger(),
@@ -26,7 +29,7 @@ package suppression
 // 	suite.Run(t, new(SuppressionS3TestSuite))
 // }
 
-// func (s *SuppressionS3TestSuite) TestImportSuppression() {
+// func (s *SuppressionS3TestSuite) TestImport() {
 // 	assert := assert.New(s.T())
 // 	bucketName := uuid.NewString()
 // 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
@@ -34,7 +37,7 @@ package suppression
 
 // 	// 181120 file
 // 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-// 	metadata := &optout.OptOutFilenameMetadata{
+// 	metadata := &optout.BenePrefsFilenameMetadata{
 // 		Timestamp:    fileTime,
 // 		FilePath:     filepath.Join(bucketName, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
 // 		Name:         constants.TestSuppressMetaFileName,
@@ -42,7 +45,7 @@ package suppression
 // 	}
 
 // 	importer, saver := s.createImporter()
-// 	err := importer.ImportSuppressionData(s.ctx, metadata)
+// 	err := importer.ImportData(s.ctx, metadata)
 // 	assert.Nil(err)
 // 	assert.Len(saver.Files, 1)
 
@@ -51,7 +54,7 @@ package suppression
 // 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.UTC().Format("010203040506"))
 // 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
-// 	suppressions := saver.OptOutRecords
+// 	suppressions := saver.BenePrefsRecords
 // 	assert.Len(suppressions, 4)
 // 	assert.Equal("5SJ0A00AA00", suppressions[0].MBI)
 // 	assert.Equal("1-800", suppressions[0].SourceCode)
@@ -67,7 +70,7 @@ package suppression
 // 	// s.T().Cleanup(func() { cleanup() })
 
 // 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
-// 	metadata = &optout.OptOutFilenameMetadata{
+// 	metadata = &optout.BenePrefsFilenameMetadata{
 // 		Timestamp:    fileTime,
 // 		FilePath:     filepath.Join(bucketName, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"),
 // 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
@@ -75,7 +78,7 @@ package suppression
 // 	}
 
 // 	importer, saver = s.createImporter()
-// 	err = importer.ImportSuppressionData(s.ctx, metadata)
+// 	err = importer.ImportData(s.ctx, metadata)
 // 	assert.Nil(err)
 // 	assert.Len(saver.Files, 1)
 
@@ -83,7 +86,7 @@ package suppression
 // 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
 // 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.UTC().Format("010203040506"))
 
-// 	suppressions = saver.OptOutRecords
+// 	suppressions = saver.BenePrefsRecords
 // 	assert.Len(suppressions, 250)
 // 	assert.Equal("1000000019", suppressions[0].MBI)
 // 	assert.Equal("N", suppressions[0].PrefIndicator)
@@ -97,13 +100,13 @@ package suppression
 // 	assert.Equal("", suppressions[249].PrefIndicator)
 // }
 
-// func (s *SuppressionS3TestSuite) TestImportSuppression_MissingData() {
+// func (s *SuppressionS3TestSuite) TestImport_MissingData() {
 // 	assert := assert.New(s.T())
 
 // 	// Verify empty file is rejected
-// 	metadata := &optout.OptOutFilenameMetadata{}
+// 	metadata := &optout.BenePrefsFilenameMetadata{}
 // 	importer, _ := s.createImporter()
-// 	err := importer.ImportSuppressionData(s.ctx, metadata)
+// 	err := importer.ImportData(s.ctx, metadata)
 // 	assert.NotNil(err)
 // 	assert.Contains(err.Error(), "could not read file")
 
@@ -125,7 +128,7 @@ package suppression
 // 			// defer cleanup()
 
 // 			fp := filepath.Join(bucketName, "suppressionfile_MissingData/"+tt.name)
-// 			metadata = &optout.OptOutFilenameMetadata{
+// 			metadata = &optout.BenePrefsFilenameMetadata{
 // 				Timestamp:    time.Now(),
 // 				FilePath:     fp,
 // 				Name:         tt.name,
@@ -144,7 +147,7 @@ package suppression
 // 				}
 // 			}
 
-// 			err = importer.ImportSuppressionData(s.ctx, metadata)
+// 			err = importer.ImportData(s.ctx, metadata)
 // 			assert.NotNil(err)
 // 			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
@@ -166,7 +169,7 @@ package suppression
 // 	// defer cleanup()
 
 // 	suppressionfilePath := filepath.Join(bucketName, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
-// 	metadata := &optout.OptOutFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
+// 	metadata := &optout.BenePrefsFilenameMetadata{Timestamp: time.Now(), FilePath: suppressionfilePath}
 // 	err := importer.validate(s.ctx, metadata)
 // 	assert.Nil(err)
 
@@ -201,7 +204,7 @@ package suppression
 // 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.FilePath+"'. Expected record count: 5, Actual record count: 4")
 // }
 
-// func (s *SuppressionS3TestSuite) TestLoadOptOutFiles() {
+// func (s *SuppressionS3TestSuite) TestLoadBenePrefsFiles() {
 // 	assert := assert.New(s.T())
 // 	importer, _ := s.createImporter()
 
@@ -210,7 +213,7 @@ package suppression
 // 	// defer cleanup()
 
 // 	filePath := filepath.Join(bucketName, constants.TestSynthMedFilesPath)
-// 	suppresslist, skipped, err := importer.FileHandler.LoadOptOutFiles(s.ctx, filePath)
+// 	suppresslist, skipped, err := importer.FileHandler.LoadBenePrefsFiles(s.ctx, filePath)
 // 	assert.Nil(err)
 // 	assert.Equal(2, len(*suppresslist))
 // 	assert.Equal(0, skipped)
@@ -219,7 +222,7 @@ package suppression
 // 	// defer cleanup()
 
 // 	filePath = filepath.Join(bucketName, "suppressionfile_BadFileNames/")
-// 	suppresslist, skipped, err = importer.FileHandler.LoadOptOutFiles(s.ctx, filePath)
+// 	suppresslist, skipped, err = importer.FileHandler.LoadBenePrefsFiles(s.ctx, filePath)
 // 	assert.Nil(err)
 // 	assert.Equal(0, len(*suppresslist))
 // 	assert.Equal(2, skipped)
@@ -229,14 +232,14 @@ package suppression
 // 	assert := assert.New(s.T())
 // 	importer, _ := s.createImporter()
 
-// 	var suppresslist []*optout.OptOutFilenameMetadata
+// 	var suppresslist []*optout.BenePrefsFilenameMetadata
 
 // 	// failed import: file that's within the threshold - stay put
 // 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
 
 // 	bucketName := "doesnt-matter"
 
-// 	metadata := &optout.OptOutFilenameMetadata{
+// 	metadata := &optout.BenePrefsFilenameMetadata{
 // 		Name:         constants.TestSuppressMetaFileName,
 // 		Timestamp:    fileTime,
 // 		FilePath:     filepath.Join(bucketName, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
@@ -247,7 +250,7 @@ package suppression
 // 	// failed import: file that's over the threshold - should still be kept until S3 auto-cleanup
 // 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 
-// 	metadata2 := &optout.OptOutFilenameMetadata{
+// 	metadata2 := &optout.BenePrefsFilenameMetadata{
 // 		Name:         constants.TestSuppressBadPath,
 // 		Timestamp:    fileTime,
 // 		FilePath:     filepath.Join(bucketName, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
@@ -259,7 +262,7 @@ package suppression
 // 	// defer cleanup()
 
 // 	// successful import: should move
-// 	metadata3 := &optout.OptOutFilenameMetadata{
+// 	metadata3 := &optout.BenePrefsFilenameMetadata{
 // 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
 // 		Timestamp:    fileTime,
 // 		FilePath:     filepath.Join(bucketName, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
@@ -267,8 +270,8 @@ package suppression
 // 		DeliveryDate: time.Now(),
 // 	}
 
-// 	suppresslist = []*optout.OptOutFilenameMetadata{metadata, metadata2, metadata3}
-// 	err := importer.FileHandler.CleanupOptOutFiles(s.ctx, suppresslist)
+// 	suppresslist = []*optout.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
+// 	err := importer.FileHandler.CleanupBenePrefsFiles(s.ctx, suppresslist)
 // 	assert.Nil(err)
 
 // 	client := &bcdaaws.MockS3Client{}
@@ -278,7 +281,7 @@ package suppression
 // 	assert.True(len(output.Contents) == 0)
 // }
 
-// func (s *SuppressionS3TestSuite) TestImportSuppressionDirectoryTable() {
+// func (s *SuppressionS3TestSuite) TestImportDirectoryTable() {
 // 	assert := assert.New(s.T())
 // 	importer, _ := s.createImporter()
 // 	db := database.Connect()
@@ -314,7 +317,7 @@ package suppression
 // 				bucketName += "\n"
 // 			}
 
-// 			success, failure, skipped, err := importer.ImportSuppressionDirectory(s.ctx, bucketName)
+// 			success, failure, skipped, err := importer.ImportDirectory(s.ctx, bucketName)
 // 			if tt.errorExpected {
 // 				assert.Equal(true, strings.Contains(err.Error(), tt.errMessage))
 // 			} else {

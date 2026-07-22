@@ -13,11 +13,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -97,19 +96,17 @@ func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client bcdaaws.Custom
 	logger := configureLogger(env, appName)
 	repo := postgres.NewRepository(db)
 
-	importer := suppression.OptOutImporter{
-		FileHandler: &optout.S3FileHandler{
+	importer := bp.BenePrefsImporter{
+		FileHandler: &bp.S3FileHandler{
 			Client: s3Client,
 			Logger: logger,
 		},
-		Saver: &suppression.BCDASaver{
-			Repo: repo,
-		},
+		Repo:                 repo,
 		Logger:               logger,
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 	}
 
-	s, f, sk, err := importer.ImportSuppressionDirectory(ctx, s3ImportPath)
+	s, f, sk, err := importer.ImportDirectory(ctx, s3ImportPath)
 	result := fmt.Sprintf("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 	logger.Info(result)
 	return result, err
