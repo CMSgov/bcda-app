@@ -43,7 +43,11 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 			}
 
 			ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
-			ctx, logger := log.SetLoggerFields(ctx, logrus.Fields{"transaction_id": rjob.Args.TransactionID, "job_id": jobID})
+			ctx, logger := log.SetLoggerFields(ctx, logrus.Fields{
+				"transaction_id": rjob.Args.TransactionID,
+				"job_id":         jobID,
+				"subjob_id":      rjob.ID,
+			})
 
 			// TODO: use pgxv5 when available
 			mainDB := w.db
