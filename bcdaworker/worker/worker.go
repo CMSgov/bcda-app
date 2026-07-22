@@ -299,7 +299,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	defer w.Flush()
 
 	errorCount := 0          // count of bene requests that had some unexpected error when retrieving data from BFD (ie 4xx/5xx error)
-	benesRetrievedCount := 0 // count of benes that were successfully retrieved from BFD (ie not a 4xx/5xx error)
+	benesRetrievedCount := 0 // count of benes that were successfully retrieved from BFD (does not include benes that were not found nor request 4xx/5xx errors)
 	benesWithDataCount := 0  // count of benes that had at least one resource returned from BFD (ie not an empty bundle)
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
@@ -343,10 +343,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}()
 
 		if err != nil {
-			switch err.(type) {
-			case *bcdaErrs.RequestedBeneficiaryNotFoundError:
-				logger.Warn(err)
-			default:
+			if reqErr, ok := goerrors.AsType[*bcdaErrs.RequestedBeneficiaryNotFoundError](err); ok {
+				logger.Warn(reqErr)
+			} else {
 				errorCount++
 				logger.Error(err)
 			}
