@@ -28,6 +28,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
@@ -188,9 +189,9 @@ func (s *WorkerTestSuite) TestGetBlueButtonID_NonHappyPaths() {
 				]
 			}
 		`, "abcdef12000", nil},
-		{"Error handling for missing identifier", `{"id":"badID","entry":[]}`, "", errors.New("patient identifier not found at Blue Button for CCLF")},
-		{"Error handling for not found identifier", `{"id":"abcdef12000","entry":[{}]}`, "", errors.New("Identifier not found")},
-		{"Error handling for not found Blue Button identifier", `{"id":"abcdef12000","entry":[{"resource":{"identifier":[{"system":"us-mbi","value":"abcdef12000"}]}}]}`, "", errors.New("Blue Button identifier not found in the identifiers")},
+		{"Error handling for missing identifier", `{"id":"badID","entry":[]}`, "", errors.New("requested beneficiary not found, err: patient identifier not found for MBI")},
+		{"Error handling for not found identifier", `{"id":"abcdef12000","entry":[{}]}`, "", errors.New("requested beneficiary not found, err: identifier not found")},
+		{"Error handling for not found Blue Button identifier", `{"id":"abcdef12000","entry":[{"resource":{"identifier":[{"system":"us-mbi","value":"abcdef12000"}]}}]}`, "", errors.New("requested beneficiary not found, err: identifier not found in the identifiers")},
 	}
 
 	for _, tt := range tests {
@@ -451,7 +452,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
 
 	bbc := client.MockBlueButtonClient{}
-	bbc.On("GetPatientByMbi", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
+	bbc.On("GetPatientByMbi", mock.AnythingOfType("string")).Return("", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"})
 
 	badMBIs := []string{"ab000000001", "ab000000002"}
 	var cclfBeneficiaryIDs []string
