@@ -1,4 +1,4 @@
-package optout
+package beneprefs
 
 import (
 	"bufio"
@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/ccoveille/go-safecast"
 
 	"github.com/pkg/errors"
@@ -22,13 +23,13 @@ type LocalFileHandler struct {
 	FileArchiveThresholdHr uint
 }
 
-func (handler *LocalFileHandler) LoadOptOutFiles(ctx context.Context, path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
-	var result []*OptOutFilenameMetadata
-	err = filepath.Walk(path, handler.getOptOutFileMetadata(ctx, &result, &skipped))
+func (handler *LocalFileHandler) LoadBenePrefsFiles(ctx context.Context, path string) (suppressList *[]*models.BenePrefsFilenameMetadata, skipped int, err error) {
+	var result []*models.BenePrefsFilenameMetadata
+	err = filepath.Walk(path, handler.getBenePrefsFileMetadata(ctx, &result, &skipped))
 	return &result, skipped, err
 }
 
-func (handler *LocalFileHandler) getOptOutFileMetadata(ctx context.Context, suppresslist *[]*OptOutFilenameMetadata, skipped *int) filepath.WalkFunc {
+func (handler *LocalFileHandler) getBenePrefsFileMetadata(ctx context.Context, suppresslist *[]*models.BenePrefsFilenameMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -80,7 +81,7 @@ func (handler *LocalFileHandler) getOptOutFileMetadata(ctx context.Context, supp
 	}
 }
 
-func (handler *LocalFileHandler) OpenFile(ctx context.Context, metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
+func (handler *LocalFileHandler) OpenFile(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) (*bufio.Scanner, func(), error) {
 	f, err := os.Open(metadata.FilePath)
 	if err != nil {
 		fmt.Printf("Could not read file %s.\n", metadata)
@@ -97,15 +98,15 @@ func (handler *LocalFileHandler) OpenFile(ctx context.Context, metadata *OptOutF
 	}, nil
 }
 
-func (handler *LocalFileHandler) CleanupOptOutFiles(ctx context.Context, suppresslist []*OptOutFilenameMetadata) error {
+func (handler *LocalFileHandler) CleanupBenePrefsFiles(ctx context.Context, suppresslist []*models.BenePrefsFilenameMetadata) error {
 	errCount := 0
-	for _, suppressionFile := range suppresslist {
-		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
-		handler.Logger.Infof("Cleaning up file %s", suppressionFile)
-		newpath := fmt.Sprintf("%s/%s", handler.PendingDeletionDir, suppressionFile.Name)
-		if !suppressionFile.Imported {
+	for _, bpFile := range suppresslist {
+		fmt.Printf("Cleaning up file %s.\n", bpFile)
+		handler.Logger.Infof("Cleaning up file %s", bpFile)
+		newpath := fmt.Sprintf("%s/%s", handler.PendingDeletionDir, bpFile.Name)
+		if !bpFile.Imported {
 			// check the timestamp on the failed files
-			elapsed := time.Since(suppressionFile.DeliveryDate).Hours()
+			elapsed := time.Since(bpFile.DeliveryDate).Hours()
 
 			f, err, done := convertFileArchiveThreshold(handler)
 			if done {
@@ -113,28 +114,28 @@ func (handler *LocalFileHandler) CleanupOptOutFiles(ctx context.Context, suppres
 			}
 
 			if int(elapsed) > int(f) {
-				err := os.Rename(suppressionFile.FilePath, newpath)
+				err := os.Rename(bpFile.FilePath, newpath)
 				if err != nil {
 					errCount++
-					errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", suppressionFile, err)
+					errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", bpFile, err)
 					fmt.Println(errMsg)
 					handler.Logger.Error(errMsg)
 				} else {
-					fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", suppressionFile)
-					handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", suppressionFile)
+					fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", bpFile)
+					handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", bpFile)
 				}
 			}
 		} else {
 			// move the successful files to the deletion dir
-			err := os.Rename(suppressionFile.FilePath, newpath)
+			err := os.Rename(bpFile.FilePath, newpath)
 			if err != nil {
 				errCount++
-				errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", suppressionFile, err)
+				errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", bpFile, err)
 				fmt.Println(errMsg)
 				handler.Logger.Error(errMsg)
 			} else {
-				fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", suppressionFile)
-				handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", suppressionFile)
+				fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", bpFile)
+				handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", bpFile)
 			}
 		}
 	}

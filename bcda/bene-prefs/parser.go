@@ -1,4 +1,4 @@
-package optout
+package beneprefs
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/pkg/errors"
 )
 
@@ -22,8 +23,8 @@ const (
 	acoIdStart, acoIdEnd                         = 384, 389
 )
 
-func ParseMetadata(filename string) (OptOutFilenameMetadata, error) {
-	var metadata OptOutFilenameMetadata
+func ParseMetadata(filename string) (models.BenePrefsFilenameMetadata, error) {
+	var metadata models.BenePrefsFilenameMetadata
 	isOptOut, matches := IsOptOut(filename)
 	if !isOptOut {
 		return metadata, fmt.Errorf("invalid filename for file: %s", filename)
@@ -50,7 +51,7 @@ func IsOptOut(filename string) (isOptOut bool, matches []string) {
 	return isOptOut, matches
 }
 
-func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, error) {
+func ParseRecord(metadata *models.BenePrefsFilenameMetadata, b []byte) (*models.BenePrefsRecord, error) {
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 	dt, err := ConvertDt(ds)
 	if err != nil {
@@ -70,7 +71,7 @@ func ParseRecord(metadata *OptOutFilenameMetadata, b []byte) (*OptOutRecord, err
 		return nil, errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.FilePath)
 	}
 
-	return &OptOutRecord{
+	return &models.BenePrefsRecord{
 		FileID:              metadata.FileID,
 		MBI:                 string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
 		SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),

@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"archive/zip"
@@ -10,18 +10,18 @@ import (
 	"strings"
 	"time"
 
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )
 
 type LocalFileProcessor struct {
-	Handler optout.LocalFileHandler
+	Handler bp.LocalFileHandler
 }
 
 func (processor *LocalFileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
@@ -62,8 +62,8 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	// ignore the opt out file, and don't add it to the skipped count
-	optOut, _ := optout.IsOptOut(info.Name())
+	// ignore the bene-prefs file, and don't add it to the skipped count
+	optOut, _ := bp.IsOptOut(info.Name())
 	if optOut {
 		fmt.Print("Skipping opt-out file: ", info.Name())
 		log.API.Info("Skipping opt-out file: ", info.Name())

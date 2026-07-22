@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"archive/zip"
@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -21,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
@@ -55,7 +55,7 @@ func (s *CCLFTestSuite) SetupTest() {
 	}
 
 	file_processor := &LocalFileProcessor{
-		Handler: optout.LocalFileHandler{
+		Handler: bp.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,

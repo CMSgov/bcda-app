@@ -1,10 +1,11 @@
-package optout
+package beneprefs
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -75,7 +76,7 @@ func (s *OptOutTestSuite) TestParseRecord_Success() {
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	line := []byte("5SJ0A00AA001847800005John                          Mitchell                      Doe                                     198203218702 E Fake St.                                        Apt. 63L                                               Region                                                 Las Vegas                               NV423139954M20190618201907011-800TY201907011-800TNT9992WeCare Medical                                                        ")
-	metadata := &OptOutFilenameMetadata{
+	metadata := &models.BenePrefsFilenameMetadata{
 		Timestamp:    fileTime,
 		FilePath:     "full-fake-filename",
 		Name:         "fake-filename",
@@ -107,7 +108,7 @@ func (s *OptOutTestSuite) TestParseRecord_InvalidData() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.line, func(t *testing.T) {
-			metadata := &OptOutFilenameMetadata{
+			metadata := &models.BenePrefsFilenameMetadata{
 				Timestamp:    time.Now(),
 				FilePath:     fp,
 				Name:         tt.line,

@@ -242,7 +242,7 @@ resource "aws_lambda_function" "this" {
   ]
 
   tags = {
-    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/optout"
+    code = "https://github.com/CMSgov/bcda-app/tree/main/bcda/lambda/bene-prefs"
   }
 
   lifecycle {

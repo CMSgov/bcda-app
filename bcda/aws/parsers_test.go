@@ -53,3 +53,17 @@ func TestParseS3Directory(t *testing.T) {
 	assert.Equal(t, "my-bucket/my-dir", ParseS3Directory("my-bucket", "my-dir/some-file"))
 	assert.Equal(t, "my-bucket/my-dir/nested", ParseS3Directory("my-bucket", "my-dir/nested/some-file"))
 }
+
+func TestParseS3Uri(t *testing.T) {
+	bucket, path := ParseS3Uri("s3://my-bucket")
+	assert.Equal(t, "my-bucket", bucket)
+	assert.Equal(t, "", path)
+
+	bucket, path = ParseS3Uri("s3://my-bucket/some-file")
+	assert.Equal(t, "my-bucket", bucket)
+	assert.Equal(t, "some-file", path)
+
+	bucket, path = ParseS3Uri("s3://my-bucket/my-dir/nested/some-file")
+	assert.Equal(t, "my-bucket", bucket)
+	assert.Equal(t, "my-dir/nested/some-file", path)
+}

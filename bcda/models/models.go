@@ -9,19 +9,28 @@ import (
 )
 
 const (
-	JobStatusPending          JobStatus = "Pending"
-	JobStatusInProgress       JobStatus = "In Progress"
-	JobStatusCompleted        JobStatus = "Completed"
 	JobStatusArchived         JobStatus = "Archived"
+	JobStatusCancelled        JobStatus = "Cancelled"
+	JobStatusCancelledExpired JobStatus = "CancelledExpired" // JobStatusCancelledExpired represents a job that has been cancelled whose data has been cleaned up
+	JobStatusCompleted        JobStatus = "Completed"
 	JobStatusExpired          JobStatus = "Expired"
 	JobStatusFailed           JobStatus = "Failed"
-	JobStatusCancelled        JobStatus = "Cancelled"
-	JobStatusFailedExpired    JobStatus = "FailedExpired"    // JobStatusFailedExpired represents a job that failed whose data has been cleaned up
-	JobStatusCancelledExpired JobStatus = "CancelledExpired" // JobStatusCancelledExpired represents a job that has been cancelled whose data has been cleaned up
+	JobStatusFailedExpired    JobStatus = "FailedExpired" // JobStatusFailedExpired represents a job that failed whose data has been cleaned up
+	JobStatusInProgress       JobStatus = "In Progress"
+	JobStatusPending          JobStatus = "Pending"
 )
 
-var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress, JobStatusCompleted,
-	JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusCancelled, JobStatusFailedExpired, JobStatusCancelledExpired}
+var AllJobStatuses = []JobStatus{
+	JobStatusArchived,
+	JobStatusCancelled,
+	JobStatusCancelledExpired,
+	JobStatusCompleted,
+	JobStatusExpired,
+	JobStatusFailed,
+	JobStatusFailedExpired,
+	JobStatusInProgress,
+	JobStatusPending,
+}
 
 type JobStatus string
 type Job struct {
@@ -122,4 +131,44 @@ type CCLFBeneficiary struct {
 	FileID       uint
 	MBI          string
 	BlueButtonID string
+}
+
+// A BenePrefsFile is a basic file representation that can be stored in a database.
+type BenePrefsFile struct {
+	ID           uint
+	Name         string
+	Timestamp    time.Time
+	ImportStatus string
+}
+
+// BenePrefsFilenameMetadata is metadata information parsed from the filename.
+type BenePrefsFilenameMetadata struct {
+	Name         string
+	Timestamp    time.Time
+	FilePath     string
+	Imported     bool
+	DeliveryDate time.Time
+	FileID       uint
+}
+
+func (m BenePrefsFilenameMetadata) String() string {
+	if m.FilePath != "" {
+		return m.FilePath
+	}
+	return m.Name
+}
+
+// A BenePrefsRecord represents a single record parsed from an bene-prefs file.
+type BenePrefsRecord struct {
+	ID                  uint
+	FileID              uint
+	MBI                 string
+	SourceCode          string
+	EffectiveDt         time.Time
+	PrefIndicator       string
+	SAMHSASourceCode    string
+	SAMHSAEffectiveDt   time.Time
+	SAMHSAPrefIndicator string
+	ACOCMSID            string
+	BeneficiaryLinkKey  int
 }

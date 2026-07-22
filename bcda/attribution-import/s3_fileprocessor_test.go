@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -31,14 +31,14 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 
 	s.basePath = "../../shared_files"
 	s.cclfProcessor = &S3FileProcessor{
-		Handler: optout.S3FileHandler{
+		Handler: bp.S3FileHandler{
 			Client:   client,
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},
 	}
 	s.csvProcessor = &S3FileProcessor{
-		Handler: optout.S3FileHandler{
+		Handler: bp.S3FileHandler{
 			Client:   client,
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
@@ -49,6 +49,9 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 func (s *S3ProcessorTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.cclfRefDate)
 }
+
+// some of these integration tests are disabled because they require a local S3 instance to run.
+// They are useful for testing the import of CCLF files from S3 but are not part of the normal test suite.
 
 // func (s *S3ProcessorTestSuite) TestLoadCclfFiles() {
 // 	ctx := context.Background()
