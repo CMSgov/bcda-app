@@ -13,10 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
+	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/cclf"
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/optout"
 
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -80,7 +80,7 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
-			if cclf.CheckIfAttributionCSVFile(e.S3.Object.Key) {
+			if ai.CheckIfAttributionCSVFile(e.S3.Object.Key) {
 				return handleCSVImport(ctx, pool, s3Client, filepath)
 			} else {
 				return handleCclfImport(ctx, pool, s3Client, filepath)
@@ -98,11 +98,11 @@ func handleCSVImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.C
 	logger := configureLogger(env, appName)
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
-	importer := cclf.CSVImporter{
+	importer := ai.CSVImporter{
 		Logger:  logger,
 		PgxPool: pool,
-		FileProcessor: &cclf.S3FileProcessor{
-			Handler: optout.S3FileHandler{
+		FileProcessor: &ai.S3FileProcessor{
+			Handler: bp.S3FileHandler{
 				Client: s3Client,
 				Logger: logger,
 			},
@@ -127,14 +127,14 @@ func handleCclfImport(ctx context.Context, pool *pgxpool.Pool, s3Client bcdaaws.
 	logger := configureLogger(env, appName)
 	logger = logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
-	fileProcessor := cclf.S3FileProcessor{
-		Handler: optout.S3FileHandler{
+	fileProcessor := ai.S3FileProcessor{
+		Handler: bp.S3FileHandler{
 			Client: s3Client,
 			Logger: logger,
 		},
 	}
 
-	importer := cclf.NewCclfImporter(logger, &fileProcessor, pool)
+	importer := ai.NewCclfImporter(logger, &fileProcessor, pool)
 	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, s3ImportPath)
 	if err != nil {
 		logger.Error("error returned from ImportCCLFDirectory: ", err)

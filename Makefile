@@ -25,7 +25,7 @@ lint: setup-tests
 	docker compose -f compose.test.yml run --rm \
 		tests golangci-lint run --timeout=$(LINT_TIMEOUT) --verbose --new-from-merge-base=main --concurrency=1
 	# TODO: Remove the exclusion of G301 as part of BCDA-8414
-	docker compose -f compose.test.yml run --rm tests gosec -exclude=G301 ./... ./optout
+	docker compose -f compose.test.yml run --rm tests gosec -exclude=G301 ./...
 
 smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env)

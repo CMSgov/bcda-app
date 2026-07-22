@@ -96,12 +96,12 @@ func (e *ExpiredTokenError) Error() string {
 	return fmt.Sprintf("Expired Token Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
-type IsOptOutFile struct {
+type IsBenePrefsFile struct {
 	Msg string
 }
 
-func (e *IsOptOutFile) Error() string {
-	return "File is type: opt-out. Skipping attribution import."
+func (e *IsBenePrefsFile) Error() string {
+	return "File is type: bene-prefs. Skipping attribution import."
 }
 
 type InvalidCSVMetadata struct {

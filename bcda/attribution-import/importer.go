@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"bufio"

@@ -55,7 +55,7 @@ func TestOptOutImportMainSuite(t *testing.T) {
 // 	}
 // }
 
-// func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Skipped() {
+// func (s *OptOutImportMainSuite) TestImportDirectory_Skipped() {
 // 	assert := assert.New(s.T())
 // 	// cfg := testUtils.TestAWSConfig(s.T())
 // 	s3Client := &bcdaaws.MockS3Client{}
@@ -81,7 +81,7 @@ func TestOptOutImportMainSuite(t *testing.T) {
 // 	assert.Contains(res, "Files skipped: 2")
 // }
 
-// func (s *OptOutImportMainSuite) TestImportSuppressionDirectory_Failed() {
+// func (s *OptOutImportMainSuite) TestImportDirectory_Failed() {
 // 	assert := assert.New(s.T())
 // 	// cfg := testUtils.TestAWSConfig(s.T())
 // 	s3Client := &bcdaaws.MockS3Client{}

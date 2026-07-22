@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"bytes"
@@ -14,11 +14,11 @@ import (
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/optout"
 )
 
 // FileProcessors for attribution are created as interfaces so that they can be passed in place of the implementation; local development and other envs will require different processors.
@@ -59,9 +59,9 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 
 	file := csvFile{filepath: filepath}
 
-	optOut, _ := optout.IsOptOut(filepath)
+	optOut, _ := bp.IsOptOut(filepath)
 	if optOut {
-		return &ers.IsOptOutFile{}
+		return &ers.IsBenePrefsFile{}
 	}
 
 	short := f.Base(filepath)

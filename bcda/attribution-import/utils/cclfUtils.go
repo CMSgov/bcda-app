@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/cclf"
+	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
@@ -144,15 +144,15 @@ func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment
 		return err
 	}
 
-	file_processor := &cclf.LocalFileProcessor{
-		Handler: optout.LocalFileHandler{
+	file_processor := &ai.LocalFileProcessor{
+		Handler: bp.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,
 		},
 	}
 
-	importer := cclf.NewCclfImporter(log.API, file_processor, pgxPool)
+	importer := ai.NewCclfImporter(log.API, file_processor, pgxPool)
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, dir)
 	if err != nil {

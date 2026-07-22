@@ -1,4 +1,4 @@
-package cclf
+package attributionimport
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -21,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/CMSgov/bcda-app/optout"
 	"github.com/ccoveille/go-safecast"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
@@ -74,7 +74,7 @@ func (s *CSVTestSuite) SetupTest() {
 		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
 	}
 	fp := &LocalFileProcessor{
-		Handler: optout.LocalFileHandler{
+		Handler: bp.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,
@@ -124,7 +124,7 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
 		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
 		{"Import CSV attribution invalid name", filepath.Join(s.basePath, "cclf/archives/csv/P.PC.M2411.D181120.T1000000"), 0, []string{}, errors.New("Invalid filename")},
-		{"Import Opt Out failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("File is type: opt-out. Skipping attribution import.")},
+		{"Import bene-prefs failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("File is type: bene-prefs. Skipping attribution import.")},
 	}
 
 	for _, test := range tests {

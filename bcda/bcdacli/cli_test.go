@@ -379,7 +379,7 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 }
 
-func (s *CLITestSuite) TestImportSuppressionDirectoryFromLocal() {
+func (s *CLITestSuite) TestImportDirectoryFromLocal() {
 	assert := assert.New(s.T())
 
 	buf := new(bytes.Buffer)

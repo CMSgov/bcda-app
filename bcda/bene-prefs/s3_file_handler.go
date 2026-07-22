@@ -1,4 +1,4 @@
-package optout
+package beneprefs
 
 import (
 	"bufio"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -38,10 +39,10 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 	handler.Logger.Errorf(format, rest...)
 }
 
-func (handler *S3FileHandler) LoadOptOutFiles(ctx context.Context, path string) (suppressList *[]*OptOutFilenameMetadata, skipped int, err error) {
-	var result []*OptOutFilenameMetadata
+func (handler *S3FileHandler) LoadBenePrefsFiles(ctx context.Context, path string) (suppressList *[]*models.BenePrefsFilenameMetadata, skipped int, err error) {
+	var result []*models.BenePrefsFilenameMetadata
 
-	bucket, prefix := ParseS3Uri(path)
+	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := handler.ListFiles(ctx, bucket, prefix)
 	if err != nil {
 		return &result, skipped, err
@@ -81,7 +82,7 @@ func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix stri
 	return resp.Contents, nil
 }
 
-func (handler *S3FileHandler) OpenFile(ctx context.Context, metadata *OptOutFilenameMetadata) (*bufio.Scanner, func(), error) {
+func (handler *S3FileHandler) OpenFile(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) (*bufio.Scanner, func(), error) {
 	byte_arr, err := handler.OpenFileBytes(ctx, metadata.FilePath)
 	if err != nil {
 		handler.Errorf("Failed to download %s\n", metadata.FilePath)
@@ -94,7 +95,7 @@ func (handler *S3FileHandler) OpenFile(ctx context.Context, metadata *OptOutFile
 
 func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string) ([]byte, error) {
 	handler.Infof("Opening file %s\n", filePath)
-	bucket, file := ParseS3Uri(filePath)
+	bucket, file := bcdaaws.ParseS3Uri(filePath)
 
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
@@ -123,26 +124,26 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 	return buff, err
 }
 
-func (handler *S3FileHandler) CleanupOptOutFiles(ctx context.Context, suppresslist []*OptOutFilenameMetadata) error {
+func (handler *S3FileHandler) CleanupBenePrefsFiles(ctx context.Context, suppresslist []*models.BenePrefsFilenameMetadata) error {
 	errCount := 0
 
-	for _, suppressionFile := range suppresslist {
-		if !suppressionFile.Imported {
+	for _, bpFile := range suppresslist {
+		if !bpFile.Imported {
 			// Don't do anything. The S3 bucket should have a retention policy that
 			// automatically cleans up files after a specified period of time,
-			handler.Warningf("File %s was not imported successfully. Skipping cleanup", suppressionFile)
+			handler.Warningf("File %s was not imported successfully. Skipping cleanup", bpFile)
 			continue
 		}
 
-		handler.Infof("Cleaning up file %s\n", suppressionFile)
-		err := handler.Delete(ctx, suppressionFile.FilePath)
+		handler.Infof("Cleaning up file %s\n", bpFile)
+		err := handler.Delete(ctx, bpFile.FilePath)
 
 		if err != nil {
 			errCount++
 			continue
 		}
 
-		handler.Infof("File %s successfully ingested and deleted from S3", suppressionFile)
+		handler.Infof("File %s successfully ingested and deleted from S3", bpFile)
 	}
 
 	if errCount > 0 {
@@ -153,7 +154,7 @@ func (handler *S3FileHandler) CleanupOptOutFiles(ctx context.Context, suppressli
 }
 
 func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error {
-	bucket, path := ParseS3Uri(filePath)
+	bucket, path := bcdaaws.ParseS3Uri(filePath)
 
 	_, err := handler.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
