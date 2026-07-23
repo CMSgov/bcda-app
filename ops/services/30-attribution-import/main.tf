@@ -76,7 +76,8 @@ module "attribution_import_function" {
   }
 
   ssm_parameter_paths = [
-    "/bcda/${var.env}/sensitive/api/DATABASE_URL"
+    "/bcda/${var.env}/sensitive/api/DATABASE_URL",
+    "/bcda/${var.env}/${local.service}/nonsensitive/file_bucket_name"
   ]
 
   extra_kms_key_arns = [
