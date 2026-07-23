@@ -1,8 +1,9 @@
 locals {
   app             = "bcda"
+  env             = terraform.workspace
   service         = "attribution-import"
-  full_name       = "${local.app}-${var.env}-attribution-import"
-  db_sg_name      = "${local.app}-${var.env}-db"
+  full_name       = "${local.app}-${local.env}-attribution-import"
+  db_sg_name      = "${local.app}-${local.env}-db"
   provider_domain = "token.actions.githubusercontent.com"
 }
 
@@ -12,20 +13,20 @@ module "platform" {
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app         = "bcda"
-  env         = var.env
+  env         = local.env
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/30-attribution-import"
   service     = local.service
   ssm_root_map = {
-    attribution-import = "/bcda/${var.env}/${local.service}/"
+    attribution-import = "/bcda/${local.env}/${local.service}/"
   }
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
-  name = "alias/bcda-${var.env}-app-config-kms"
+  name = "alias/bcda-${local.env}-app-config-kms"
 }
 
 data "aws_rds_cluster" "this" {
-  cluster_identifier = "${local.app}-${var.env}-aurora"
+  cluster_identifier = "${local.app}-${local.env}-aurora"
 }
 
 resource "aws_kms_key" "attribution-import_bucket" {
@@ -35,7 +36,7 @@ resource "aws_kms_key" "attribution-import_bucket" {
 }
 
 resource "aws_kms_alias" "attribution-import_bucket" {
-  name          = "alias/bcda-${var.env}-attribution-import-bucket-key"
+  name          = "alias/bcda-${local.env}-attribution-import-bucket-key"
   target_key_id = aws_kms_key.attribution-import_bucket.key_id
 }
 
@@ -54,7 +55,7 @@ module "attribution_import_function" {
 
   platform = {
     app               = module.platform.app
-    env               = var.env
+    env               = local.env
     service           = local.service
     kms_alias_primary = { target_key_arn = module.platform.kms_alias_primary.target_key_arn }
     primary_region    = { name = module.platform.region_name }
@@ -66,8 +67,8 @@ module "attribution_import_function" {
   github_actions_repos       = ["bcda-app:*"]
 
   environment_variables = {
-    ENV      = var.env
-    APP_NAME = "${local.app}-${var.env}-${local.service}"
+    ENV      = local.env
+    APP_NAME = "${local.app}-${local.env}-${local.service}"
   }
 
   function_role_inline_policies = {
@@ -77,8 +78,8 @@ module "attribution_import_function" {
   }
 
   ssm_parameter_paths = [
-    "/bcda/${var.env}/sensitive/api/DATABASE_URL",
-    "/bcda/${var.env}/${local.service}/nonsensitive/file_bucket_name"
+    "/bcda/${local.env}/sensitive/api/DATABASE_URL",
+    "/bcda/${local.env}/${local.service}/nonsensitive/file_bucket_name"
   ]
 
   extra_kms_key_arns = [
@@ -94,7 +95,7 @@ module "attribution_import_queue" {
   source = "github.com/CMSgov/cdap//terraform/modules/queue?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
 
   app = local.app
-  env = var.env
+  env = local.env
 
   name = local.full_name
 
@@ -126,10 +127,10 @@ module "attribution-import_file_bucket" {
   source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
 
   app           = local.app
-  env           = var.env
+  env           = local.env
   name          = "${local.full_name}-file"
   kms_key_arn   = join("", ["", aws_kms_key.attribution-import_bucket.arn])
-  ssm_parameter = "/${local.app}/${var.env}/${local.service}/nonsensitive/file_bucket_name"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
 resource "aws_sns_topic" "this" {

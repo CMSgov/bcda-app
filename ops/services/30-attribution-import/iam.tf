@@ -74,7 +74,7 @@ data "aws_iam_policy_document" "bucket_upload" {
 }
 
 resource "aws_iam_role" "delivery" {
-  name = "bcda-${var.env}-attribution-import-delivery"
+  name = "bcda-${local.env}-attribution-import-delivery"
 
   assume_role_policy = data.aws_iam_policy_document.delivery_assume_role.json
 }
