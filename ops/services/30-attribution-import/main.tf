@@ -23,6 +23,10 @@ data "aws_kms_alias" "bcda_app_config_kms_key" {
   name = "alias/bcda-${var.env}-app-config-kms"
 }
 
+data "aws_rds_cluster" "this" {
+  cluster_identifier = "${local.app}-${var.env}-aurora"
+}
+
 resource "aws_kms_key" "attribution-import_bucket" {
   description             = "Custom KMS key for encrypting the attribution import file bucket"
   deletion_window_in_days = 10
@@ -32,91 +36,6 @@ resource "aws_kms_key" "attribution-import_bucket" {
 resource "aws_kms_alias" "attribution-import_bucket" {
   name          = "alias/bcda-${var.env}-attribution-import-bucket-key"
   target_key_id = aws_kms_key.attribution-import_bucket.key_id
-}
-
-# ---------------------------------------------------------------------------
-# Managed policies
-# ---------------------------------------------------------------------------
-data "aws_iam_policy_document" "default_function" {
-  statement {
-    sid = "SsmSqsLogsEc2"
-    actions = [
-      "ssm:GetParameters",
-      "ssm:GetParameter",
-      "sqs:ReceiveMessage",
-      "sqs:GetQueueAttributes",
-      "sqs:DeleteMessage",
-      "logs:PutLogEvents",
-      "logs:CreateLogStream",
-      "logs:CreateLogGroup",
-    ]
-    resources = ["*"]
-  }
-  statement {
-    sid = "KmsEncryptDecrypt"
-    actions = [
-      "kms:GenerateDataKey",
-      "kms:Encrypt",
-      "kms:Decrypt",
-    ]
-    resources = [
-      module.platform.kms_alias_primary.arn,
-      module.platform.kms_alias_secondary.arn,
-      aws_kms_key.attribution-import_bucket.arn
-    ]
-  }
-  statement {
-    sid = "VPCNetworkingENI"
-    actions = [
-      "ec2:CreateNetworkInterface",
-      "ec2:DeleteNetworkInterface",
-      "ec2:DescribeAccountAttributes",
-      "ec2:DescribeNetworkInterfaces",
-    ]
-    resources = ["*"]
-  }
-}
-
-data "aws_iam_policy_document" "attribution-import_bucket_rw" {
-
-  statement {
-    sid    = "ListBucket"
-    effect = "Allow"
-
-    actions = [
-      "s3:ListBucket",
-      "s3:GetBucketLocation",
-    ]
-
-    resources = [
-      module.attribution-import_file_bucket.arn,
-    ]
-  }
-
-  statement {
-    sid    = "ReadWriteObjects"
-    effect = "Allow"
-
-    actions = [
-      # Read
-      "s3:GetObject",
-      "s3:GetObjectVersion",
-      "s3:GetObjectTagging",
-      "s3:PutObject",
-      "s3:PutObjectTagging",
-      "s3:DeleteObject",
-      "s3:DeleteObjectVersion",
-      "s3:AbortMultipartUpload",
-      "s3:ListMultipartUploadParts",
-    ]
-    resources = [
-      "${module.attribution-import_file_bucket.arn}/*"
-    ]
-  }
-}
-
-data "aws_rds_cluster" "this" {
-  cluster_identifier = "${local.app}-${var.env}-aurora"
 }
 
 module "attribution_import_function" {
@@ -160,18 +79,6 @@ module "attribution_import_function" {
     data.aws_kms_alias.bcda_app_config_kms_key.target_key_arn,
     aws_kms_key.attribution-import_bucket.arn
   ]
-}
-
-resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
-  name   = "attribution-import-bucket-rw"
-  role   = "bcda-${var.env}-attribution-import-function"
-  policy = data.aws_iam_policy_document.attribution-import_bucket_rw.json
-}
-
-resource "aws_iam_role_policy" "logging" {
-  name   = "attribution-import-logging"
-  role   = "${local.full_name}-function"
-  policy = data.aws_iam_policy_document.default_function.json
 }
 
 # Set up queue for receiving messages when a file is added to the bucket
