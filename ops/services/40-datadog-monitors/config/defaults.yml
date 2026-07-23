@@ -196,3 +196,12 @@ rds:
   notify_no_data: true
   no_data_timeframe_minutes: 10
   timeframe: "last_10m"
+
+# -----------------------------------------------------------------------------
+# Health Check Synthetic Tests
+# -----------------------------------------------------------------------------
+health_check:
+  enabled: false
+  url: ""
+  max_response_time_ms: 1000
+  validates_json_path: []
