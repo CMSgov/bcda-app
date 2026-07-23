@@ -69,6 +69,12 @@ module "attribution_import_function" {
     APP_NAME = "${local.app}-${var.env}-${local.service}"
   }
 
+  function_role_inline_policies = {
+    manage-attribution-import-bucket     = data.aws_iam_policy_document.bucket_manage.json,
+    upload-attribution-import-bucket     = data.aws_iam_policy_document.bucket_upload.json,
+    sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json
+  }
+
   ssm_parameter_paths = [
     "/bcda/${var.env}/sensitive/api/DATABASE_URL"
   ]

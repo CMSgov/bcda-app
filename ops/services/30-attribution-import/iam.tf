@@ -27,7 +27,7 @@ data "aws_iam_policy_document" "delivery_assume_role" {
   }
 }
 
-data "aws_iam_policy_document" "attribution-import_bucket_upload" {
+data "aws_iam_policy_document" "bucket_upload" {
   statement {
     sid    = "AllowS3Upload"
     effect = "Allow"
@@ -60,8 +60,53 @@ resource "aws_iam_role" "delivery" {
   assume_role_policy = data.aws_iam_policy_document.delivery_assume_role.json
 }
 
-resource "aws_iam_role_policy" "attribution-import_bucket_upload" {
+resource "aws_iam_role_policy" "bucket_upload" {
   name   = "attribution-import-bucket-upload"
   role   = aws_iam_role.delivery.id
-  policy = data.aws_iam_policy_document.attribution-import_bucket_upload.json
+  policy = data.aws_iam_policy_document.bucket_upload.json
+}
+
+data "aws_iam_policy_document" "bucket_manage" {
+  statement {
+    sid    = "ListBucket"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      module.attribution-import_file_bucket.arn,
+    ]
+  }
+
+  statement {
+    sid    = "ReadDeleteObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:GetObjectTagging",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+    ]
+
+    resources = [
+      "${module.attribution-import_file_bucket.arn}/*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "bucket_sqs" {
+  statement {
+    sid = "SqsReceiveDeleteMessages"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:DeleteMessage",
+    ]
+    resources = [module.attribution_import_queue.arn]
+  }
 }
