@@ -53,10 +53,11 @@ func (s *CleanupTestSuite) TearDownTest() {
 
 func (s *CleanupTestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
 	j := models.Job{
-		ACOID:      s.testACO.UUID,
-		RequestURL: constants.V1Path + constants.EOBExportPath,
-		Status:     status,
-		UpdatedAt:  modified,
+		ACOID:                s.testACO.UUID,
+		RequestURL:           constants.V1Path + constants.EOBExportPath,
+		Status:               status,
+		UpdatedAt:            modified,
+		BenesAttributedToACO: 15,
 	}
 
 	postgrestest.CreateJobs(s.T(), s.db, &j)
@@ -283,6 +284,7 @@ func (s *CleanupTestSuite) TestCleanArchive() {
 
 	afterJob := postgrestest.GetJobByID(s.T(), s.db, afterJobID)
 	assert.Equal(models.JobStatusArchived, afterJob.Status)
+	assert.Equal(15, afterJob.BenesAttributedToACO)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
 	os.RemoveAll(conf.GetEnv("FHIR_ARCHIVE_DIR"))

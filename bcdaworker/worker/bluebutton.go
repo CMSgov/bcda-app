@@ -6,9 +6,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	models "github.com/CMSgov/bcda-app/bcda/models"
+	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/pkg/errors"
 )
 
 // This method will ensure that a valid BlueButton ID is returned.
@@ -26,8 +26,7 @@ func getBlueButtonID(bb client.APIClient, mbi string, jobData worker_types.JobEn
 	}
 
 	if len(patient.Entry) == 0 {
-		err = errors.New("patient identifier not found at Blue Button for CCLF")
-		return "", err
+		return "", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"}
 	}
 
 	var foundIdentifier = false
@@ -57,12 +56,10 @@ func getBlueButtonID(bb client.APIClient, mbi string, jobData worker_types.JobEn
 		}
 	}
 	if !foundIdentifier {
-		err = errors.New("Identifier not found")
-		return "", err
+		return "", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "identifier not found"}
 	}
 	if !foundBlueButtonID {
-		err = errors.New("Blue Button identifier not found in the identifiers")
-		return "", err
+		return "", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "identifier not found in the identifiers"}
 	}
 
 	return blueButtonID, nil

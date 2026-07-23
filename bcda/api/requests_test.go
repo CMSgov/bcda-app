@@ -656,7 +656,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			h.bulkRequest(w, r, constants.DefaultRequest)
 
 			assert.Equal(s.T(), test.expectedCode, w.Code)
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, nil)
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*worker_types.JobEnqueueArgs{}, 0, nil)
 		})
 	}
 }

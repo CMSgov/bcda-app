@@ -775,8 +775,9 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
 
-			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
+			queJobs, benesAttr, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 			assert.NoError(t, err)
+			assert.Equal(t, len(tt.expBenes), benesAttr)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
 			for _, qj := range queJobs {
@@ -864,7 +865,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 		repository.On("GetACOByCMSID", testUtils.CtxMatcher, args.CMSID).Return(&models.ACO{UUID: args.ACOID, TerminationDetails: nil}, nil)
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
+		_, _, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("Unsupported RequestType 22"))
 	})
@@ -880,7 +881,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("forced failure"))
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
+		_, _, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("forced failure"))
 	})
@@ -896,7 +897,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 		repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("forced failure"))
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
+		_, _, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("forced failure"))
 	})
@@ -915,7 +916,7 @@ func (s *ServiceTestSuite) TestGetQueJobsErrorHandling_Integration() {
 		repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(nil)
 		serviceInstance := NewService(repository, cfg, basePath)
 		serviceInstance.(*service).acoConfigs = acoCfgs
-		_, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
+		_, _, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 
 		assert.Error(t, err, errors.New("forced failure"))
 	})
@@ -1010,8 +1011,9 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 			serviceInstance := NewService(repository, cfg, basePath)
 			serviceInstance.(*service).acoConfigs = acoCfgs
 			ctx := context.Background()
-			queJobs, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
+			queJobs, benesAttr, err := serviceInstance.GetQueJobs(context.WithValue(ctx, middleware.CtxTransactionKey, uuid.New()), args)
 			assert.NoError(t, err)
+			assert.Equal(t, len(tt.expBenes), benesAttr)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
 			for _, qj := range queJobs {
