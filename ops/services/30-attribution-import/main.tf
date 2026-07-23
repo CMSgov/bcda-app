@@ -63,7 +63,7 @@ module "attribution_import_function" {
   liveness_check_enabled = false
 
   additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
-  github_actions_repos       = ["bcda-app"]
+  github_actions_repos       = ["bcda-app:*"]
 
   environment_variables = {
     ENV      = local.env
