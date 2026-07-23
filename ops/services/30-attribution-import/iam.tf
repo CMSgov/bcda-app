@@ -1,5 +1,10 @@
 locals {
   assume_role_arns = compact(split(",", module.platform.ssm.attribution-import.delivery_role_arns.value))
+  provider_domain  = "token.actions.githubusercontent.com"
+}
+
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://${local.provider_domain}"
 }
 
 data "aws_iam_role" "admin" {

@@ -1,10 +1,9 @@
 locals {
-  app             = "bcda"
-  env             = terraform.workspace
-  service         = "attribution-import"
-  full_name       = "${local.app}-${local.env}-attribution-import"
-  db_sg_name      = "${local.app}-${local.env}-db"
-  provider_domain = "token.actions.githubusercontent.com"
+  app        = "bcda"
+  env        = terraform.workspace
+  service    = "attribution-import"
+  full_name  = "${local.app}-${local.env}-attribution-import"
+  db_sg_name = "${local.app}-${local.env}-db"
 }
 
 module "platform" {
