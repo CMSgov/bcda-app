@@ -29,9 +29,13 @@ on:
 env:
   DEPLOY_ENV: ${{ inputs.deploy_env || 'test' }}
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   deploy_tf:
-    environment: ${{ inputs.deploy_env || 'dev' }}
+    environment: ${{ inputs.deploy_env || 'test' }}
     runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.deploy_env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
     steps:
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
