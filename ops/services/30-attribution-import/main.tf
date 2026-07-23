@@ -1,8 +1,9 @@
 locals {
-  app        = "bcda"
-  service    = "attribution-import"
-  full_name  = "${local.app}-${var.env}-attribution-import"
-  db_sg_name = "${local.app}-${var.env}-db"
+  app             = "bcda"
+  service         = "attribution-import"
+  full_name       = "${local.app}-${var.env}-attribution-import"
+  db_sg_name      = "${local.app}-${var.env}-db"
+  provider_domain = "token.actions.githubusercontent.com"
 }
 
 module "platform" {

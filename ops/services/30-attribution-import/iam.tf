@@ -25,6 +25,25 @@ data "aws_iam_policy_document" "delivery_assume_role" {
       )
     }
   }
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.provider_domain}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "${local.provider_domain}:sub"
+      values   = ["repo:CMSgov/bcda-app:*"]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "bucket_upload" {

@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
+      - .github/workflows/attribution-import-deploy.yml
       - bcda/lambda/attribution-import/**
       - ops/services/30-attribution-import/**
-      - .github/workflows/attribution-import-deploy.yml
   workflow_dispatch:
     inputs:
       deploy_env:
