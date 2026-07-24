@@ -52,13 +52,14 @@ module "platform" {
 
 module "datadog_synthetics" {
   count  = local.has_health_check ? 1 : 0
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=14ce90093bd0487d62bcb155b871b42bf7650f74"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=6d0df984bf9bb54b721ae5af329765c6a0e80a43"
 
-  app = "bcda"
-  env = local.env
+  app    = "bcda"
+  env    = local.env
+  notify = module.common_datadog_monitors.notify
 
-  tests = {
-    health_check = {
+  tests = [
+    {
       name    = "Health Check"
       type    = "api"
       subtype = "http"
@@ -95,18 +96,20 @@ module "datadog_synthetics" {
         ]
       )
 
-      tick_every = 1800
+      tick_every           = lookup(local.health_check_config, "tick_every", 1800)
+      min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 3600)
+      min_location_failed  = lookup(local.health_check_config, "min_location_failed", 2)
+      locations            = lookup(local.health_check_config, "locations", null)
     }
-  }
+  ]
 }
 
 # Common Monitors
 
 module "common_datadog_monitors" {
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=14ce90093bd0487d62bcb155b871b42bf7650f74"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=6d0df984bf9bb54b721ae5af329765c6a0e80a43"
 
-  app              = "bcda"
-  env              = local.env
-  monitor_config   = local.monitor_config
-  synthetics_tests = local.has_health_check ? module.datadog_synthetics[0].synthetics_tests : []
+  app            = "bcda"
+  env            = local.env
+  monitor_config = local.monitor_config
 }
