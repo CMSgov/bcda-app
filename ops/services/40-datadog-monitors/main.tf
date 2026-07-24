@@ -103,7 +103,7 @@ module "datadog_synthetics" {
 # Common Monitors
 
 module "common_datadog_monitors" {
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=14ce90093bd0487d62bcb155b871b42bf7650f74"
 
   app              = "bcda"
   env              = local.env
