@@ -65,6 +65,15 @@ data "aws_iam_policy_document" "bucket_upload" {
       "${module.attribution-import_file_bucket.arn}/*"
     ]
   }
+}
+
+resource "aws_iam_role_policy" "bucket_upload" {
+  name   = "attribution-import-bucket-upload"
+  role   = aws_iam_role.delivery.id
+  policy = data.aws_iam_policy_document.bucket_upload.json
+}
+
+data "aws_iam_policy_document" "bucket_decrypt" {
   statement {
     sid    = "AllowKMSEncryption"
     effect = "Allow"
@@ -78,16 +87,16 @@ data "aws_iam_policy_document" "bucket_upload" {
   }
 }
 
+resource "aws_iam_role_policy" "bucket_decrypt" {
+  name   = "attribution-import-bucket-decrypt"
+  role   = aws_iam_role.delivery.id
+  policy = data.aws_iam_policy_document.bucket_decrypt.json
+}
+
 resource "aws_iam_role" "delivery" {
   name = "bcda-${local.env}-attribution-import-delivery"
 
   assume_role_policy = data.aws_iam_policy_document.delivery_assume_role.json
-}
-
-resource "aws_iam_role_policy" "bucket_upload" {
-  name   = "attribution-import-bucket-upload"
-  role   = aws_iam_role.delivery.id
-  policy = data.aws_iam_policy_document.bucket_upload.json
 }
 
 data "aws_iam_policy_document" "bucket_manage" {

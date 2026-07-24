@@ -62,8 +62,7 @@ module "attribution_import_function" {
   }
   liveness_check_enabled = false
 
-  additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
-  github_actions_repos       = ["bcda-app:*"]
+  github_actions_repos = ["bcda-app:*"]
 
   environment_variables = {
     ENV      = local.env
@@ -72,7 +71,7 @@ module "attribution_import_function" {
 
   function_role_inline_policies = {
     manage-attribution-import-bucket     = data.aws_iam_policy_document.bucket_manage.json,
-    upload-attribution-import-bucket     = data.aws_iam_policy_document.bucket_upload.json,
+    upload-attribution-import-bucket     = data.aws_iam_policy_document.bucket_decrypt.json,
     sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json
   }
 
