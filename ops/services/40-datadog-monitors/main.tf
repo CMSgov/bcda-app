@@ -52,7 +52,7 @@ module "platform" {
 
 module "datadog_synthetics" {
   count  = local.has_health_check ? 1 : 0
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=main"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=14ce90093bd0487d62bcb155b871b42bf7650f74"
 
   app = "bcda"
   env = local.env
