@@ -5,12 +5,13 @@ on:
     branches:
       - main
     paths:
-      - bcda/lambda/attribution-import/**
       - .github/workflows/attribution-import-deploy.yml
+      - bcda/lambda/attribution-import/**
+      - ops/services/30-attribution-import/**
   workflow_dispatch:
     inputs:
       deploy_env:
-        description: 'Environment you want to deploy to (test, prod)'
+        description: "Environment you want to deploy to (test, prod)"
         required: true
         default: test
         type: choice
@@ -20,17 +21,50 @@ on:
   workflow_call:
     inputs:
       deploy_env:
-        description: 'Environment you want to deploy to (test, prod)'
+        description: "Environment you want to deploy to (test, prod)"
         required: true
         default: test
         type: string
 
 env:
-  DEPLOY_ENV: ${{ inputs.deploy_env || 'test' }}
+  RELEASE_ENV: ${{ inputs.deploy_env || 'test' }}
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  deploy:
+  deploy_tf:
     environment: ${{ inputs.deploy_env || 'test' }}
+    runs-on: codebuild-bcda-app-${{ contains(fromJSON('["prod", "sandbox"]'), inputs.deploy_env) && 'prod' || 'non-prod'}}-${{github.run_id}}-${{github.run_attempt}}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
+      - name: Checkout BCDA
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
+      - name: Install Cosign to verify tenv and tofu installs
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 #v4.1.1@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Install tenv
+        uses: cmsgov/cdap/actions/setup-tenv@0b65099ef9232cfa2dfd4eea89cf8b9fa6052013
+      - name: Install OpenTofu
+        working-directory: ops/services/30-attribution-import
+        run: tenv tofu install
+      - name: Init, Plan OpenTofu
+        working-directory: ops/services/30-attribution-import
+        run: |
+          TF_WORKSPACE=default tofu init -var parent_env=${{ env.RELEASE_ENV }} -reconfigure && tofu workspace select -var parent_env=${{ env.RELEASE_ENV }} -or-create ${{ env.RELEASE_ENV }}
+          tofu plan \
+            -out 'bcda-release-lambda.tfplan'
+      - name: OpenTofu Apply
+        working-directory: ops/services/30-attribution-import
+        run: |
+          tofu apply bcda-release-lambda.tfplan
+
+  deploy_function:
+    environment: ${{ inputs.deploy_env || 'test' }}
+    needs: [deploy_tf]
     permissions:
       contents: read
       id-token: write
@@ -42,7 +76,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c #v6.4.0
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Build attribution-import zip file
         env:
           CGO_ENABLED: 0
@@ -60,7 +94,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            BUCKET=/bcda/${{ env.DEPLOY_ENV }}/attribution-import-bucket
+            BUCKET=/bcda/${{ env.RELEASE_ENV }}/attribution-import-bucket
       - name: Upload and reload
         run: |
           aws s3 cp --no-progress function.zip \
@@ -69,5 +103,5 @@ jobs:
             --bucket $BUCKET \
             --key function.zip \
             --tagging 'TagSet=[{Key=lifecycle-transition,Value=ia}]'
-          aws lambda update-function-code --function-name bcda-${{ env.DEPLOY_ENV }}-attribution-import \
+          aws lambda update-function-code --function-name bcda-${{ env.RELEASE_ENV }}-attribution-import \
             --s3-bucket $BUCKET --s3-key function.zip
