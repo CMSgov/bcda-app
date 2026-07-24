@@ -71,7 +71,7 @@ module "attribution_import_function" {
 
   function_role_inline_policies = {
     manage-attribution-import-bucket     = data.aws_iam_policy_document.bucket_manage.json,
-    upload-attribution-import-bucket     = data.aws_iam_policy_document.bucket_decrypt.json,
+    decrypt-attribution-import-bucket    = data.aws_iam_policy_document.bucket_decrypt.json,
     sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json
   }
 
