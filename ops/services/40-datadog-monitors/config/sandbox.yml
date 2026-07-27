@@ -10,3 +10,13 @@ enabled:
   lambda: true
   s3: true
   rds: true
+  synthetics: true
+
+health_check:
+  enabled: true
+  url: "https://sandbox.bcda.cms.gov/_health"
+  max_response_time_ms: 1000
+  validates_json_path:
+    - database
+    - ssas
+    - ssas_introspect
