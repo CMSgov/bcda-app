@@ -98,8 +98,6 @@ module "datadog_synthetics" {
 
       tick_every           = lookup(local.health_check_config, "tick_every", 1800)
       min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 3600)
-      min_location_failed  = lookup(local.health_check_config, "min_location_failed", 2)
-      locations            = lookup(local.health_check_config, "locations", null)
     }
   ]
 }

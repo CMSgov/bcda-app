@@ -208,6 +208,3 @@ health_check:
   validates_json_path: []
   tick_every: 300
   min_failure_duration: 600
-  min_location_failed: 2
-  locations:
-    - "aws:us-gov-west-1"
