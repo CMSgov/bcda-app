@@ -54,9 +54,10 @@ module "datadog_synthetics" {
   count  = local.has_health_check ? 1 : 0
   source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=ea161d6a00e729690a495d30c4d57d0d2990d0a6"
 
-  app    = "bcda"
-  env    = local.env
-  notify = module.common_datadog_monitors.notify
+  app                  = "bcda"
+  env                  = local.env
+  notify               = module.common_datadog_monitors.notify
+  min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 0)
 
   tests = [
     {
