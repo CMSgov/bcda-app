@@ -342,6 +342,7 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 						SearchParam: []r4.SearchParam{
 							restResourceSearchParam("_tag", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the meta.tag element. Pass full token as <system>|<code>. Supported codes in the 'https://bluebutton.cms.gov/fhir/CodeSystem/System-Type' system are: 'SharedSystem', 'NationalClaimsHistory', and 'DDPS'. By Default, only NationalClaimsHistory and DDPS claims will be returned."),
 							restResourceSearchParam("outcome", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the outcome element. Supported values: 'partial' and 'complete'."),
+							restResourceSearchParam("service-date", r4.SearchParamTypeDate, "Filter ExplanationOfBenefit based on the claim's service date. The service date is the date that the care occurred within a billable period. This is a FHIR date param format (ex. `gt2026-01-14`)"),
 						},
 					},
 				},
