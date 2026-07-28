@@ -33,6 +33,94 @@ locals {
     lookup(local.env_config, "health_check", {})
   )
   has_health_check = try(local.health_check_config.enabled, false) && length(try(local.health_check_config.validates_json_path, [])) > 0
+
+  static_site_config = merge(
+    lookup(local.defaults, "static_site", {}),
+    lookup(local.env_config, "static_site", {})
+  )
+  has_static_site = try(local.static_site_config.enabled, false) && try(local.static_site_config.url, "") != ""
+
+  synthetics_tests = concat(
+    local.has_health_check ? [
+      {
+        name    = "Health Check"
+        type    = "api"
+        subtype = "http"
+        status  = "live"
+
+        request_definition = {
+          method = "GET"
+          url    = local.health_check_config.url
+        }
+
+        assertions = concat(
+          [
+            {
+              type     = "responseTime"
+              operator = "lessThan"
+              target   = tostring(lookup(local.health_check_config, "max_response_time_ms", 1000))
+            },
+            {
+              type     = "statusCode"
+              operator = "is"
+              target   = "200"
+            }
+          ],
+          [
+            for field in try(local.health_check_config.validates_json_path, []) : {
+              type     = "body"
+              operator = "validatesJSONPath"
+              targetjsonpath = {
+                jsonpath    = "$.${field}"
+                operator    = "contains"
+                targetvalue = "ok"
+              }
+            }
+          ]
+        )
+
+        tick_every           = lookup(local.health_check_config, "tick_every", 1800)
+        min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 3600)
+        tags                 = ["service:bcda"]
+      }
+    ] : [],
+    local.has_static_site ? [
+      {
+        name    = "Static Site Prod Monitor"
+        type    = "api"
+        subtype = "http"
+        status  = "live"
+
+        request_definition = {
+          method = "GET"
+          url    = local.static_site_config.url
+        }
+
+        assertions = [
+          {
+            type     = "responseTime"
+            operator = "lessThan"
+            target   = tostring(lookup(local.static_site_config, "max_response_time_ms", 1000))
+          },
+          {
+            type     = "statusCode"
+            operator = "is"
+            target   = "200"
+          },
+          {
+            type     = "header"
+            operator = "is"
+            target   = "text/html"
+            property = "content-type"
+          }
+        ]
+
+        tick_every           = lookup(local.static_site_config, "tick_every", 300)
+        min_failure_duration = lookup(local.static_site_config, "min_failure_duration", 600)
+        tags                 = ["service:bcda"]
+      }
+    ] : []
+  )
 }
 
 # Use platform module to derive datadog keys via ssm_root_map
@@ -51,7 +139,7 @@ module "platform" {
 # Synthetics Tests
 
 module "datadog_synthetics" {
-  count  = local.has_health_check ? 1 : 0
+  count  = length(local.synthetics_tests) > 0 ? 1 : 0
   source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=ea161d6a00e729690a495d30c4d57d0d2990d0a6"
 
   app                  = "bcda"
@@ -59,48 +147,7 @@ module "datadog_synthetics" {
   notify               = module.common_datadog_monitors.notify
   min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 0)
 
-  tests = [
-    {
-      name    = "Health Check"
-      type    = "api"
-      subtype = "http"
-      status  = "live"
-
-      request_definition = {
-        method = "GET"
-        url    = local.health_check_config.url
-      }
-
-      assertions = concat(
-        [
-          {
-            type     = "responseTime"
-            operator = "lessThan"
-            target   = tostring(lookup(local.health_check_config, "max_response_time_ms", 1000))
-          },
-          {
-            type     = "statusCode"
-            operator = "is"
-            target   = "200"
-          }
-        ],
-        [
-          for field in try(local.health_check_config.validates_json_path, []) : {
-            type     = "body"
-            operator = "validatesJSONPath"
-            targetjsonpath = {
-              jsonpath    = "$.${field}"
-              operator    = "contains"
-              targetvalue = "ok"
-            }
-          }
-        ]
-      )
-
-      tick_every           = lookup(local.health_check_config, "tick_every", 1800)
-      min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 3600)
-    }
-  ]
+  tests = local.synthetics_tests
 }
 
 # Common Monitors
