@@ -80,7 +80,11 @@ func attributionImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (st
 			// importing the one file that was sent in the trigger.
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for file %s", e.EventName, filepath)
-			if ai.CheckIfAttributionCSVFile(e.S3.Object.Key) {
+			isCSV, err := ai.CheckIfAttributionCSVFile(e.S3.Object.Key)
+			if err != nil {
+				logger.Errorf("error checking if file is CSV: %v", err)
+				return "", err
+			} else if isCSV {
 				return handleCSVImport(ctx, pool, s3Client, filepath)
 			} else {
 				return handleCclfImport(ctx, pool, s3Client, filepath)

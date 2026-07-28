@@ -14,7 +14,6 @@ import (
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -59,15 +58,11 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 
 	file := csvFile{filepath: filepath}
 
-	optOut, _ := bp.IsOptOut(filepath)
-	if optOut {
-		return &ers.IsBenePrefsFile{}
-	}
-
 	short := f.Base(filepath)
 
 	metadata, err := GetCSVMetadata(short)
 	if err != nil {
+		importer.Logger.Errorf("error parsing CSV metadata: %w", err)
 		return &ers.InvalidCSVMetadata{Msg: err.Error()}
 	}
 	file.metadata = metadata

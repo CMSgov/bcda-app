@@ -570,7 +570,8 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(sub *testing.T) {
-			isCSV := CheckIfAttributionCSVFile(test.path)
+			isCSV, err := CheckIfAttributionCSVFile(test.path)
+			assert.NoError(t, err)
 			assert.Equal(t, test.testIsCSV, isCSV)
 		})
 	}

@@ -62,14 +62,6 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	// ignore the bene-prefs file, and don't add it to the skipped count
-	optOut, _ := bp.IsOptOut(info.Name())
-	if optOut {
-		fmt.Print("Skipping opt-out file: ", info.Name())
-		log.API.Info("Skipping opt-out file: ", info.Name())
-		return nil
-	}
-
 	zipFile := fp.Clean(path)
 	zipReader, err := zip.OpenReader(zipFile)
 	zipCloser := func() {
@@ -103,6 +95,9 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 	// validate the top level zipped folder
 	cmsID, err := getCMSID(info.Name())
 	if err != nil {
+		msg := fmt.Errorf("unable to get CMS ID for path: %s, err: %w", path, err)
+		fmt.Println(msg.Error())
+		log.API.Warn(msg.Error())
 		zipCloser()
 		return p.handleArchiveError(path, info, err)
 	}
@@ -128,9 +123,9 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 
 		if err != nil {
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-			msg := fmt.Sprintf("Unknown file found: %s.", f.Name)
-			fmt.Println(msg)
-			log.API.Error(msg)
+			errMsg := fmt.Errorf("issue parsing filename into metadata: %w", err)
+			fmt.Println(errMsg.Error())
+			log.API.Error(errMsg.Error())
 			continue
 		}
 
