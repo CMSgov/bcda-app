@@ -10,3 +10,7 @@ enabled:
   lambda: true
   s3: true
   rds: true
+
+static_site:
+  enabled: true
+  url: "https://bcda.cms.gov"
