@@ -1,5 +1,10 @@
 locals {
   assume_role_arns = compact(split(",", module.platform.ssm.attribution-import.delivery_role_arns.value))
+  provider_domain  = "token.actions.githubusercontent.com"
+}
+
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://${local.provider_domain}"
 }
 
 data "aws_iam_role" "admin" {
@@ -25,9 +30,28 @@ data "aws_iam_policy_document" "delivery_assume_role" {
       )
     }
   }
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.provider_domain}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "${local.provider_domain}:sub"
+      values   = ["repo:CMSgov/bcda-app:*"]
+    }
+  }
 }
 
-data "aws_iam_policy_document" "attribution-import_bucket_upload" {
+data "aws_iam_policy_document" "bucket_upload" {
   statement {
     sid    = "AllowS3Upload"
     effect = "Allow"
@@ -41,6 +65,15 @@ data "aws_iam_policy_document" "attribution-import_bucket_upload" {
       "${module.attribution-import_file_bucket.arn}/*"
     ]
   }
+}
+
+resource "aws_iam_role_policy" "bucket_upload" {
+  name   = "attribution-import-bucket-upload"
+  role   = aws_iam_role.delivery.id
+  policy = data.aws_iam_policy_document.bucket_upload.json
+}
+
+data "aws_iam_policy_document" "bucket_decrypt" {
   statement {
     sid    = "AllowKMSEncryption"
     effect = "Allow"
@@ -54,14 +87,59 @@ data "aws_iam_policy_document" "attribution-import_bucket_upload" {
   }
 }
 
+resource "aws_iam_role_policy" "bucket_decrypt" {
+  name   = "attribution-import-bucket-decrypt"
+  role   = aws_iam_role.delivery.id
+  policy = data.aws_iam_policy_document.bucket_decrypt.json
+}
+
 resource "aws_iam_role" "delivery" {
-  name = "bcda-${var.env}-attribution-import-delivery"
+  name = "bcda-${local.env}-attribution-import-delivery"
 
   assume_role_policy = data.aws_iam_policy_document.delivery_assume_role.json
 }
 
-resource "aws_iam_role_policy" "attribution-import_bucket_upload" {
-  name   = "attribution-import-bucket-upload"
-  role   = aws_iam_role.delivery.id
-  policy = data.aws_iam_policy_document.attribution-import_bucket_upload.json
+data "aws_iam_policy_document" "bucket_manage" {
+  statement {
+    sid    = "ListBucket"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      module.attribution-import_file_bucket.arn,
+    ]
+  }
+
+  statement {
+    sid    = "ReadDeleteObjects"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:GetObjectTagging",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+    ]
+
+    resources = [
+      "${module.attribution-import_file_bucket.arn}/*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "bucket_sqs" {
+  statement {
+    sid = "SqsReceiveDeleteMessages"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:DeleteMessage",
+    ]
+    resources = [module.attribution_import_queue.arn]
+  }
 }

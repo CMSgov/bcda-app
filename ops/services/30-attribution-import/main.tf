@@ -1,8 +1,9 @@
 locals {
   app        = "bcda"
+  env        = terraform.workspace
   service    = "attribution-import"
-  full_name  = "${local.app}-${var.env}-attribution-import"
-  db_sg_name = "${local.app}-${var.env}-db"
+  full_name  = "${local.app}-${local.env}-attribution-import"
+  db_sg_name = "${local.app}-${local.env}-db"
 }
 
 module "platform" {
@@ -11,16 +12,20 @@ module "platform" {
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app         = "bcda"
-  env         = var.env
+  env         = local.env
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/30-attribution-import"
   service     = local.service
   ssm_root_map = {
-    attribution-import = "/bcda/${var.env}/${local.service}/"
+    attribution-import = "/bcda/${local.env}/${local.service}/"
   }
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
-  name = "alias/bcda-${var.env}-app-config-kms"
+  name = "alias/bcda-${local.env}-app-config-kms"
+}
+
+data "aws_rds_cluster" "this" {
+  cluster_identifier = "${local.app}-${local.env}-aurora"
 }
 
 resource "aws_kms_key" "attribution-import_bucket" {
@@ -30,93 +35,8 @@ resource "aws_kms_key" "attribution-import_bucket" {
 }
 
 resource "aws_kms_alias" "attribution-import_bucket" {
-  name          = "alias/bcda-${var.env}-attribution-import-bucket-key"
+  name          = "alias/bcda-${local.env}-attribution-import-bucket-key"
   target_key_id = aws_kms_key.attribution-import_bucket.key_id
-}
-
-# ---------------------------------------------------------------------------
-# Managed policies
-# ---------------------------------------------------------------------------
-data "aws_iam_policy_document" "default_function" {
-  statement {
-    sid = "SsmSqsLogsEc2"
-    actions = [
-      "ssm:GetParameters",
-      "ssm:GetParameter",
-      "sqs:ReceiveMessage",
-      "sqs:GetQueueAttributes",
-      "sqs:DeleteMessage",
-      "logs:PutLogEvents",
-      "logs:CreateLogStream",
-      "logs:CreateLogGroup",
-    ]
-    resources = ["*"]
-  }
-  statement {
-    sid = "KmsEncryptDecrypt"
-    actions = [
-      "kms:GenerateDataKey",
-      "kms:Encrypt",
-      "kms:Decrypt",
-    ]
-    resources = [
-      module.platform.kms_alias_primary.arn,
-      module.platform.kms_alias_secondary.arn,
-      aws_kms_key.attribution-import_bucket.arn
-    ]
-  }
-  statement {
-    sid = "VPCNetworkingENI"
-    actions = [
-      "ec2:CreateNetworkInterface",
-      "ec2:DeleteNetworkInterface",
-      "ec2:DescribeAccountAttributes",
-      "ec2:DescribeNetworkInterfaces",
-    ]
-    resources = ["*"]
-  }
-}
-
-data "aws_iam_policy_document" "attribution-import_bucket_rw" {
-
-  statement {
-    sid    = "ListBucket"
-    effect = "Allow"
-
-    actions = [
-      "s3:ListBucket",
-      "s3:GetBucketLocation",
-    ]
-
-    resources = [
-      module.attribution-import_file_bucket.arn,
-    ]
-  }
-
-  statement {
-    sid    = "ReadWriteObjects"
-    effect = "Allow"
-
-    actions = [
-      # Read
-      "s3:GetObject",
-      "s3:GetObjectVersion",
-      "s3:GetObjectTagging",
-      "s3:PutObject",
-      "s3:PutObjectTagging",
-      "s3:DeleteObject",
-      "s3:DeleteObjectVersion",
-      "s3:AbortMultipartUpload",
-      "s3:ListMultipartUploadParts",
-    ]
-    resources = [
-      "${module.attribution-import_file_bucket.arn}/*"
-    ]
-  }
-}
-
-data "aws_rds_cluster" "this" {
-  cluster_identifier = "${local.app}-${var.env}-aurora"
 }
 
 module "attribution_import_function" {
@@ -134,7 +54,7 @@ module "attribution_import_function" {
 
   platform = {
     app               = module.platform.app
-    env               = var.env
+    env               = local.env
     service           = local.service
     kms_alias_primary = { target_key_arn = module.platform.kms_alias_primary.target_key_arn }
     primary_region    = { name = module.platform.region_name }
@@ -142,16 +62,22 @@ module "attribution_import_function" {
   }
   liveness_check_enabled = false
 
-  additional_admin_role_arns = [module.platform.ssm.attribution-import.misp-eft-role_arn.value]
-  github_actions_repos       = ["bcda-app:*"]
+  github_actions_repos = ["bcda-app:*"]
 
   environment_variables = {
-    ENV      = var.env
-    APP_NAME = "${local.app}-${var.env}-${local.service}"
+    ENV      = local.env
+    APP_NAME = "${local.app}-${local.env}-${local.service}"
+  }
+
+  function_role_inline_policies = {
+    manage-attribution-import-bucket     = data.aws_iam_policy_document.bucket_manage.json,
+    decrypt-attribution-import-bucket    = data.aws_iam_policy_document.bucket_decrypt.json,
+    sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json
   }
 
   ssm_parameter_paths = [
-    "/bcda/${var.env}/sensitive/api/DATABASE_URL"
+    "/bcda/${local.env}/sensitive/api/DATABASE_URL",
+    "/bcda/${local.env}/${local.service}/nonsensitive/file_bucket_name"
   ]
 
   extra_kms_key_arns = [
@@ -162,24 +88,12 @@ module "attribution_import_function" {
   ]
 }
 
-resource "aws_iam_role_policy" "attribution-import_bucket_rw" {
-  name   = "attribution-import-bucket-rw"
-  role   = "bcda-${var.env}-attribution-import-function"
-  policy = data.aws_iam_policy_document.attribution-import_bucket_rw.json
-}
-
-resource "aws_iam_role_policy" "logging" {
-  name   = "attribution-import-logging"
-  role   = "${local.full_name}-function"
-  policy = data.aws_iam_policy_document.default_function.json
-}
-
 # Set up queue for receiving messages when a file is added to the bucket
 module "attribution_import_queue" {
   source = "github.com/CMSgov/cdap//terraform/modules/queue?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
 
   app = local.app
-  env = var.env
+  env = local.env
 
   name = local.full_name
 
@@ -211,10 +125,10 @@ module "attribution-import_file_bucket" {
   source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
 
   app           = local.app
-  env           = var.env
+  env           = local.env
   name          = "${local.full_name}-file"
   kms_key_arn   = join("", ["", aws_kms_key.attribution-import_bucket.arn])
-  ssm_parameter = "/${local.app}/${var.env}/${local.service}/nonsensitive/file_bucket_name"
+  ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
 resource "aws_sns_topic" "this" {

@@ -7,8 +7,8 @@ on:
     paths:
       - .github/workflows/attribution-import-integration-test.yml
       - .github/workflows/attribution-import-deploy.yml
-      - bcda/cclf/**
       - bcda/lambda/attribution-import/**
+      - ops/services/30-attribution-import/**
   workflow_dispatch:
 
 permissions:
@@ -31,7 +31,7 @@ jobs:
       deploy_env: test
 
   trigger:
-    environment: 'test'
+    environment: "test"
     permissions:
       contents: read
       id-token: write
@@ -55,6 +55,12 @@ jobs:
         with:
           params: |
             BUCKET=/bcda/test/attribution-import/nonsensitive/file_bucket_name
+      - name: Assume delivery role
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/bcda-test-attribution-import-delivery
+          unset-current-credentials: true
       - name: Upload test file to the attribution-import file bucket to trigger lambda function via SNS message
         run: |
           year=$(date +'%y')
@@ -101,7 +107,7 @@ jobs:
 
           aws s3 cp --no-progress ${accesscsvname} \
             s3://$BUCKET/${accesscsvname}
-            
+
       - name: Wait for lambda processing
         run: sleep 60
       - uses: aws-actions/configure-aws-credentials@v6
@@ -134,7 +140,7 @@ jobs:
             echo "cclf_file query returned zero results or command failed"
             exit 1
           else
-          
+
             # Verify that the correct number of benes were imported into the database.
             CCLF_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $CCLF_FILE" 2>&1`
             echo "CCLF_BENES: $CCLF_BENES"
@@ -155,7 +161,7 @@ jobs:
             echo "TCOCMD CSV: csv_file query returned zero results or command failed"
             exit 1
           else
-          
+
             # Verify that the correct number of benes were imported into the database.
             TCOCMD_CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $TCOCMD_CSV_FILE" 2>&1`
             echo "TCOCMD_CSV_BENES: $TCOCMD_CSV_BENES"
@@ -176,7 +182,7 @@ jobs:
             echo "GUIDE CSV: csv_file query returned zero results or command failed"
             exit 1
           else
-          
+
             # Verify that the correct number of benes were imported into the database.
             GUIDE_CSV_BENES=`psql -t "$CONNECTION_URL" -c "SELECT count(mbi) FROM cclf_beneficiaries WHERE file_id = $GUIDE_CSV_FILE" 2>&1`
             echo "GUIDE_CSV_BENES: $GUIDE_CSV_BENES"
