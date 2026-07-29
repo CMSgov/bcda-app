@@ -96,14 +96,6 @@ func (e *ExpiredTokenError) Error() string {
 	return fmt.Sprintf("Expired Token Error encountered - %s. Err: %s", e.Msg, e.Err)
 }
 
-type IsBenePrefsFile struct {
-	Msg string
-}
-
-func (e *IsBenePrefsFile) Error() string {
-	return "File is type: bene-prefs. Skipping attribution import."
-}
-
 type InvalidCSVMetadata struct {
 	Msg string
 }

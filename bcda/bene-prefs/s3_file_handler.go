@@ -55,7 +55,7 @@ func (handler *S3FileHandler) LoadBenePrefsFiles(ctx context.Context, path strin
 
 		if err != nil {
 			// Skip files with a bad name.  An unknown file in this dir isn't a blocker
-			handler.Warningf("Unknown file found: %s. Skipping", metadata)
+			handler.Errorf("Issue parsing filename into metadata: %w", err)
 			skipped = skipped + 1
 			continue
 		}

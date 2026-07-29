@@ -50,11 +50,8 @@ func (handler *LocalFileHandler) getBenePrefsFileMetadata(ctx context.Context, s
 		metadata.FilePath = path
 		metadata.DeliveryDate = info.ModTime()
 		if err != nil {
-			handler.Logger.Error(err)
-
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-			fmt.Printf("Unknown file found: %s.\n", metadata)
-			handler.Logger.Errorf("Unknown file found: %s", metadata)
+			handler.Logger.Errorf("Issue parsing filename into metadata: %w", err)
 			*skipped = *skipped + 1
 
 			f, e, done := convertFileArchiveThreshold(handler)
