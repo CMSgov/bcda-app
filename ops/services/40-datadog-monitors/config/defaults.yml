@@ -208,3 +208,13 @@ health_check:
   validates_json_path: []
   tick_every: 300
   min_failure_duration: 600
+
+# -----------------------------------------------------------------------------
+# Static Site Synthetic Tests
+# -----------------------------------------------------------------------------
+static_site:
+  enabled: false
+  url: ""
+  max_response_time_ms: 1000
+  tick_every: 300
+  min_failure_duration: 600
