@@ -32,8 +32,6 @@ type RequestParameters struct {
 	TypeFilter    fhir.TypeFilterParameter
 }
 
-// const BBSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Adjudication-Status"
-
 // requestkey is an unexported context key to avoid collisions
 type requestkey int
 
@@ -404,8 +402,8 @@ func validateTagSubqueryParameter(tag string) error {
 
 	// Validate that the _tag system and code are supported values
 	validTagTokens := map[string][]string{
-		"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type":  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
-		"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action": {"FinalAction", "NotFinalAction"},
+		(constants.BBCodeSystemURL + "System-Type"):  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
+		(constants.BBCodeSystemURL + "Final-Action"): {"FinalAction", "NotFinalAction"},
 	}
 
 	tagSystem := strings.Split(tag, "|")[0]

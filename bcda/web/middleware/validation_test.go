@@ -141,10 +141,10 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 		expected error
 	}{
 		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
-		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345")},
-		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction")},
-		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction")},
-		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", nil},
+		{"invalidCode", constants.BBCodeSystemURL + "|12345", fmt.Errorf("invalid _tag value: " + constants.BBCodeSystemURL + "|12345")},
+		{"invalidSystem", constants.BBCodeSystemURL + "12345|FinalAction", fmt.Errorf("invalid _tag value: " + constants.BBCodeSystemURL + "12345|FinalAction")},
+		{"codeDoesNotMatchSystem", "BBCodeSystemURL|NotFinalAction", fmt.Errorf("invalid _tag value: BBCodeSystemURL|NotFinalAction")},
+		{"validSystemAndCode", "BBCodeSystemURL|NationalClaimsHistory", nil},
 		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
 	}
 
@@ -239,7 +239,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
+						Value: constants.BBCodeSystemURL + "System-Type|SharedSystem",
 					},
 				},
 			},
@@ -254,7 +254,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
+						Value: constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory",
 					},
 				},
 			},
@@ -269,7 +269,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem,https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						Value: constants.BBCodeSystemURL + "System-Type|SharedSystem," + constants.BBCodeSystemURL + "Final-Action|FinalAction",
 					},
 				},
 			},
@@ -306,7 +306,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS",
+						Value: constants.BBCodeSystemURL + "System-Type|DDPS",
 					},
 				},
 			},
@@ -321,7 +321,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						Value: constants.BBCodeSystemURL + "Final-Action|FinalAction",
 					},
 				},
 			},
@@ -336,7 +336,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						Value: constants.BBCodeSystemURL + "Final-Action|NotFinalAction",
 					},
 				},
 			},
@@ -372,11 +372,11 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						Value: constants.BBCodeSystemURL + "Final-Action|NotFinalAction",
 					},
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
+						Value: constants.BBCodeSystemURL + "System-Type|SharedSystem",
 					},
 				},
 			},
@@ -395,7 +395,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						Value: constants.BBCodeSystemURL + "Final-Action|FinalAction",
 					},
 				},
 			},
@@ -414,7 +414,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
+						Value: constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory",
 					},
 				},
 			},
