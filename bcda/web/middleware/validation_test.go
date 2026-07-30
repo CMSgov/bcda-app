@@ -141,10 +141,10 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 		expected error
 	}{
 		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
-		{"invalidCode", constants.BBCodeSystemURL + "|12345", fmt.Errorf("invalid _tag value: " + constants.BBCodeSystemURL + "|12345")},
+		{"invalidCode", constants.BBCodeSystemURL + "System-Type|12345", fmt.Errorf("invalid _tag value: " + constants.BBCodeSystemURL + "System-Type|12345")},
 		{"invalidSystem", constants.BBCodeSystemURL + "12345|FinalAction", fmt.Errorf("invalid _tag value: " + constants.BBCodeSystemURL + "12345|FinalAction")},
-		{"codeDoesNotMatchSystem", "BBCodeSystemURL|NotFinalAction", fmt.Errorf("invalid _tag value: BBCodeSystemURL|NotFinalAction")},
-		{"validSystemAndCode", "BBCodeSystemURL|NationalClaimsHistory", nil},
+		{"codeDoesNotMatchSystem", constants.BBCodeSystemURL + "System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: " + constants.BBCodeSystemURL + "System-Type|NotFinalAction")},
+		{"validSystemAndCode", constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory", nil},
 		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
 	}
 

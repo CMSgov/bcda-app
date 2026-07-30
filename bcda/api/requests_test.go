@@ -1544,7 +1544,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory", constants.BBCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.BBCodeSystemURL + "System-Type|DDPS"},
 			description:  "Non-PAC ACO with no filter should get filter added",
 		},
 		{
@@ -1568,7 +1568,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 			cmsID:        "NOPAC0000",
 			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BBCodeSystemURL + "Final-Action|FinalAction"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.BBCodeSystemURL + "Final-Action|FinalAction", constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory", constants.BBCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BBCodeSystemURL + "Final-Action|FinalAction", constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.BBCodeSystemURL + "System-Type|DDPS"},
 			description:  "Non-PAC ACO with FinalAction should still get filter added",
 		},
 		{
@@ -1579,7 +1579,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithPAC,
-			expectedTags: []string{constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory", constants.BBCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.BBCodeSystemURL + "System-Type|DDPS"},
 			description:  "PAC ACO with no filter should not get filter added",
 		},
 		{
@@ -1595,7 +1595,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 			cmsID:        "NOPAC0000",
 			typeFilter:   makeTypeFilterParam([][]string{{"service-date", "ge2024-01-01"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory", constants.BBCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BBCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.BBCodeSystemURL + "System-Type|DDPS"},
 			description:  "Non-PAC ACO with service-date but no _tag should get filter added",
 		},
 	}

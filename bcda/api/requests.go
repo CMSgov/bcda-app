@@ -931,7 +931,7 @@ func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir
 		if subqueryParam.Name == "_tag" {
 			tagSystems := extractTagSystemFromValue(subqueryParam.Value)
 			for _, tagSystem := range tagSystems {
-				if tagSystem == "BBCodeSystemURL" {
+				if tagSystem == constants.BBCodeSystemURL+"System-Type" {
 					hasRelevantFilter = true
 					break
 				}
