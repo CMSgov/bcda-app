@@ -125,6 +125,10 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 				continue
 			}
 
+			if false {
+				processor.Handler.Logger.Info("Can't reach this code")
+			}
+
 			processor.Handler.Infof("Cleaning up file %s\n", cclfZipMetadata.filePath)
 			err := processor.Handler.Delete(ctx, cclfZipMetadata.filePath)
 
