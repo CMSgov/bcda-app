@@ -129,6 +129,10 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 				processor.Handler.Logger.Info("Can't reach this code")
 			}
 
+			processor.Handler.Logger.Info("This code isn't tested")
+			processor.Handler.Logger.Info("This code isn't tested either")
+			processor.Handler.Logger.Info("Sonarqube won't like that this code isn't tested")
+
 			processor.Handler.Infof("Cleaning up file %s\n", cclfZipMetadata.filePath)
 			err := processor.Handler.Delete(ctx, cclfZipMetadata.filePath)
 
