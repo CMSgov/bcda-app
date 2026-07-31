@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	pgxv5 "github.com/jackc/pgx/v5"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
@@ -125,10 +126,12 @@ func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID u
 	return nil
 }
 
-func (r *PgxRepository) FindOrCreateWarningAndInfoJobKey(ctx context.Context, jobID uint, fname string) error {
+func (r *PgxRepository) FindOrCreateWarningAndInfoJobKey(ctx context.Context, jobID uint) error {
 	if r.pool == nil {
 		return fmt.Errorf("pool not initialized")
 	}
+
+	fname := constants.WarningsAndInfoFileName
 
 	query := `
 		SELECT * FROM job_keys

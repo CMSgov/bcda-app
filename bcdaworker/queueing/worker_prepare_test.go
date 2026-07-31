@@ -1,10 +1,12 @@
 package queueing
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	cm "github.com/CMSgov/bcda-app/middleware"
@@ -289,13 +292,12 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() {
-
 	cfg, err := service.LoadConfig()
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
 	}
 
-	svc := service.NewService(s.r, cfg, "/v1/fhir")
+	svc := service.NewService(s.r, cfg, "/v3/fhir")
 
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
@@ -305,7 +307,11 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 		s.T().Log("failed to get job")
 		s.T().FailNow()
 	}
-	j := models.Job{Status: models.JobStatusPending, ACOID: aco.UUID, RequestURL: "/foo/bar"}
+	j := models.Job{
+		Status:     models.JobStatusPending,
+		ACOID:      aco.UUID,
+		RequestURL: "/foo/bar",
+	}
 	id, _ := s.r.CreateJob(context.Background(), j)
 	j.ID = id
 
@@ -313,7 +319,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 		Args: worker_types.PrepareJobArgs{
 			Job:                    j,
 			CMSID:                  "A0003",
-			BFDPath:                "/v1/fhir",
+			BFDPath:                "/v3/fhir",
 			RequestType:            constants.DataRequestType(1),
 			ComplexDataRequestType: constants.GetNewAndExistingBenes,
 			CCLFFileNewID:          uint(1),
@@ -322,7 +328,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 		},
 	}
 
-	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r, pool: s.pool}
+	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, v3Client: c, r: s.r, pool: s.pool}
 	driver := riverpgxv5.New(s.pool)
 	err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
@@ -347,6 +353,11 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	assert.Equal(s.T(), result.EventKind, river.EventKindJobCompleted)
 	assert.Equal(s.T(), rivertype.JobStateCompleted, result.Job.State)
 
+	// verify file was created
+	filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID, constants.WarningsAndInfoFileName)
+	byteArray, err := os.ReadFile(filePath)
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
@@ -402,4 +413,99 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	// Cleanup the queue data
 	err = driver.GetExecutor().Exec(s.ctx, `delete from river_job`)
 	assert.Nil(s.T(), err)
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNeeded() {
+	tests := []struct {
+		name        string
+		job         *river.Job[worker_types.PrepareJobArgs]
+		createsFile bool
+	}{
+		{
+			name: "v3 request and request params DO NOT include System-Type typeFilter",
+			job: &river.Job[worker_types.PrepareJobArgs]{
+				Args: worker_types.PrepareJobArgs{
+					BFDPath: constants.BFDV3Path,
+					Job: models.Job{
+						ID:         1,
+						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export",
+					},
+				},
+			},
+			createsFile: true,
+		},
+		{
+			name: "v3 request and request params has typeFilter but not of System-Type",
+			job: &river.Job[worker_types.PrepareJobArgs]{
+				Args: worker_types.PrepareJobArgs{
+					BFDPath: constants.BFDV3Path,
+					Job: models.Job{
+						ID:         2,
+						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BBCodeSystemURL + "Final-Action%7CNotFinalAction&_since=2026-07-28T08:04:25.817-00:00",
+					},
+				},
+			},
+			createsFile: true,
+		},
+		{
+			name: "v3 request and request params includes System-Type typeFilter",
+			job: &river.Job[worker_types.PrepareJobArgs]{
+				Args: worker_types.PrepareJobArgs{
+					BFDPath: constants.BFDV3Path,
+					Job: models.Job{
+						ID:         3,
+						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BBCodeSystemURL + "System-Type%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
+					},
+				},
+			},
+			createsFile: false,
+		},
+		{
+			name: "v2 request and request params includes System-Type typeFilter",
+			job: &river.Job[worker_types.PrepareJobArgs]{
+				Args: worker_types.PrepareJobArgs{
+					BFDPath: constants.BFDV2Path,
+					Job: models.Job{
+						ID:         4,
+						RequestURL: "https://api.bcda.cms.gov/api/v2/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BBCodeSystemURL + "System-Type%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
+					},
+				},
+			},
+			createsFile: false,
+		},
+		{
+			name: "v1 request and request params includes System-Type typeFilter",
+			job: &river.Job[worker_types.PrepareJobArgs]{
+				Args: worker_types.PrepareJobArgs{
+					BFDPath: constants.BFDV1Path,
+					Job: models.Job{
+						ID:         5,
+						RequestURL: "https://api.bcda.cms.gov/api/v1/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BBCodeSystemURL + "System-Type%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
+					},
+				},
+			},
+			createsFile: false,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := handleDefaultSystemTypeWarningNeeded(s.ctx, s.pool, tt.job)
+			assert.NoError(s.T(), err)
+
+			filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID, constants.WarningsAndInfoFileName)
+			_, err = os.Stat(filePath)
+			if tt.createsFile {
+				assert.NoError(s.T(), err)
+				byteArray, err := os.ReadFile(filePath)
+				assert.NoError(s.T(), err)
+				assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
+			} else if errors.Is(err, os.ErrNotExist) {
+				assert.Error(s.T(), err)
+			} else {
+				s.T().FailNow() // unexpected error when checking if file exists
+			}
+		})
+	}
+
 }

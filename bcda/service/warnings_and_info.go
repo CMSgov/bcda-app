@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
@@ -32,7 +33,7 @@ var WarningDefaultSystemType = r4.OperationOutcome{
 // It will also find or create a jobkey.  There should only be 1 warnings and info file per job.
 func SetupWarningsAndInfoFile(ctx context.Context, pgxRepo *postgres.PgxRepository, jobID uint) (string, error) {
 	payloadPath := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
-	filePath := payloadPath + "/warnings-and-info.ndjson"
+	filePath := payloadPath + "/" + constants.WarningsAndInfoFileName
 
 	err := worker.CreateDir(payloadPath)
 	if err != nil {
@@ -45,7 +46,7 @@ func SetupWarningsAndInfoFile(ctx context.Context, pgxRepo *postgres.PgxReposito
 	}
 	defer file.Close()
 
-	err = pgxRepo.FindOrCreateWarningAndInfoJobKey(ctx, jobID, "warnings-and-info.ndjson")
+	err = pgxRepo.FindOrCreateWarningAndInfoJobKey(ctx, jobID)
 	if err != nil {
 		return "", fmt.Errorf("error creating warnings and info job key: %w", err)
 	}
