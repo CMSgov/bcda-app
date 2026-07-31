@@ -124,3 +124,31 @@ func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID u
 
 	return nil
 }
+
+func (r *PgxRepository) FindOrCreateWarningAndInfoJobKey(ctx context.Context, jobID uint, fname string) error {
+	if r.pool == nil {
+		return fmt.Errorf("pool not initialized")
+	}
+
+	query := `
+		SELECT * FROM job_keys
+		WHERE job_id = $1 AND file_name = $2
+		LIMIT 1`
+
+	var id uint
+	err := r.pool.QueryRow(ctx, query, jobID, fname).Scan(&id)
+	if err != nil {
+		query = `
+			INSERT INTO job_keys (job_id, file_name)
+			VALUES ($1, $2)
+			RETURNING id`
+
+		result, err := r.pool.Exec(ctx, query, jobID, fname)
+		affected := result.RowsAffected()
+		if err != nil || affected == 0 {
+			return fmt.Errorf("failed to create job key for job %d: %w", jobID, err)
+		}
+	}
+
+	return nil
+}

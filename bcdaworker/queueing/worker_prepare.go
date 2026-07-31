@@ -8,6 +8,7 @@ package queueing
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -116,6 +118,13 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			}
 
 			err = tx.Commit(ctx)
+
+			err = handleDefaultSystemTypeWarningNeeded(ctx, w.pool, rjob)
+			if err != nil {
+				logger.Errorf("failed to check if default system type warning needed for job id: %d: %w", rjob.Args.Job.ID, err)
+				return err
+			}
+
 			return err
 		}
 	}
@@ -183,7 +192,8 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
 	case constants.BFDV3Path:
-		return jobData.TransactionTime, nil // TODO: V3
+		b, err := p.v3Client.GetPatient(jobData, "0")
+		return b.Meta.LastUpdated, err
 	default:
 		return time.Time{}, errors.New("no BFD base path")
 	}
@@ -198,5 +208,32 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 			return err
 		}
 	}
+	return nil
+}
+
+// handleDefaultSystemTypeWarningNeeded checks if a default system type warning is needed and appends it to the warnings and info file.
+// The warning is needed when 1) its a v3 request and 2) the request url did not specify a system type (wherein we pass in default system types of NCH and DDPS).
+// This will find or create the warnings and info file as well as the associated job key record.  There should only be 1 warnings and info file per job.
+func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
+	if rjob.Args.BFDPath == constants.BFDV3Path && service.DefaultSystemTypeRegex.MatchString(rjob.Args.Job.RequestURL) {
+		pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
+
+		filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
+		if err != nil {
+			return err
+		}
+
+		bytes, err := json.Marshal(service.WarningDefaultSystemType)
+		if err != nil {
+			return err
+		}
+
+		bytes = append(bytes, []byte("\n")...) // add newline to end of OpOutcome json
+		err = worker.AppendToFile(filePath, bytes)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

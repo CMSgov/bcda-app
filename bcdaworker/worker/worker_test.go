@@ -416,7 +416,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
-	err := createDir(s.tempDir)
+	err := CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
@@ -626,9 +626,9 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 }
 
 func (s *WorkerTestSuite) TestCreateDir() {
-	err := createDir("/proc/invalid_path") //non-existant dir
+	err := CreateDir("/proc/invalid_path") //non-existant dir
 	assert.Error(s.T(), err)
-	err = createDir("2") //fine
+	err = CreateDir("2") //fine
 	assert.NoError(s.T(), err)
 }
 
