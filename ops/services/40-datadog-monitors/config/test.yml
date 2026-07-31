@@ -5,3 +5,17 @@ enabled:
   lambda: true
   s3: true
   rds: true
+  synthetics: true
+
+notifications:
+  victorops: false
+  slack: true
+
+health_check:
+  enabled: true
+  url: "https://test.bcda.cms.gov/_health"
+  max_response_time_ms: 1000
+  validates_json_path:
+    - database
+    - ssas
+    - ssas_introspect
