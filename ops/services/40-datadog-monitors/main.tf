@@ -86,7 +86,7 @@ locals {
     ] : [],
     local.has_static_site ? [
       {
-        name    = "Static Site Prod Monitor"
+        name    = "Static Site Monitor"
         type    = "api"
         subtype = "http"
         status  = "live"
