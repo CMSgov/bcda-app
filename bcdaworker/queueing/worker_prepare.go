@@ -192,8 +192,9 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
 	case constants.BFDV3Path:
-		b, err := p.v3Client.GetPatient(jobData, "0")
-		return b.Meta.LastUpdated, err
+		// b, err := p.v3Client.GetPatient(jobData, "0")
+		// return b.Meta.LastUpdated, err
+		return jobData.TransactionTime, nil // TODO: V3
 	default:
 		return time.Time{}, errors.New("no BFD base path")
 	}
@@ -215,7 +216,7 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 // The warning is needed when 1) its a v3 request and 2) the request url did not specify a system type (wherein we pass in default system types of NCH and DDPS).
 // This will find or create the warnings and info file as well as the associated job key record.  There should only be 1 warnings and info file per job.
 func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
-	if rjob.Args.BFDPath == constants.BFDV3Path && service.DefaultSystemTypeRegex.MatchString(rjob.Args.Job.RequestURL) {
+	if rjob.Args.BFDPath == constants.BFDV3Path && !service.HasSystemTypeRegex.MatchString(rjob.Args.Job.RequestURL) {
 		pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
 
 		filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)

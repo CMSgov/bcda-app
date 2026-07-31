@@ -22,7 +22,7 @@ func TestSetupWarningsAndInfoFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	var id int
-	err = pool.QueryRow(t.Context(), "SELECT * FROM job_keys WHERE job_id = 1 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&id)
+	err = pool.QueryRow(t.Context(), "SELECT id FROM job_keys WHERE job_id = 1 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&id)
 	assert.NoError(t, err)
 	assert.NotZero(t, id)
 

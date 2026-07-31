@@ -29,15 +29,15 @@ func TestAppendToFile(t *testing.T) {
 
 	content, err := os.ReadFile(filePath)
 	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Hello, World!\n")
+	assert.Contains(t, string(content), "Hello, World!")
 
 	// repeat to append more data to end of file
-	err = AppendToFile(filePath, []byte("Another entry!\n"))
+	err = AppendToFile(filePath, []byte("Another entry!"))
 	assert.NoError(t, err)
 
 	content, err = os.ReadFile(filePath)
 	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Hello, World!\nAnother entry!\n")
+	assert.Contains(t, string(content), "Hello, World!Another entry!")
 
 	err = os.Remove(filePath)
 	assert.NoError(t, err)

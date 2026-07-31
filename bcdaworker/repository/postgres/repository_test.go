@@ -205,7 +205,7 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100}
 	jk2 := models.JobKey{JobID: jobID, QueJobID: &queJobID1, FileName: jk2Filename, ResourceType: "Claim", BenesWithData: 20, BenesRetrievedPercent: 50}
 	jk3 := models.JobKey{JobID: jobID}
-	jkErrors := models.JobKey{JobID: jobID, FileName: (uuid.New() + "-errors.ndjson")}
+	jkErrors := models.JobKey{JobID: jobID, FileName: (uuid.New() + "-error.ndjson")}
 	jkWarning := models.JobKey{JobID: jobID, FileName: constants.WarningsAndInfoFileName}
 	j, e := safecast.ToUint(testUtils.CryptoRandInt31())
 	assert.NoError(e)
