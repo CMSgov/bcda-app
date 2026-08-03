@@ -27,9 +27,7 @@ var WarningDefaultSystemType = r4.OperationOutcome{
 	},
 }
 
-// []byte`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`
-
-// SetupWarningsAndInfoFile finds or creates the warnings and info file to house generic warnings and issues for a given job.
+// SetupWarningsAndInfoFile finds or creates an info file to house generic warnings, issues, etc for a given job.
 // It will also find or create a jobkey.  There should only be 1 warnings and info file per job.
 func SetupWarningsAndInfoFile(ctx context.Context, pgxRepo *postgres.PgxRepository, jobID uint) (string, error) {
 	payloadPath := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)

@@ -495,7 +495,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 
 			filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID, constants.WarningsAndInfoFileName)
 			_, err = os.Stat(filePath)
-			fmt.Printf("----- desc: %s, filePath: %s, createsFile: %v, err: %v\n", tt.name, filePath, tt.createsFile, err)
 			if tt.createsFile {
 				assert.NoError(s.T(), err)
 				byteArray, err := os.ReadFile(filePath)

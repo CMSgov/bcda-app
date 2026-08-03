@@ -211,8 +211,7 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 }
 
 // handleDefaultSystemTypeWarningNeeded checks if a default system type warning is needed and appends it to the warnings and info file.
-// The warning is needed when 1) its a v3 request and 2) the request url did not specify a system type (wherein we pass in default system types of NCH and DDPS).
-// This will find or create the warnings and info file as well as the associated job key record.  There should only be 1 warnings and info file per job.
+// The warning is needed when 1) its a v3 request and 2) the request url did NOT specify a system type (wherein we pass in default system types of NCH and DDPS).
 func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
 	if rjob.Args.BFDPath == constants.BFDV3Path && !service.HasSystemTypeRegex.MatchString(rjob.Args.Job.RequestURL) {
 		pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
