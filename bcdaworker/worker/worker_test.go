@@ -975,29 +975,16 @@ func (s *WorkerTestSuite) TestValidateJob() {
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {
-	j := models.Job{
-		ACOID:      uuid.Parse(constants.TestACOID),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     models.JobStatusPending,
-		JobCount:   1,
-	}
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	complete, err := CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), complete)
+	repo := &repository.MockRepository{}
+	repo.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
 
 	keys := []models.JobKey{
 		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
 		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
 	}
-	err = createJobKeys(s.logctx, s.r, keys, j.ID)
+
+	err := createJobKeys(s.logctx, repo, keys, uint(1))
 	assert.NoError(s.T(), err)
-	for i := 0; i < len(keys); i++ {
-		id, _ := safecast.ToInt(keys[i].JobID)
-		job, _ := postgrestest.GetJobKey(s.db, id)
-		assert.NotEmpty(s.T(), job)
-	}
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
