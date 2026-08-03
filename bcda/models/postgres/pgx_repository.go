@@ -146,11 +146,12 @@ func (r *PgxRepository) FindOrCreateWarningAndInfoJobKey(ctx context.Context, jo
 		}
 
 		query = `
-			INSERT INTO job_keys (job_id, file_name)
-			VALUES ($1, $2)
+			INSERT INTO job_keys (job_id, file_name, resource_type)
+			VALUES ($1, $2, $3)
+			ON CONFLICT DO NOTHING
 			RETURNING id`
 
-		result, err := r.pool.Exec(ctx, query, jobID, fname)
+		result, err := r.pool.Exec(ctx, query, jobID, fname, "OperationOutcome")
 		affected := result.RowsAffected()
 		if err != nil || affected == 0 {
 			return fmt.Errorf("failed to create job key for job %d, err: %w", jobID, err)

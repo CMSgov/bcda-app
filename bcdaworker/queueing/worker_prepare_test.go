@@ -496,7 +496,6 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 			err := handleDefaultSystemTypeWarningNeeded(s.ctx, s.pool, tt.job)
 			assert.NoError(s.T(), err)
 
-			// filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID, constants.WarningsAndInfoFileName)
 			payloadDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID)
 			s.T().Cleanup(func() { _ = os.RemoveAll(payloadDir) })
 

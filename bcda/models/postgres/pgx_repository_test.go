@@ -305,7 +305,7 @@ func (s *PgxRepositoryTestSuite) TestFindOrCreateWarningAndInfoJobKey() {
 	require.NoError(s.T(), err)
 
 	var id int
-	err = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM job_keys WHERE job_id = 1 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&id)
+	err = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM job_keys WHERE job_id = 1 AND file_name = $1 AND resource_type = 'OperationOutcome'", constants.WarningsAndInfoFileName).Scan(&id)
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), 1, id)
 
@@ -314,7 +314,7 @@ func (s *PgxRepositoryTestSuite) TestFindOrCreateWarningAndInfoJobKey() {
 	require.NoError(s.T(), err)
 
 	var count int
-	err = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM job_keys WHERE job_id = 1 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&count)
+	err = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM job_keys WHERE job_id = 1 AND file_name = $1 AND resource_type = 'OperationOutcome'", constants.WarningsAndInfoFileName).Scan(&count)
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), 1, count)
 }

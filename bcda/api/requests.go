@@ -339,6 +339,15 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			JobID:               job.ID,
 		}
 
+		// Add warnings-and-info file to Errors array if it exists
+		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, constants.WarningsAndInfoFileName)
+		if _, err := os.Stat(filePath); !os.IsNotExist(err) { // #nosec G703
+			rb.Errors = append(rb.Errors, FileItem{
+				Type: "OperationOutcome",
+				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, constants.WarningsAndInfoFileName),
+			})
+		}
+
 		for _, jobKey := range jobKeys {
 			// data files
 			fi := FileItem{
@@ -363,7 +372,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				}
 				rb.Errors = append(rb.Errors, errFI)
 			}
-
 		}
 
 		jsonData, err := json.Marshal(rb)

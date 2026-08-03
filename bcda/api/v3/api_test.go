@@ -223,7 +223,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Empty(s.T(), rb.Errors)
 }
 
-func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
+func (s *APITestSuite) TestJobStatusCompletedErrorAndWarningFilesExist() {
 	j := models.Job{
 		ACOID:      acoUnderTest,
 		RequestURL: constants.V3Path + constants.PatientEOBPath,
@@ -256,6 +256,18 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
+	warningFilePath := fmt.Sprintf("%s/%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), constants.WarningsAndInfoFileName)
+	_, err = os.Create(warningFilePath)
+	if err != nil {
+		s.T().Error(err)
+	}
+	postgrestest.CreateJobKeys(s.T(), s.db, models.JobKey{
+		JobID:        11,
+		FileName:     constants.WarningsAndInfoFileName,
+		ResourceType: "OperationOutcome",
+	})
+	defer postgrestest.DeleteJobKeysByJobIDs(s.T(), s.db, 11)
+
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
 	rr := httptest.NewRecorder()
 
@@ -272,6 +284,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 
 	dataurl := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), fileName)
 	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", constants.ExpectedTestUrl, fmt.Sprint(j.ID), errFileName)
+	warningURL := fmt.Sprintf("%s/%s/%s", constants.ExpectedTestUrl, fmt.Sprint(j.ID), constants.WarningsAndInfoFileName)
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
@@ -281,7 +294,10 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		assert.NotContains(s.T(), file.URL, "-error.ndjson")
 	}
 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
-	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
+	assert.Equal(s.T(), warningURL, rb.Errors[0].URL)
+	assert.Equal(s.T(), "OperationOutcome", rb.Errors[1].Type)
+	assert.Equal(s.T(), errorurl, rb.Errors[1].URL)
+	assert.Equal(s.T(), 2, len(rb.Errors))
 
 	os.Remove(errFilePath)
 }
