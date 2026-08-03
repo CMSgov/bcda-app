@@ -119,7 +119,7 @@ jobs:
           name: code-coverage-report
       - name: Run quality gate scan
         uses: sonarsource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4
-        continue-on-error: ${{ inputs.ignore_sonarqube_failures }}
+        continue-on-error: ${{ inputs.ignore_sonarqube_failures || false }}
         with:
           args:
             -Dsonar.scanner.arch=aarch64
