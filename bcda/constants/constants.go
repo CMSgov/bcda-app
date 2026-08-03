@@ -63,5 +63,5 @@ const SoftwareDescription = "The Beneficiary Claims Data API (BCDA) enables heal
 
 const SmartOAuthURIsExtensionURL = "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"
 const RestfulSecurityServiceSystem = "http://terminology.hl7.org/CodeSystem/restful-security-service"
-const BBCodeSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/"
+const FHIRCodeSystemURL = "https://bluebutton.cms.gov/fhir/CodeSystem/"
 const WarningsAndInfoFileName = "warnings-and-info.ndjson"

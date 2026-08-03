@@ -402,8 +402,8 @@ func validateTagSubqueryParameter(tag string) error {
 
 	// Validate that the _tag system and code are supported values
 	validTagTokens := map[string][]string{
-		(constants.BBCodeSystemURL + "System-Type"):  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
-		(constants.BBCodeSystemURL + "Final-Action"): {"FinalAction", "NotFinalAction"},
+		(constants.FHIRCodeSystemURL + "System-Type"):  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
+		(constants.FHIRCodeSystemURL + "Final-Action"): {"FinalAction", "NotFinalAction"},
 	}
 
 	tagSystem := strings.Split(tag, "|")[0]
