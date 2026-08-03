@@ -38,7 +38,7 @@ func SetupWarningsAndInfoFile(ctx context.Context, pgxRepo *postgres.PgxReposito
 		return "", fmt.Errorf("error creating payload directory: %w", err)
 	}
 
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
 	if err != nil {
 		return "", fmt.Errorf("error opening or creating warnings and info file: %w", err)
 	}

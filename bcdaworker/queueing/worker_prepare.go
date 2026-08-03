@@ -230,8 +230,8 @@ func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.P
 			return err
 		}
 
-		bytes = append(bytes, []byte("\n")...) // add newline to end of OpOutcome json
-		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		bytes = append(bytes, []byte("\n")...)                                        // add newline to end of OpOutcome json
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
 		if err != nil {
 			return err
 		}
