@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -19,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -231,10 +231,14 @@ func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.P
 		}
 
 		bytes = append(bytes, []byte("\n")...) // add newline to end of OpOutcome json
-		err = worker.AppendToFile(filePath, bytes)
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
+		defer file.Close()
+
+		_, err = file.Write(bytes)
+		return err
 	}
 
 	return nil

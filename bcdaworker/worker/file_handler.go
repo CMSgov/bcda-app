@@ -13,14 +13,3 @@ func CreateDir(path string) error {
 	}
 	return nil
 }
-
-func AppendToFile(filePath string, data []byte) error {
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.Write(data)
-	return err
-}
