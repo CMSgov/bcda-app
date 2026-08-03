@@ -118,14 +118,18 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			}
 
 			err = tx.Commit(ctx)
-
-			err = handleDefaultSystemTypeWarningNeeded(ctx, w.pool, rjob)
 			if err != nil {
-				logger.Errorf("failed to check if default system type warning needed for job id: %d: %w", rjob.Args.Job.ID, err)
+				logger.Errorf("prepare job tx failed for job id: %d, err: %v", rjob.Args.Job.ID, err)
 				return err
 			}
 
-			return err
+			err = handleDefaultSystemTypeWarningNeeded(ctx, w.pool, rjob)
+			if err != nil {
+				logger.Errorf("failed to check if default system type warning needed for job id: %d, err: %v", rjob.Args.Job.ID, err)
+				return err
+			}
+
+			return nil
 		}
 	}
 }

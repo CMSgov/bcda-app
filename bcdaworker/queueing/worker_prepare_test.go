@@ -354,7 +354,10 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	assert.Equal(s.T(), rivertype.JobStateCompleted, result.Job.State)
 
 	// verify file was created
-	filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID, constants.WarningsAndInfoFileName)
+	payloadDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
+	s.T().Cleanup(func() { _ = os.RemoveAll(payloadDir) })
+
+	filePath := fmt.Sprintf("%s/%s", payloadDir, constants.WarningsAndInfoFileName)
 	byteArray, err := os.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
@@ -493,7 +496,11 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 			err := handleDefaultSystemTypeWarningNeeded(s.ctx, s.pool, tt.job)
 			assert.NoError(s.T(), err)
 
-			filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID, constants.WarningsAndInfoFileName)
+			// filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID, constants.WarningsAndInfoFileName)
+			payloadDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID)
+			s.T().Cleanup(func() { _ = os.RemoveAll(payloadDir) })
+
+			filePath := fmt.Sprintf("%s/%s", payloadDir, constants.WarningsAndInfoFileName)
 			_, err = os.Stat(filePath)
 			if tt.createsFile {
 				assert.NoError(s.T(), err)

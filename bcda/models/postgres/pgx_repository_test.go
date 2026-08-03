@@ -313,17 +313,9 @@ func (s *PgxRepositoryTestSuite) TestFindOrCreateWarningAndInfoJobKey() {
 	err = s.repo.FindOrCreateWarningAndInfoJobKey(ctx, 1)
 	require.NoError(s.T(), err)
 
-	rows, err := s.pool.Query(ctx, "SELECT COUNT(*) FROM job_keys WHERE job_id = 1 AND file_name = $1", constants.WarningsAndInfoFileName)
+	var count int
+	err = s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM job_keys WHERE job_id = 1 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&count)
 	require.NoError(s.T(), err)
-	defer rows.Close()
-
-	count := 0
-	for rows.Next() {
-		var i int
-		err := rows.Scan(&i)
-		require.NoError(s.T(), err)
-		count += 1
-	}
 	assert.Equal(s.T(), 1, count)
 }
 

@@ -8,14 +8,17 @@ import (
 )
 
 func TestCreateDir(t *testing.T) {
-	err := CreateDir("testdir")
+	dir := t.TempDir()
+	testDir := dir + "/testdir"
+
+	err := CreateDir(testDir)
 	assert.NoError(t, err)
-	assert.DirExists(t, "testdir")
+	assert.DirExists(t, testDir)
 
 	// run it again for idempotency
-	err = CreateDir("testdir")
+	err = CreateDir(testDir)
 	assert.NoError(t, err)
-	assert.DirExists(t, "testdir")
+	assert.DirExists(t, testDir)
 }
 
 func TestAppendToFile(t *testing.T) {
