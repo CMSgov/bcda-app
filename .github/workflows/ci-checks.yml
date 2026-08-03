@@ -11,12 +11,22 @@ on:
         description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
+      ignore_sonarqube_failures:
+        description: 'Continue even if sonarqube quality gate reports a failure'
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       ref:
         description: 'Ref of bcda-app to checkout (tag, branch name, or full SHA)'
         required: true
         type: string
+      ignore_sonarqube_failures:
+        description: 'Continue even if sonarqube quality gate reports a failure'
+        required: false
+        type: boolean
+        default: false
 
 env:
   REF: ${{ inputs.ref || github.sha }}
@@ -109,6 +119,7 @@ jobs:
           name: code-coverage-report
       - name: Run quality gate scan
         uses: sonarsource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4
+        continue-on-error: ${{ inputs.ignore_sonarqube_failures || false }}
         with:
           args:
             -Dsonar.scanner.arch=aarch64
