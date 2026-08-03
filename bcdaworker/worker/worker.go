@@ -391,7 +391,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	(*pr).BenesRetrievedPercent = benesRetrievedPercent
 	(*pr).BenesWithData = benesWithDataCount
 
-	if errorCount > 0 {
+	if benesRetrievedCount < len(jobArgs.BeneficiaryIDs) {
 		jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
 	}
 	return jobKeys, nil
