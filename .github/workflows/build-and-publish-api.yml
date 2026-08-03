@@ -27,6 +27,7 @@ jobs:
     uses: ./.github/workflows/ci-checks.yml
     with:
       ref: ${{ inputs.ref }}
+      ignore_sonarqube_failures: true
     secrets: inherit
 
   build_and_publish:

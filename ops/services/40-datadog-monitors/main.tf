@@ -81,12 +81,12 @@ locals {
 
         tick_every           = lookup(local.health_check_config, "tick_every", 1800)
         min_failure_duration = lookup(local.health_check_config, "min_failure_duration", 3600)
-        tags                 = ["service:bcda"]
+        tags                 = ["team:bcda", "service:bcda"]
       }
     ] : [],
     local.has_static_site ? [
       {
-        name    = "Static Site Prod Monitor"
+        name    = "Static Site Monitor"
         type    = "api"
         subtype = "http"
         status  = "live"
@@ -117,7 +117,7 @@ locals {
 
         tick_every           = lookup(local.static_site_config, "tick_every", 300)
         min_failure_duration = lookup(local.static_site_config, "min_failure_duration", 600)
-        tags                 = ["service:bcda"]
+        tags                 = ["team:bcda", "service:bcda"]
       }
     ] : []
   )
