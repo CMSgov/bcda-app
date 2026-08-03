@@ -4,22 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"log"
-	"os"
 	"path/filepath"
-	"testing"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/service"
-	"github.com/CMSgov/bcda-app/conf"
-	"github.com/otiai10/copy"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type S3FileProcessor struct {
@@ -135,24 +125,8 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 				continue
 			}
 
-			if false {
-				processor.Handler.Logger.Info("Can't reach this code")
-			}
-
-			processor.Handler.Logger.Info("This code isn't tested")
-			processor.Handler.Logger.Info("This code isn't tested either")
-			processor.Handler.Logger.Info("Sonarqube won't like that this code isn't tested")
-
 			processor.Handler.Infof("Cleaning up file %s\n", cclfZipMetadata.filePath)
 			err := processor.Handler.Delete(ctx, cclfZipMetadata.filePath)
-
-			if false {
-				processor.Handler.Logger.Info("Can't reach this code")
-			}
-
-			processor.Handler.Logger.Info("This code isn't tested")
-			processor.Handler.Logger.Info("This code isn't tested either")
-			processor.Handler.Logger.Info("Sonarqube won't like that this code isn't tested")
 
 			if err != nil {
 				errCount++
@@ -212,107 +186,4 @@ func (processor *S3FileProcessor) LoadCSV(ctx context.Context, filepath string) 
 
 	reader := bytes.NewReader(byte_arr)
 	return reader, func() {}, err
-}
-
-var CtxMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
-
-// PrintSeparator prints a line of stars to stdout
-func PrintSeparator() {
-	fmt.Println("**********************************************************************************")
-}
-
-func RandomHexID() string {
-	b, err := someRandomBytes(4)
-	if err != nil {
-		return "not_a_random_client_id"
-	}
-	return fmt.Sprintf("%x", b)
-}
-
-// RandomMBI returns an 11 character string that represents an MBI
-func RandomMBI(t *testing.T) string {
-	b, err := someRandomBytes(6)
-	assert.NoError(t, err)
-	return fmt.Sprintf("%x", b)[0:11]
-}
-
-func someRandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func RandomBase64(n int) string {
-	b, err := someRandomBytes(20)
-	if err != nil {
-		return "not_a_random_base_64_string"
-	}
-	return base64.StdEncoding.EncodeToString(b)
-}
-
-func setEnv(why, key, value string) {
-	if err := conf.SetEnv(&testing.T{}, key, value); err != nil {
-		log.Printf("Error %s env value %s to %s\n", why, key, value)
-	}
-}
-
-// SetAndRestoreEnvKey replaces the current value of the env var key,
-// returning a function which can be used to restore the original value
-func SetAndRestoreEnvKey(key, value string) func() {
-	originalValue := conf.GetEnv(key)
-	setEnv("setting", key, value)
-	return func() {
-		setEnv("restoring", key, originalValue)
-	}
-}
-
-func MakeDirToDelete(s *suite.Suite, filePath string) {
-	assert := assert.New(s.T())
-	_, err := os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe1.txt")))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe2.txt")))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe3.txt")))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Clean(filepath.Join(filePath, "deleteMe4.txt")))
-	assert.Nil(err)
-}
-
-// SetPendingDeletionDir sets the PENDING_DELETION_DIR to the supplied "path" and ensures
-// that the directory is created
-func SetPendingDeletionDir(s *suite.Suite, path string) {
-	err := conf.SetEnv(s.T(), "PENDING_DELETION_DIR", path)
-	if err != nil {
-		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
-	}
-	cclfDeletion := conf.GetEnv("PENDING_DELETION_DIR")
-	err = os.MkdirAll(cclfDeletion, 0744)
-	if err != nil {
-		s.FailNow("failed to create the pending deletion directory, %s", err.Error())
-	}
-}
-
-// CopyToTemporaryDirectory copies all of the content found at src into a temporary directory.
-// The path to the temporary directory is returned along with a function that can be called to clean up the data.
-func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
-	newPath, err := os.MkdirTemp("", "*")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory %s", err.Error())
-	}
-
-	if err = copy.Copy(src, newPath); err != nil {
-		t.Fatalf("Failed to copy contents from %s to %s %s", src, newPath, err.Error())
-	}
-
-	cleanup := func() {
-		err := os.RemoveAll(newPath)
-		if err != nil {
-			log.Printf("Failed to cleanup data %s", err.Error())
-		}
-	}
-
-	return newPath, cleanup
 }
