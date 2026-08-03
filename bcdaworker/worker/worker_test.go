@@ -977,6 +977,7 @@ func (s *WorkerTestSuite) TestValidateJob() {
 func (s *WorkerTestSuite) TestCreateJobKeys() {
 	repo := &repository.MockRepository{}
 	repo.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
+	repo.On("GetJobByID", testUtils.CtxMatcher, uint(1)).Return(&models.Job{Status: models.JobStatusCompleted}, nil)
 
 	keys := []models.JobKey{
 		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
