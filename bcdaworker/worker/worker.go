@@ -391,6 +391,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	(*pr).BenesRetrievedPercent = benesRetrievedPercent
 	(*pr).BenesWithData = benesWithDataCount
 
+	// we create/append OpOutcomes into an error file whenever we either dont find data in BFD or there was some other error
+	// we compare total benes for the subjob to benesRetrievedCount as the latter accounts for both above situations.
+	// we need to then make sure that we are creating a job key for that error file to make sure that clients can download that file later on.
 	if benesRetrievedCount < len(jobArgs.BeneficiaryIDs) {
 		jobKeys = append(jobKeys, models.JobKey{JobID: id, QueJobID: &queJobID, FileName: fileUUID + "-error.ndjson", ResourceType: jobArgs.ResourceType})
 	}
