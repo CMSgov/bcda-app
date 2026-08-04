@@ -418,99 +418,98 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNeeded() {
+func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarning() {
+	job := &river.Job[worker_types.PrepareJobArgs]{
+		Args: worker_types.PrepareJobArgs{
+			BFDPath: constants.BFDV3Path,
+			Job: models.Job{
+				ID:         1,
+				RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export",
+			},
+		},
+	}
+
+	err := handleDefaultSystemTypeWarning(s.ctx, s.pool, job)
+	assert.NoError(s.T(), err)
+
+	payloadDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), job.Args.Job.ID)
+	s.T().Cleanup(func() { _ = os.RemoveAll(payloadDir) })
+
+	filePath := fmt.Sprintf("%s/%s", payloadDir, constants.WarningsAndInfoFileName)
+	_, err = os.Stat(filePath)
+	assert.NoError(s.T(), err)
+	byteArray, err := os.ReadFile(filePath)
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
+}
+
+func (s *PrepareWorkerIntegrationTestSuite) TestDefaultSystemTypeWarningNeeded() {
 	tests := []struct {
-		name        string
-		job         *river.Job[worker_types.PrepareJobArgs]
-		createsFile bool
+		name           string
+		queryURL       string
+		bfdPath        string
+		expectedNeeded bool
 	}{
 		{
-			name: "v3 request and request params DO NOT include System-Type typeFilter",
-			job: &river.Job[worker_types.PrepareJobArgs]{
-				Args: worker_types.PrepareJobArgs{
-					BFDPath: constants.BFDV3Path,
-					Job: models.Job{
-						ID:         1,
-						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export",
-					},
-				},
-			},
-			createsFile: true,
+			"v3 and request params do not include typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export",
+			constants.BFDV3Path,
+			true,
 		},
 		{
-			name: "v3 request and request params has typeFilter but not of System-Type",
-			job: &river.Job[worker_types.PrepareJobArgs]{
-				Args: worker_types.PrepareJobArgs{
-					BFDPath: constants.BFDV3Path,
-					Job: models.Job{
-						ID:         2,
-						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDFinalActionURL + "%7CNotFinalAction&_since=2026-07-28T08:04:25.817-00:00",
-					},
-				},
-			},
-			createsFile: true,
+			"v3 and request params has typeFilter but not of System-Type",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDFinalActionURL + "|NotFinalAction&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV3Path,
+			true,
 		},
 		{
-			name: "v3 request and request params includes System-Type typeFilter",
-			job: &river.Job[worker_types.PrepareJobArgs]{
-				Args: worker_types.PrepareJobArgs{
-					BFDPath: constants.BFDV3Path,
-					Job: models.Job{
-						ID:         3,
-						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
-					},
-				},
-			},
-			createsFile: false,
+			"v3 and request params includes System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV3Path,
+			false,
 		},
 		{
-			name: "v2 request and request params includes System-Type typeFilter",
-			job: &river.Job[worker_types.PrepareJobArgs]{
-				Args: worker_types.PrepareJobArgs{
-					BFDPath: constants.BFDV2Path,
-					Job: models.Job{
-						ID:         4,
-						RequestURL: "https://api.bcda.cms.gov/api/v2/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
-					},
-				},
-			},
-			createsFile: false,
+			"error in query URL",
+			"https://api.bcda.c ms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV3Path,
+			true,
 		},
 		{
-			name: "v1 request and request params includes System-Type typeFilter",
-			job: &river.Job[worker_types.PrepareJobArgs]{
-				Args: worker_types.PrepareJobArgs{
-					BFDPath: constants.BFDV1Path,
-					Job: models.Job{
-						ID:         5,
-						RequestURL: "https://api.bcda.cms.gov/api/v1/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
-					},
-				},
-			},
-			createsFile: false,
+			"error in query params",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export%_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV3Path,
+			true,
+		},
+		{
+			"v2 and request params includes System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV2Path,
+			false,
+		},
+		{
+			"v2 and request params does not include System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export",
+			constants.BFDV2Path,
+			false,
+		},
+		{
+			"v1 and request params includes System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV1Path,
+			false,
+		},
+		{
+			"v1 and request params does not include System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export",
+			constants.BFDV1Path,
+			false,
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			err := handleDefaultSystemTypeWarningNeeded(s.ctx, s.pool, tt.job)
-			assert.NoError(s.T(), err)
-
-			payloadDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), tt.job.Args.Job.ID)
-			s.T().Cleanup(func() { _ = os.RemoveAll(payloadDir) })
-
-			filePath := fmt.Sprintf("%s/%s", payloadDir, constants.WarningsAndInfoFileName)
-			_, err = os.Stat(filePath)
-			if tt.createsFile {
-				assert.NoError(s.T(), err)
-				byteArray, err := os.ReadFile(filePath)
-				assert.NoError(s.T(), err)
-				assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
-			} else if errors.Is(err, os.ErrNotExist) {
-				assert.Error(s.T(), err)
-			} else {
-				s.T().FailNow() // unexpected error when checking if file exists
-			}
+			needed := defaultSystemTypeWarningNeeded(tt.queryURL, tt.bfdPath)
+			assert.Equal(s.T(), tt.expectedNeeded, needed)
 		})
 	}
 

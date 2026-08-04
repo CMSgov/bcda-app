@@ -249,6 +249,64 @@ func GetTypeFilterParams(params []string) (fhir.TypeFilterParameter, error) {
 	return typeFilterParam, nil
 }
 
+func HasSharedSystemTag(typeFilter fhir.TypeFilterParameter) bool {
+	hasTag := false
+
+	for _, subqueryParam := range typeFilter.QueryParameters {
+		if subqueryParam.Name == "_tag" {
+			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)
+			for _, tagSystem := range tagSystems {
+				if tagSystem == constants.BFDSystemTypeURL {
+					hasTag = true
+					break
+				}
+			}
+			if hasTag {
+				break
+			}
+		}
+	}
+
+	return hasTag
+}
+
+// extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")
+// or a full URL format (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
+// It supports processing a comma-separated list of tags, returning a slice of all extracted codes.
+func ExtractTagCodeFromValue(tagValue string) []string {
+	var codes []string
+	tags := strings.Split(tagValue, ",")
+	for _, tag := range tags {
+		// Check if it's a URL format with pipe separator
+		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
+			codes = append(codes, tag[pipeIdx+1:])
+		} else {
+			// Otherwise, it's short format, return as-is
+			codes = append(codes, tag)
+		}
+	}
+	return codes
+}
+
+// extractTagSystemFromValue extracts tag system urls from a full URL format
+// token (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
+// It supports processing a comma-separated list of tag tokens, returning a slice of
+// all extracted systems.
+func ExtractTagSystemFromValue(tagValue string) []string {
+	var systems []string
+	tags := strings.Split(tagValue, ",")
+	for _, tag := range tags {
+		// Check if it's a URL format with pipe separator
+		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
+			systems = append(systems, tag[:pipeIdx])
+		} else {
+			// Otherwise, it's short format, return as-is
+			systems = append(systems, tag)
+		}
+	}
+	return systems
+}
+
 // ValidateRequestURL ensure that request matches certain expectations.
 // Any error that it finds will result in a http.StatusBadRequest response.
 // If successful, it populates the request context with RequestParameters that can be used downstream.

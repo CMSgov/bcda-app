@@ -515,6 +515,30 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 	}
 }
 
+func TestExtractTagCodeFromValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		tagValue string
+		expected []string
+	}{
+		{"shortFormat", "SharedSystem", []string{"SharedSystem"}},
+		{"shortFormatNotFinalAction", "NotFinalAction", []string{"NotFinalAction"}},
+		{"urlFormatSystemType", constants.BFDSystemTypeURL + "|SharedSystem", []string{"SharedSystem"}},
+		{"urlFormatFinalAction", constants.BFDFinalActionURL + "|FinalAction", []string{"FinalAction"}},
+		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", []string{"SharedSystem"}},
+		{"emptyString", "", []string{""}},
+		{"commaSeparatedShort", "SharedSystem,NationalClaimsHistory", []string{"SharedSystem", "NationalClaimsHistory"}},
+		{"commaSeparatedUrl", constants.BFDSystemTypeURL + "|SharedSystem," + constants.BFDFinalActionURL + "|FinalAction", []string{"SharedSystem", "FinalAction"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractTagCodeFromValue(tt.tagValue)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestGetRespWriter(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {

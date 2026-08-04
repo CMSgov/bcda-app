@@ -125,7 +125,7 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 				return err
 			}
 
-			err = handleDefaultSystemTypeWarningNeeded(ctx, w.pool, rjob)
+			err = handleDefaultSystemTypeWarning(ctx, w.pool, rjob)
 			if err != nil {
 				logger.Errorf("failed to check if default system type warning needed for job id: %d, err: %v", rjob.Args.Job.ID, err)
 				return err
@@ -216,14 +216,10 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 	return nil
 }
 
-// handleDefaultSystemTypeWarningNeeded checks if a default system type warning is needed and appends it to the warnings and info file.
+// handleDefaultSystemTypeWarning checks if a default system type warning is needed and appends it to the warnings and info file.
 // The warning is needed when 1) its a v3 request and 2) the request url did NOT specify a system type (wherein we pass in default system types of NCH and DDPS).
-func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
-	needed, err := defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL)
-	if err != nil {
-		return err
-	}
-	if needed && rjob.Args.BFDPath == constants.BFDV3Path {
+func handleDefaultSystemTypeWarning(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
+	if defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL, rjob.Args.BFDPath) {
 		pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
 
 		filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
@@ -250,26 +246,34 @@ func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.P
 	return nil
 }
 
-func defaultSystemTypeWarningNeeded(queryURL string) (bool, error) {
-	URL, err := url.Parse(queryURL)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse query URL: %s, err: %w", queryURL, err)
+// defaultSystemTypeWarningNeeded checks if a default system type warning is needed based on the request URL.
+// if there is not any instance of the System-Type subquery parameter under the typeFilter parameter,
+// then we are adding in a default System-Type and therefore a warning is needed.
+// we dont care about error returns because we dont want this to block the job from being processed as well as
+// these processing errors can often mean we that we need to add the warning.
+func defaultSystemTypeWarningNeeded(requestURL string, version string) bool {
+	if version != constants.BFDV3Path {
+		return false
 	}
+
+	URL, err := url.Parse(requestURL)
+	if err != nil {
+		return true
+	}
+
 	params, ok := URL.Query()["_typeFilter"]
 	if !ok {
-		return false, fmt.Errorf("failed to get typeFilter params from query URL: %s", queryURL)
+		return true
 	}
 
 	typeFilterParams, err := middleware.GetTypeFilterParams(params)
 	if err != nil {
-		return false, fmt.Errorf("failed to get typeFilter params from query URL: %s, err: %w", queryURL, err)
+		return true
 	}
 
-	for _, subquery := range typeFilterParams.QueryParameters {
-		if subquery.Name == "System-Type" {
-			return true, nil
-		}
+	if middleware.HasSharedSystemTag(typeFilterParams) {
+		return false
 	}
 
-	return false, nil
+	return true
 }
