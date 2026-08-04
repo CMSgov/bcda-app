@@ -141,10 +141,10 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 		expected error
 	}{
 		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
-		{"invalidCode", constants.FHIRCodeSystemURL + "System-Type|12345", fmt.Errorf("invalid _tag value: " + constants.FHIRCodeSystemURL + "System-Type|12345")},
-		{"invalidSystem", constants.FHIRCodeSystemURL + "12345|FinalAction", fmt.Errorf("invalid _tag value: " + constants.FHIRCodeSystemURL + "12345|FinalAction")},
-		{"codeDoesNotMatchSystem", constants.FHIRCodeSystemURL + "System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: " + constants.FHIRCodeSystemURL + "System-Type|NotFinalAction")},
-		{"validSystemAndCode", constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory", nil},
+		{"invalidCode", constants.BFDSystemTypeURL + "|12345", fmt.Errorf("invalid _tag value: " + constants.BFDSystemTypeURL + "|12345")},
+		{"invalidSystem", "https://example.com/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: " + "https://example.com/fhir/CodeSystem/12345|FinalAction")},
+		{"codeDoesNotMatchSystem", constants.BFDSystemTypeURL + "|NotFinalAction", fmt.Errorf("invalid _tag value: " + constants.BFDSystemTypeURL + "|NotFinalAction")},
+		{"validSystemAndCode", constants.BFDSystemTypeURL + "|NationalClaimsHistory", nil},
 		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
 	}
 
@@ -239,7 +239,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "System-Type|SharedSystem",
+						Value: constants.BFDSystemTypeURL + "|SharedSystem",
 					},
 				},
 			},
@@ -254,7 +254,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory",
+						Value: constants.BFDSystemTypeURL + "|NationalClaimsHistory",
 					},
 				},
 			},
@@ -269,7 +269,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "System-Type|SharedSystem," + constants.FHIRCodeSystemURL + "Final-Action|FinalAction",
+						Value: constants.BFDSystemTypeURL + "|SharedSystem," + constants.BFDFinalActionURL + "|FinalAction",
 					},
 				},
 			},
@@ -306,7 +306,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "System-Type|DDPS",
+						Value: constants.BFDSystemTypeURL + "|DDPS",
 					},
 				},
 			},
@@ -321,7 +321,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "Final-Action|FinalAction",
+						Value: constants.BFDFinalActionURL + "|FinalAction",
 					},
 				},
 			},
@@ -336,7 +336,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "Final-Action|NotFinalAction",
+						Value: constants.BFDFinalActionURL + "|NotFinalAction",
 					},
 				},
 			},
@@ -372,11 +372,11 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "Final-Action|NotFinalAction",
+						Value: constants.BFDFinalActionURL + "|NotFinalAction",
 					},
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "System-Type|SharedSystem",
+						Value: constants.BFDSystemTypeURL + "|SharedSystem",
 					},
 				},
 			},
@@ -395,7 +395,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "Final-Action|FinalAction",
+						Value: constants.BFDFinalActionURL + "|FinalAction",
 					},
 				},
 			},
@@ -414,7 +414,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 					{
 						Name:  "_tag",
-						Value: constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory",
+						Value: constants.BFDSystemTypeURL + "|NationalClaimsHistory",
 					},
 				},
 			},

@@ -313,7 +313,7 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 							{
 								Name:          "export",
 								Definition:    "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
-								Documentation: "By default, the patient $export will return ExplanationOfBenefit resources with a meta.tag with a system of '" + constants.FHIRCodeSystemURL + "System-Type' and code of either NationalClaimsHistory or DDPS. In order to return ExplanationOfBenefit resources with other system types (like SharedSystem), use the _typeFilter parameter.",
+								Documentation: "By default, the patient $export will return ExplanationOfBenefit resources with a meta.tag with a system of '" + constants.BFDSystemTypeURL + "' and code of either NationalClaimsHistory or DDPS. In order to return ExplanationOfBenefit resources with other system types (like SharedSystem), use the _typeFilter parameter.",
 							},
 						},
 						SearchParam: []r4.SearchParam{
@@ -328,7 +328,7 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 							{
 								Name:          "export",
 								Definition:    "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
-								Documentation: "By default, the group $export will return ExplanationOfBenefit resources with a meta.tag with a system of '" + constants.FHIRCodeSystemURL + "System-Type' and code of either NationalClaimsHistory or DDPS. In order to return ExplanationOfBenefit resources with other system types (like SharedSystem), use the _typeFilter parameter.",
+								Documentation: "By default, the group $export will return ExplanationOfBenefit resources with a meta.tag with a system of '" + constants.BFDSystemTypeURL + "' and code of either NationalClaimsHistory or DDPS. In order to return ExplanationOfBenefit resources with other system types (like SharedSystem), use the _typeFilter parameter.",
 							},
 						},
 						SearchParam: []r4.SearchParam{
@@ -340,7 +340,7 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 					{
 						Type: r4.ResourceTypeCodeExplanationOfBenefit,
 						SearchParam: []r4.SearchParam{
-							restResourceSearchParam("_tag", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the meta.tag element. Pass full token as <system>|<code>. Supported codes in the '"+constants.FHIRCodeSystemURL+"System-Type' system are: 'SharedSystem', 'NationalClaimsHistory', and 'DDPS'. By Default, only NationalClaimsHistory and DDPS claims will be returned."),
+							restResourceSearchParam("_tag", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the meta.tag element. Pass full token as <system>|<code>. Supported codes in the '"+constants.BFDSystemTypeURL+"' system are: 'SharedSystem', 'NationalClaimsHistory', and 'DDPS'. By Default, only NationalClaimsHistory and DDPS claims will be returned."),
 							restResourceSearchParam("outcome", r4.SearchParamTypeToken, "Filter ExplanationOfBenefit by the outcome element. Supported values: 'partial' and 'complete'."),
 							restResourceSearchParam("service-date", r4.SearchParamTypeDate, "Filter ExplanationOfBenefit based on the claim's service date. The service date is the date that the care occurred within a billable period. This is a FHIR date param format (ex. `gt2026-01-14`)"),
 						},

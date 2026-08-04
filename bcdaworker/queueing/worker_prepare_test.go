@@ -444,7 +444,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 					BFDPath: constants.BFDV3Path,
 					Job: models.Job{
 						ID:         2,
-						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.FHIRCodeSystemURL + "Final-Action%7CNotFinalAction&_since=2026-07-28T08:04:25.817-00:00",
+						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDFinalActionURL + "%7CNotFinalAction&_since=2026-07-28T08:04:25.817-00:00",
 					},
 				},
 			},
@@ -457,7 +457,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 					BFDPath: constants.BFDV3Path,
 					Job: models.Job{
 						ID:         3,
-						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.FHIRCodeSystemURL + "System-Type%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
+						RequestURL: "https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
 					},
 				},
 			},
@@ -470,7 +470,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 					BFDPath: constants.BFDV2Path,
 					Job: models.Job{
 						ID:         4,
-						RequestURL: "https://api.bcda.cms.gov/api/v2/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.FHIRCodeSystemURL + "System-Type%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
+						RequestURL: "https://api.bcda.cms.gov/api/v2/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
 					},
 				},
 			},
@@ -483,7 +483,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestHandleDefaultSystemTypeWarningNe
 					BFDPath: constants.BFDV1Path,
 					Job: models.Job{
 						ID:         5,
-						RequestURL: "https://api.bcda.cms.gov/api/v1/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.FHIRCodeSystemURL + "System-Type%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
+						RequestURL: "https://api.bcda.cms.gov/api/v1/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "%7CDDPS&_since=2026-07-28T08:04:25.817-00:00",
 					},
 				},
 			},

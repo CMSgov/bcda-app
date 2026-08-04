@@ -891,7 +891,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 }
 
 // extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")
-// or a full URL format (e.g., FHIRCodeSystemURL + "System-Type|SharedSystem").
+// or a full URL format (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
 // It supports processing a comma-separated list of tags, returning a slice of all extracted codes.
 func extractTagCodeFromValue(tagValue string) []string {
 	var codes []string
@@ -909,7 +909,7 @@ func extractTagCodeFromValue(tagValue string) []string {
 }
 
 // extractTagSystemFromValue extracts tag system urls from a full URL format
-// token (e.g., FHIRCodeSystemURL + "System-Type|SharedSystem").
+// token (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
 // It supports processing a comma-separated list of tag tokens, returning a slice of
 // all extracted systems.
 func extractTagSystemFromValue(tagValue string) []string {
@@ -939,7 +939,7 @@ func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir
 		if subqueryParam.Name == "_tag" {
 			tagSystems := extractTagSystemFromValue(subqueryParam.Value)
 			for _, tagSystem := range tagSystems {
-				if tagSystem == constants.FHIRCodeSystemURL+"System-Type" {
+				if tagSystem == constants.BFDSystemTypeURL+"" {
 					hasRelevantFilter = true
 					break
 				}
@@ -959,7 +959,7 @@ func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir
 	// to ensure they do not receive SharedSystem data by default.
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
-	tagValue := constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.FHIRCodeSystemURL + "System-Type|DDPS"
+	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	subqueryParam := fhir.TypeFilterSubqueryParam{
 		Name:  "_tag",
 		Value: tagValue,

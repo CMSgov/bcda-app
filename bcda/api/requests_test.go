@@ -1341,7 +1341,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "SharedSystemURLFormatWithPAC",
 			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", (constants.FHIRCodeSystemURL + "System-Type|SharedSystem")}}),
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
 			acoConfig:   acoWithPAC,
 			shouldFail:  false,
 			description: "ACO with PAC access should be able to use SharedSystem tag in URL format",
@@ -1349,7 +1349,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:          "SharedSystemURLFormatWithoutPAC",
 			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", (constants.FHIRCodeSystemURL + "System-Type|SharedSystem")}}),
+			typeFilter:    makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
 			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
@@ -1491,12 +1491,12 @@ func TestExtractTagCodeFromValue(t *testing.T) {
 	}{
 		{"shortFormat", "SharedSystem", []string{"SharedSystem"}},
 		{"shortFormatNotFinalAction", "NotFinalAction", []string{"NotFinalAction"}},
-		{"urlFormatSystemType", constants.FHIRCodeSystemURL + "System-Type|SharedSystem", []string{"SharedSystem"}},
-		{"urlFormatFinalAction", constants.FHIRCodeSystemURL + "Final-Action|FinalAction", []string{"FinalAction"}},
+		{"urlFormatSystemType", constants.BFDSystemTypeURL + "|SharedSystem", []string{"SharedSystem"}},
+		{"urlFormatFinalAction", constants.BFDFinalActionURL + "|FinalAction", []string{"FinalAction"}},
 		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", []string{"SharedSystem"}},
 		{"emptyString", "", []string{""}},
 		{"commaSeparatedShort", "SharedSystem,NationalClaimsHistory", []string{"SharedSystem", "NationalClaimsHistory"}},
-		{"commaSeparatedUrl", constants.FHIRCodeSystemURL + "System-Type|SharedSystem," + constants.FHIRCodeSystemURL + "Final-Action|FinalAction", []string{"SharedSystem", "FinalAction"}},
+		{"commaSeparatedUrl", constants.BFDSystemTypeURL + "|SharedSystem," + constants.BFDFinalActionURL + "|FinalAction", []string{"SharedSystem", "FinalAction"}},
 	}
 
 	for _, tt := range tests {
@@ -1544,31 +1544,31 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.FHIRCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with no filter should get filter added",
 		},
 		{
 			name:         "NonPACWithNCHFilter",
 			cmsID:        "NOPAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDSystemTypeURL + "|NationalClaimsHistory"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory"},
 			description:  "Non-PAC ACO with existing NCH filter should keep same filter",
 		},
 		{
 			name:         "NonPACWithDDPSFilter",
 			cmsID:        "NOPAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.FHIRCodeSystemURL + "System-Type|DDPS"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDSystemTypeURL + "|DDPS"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with existing DDPS filter should keep same filter",
 		},
 		{
 			name:         "NonPACWithFinalAction",
 			cmsID:        "NOPAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.FHIRCodeSystemURL + "Final-Action|FinalAction"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDFinalActionURL + "|FinalAction"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "Final-Action|FinalAction", constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.FHIRCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BFDFinalActionURL + "|FinalAction", constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with FinalAction should still get filter added",
 		},
 		{
@@ -1579,15 +1579,15 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.FHIRCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "PAC ACO with no filter should not get filter added",
 		},
 		{
 			name:         "PACWithSharedSystem",
 			cmsID:        "PAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.FHIRCodeSystemURL + "System-Type|SharedSystem"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDSystemTypeURL + "|SharedSystem"}}),
 			acoConfig:    acoWithPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "System-Type|SharedSystem"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|SharedSystem"},
 			description:  "PAC ACO with SharedSystem should not get filter added",
 		},
 		{
@@ -1595,7 +1595,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 			cmsID:        "NOPAC0000",
 			typeFilter:   makeTypeFilterParam([][]string{{"service-date", "ge2024-01-01"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.FHIRCodeSystemURL + "System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with service-date but no _tag should get filter added",
 		},
 	}
@@ -1670,7 +1670,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 		}
 	}
 
-	expectedNCHTag := constants.FHIRCodeSystemURL + "System-Type|NationalClaimsHistory," + constants.FHIRCodeSystemURL + "System-Type|DDPS"
+	expectedNCHTag := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	assert.Contains(t, actualTags, expectedNCHTag, "filter should be added for non-PAC ACO when EOB is requested")
 
 	// Verify that ExplanationOfBenefit would trigger this logic
