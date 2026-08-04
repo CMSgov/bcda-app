@@ -473,7 +473,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
-	assert.Contains(s.T(), "-error.ndjson", jobKeys[1].FileName)
+	assert.Contains(s.T(), jobKeys[1].FileName, "-error.ndjson")
 	assert.Nil(s.T(), err)
 
 	files, err := os.ReadDir(s.tempDir)
