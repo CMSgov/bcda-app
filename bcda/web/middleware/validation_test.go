@@ -47,7 +47,6 @@ func TestValidRequestURL(t *testing.T) {
 }
 
 func TestInvalidRequestURL(t *testing.T) {
-
 	base := "/api/v1/Patient/$export?"
 	baseV3 := constants.V3Path + "Patient/$export?"
 	tests := []struct {
@@ -55,20 +54,56 @@ func TestInvalidRequestURL(t *testing.T) {
 		url    string
 		errMsg string
 	}{
-		{"invalidOutputFormat", fmt.Sprintf("%s_outputFormat=invalid", base), "_outputFormat parameter must be one of"},
-		{"elementsNotSupported", fmt.Sprintf("%s_elements=invalid", base), "does not support the _elements parameter"},
-		{"contains?", fmt.Sprintf("%s?_type=Patient", base), "query parameters cannot start with ?"},
-		{"invalidSince", fmt.Sprintf("%s_since=05-25-1977", base), "Date must be in FHIR Instant format"},
-		{"futureSince", fmt.Sprintf("%s_since=%s", base, time.Now().Add(24*time.Hour).Format(time.RFC3339Nano)),
-			"Date must be a date that has already passed"},
-		{"repeatedType", fmt.Sprintf("%s_type=Patient,Patient", base), "Repeated resource type Patient"},
-		{"noVersion", "/api/Patient$export", "cannot retrieve version"},
-		{"invalidTypeFilterResourceType", fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", baseV3),
-			"Invalid _typeFilter Resource Type (Only EOBs valid): MedicationRequest"},
-		{"invalidTypeFilterSubquery", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
-			"Invalid _typeFilter parameter/value: service-dateactive"},
-		{"invalidTypeFilterSubqueryParam", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", baseV3),
-			"Invalid _typeFilter subquery parameter: status"},
+		{
+			"invalidOutputFormat",
+			fmt.Sprintf("%s_outputFormat=invalid", base),
+			"_outputFormat parameter must be one of",
+		},
+		{
+			"elementsNotSupported",
+			fmt.Sprintf("%s_elements=invalid", base),
+			"does not support the _elements parameter",
+		},
+		{
+			"contains?",
+			fmt.Sprintf("%s?_type=Patient", base),
+			"query parameters cannot start with ?",
+		},
+		{
+			"invalidSince",
+			fmt.Sprintf("%s_since=05-25-1977", base),
+			"Date must be in FHIR Instant format",
+		},
+		{
+			"futureSince",
+			fmt.Sprintf("%s_since=%s", base, time.Now().Add(24*time.Hour).Format(time.RFC3339Nano)),
+			"Date must be a date that has already passed",
+		},
+		{
+			"repeatedType",
+			fmt.Sprintf("%s_type=Patient,Patient", base),
+			"Repeated resource type Patient",
+		},
+		{
+			"noVersion",
+			"/api/Patient$export",
+			"cannot retrieve version",
+		},
+		{
+			"invalidTypeFilterResourceType",
+			fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", baseV3),
+			"invalid _typeFilter Resource Type (Only EOBs valid): MedicationRequest",
+		},
+		{
+			"invalidTypeFilterSubquery",
+			fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
+			"invalid _typeFilter parameter/value: service-dateactive",
+		},
+		{
+			"invalidTypeFilterSubqueryParam",
+			fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", baseV3),
+			"invalid _typeFilter subquery parameter: status",
+		},
 	}
 
 	for _, tt := range tests {

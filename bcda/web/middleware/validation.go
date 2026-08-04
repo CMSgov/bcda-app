@@ -165,64 +165,54 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 	return resourceTypes, true
 }
 
-// validateTypeFilterParameter parses the _typeFilter subquery and validates its contents.
-// For _tag, it validates each comma-separated token to correctly resolve compound query filters.
+// validateTypeFilterParameter validates the contents of the typeFilter param.
 func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterParameter, bool) {
 	var typeFilterParam fhir.TypeFilterParameter
 	ctx := r.Context()
+
 	params, ok := r.URL.Query()["_typeFilter"]
 	if version != constants.V3Version || !ok {
 		return typeFilterParam, true
 	}
 
-	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
-	if len(params) > 1 {
-		errMsg := "failed to process request given more that one _typeFilter parameter"
+	typeFilterParams, err := GetTypeFilterParams(params)
+	if err != nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
-			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
+			fmt.Sprintf("%s: %s", responseutils.RequestErr, err.Error()),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
-		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return typeFilterParam, false
+	}
+	return typeFilterParams, true
+}
+
+// GetTypeFilterParams parses the _typeFilter subquery
+// For _tag, it validates each comma-separated token to correctly resolve compound query filters.
+func GetTypeFilterParams(params []string) (fhir.TypeFilterParameter, error) {
+	var typeFilterParam fhir.TypeFilterParameter
+
+	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
+	if len(params) > 1 {
+		return typeFilterParam, fmt.Errorf("failed to process request given more that one _typeFilter parameter")
 	}
 
 	// The subquery is url-encoded. So we will first decode so we can parse it
 	decodedQuery, err := url.QueryUnescape(params[0])
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to unescape %s", params[0])
-		ctx, _ = log.WriteWarnWithFields(
-			ctx,
-			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-			logrus.Fields{"resp_status": http.StatusBadRequest},
-		)
-		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-		return typeFilterParam, false
+		return typeFilterParam, fmt.Errorf("failed to unescape %s", params[0])
 	}
 
 	// Expected format is: <resourceType>?<paramList>
 	resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
 	if !ok {
-		errMsg := fmt.Sprintf("missing question mark %s", decodedQuery)
-		ctx, _ = log.WriteWarnWithFields(
-			ctx,
-			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-			logrus.Fields{"resp_status": http.StatusBadRequest},
-		)
-		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-		return typeFilterParam, false
+		return typeFilterParam, fmt.Errorf("missing question mark %s", decodedQuery)
 	}
 
 	// Right now, we are only accepting ExplanationOfBenefit subqueries
 	if resourceType != "ExplanationOfBenefit" {
-		errMsg := fmt.Sprintf("Invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
-		ctx, _ = log.WriteWarnWithFields(
-			ctx,
-			fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-			logrus.Fields{"resp_status": http.StatusBadRequest},
-		)
-		rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-		return typeFilterParam, false
+		return typeFilterParam, fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
 	}
 
 	var typeFilterSubqueryParams []fhir.TypeFilterSubqueryParam
@@ -231,14 +221,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 	for _, paramPair := range paramAry {
 		paramName, paramValue, ok := strings.Cut(paramPair, "=")
 		if !ok {
-			errMsg := fmt.Sprintf("Invalid _typeFilter parameter/value: %s", paramPair)
-			ctx, _ = log.WriteWarnWithFields(
-				ctx,
-				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-				logrus.Fields{"resp_status": http.StatusBadRequest},
-			)
-			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return typeFilterParam, false
+			return typeFilterParam, fmt.Errorf("invalid _typeFilter parameter/value: %s", paramPair)
 		}
 
 		if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
@@ -253,30 +236,17 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 			}
 
 			if validationErr != nil {
-				ctx, _ = log.WriteWarnWithFields(
-					ctx,
-					fmt.Sprintf("%s: %s", responseutils.RequestErr, validationErr.Error()),
-					logrus.Fields{"resp_status": http.StatusBadRequest},
-				)
-				rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, validationErr.Error())
-				return typeFilterParam, false
+				return typeFilterParam, validationErr
 			}
 
 			typeFilterSubqueryParams = append(typeFilterSubqueryParams, fhir.TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
 		} else {
-			errMsg := fmt.Sprintf("Invalid _typeFilter subquery parameter: %s", paramName)
-			ctx, _ = log.WriteWarnWithFields(
-				ctx,
-				fmt.Sprintf("%s: %s", responseutils.RequestErr, errMsg),
-				logrus.Fields{"resp_status": http.StatusBadRequest},
-			)
-			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
-			return typeFilterParam, false
+			return typeFilterParam, fmt.Errorf("invalid _typeFilter subquery parameter: %s", paramName)
 		}
 	}
 
 	typeFilterParam = fhir.TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
-	return typeFilterParam, true
+	return typeFilterParam, nil
 }
 
 // ValidateRequestURL ensure that request matches certain expectations.

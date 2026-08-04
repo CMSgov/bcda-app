@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
@@ -217,7 +219,11 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 // handleDefaultSystemTypeWarningNeeded checks if a default system type warning is needed and appends it to the warnings and info file.
 // The warning is needed when 1) its a v3 request and 2) the request url did NOT specify a system type (wherein we pass in default system types of NCH and DDPS).
 func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
-	if rjob.Args.BFDPath == constants.BFDV3Path && !service.HasSystemTypeRegex.MatchString(rjob.Args.Job.RequestURL) {
+	needed, err := defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL)
+	if err != nil {
+		return err
+	}
+	if needed && rjob.Args.BFDPath == constants.BFDV3Path {
 		pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
 
 		filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
@@ -242,4 +248,28 @@ func handleDefaultSystemTypeWarningNeeded(ctx context.Context, pool *pgxv5Pool.P
 	}
 
 	return nil
+}
+
+func defaultSystemTypeWarningNeeded(queryURL string) (bool, error) {
+	URL, err := url.Parse(queryURL)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse query URL: %s, err: %w", queryURL, err)
+	}
+	params, ok := URL.Query()["_typeFilter"]
+	if !ok {
+		return false, fmt.Errorf("failed to get typeFilter params from query URL: %s", queryURL)
+	}
+
+	typeFilterParams, err := middleware.GetTypeFilterParams(params)
+	if err != nil {
+		return false, fmt.Errorf("failed to get typeFilter params from query URL: %s, err: %w", queryURL, err)
+	}
+
+	for _, subquery := range typeFilterParams.QueryParameters {
+		if subquery.Name == "System-Type" {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
