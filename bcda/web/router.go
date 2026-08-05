@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/api"
 	v1 "github.com/CMSgov/bcda-app/bcda/api/v1"
 	v2 "github.com/CMSgov/bcda-app/bcda/api/v2"
 	v3 "github.com/CMSgov/bcda-app/bcda/api/v3"
@@ -95,6 +96,11 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 			r.With(commonAuth...).Get("/attribution_status", apiV3.AttributionStatus)
 			r.Get("/metadata", apiV3.Metadata)
 		})
+	}
+
+	// TODO: auth!, request validators (params, headers, etc)
+	if conf.GetEnv("ENV") != "prod" && conf.GetEnv("ENV") != "sandbox" {
+		r.With().Get("/api/shared_export", api.SharedExportHandler)
 	}
 
 	r.Get("/_version", apiV1.GetVersion)

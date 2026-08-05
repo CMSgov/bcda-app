@@ -164,3 +164,60 @@ func (_c *MockEnqueuer_AddPrepareJob_Call) RunAndReturn(run func(ctx context.Con
 	_c.Call.Return(run)
 	return _c
 }
+
+// AddPrepareSharedJob provides a mock function for the type MockEnqueuer
+func (_mock *MockEnqueuer) AddPrepareSharedJob(ctx context.Context, job worker_types.PrepareSharedJobArgs) error {
+	ret := _mock.Called(ctx, job)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddPrepareSharedJob")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, worker_types.PrepareSharedJobArgs) error); ok {
+		r0 = returnFunc(ctx, job)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockEnqueuer_AddPrepareSharedJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddPrepareSharedJob'
+type MockEnqueuer_AddPrepareSharedJob_Call struct {
+	*mock.Call
+}
+
+// AddPrepareSharedJob is a helper method to define mock.On call
+//   - ctx context.Context
+//   - job worker_types.PrepareSharedJobArgs
+func (_e *MockEnqueuer_Expecter) AddPrepareSharedJob(ctx interface{}, job interface{}) *MockEnqueuer_AddPrepareSharedJob_Call {
+	return &MockEnqueuer_AddPrepareSharedJob_Call{Call: _e.mock.On("AddPrepareSharedJob", ctx, job)}
+}
+
+func (_c *MockEnqueuer_AddPrepareSharedJob_Call) Run(run func(ctx context.Context, job worker_types.PrepareSharedJobArgs)) *MockEnqueuer_AddPrepareSharedJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 worker_types.PrepareSharedJobArgs
+		if args[1] != nil {
+			arg1 = args[1].(worker_types.PrepareSharedJobArgs)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockEnqueuer_AddPrepareSharedJob_Call) Return(err error) *MockEnqueuer_AddPrepareSharedJob_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockEnqueuer_AddPrepareSharedJob_Call) RunAndReturn(run func(ctx context.Context, job worker_types.PrepareSharedJobArgs) error) *MockEnqueuer_AddPrepareSharedJob_Call {
+	_c.Call.Return(run)
+	return _c
+}

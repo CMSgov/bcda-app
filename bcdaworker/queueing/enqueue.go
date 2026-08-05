@@ -21,6 +21,7 @@ import (
 type Enqueuer interface {
 	AddJob(ctx context.Context, tx pgxv5.Tx, job worker_types.JobEnqueueArgs, priority int) error
 	AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error
+	AddPrepareSharedJob(ctx context.Context, job worker_types.PrepareSharedJobArgs) error
 }
 
 // Creates a river client for the Job queue. If the client does not call .Start(), then it is insert only
@@ -64,6 +65,15 @@ func (q riverEnqueuer) AddJob(ctx context.Context, tx pgxv5.Tx, job worker_types
 }
 
 func (q riverEnqueuer) AddPrepareJob(ctx context.Context, job worker_types.PrepareJobArgs) error {
+	_, err := q.Insert(ctx, job, nil)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (q riverEnqueuer) AddPrepareSharedJob(ctx context.Context, job worker_types.PrepareSharedJobArgs) error {
 	_, err := q.Insert(ctx, job, nil)
 	if err != nil {
 		return err
