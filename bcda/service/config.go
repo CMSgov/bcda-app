@@ -153,6 +153,8 @@ func (cfg *Config) IsSupportedACO(cmsID string) bool {
 	return false
 }
 
+var testACORegex = regexp.MustCompile(`^(TEST\d{3}|A999\d|A888\d|D999\d|E999\d|V994|T8882)$`)
+
 // IsTestACO determines if the specified CMS ID belongs to a test ACO.
 func (cfg *Config) IsTestACO(cmsID string) bool {
 	if cmsID == "" {
@@ -172,7 +174,6 @@ func (cfg *Config) IsTestACO(cmsID string) bool {
 			}
 		}
 	}
-	testACORegex := regexp.MustCompile(`^(TEST\d{3}|A999\d|A888\d|D999\d|E999\d|V994|T8882)$`)
 	return testACORegex.MatchString(cmsID)
 }
 
