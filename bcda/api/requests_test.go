@@ -1484,9 +1484,6 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 }
 
 func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
-
 	// Create mock service
 	mockSvc := new(service.MockService)
 	h := &Handler{
@@ -1620,9 +1617,6 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	// This test verifies that when a non-PAC ACO makes a v3 request without _type parameter,
 	// ExplanationOfBenefit is included by default, and the appropriate filter is added
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
-
 	mockSvc := new(service.MockService)
 	h := &Handler{
 		Svc:        mockSvc,
