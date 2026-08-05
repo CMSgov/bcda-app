@@ -194,32 +194,3 @@ func (s *RateLimitMiddlewareTestSuite) TestShouldRateLimit() {
 		})
 	}
 }
-
-func TestShouldRateLimitStandalone(t *testing.T) {
-	cmsID := "MyFavoriteACO"
-	otherCMSID := "OtherCMSID"
-
-	tests := []struct {
-		name          string
-		cmsID         string
-		config        service.RateLimitConfig
-		expectedValue bool
-	}{
-		{"Apply rate limit for all requests", cmsID, service.RateLimitConfig{All: true, ACOs: []string{}}, true},
-		{"Apply rate limit for no requests", cmsID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
-		{"Apply rate limit for ACO in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{cmsID, otherCMSID}}, true},
-		{"Dont apply rate limit for ACO not in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{otherCMSID}}, false},
-		{"Bypass rate limit for test ACO A9996", "A9996", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
-		{"Bypass rate limit for test ACO TEST001", "TEST001", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
-		{"Bypass rate limit for test ACO A9990", "A9990", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
-		{"Bypass rate limit for test ACO TEST994", "TEST994", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(sub *testing.T) {
-			cfg := &service.Config{RateLimitConfig: tt.config}
-			actualValue := shouldRateLimit(cfg, tt.cmsID)
-			assert.Equal(sub, tt.expectedValue, actualValue, tt.name)
-		})
-	}
-}
