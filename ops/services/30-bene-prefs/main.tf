@@ -1,14 +1,13 @@
 locals {
-  app            = "bcda"
-  service        = "bene-prefs"
-  default_tags   = module.platform.default_tags
-  env            = terraform.workspace
-  service_prefix = "${local.app}-${local.env}"
+  app          = "bcda"
+  service      = "bene-prefs"
+  default_tags = module.platform.default_tags
+  env          = terraform.workspace
 
   account_id          = module.platform.aws_caller_identity.account_id
   kms_key_arn_primary = module.platform.kms_alias_primary.target_key_arn
-  name_prefix         = "${local.service_prefix}-${local.service}"
-  db_sg_name          = "bcda-${local.env}-db"
+  full_name           = "${local.app}-${local.env}-${local.service}"
+  db_sg_name          = "${local.app}-${local.env}-db"
 }
 
 module "platform" {
@@ -21,7 +20,7 @@ module "platform" {
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/10-config"
   service     = local.service
   ssm_root_map = {
-    bene-prefs = "/bcda/${local.env}/${local.service}/"
+    bene-prefs = "/${local.app}/${local.env}/${local.service}/"
   }
 }
 
@@ -49,7 +48,7 @@ module "bene_prefs_function" {
   github_actions_repos = ["bcda-app:*"]
 
   environment_variables = {
-    APP_NAME = local.name_prefix
+    APP_NAME = local.full_name
     DB_HOST  = "postgres://${data.aws_rds_cluster.this.endpoint}:${data.aws_rds_cluster.this.port}/bcda"
     ENV      = local.env
   }
@@ -61,8 +60,8 @@ module "bene_prefs_function" {
   }
 
   ssm_parameter_paths = [
-    "/bcda/${local.env}/sensitive/api/DATABASE_URL",
-    "/bcda/${local.env}/bene-prefs/sensitive/iam_bucket_role_arn"
+    "/${local.app}/${local.env}/sensitive/api/DATABASE_URL",
+    "/${local.app}/${local.env}/bene-prefs/sensitive/iam_bucket_role_arn"
   ]
 }
 
@@ -72,7 +71,7 @@ resource "aws_sqs_queue" "this" {
   fifo_queue                        = false
   kms_data_key_reuse_period_seconds = 300
   kms_master_key_id                 = local.kms_key_arn_primary
-  name                              = local.name_prefix
+  name                              = local.full_name
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -87,7 +86,7 @@ resource "aws_sqs_queue" "this" {
         Principal = {
           Service = "sns.amazonaws.com"
         }
-        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.full_name}"
         Sid      = "SnsSendMessage"
       },
       {
@@ -101,7 +100,7 @@ resource "aws_sqs_queue" "this" {
         Principal = {
           Service = "sns.amazonaws.com"
         }
-        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.name_prefix}"
+        Resource = "arn:aws:sqs:us-east-1:${local.account_id}:${local.full_name}"
         Sid      = "SnsSubscribe"
       },
     ]

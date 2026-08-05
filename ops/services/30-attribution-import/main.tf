@@ -2,7 +2,7 @@ locals {
   app        = "bcda"
   env        = terraform.workspace
   service    = "attribution-import"
-  full_name  = "${local.app}-${local.env}-attribution-import"
+  full_name  = "${local.app}-${local.env}-${local.service}"
   db_sg_name = "${local.app}-${local.env}-db"
 }
 
@@ -11,12 +11,12 @@ module "platform" {
 
   providers = { aws = aws, aws.secondary = aws.secondary }
 
-  app         = "bcda"
+  app         = local.app
   env         = local.env
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/30-attribution-import"
   service     = local.service
   ssm_root_map = {
-    attribution-import = "/bcda/${local.env}/${local.service}/"
+    attribution-import = "/${local.app}/${local.env}/${local.service}/"
   }
 }
 
@@ -66,7 +66,7 @@ module "attribution_import_function" {
 
   environment_variables = {
     ENV      = local.env
-    APP_NAME = "${local.app}-${local.env}-${local.service}"
+    APP_NAME = "${local.full_name}"
   }
 
   function_role_inline_policies = {
@@ -76,8 +76,8 @@ module "attribution_import_function" {
   }
 
   ssm_parameter_paths = [
-    "/bcda/${local.env}/sensitive/api/DATABASE_URL",
-    "/bcda/${local.env}/${local.service}/nonsensitive/file_bucket_name"
+    "/${local.app}/${local.env}/sensitive/api/DATABASE_URL",
+    "/${local.app}/${local.env}/${local.service}/nonsensitive/file_bucket_name"
   ]
 
   extra_kms_key_arns = [
