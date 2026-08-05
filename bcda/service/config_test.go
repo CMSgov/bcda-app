@@ -380,8 +380,8 @@ func TestIsTestACO(t *testing.T) {
 		{"Real ACO C1234", "C1234", false, "", ""},
 		{"Real ACO D0005", "D0005", false, "", ""},
 		{"Real ACO GUIDE-0001", "GUIDE-0001", false, "", ""},
-		{"Priority ACO regex match", "A9996", true, "(^[A-Z]99([0-9]|9[0-9])$", ""},
-		{"Priority ACO list match", "E9994", true, "", "A9990,A9991,A9992,A9993,A9994,E9994,V994"},
+		{"Priority ACO regex match", "X9996", true, "^[A-Z]99([0-9]|9[0-9])$", ""},
+		{"Priority ACO list match", "X9994", true, "", "A9990,A9991,A9992,A9993,A9994,X9994,V994"},
 	}
 
 	for _, tt := range tests {
