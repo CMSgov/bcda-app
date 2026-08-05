@@ -1,4 +1,5 @@
 locals {
+  app            = "bcda"
   service        = "bene-prefs"
   default_tags   = module.platform.default_tags
   env            = terraform.workspace
