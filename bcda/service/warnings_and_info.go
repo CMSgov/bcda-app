@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
@@ -13,7 +12,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 )
 
-var HasSystemTypeRegex = regexp.MustCompile(`.*\_typeFilter=.*\?_tag=.*System-Type.*`)
 var WarningDefaultSystemType = r4.OperationOutcome{
 	ResourceType: "OperationOutcome",
 	Issue: []r4.Issue{

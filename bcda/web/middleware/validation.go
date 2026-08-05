@@ -250,24 +250,18 @@ func GetTypeFilterParams(params []string) (fhir.TypeFilterParameter, error) {
 }
 
 func HasSharedSystemTag(typeFilter fhir.TypeFilterParameter) bool {
-	hasTag := false
-
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		if subqueryParam.Name == "_tag" {
 			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)
 			for _, tagSystem := range tagSystems {
 				if tagSystem == constants.BFDSystemTypeURL {
-					hasTag = true
-					break
+					return true
 				}
-			}
-			if hasTag {
-				break
 			}
 		}
 	}
 
-	return hasTag
+	return false
 }
 
 // extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")

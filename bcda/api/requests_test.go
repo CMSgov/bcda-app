@@ -1580,7 +1580,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			// Call the function
-			result := h.omitSharedSystemByDefault(ctx, test.typeFilter, test.cmsID)
+			result := h.omitSharedSystemByDefault(test.typeFilter, test.cmsID)
 
 			// Extract _tag values from result
 			var actualTags []string
@@ -1636,7 +1636,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	typeFilter := fhir.TypeFilterParameter{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
-	result := h.omitSharedSystemByDefault(ctx, typeFilter, "NOPAC0000")
+	result := h.omitSharedSystemByDefault(typeFilter, "NOPAC0000")
 
 	// Verify NCH filter was added
 	var actualTags []string

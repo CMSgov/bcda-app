@@ -324,7 +324,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 			ComplexDataRequestType: constants.GetNewAndExistingBenes,
 			CCLFFileNewID:          uint(1),
 			CCLFFileOldID:          uint(2),
-			ResourceTypes:          []string{"Coverage"},
+			ResourceTypes:          []string{"ExplanationOfBenefit"},
 		},
 	}
 
@@ -448,67 +448,84 @@ func (s *PrepareWorkerIntegrationTestSuite) TestDefaultSystemTypeWarningNeeded()
 		name           string
 		queryURL       string
 		bfdPath        string
+		resourceTypes  []string
 		expectedNeeded bool
 	}{
 		{
-			"v3 and request params do not include typeFilter",
+			"v3, EOB resource, and request params do not include typeFilter",
 			"https://api.bcda.cms.gov/api/v3/Patient/$export",
 			constants.BFDV3Path,
+			[]string{"ExplanationOfBenefit"},
 			true,
 		},
 		{
-			"v3 and request params has typeFilter but not of System-Type",
+			"v3, EOB resource, and request params has typeFilter but not of System-Type",
 			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDFinalActionURL + "|NotFinalAction&_since=2026-07-28T08:04:25.817-00:00",
 			constants.BFDV3Path,
+			[]string{"ExplanationOfBenefit"},
 			true,
 		},
 		{
-			"v3 and request params includes System-Type typeFilter",
+			"v3, EOB resource, and request params includes System-Type typeFilter",
 			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
 			constants.BFDV3Path,
+			[]string{"ExplanationOfBenefit"},
+			false,
+		},
+		{
+			"v3, no EOB resource, and request params do not include typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export",
+			constants.BFDV3Path,
+			[]string{"Patient", "Coverage"},
+			false,
+		},
+		{
+			"v2, EOB resource, and request params includes System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV2Path,
+			[]string{"ExplanationOfBenefit"},
+			false,
+		},
+		{
+			"v2, EOB resource, and request params does not include System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export",
+			constants.BFDV2Path,
+			[]string{"ExplanationOfBenefit"},
+			false,
+		},
+		{
+			"v1, EOB resource, and request params includes System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
+			constants.BFDV1Path,
+			[]string{"ExplanationOfBenefit"},
+			false,
+		},
+		{
+			"v1, EOB resource, and request params does not include System-Type typeFilter",
+			"https://api.bcda.cms.gov/api/v3/Patient/$export",
+			constants.BFDV1Path,
+			[]string{"ExplanationOfBenefit"},
 			false,
 		},
 		{
 			"error in query URL",
 			"https://api.bcda.c ms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
 			constants.BFDV3Path,
+			[]string{"ExplanationOfBenefit"},
 			true,
 		},
 		{
 			"error in query params",
 			"https://api.bcda.cms.gov/api/v3/Patient/$export%_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
 			constants.BFDV3Path,
+			[]string{"ExplanationOfBenefit"},
 			true,
-		},
-		{
-			"v2 and request params includes System-Type typeFilter",
-			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
-			constants.BFDV2Path,
-			false,
-		},
-		{
-			"v2 and request params does not include System-Type typeFilter",
-			"https://api.bcda.cms.gov/api/v3/Patient/$export",
-			constants.BFDV2Path,
-			false,
-		},
-		{
-			"v1 and request params includes System-Type typeFilter",
-			"https://api.bcda.cms.gov/api/v3/Patient/$export?_typeFilter=ExplanationOfBenefit?_tag=" + constants.BFDSystemTypeURL + "|DDPS&_since=2026-07-28T08:04:25.817-00:00",
-			constants.BFDV1Path,
-			false,
-		},
-		{
-			"v1 and request params does not include System-Type typeFilter",
-			"https://api.bcda.cms.gov/api/v3/Patient/$export",
-			constants.BFDV1Path,
-			false,
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			needed := defaultSystemTypeWarningNeeded(tt.queryURL, tt.bfdPath)
+			needed := defaultSystemTypeWarningNeeded(tt.queryURL, tt.bfdPath, tt.resourceTypes)
 			assert.Equal(s.T(), tt.expectedNeeded, needed)
 		})
 	}

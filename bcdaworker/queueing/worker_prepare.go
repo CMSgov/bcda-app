@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -125,10 +126,12 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 				return err
 			}
 
-			err = handleDefaultSystemTypeWarning(ctx, w.pool, rjob)
-			if err != nil {
-				logger.Errorf("failed to check if default system type warning needed for job id: %d, err: %v", rjob.Args.Job.ID, err)
-				return err
+			if defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL, rjob.Args.BFDPath, rjob.Args.ResourceTypes) {
+				err = handleDefaultSystemTypeWarning(ctx, w.pool, rjob)
+				if err != nil {
+					logger.Errorf("failed to check if default system type warning needed for job id: %d, err: %v", rjob.Args.Job.ID, err)
+					return err
+				}
 			}
 
 			return nil
@@ -217,42 +220,41 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 }
 
 // handleDefaultSystemTypeWarning checks if a default system type warning is needed and appends it to the warnings and info file.
-// The warning is needed when 1) its a v3 request and 2) the request url did NOT specify a system type (wherein we pass in default system types of NCH and DDPS).
 func handleDefaultSystemTypeWarning(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
-	if defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL, rjob.Args.BFDPath) {
-		pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
+	pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
 
-		filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
-		if err != nil {
-			return err
-		}
-
-		bytes, err := json.Marshal(service.WarningDefaultSystemType)
-		if err != nil {
-			return err
-		}
-
-		bytes = append(bytes, []byte("\n")...)                                        // add newline to end of OpOutcome json
-		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		_, err = file.Write(bytes)
+	filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	bytes, err := json.Marshal(service.WarningDefaultSystemType)
+	if err != nil {
+		return err
+	}
+
+	bytes = append(bytes, []byte("\n")...)                                        // add newline to end of OpOutcome json
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Write(bytes)
+	return err
 }
 
-// defaultSystemTypeWarningNeeded checks if a default system type warning is needed based on the request URL.
-// if there is not any instance of the System-Type subquery parameter under the typeFilter parameter,
-// then we are adding in a default System-Type and therefore a warning is needed.
+// defaultSystemTypeWarningNeeded checks if a default system type warning is needed based on various request parameters.
+// The warning is needed when 1) its a v3 request 2) for EOB resources and 3) the request url did NOT specify a system type (wherein we pass in default system types of NCH and DDPS).
+// when needed we are adding a default System-Type typeFilter onto BFD requests and therefore a warning is needed.
 // we dont care about error returns because we dont want this to block the job from being processed as well as
-// these processing errors can often mean we that we need to add the warning.
-func defaultSystemTypeWarningNeeded(requestURL string, version string) bool {
+// these errors can sometimes mean that we need to add the warning.
+func defaultSystemTypeWarningNeeded(requestURL string, version string, resourceTypes []string) bool {
 	if version != constants.BFDV3Path {
+		return false
+	}
+
+	if !slices.Contains(resourceTypes, "ExplanationOfBenefit") {
 		return false
 	}
 

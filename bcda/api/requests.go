@@ -613,7 +613,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// This ensures they do not get SharedSystem data by default
 	if h.apiVersion == constants.V3Version {
 		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
-			rp.TypeFilter = h.omitSharedSystemByDefault(ctx, rp.TypeFilter, ad.CMSID)
+			rp.TypeFilter = h.omitSharedSystemByDefault(rp.TypeFilter, ad.CMSID)
 		}
 	}
 
@@ -892,7 +892,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
+func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
 	// If relevant filter is already present, no need to add default
 	if middleware.HasSharedSystemTag(typeFilter) {
 		return typeFilter
