@@ -131,6 +131,21 @@ module "attribution-import_file_bucket" {
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  bucket = module.attribution-import_file_bucket.id
+
+  rule {
+    id     = "delete-old-files"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = 14
+    }
+  }
+}
+
 resource "aws_sns_topic" "this" {
   name              = "${local.full_name}-topic"
   kms_master_key_id = module.platform.kms_alias_primary.arn
