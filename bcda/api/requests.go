@@ -356,7 +356,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Check if "error" is not in the filename
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") {
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") && jobKey.FileName != constants.WarningsAndInfoFileName {
 				rb.Files = append(rb.Files, fi)
 			}
 

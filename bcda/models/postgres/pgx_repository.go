@@ -148,7 +148,6 @@ func (r *PgxRepository) FindOrCreateWarningAndInfoJobKey(ctx context.Context, jo
 		query = `
 			INSERT INTO job_keys (job_id, file_name, resource_type)
 			VALUES ($1, $2, $3)
-			ON CONFLICT DO NOTHING
 			RETURNING id`
 
 		result, err := r.pool.Exec(ctx, query, jobID, fname, "OperationOutcome")
