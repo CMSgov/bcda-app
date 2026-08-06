@@ -455,6 +455,15 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 		nil,
 	)
 
+	tmp := os.TempDir()
+	origDir := os.Getenv("FHIR_PAYLOAD_DIR")
+	err := os.Setenv("FHIR_PAYLOAD_DIR", tmp)
+	assert.NoError(s.T(), err)
+	defer func() {
+		err = os.Setenv("FHIR_PAYLOAD_DIR", origDir)
+		assert.NoError(s.T(), err)
+	}()
+
 	for _, jobKey := range jobKeys {
 		err := worker.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
 		assert.NoError(s.T(), err)

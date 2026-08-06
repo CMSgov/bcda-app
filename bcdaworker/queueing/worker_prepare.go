@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -223,7 +224,7 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 func handleDefaultSystemTypeWarning(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
 	pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
 
-	filePath, err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
+	err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
 	if err != nil {
 		return err
 	}
@@ -233,6 +234,7 @@ func handleDefaultSystemTypeWarning(ctx context.Context, pool *pgxv5Pool.Pool, r
 		return err
 	}
 
+	filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), rjob.Args.Job.ID, constants.WarningsAndInfoFileName)
 	bytes = append(bytes, []byte("\n")...)                                        // add newline to end of OpOutcome json
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
 	if err != nil {
