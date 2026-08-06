@@ -25,14 +25,14 @@ func TestSetupWarningsAndInfoFile(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	err = SetupWarningsAndInfoFile(t.Context(), repo, uint(33))
+	err = SetupWarningsAndInfoFile(t.Context(), repo, uint(3333))
 	assert.NoError(t, err)
 
-	payloadPath := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), 33)
+	payloadPath := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), 3333)
 	assert.DirExists(t, payloadPath)
 
 	var id int
-	err = pool.QueryRow(t.Context(), "SELECT id FROM job_keys WHERE job_id = 33 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&id)
+	err = pool.QueryRow(t.Context(), "SELECT id FROM job_keys WHERE job_id = 3333 AND file_name = $1", constants.WarningsAndInfoFileName).Scan(&id)
 	assert.NoError(t, err)
-	assert.NotZero(t, id)
+	assert.Greater(t, id, 0)
 }
