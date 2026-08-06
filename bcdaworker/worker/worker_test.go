@@ -451,22 +451,29 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
 
-	bbc := client.MockBlueButtonClient{}
-	bbc.On("GetPatientByMbi", mock.AnythingOfType("string")).Return("", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"})
-
-	badMBIs := []string{"ab000000001", "ab000000002"}
+	mbis := []string{"a1000000001", "a1000000002", "a1000000008", "a1000000009"}
 	var cclfBeneficiaryIDs []string
-	for i := 0; i < len(badMBIs); i++ {
-		mbi := badMBIs[i]
+	for i := 0; i < len(mbis); i++ {
+		mbi := mbis[i]
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: mbi, BlueButtonID: ""}
 		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
+	bbc := client.MockBlueButtonClient{}
+	// good mbis (return found bene)
+	bbc.On("GetPatientByMbi", "a1000000001").Return(bbc.GetData("Patient", "a1000000001"))
+	bbc.On("GetPatientByMbi", "a1000000002").Return(bbc.GetData("Patient", "a1000000002"))
+	// bad mbis (return not found)
+	bbc.On("GetPatientByMbi", "a1000000008").Return("", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"})
+	bbc.On("GetPatientByMbi", "a1000000009").Return("", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"})
+
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
-	assert.Len(s.T(), jobKeys, 1)
+
+	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
+	assert.Contains(s.T(), jobKeys[1].FileName, "-error.ndjson")
 	assert.Nil(s.T(), err)
 
 	files, err := os.ReadDir(s.tempDir)
