@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +39,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
@@ -414,6 +416,75 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 			}
 		})
 	}
+}
+
+func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
+	mockSvc := &service.MockService{}
+	jobKeys := []*models.JobKey{
+		{
+			JobID:    1,
+			FileName: "success1.ndjson",
+		},
+		{
+			JobID:    1,
+			FileName: "success2.ndjson",
+		},
+		{
+			JobID:    1,
+			FileName: "success1-error.ndjson",
+		},
+		{
+			JobID:    1,
+			FileName: constants.WarningsAndInfoFileName,
+		},
+		{
+			JobID:    1,
+			FileName: "success3-error.ndjson", // due to how the code is written this one should not show up in the response
+		},
+	}
+
+	mockSvc.On("GetJobAndKeys", testUtils.CtxMatcher, mock.Anything).Return(
+		&models.Job{
+			ID:         1,
+			Status:     models.JobStatusCompleted,
+			RequestURL: "https://bcda.test.gov/v2/this-is-a-test",
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		},
+		jobKeys,
+		nil,
+	)
+
+	for _, jobKey := range jobKeys {
+		err := worker.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
+		assert.NoError(s.T(), err)
+		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID, jobKey.FileName)
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
+		assert.NoError(s.T(), err)
+		defer file.Close()
+	}
+
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/jobs/1", nil)
+	assert.NoError(s.T(), err)
+
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: s.acoID.String(), TokenID: uuid.NewRandom().String()}
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	h := &Handler{Svc: mockSvc, JobTimeout: (time.Hour * 24)}
+	h.RespWriter = responseutils.NewFhirResponseWriter()
+
+	h.JobStatus(rr, req)
+
+	resp := rr.Result()
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	assert.Equal(s.T(), `{"transactionTime":"0001-01-01T00:00:00Z","request":"https://bcda.test.gov/v2/this-is-a-test","requiresAccessToken":true,"output":[{"type":"","url":"http://bcda.ms.gov/data/1/success1.ndjson"},{"type":"","url":"http://bcda.ms.gov/data/1/success2.ndjson"}],"error":[{"type":"OperationOutcome","url":"http://bcda.ms.gov/data/1/warnings-and-info.ndjson"},{"type":"OperationOutcome","url":"http://bcda.ms.gov/data/1/success1-error.ndjson"}],"JobID":1}`, string(body))
 }
 
 func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models.JobStatus, apiVersion string) []*models.Job {
