@@ -12,7 +12,7 @@ data "aws_iam_policy_document" "subscribe_bfd_topic" {
     sid       = "AllowBFDSNSSubscribe"
     effect    = "Allow"
     actions   = ["sns:Subscribe"]
-    resources = ["arn:aws:sns:us-east-1:830858426211:bfd-test-bene-prefs-received-s3-bcda"]
+    resources = [module.platform.ssm.bene-prefs.sns_topic_arn.value]
   }
 }
 
@@ -24,6 +24,6 @@ data "aws_iam_policy_document" "bucket_sqs" {
       "sqs:GetQueueAttributes",
       "sqs:DeleteMessage",
     ]
-    resources = [aws_sqs_queue.this.arn] #TODO: Consider splitting into discrete statements/policy allowances
+    resources = [aws_sqs_queue.this.arn]
   }
 }
