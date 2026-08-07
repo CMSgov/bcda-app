@@ -48,7 +48,7 @@ type BlueButtonConfig struct {
 
 // NewConfig generates a new BlueButtonConfig using various environment variables.
 func NewConfig(basePath string) BlueButtonConfig {
-	var server string // TODO: V3
+	var server string
 	if basePath == constants.BFDV3Path {
 		server = conf.GetEnv("V3_BB_SERVER_LOCATION")
 	} else {
@@ -227,7 +227,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 
-	if bbc.BBBasePath != constants.BFDV3Path { // TODO: V3
+	if bbc.BBBasePath != constants.BFDV3Path {
 		params.Set("excludeSAMHSA", "true")
 	} else {
 		params.Set("_security:not", "42CFRPart2")

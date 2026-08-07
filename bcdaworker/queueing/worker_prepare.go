@@ -8,8 +8,12 @@ package queueing
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
+	"slices"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -17,7 +21,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -116,7 +122,20 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			}
 
 			err = tx.Commit(ctx)
-			return err
+			if err != nil {
+				logger.Errorf("prepare job tx failed for job id: %d, err: %v", rjob.Args.Job.ID, err)
+				return err
+			}
+
+			if defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL, rjob.Args.BFDPath, rjob.Args.ResourceTypes) {
+				err = handleDefaultSystemTypeWarning(ctx, w.pool, rjob)
+				if err != nil {
+					logger.Errorf("failed to check if default system type warning needed for job id: %d, err: %v", rjob.Args.Job.ID, err)
+					return err
+				}
+			}
+
+			return nil
 		}
 	}
 }
@@ -183,7 +202,7 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
 	case constants.BFDV3Path:
-		return jobData.TransactionTime, nil // TODO: V3
+		return jobData.TransactionTime, nil // TODO: see https://jira.cms.gov/browse/BCDA-10317
 	default:
 		return time.Time{}, errors.New("no BFD base path")
 	}
@@ -199,4 +218,66 @@ func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q E
 		}
 	}
 	return nil
+}
+
+// handleDefaultSystemTypeWarning checks if a default system type warning is needed and appends it to the warnings and info file.
+func handleDefaultSystemTypeWarning(ctx context.Context, pool *pgxv5Pool.Pool, rjob *river.Job[worker_types.PrepareJobArgs]) error {
+	pgxRepo := postgres.NewPgxRepositoryWithPool(pool)
+
+	err := service.SetupWarningsAndInfoFile(ctx, pgxRepo, rjob.Args.Job.ID)
+	if err != nil {
+		return err
+	}
+
+	bytes, err := json.Marshal(service.WarningDefaultSystemType)
+	if err != nil {
+		return err
+	}
+
+	filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), rjob.Args.Job.ID, constants.WarningsAndInfoFileName)
+	bytes = append(bytes, []byte("\n")...)                                        // add newline to end of OpOutcome json
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Write(bytes)
+	return err
+}
+
+// defaultSystemTypeWarningNeeded checks if a default system type warning is needed based on various request parameters.
+// The warning is needed when 1) its a v3 request 2) for EOB resources and 3) the request url did NOT specify a system type (wherein we pass in default system types of NCH and DDPS).
+// when needed we are adding a default System-Type typeFilter onto BFD requests and therefore a warning is needed.
+// we dont care about error returns because we dont want this to block the job from being processed as well as
+// these errors can sometimes mean that we need to add the warning.
+func defaultSystemTypeWarningNeeded(requestURL string, version string, resourceTypes []string) bool {
+	if version != constants.BFDV3Path {
+		return false
+	}
+
+	if !slices.Contains(resourceTypes, "ExplanationOfBenefit") {
+		return false
+	}
+
+	URL, err := url.Parse(requestURL)
+	if err != nil {
+		return true
+	}
+
+	params, ok := URL.Query()["_typeFilter"]
+	if !ok {
+		return true
+	}
+
+	typeFilterParams, err := middleware.GetTypeFilterParams(params)
+	if err != nil {
+		return true
+	}
+
+	if middleware.HasSharedSystemTag(typeFilterParams) {
+		return false
+	}
+
+	return true
 }

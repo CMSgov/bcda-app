@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +39,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
+	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
@@ -414,6 +416,84 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 			}
 		})
 	}
+}
+
+func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
+	mockSvc := &service.MockService{}
+	jobKeys := []*models.JobKey{
+		{
+			JobID:    1,
+			FileName: "success1.ndjson",
+		},
+		{
+			JobID:    1,
+			FileName: "success2.ndjson",
+		},
+		{
+			JobID:    1,
+			FileName: "success1-error.ndjson",
+		},
+		{
+			JobID:    1,
+			FileName: constants.WarningsAndInfoFileName,
+		},
+		{
+			JobID:    1,
+			FileName: "success3-error.ndjson", // due to how the code is written this one should not show up in the response
+		},
+	}
+
+	mockSvc.On("GetJobAndKeys", testUtils.CtxMatcher, mock.Anything).Return(
+		&models.Job{
+			ID:         1,
+			Status:     models.JobStatusCompleted,
+			RequestURL: "https://bcda.test.gov/v2/this-is-a-test",
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		},
+		jobKeys,
+		nil,
+	)
+
+	tmp := os.TempDir()
+	origDir := os.Getenv("FHIR_PAYLOAD_DIR")
+	err := os.Setenv("FHIR_PAYLOAD_DIR", tmp)
+	assert.NoError(s.T(), err)
+	defer func() {
+		err = os.Setenv("FHIR_PAYLOAD_DIR", origDir)
+		assert.NoError(s.T(), err)
+	}()
+
+	for _, jobKey := range jobKeys {
+		err := worker.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
+		assert.NoError(s.T(), err)
+		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID, jobKey.FileName)
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
+		assert.NoError(s.T(), err)
+		defer file.Close()
+	}
+
+	rr := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/jobs/1", nil)
+	assert.NoError(s.T(), err)
+
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: s.acoID.String(), TokenID: uuid.NewRandom().String()}
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	h := &Handler{Svc: mockSvc, JobTimeout: (time.Hour * 24)}
+	h.RespWriter = responseutils.NewFhirResponseWriter()
+
+	h.JobStatus(rr, req)
+
+	resp := rr.Result()
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	assert.Equal(s.T(), `{"transactionTime":"0001-01-01T00:00:00Z","request":"https://bcda.test.gov/v2/this-is-a-test","requiresAccessToken":true,"output":[{"type":"","url":"http://bcda.ms.gov/data/1/success1.ndjson"},{"type":"","url":"http://bcda.ms.gov/data/1/success2.ndjson"}],"error":[{"type":"OperationOutcome","url":"http://bcda.ms.gov/data/1/warnings-and-info.ndjson"},{"type":"OperationOutcome","url":"http://bcda.ms.gov/data/1/success1-error.ndjson"}],"JobID":1}`, string(body))
 }
 
 func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models.JobStatus, apiVersion string) []*models.Job {
@@ -1341,7 +1421,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:        "SharedSystemURLFormatWithPAC",
 			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}}),
+			typeFilter:  makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
 			acoConfig:   acoWithPAC,
 			shouldFail:  false,
 			description: "ACO with PAC access should be able to use SharedSystem tag in URL format",
@@ -1349,7 +1429,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 		{
 			name:          "SharedSystemURLFormatWithoutPAC",
 			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}}),
+			typeFilter:    makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
 			acoConfig:     acoWithoutPAC,
 			shouldFail:    true,
 			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
@@ -1433,7 +1513,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			requiresPACCheck := false
 			for _, subQueryParam := range test.typeFilter.QueryParameters {
 				if subQueryParam.Name == "_tag" {
-					tagCodes := extractTagCodeFromValue(subQueryParam.Value)
+					tagCodes := middleware.ExtractTagCodeFromValue(subQueryParam.Value)
 					for _, code := range tagCodes {
 						if code == "SharedSystem" {
 							requiresPACCheck = true
@@ -1483,34 +1563,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	}
 }
 
-func TestExtractTagCodeFromValue(t *testing.T) {
-	tests := []struct {
-		name     string
-		tagValue string
-		expected []string
-	}{
-		{"shortFormat", "SharedSystem", []string{"SharedSystem"}},
-		{"shortFormatNotFinalAction", "NotFinalAction", []string{"NotFinalAction"}},
-		{"urlFormatSystemType", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem", []string{"SharedSystem"}},
-		{"urlFormatFinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", []string{"FinalAction"}},
-		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", []string{"SharedSystem"}},
-		{"emptyString", "", []string{""}},
-		{"commaSeparatedShort", "SharedSystem,NationalClaimsHistory", []string{"SharedSystem", "NationalClaimsHistory"}},
-		{"commaSeparatedUrl", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem,https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", []string{"SharedSystem", "FinalAction"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := extractTagCodeFromValue(tt.tagValue)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestOmitSharedSystemByDefault(t *testing.T) {
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
-
+func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 	// Create mock service
 	mockSvc := new(service.MockService)
 	h := &Handler{
@@ -1544,31 +1597,31 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with no filter should get filter added",
 		},
 		{
 			name:         "NonPACWithNCHFilter",
 			cmsID:        "NOPAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDSystemTypeURL + "|NationalClaimsHistory"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory"},
 			description:  "Non-PAC ACO with existing NCH filter should keep same filter",
 		},
 		{
 			name:         "NonPACWithDDPSFilter",
 			cmsID:        "NOPAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDSystemTypeURL + "|DDPS"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with existing DDPS filter should keep same filter",
 		},
 		{
 			name:         "NonPACWithFinalAction",
 			cmsID:        "NOPAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDFinalActionURL + "|FinalAction"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			expectedTags: []string{constants.BFDFinalActionURL + "|FinalAction", constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with FinalAction should still get filter added",
 		},
 		{
@@ -1579,15 +1632,15 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "PAC ACO with no filter should not get filter added",
 		},
 		{
 			name:         "PACWithSharedSystem",
 			cmsID:        "PAC0000",
-			typeFilter:   makeTypeFilterParam([][]string{{"_tag", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"}}),
+			typeFilter:   makeTypeFilterParam([][]string{{"_tag", constants.BFDSystemTypeURL + "|SharedSystem"}}),
 			acoConfig:    acoWithPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|SharedSystem"},
 			description:  "PAC ACO with SharedSystem should not get filter added",
 		},
 		{
@@ -1595,7 +1648,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 			cmsID:        "NOPAC0000",
 			typeFilter:   makeTypeFilterParam([][]string{{"service-date", "ge2024-01-01"}}),
 			acoConfig:    acoWithoutPAC,
-			expectedTags: []string{"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"},
+			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
 			description:  "Non-PAC ACO with service-date but no _tag should get filter added",
 		},
 	}
@@ -1604,7 +1657,7 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			// Call the function
-			result := h.omitSharedSystemByDefault(ctx, test.typeFilter, test.cmsID)
+			result := h.omitSharedSystemByDefault(test.typeFilter)
 
 			// Extract _tag values from result
 			var actualTags []string
@@ -1644,9 +1697,6 @@ func TestOmitSharedSystemByDefault(t *testing.T) {
 func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	// This test verifies that when a non-PAC ACO makes a v3 request without _type parameter,
 	// ExplanationOfBenefit is included by default, and the appropriate filter is added
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
-
 	mockSvc := new(service.MockService)
 	h := &Handler{
 		Svc:        mockSvc,
@@ -1660,7 +1710,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	typeFilter := fhir.TypeFilterParameter{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
-	result := h.omitSharedSystemByDefault(ctx, typeFilter, "NOPAC0000")
+	result := h.omitSharedSystemByDefault(typeFilter)
 
 	// Verify NCH filter was added
 	var actualTags []string
@@ -1670,7 +1720,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 		}
 	}
 
-	expectedNCHTag := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
+	expectedNCHTag := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	assert.Contains(t, actualTags, expectedNCHTag, "filter should be added for non-PAC ACO when EOB is requested")
 
 	// Verify that ExplanationOfBenefit would trigger this logic
