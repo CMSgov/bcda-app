@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -351,6 +352,43 @@ func TestSupportedACOs(t *testing.T) {
 		t.Run(tt.name, func(sub *testing.T) {
 			match := cfg.IsSupportedACO(tt.cmsID)
 			assert.Equal(sub, tt.isSupported, match)
+		})
+	}
+}
+
+func TestIsTestACO(t *testing.T) {
+	cfg := &Config{}
+
+	tests := []struct {
+		name        string
+		cmsID       string
+		isTestACO   bool
+		priorityEnv string
+		priorityIDs string
+	}{
+		{"Empty CMSID", "", false, "", ""},
+		{"Standard TEST ACO TEST001", "TEST001", true, "", ""},
+		{"Standard TEST ACO TEST994", "TEST994", true, "", ""},
+		{"Test ACO A9996", "A9996", true, "", ""},
+		{"Test ACO A9990", "A9990", true, "", ""},
+		{"Test ACO A8880", "A8880", true, "", ""},
+		{"Test ACO D9991", "D9991", true, "", ""},
+		{"Test ACO E9994", "E9994", true, "", ""},
+		{"Test ACO V994", "V994", true, "", ""},
+		{"Test ACO T8882", "T8882", true, "", ""},
+		{"Real ACO A1001", "A1001", false, "", ""},
+		{"Real ACO C1234", "C1234", false, "", ""},
+		{"Real ACO D0005", "D0005", false, "", ""},
+		{"Real ACO GUIDE-0001", "GUIDE-0001", false, "", ""},
+		{"Priority ACO regex match", "X9996", true, "^[A-Z]99([0-9]|9[0-9])$", ""},
+		{"Priority ACO list match", "X9994", true, "", "A9990,A9991,A9992,A9993,A9994,X9994,V994"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			conf.SetEnv(sub, "PRIORITY_ACO_REG_EX", tt.priorityEnv)
+			conf.SetEnv(sub, "PRIORITY_ACO_IDS", tt.priorityIDs)
+			assert.Equal(sub, tt.isTestACO, cfg.IsTestACO(tt.cmsID))
 		})
 	}
 }
