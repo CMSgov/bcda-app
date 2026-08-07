@@ -56,7 +56,7 @@ func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler
 
 		acoID := uuid.Parse(ad.ACOID)
 
-		if shouldRateLimit(m.config.RateLimitConfig, ad.CMSID) {
+		if shouldRateLimit(m.config, ad.CMSID) {
 			pendingAndInProgressJobs, err := m.repository.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
 			if err != nil {
 				ctx, _ = log.WriteErrorWithFields(
@@ -79,8 +79,11 @@ func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler
 	})
 }
 
-func shouldRateLimit(config service.RateLimitConfig, cmsID string) bool {
-	if config.All || slices.Contains(config.ACOs, cmsID) {
+func shouldRateLimit(cfg *service.Config, cmsID string) bool {
+	if cfg != nil && cfg.IsTestACO(cmsID) {
+		return false
+	}
+	if cfg != nil && (cfg.RateLimitConfig.All || slices.Contains(cfg.RateLimitConfig.ACOs, cmsID)) {
 		return true
 	}
 	return false
