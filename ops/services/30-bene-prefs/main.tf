@@ -28,6 +28,8 @@ data "aws_rds_cluster" "this" {
   cluster_identifier = "${local.app}-${local.env}-aurora"
 }
 
+// the role generated for this function is depended on by BFD
+// any updates to the role must be coordinated with BFD before deployment
 module "bene_prefs_function" {
   source = "github.com/CMSgov/cdap//terraform/modules/function?ref=8a6527c0689bb46ae0e74bd47e4087ab59cff1b0"
 
