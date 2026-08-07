@@ -34,9 +34,10 @@ func NewEnqueuer(db *sql.DB, pool *pgxv5Pool.Pool) Enqueuer {
 		panic(err)
 	}
 	river.AddWorker(workers, prepareWorker)
+	river.AddWorker(workers, &PrepareSharedJobWorker{pool: pool})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		MaxAttempts: 8, // This is a few hours worth of retries
+		MaxAttempts: 2, // This is a few hours worth of retries // TODO set back
 		Workers:     workers,
 	})
 	if err != nil {

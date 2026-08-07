@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	mw "github.com/CMSgov/bcda-app/middleware"
+	"github.com/pborman/uuid"
 )
 
 func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +64,7 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("missing _dataTypes parameter"))
 		return
 	}
-	mbis, ok := r.URL.Query()["_mbis"]
+	mbis, ok := r.URL.Query()["_mbis"] // TODO: change this to a POST request and pass this as body
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("missing _mbis parameter"))
@@ -85,7 +86,7 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newJob := models.Job{
-		// ACOID:      acoID, // TODO: this needs to not be null for the jobs record in the DB
+		ACOID:      uuid.Parse("0c527d2e-2e8a-4808-b11d-0fa06baf8254"), // A9994, TODO: this needs to not be null for the jobs record in the DB
 		RequestURL: fmt.Sprintf("https://%s%s", r.Host, r.URL),
 		Status:     models.JobStatusPending,
 	}
@@ -122,14 +123,14 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 		Since:         sinceDate,
 		CreationTime:  time.Now(),
 		TransactionID: ctx.Value(mw.CtxTransactionKey).(string),
-		MBIs:          mbis,
+		MBIs:          mbis, // TODO: we save internal Ids for the cclf_beneficiaries into our river_job record for our normal job process, is it problematic to save mbis? if so we will need to save into the DB?  or pull from file later on?
 		DataTypes:     dataTypes,
 	}
 
 	err = enq.AddPrepareSharedJob(ctx, prepJob)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to add job to the queue"))
+		w.Write([]byte(fmt.Sprintf("failed to add job to the queue: %v", err)))
 		return
 	}
 

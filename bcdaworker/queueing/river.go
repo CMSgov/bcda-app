@@ -44,6 +44,7 @@ func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.C
 	river.AddWorker(workers, &JobWorker{db: db})
 	river.AddWorker(workers, NewCleanupJobWorker(db))
 	river.AddWorker(workers, prepareWorker)
+	river.AddWorker(workers, &PrepareSharedJobWorker{pool: pool})
 
 	schedule, err := cron.ParseStandard("0 11,23 * * *")
 
@@ -67,7 +68,7 @@ func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.C
 		},
 		JobTimeout:      10 * time.Minute,
 		Logger:          logger,
-		MaxAttempts:     8, // This is roughly an hour of retries
+		MaxAttempts:     2, // This is roughly an hour of retries // TODO set back
 		Workers:         workers,
 		PeriodicJobs:    periodicJobs,
 		SoftStopTimeout: 29 * time.Second, // Client stops fetching new jobs and waits for in-progress jobs to complete before canceling them; ECS cancels after 30s
