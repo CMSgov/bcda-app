@@ -180,11 +180,16 @@ func (s *RateLimitMiddlewareTestSuite) TestShouldRateLimit() {
 		{"Apply rate limit for no requests", cmsID, service.RateLimitConfig{All: false, ACOs: []string{}}, false},
 		{"Apply rate limit for ACO in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{cmsID, otherCMSID}}, true},
 		{"Dont apply rate limit for ACO not in limit list", cmsID, service.RateLimitConfig{All: false, ACOs: []string{otherCMSID}}, false},
+		{"Bypass rate limit for test ACO A9996", "A9996", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
+		{"Bypass rate limit for test ACO TEST001", "TEST001", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
+		{"Bypass rate limit for test ACO A9990", "A9990", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
+		{"Bypass rate limit for test ACO TEST994", "TEST994", service.RateLimitConfig{All: true, ACOs: []string{}}, false},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			actualValue := shouldRateLimit(tt.config, tt.cmsID)
+			cfg := &service.Config{RateLimitConfig: tt.config}
+			actualValue := shouldRateLimit(cfg, tt.cmsID)
 			assert.Equal(s.T(), tt.expectedValue, actualValue, tt.name)
 		})
 	}
