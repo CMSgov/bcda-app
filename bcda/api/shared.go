@@ -86,7 +86,7 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.Parse("0c527d2e-2e8a-4808-b11d-0fa06baf8254"), // A9994, TODO: this needs to not be null for the jobs record in the DB
+		ACOID:      uuid.Parse("0c527d2e-2e8a-4808-b11d-0fa06baf8254"), // A9994, TODO: this needs to not be null for the jobs record in the DB                                         // TODO: this needs to not be null for the jobs record in the DB
 		RequestURL: fmt.Sprintf("https://%s%s", r.Host, r.URL),
 		Status:     models.JobStatusPending,
 	}
@@ -130,7 +130,7 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 	err = enq.AddPrepareSharedJob(ctx, prepJob)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("failed to add job to the queue: %v", err)))
+		fmt.Fprintf(w, "failed to add job to the queue: %v", err)
 		return
 	}
 

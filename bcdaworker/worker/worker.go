@@ -319,10 +319,12 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
 
+			fmt.Printf("----- Job ARGS: %+v\n", jobArgs)
+
 			var bene models.CCLFBeneficiary
 			// TODO: need seem getBeneficiary via MBI not cclf_beneficiary.ID
 			// TODO: feature flag, temporarily just hardcoding on ACO UUID
-			if jobArgs.ACOID == "0c527d2e-2e8a-4808-b11d-0fa06baf8254" { // TODO
+			if jobArgs.ACOID == "test" { // TODO (this is passed in via partnerID as part of the request)
 				bene, err := getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
 				if err != nil {
 					//MBI is appended inside file, not printed out to system logs

@@ -188,7 +188,7 @@ func (p *PrepareSharedJobWorker) chunkIntoJobs(ctx context.Context, args worker_
 					ID: id,
 					// ACOID:           args.Job.ACOID.String(),
 					ACOID: args.PartnerID, // TODO
-					CMSID: args.PartnerID, // TODO
+					CMSID: "A9994",        // TODO
 					// CMSID:           args.Job.CMSID,
 					BeneficiaryIDs: group,
 					ResourceType:   resourceType,
