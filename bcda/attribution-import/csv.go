@@ -77,6 +77,8 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 	err = importer.ProcessCSV(file)
 	if err != nil {
 		return err
+	} else {
+		file.imported = true
 	}
 
 	err = importer.FileProcessor.CleanUpCSV(ctx, file)

@@ -30,6 +30,7 @@ jobs:
 
   trigger:
     if: ${{ always() }}
+    environment: test
     needs: deploy
     runs-on: codebuild-bcda-app-non-prod-${{github.run_id}}-${{github.run_attempt}}
     defaults:
@@ -40,7 +41,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-bene-prefs
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Get Bucket Role and Test File Path
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
@@ -53,10 +54,15 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.NON_PROD_ACCOUNT_ID }}:role/delegatedadmin/developer/bcda-test-bene-prefs-function
+      - uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
           # Note that we use the BFD role with access to the bucket
           role-to-assume: ${{ env.BFD_BUCKET_ROLE }}
           role-chaining: true
           role-skip-session-tagging: true
+
       - name: Upload test file to the BFD bucket to trigger lambda function via SNS message
         run: |
           fname=T\#EFT.ON.ACO.NGD1800.DPRF.D$(date +'%y%m%d').T$(date +'%H%M%S')1
@@ -97,4 +103,3 @@ jobs:
                 exit 1
               fi
           fi
-          
