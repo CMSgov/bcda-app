@@ -126,7 +126,7 @@ locals {
 # Use platform module to derive datadog keys via ssm_root_map
 # Can be replaced with direct data lookups
 module "platform" {
-  source    = "github.com/CMSgov/cdap//terraform/modules/platform?ref=ea161d6a00e729690a495d30c4d57d0d2990d0a6"
+  source    = "github.com/CMSgov/cdap//terraform/modules/platform?ref=f6fe4544d0d6ed72c50605261f0c3091487753e1"
   providers = { aws = aws, aws.secondary = aws.secondary }
 
   app          = "bcda"
@@ -140,7 +140,7 @@ module "platform" {
 
 module "datadog_synthetics" {
   count  = length(local.synthetics_tests) > 0 ? 1 : 0
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=ea161d6a00e729690a495d30c4d57d0d2990d0a6"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_synthetics?ref=f6fe4544d0d6ed72c50605261f0c3091487753e1"
 
   app                  = "bcda"
   env                  = local.env
@@ -153,7 +153,7 @@ module "datadog_synthetics" {
 # Common Monitors
 
 module "common_datadog_monitors" {
-  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=ea161d6a00e729690a495d30c4d57d0d2990d0a6"
+  source = "github.com/CMSgov/cdap//terraform/modules/datadog_monitors?ref=f6fe4544d0d6ed72c50605261f0c3091487753e1"
 
   app            = "bcda"
   env            = local.env
