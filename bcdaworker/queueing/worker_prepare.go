@@ -130,8 +130,8 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			if defaultSystemTypeWarningNeeded(rjob.Args.Job.RequestURL, rjob.Args.BFDPath, rjob.Args.ResourceTypes) {
 				err = handleDefaultSystemTypeWarning(ctx, w.pool, rjob)
 				if err != nil {
+					// dont fail main job process because of this warning, to be re-considered if need be
 					logger.Errorf("failed to check if default system type warning needed for job id: %d, err: %v", rjob.Args.Job.ID, err)
-					return err
 				}
 			}
 
