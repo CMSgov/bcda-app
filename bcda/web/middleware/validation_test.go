@@ -47,7 +47,6 @@ func TestValidRequestURL(t *testing.T) {
 }
 
 func TestInvalidRequestURL(t *testing.T) {
-
 	base := "/api/v1/Patient/$export?"
 	baseV3 := constants.V3Path + "Patient/$export?"
 	tests := []struct {
@@ -55,20 +54,56 @@ func TestInvalidRequestURL(t *testing.T) {
 		url    string
 		errMsg string
 	}{
-		{"invalidOutputFormat", fmt.Sprintf("%s_outputFormat=invalid", base), "_outputFormat parameter must be one of"},
-		{"elementsNotSupported", fmt.Sprintf("%s_elements=invalid", base), "does not support the _elements parameter"},
-		{"contains?", fmt.Sprintf("%s?_type=Patient", base), "query parameters cannot start with ?"},
-		{"invalidSince", fmt.Sprintf("%s_since=05-25-1977", base), "Date must be in FHIR Instant format"},
-		{"futureSince", fmt.Sprintf("%s_since=%s", base, time.Now().Add(24*time.Hour).Format(time.RFC3339Nano)),
-			"Date must be a date that has already passed"},
-		{"repeatedType", fmt.Sprintf("%s_type=Patient,Patient", base), "Repeated resource type Patient"},
-		{"noVersion", "/api/Patient$export", "cannot retrieve version"},
-		{"invalidTypeFilterResourceType", fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", baseV3),
-			"Invalid _typeFilter Resource Type (Only EOBs valid): MedicationRequest"},
-		{"invalidTypeFilterSubquery", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
-			"Invalid _typeFilter parameter/value: service-dateactive"},
-		{"invalidTypeFilterSubqueryParam", fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", baseV3),
-			"Invalid _typeFilter subquery parameter: status"},
+		{
+			"invalidOutputFormat",
+			fmt.Sprintf("%s_outputFormat=invalid", base),
+			"_outputFormat parameter must be one of",
+		},
+		{
+			"elementsNotSupported",
+			fmt.Sprintf("%s_elements=invalid", base),
+			"does not support the _elements parameter",
+		},
+		{
+			"contains?",
+			fmt.Sprintf("%s?_type=Patient", base),
+			"query parameters cannot start with ?",
+		},
+		{
+			"invalidSince",
+			fmt.Sprintf("%s_since=05-25-1977", base),
+			"Date must be in FHIR Instant format",
+		},
+		{
+			"futureSince",
+			fmt.Sprintf("%s_since=%s", base, time.Now().Add(24*time.Hour).Format(time.RFC3339Nano)),
+			"Date must be a date that has already passed",
+		},
+		{
+			"repeatedType",
+			fmt.Sprintf("%s_type=Patient,Patient", base),
+			"Repeated resource type Patient",
+		},
+		{
+			"noVersion",
+			"/api/Patient$export",
+			"cannot retrieve version",
+		},
+		{
+			"invalidTypeFilterResourceType",
+			fmt.Sprintf("%s_typeFilter=MedicationRequest%%3Fstatus%%3Dactive", baseV3),
+			"invalid _typeFilter Resource Type (Only EOBs valid): MedicationRequest",
+		},
+		{
+			"invalidTypeFilterSubquery",
+			fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
+			"invalid _typeFilter parameter/value: service-dateactive",
+		},
+		{
+			"invalidTypeFilterSubqueryParam",
+			fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fstatus%%3Dactive", baseV3),
+			"invalid _typeFilter subquery parameter: status",
+		},
 	}
 
 	for _, tt := range tests {
@@ -141,10 +176,10 @@ func TestValidateTagSubqueryParameter(t *testing.T) {
 		expected error
 	}{
 		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
-		{"invalidCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|12345")},
-		{"invalidSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/12345|FinalAction")},
-		{"codeDoesNotMatchSystem", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction", fmt.Errorf("invalid _tag value: https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NotFinalAction")},
-		{"validSystemAndCode", "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory", nil},
+		{"invalidCode", constants.BFDSystemTypeURL + "|12345", fmt.Errorf("invalid _tag value: " + constants.BFDSystemTypeURL + "|12345")},
+		{"invalidSystem", "https://example.com/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: " + "https://example.com/fhir/CodeSystem/12345|FinalAction")},
+		{"codeDoesNotMatchSystem", constants.BFDSystemTypeURL + "|NotFinalAction", fmt.Errorf("invalid _tag value: " + constants.BFDSystemTypeURL + "|NotFinalAction")},
+		{"validSystemAndCode", constants.BFDSystemTypeURL + "|NationalClaimsHistory", nil},
 		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
 	}
 
@@ -239,7 +274,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
+						Value: constants.BFDSystemTypeURL + "|SharedSystem",
 					},
 				},
 			},
@@ -254,7 +289,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
+						Value: constants.BFDSystemTypeURL + "|NationalClaimsHistory",
 					},
 				},
 			},
@@ -269,7 +304,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem,https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						Value: constants.BFDSystemTypeURL + "|SharedSystem," + constants.BFDFinalActionURL + "|FinalAction",
 					},
 				},
 			},
@@ -306,7 +341,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS",
+						Value: constants.BFDSystemTypeURL + "|DDPS",
 					},
 				},
 			},
@@ -321,7 +356,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						Value: constants.BFDFinalActionURL + "|FinalAction",
 					},
 				},
 			},
@@ -336,7 +371,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						Value: constants.BFDFinalActionURL + "|NotFinalAction",
 					},
 				},
 			},
@@ -372,11 +407,11 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|NotFinalAction",
+						Value: constants.BFDFinalActionURL + "|NotFinalAction",
 					},
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
+						Value: constants.BFDSystemTypeURL + "|SharedSystem",
 					},
 				},
 			},
@@ -395,7 +430,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
+						Value: constants.BFDFinalActionURL + "|FinalAction",
 					},
 				},
 			},
@@ -414,7 +449,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					},
 					{
 						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
+						Value: constants.BFDSystemTypeURL + "|NationalClaimsHistory",
 					},
 				},
 			},
@@ -476,6 +511,30 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 					assert.Equal(t, tt.expectedTypeFilter, rp.TypeFilter, "parsed _typeFilter params should match request")
 				}
 			}
+		})
+	}
+}
+
+func TestExtractTagCodeFromValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		tagValue string
+		expected []string
+	}{
+		{"shortFormat", "SharedSystem", []string{"SharedSystem"}},
+		{"shortFormatNotFinalAction", "NotFinalAction", []string{"NotFinalAction"}},
+		{"urlFormatSystemType", constants.BFDSystemTypeURL + "|SharedSystem", []string{"SharedSystem"}},
+		{"urlFormatFinalAction", constants.BFDFinalActionURL + "|FinalAction", []string{"FinalAction"}},
+		{"urlFormatWithMultiplePipes", "https://example.com|system|SharedSystem", []string{"SharedSystem"}},
+		{"emptyString", "", []string{""}},
+		{"commaSeparatedShort", "SharedSystem,NationalClaimsHistory", []string{"SharedSystem", "NationalClaimsHistory"}},
+		{"commaSeparatedUrl", constants.BFDSystemTypeURL + "|SharedSystem," + constants.BFDFinalActionURL + "|FinalAction", []string{"SharedSystem", "FinalAction"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractTagCodeFromValue(tt.tagValue)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

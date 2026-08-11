@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/huandu/go-sqlbuilder"
@@ -196,7 +197,8 @@ func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys []models.JobKey)
 func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
-	sb.Where(sb.NotLike("file_name", "%-error.ndjson%")) // Ignore error files from completed count.
+	// Ignore error files and the warnings-and-info file from completed count.
+	sb.Where(sb.NotLike("file_name", "%-error.ndjson%"), sb.NotEqual("file_name", constants.WarningsAndInfoFileName))
 
 	query, args := sb.Build()
 	var count int
