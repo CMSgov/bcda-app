@@ -5,7 +5,7 @@ lambda:
 
 enabled:
   ecs: true
-  sqs: true
+  sqs: false
   sns: false
   lambda: true
   s3: true
