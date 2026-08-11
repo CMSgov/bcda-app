@@ -36,7 +36,7 @@ func getBlueButtonID(bb client.APIClient, mbi string, jobData worker_types.JobEn
 		if strings.Contains(identifier.System, "us-mbi") {
 			if identifier.Value == mbi {
 				foundIdentifier = true
-				if jobData.BBBasePath == constants.BFDV3Path { // TODO: V3
+				if jobData.BBBasePath == constants.BFDV3Path {
 					foundBlueButtonID = true
 				}
 			}

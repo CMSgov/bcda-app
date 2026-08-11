@@ -115,14 +115,14 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
 	// Create a temporary path for the job files before they go into the staging directory
-	if err = createDir(tempJobPath); err != nil {
+	if err = CreateDir(tempJobPath); err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create temporary directory on worker for jobID %s", jobID))
 		logger.Error(err)
 		return err
 	}
 	defer os.RemoveAll(tempJobPath)
 
-	if err = createDir(stagingPath); err != nil {
+	if err = CreateDir(stagingPath); err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR staging path directory for jobID %s", jobID))
 		logger.Error(err)
 		return err
@@ -130,7 +130,7 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
-	if err = createDir(payloadPath); err != nil {
+	if err = CreateDir(payloadPath); err != nil {
 		err = errors.Wrap(err, "ProcessJob: could not create FHIR payload path directory")
 		logger.Error(err)
 		return err
@@ -377,7 +377,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	failPct := (float64(errorCount) / totalBeneIDs) * 100
 	benesRetrievedPercent := int(math.Round((float64(benesRetrievedCount) / totalBeneIDs) * 100))
-	logger.Infof("Job Failure: %.2f%%, benesRetrieved %: %d, benesWithData: %d", failPct, benesRetrievedPercent, benesWithDataCount)
+	logger.Infof("Job Failure: %.2f%%, benesRetrieved %%: %v, benesWithData: %v", failPct, benesRetrievedPercent, benesWithDataCount)
 
 	if err = w.Flush(); err != nil {
 		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
@@ -597,18 +597,6 @@ func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []model
 		return err
 	}
 
-	return nil
-}
-
-func createDir(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.MkdirAll(path, 0744); err != nil {
-			return err
-		}
-		return err
-	} else if err != nil {
-		return err
-	}
 	return nil
 }
 

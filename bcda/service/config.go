@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
@@ -150,6 +151,30 @@ func (cfg *Config) IsSupportedACO(cmsID string) bool {
 		}
 	}
 	return false
+}
+
+var testACORegex = regexp.MustCompile(`^(TEST\d{3}|A999\d|A888\d|D999\d|E999\d|V994|T8882)$`)
+
+// IsTestACO determines if the specified CMS ID belongs to a test ACO.
+func (cfg *Config) IsTestACO(cmsID string) bool {
+	if cmsID == "" {
+		return false
+	}
+	if priorityACOPattern := conf.GetEnv("PRIORITY_ACO_REG_EX"); priorityACOPattern != "" {
+		if priorityACORegex, err := regexp.Compile(priorityACOPattern); err == nil {
+			if priorityACORegex.MatchString(cmsID) {
+				return true
+			}
+		}
+	}
+	if priorityACOIDs := conf.GetEnv("PRIORITY_ACO_IDS"); priorityACOIDs != "" {
+		for _, id := range strings.Split(priorityACOIDs, ",") {
+			if strings.TrimSpace(id) == cmsID {
+				return true
+			}
+		}
+	}
+	return testACORegex.MatchString(cmsID)
 }
 
 // LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
