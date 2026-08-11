@@ -101,6 +101,7 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 	// TODO: auth!, request validators (params, headers, etc)
 	if conf.GetEnv("ENV") != "prod" && conf.GetEnv("ENV") != "sandbox" {
 		r.With().Get("/api/shared_export", api.SharedExportHandler)
+		r.With().Post("/api/shared_export", api.SharedExportPostHandler)
 	}
 
 	r.Get("/_version", apiV1.GetVersion)
