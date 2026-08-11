@@ -339,6 +339,15 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			JobID:               job.ID,
 		}
 
+		// Add warnings-and-info file to Errors array if it exists
+		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, constants.WarningsAndInfoFileName)
+		if _, err := os.Stat(filePath); !os.IsNotExist(err) { // #nosec G703
+			rb.Errors = append(rb.Errors, FileItem{
+				Type: "OperationOutcome",
+				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, constants.WarningsAndInfoFileName),
+			})
+		}
+
 		for _, jobKey := range jobKeys {
 			// data files
 			fi := FileItem{
@@ -347,7 +356,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Check if "error" is not in the filename
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") {
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") && jobKey.FileName != constants.WarningsAndInfoFileName {
 				rb.Files = append(rb.Files, fi)
 			}
 
@@ -363,7 +372,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				}
 				rb.Errors = append(rb.Errors, errFI)
 			}
-
 		}
 
 		jsonData, err := json.Marshal(rb)
@@ -605,7 +613,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	// This ensures they do not get SharedSystem data by default
 	if h.apiVersion == constants.V3Version {
 		if utils.ContainsString(resourceTypes, "ExplanationOfBenefit") {
-			rp.TypeFilter = h.omitSharedSystemByDefault(ctx, rp.TypeFilter, ad.CMSID)
+			rp.TypeFilter = h.omitSharedSystemByDefault(rp.TypeFilter)
 		}
 	}
 
@@ -840,7 +848,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 		if subqueryParam.Name == "_tag" {
 			tagValue := subqueryParam.Value
 			// Extract tag code from either short format or URL format
-			tagCodes := extractTagCodeFromValue(tagValue)
+			tagCodes := middleware.ExtractTagCodeFromValue(tagValue)
 			requestedTagCodes = append(requestedTagCodes, tagCodes...)
 		}
 	}
@@ -882,68 +890,11 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 	return nil
 }
 
-// extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")
-// or a full URL format (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem").
-// It supports processing a comma-separated list of tags, returning a slice of all extracted codes.
-func extractTagCodeFromValue(tagValue string) []string {
-	var codes []string
-	tags := strings.Split(tagValue, ",")
-	for _, tag := range tags {
-		// Check if it's a URL format with pipe separator
-		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
-			codes = append(codes, tag[pipeIdx+1:])
-		} else {
-			// Otherwise, it's short format, return as-is
-			codes = append(codes, tag)
-		}
-	}
-	return codes
-}
-
-// extractTagSystemFromValue extracts tag system urls from a full URL format
-// token (e.g., "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem").
-// It supports processing a comma-separated list of tag tokens, returning a slice of
-// all extracted systems.
-func extractTagSystemFromValue(tagValue string) []string {
-	var systems []string
-	tags := strings.Split(tagValue, ",")
-	for _, tag := range tags {
-		// Check if it's a URL format with pipe separator
-		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
-			systems = append(systems, tag[:pipeIdx])
-		} else {
-			// Otherwise, it's short format, return as-is
-			systems = append(systems, tag)
-		}
-	}
-	return systems
-}
-
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string) fhir.TypeFilterParameter {
-
-	// Check if there's already a _tag parameter that specifies a System-Type value
-	// If one is specified, no need to set a default
-	hasRelevantFilter := false
-
-	for _, subqueryParam := range typeFilter.QueryParameters {
-		if subqueryParam.Name == "_tag" {
-			tagSystems := extractTagSystemFromValue(subqueryParam.Value)
-			for _, tagSystem := range tagSystems {
-				if tagSystem == "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type" {
-					hasRelevantFilter = true
-					break
-				}
-			}
-			if hasRelevantFilter {
-				break
-			}
-		}
-	}
-
+func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter) fhir.TypeFilterParameter {
 	// If relevant filter is already present, no need to add default
-	if hasRelevantFilter {
+	if middleware.HasSharedSystemTag(typeFilter) {
 		return typeFilter
 	}
 
@@ -951,7 +902,7 @@ func (h *Handler) omitSharedSystemByDefault(ctx context.Context, typeFilter fhir
 	// to ensure they do not receive SharedSystem data by default.
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
-	tagValue := "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory,https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|DDPS"
+	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	subqueryParam := fhir.TypeFilterSubqueryParam{
 		Name:  "_tag",
 		Value: tagValue,

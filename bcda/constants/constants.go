@@ -49,7 +49,7 @@ const CCLF8FileNum = int(8)
 
 const BFDV1Path = "/v1/fhir"
 const BFDV2Path = "/v2/fhir"
-const BFDV3Path = "/v3/fhir" // TODO: V3
+const BFDV3Path = "/v3/fhir"
 const V3Version = "v3"
 
 const GetExistingBenes = "GetExistingBenes"
@@ -63,3 +63,6 @@ const SoftwareDescription = "The Beneficiary Claims Data API (BCDA) enables heal
 
 const SmartOAuthURIsExtensionURL = "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"
 const RestfulSecurityServiceSystem = "http://terminology.hl7.org/CodeSystem/restful-security-service"
+const BFDSystemTypeURL = "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type"
+const BFDFinalActionURL = "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action"
+const WarningsAndInfoFileName = "warnings-and-info.ndjson"

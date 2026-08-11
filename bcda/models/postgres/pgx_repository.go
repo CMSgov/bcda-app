@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	pgxv5 "github.com/jackc/pgx/v5"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
@@ -120,6 +121,40 @@ func (r *PgxRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID u
 	affected := result.RowsAffected()
 	if affected == 0 {
 		return fmt.Errorf("failed to update file entry %d status to %s, no entry found", fileID, importStatus)
+	}
+
+	return nil
+}
+
+func (r *PgxRepository) FindOrCreateWarningAndInfoJobKey(ctx context.Context, jobID uint) error {
+	if r.pool == nil {
+		return fmt.Errorf("pool not initialized")
+	}
+
+	fname := constants.WarningsAndInfoFileName
+
+	query := `
+		SELECT id FROM job_keys
+		WHERE job_id = $1 AND file_name = $2
+		LIMIT 1`
+
+	var id uint
+	err := r.pool.QueryRow(ctx, query, jobID, fname).Scan(&id)
+	if err != nil {
+		if err != pgxv5.ErrNoRows {
+			return fmt.Errorf("failed to check for existing job key for job %d, err: %w", jobID, err)
+		}
+
+		query = `
+			INSERT INTO job_keys (job_id, file_name, resource_type)
+			VALUES ($1, $2, $3)
+			RETURNING id`
+
+		result, err := r.pool.Exec(ctx, query, jobID, fname, "OperationOutcome")
+		affected := result.RowsAffected()
+		if err != nil || affected == 0 {
+			return fmt.Errorf("failed to create job key for job %d, err: %w", jobID, err)
+		}
 	}
 
 	return nil

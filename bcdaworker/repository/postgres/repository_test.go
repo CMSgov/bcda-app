@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	bcdaPostgres "github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -201,16 +202,18 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	queJobID := testUtils.CryptoRandInt63()
 	queJobID1 := testUtils.CryptoRandInt63()
 
-	jk := models.JobKey{JobID: jobID, QueJobID: &queJobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100}
-	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID1, FileName: jk2Filename, ResourceType: "Claim", BenesWithData: 20, BenesRetrievedPercent: 50}
-	jk2 := models.JobKey{JobID: jobID}
+	jk1 := models.JobKey{JobID: jobID, QueJobID: &queJobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100}
+	jk2 := models.JobKey{JobID: jobID, QueJobID: &queJobID1, FileName: jk2Filename, ResourceType: "Claim", BenesWithData: 20, BenesRetrievedPercent: 50}
+	jk3 := models.JobKey{JobID: jobID}
+	jkErrors := models.JobKey{JobID: jobID, FileName: (uuid.New() + "-error.ndjson")}
+	jkWarning := models.JobKey{JobID: jobID, FileName: constants.WarningsAndInfoFileName}
 	j, e := safecast.ToUint(testUtils.CryptoRandInt31())
 	assert.NoError(e)
 
 	otherJobID := models.JobKey{JobID: j}
 
-	assert.NoError(r.repository.CreateJobKey(ctx, jk))
-	assert.NoError(r.repository.CreateJobKeys(ctx, []models.JobKey{jk1, jk2}))
+	assert.NoError(r.repository.CreateJobKey(ctx, jk1))
+	assert.NoError(r.repository.CreateJobKeys(ctx, []models.JobKey{jk2, jk3, jkErrors, jkWarning}))
 	assert.NoError(r.repository.CreateJobKey(ctx, otherJobID))
 
 	count, err := r.repository.GetJobKeyCount(ctx, jobID)

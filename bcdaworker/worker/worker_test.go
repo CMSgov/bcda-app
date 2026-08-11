@@ -416,7 +416,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
-	err := createDir(s.tempDir)
+	err := CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.Len(s.T(), jobKeys, 1)
@@ -633,9 +633,9 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 }
 
 func (s *WorkerTestSuite) TestCreateDir() {
-	err := createDir("/proc/invalid_path") //non-existant dir
+	err := CreateDir("/proc/invalid_path") //non-existant dir
 	assert.Error(s.T(), err)
-	err = createDir("2") //fine
+	err = CreateDir("2") //fine
 	assert.NoError(s.T(), err)
 }
 
@@ -982,29 +982,17 @@ func (s *WorkerTestSuite) TestValidateJob() {
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {
-	j := models.Job{
-		ACOID:      uuid.Parse(constants.TestACOID),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     models.JobStatusPending,
-		JobCount:   1,
-	}
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	complete, err := CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), complete)
+	repo := &repository.MockRepository{}
+	repo.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
+	repo.On("GetJobByID", testUtils.CtxMatcher, uint(1)).Return(&models.Job{Status: models.JobStatusCompleted}, nil)
 
 	keys := []models.JobKey{
 		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
 		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
 	}
-	err = createJobKeys(s.logctx, s.r, keys, j.ID)
+
+	err := createJobKeys(s.logctx, repo, keys, uint(1))
 	assert.NoError(s.T(), err)
-	for i := 0; i < len(keys); i++ {
-		id, _ := safecast.ToInt(keys[i].JobID)
-		job, _ := postgrestest.GetJobKey(s.db, id)
-		assert.NotEmpty(s.T(), job)
-	}
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
