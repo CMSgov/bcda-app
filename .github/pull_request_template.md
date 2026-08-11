@@ -10,7 +10,7 @@ https://jira.cms.gov/browse/...
 
 <!-- Why were these changes made? Add background context suitable for a non-technical audience. -->
 
-<!-- If any of the following security implications apply, this PR must not be merged without Stephen Walter's approval. Explain in this section and add @SJWalter11 as a reviewer.
+<!-- If any of the following security implications apply, this PR must not be merged without the team security engineer's approval:
   - Adds a new software dependency or dependencies.
   - Modifies or invalidates one or more of our security controls.
   - Stores or transmits data that was not stored or transmitted before.
