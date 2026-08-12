@@ -135,22 +135,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = module.attribution-import_file_bucket.id
 
   rule {
-    id     = "delete_after_14_days"
+    id     = "delete-after-14-days"
     status = "Enabled"
 
     filter {}
 
-    # Turn current objects into noncurrent versions (creates a delete marker)
     expiration {
       days = 14
     }
 
-    # Delete historical versions after 14 days
     noncurrent_version_expiration {
       noncurrent_days = 14
     }
+  }
 
-    # Clean up expired delete markers
+  rule {
+    id     = "cleanup-expired-delete-markers"
+    status = "Enabled"
+
+    filter {}
+
     expiration {
       expired_object_delete_marker = true
     }
