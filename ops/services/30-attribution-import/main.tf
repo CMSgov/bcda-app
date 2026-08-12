@@ -135,7 +135,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = module.attribution-import_file_bucket.id
 
   rule {
-    id     = "delete-after-14-days"
+    id     = "delete-old-files"
     status = "Enabled"
 
     filter {}
