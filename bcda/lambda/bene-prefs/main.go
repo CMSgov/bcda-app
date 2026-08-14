@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
@@ -77,12 +77,13 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	}
 
 	db := database.Connect()
+	repo := postgres.NewRepository(db)
 
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
 			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
-			return handleOptOutImport(ctx, db, s3Client, dir)
+			return handleOptOutImport(ctx, repo, s3Client, dir)
 		}
 	}
 
@@ -90,11 +91,10 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	return "", nil
 }
 
-func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
+func handleOptOutImport(ctx context.Context, repo models.Repository, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
-	repo := postgres.NewRepository(db)
 
 	importer := bp.BenePrefsImporter{
 		FileHandler: &bp.S3FileHandler{

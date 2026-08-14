@@ -1,108 +1,47 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"testing"
+	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/stretchr/testify/suite"
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type OptOutImportMainSuite struct {
-	suite.Suite
-	db *sql.DB
+func TestHandleOptOutImport(t *testing.T) {
+	assert := assert.New(t)
+	s3Client := &bcdaaws.MockS3Client{}
+	repo := &models.MockRepository{}
+	path := "../../../shared_files/synthetic1800MedicareFiles/test2/"
+
+	env := uuid.NewString()
+	cleanupEnv := testUtils.SetEnvVars(t, []testUtils.EnvVar{{Name: "ENV", Value: env}})
+	defer cleanupEnv()
+
+	res, err := handleOptOutImport(context.Background(), repo, s3Client, path)
+	assert.Nil(err)
+	assert.Contains(res, constants.CompleteMedSupDataImp)
+	// due to using mock aws s3 we dont have any actual files to import, so the counts will be 0
+	assert.Contains(res, "Files imported: 0")
+	assert.Contains(res, "Files failed: 0")
+	assert.Contains(res, "Files skipped: 0")
 }
 
-func (s *OptOutImportMainSuite) SetupSuite() {
-	s.db = database.Connect()
+func TestConfigureLogger(t *testing.T) {
+	logger := configureLogger("test_env", "test_app_name")
+	require.NotNil(t, logger)
+	assert.Equal(t, "test_env", logger.Data["environment"])
+	assert.Equal(t, "test_app_name", logger.Data["application"])
+	formatter, ok := logger.Logger.Formatter.(*logrus.JSONFormatter)
+	require.True(t, ok, "expected *logrus.JSONFormatter")
+	assert.True(t, formatter.DisableHTMLEscape)
+	assert.Equal(t, time.RFC3339Nano, formatter.TimestampFormat)
+	assert.True(t, logger.Logger.ReportCaller)
 }
-
-func TestOptOutImportMainSuite(t *testing.T) {
-	suite.Run(t, new(OptOutImportMainSuite))
-}
-
-// func (s *OptOutImportMainSuite) TestHandleOptOutImportSuccess() {
-// 	assert := assert.New(s.T())
-// 	// cfg := testUtils.TestAWSConfig(s.T())
-// 	s3Client := &bcdaaws.MockS3Client{}
-
-// 	path := "../../../shared_files/synthetic1800MedicareFiles/test2/"
-// 	// path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/synthetic1800MedicareFiles/test2/")
-// 	// defer cleanup()
-
-// 	env := uuid.NewUUID()
-// 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
-// 	defer cleanupEnv()
-
-// 	// cleanupParam := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-// 	// defer cleanupParam()
-
-// 	res, err := handleOptOutImport(context.Background(), s.db, s3Client, path)
-// 	assert.Nil(err)
-// 	assert.Contains(res, constants.CompleteMedSupDataImp)
-// 	assert.Contains(res, "Files imported: 2")
-// 	assert.Contains(res, "Files failed: 0")
-// 	assert.Contains(res, "Files skipped: 0")
-
-// 	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
-// 		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
-// 		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
-
-// 	assert.Len(fs, 2)
-
-// 	for _, f := range fs {
-// 		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
-// 	}
-// }
-
-// func (s *OptOutImportMainSuite) TestImportDirectory_Skipped() {
-// 	assert := assert.New(s.T())
-// 	// cfg := testUtils.TestAWSConfig(s.T())
-// 	s3Client := &bcdaaws.MockS3Client{}
-
-// 	path := "../../../shared_files/suppressionfile_BadFileNames/"
-// 	// path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadFileNames/")
-// 	// defer cleanup()
-
-// 	env := uuid.NewUUID()
-// 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
-// 	defer cleanupEnv()
-
-// 	// cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
-// 	// cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-// 	// defer cleanupParam1()
-// 	// defer cleanupParam2()
-
-// 	res, err := handleOptOutImport(context.Background(), s.db, s3Client, path)
-// 	assert.Nil(err)
-// 	assert.Contains(res, constants.CompleteMedSupDataImp)
-// 	assert.Contains(res, "Files imported: 0")
-// 	assert.Contains(res, "Files failed: 0")
-// 	assert.Contains(res, "Files skipped: 2")
-// }
-
-// func (s *OptOutImportMainSuite) TestImportDirectory_Failed() {
-// 	assert := assert.New(s.T())
-// 	// cfg := testUtils.TestAWSConfig(s.T())
-// 	s3Client := &bcdaaws.MockS3Client{}
-
-// 	path := "../../../shared_files/suppressionfile_BadHeader/"
-// 	// path, cleanup := testUtils.CopyToS3(s.T(), "../../../shared_files/suppressionfile_BadHeader/")
-// 	// defer cleanup()
-
-// 	env := uuid.NewUUID()
-// 	cleanupEnv := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: env.String()}})
-// 	defer cleanupEnv()
-
-// 	// cleanupParam1 := testUtils.SetParameter(s.T(), fmt.Sprintf("/opt-out-import/bcda/%s/bfd-bucket-role-arn", env), "arn:aws:iam::000000000000:user/fake-arn")
-// 	// cleanupParam2 := testUtils.SetParameter(s.T(), fmt.Sprintf("/bcda/%s/api/DATABASE_URL", env), "postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable")
-// 	// defer cleanupParam1()
-// 	// defer cleanupParam2()
-
-// 	res, err := handleOptOutImport(context.Background(), s.db, s3Client, path)
-// 	assert.EqualError(err, "one or more suppression files failed to import correctly")
-// 	assert.Contains(res, constants.CompleteMedSupDataImp)
-// 	assert.Contains(res, "Files imported: 0")
-// 	assert.Contains(res, "Files failed: 1")
-// 	assert.Contains(res, "Files skipped: 0")
-// }

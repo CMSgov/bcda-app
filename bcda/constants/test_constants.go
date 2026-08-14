@@ -8,7 +8,7 @@ const SsasClientErr = "no client for SSAS; %s"
 const TestChangeTimeErr = "Failed to change modified time for file"
 
 // Messages Constants
-const CompleteMedSupDataImp = "Completed 1-800-MEDICARE suppression data import."
+const CompleteMedSupDataImp = "Completed Bene-Prefs suppression data import."
 const TestACOName = "ACO name (--name) must be provided"
 const TestReqErr = "Request error"
 const InProgress = "In Progress"
