@@ -102,7 +102,10 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 		bfdPath = "/v3/fhir"
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid _version parameter"))
+		_, err = w.Write([]byte("Invalid _version parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -115,7 +118,10 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 	newJob.ID, err = repo.CreateJob(ctx, newJob)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to create job"))
+		_, err = w.Write([]byte("failed to create job"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -170,18 +176,21 @@ func SharedExportPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		http.Error(w, "invalid JSON payload", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	if payload.Since == "" || payload.Version == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
 		http.Error(w, "missing required fields in payload", http.StatusBadRequest)
 		return
 	}
 
 	sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		http.Error(w, "invalid _since parameter", http.StatusBadRequest)
 		return
 	}
@@ -196,7 +205,10 @@ func SharedExportPostHandler(w http.ResponseWriter, r *http.Request) {
 		bfdPath = "/v3/fhir"
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid _version parameter"))
+		_, err := w.Write([]byte("invalid _version parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -209,7 +221,10 @@ func SharedExportPostHandler(w http.ResponseWriter, r *http.Request) {
 	newJob.ID, err = repo.CreateJob(ctx, newJob)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to create job"))
+		_, err = w.Write([]byte("failed to create job"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
