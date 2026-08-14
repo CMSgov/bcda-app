@@ -3,12 +3,12 @@ package beneprefs
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,6 +29,8 @@ type BenePrefsImporter struct {
 	ImportStatusInterval int
 }
 
+// ImportDirectory takes a dir path and processes all bene-prefs files, creating a suppression_files db record for each file and a suppressions db record for each entry in that file.
+// returns the number of files successfully imported, the number of files that failed to import, and the number of files that were skipped (not bene-prefs files).
 func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path string) (success, failure, skipped int, err error) {
 	suppresslist, skipped, err := importer.FileHandler.LoadBenePrefsFiles(ctx, path)
 	if err != nil {
@@ -36,18 +38,19 @@ func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path stri
 	}
 
 	if len(*suppresslist) == 0 {
-		importer.Logger.Info("Failed to find any bene-prefs files in directory")
+		importer.Logger.Info("failed to find any bene-prefs files in directory")
 		return 0, 0, skipped, nil
 	}
 
+	// validate then import each file
 	for _, metadata := range *suppresslist {
 		err = importer.validate(ctx, metadata)
 		if err != nil {
-			importer.Logger.Errorf("Failed to validate bene-prefs file: %s", metadata)
+			importer.Logger.Errorf("failed to validate bene-prefs file: %s", metadata)
 			failure++
 		} else {
-			if err = importer.ImportData(ctx, metadata); err != nil {
-				importer.Logger.Errorf("Failed to import bene-prefs file: %s ", metadata)
+			if err = importer.importFile(ctx, metadata); err != nil {
+				importer.Logger.Errorf("failed to import bene-prefs file: %s ", metadata)
 				failure++
 			} else {
 				metadata.Imported = true
@@ -55,6 +58,7 @@ func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path stri
 			}
 		}
 	}
+
 	err = importer.FileHandler.CleanupBenePrefsFiles(ctx, *suppresslist)
 	if err != nil {
 		importer.Logger.Error(err)
@@ -66,16 +70,18 @@ func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path stri
 	} else {
 		err = nil
 	}
+
 	return success, failure, skipped, err
 }
 
+// validate scans a bene prefs file by checking header and trailer codes and ensuring the record count matches the number of records in the file
 func (importer BenePrefsImporter) validate(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) error {
-	importer.Logger.Infof("Validating bene-prefs file %s...", metadata)
+	importer.Logger.Infof("validating bene-prefs file %s...", metadata)
 
 	count := 0
 	sc, close, err := importer.FileHandler.OpenFile(ctx, metadata)
 	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s", metadata)
+		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
 		return err
 	}
@@ -120,44 +126,35 @@ func (importer BenePrefsImporter) validate(ctx context.Context, metadata *models
 	return nil
 }
 
-func (importer BenePrefsImporter) ImportData(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) error {
-	optOutCount := 0
-	optInCount := 0
-	err := importer.ImportMetadata(ctx, metadata, func(fileID uint, b []byte) error {
-		suppression, err := ParseRecord(metadata, b)
+// importFile handles importing the file, creating the file record, then processing individual entries
+func (importer BenePrefsImporter) importFile(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) error {
+	importer.Logger.Infof("importing bene-prefs file %s...", metadata)
 
-		if err != nil {
-			importer.Logger.Error(err)
-			return err
-		}
-
-		if err = importer.Repo.CreateBenePrefsRecord(ctx, *suppression); err != nil {
-			err = errors.Wrap(err, "could not create suppression record")
-			importer.Logger.Error(err)
-			return err
-		}
-		switch suppression.PrefIndicator {
-		case "Y":
-			optInCount++
-		case "N":
-			optOutCount++
-		}
-		return nil
-	})
-
+	err := importer.createBenePrefsFileRecord(ctx, metadata)
 	if err != nil {
+		err = fmt.Errorf("failed to create bene-prefs file record for file: %s, err: %w", metadata, err)
+		importer.Logger.Error(err)
+		return err
+	}
+
+	err = importer.scanAndImport(ctx, metadata)
+	if err != nil {
+		errMsg := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err)
+		importer.Logger.Error(errMsg)
+
 		err2 := importer.Repo.UpdateBenePrefsImportStatus(ctx, metadata.FileID, constants.ImportFail)
 		if err2 != nil {
-			errMsg := errors.Wrapf(err2, "could not update bene-prefs file import status for file: %s", metadata)
-			importer.Logger.Error(errMsg)
+			err2Msg := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err2)
+			importer.Logger.Error(err2Msg)
 		}
 		return err
 	}
 
-	importer.Logger.WithFields(logrus.Fields{"created_opt_outs_count": optOutCount, "created_opt_ins_count": optInCount}).Infof("Successfully imported file: %s", metadata.Name)
+	importer.Logger.Infof("Successfully imported file: %s", metadata.Name)
+
 	err = importer.Repo.UpdateBenePrefsImportStatus(ctx, metadata.FileID, constants.ImportComplete)
 	if err != nil {
-		err = errors.Wrapf(err, "could not update bene-prefs file import status for file: %s", metadata)
+		err = fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
 		return err
 	}
@@ -165,36 +162,43 @@ func (importer BenePrefsImporter) ImportData(ctx context.Context, metadata *mode
 	return nil
 }
 
-func (importer BenePrefsImporter) ImportMetadata(ctx context.Context, metadata *models.BenePrefsFilenameMetadata, importFunc func(uint, []byte) error) error {
-	importer.Logger.Infof("Importing bene-prefs file %s...", metadata)
+// createBenePrefsFileRecord creates the suppression_files db record and updates the metadata with returned file_id
+func (importer BenePrefsImporter) createBenePrefsFileRecord(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) error {
+	var err error
 
-	var (
-		headTrailStart, headTrailEnd = 0, 15
-		err                          error
-	)
 	bpFile := models.BenePrefsFile{
 		Name:         metadata.Name,
 		Timestamp:    metadata.Timestamp,
 		ImportStatus: constants.ImportInprog,
 	}
 
-	if bpFile.ID, err = importer.Repo.CreateBenePrefsFile(ctx, bpFile); err != nil {
-		err = errors.Wrapf(err, "could not create bene-prefs file record for file: %s.", metadata)
-		importer.Logger.Error(err)
+	bpFile.ID, err = importer.Repo.CreateBenePrefsFile(ctx, bpFile)
+	if err != nil {
+		errMsg := fmt.Errorf("could not create bene-prefs file record for file: %s, err: %w", metadata, err)
+		importer.Logger.Error(errMsg)
 		return err
 	}
 
 	metadata.FileID = bpFile.ID
 
+	return nil
+}
+
+// scanAndImport scans the file and creates a suppression record for each entry in the file
+func (importer BenePrefsImporter) scanAndImport(ctx context.Context, metadata *models.BenePrefsFilenameMetadata) error {
+	var (
+		headTrailStart, headTrailEnd = 0, 15
+		err                          error
+	)
+
 	importedCount := 0
 
 	sc, close, err := importer.FileHandler.OpenFile(ctx, metadata)
 	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s", metadata)
+		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
 		return err
 	}
-
 	defer close()
 
 	for sc.Scan() {
@@ -204,7 +208,7 @@ func (importer BenePrefsImporter) ImportMetadata(ctx context.Context, metadata *
 			if metaInfo == headerCode || metaInfo == trailerCode {
 				continue
 			}
-			err = importFunc(bpFile.ID, b)
+			err = importer.createBenePrefsRecord(ctx, metadata, b)
 			if err != nil {
 				importer.Logger.Error(err)
 				return err
@@ -217,5 +221,23 @@ func (importer BenePrefsImporter) ImportMetadata(ctx context.Context, metadata *
 	}
 
 	importer.Logger.Infof("Successfully imported %d records from bene-prefs file %s.", importedCount, metadata)
+
+	return nil
+}
+
+// createBenePrefsRecord creates a suppression record for each entry in the file
+func (importer BenePrefsImporter) createBenePrefsRecord(ctx context.Context, metadata *models.BenePrefsFilenameMetadata, b []byte) error {
+	suppression, err := parseRecord(metadata, b)
+	if err != nil {
+		importer.Logger.Error(err)
+		return err
+	}
+
+	if err = importer.Repo.CreateBenePrefsRecord(ctx, *suppression); err != nil {
+		err = fmt.Errorf("failed to create bene-prefs record, err: %w", err)
+		importer.Logger.Error(err)
+		return err
+	}
+
 	return nil
 }

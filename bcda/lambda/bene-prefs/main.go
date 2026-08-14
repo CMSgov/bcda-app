@@ -107,7 +107,7 @@ func handleOptOutImport(ctx context.Context, db *sql.DB, s3Client bcdaaws.Custom
 	}
 
 	s, f, sk, err := importer.ImportDirectory(ctx, s3ImportPath)
-	result := fmt.Sprintf("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
+	result := fmt.Sprintf("Completed Bene-Prefs suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 	logger.Info(result)
 	return result, err
 }

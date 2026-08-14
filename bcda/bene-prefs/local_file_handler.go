@@ -10,8 +10,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/ccoveille/go-safecast"
-
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,7 +35,7 @@ func (handler *LocalFileHandler) getBenePrefsFileMetadata(ctx context.Context, s
 				fileName = info.Name()
 			}
 			fmt.Printf("Error in checking suppression file %s: %s.\n", fileName, err)
-			err = errors.Wrapf(err, "error in checking suppression file: %s,", fileName)
+			err = fmt.Errorf("error in checking suppression file: %s, err: %w", fileName, err)
 			handler.Logger.Error(err)
 			return err
 		}
@@ -46,7 +44,7 @@ func (handler *LocalFileHandler) getBenePrefsFileMetadata(ctx context.Context, s
 			return nil
 		}
 
-		metadata, err := ParseMetadata(info.Name())
+		metadata, err := parseMetadata(info.Name())
 		metadata.FilePath = path
 		metadata.DeliveryDate = info.ModTime()
 		if err != nil {
@@ -64,7 +62,7 @@ func (handler *LocalFileHandler) getBenePrefsFileMetadata(ctx context.Context, s
 				err = os.Rename(metadata.FilePath, newpath)
 				if err != nil {
 					errmsg := fmt.Sprintf("error moving unknown file %s to pending deletion dir", metadata)
-					err = errors.Wrap(err, errmsg)
+					err = fmt.Errorf("%s: %w", errmsg, err)
 					fmt.Println(errmsg)
 					handler.Logger.Error(err)
 					return err
@@ -82,7 +80,7 @@ func (handler *LocalFileHandler) OpenFile(ctx context.Context, metadata *models.
 	f, err := os.Open(metadata.FilePath)
 	if err != nil {
 		fmt.Printf("Could not read file %s.\n", metadata)
-		err = errors.Wrapf(err, "could not read file %s", metadata)
+		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		handler.Logger.Error(err)
 		return nil, nil, err
 	}
@@ -146,7 +144,7 @@ func convertFileArchiveThreshold(handler *LocalFileHandler) (int64, error, bool)
 	f, err := safecast.ToInt64(handler.FileArchiveThresholdHr)
 	if err != nil {
 		errmsg := fmt.Sprintf("error converting FileArchiveThresholdHr to int64: %v", handler.FileArchiveThresholdHr)
-		err = errors.Wrap(err, errmsg)
+		err = fmt.Errorf("%s: %w", errmsg, err)
 		fmt.Println(errmsg)
 		handler.Logger.Error(err)
 		return 0, err, true

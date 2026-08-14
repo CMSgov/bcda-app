@@ -49,7 +49,7 @@ func (handler *S3FileHandler) LoadBenePrefsFiles(ctx context.Context, path strin
 	}
 
 	for _, obj := range s3Objects {
-		metadata, err := ParseMetadata(*obj.Key)
+		metadata, err := parseMetadata(*obj.Key)
 		metadata.FilePath = fmt.Sprintf("s3://%s/%s", bucket, *obj.Key)
 		metadata.DeliveryDate = *obj.LastModified
 
