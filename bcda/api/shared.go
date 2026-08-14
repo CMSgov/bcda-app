@@ -30,44 +30,65 @@ func SharedExportHandler(w http.ResponseWriter, r *http.Request) {
 	since, ok := r.URL.Query()["_since"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing _since parameter"))
+		_, err = w.Write([]byte("missing _since parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	sinceDate, err := time.Parse(time.RFC3339Nano, since[0])
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid _since parameter"))
+		_, err = w.Write([]byte("invalid _since parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
 	version, ok := r.URL.Query()["_version"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing _version parameter"))
+		_, err = w.Write([]byte("missing _version parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	resourceTypes, ok := r.URL.Query()["_resourceTypes"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing _resourceTypes parameter"))
+		_, err = w.Write([]byte("missing _resourceTypes parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	partnerID, ok := r.URL.Query()["_partnerID"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing _partnerID parameter"))
+		_, err = w.Write([]byte("missing _partnerID parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	dataTypes, ok := r.URL.Query()["_dataTypes"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing _dataTypes parameter"))
+		_, err = w.Write([]byte("missing _dataTypes parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	mbis, ok := r.URL.Query()["_mbis"] // TODO: change this to a POST request and pass this as body
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing _mbis parameter"))
+		_, err = w.Write([]byte("missing _mbis parameter"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
