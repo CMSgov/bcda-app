@@ -59,17 +59,18 @@ func TestOpenFile(t *testing.T) {
 	handler := mockHandler()
 
 	fileBytes, f, err := handler.OpenFile(t.Context(), &models.BenePrefsFilenameMetadata{})
-	assert.NoError(t, err)
-	assert.NotNil(t, fileBytes)
-	assert.NotNil(t, f)
+	assert.ErrorContains(t, err, "is empty or does not exist")
+	assert.Nil(t, fileBytes)
+	assert.Nil(t, f)
 }
 
 func TestOpenFileBytes(t *testing.T) {
 	handler := mockHandler()
 	path := "s3://test-bucket/test-prefix/test-file.txt"
 
-	_, err := handler.OpenFileBytes(t.Context(), path)
-	assert.NoError(t, err)
+	fileBytes, err := handler.OpenFileBytes(t.Context(), path)
+	assert.ErrorContains(t, err, "is empty or does not exist")
+	assert.Len(t, fileBytes, 0)
 }
 
 func TestCleanupBenePrefsFiles(t *testing.T) {

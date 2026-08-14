@@ -104,8 +104,11 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 	}
 
 	output, err := handler.Client.HeadObject(ctx, input)
-	if err != nil || output.ContentLength == nil {
+	if err != nil {
 		return nil, err
+	}
+	if output == nil || output.ContentLength == nil || *output.ContentLength <= 0 {
+		return []byte{}, fmt.Errorf("file %s is empty or does not exist", filePath)
 	}
 
 	buff := make([]byte, int(*output.ContentLength))

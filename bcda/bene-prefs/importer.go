@@ -139,8 +139,8 @@ func (importer BenePrefsImporter) importFile(ctx context.Context, metadata *mode
 
 	err = importer.scanAndImport(ctx, metadata)
 	if err != nil {
-		errMsg := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err)
-		importer.Logger.Error(errMsg)
+		err := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err)
+		importer.Logger.Error(err)
 
 		err2 := importer.Repo.UpdateBenePrefsImportStatus(ctx, metadata.FileID, constants.ImportFail)
 		if err2 != nil {
