@@ -319,13 +319,11 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
 
-			fmt.Printf("----- Job ARGS: %+v\n", jobArgs)
-
 			var bene models.CCLFBeneficiary
 			// TODO: need seem getBeneficiary via MBI not cclf_beneficiary.ID
 			// TODO: feature flag, temporarily just hardcoding on ACO UUID
-			if jobArgs.ACOID == "test" { // TODO (this is passed in via partnerID as part of the request)
-				bene, err := getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
+			if jobArgs.ACOID == "test-shared-export" { // TODO (this is passed in via partnerID as part of the request)
+				bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
 				if err != nil {
 					//MBI is appended inside file, not printed out to system logs
 					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
@@ -336,7 +334,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 					return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
 				}
 
-				bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
+				bene, err = getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
 				if err != nil {
 					//MBI is appended inside file, not printed out to system logs
 					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
@@ -436,7 +434,11 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 		return models.CCLFBeneficiary{}, err
 	}
 
+	fmt.Printf("----- bene returned from mock: %+v\n", bene)
+
 	cclfBeneficiary := *bene
+
+	fmt.Printf("----- cclf bene set: %+v\n", cclfBeneficiary)
 
 	if fetchBBId {
 		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI, jobData)
@@ -452,6 +454,8 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 			cclfBeneficiary.BlueButtonID = bbID
 		}
 	}
+
+	fmt.Printf("----- cclf bene before return: %+v\n", cclfBeneficiary)
 
 	return cclfBeneficiary, nil
 }
