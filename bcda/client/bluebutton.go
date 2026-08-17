@@ -423,6 +423,7 @@ type serviceDateVal struct {
 
 // setAppropriateServiceDateParams BFD only allows for one lower bound and one upper bound service-data param
 // so we need to do some comparisons to make sure we apply the more restrictive option for each.
+// By more restrictive we mean the smallest window of information as dictated by these date params (eg "gt2025" is more restrictive than "gt2024").
 // known edge cases that are currently not accounted for (low risk, low priority, time constraints):
 // - "ge2022-01-01" and "gt2022-01-01" should result in "gt2022-01-01" (the more restrictive option)
 // - "le2022-01-01" and "lt2022-01-01" should result in "lt2022-01-01" (the more restrictive option)
@@ -432,40 +433,40 @@ func setAppropriateServiceDateParams(params *url.Values) {
 		return
 	}
 
-	var lowerBoundDates, upperBoundDates []serviceDateVal
+	var earliestDates, latestDates []serviceDateVal
 	for _, date := range serviceDates {
 		if strings.HasPrefix(date, "ge") || strings.HasPrefix(date, "gt") {
-			lowerBoundDates = append(lowerBoundDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+			earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
 		} else if strings.HasPrefix(date, "le") || strings.HasPrefix(date, "lt") {
-			upperBoundDates = append(upperBoundDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+			latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
 		} else if strings.HasPrefix(date, "eq") {
-			lowerBoundDates = append(lowerBoundDates, serviceDateVal{prefix: "ge", date: parseDate(date[2:])})
-			upperBoundDates = append(upperBoundDates, serviceDateVal{prefix: "lt", date: parseUpperDateFromEqualPrefix(date[2:])})
+			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date[2:])})
+			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
 		} else if strings.HasPrefix(date, "20") {
-			lowerBoundDates = append(lowerBoundDates, serviceDateVal{prefix: "ge", date: parseDate(date)})
-			upperBoundDates = append(upperBoundDates, serviceDateVal{prefix: "lt", date: parseUpperDateFromEqualPrefix(date)})
+			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date)})
+			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
 		}
 	}
 
 	// remove any zero dates to cleanse list of invalids
-	lowerBoundDates = slices.DeleteFunc(lowerBoundDates, func(s serviceDateVal) bool { return s.date.IsZero() })
-	upperBoundDates = slices.DeleteFunc(upperBoundDates, func(s serviceDateVal) bool { return s.date.IsZero() })
+	earliestDates = slices.DeleteFunc(earliestDates, func(s serviceDateVal) bool { return s.date.IsZero() })
+	latestDates = slices.DeleteFunc(latestDates, func(s serviceDateVal) bool { return s.date.IsZero() })
 
 	// sort lower bounds in descending, and upper bounds in ascending order so we can pick the most restrictive for each
-	slices.SortFunc(lowerBoundDates, func(a, b serviceDateVal) int {
+	slices.SortFunc(earliestDates, func(a, b serviceDateVal) int {
 		return b.date.Compare(a.date)
 	})
-	slices.SortFunc(upperBoundDates, func(a, b serviceDateVal) int {
+	slices.SortFunc(latestDates, func(a, b serviceDateVal) int {
 		return a.date.Compare(b.date)
 	})
 
 	// remove all existing service-date instances so we can start from scratch
 	params.Del("service-date")
-	if len(lowerBoundDates) > 0 {
-		params.Add("service-date", lowerBoundDates[0].prefix+lowerBoundDates[0].date.Format("2006-01-02"))
+	if len(earliestDates) > 0 {
+		params.Add("service-date", earliestDates[0].prefix+earliestDates[0].date.Format("2006-01-02"))
 	}
-	if len(upperBoundDates) > 0 {
-		params.Add("service-date", upperBoundDates[0].prefix+upperBoundDates[0].date.Format("2006-01-02"))
+	if len(latestDates) > 0 {
+		params.Add("service-date", latestDates[0].prefix+latestDates[0].date.Format("2006-01-02"))
 	}
 }
 
@@ -488,7 +489,7 @@ func parseDate(date string) time.Time {
 	return time.Time{}
 }
 
-func parseUpperDateFromEqualPrefix(date string) time.Time {
+func parseLatestDateFromEqualPrefix(date string) time.Time {
 	parsedDate, err := time.Parse("2006-01-02", date)
 	if err == nil {
 		return parsedDate.AddDate(0, 0, 1)
