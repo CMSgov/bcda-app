@@ -38,7 +38,7 @@ func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path stri
 	}
 
 	if len(*suppresslist) == 0 {
-		importer.Logger.Info("failed to find any bene-prefs files in directory")
+		importer.Logger.Error("failed to find any bene-prefs files in directory")
 		return 0, 0, skipped, nil
 	}
 
@@ -142,10 +142,10 @@ func (importer BenePrefsImporter) importFile(ctx context.Context, metadata *mode
 		err := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
 
-		err2 := importer.Repo.UpdateBenePrefsImportStatus(ctx, metadata.FileID, constants.ImportFail)
-		if err2 != nil {
-			err2Msg := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err2)
-			importer.Logger.Error(err2Msg)
+		repoErr := importer.Repo.UpdateBenePrefsImportStatus(ctx, metadata.FileID, constants.ImportFail)
+		if repoErr != nil {
+			repoErrMsg := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, repoErr)
+			importer.Logger.Error(repoErrMsg)
 		}
 		return err
 	}
