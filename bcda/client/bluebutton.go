@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -236,6 +237,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 	updateParamWithTypeFilter(&params, jobData.TypeFilter)
+	setAppropriateServiceDateParams(&params)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)
 	if err != nil {
@@ -411,6 +413,56 @@ func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {
 
 	if !claimsWindow.UpperBound.IsZero() {
 		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.UpperBound.Format(isoDate)))
+	}
+}
+
+// BFD only allows for one lower bound and one upper bound service-data param
+// so we need to do some comparisons to make sure we apply the more restrictive option for each.
+func setAppropriateServiceDateParams(params *url.Values) {
+	serviceDates := (*params)["service-date"]
+	if len(serviceDates) <= 0 {
+		return
+	}
+
+	var lowerBoundDates, upperBoundDates []string
+	for _, date := range serviceDates {
+		if strings.HasPrefix(date, "ge") || strings.HasPrefix(date, "gt") {
+			lowerBoundDates = append(lowerBoundDates, date)
+		} else if strings.HasPrefix(date, "le") || strings.HasPrefix(date, "lt") {
+			upperBoundDates = append(upperBoundDates, date)
+		}
+	}
+
+	slices.SortFunc(lowerBoundDates, func(a, b string) int {
+		aDate, err := time.Parse("2006-01-02", a[2:])
+		if err != nil {
+			return 0
+		}
+		bDate, err := time.Parse("2006-01-02", b[2:])
+		if err != nil {
+			return 0
+		}
+		return bDate.Compare(aDate)
+	})
+
+	slices.SortFunc(upperBoundDates, func(a, b string) int {
+		aDate, err := time.Parse("2006-01-02", a[2:])
+		if err != nil {
+			return 0
+		}
+		bDate, err := time.Parse("2006-01-02", b[2:])
+		if err != nil {
+			return 0
+		}
+		return aDate.Compare(bDate)
+	})
+
+	params.Del("service-date")
+	if len(lowerBoundDates) > 0 {
+		params.Add("service-date", lowerBoundDates[0])
+	}
+	if len(upperBoundDates) > 0 {
+		params.Add("service-date", upperBoundDates[0])
 	}
 }
 
