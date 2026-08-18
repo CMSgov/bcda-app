@@ -237,7 +237,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 	updateParamWithTypeFilter(&params, jobData.TypeFilter)
-	setAppropriateServiceDateParams(&params)
+	setRestrictiveServiceDateWindow(&params)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)
 	if err != nil {
@@ -421,13 +421,14 @@ type serviceDateVal struct {
 	date   time.Time
 }
 
-// setAppropriateServiceDateParams BFD only allows for one lower bound and one upper bound service-data param
-// so we need to do some comparisons to make sure we apply the more restrictive option for each.
-// By more restrictive we mean the smallest window of information as dictated by these date params (eg "gt2025" is more restrictive than "gt2024").
+// setRestrictiveServiceDateWindow sets the most restrictive window of time from which to pull data from BFD via service-date params.
+// BFD only allows for one earliest boundry and one latest boundry.
+// We need to do some comparisons to make sure we apply the most restrictive option for each.
+// eg "gt2025" is a more restrictive earliest boundry than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
 // known edge cases that are currently not accounted for (low risk, low priority, time constraints):
 // - "ge2022-01-01" and "gt2022-01-01" should result in "gt2022-01-01" (the more restrictive option)
 // - "le2022-01-01" and "lt2022-01-01" should result in "lt2022-01-01" (the more restrictive option)
-func setAppropriateServiceDateParams(params *url.Values) {
+func setRestrictiveServiceDateWindow(params *url.Values) {
 	serviceDates := (*params)["service-date"]
 	if len(serviceDates) <= 0 {
 		return

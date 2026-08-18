@@ -1037,7 +1037,7 @@ func TestBBTestSuite(t *testing.T) {
 	suite.Run(t, new(BBRequestTestSuite))
 }
 
-func TestSetAppropriateServiceDateParams(t *testing.T) {
+func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 	tests := []struct {
 		name         string
 		params       url.Values
@@ -1239,7 +1239,7 @@ func TestSetAppropriateServiceDateParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			updatedParams := &tt.params
-			setAppropriateServiceDateParams(updatedParams)
+			setRestrictiveServiceDateWindow(updatedParams)
 			assert.Equal(t, tt.expectedVals, (*updatedParams)["service-date"])
 		})
 	}
