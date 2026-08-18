@@ -1235,18 +1235,22 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
 		},
 		{
-			name: "Two of the same earliest bounds set, one lt one le",
+			name: "Same latest bounds date set, different prefixes",
 			params: url.Values{"service-date": []string{
 				"lt2022-01-01",
 				"le2022-01-01",
+				"le2022-01-01",
+				"le2023-01-01",
 			}},
 			expectedVals: []string{"lt2022-01-01"},
 		},
 		{
-			name: "Two of the same latest bounds set, one gt one ge",
+			name: "Same earliest bounds date set, different prefixes",
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01",
 				"ge2022-01-01",
+				"ge2022-01-01",
+				"ge2021-01-01",
 			}},
 			expectedVals: []string{"gt2022-01-01"},
 		},
