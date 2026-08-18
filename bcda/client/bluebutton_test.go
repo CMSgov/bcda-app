@@ -1109,7 +1109,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"ge2022-05-05", "lt2022-05-06"},
 		},
 		{
-			name: "Multiple upper and lower bounds set",
+			name: "Multiple upper and earliest bounds set",
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01",
 				"ge2023-02",
@@ -1122,7 +1122,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"gt2024-01-01", "le2022-01-01"},
 		},
 		{
-			name: "Multiple upper and lower bounds set opposite ordering",
+			name: "Multiple upper and earliest bounds set opposite ordering",
 			params: url.Values{"service-date": []string{
 				"gt2022",
 				"ge2023-02",
@@ -1135,7 +1135,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"gt2024-03-03", "le2022-01-01"},
 		},
 		{
-			name: "Multiple upper and lower bounds set as well as eq and no prefix",
+			name: "Multiple upper and earliest bounds set as well as eq and no prefix",
 			params: url.Values{"service-date": []string{
 				"gt2022",
 				"ge2023-02",
@@ -1155,7 +1155,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"gt2024-03-03", "le2022-01-01"},
 		},
 		{
-			name: "Multiple upper and lower bounds set as well as eq and no prefix opposite ordering",
+			name: "Multiple upper and earliest bounds set as well as eq and no prefix opposite ordering",
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01",
 				"ge2023-02",
@@ -1195,7 +1195,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"ge2024-03-03", "lt2023-01-01"},
 		},
 		{
-			name: "Multiple lower bounds set",
+			name: "Multiple earliest bounds set",
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01",
 				"ge2022-02",
@@ -1205,7 +1205,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			expectedVals: []string{"ge2022-02-01"},
 		},
 		{
-			name: "Multiple upper bounds set",
+			name: "Multiple latest bounds set",
 			params: url.Values{"service-date": []string{
 				"le2022-01-01",
 				"lt2022-02",
@@ -1233,6 +1233,29 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 				"bad time",
 			}},
 			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "Two of the same earliest bounds set, one lt one le",
+			params: url.Values{"service-date": []string{
+				"lt2022-01-01",
+				"le2022-01-01",
+			}},
+			expectedVals: []string{"lt2022-01-01"},
+		},
+		{
+			name: "Two of the same latest bounds set, one gt one ge",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01",
+				"ge2022-01-01",
+			}},
+			expectedVals: []string{"gt2022-01-01"},
+		},
+		{
+			name: "Date with time passed in, should be stripped",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string(nil),
 		},
 	}
 

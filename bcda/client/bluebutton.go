@@ -426,8 +426,7 @@ type serviceDateVal struct {
 // We need to do some comparisons to make sure we apply the most restrictive option for each.
 // eg "gt2025" is a more restrictive earliest boundry than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
 // known edge cases that are currently not accounted for (low risk, low priority, time constraints):
-// - "ge2022-01-01" and "gt2022-01-01" should result in "gt2022-01-01" (the more restrictive option)
-// - "le2022-01-01" and "lt2022-01-01" should result in "lt2022-01-01" (the more restrictive option)
+// - we dont allow for hours, mins, secs, tz, etc
 func setRestrictiveServiceDateWindow(params *url.Values) {
 	serviceDates := (*params)["service-date"]
 	if len(serviceDates) <= 0 {
@@ -453,12 +452,34 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 	earliestDates = slices.DeleteFunc(earliestDates, func(s serviceDateVal) bool { return s.date.IsZero() })
 	latestDates = slices.DeleteFunc(latestDates, func(s serviceDateVal) bool { return s.date.IsZero() })
 
-	// sort lower bounds in descending, and upper bounds in ascending order so we can pick the most restrictive for each
+	// sort earliest in descending order, and latest in ascending order so we can pick the most restrictive for each
 	slices.SortFunc(earliestDates, func(a, b serviceDateVal) int {
-		return b.date.Compare(a.date)
+		if c := b.date.Compare(a.date); c != 0 {
+			return c
+		}
+
+		if a.prefix == "gt" {
+			return -1
+		}
+		if b.prefix == "gt" {
+			return 1
+		}
+
+		return 0
 	})
 	slices.SortFunc(latestDates, func(a, b serviceDateVal) int {
-		return a.date.Compare(b.date)
+		if c := a.date.Compare(b.date); c != 0 {
+			return c
+		}
+
+		if a.prefix == "gt" {
+			return 1
+		}
+		if b.prefix == "gt" {
+			return -1
+		}
+
+		return 0
 	})
 
 	// remove all existing service-date instances so we can start from scratch
@@ -472,19 +493,15 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 }
 
 func parseDate(date string) time.Time {
-	parsedDate, err := time.Parse("2006-01-02", date)
-	if err == nil {
-		return parsedDate
+	formats := []string{
+		"2006-01-02",
+		"2006-01",
+		"2006",
 	}
-
-	parsedDate, err = time.Parse("2006-01", date)
-	if err == nil {
-		return parsedDate
-	}
-
-	parsedDate, err = time.Parse("2006", date)
-	if err == nil {
-		return parsedDate
+	for _, format := range formats {
+		if parsedDate, err := time.Parse(format, date); err == nil {
+			return parsedDate
+		}
 	}
 
 	return time.Time{}
