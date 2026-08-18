@@ -97,7 +97,8 @@ func setUpApp() *cli.App {
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
 
 				err := profiler.Start(
-					profiler.WithService("BCDA"),
+					profiler.WithTags("application:bcda"),
+					profiler.WithService("api"),
 					profiler.WithEnv(os.Getenv("ENV")),
 					profiler.WithVersion(constants.Version),
 				)
