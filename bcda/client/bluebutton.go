@@ -472,11 +472,11 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 			return c
 		}
 
-		if a.prefix == "gt" {
-			return 1
-		}
-		if b.prefix == "gt" {
+		if a.prefix == "lt" {
 			return -1
+		}
+		if b.prefix == "lt" {
+			return 1
 		}
 
 		return 0
