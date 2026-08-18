@@ -356,15 +356,13 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 		ctx := r.Context()
 		h := r.Header
 
-		acceptHeader := h.Get("Accept")
-		preferHeader := h.Get("Prefer")
-
 		rw, _ := getResponseWriterFromRequestPath(w, r)
 		if rw == nil {
 			return
 		}
 
-		if acceptHeader == "" {
+		acceptValues := parseHeaderValues(h, "Accept")
+		if len(acceptValues) == 0 {
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Accept header is required", responseutils.FormatErr),
@@ -372,17 +370,20 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 			)
 			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
 			return
-		} else if acceptHeader != "application/fhir+json" {
+		}
+
+		if !hasHeaderToken(acceptValues, "application/fhir+json") {
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
-				fmt.Sprintf("%s: Application/fhir+json is the only supported response format", responseutils.FormatErr),
+				fmt.Sprintf("%s: application/fhir+json is the only supported response format", responseutils.FormatErr),
 				logrus.Fields{"resp_status": http.StatusBadRequest},
 			)
 			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			return
 		}
 
-		if preferHeader == "" {
+		preferValues := parseHeaderValues(h, "Prefer")
+		if len(preferValues) == 0 {
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Prefer header is required", responseutils.FormatErr),
@@ -390,7 +391,9 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 			)
 			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
 			return
-		} else if preferHeader != "respond-async" {
+		}
+
+		if !hasHeaderToken(preferValues, "respond-async") {
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
 				fmt.Sprintf("%s: Only asynchronous responses are supported", responseutils.FormatErr),
@@ -402,6 +405,38 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// hasHeaderToken checks if targetToken exists within the parsed header values,
+// stripping optional parameters (anything after ';') and performing case-insensitive matching.
+func hasHeaderToken(values []string, targetToken string) bool {
+	for _, v := range values {
+		token, _, _ := strings.Cut(v, ";")
+		if strings.EqualFold(strings.TrimSpace(token), targetToken) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseHeaderValues extracts all values from a header, handling both multi-line
+// header fields and comma-separated parameter lists within a single header value.
+// It returns a slice of trimmed tokens.
+func parseHeaderValues(h http.Header, headerName string) []string {
+	values := h.Values(headerName)
+	if len(values) == 0 {
+		return nil
+	}
+	results := make([]string, 0, len(values))
+	for _, rawValue := range values {
+		for _, part := range strings.Split(rawValue, ",") {
+			trimmed := strings.TrimSpace(part)
+			if trimmed != "" {
+				results = append(results, trimmed)
+			}
+		}
+	}
+	return results
 }
 
 // validateSubqueryParameterList splits a comma-separated parameter value and validates each individual value
