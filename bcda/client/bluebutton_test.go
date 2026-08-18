@@ -1,4 +1,4 @@
-package client_test
+package client
 
 import (
 	"bytes"
@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
@@ -30,8 +29,6 @@ import (
 )
 
 const (
-	clientIDHeader    = "BULK-CLIENTID"
-	jobIDHeader       = "BULK-JOBID"
 	oldClientIDHeader = "BCDA-JOBID"
 	oldJobIDHeader    = "BCDA-CMSID"
 )
@@ -42,17 +39,16 @@ type BBTestSuite struct {
 
 type BBRequestTestSuite struct {
 	BBTestSuite
-	bbClient *client.BlueButtonClient
+	bbClient *BlueButtonClient
 	ts       *httptest.Server
 }
 
 var (
 	ts200, ts500 *httptest.Server
-	logger       = testUtils.GetLogger(logrus.StandardLogger())
 	now          = time.Now()
 	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 	since        = "gt2020-02-14"
-	claimsDate   = client.ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
+	claimsDate   = ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
 		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
 	jobData = worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionID: uuid.New(), TransactionTime: now}
 )
@@ -65,7 +61,8 @@ func (s *BBTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_TIMEOUT_MS", "2000")
 
 	// Set up the logger since we're using the real client
-	client.SetLogger(logger)
+	logger = testUtils.GetLogger(logrus.StandardLogger())
+	SetLogger(logger)
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -79,17 +76,17 @@ func (s *BBRequestTestSuite) SetupSuite() {
 }
 
 func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
-	client.SetLogger(logger)
+	SetLogger(logger)
 	if strings.Contains(testName, "500") {
 		s.ts = ts500
 	} else {
 		s.ts = ts200
 	}
 
-	config := client.BlueButtonConfig{
+	config := BlueButtonConfig{
 		BBServer: s.ts.URL,
 	}
-	if bbClient, err := client.NewBlueButtonClient(config); err != nil {
+	if bbClient, err := NewBlueButtonClient(config); err != nil {
 		s.Fail("Failed to create Blue Button client", err)
 	} else {
 		s.bbClient = bbClient
@@ -104,12 +101,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert := assert.New(s.T())
 
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", constants.TestKeyName)
-	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err = NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -121,12 +118,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 	assert := assert.New(s.T())
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", constants.EmptyKeyName)
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", constants.BadKeyName)
-	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err = NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 }
@@ -138,12 +135,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert := assert.New(s.T())
 
 	conf.UnsetEnv(s.T(), "BB_CLIENT_KEY_FILE")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", constants.TestKeyName)
-	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err = NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -155,12 +152,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 	assert := assert.New(s.T())
 
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", constants.EmptyKeyName)
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", constants.BadKeyName)
-	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err = NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 }
@@ -177,12 +174,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CA_FILE")
 	conf.UnsetEnv(s.T(), "BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", constants.TestKeyName)
-	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err = NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
 }
@@ -199,12 +196,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", constants.EmptyKeyName)
 	conf.UnsetEnv(s.T(), "BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", constants.BadKeyName)
-	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err = NewBlueButtonClient(NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 }
@@ -212,12 +209,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 func (s *BBTestSuite) TestNewBlueButtonConfigV3Server() {
 	conf.SetEnv(s.T(), "BB_SERVER_LOCATION", "v1-server-location")
 	conf.SetEnv(s.T(), "V3_BB_SERVER_LOCATION", "v3-server-location")
-	bbc := client.NewConfig(constants.BFDV1Path)
+	bbc := NewConfig(constants.BFDV1Path)
 	assert.Equal(s.T(), bbc.BBServer, "v1-server-location")
 
 	conf.SetEnv(s.T(), "BB_SERVER_LOCATION", "v1-server-location")
 	conf.SetEnv(s.T(), "V3_BB_SERVER_LOCATION", "v3-server-location")
-	bbc = client.NewConfig(constants.BFDV3Path)
+	bbc = NewConfig(constants.BFDV3Path)
 	assert.Equal(s.T(), bbc.BBServer, "v3-server-location")
 }
 
@@ -228,13 +225,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientMultipleCaFiles() {
 	assert := assert.New(s.T())
 
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt,../../shared_files/localhost.crt")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
+	bbc, err := NewBlueButtonClient(NewConfig(""))
 	assert.NotNil(bbc)
 	assert.Nil(err)
 }
 
 func (s *BBTestSuite) TestGetDefaultParams() {
-	params := client.GetDefaultParams()
+	params := GetDefaultParams()
 	assert.Equal(s.T(), "application/fhir+json", params.Get("_format"))
 	assert.Equal(s.T(), "", params.Get("patient"))
 	assert.Equal(s.T(), "", params.Get("beneficiary"))
@@ -242,7 +239,7 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 }
 
 func (s *BBRequestTestSuite) TestGetBBLogs() {
-	hook := test.NewLocal(logger)
+	hook := test.NewLocal(testUtils.GetLogger(logger))
 	_, err := s.bbClient.GetPatient(jobData, "012345")
 	var logCMSID, logJobID, logTransID bool
 	for _, entry := range hook.AllEntries() {
@@ -292,38 +289,38 @@ func (s *BBRequestTestSuite) TestGetCoverage_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit(jobData, "012345", client.ClaimsWindow{})
+	e, err := s.bbClient.GetExplanationOfBenefit(jobData, "012345", ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit(jobData, "012345", client.ClaimsWindow{})
+	e, err := s.bbClient.GetExplanationOfBenefit(jobData, "012345", ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
 func (s *BBRequestTestSuite) TestGetClaim() {
-	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
 func (s *BBRequestTestSuite) TestGetClaim_500() {
-	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaim(jobData, "1234567890hashed", ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse() {
-	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse_500() {
-	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", client.ClaimsWindow{})
+	e, err := s.bbClient.GetClaimResponse(jobData, "1234567890hashed", ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -391,15 +388,15 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 
 	tests := []struct {
 		name          string
-		funcUnderTest func(bbClient *client.BlueButtonClient) (interface{}, error)
+		funcUnderTest func(bbClient *BlueButtonClient) (interface{}, error)
 		// Lighter validation checks since we've already thoroughly tested the methods in other tests
 		payloadChecker func(t *testing.T, payload interface{})
 		pathCheckers   []func(t *testing.T, req *http.Request)
 	}{
 		{
 			"GetExplanationOfBenefit",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -420,8 +417,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitNoSince",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobDataNoSince, "patient1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobDataNoSince, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -442,8 +439,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitWithUpperBoundServiceDate",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -465,8 +462,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitWithLowerBoundServiceDate",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -488,7 +485,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitWithLowerAndUpperBoundServiceDate",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
@@ -511,7 +508,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetPatient",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetPatient(jobData, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
@@ -532,7 +529,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetPatientNoSince",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetPatient(jobDataNoSince, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
@@ -553,7 +550,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetCoverage",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetCoverage(jobData, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
@@ -574,7 +571,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetCoverageNoSince",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetCoverage(jobDataNoSince, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
@@ -595,7 +592,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetPatientByMbi",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetPatientByMbi(worker_types.JobEnqueueArgs{}, "mbi")
 			},
 			func(t *testing.T, payload interface{}) {
@@ -616,8 +613,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaim",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -632,8 +629,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimNoSinceChecker",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobDataNoSince, "beneID1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobDataNoSince, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -648,8 +645,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimNoServiceDateUpperBound",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -664,8 +661,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimNoServiceDateLowerBound",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -680,7 +677,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimWithUpperAndLowerBoundServiceDate",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaim(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
@@ -696,8 +693,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponse",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -712,8 +709,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseNoSinceChecker",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobDataNoSince, "beneID1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobDataNoSince, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -728,8 +725,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseNoServiceDateUpperBound",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -744,8 +741,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseNoServiceDateLowerBound",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -760,7 +757,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetClaimResponseWithUpperAndLowerBoundServiceDate",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaimResponse(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
@@ -776,9 +773,9 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		},
 		{
 			"GetExplanationOfBenefitV3",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
+			func(bbClient *BlueButtonClient) (interface{}, error) {
 				bbClient.BBBasePath = constants.BFDV3Path
-				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", client.ClaimsWindow{})
+				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -790,15 +787,36 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noExcludeSAMHSAChecker,
 				securityFilterChecker,
-				ServiceDateChecker,
+				serviceDateChecker,
+				hasDefaultRequestHeaders,
+				hasBulkRequestHeaders,
+			},
+		},
+		{
+			"GetExplanationOfBenefitV3_WithClaimsWindow",
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				bbClient.BBBasePath = constants.BFDV3Path
+				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", claimsDate)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*fhirModels.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				noExcludeSAMHSAChecker,
+				securityFilterChecker,
+				serviceDateChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
 			},
 		},
 		{
 			"GetExplanationOfBenefitWithTypeFilterServiceDate",
-			func(bbClient *client.BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", client.ClaimsWindow{})
+			func(bbClient *BlueButtonClient) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhirModels.Bundle)
@@ -810,7 +828,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				ServiceDateChecker,
+				serviceDateChecker,
 				hasDefaultRequestHeaders,
 				hasBulkRequestHeaders,
 			},
@@ -850,10 +868,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			}))
 			defer tsValidation.Close()
 
-			config := client.BlueButtonConfig{
+			config := BlueButtonConfig{
 				BBServer: tsValidation.URL,
 			}
-			bbClient, err := client.NewBlueButtonClient(config)
+			bbClient, err := NewBlueButtonClient(config)
 			if err != nil {
 				assert.FailNow(t, err.Error())
 			}
@@ -938,7 +956,11 @@ func nowChecker(t *testing.T, req *http.Request) {
 func noServiceDateChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.URL.Query()[constants.TestSvcDate])
 }
-func ServiceDateChecker(t *testing.T, req *http.Request) {
+func serviceDateChecker(t *testing.T, req *http.Request) {
+	// verify there is max two service-date params set, one upper and one lower
+	dates := req.URL.Query()[constants.TestSvcDate]
+	assert.True(t, len(dates) <= 2)
+
 	assert.Contains(t, req.URL.String(), "service-date=gt2022-06-26")
 }
 func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
@@ -1013,4 +1035,239 @@ func reqBodyToString(req *http.Request) string {
 func TestBBTestSuite(t *testing.T) {
 	suite.Run(t, new(BBTestSuite))
 	suite.Run(t, new(BBRequestTestSuite))
+}
+
+func TestSetRestrictiveServiceDateWindow(t *testing.T) {
+	tests := []struct {
+		name         string
+		params       url.Values
+		expectedVals []string
+	}{
+		{
+			name:         "No prior service date set",
+			params:       url.Values{},
+			expectedVals: []string(nil),
+		},
+		{
+			name:         "Single gt val, year only",
+			params:       url.Values{"service-date": []string{"gt2022"}},
+			expectedVals: []string{"gt2022-01-01"},
+		},
+		{
+			name:         "Single gt val, year and month",
+			params:       url.Values{"service-date": []string{"gt2022-03"}},
+			expectedVals: []string{"gt2022-03-01"},
+		},
+		{
+			name:         "Single gt val, full date",
+			params:       url.Values{"service-date": []string{"gt2022-05-05"}},
+			expectedVals: []string{"gt2022-05-05"},
+		},
+		{
+			name:         "Single le val, year only",
+			params:       url.Values{"service-date": []string{"le2022"}},
+			expectedVals: []string{"le2022-01-01"},
+		},
+		{
+			name:         "Single le val, year and month",
+			params:       url.Values{"service-date": []string{"le2022-03"}},
+			expectedVals: []string{"le2022-03-01"},
+		},
+		{
+			name:         "Single le val, full date",
+			params:       url.Values{"service-date": []string{"le2022-05-05"}},
+			expectedVals: []string{"le2022-05-05"},
+		},
+		{
+			name:         "Single eq val, year only",
+			params:       url.Values{"service-date": []string{"eq2022"}},
+			expectedVals: []string{"ge2022-01-01", "lt2023-01-01"},
+		},
+		{
+			name:         "Single eq val, year and month",
+			params:       url.Values{"service-date": []string{"eq2022-03"}},
+			expectedVals: []string{"ge2022-03-01", "lt2022-04-01"},
+		},
+		{
+			name:         "Single eq val, full date",
+			params:       url.Values{"service-date": []string{"eq2022-05-05"}},
+			expectedVals: []string{"ge2022-05-05", "lt2022-05-06"},
+		},
+		{
+			name:         "Single no prefix val, year only",
+			params:       url.Values{"service-date": []string{"2022"}},
+			expectedVals: []string{"ge2022-01-01", "lt2023-01-01"},
+		},
+		{
+			name:         "Single no prefix val, year and month",
+			params:       url.Values{"service-date": []string{"2022-03"}},
+			expectedVals: []string{"ge2022-03-01", "lt2022-04-01"},
+		},
+		{
+			name:         "Single no prefix val, full date",
+			params:       url.Values{"service-date": []string{"2022-05-05"}},
+			expectedVals: []string{"ge2022-05-05", "lt2022-05-06"},
+		},
+		{
+			name: "Multiple upper and earliest bounds set",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01",
+				"ge2023-02",
+				"gt2024",
+				"le2022-01-01",
+				"lt2023-02",
+				"le2024",
+				"bad time",
+			}},
+			expectedVals: []string{"gt2024-01-01", "le2022-01-01"},
+		},
+		{
+			name: "Multiple upper and earliest bounds set opposite ordering",
+			params: url.Values{"service-date": []string{
+				"gt2022",
+				"ge2023-02",
+				"gt2024-03-03",
+				"le2022",
+				"lt2023-02",
+				"le2024-03-03",
+				"bad time",
+			}},
+			expectedVals: []string{"gt2024-03-03", "le2022-01-01"},
+		},
+		{
+			name: "Multiple upper and earliest bounds set as well as eq and no prefix",
+			params: url.Values{"service-date": []string{
+				"gt2022",
+				"ge2023-02",
+				"gt2024-03-03",
+				"le2022",
+				"lt2023-02",
+				"le2024-03-03",
+				"eq2022",
+				"eq2023-02",
+				"eq2024-03-03",
+				"2022",
+				"2023-02",
+				"2024-03-03",
+				"20",
+				"bad time",
+			}},
+			expectedVals: []string{"gt2024-03-03", "le2022-01-01"},
+		},
+		{
+			name: "Multiple upper and earliest bounds set as well as eq and no prefix opposite ordering",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01",
+				"ge2023-02",
+				"gt2024",
+				"le2022-01-01",
+				"lt2023-02",
+				"le2024",
+				"eq2022-01-01",
+				"eq2023-02",
+				"eq2024",
+				"2022-01-01",
+				"2023-02",
+				"2024",
+				"20",
+				"bad time",
+			}},
+			expectedVals: []string{"gt2024-01-01", "le2022-01-01"},
+		},
+		{
+			name: "Multiple eq set",
+			params: url.Values{"service-date": []string{
+				"eq2022-01-01",
+				"eq2023-02",
+				"eq2024",
+				"bad time",
+			}},
+			expectedVals: []string{"ge2024-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "Multiple no prefix set",
+			params: url.Values{"service-date": []string{
+				"2022",
+				"2023-02",
+				"2024-03-03",
+				"bad time",
+			}},
+			expectedVals: []string{"ge2024-03-03", "lt2023-01-01"},
+		},
+		{
+			name: "Multiple earliest bounds set",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01",
+				"ge2022-02",
+				"gt2022",
+				"bad time",
+			}},
+			expectedVals: []string{"ge2022-02-01"},
+		},
+		{
+			name: "Multiple latest bounds set",
+			params: url.Values{"service-date": []string{
+				"le2022-01-01",
+				"lt2022-02",
+				"le2022",
+				"bad time",
+			}},
+			expectedVals: []string{"le2022-01-01"},
+		},
+		{
+			name: "Multiple eq set similar dates",
+			params: url.Values{"service-date": []string{
+				"eq2022-01-01",
+				"eq2022-01",
+				"eq2022",
+				"bad time",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "Multiple no prefix set similar dates",
+			params: url.Values{"service-date": []string{
+				"eq2022",
+				"eq2022-01",
+				"eq2022-01-01",
+				"bad time",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "Same latest bounds date set, different prefixes",
+			params: url.Values{"service-date": []string{
+				"lt2022-01-01",
+				"le2022-01-01",
+				"le2022-01-01",
+				"le2023-01-01",
+			}},
+			expectedVals: []string{"lt2022-01-01"},
+		},
+		{
+			name: "Same earliest bounds date set, different prefixes",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01",
+				"ge2022-01-01",
+				"ge2022-01-01",
+				"ge2021-01-01",
+			}},
+			expectedVals: []string{"gt2022-01-01"},
+		},
+		{
+			name: "Date with time passed in, should be stripped",
+			params: url.Values{"service-date": []string{
+				"gt2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string(nil),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updatedParams := &tt.params
+			setRestrictiveServiceDateWindow(updatedParams)
+			assert.Equal(t, tt.expectedVals, (*updatedParams)["service-date"])
+		})
+	}
 }
