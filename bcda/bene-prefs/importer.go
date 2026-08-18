@@ -93,7 +93,6 @@ func (importer BenePrefsImporter) validate(ctx context.Context, metadata *models
 		metaInfo := string(bytes.TrimSpace(b[headTrailStart:headTrailEnd]))
 		if count == 0 {
 			if metaInfo != headerCode {
-				// invalid file header found
 				err := fmt.Errorf("invalid file header for file: %s", metadata.FilePath)
 				importer.Logger.Error(err)
 				return err
@@ -139,7 +138,7 @@ func (importer BenePrefsImporter) importFile(ctx context.Context, metadata *mode
 
 	err = importer.scanAndImport(ctx, metadata)
 	if err != nil {
-		err := fmt.Errorf("could not update bene-prefs file import status for file: %s, err: %w", metadata, err)
+		err := fmt.Errorf("error scanning and importing records from file: %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
 
 		repoErr := importer.Repo.UpdateBenePrefsImportStatus(ctx, metadata.FileID, constants.ImportFail)
@@ -218,6 +217,10 @@ func (importer BenePrefsImporter) scanAndImport(ctx context.Context, metadata *m
 				importer.Logger.Infof("Suppression records imported: %d\n", importedCount)
 			}
 		}
+	}
+	if err := sc.Err(); err != nil {
+		importer.Logger.Errorf("error encountered during scanning: %v", err)
+		return err
 	}
 
 	importer.Logger.Infof("Successfully imported %d records from bene-prefs file %s.", importedCount, metadata)

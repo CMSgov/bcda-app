@@ -1,7 +1,6 @@
 package beneprefs
 
 import (
-	"os"
 	"testing"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
@@ -82,10 +81,7 @@ func TestCleanupBenePrefsFiles(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	handler := mockHandler()
-
-	old := os.Getenv("S3_DELETE_TIMEOUT")
-	defer os.Setenv("S3_DELETE_TIMEOUT", old)
-	os.Setenv("S3_DELETE_TIMEOUT", "1")
+	t.Setenv("S3_DELETE_TIMEOUT", "1")
 
 	err := handler.Delete(t.Context(), "s3://test-bucket/test-prefix/test-file.txt")
 	assert.ErrorContains(t, err, "exceeded max wait time for ObjectNotExists waiter")
