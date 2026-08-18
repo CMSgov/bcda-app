@@ -107,7 +107,7 @@ func handleOptOutImport(ctx context.Context, repo models.Repository, s3Client bc
 	}
 
 	s, f, sk, err := importer.ImportDirectory(ctx, s3ImportPath)
-	result := fmt.Sprintf("Completed Bene-Prefs suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
+	result := fmt.Sprintf("Completed Bene-Prefs suppression data import.  Files imported: %v, Files failed: %v, Files skipped: %v", s, f, sk)
 	logger.Info(result)
 	return result, err
 }
