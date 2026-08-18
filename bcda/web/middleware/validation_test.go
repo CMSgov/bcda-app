@@ -123,20 +123,223 @@ func TestInvalidRequestURL(t *testing.T) {
 	}
 }
 
-func TestValidRequestHeaders(t *testing.T) {
-	ctx := context.Background()
-	ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
-	req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
-	assert.NoError(t, err)
+func TestParseHeaderValues(t *testing.T) {
+	tests := []struct {
+		name       string
+		headers    http.Header
+		headerName string
+		expected   []string
+	}{
+		{
+			name:       "singleValue",
+			headers:    http.Header{"Prefer": []string{constants.TestRespondAsync}},
+			headerName: "Prefer",
+			expected:   []string{constants.TestRespondAsync},
+		},
+		{
+			name:       "commaSeparatedValues",
+			headers:    http.Header{"Prefer": []string{constants.TestRespondAsync + ",handling=lenient"}},
+			headerName: "Prefer",
+			expected:   []string{constants.TestRespondAsync, "handling=lenient"},
+		},
+		{
+			name:       "whitespaceTrimmingAndEmptyTokens",
+			headers:    http.Header{"Prefer": []string{" " + constants.TestRespondAsync + " , , handling=lenient "}},
+			headerName: "Prefer",
+			expected:   []string{constants.TestRespondAsync, "handling=lenient"},
+		},
+		{
+			name:       "multiLineHeaders",
+			headers:    http.Header{"Prefer": []string{constants.TestRespondAsync, "handling=lenient"}},
+			headerName: "Prefer",
+			expected:   []string{constants.TestRespondAsync, "handling=lenient"},
+		},
+		{
+			name:       "missingHeader",
+			headers:    http.Header{},
+			headerName: "Prefer",
+			expected:   nil,
+		},
+	}
 
-	req = req.WithContext(ctx)
-	req.Header.Set("Accept", "application/fhir+json")
-	req.Header.Set("Prefer", constants.TestRespondAsync)
-
-	rr := httptest.NewRecorder()
-	ValidateRequestHeaders(noop).ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			results := parseHeaderValues(tt.headers, tt.headerName)
+			assert.Equal(t, tt.expected, results)
+		})
+	}
 }
+
+func TestHasHeaderToken(t *testing.T) {
+	tests := []struct {
+		name        string
+		values      []string
+		targetToken string
+		expected    bool
+	}{
+		{
+			name:        "exactMatch",
+			values:      []string{"respond-async"},
+			targetToken: "respond-async",
+			expected:    true,
+		},
+		{
+			name:        "caseInsensitiveMatch",
+			values:      []string{"RESPOND-ASYNC"},
+			targetToken: "respond-async",
+			expected:    true,
+		},
+		{
+			name:        "withParameters",
+			values:      []string{"respond-async; wait=10"},
+			targetToken: "respond-async",
+			expected:    true,
+		},
+		{
+			name:        "mediaTypeWithParameters",
+			values:      []string{"application/fhir+json; charset=utf-8"},
+			targetToken: "application/fhir+json",
+			expected:    true,
+		},
+		{
+			name:        "multipleValuesMatch",
+			values:      []string{"handling=lenient", "respond-async"},
+			targetToken: "respond-async",
+			expected:    true,
+		},
+		{
+			name:        "noMatch",
+			values:      []string{"handling=lenient"},
+			targetToken: "respond-async",
+			expected:    false,
+		},
+		{
+			name:        "emptySlice",
+			values:      nil,
+			targetToken: "respond-async",
+			expected:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, hasHeaderToken(tt.values, tt.targetToken))
+		})
+	}
+}
+
+func TestValidRequestHeaders(t *testing.T) {
+	tests := []struct {
+		name     string
+		setupReq func() *http.Request
+	}{
+		{
+			name: "StandardHeaders",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json")
+				req.Header.Set("Prefer", constants.TestRespondAsync)
+				return req
+			},
+		},
+		{
+			name: "PreferCommaSeparatedDirectives",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json")
+				req.Header.Set("Prefer", constants.TestRespondAsync+",handling=lenient")
+				return req
+			},
+		},
+		{
+			name: "PreferWithParameters",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json")
+				req.Header.Set("Prefer", constants.TestRespondAsync+"; wait=10")
+				return req
+			},
+		},
+		{
+			name: "CaseInsensitiveHeaders",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "APPLICATION/FHIR+JSON")
+				req.Header.Set("Prefer", "RESPOND-ASYNC")
+				return req
+			},
+		},
+		{
+			name: "PreferReversedDirectives",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json")
+				req.Header.Set("Prefer", "handling=lenient, "+constants.TestRespondAsync)
+				return req
+			},
+		},
+		{
+			name: "PreferWhitespaceTolerance",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json")
+				req.Header.Set("Prefer", constants.TestRespondAsync+" , handling=lenient")
+				return req
+			},
+		},
+		{
+			name: "PreferMultiLineHeaders",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json")
+				req.Header.Add("Prefer", "handling=lenient")
+				req.Header.Add("Prefer", constants.TestRespondAsync)
+				return req
+			},
+		},
+		{
+			name: "AcceptCommaSeparatedMediaTypes",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json, application/json")
+				req.Header.Set("Prefer", constants.TestRespondAsync)
+				return req
+			},
+		},
+		{
+			name: "AcceptWithParameters",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Set("Accept", "application/fhir+json; charset=utf-8")
+				req.Header.Set("Prefer", constants.TestRespondAsync)
+				return req
+			},
+		},
+		{
+			name: "AcceptMultiLineHeaders",
+			setupReq: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
+				req.Header.Add("Accept", "application/json")
+				req.Header.Add("Accept", "application/fhir+json")
+				req.Header.Set("Prefer", constants.TestRespondAsync)
+				return req
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = log.NewStructuredLoggerEntry(logrus.New(), ctx)
+			req := tt.setupReq().WithContext(ctx)
+
+			rr := httptest.NewRecorder()
+			ValidateRequestHeaders(noop).ServeHTTP(rr, req)
+			assert.Equal(t, http.StatusOK, rr.Code)
+		})
+	}
+}
+
 func TestInvalidRequestHeaders(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -146,8 +349,10 @@ func TestInvalidRequestHeaders(t *testing.T) {
 	}{
 		{"NoAcceptHeader", "", constants.TestRespondAsync, "Accept header is required"},
 		{"InvalidAcceptHeader", "invalid", constants.TestRespondAsync, "application/fhir+json is the only supported response format"},
+		{"UnsupportedAcceptHeader", "application/xml", constants.TestRespondAsync, "application/fhir+json is the only supported response format"},
 		{"NoPreferHeader", "application/fhir+json", "", "Prefer header is required"},
 		{"InvalidPreferHeader", "application/fhir+json", "invalid", "Only asynchronous responses are supported"},
+		{"PreferMissingRespondAsync", "application/fhir+json", "handling=lenient", "Only asynchronous responses are supported"},
 	}
 
 	for _, tt := range tests {
@@ -158,8 +363,12 @@ func TestInvalidRequestHeaders(t *testing.T) {
 			assert.NoError(t, err)
 
 			req = req.WithContext(ctx)
-			req.Header.Set("Accept", tt.acceptHeader)
-			req.Header.Set("Prefer", tt.preferHeader)
+			if tt.acceptHeader != "" {
+				req.Header.Set("Accept", tt.acceptHeader)
+			}
+			if tt.preferHeader != "" {
+				req.Header.Set("Prefer", tt.preferHeader)
+			}
 
 			rr := httptest.NewRecorder()
 			ValidateRequestHeaders(noop).ServeHTTP(rr, req)
