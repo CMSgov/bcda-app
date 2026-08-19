@@ -206,7 +206,7 @@ health_check:
   url: ""
   max_response_time_ms: 1000
   validates_json_path: []
-  tick_every: 300
+  tick_every: 150
   min_failure_duration: 600
 
 # -----------------------------------------------------------------------------
