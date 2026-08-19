@@ -2,6 +2,7 @@ package beneprefs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -68,87 +69,55 @@ func TestBenePrefsTestSuite(t *testing.T) {
 	suite.Run(t, new(BenePrefsTestSuite))
 }
 
-// func (s *BenePrefsTestSuite) TestImport() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
+func (s *BenePrefsTestSuite) TestImportFile() {
+	assert := assert.New(s.T())
+	ctx := context.Background()
 
-// 	hook := test.NewLocal(log.StandardLogger())
-// 	// 181120 file
-// 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-// 	metadata := &models.BenePrefsFilenameMetadata{
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-// 		Name:         constants.TestSuppressMetaFileName,
-// 		DeliveryDate: time.Now(),
-// 	}
+	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	metadata := &models.BenePrefsFilenameMetadata{
+		Timestamp:    fileTime,
+		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
+		Name:         constants.TestSuppressMetaFileName,
+		DeliveryDate: time.Now(),
+	}
 
-// 	importer, saver := s.createImporter()
-// 	err := importer.ImportData(ctx, metadata)
-// 	assert.Nil(err)
-// 	assert.Len(saver.Files, 1)
+	// happy path
+	repo := &models.MockRepository{}
+	repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), nil)
+	repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	repo.On("CreateBenePrefsRecord", mock.Anything, mock.Anything).Return(nil)
+	importer := s.createImporter(repo)
+	err := importer.importFile(ctx, metadata)
+	assert.Nil(err)
 
-// 	suppressionFile := saver.Files[0]
-// 	assert.Equal(constants.TestSuppressMetaFileName, suppressionFile.Name)
-// 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.UTC().Format("010203040506"))
-// 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
+	// issue saving the bene-prefs file record
+	repo = &models.MockRepository{}
+	repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), errors.New("throw db error"))
+	importer = s.createImporter(repo)
+	err = importer.importFile(ctx, metadata)
+	assert.ErrorContains(err, "failed to create bene-prefs file record for file")
+	assert.ErrorContains(err, "throw db error")
 
-// 	suppressions := saver.BenePrefsRecords
-// 	assert.Len(suppressions, 4)
-// 	assert.Equal("5SJ0A00AA00", suppressions[0].MBI)
-// 	assert.Equal("1-800", suppressions[0].SourceCode)
-// 	assert.Equal("4SF6G00AA00", suppressions[1].MBI)
-// 	assert.Equal("1-800", suppressions[1].SourceCode)
-// 	assert.Equal("4SH0A00AA00", suppressions[2].MBI)
-// 	assert.Equal("", suppressions[2].SourceCode)
-// 	assert.Equal("8SG0A00AA00", suppressions[3].MBI)
-// 	assert.Equal("1-800", suppressions[3].SourceCode)
+	// issue updating the bene-prefs file record status
+	repo = &models.MockRepository{}
+	repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), nil)
+	repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("throw db error"))
+	repo.On("CreateBenePrefsRecord", mock.Anything, mock.Anything).Return(nil)
+	importer = s.createImporter(repo)
+	err = importer.importFile(ctx, metadata)
+	assert.ErrorContains(err, "could not update bene-prefs file import status for file")
+	assert.ErrorContains(err, "throw db error")
 
-// 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
-// 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
-// 	metadata = &models.BenePrefsFilenameMetadata{
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"),
-// 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
-// 		DeliveryDate: time.Now(),
-// 	}
-
-// 	importer, saver = s.createImporter()
-// 	err = importer.ImportData(ctx, metadata)
-// 	assert.Nil(err)
-// 	assert.Len(saver.Files, 1)
-
-// 	suppressionFile = saver.Files[0]
-// 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
-// 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.UTC().Format("010203040506"))
-
-// 	suppressions = saver.BenePrefsRecords
-// 	assert.Len(suppressions, 250)
-// 	assert.Equal("1000000019", suppressions[0].MBI)
-// 	assert.Equal("N", suppressions[0].PrefIndicator)
-// 	assert.Equal("1000039915", suppressions[20].MBI)
-// 	assert.Equal("N", suppressions[20].PrefIndicator)
-// 	assert.Equal("1000099805", suppressions[100].MBI)
-// 	assert.Equal("N", suppressions[100].PrefIndicator)
-// 	assert.Equal("1000026399", suppressions[200].MBI)
-// 	assert.Equal("N", suppressions[200].PrefIndicator)
-// 	assert.Equal("1000098787", suppressions[249].MBI)
-// 	assert.Equal("", suppressions[249].PrefIndicator)
-
-// 	var optOut, optIn bool
-// 	entry := hook.LastEntry()
-// 	if _, ok := entry.Data["created_opt_outs_count"]; ok {
-// 		optOut = true
-// 		assert.Equal(entry.Data["created_opt_outs_count"], 86)
-// 	}
-// 	if _, ok := entry.Data["created_opt_ins_count"]; ok {
-// 		optIn = true
-// 		assert.Equal(entry.Data["created_opt_ins_count"], 71)
-// 	}
-
-// 	assert.True(optOut)
-// 	assert.True(optIn)
-
-// }
+	// issue saving the bene-prefs record
+	repo = &models.MockRepository{}
+	repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), nil)
+	repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	repo.On("CreateBenePrefsRecord", mock.Anything, mock.Anything).Return(errors.New("throw db error"))
+	importer = s.createImporter(repo)
+	err = importer.importFile(ctx, metadata)
+	assert.ErrorContains(err, "failed to create bene-prefs record")
+	assert.ErrorContains(err, "throw db error")
+}
 
 func (s *BenePrefsTestSuite) TestImport_MissingData() {
 	assert := assert.New(s.T())
@@ -161,7 +130,7 @@ func (s *BenePrefsTestSuite) TestImport_MissingData() {
 	repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(testUint, nil)
 	repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	importer := s.createImporter(repo)
-	err := importer.ImportData(ctx, metadata)
+	err := importer.importFile(ctx, metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
@@ -173,7 +142,7 @@ func (s *BenePrefsTestSuite) TestImport_MissingData() {
 		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "failed to parse the effective date '20191301' from file", false},
 		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012", "failed to parse the samhsa effective date '20191301' from file", false},
 		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013", "failed to parse beneficiary link key from file", false},
-		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "could not create bene-prefs file record for file", true},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "failed to create bene-prefs file record for file", true},
 	}
 
 	for _, tt := range tests {
@@ -189,15 +158,15 @@ func (s *BenePrefsTestSuite) TestImport_MissingData() {
 			repo := &models.MockRepository{}
 			repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, constants.ImportFail).Return(nil)
 			if tt.dbError {
-				repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(testUint, errors.New("throw db Error"))
+				repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(testUint, errors.New("throw db error"))
 			} else {
 				repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(testUint, nil)
 			}
 			importer := s.createImporter(repo)
 
-			err = importer.ImportData(ctx, metadata)
+			err = importer.importFile(ctx, metadata)
 			assert.NotNil(err)
-			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
+			assert.ErrorContains(err, fmt.Sprintf("%s: %s", tt.expErr, fp))
 		})
 	}
 }
@@ -335,60 +304,61 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles_TimeChange() {
 	assert.Equal(true, strings.Contains(err.Error(), "error moving unknown file"))
 }
 
-// func (s *BenePrefsTestSuite) TestCleanupSuppression() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
-// 	importer := s.createImporter()
+func (s *BenePrefsTestSuite) TestCleanupSuppression() {
+	assert := assert.New(s.T())
+	ctx := context.Background()
+	repo := &models.MockRepository{}
+	importer := s.createImporter(repo)
 
-// 	var suppresslist []*models.BenePrefsFilenameMetadata
+	var suppresslist []*models.BenePrefsFilenameMetadata
 
-// 	// failed import: file that's within the threshold - stay put
-// 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-// 	metadata := &models.BenePrefsFilenameMetadata{
-// 		Name:         constants.TestSuppressMetaFileName,
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-// 		Imported:     false,
-// 		DeliveryDate: time.Now(),
-// 	}
+	// failed import: file that's within the threshold - stay put
+	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
+	metadata := &models.BenePrefsFilenameMetadata{
+		Name:         constants.TestSuppressMetaFileName,
+		Timestamp:    fileTime,
+		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
+		Imported:     false,
+		DeliveryDate: time.Now(),
+	}
 
-// 	// failed import: file that's over the threshold - should move
-// 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-// 	metadata2 := &models.BenePrefsFilenameMetadata{
-// 		Name:         constants.TestSuppressBadPath,
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
-// 		Imported:     false,
-// 		DeliveryDate: fileTime,
-// 	}
+	// failed import: file that's over the threshold - should move
+	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	metadata2 := &models.BenePrefsFilenameMetadata{
+		Name:         constants.TestSuppressBadPath,
+		Timestamp:    fileTime,
+		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
+		Imported:     false,
+		DeliveryDate: fileTime,
+	}
 
-// 	// successful import: should move
-// 	metadata3 := &models.BenePrefsFilenameMetadata{
-// 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
-// 		Imported:     true,
-// 		DeliveryDate: time.Now(),
-// 	}
+	// successful import: should move
+	metadata3 := &models.BenePrefsFilenameMetadata{
+		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
+		Timestamp:    fileTime,
+		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
+		Imported:     true,
+		DeliveryDate: time.Now(),
+	}
 
-// 	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
-// 	err := importer.FileHandler.CleanupBenePrefsFiles(ctx, suppresslist)
-// 	assert.Nil(err)
+	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
+	err := importer.FileHandler.CleanupBenePrefsFiles(ctx, suppresslist)
+	assert.Nil(err)
 
-// 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
-// 	if err != nil {
-// 		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
-// 	}
+	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
+	if err != nil {
+		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
+	}
 
-// 	for _, file := range files {
-// 		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
+	for _, file := range files {
+		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
 
-// 		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
-// 			err = fmt.Errorf("unknown file moved %s", file.Name())
-// 			s.FailNow("test files did not correctly cleanup", err)
-// 		}
-// 	}
-// }
+		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
+			err = fmt.Errorf("unknown file moved %s", file.Name())
+			s.FailNow("test files did not correctly cleanup", err)
+		}
+	}
+}
 
 func (s *BenePrefsTestSuite) TestCleanupSuppression_Bad() {
 	assert := assert.New(s.T())
@@ -447,62 +417,51 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression_RenameFileError() {
 	assert.EqualError(err, "1 files could not be cleaned up")
 }
 
-// func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
-// 	assert := assert.New(s.T())
-// 	importer := s.createImporter()
-// 	db := database.Connect()
-// 	ctx := context.Background()
+func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
+	assert := assert.New(s.T())
+	ctx := context.Background()
 
-// 	importer.Saver = &BCDASaver{
-// 		Repo: postgres.NewRepository(db),
-// 	}
+	tests := []struct {
+		name           string
+		directory      string
+		success        int
+		failure        int
+		skipped        int
+		errorExpected  bool
+		errMessage     string
+		insertCarriage bool
+	}{
+		{name: "Valid test", directory: "../../shared_files/synthetic1800MedicareFiles/test2/", success: 2, failure: 0, skipped: 0, errorExpected: false, errMessage: ""},
+		{name: "Import failure", directory: "../../shared_files/suppressionfile_BadHeader/", success: 0, failure: 1, skipped: 0, errorExpected: true, errMessage: "one or more bene-prefs files failed to import correctly"},
+		{name: "Skipped import", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 2, errorExpected: false, errMessage: ""},
+		{name: "Carriage char in path", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 0, errorExpected: true, errMessage: "no such file or directory", insertCarriage: true},
+	}
 
-// 	tests := []struct {
-// 		name           string
-// 		directory      string
-// 		success        int
-// 		failure        int
-// 		skipped        int
-// 		errorExpected  bool
-// 		errMessage     string
-// 		deleteFiles    bool
-// 		insertCarriage bool
-// 	}{
-// 		{name: "Valid test", directory: "../../shared_files/synthetic1800MedicareFiles/test2/", success: 2, failure: 0, skipped: 0, errorExpected: false, errMessage: "", deleteFiles: true},
-// 		{name: "Import failure", directory: "../../shared_files/suppressionfile_BadHeader/", success: 0, failure: 1, skipped: 0, errorExpected: true, errMessage: "one or more suppression files failed to import correctly", deleteFiles: false},
-// 		{name: "Skipped import", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 2, errorExpected: false, errMessage: "", deleteFiles: false},
-// 		{name: "Carriage char in path", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 0, errorExpected: true, errMessage: "no such file or directory", deleteFiles: false, insertCarriage: true},
-// 	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tt.directory)
+			defer cleanup()
+			if tt.insertCarriage {
+				path += "\n"
+			}
 
-// 	for _, tt := range tests {
-// 		s.T().Run(tt.name, func(t *testing.T) {
+			repo := &models.MockRepository{}
+			if !tt.errorExpected {
+				repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), nil)
+				repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				repo.On("CreateBenePrefsRecord", mock.Anything, mock.Anything).Return(nil)
+			}
 
-// 			path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tt.directory)
-// 			defer cleanup()
-// 			if tt.insertCarriage {
-// 				path += "\n"
-// 			}
-
-// 			success, failure, skipped, err := importer.ImportDirectory(ctx, path)
-// 			if tt.errorExpected {
-// 				assert.Equal(true, strings.Contains(err.Error(), tt.errMessage))
-// 			} else {
-// 				assert.Nil(err)
-// 			}
-// 			assert.Equal(tt.success, success)
-// 			assert.Equal(tt.failure, failure)
-// 			assert.Equal(tt.skipped, skipped)
-
-// 			if tt.deleteFiles {
-// 				fs := postgrestest.GetSuppressionFileByName(s.T(), db,
-// 					"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
-// 					"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
-// 				assert.Len(fs, 2)
-// 				for _, f := range fs {
-// 					postgrestest.DeleteSuppressionFileByID(s.T(), db, f.ID)
-// 				}
-// 			}
-
-// 		})
-// 	}
-// }
+			importer := s.createImporter(repo)
+			success, failure, skipped, err := importer.ImportDirectory(ctx, path)
+			if tt.errorExpected {
+				assert.ErrorContains(err, tt.errMessage)
+			} else {
+				assert.Nil(err)
+			}
+			assert.Equal(tt.success, success)
+			assert.Equal(tt.failure, failure)
+			assert.Equal(tt.skipped, skipped)
+		})
+	}
+}

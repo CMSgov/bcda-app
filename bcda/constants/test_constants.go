@@ -8,7 +8,7 @@ const SsasClientErr = "no client for SSAS; %s"
 const TestChangeTimeErr = "Failed to change modified time for file"
 
 // Messages Constants
-const CompleteMedSupDataImp = "Completed 1-800-MEDICARE suppression data import."
+const CompleteMedSupDataImp = "Completed Bene-Prefs suppression data import."
 const TestACOName = "ACO name (--name) must be provided"
 const TestReqErr = "Request error"
 const InProgress = "In Progress"
@@ -62,7 +62,6 @@ const GenClientCred = "generate-client-credentials"
 const ResetClientCred = "reset-client-credentials" // #nosec - G101 credentials for unit testing
 const ArchJobFiles = "archive-job-files"
 
-const ImportSupDir = "import-suppression-directory"
 const DirectoryArg = "--directory"
 const FileSourceArg = "--filesource"
 const S3EndpointArg = "--s3endpoint"
