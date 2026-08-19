@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -236,6 +237,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnq
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
 	updateParamWithTypeFilter(&params, jobData.TypeFilter)
+	setRestrictiveServiceDateWindow(&params)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)
 	if err != nil {
@@ -412,6 +414,116 @@ func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {
 	if !claimsWindow.UpperBound.IsZero() {
 		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.UpperBound.Format(isoDate)))
 	}
+}
+
+type serviceDateVal struct {
+	prefix string
+	date   time.Time
+}
+
+// setRestrictiveServiceDateWindow sets the most restrictive window of time from which to pull data from BFD via service-date params.
+// BFD only allows for one earliest boundry and one latest boundry.
+// We need to do some comparisons to make sure we apply the most restrictive option for each.
+// eg "gt2025" is a more restrictive earliest boundry than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
+// known edge cases that are currently not accounted for (low risk, low priority, time constraints):
+// - we dont allow for hours, mins, secs, tz, etc
+func setRestrictiveServiceDateWindow(params *url.Values) {
+	serviceDates := (*params)["service-date"]
+	if len(serviceDates) <= 0 {
+		return
+	}
+
+	var earliestDates, latestDates []serviceDateVal
+	for _, date := range serviceDates {
+		if strings.HasPrefix(date, "ge") || strings.HasPrefix(date, "gt") {
+			earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+		} else if strings.HasPrefix(date, "le") || strings.HasPrefix(date, "lt") {
+			latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+		} else if strings.HasPrefix(date, "eq") {
+			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date[2:])})
+			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
+		} else if strings.HasPrefix(date, "20") {
+			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date)})
+			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
+		}
+	}
+
+	// remove any zero dates to cleanse list of invalids
+	earliestDates = slices.DeleteFunc(earliestDates, func(s serviceDateVal) bool { return s.date.IsZero() })
+	latestDates = slices.DeleteFunc(latestDates, func(s serviceDateVal) bool { return s.date.IsZero() })
+
+	// sort earliest in descending order, and latest in ascending order so we can pick the most restrictive for each
+	slices.SortFunc(earliestDates, func(a, b serviceDateVal) int {
+		if c := b.date.Compare(a.date); c != 0 {
+			return c
+		}
+
+		if a.prefix == "gt" {
+			return -1
+		}
+		if b.prefix == "gt" {
+			return 1
+		}
+
+		return 0
+	})
+	slices.SortFunc(latestDates, func(a, b serviceDateVal) int {
+		if c := a.date.Compare(b.date); c != 0 {
+			return c
+		}
+
+		if a.prefix == "lt" {
+			return -1
+		}
+		if b.prefix == "lt" {
+			return 1
+		}
+
+		return 0
+	})
+
+	// remove all existing service-date instances so we can start from scratch
+	params.Del("service-date")
+	if len(earliestDates) > 0 {
+		params.Add("service-date", earliestDates[0].prefix+earliestDates[0].date.Format("2006-01-02"))
+	}
+	if len(latestDates) > 0 {
+		params.Add("service-date", latestDates[0].prefix+latestDates[0].date.Format("2006-01-02"))
+	}
+}
+
+func parseDate(date string) time.Time {
+	formats := []string{
+		"2006-01-02",
+		"2006-01",
+		"2006",
+	}
+	for _, format := range formats {
+		if parsedDate, err := time.Parse(format, date); err == nil {
+			return parsedDate
+		}
+	}
+
+	return time.Time{}
+}
+
+func parseLatestDateFromEqualPrefix(date string) time.Time {
+	parsedDate, err := time.Parse("2006-01-02", date)
+	if err == nil {
+		return parsedDate.AddDate(0, 0, 1)
+	}
+
+	parsedDate, err = time.Parse("2006-01", date)
+	if err == nil {
+		return parsedDate.AddDate(0, 1, 0)
+	}
+
+	parsedDate, err = time.Parse("2006", date)
+	if err == nil {
+		return parsedDate.AddDate(1, 0, 0)
+	}
+
+	return time.Time{}
 }
 
 func updateParamWithLastUpdated(params *url.Values, since string, transactionTime time.Time) {

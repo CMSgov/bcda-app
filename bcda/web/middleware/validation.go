@@ -487,7 +487,8 @@ func validateServiceDateSubqueryParameter(dateParam string) error {
 	fhirDateTime := ""
 
 	// Check for the optional 2-character prefix
-	var validPrefixes = []string{"eq", "ne", "lt", "gt", "le", "ge", "sa", "eb", "ap"}
+	// BFD only supports eq, ge, gt, lt, le as of 2026-08-17. See: https://cmsgov.slack.com/archives/CMT1YS2KY/p1786716165942379
+	var validPrefixes = []string{"eq", "lt", "gt", "le", "ge"} // "ne", "sa", "eb", "ap"}
 	if len(dateParam) > 2 && slices.Contains(validPrefixes, dateParam[:2]) {
 		fhirDateTime = dateParam[2:]
 	} else {
