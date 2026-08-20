@@ -19,9 +19,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
-	"github.com/CMSgov/bcda-app/conf"
-	"github.com/ccoveille/go-safecast"
 
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/attribution-import/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -71,10 +68,6 @@ func setUpApp() *cli.App {
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
-	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
-	if err != nil {
-		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
-	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -97,7 +90,8 @@ func setUpApp() *cli.App {
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
 
 				err := profiler.Start(
-					profiler.WithService("BCDA"),
+					profiler.WithTags("application:bcda"),
+					profiler.WithService("api"),
 					profiler.WithEnv(os.Getenv("ENV")),
 					profiler.WithVersion(constants.Version),
 				)
@@ -309,39 +303,6 @@ func setUpApp() *cli.App {
 				}
 				fmt.Fprintf(app.Writer, "Completed CCLF runout file generation. Generated %d zip files.", rc)
 				return nil
-			},
-		},
-		{
-			Name:     "import-suppression-directory",
-			Category: constants.CliDataImpCategory,
-			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "directory",
-					Usage:       "Directory where suppression files are located",
-					Destination: &filePath,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				ignoreSignals()
-				r := postgres.NewRepository(db)
-
-				var file_handler bp.BenePrefsFileHandler = &bp.LocalFileHandler{
-					Logger:                 log.API,
-					PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-					FileArchiveThresholdHr: hours,
-				}
-
-				importer := bp.BenePrefsImporter{
-					FileHandler:          file_handler,
-					Repo:                 r,
-					Logger:               log.API,
-					ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
-				}
-				ctx := context.Background()
-				s, f, sk, err := importer.ImportDirectory(ctx, filePath)
-				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
-				return err
 			},
 		},
 		{

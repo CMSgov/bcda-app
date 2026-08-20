@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -23,17 +22,18 @@ const (
 	acoIdStart, acoIdEnd                         = 384, 389
 )
 
-func ParseMetadata(filename string) (models.BenePrefsFilenameMetadata, error) {
+// parseMetadata parses the filename into a BenePrefsFilenameMetadata struct, returning an error if the filename is invalid or the date cannot be parsed
+func parseMetadata(filename string) (models.BenePrefsFilenameMetadata, error) {
 	var metadata models.BenePrefsFilenameMetadata
-	isOptOut, matches := IsOptOut(filename)
-	if !isOptOut {
+	matches, isBenePrefs := parseFileName(filename)
+	if !isBenePrefs {
 		return metadata, fmt.Errorf("invalid filename for file: %s", filename)
 	}
 
 	filenameDate := matches[3]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		return metadata, errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
+		return metadata, fmt.Errorf("failed to parse date '%s' from file: %s, err: %w", filenameDate, filename, err)
 	}
 
 	metadata.Timestamp = t
@@ -42,25 +42,28 @@ func ParseMetadata(filename string) (models.BenePrefsFilenameMetadata, error) {
 	return metadata, nil
 }
 
-func IsOptOut(filename string) (isOptOut bool, matches []string) {
+// parseFileName parses the given filename into matches and verifies that it is a bene-prefs file via name regex
+func parseFileName(filename string) ([]string, bool) {
 	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
-	matches = filenameRegexp.FindStringSubmatch(filename)
+	matches := filenameRegexp.FindStringSubmatch(filename)
 	if len(matches) > 3 {
-		isOptOut = true
+		return matches, true
 	}
-	return isOptOut, matches
+
+	return nil, false
 }
 
-func ParseRecord(metadata *models.BenePrefsFilenameMetadata, b []byte) (*models.BenePrefsRecord, error) {
+// parseRecord parses bytes into a BenePrefsRecord struct, returning an error if any of the fields are invalid
+func parseRecord(metadata *models.BenePrefsFilenameMetadata, b []byte) (*models.BenePrefsRecord, error) {
 	ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
-	dt, err := ConvertDt(ds)
+	dt, err := convertDt(ds)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.FilePath)
+		return nil, fmt.Errorf("failed to parse the effective date '%s' from file: %s, err: %w", ds, metadata.FilePath, err)
 	}
 	ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
-	samhsaDt, err := ConvertDt(ds)
+	samhsaDt, err := convertDt(ds)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.FilePath)
+		return nil, fmt.Errorf("failed to parse the samhsa effective date '%s' from file: %s, err: %w", ds, metadata.FilePath, err)
 	}
 	keyval := string(bytes.TrimSpace(b[lKeyStart:lKeyEnd]))
 	if keyval == "" {
@@ -68,7 +71,7 @@ func ParseRecord(metadata *models.BenePrefsFilenameMetadata, b []byte) (*models.
 	}
 	lk, err := strconv.Atoi(keyval)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.FilePath)
+		return nil, fmt.Errorf("failed to parse beneficiary link key from file: %s, err: %w", metadata.FilePath, err)
 	}
 
 	return &models.BenePrefsRecord{
@@ -85,7 +88,7 @@ func ParseRecord(metadata *models.BenePrefsFilenameMetadata, b []byte) (*models.
 	}, nil
 }
 
-func ConvertDt(s string) (time.Time, error) {
+func convertDt(s string) (time.Time, error) {
 	if s == "" {
 		return time.Time{}, nil
 	}

@@ -379,33 +379,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 }
 
-func (s *CLITestSuite) TestImportDirectoryFromLocal() {
-	assert := assert.New(s.T())
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/synthetic1800MedicareFiles/test2/")
-	defer cleanup()
-
-	args := []string{"bcda", constants.ImportSupDir, constants.DirectoryArg, path}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), constants.CompleteMedSupDataImp)
-	assert.Contains(buf.String(), "Files imported: 2")
-	assert.Contains(buf.String(), "Files failed: 0")
-	assert.Contains(buf.String(), "Files skipped: 0")
-
-	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
-		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
-		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
-
-	assert.Len(fs, 2)
-	for _, f := range fs {
-		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
-	}
-}
-
 func (s *CLITestSuite) TestDenylistACO() {
 	denylistedCMSID := testUtils.RandomHexID()[0:4]
 	notDenylistedCMSID := testUtils.RandomHexID()[0:4]

@@ -143,6 +143,21 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     expiration {
       days = 14
     }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 14
+    }
+  }
+
+  rule {
+    id     = "cleanup-expired-delete-markers"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      expired_object_delete_marker = true
+    }
   }
 }
 
