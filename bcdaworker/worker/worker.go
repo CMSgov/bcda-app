@@ -434,11 +434,7 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 		return models.CCLFBeneficiary{}, err
 	}
 
-	fmt.Printf("----- bene returned from mock: %+v\n", bene)
-
 	cclfBeneficiary := *bene
-
-	fmt.Printf("----- cclf bene set: %+v\n", cclfBeneficiary)
 
 	if fetchBBId {
 		bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI, jobData)
@@ -454,8 +450,6 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 			cclfBeneficiary.BlueButtonID = bbID
 		}
 	}
-
-	fmt.Printf("----- cclf bene before return: %+v\n", cclfBeneficiary)
 
 	return cclfBeneficiary, nil
 }
