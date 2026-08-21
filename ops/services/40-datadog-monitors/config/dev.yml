@@ -1,8 +1,8 @@
 enabled:
   ecs: true
-  sqs: true
+  sqs: false
   sns: false
-  lambda: true
+  lambda: false
   s3: true
   rds: true
   synthetics: true
