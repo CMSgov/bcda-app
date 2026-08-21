@@ -6,9 +6,6 @@
 /bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:pcT6bw==,iv:ba2euw4TLAdrXdZUe0QoPytG6j+ThgoxHM3I6ZwrU9I=,tag:c0X7goSVTVe7OjxjsLPdLw==,type:str]
 #ENC[AES256_GCM,data:3wxEuksNauPlFZbPdycCPr+NQHTvwVhf,iv:nuD8WRwbERBAiiiC/yo4mMkOGjuLwSR8teY/tPA/MjE=,tag:XFG5P/CptJ8YWXZ3RMuWeQ==,type:comment]
 /bcda/${env}/nonsensitive/bcda-test-alarm-to-slack-bucket: bcda-test-alarm-to-slack-function-20250811163806563400000001
-/bcda/${env}/nonsensitive/bcda-test-cclf-import-bucket: bcda-test-cclf-import-function-20250528160013829000000001
-/bcda/${env}/nonsensitive/bcda-test-opt-out-export-bucket: bcda-test-opt-out-export-function-20250528140632448800000001
-/bcda/${env}/nonsensitive/bcda-test-opt-out-import-bucket: bcda-test-opt-out-import-function-20250528140643897600000001
 #ENC[AES256_GCM,data:Eoq+xMu3CDp2A29Q6nfGzWEIjP7f+u0a6O/D5A==,iv:WwoUn+pHv8ZMuTBIQv4v9iRIQSNnuVysCjk28uU7V14=,tag:5MoNtqsRIsbALudk3DD/Ow==,type:comment]
 /bcda/${env}/sensitive/api/ARCHIVE_THRESHOLD_HR: ENC[AES256_GCM,data:bRo=,iv:LboZw8eg33Crgd2ZN4vr3sFSrAr9IoacUbVXgf+arOk=,tag:bYFMfO0s3SNkKUCZviCs1A==,type:str]
 /bcda/${env}/sensitive/api/AUTH_HASH_ITERATIONS: ENC[AES256_GCM,data:P7/cjiU3,iv:41H9X8IEc3Qez+vbpbFbS+VDeGW3opwEfsIRHxzN+QM=,tag:J/aL7v/ocktcqElDYXDN3A==,type:str]
