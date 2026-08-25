@@ -81,10 +81,10 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
 		apiV3 := v3.NewApiV3(db, pool)
 		var v3RequestValidators = []func(http.Handler) http.Handler{
-			middleware.ACOEnabled(cfg), middleware.V3AccessControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
+			middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
 		}
 		var v3NonExportRequestValidators = []func(http.Handler) http.Handler{
-			middleware.ACOEnabled(cfg), middleware.V3AccessControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+			middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 		}
 		r.Route("/api/v3", func(r chi.Router) {
 			r.With(append(commonAuth, v3RequestValidators...)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
