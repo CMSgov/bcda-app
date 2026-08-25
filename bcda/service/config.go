@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -32,7 +31,6 @@ type Config struct {
 	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"50"`
 	ACOConfigs              []ACOConfig `conf:"aco_config"`
-	V3EnabledACOs           []string    `conf:"v3_enabled_acos"` // Simple list of ACOs with v3 access
 	CutoffDuration          time.Duration
 	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
 	V1V2DenyRegexes         []string        `conf:"v1_v2_deny_regexes"`
@@ -127,19 +125,6 @@ func (cfg *Config) IsACODisabled(CMSID string) bool {
 	}
 	// If the ACO does not exist in our config they are automatically disabled
 	return true
-}
-
-func (cfg *Config) IsACOV3Enabled(ACOID string) bool {
-	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
-		return true
-	}
-
-	for _, aco := range cfg.V3EnabledACOs {
-		if aco == ACOID {
-			return true
-		}
-	}
-	return false
 }
 
 // IsSupportedACO determines if the particular ACO is supported by checking

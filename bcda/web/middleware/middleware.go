@@ -62,36 +62,6 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 	}
 }
 
-func V3AccessControl(cfg *service.Config) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := handleAuthData(r)
-			if !ok {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			rw, _ := getResponseWriterFromRequestPath(w, r)
-			if rw == nil {
-				return
-			}
-
-			if !cfg.IsACOV3Enabled(ad.CMSID) {
-				ctx, _ := log.WriteWarnWithFields(
-					r.Context(),
-					fmt.Sprintf("%s: Failed to begin v3 request, CMSID %s does not have v3 access", responseutils.UnauthorizedErr, ad.CMSID),
-					logrus.Fields{"resp_status": http.StatusForbidden},
-				)
-				rw.OpOutcome(ctx, w, http.StatusForbidden, responseutils.UnauthorizedErr, "V3 access not enabled for this ACO")
-				return
-			}
-			next.ServeHTTP(w, r)
-		}
-
-		return http.HandlerFunc(fn)
-	}
-}
-
 func V1V2DenyControl(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
