@@ -17,3 +17,7 @@ health_check:
     - database
     - ssas
     - ssas_introspect
+
+static_site:
+  enabled: true
+  url: "https://stage.bcda.cms.gov/"

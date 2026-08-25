@@ -43,7 +43,7 @@ locals {
   synthetics_tests = concat(
     local.has_health_check ? [
       {
-        name    = "Health Check"
+        name    = "health-check"
         type    = "api"
         subtype = "http"
         status  = "live"
@@ -86,7 +86,7 @@ locals {
     ] : [],
     local.has_static_site ? [
       {
-        name    = "Static Site Monitor"
+        name    = "static-site-monitor"
         type    = "api"
         subtype = "http"
         status  = "live"
