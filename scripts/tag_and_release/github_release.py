@@ -5,10 +5,17 @@ import sys
 import urllib.request
 
 
+def safe_path(path):
+    resolved = os.path.realpath(path)
+    base_dir = os.path.realpath(os.getcwd())
+    if resolved != base_dir and not resolved.startswith(base_dir + os.sep):
+        raise ValueError(f"path {path!r} is outside the allowed directory")
+    return resolved
+
 def main(release, release_file, repo):
     access_token = os.environ['GITHUB_ACCESS_TOKEN']
 
-    with open(release_file, 'r') as f:
+    with open(safe_path(release_file), 'r') as f:
         data = {
             "tag_name": release,
             "name": release,
@@ -37,12 +44,20 @@ def main(release, release_file, repo):
     else:
         print("Successfully created release: %s" % release)
 
+def verify_repo(repo):
+    if not repo.startswith('bcda'):
+        raise argparse.ArgumentTypeError(f"non-bcda repo '{repo}' passed as argument")
+
+def verify_release(release):
+    if not release.startswith('r'):
+        raise argparse.ArgumentTypeError(f"invalid release tag '{release}' passed as argument")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--release', dest='release', type=str,
+        '--release', dest='release', type=verify_release,
         help='The version tag/identifier for the release'
     )
 
@@ -52,7 +67,7 @@ if __name__ == "__main__":
     )
  
     parser.add_argument(
-        '--repo', dest='repo', type=str,
+        '--repo', dest='repo', type=verify_repo,
         help='The repository of the release (i.e., /repos/CMSgov/bcda-app/releases)'
     )
 
