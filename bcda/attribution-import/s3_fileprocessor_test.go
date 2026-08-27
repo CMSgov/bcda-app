@@ -2,18 +2,20 @@ package attributionimport
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type S3ProcessorTestSuite struct {
@@ -225,93 +227,87 @@ func TestS3ProcessorTestSuite(t *testing.T) {
 // 	}
 // }
 
-// func (s *S3ProcessorTestSuite) TestCleanupCCLF() {
-// 	assert := assert.New(s.T())
-// 	cclfmap := make(map[string][]*cclfZipMetadata)
-// 	acoID := "A0001"
+func (s *S3ProcessorTestSuite) TestCleanupCCLF() {
+	assert := assert.New(s.T())
+	cclfmap := make(map[string][]*cclfZipMetadata)
+	acoID := "A0001"
 
-// 	bucketName := uuid.NewString()
-// 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, constants.CCLF8CompPath))
-// 	// defer cleanup()
-// 	mockS3 := &bcdaaws.MockS3Client{}
-// 	mockS3.On("DeleteObject", mock.Anything).Return(&s3.DeleteObjectOutput{}, nil)
+	bucketName := uuid.NewString()
 
-// 	// failed import: stay put
-// 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
-// 	cclf0metadata := &cclfFileMetadata{
-// 		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
-// 		env:          "test",
-// 		acoID:        acoID,
-// 		cclfNum:      8,
-// 		perfYear:     18,
-// 		timestamp:    fileTime,
-// 		deliveryDate: time.Now(),
-// 	}
+	// failed import: stay put
+	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
+	cclf0metadata := &cclfFileMetadata{
+		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
+		env:          "test",
+		acoID:        acoID,
+		cclfNum:      8,
+		perfYear:     18,
+		timestamp:    fileTime,
+		deliveryDate: time.Now(),
+	}
 
-// 	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-// 	cclf8metadata := &cclfFileMetadata{
-// 		name:         constants.CCLF8Name,
-// 		env:          "test",
-// 		acoID:        acoID,
-// 		cclfNum:      8,
-// 		perfYear:     18,
-// 		timestamp:    fileTime,
-// 		deliveryDate: time.Now(),
-// 	}
+	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
+	cclf8metadata := &cclfFileMetadata{
+		name:         constants.CCLF8Name,
+		env:          "test",
+		acoID:        acoID,
+		cclfNum:      8,
+		perfYear:     18,
+		timestamp:    fileTime,
+		deliveryDate: time.Now(),
+	}
 
-// 	cclfmap[acoID] = []*cclfZipMetadata{
-// 		{
-// 			cclf0Metadata: *cclf0metadata,
-// 			cclf8Metadata: *cclf8metadata,
-// 			filePath:      filepath.Join(bucketName, constants.CCLF8CompPath),
-// 			imported:      false,
-// 		},
-// 	}
+	cclfmap[acoID] = []*cclfZipMetadata{
+		{
+			cclf0Metadata: *cclf0metadata,
+			cclf8Metadata: *cclf8metadata,
+			filePath:      filepath.Join(bucketName, constants.CCLF8CompPath),
+			imported:      false,
+		},
+	}
 
-// 	deletedCount, err := s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
-// 	assert.Equal(0, deletedCount)
-// 	assert.Nil(err)
+	deletedCount, err := s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(0, deletedCount)
+	assert.Nil(err)
 
-// 	// Cleanup file after import
-// 	cclfmap[acoID][0].imported = true
+	// Cleanup file after import
+	cclfmap[acoID][0].imported = true
 
-// 	deletedCount, err = s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
-// 	assert.Equal(1, deletedCount)
-// 	assert.Nil(err)
-// }
+	deletedCount, err = s.cclfProcessor.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(1, deletedCount)
+	assert.Nil(err)
+}
 
-// func (s *S3ProcessorTestSuite) TestCleanupCSV() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
-// 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
-// 	bucketName := uuid.NewString()
-// 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+func (s *S3ProcessorTestSuite) TestCleanupCSV() {
+	assert := assert.New(s.T())
+	ctx := context.Background()
+	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+	bucketName := uuid.NewString()
 
-// 	tests := []struct {
-// 		name     string
-// 		filepath string
-// 		imported bool
-// 		err      error
-// 	}{
-// 		{"Clean up sucessful import", filepath.Join(bucketName, path), true, nil},
-// 		{"Clean up failed import", filepath.Join(bucketName, path), false, nil},
-// 	}
+	tests := []struct {
+		name     string
+		filepath string
+		imported bool
+		err      error
+	}{
+		{"Clean up sucessful import", filepath.Join(bucketName, path), true, nil},
+		{"Clean up failed import", filepath.Join(bucketName, path), false, nil},
+	}
 
-// 	for _, test := range tests {
-// 		s.T().Run(test.name, func(tt *testing.T) {
-// 			// defer cleanup()
-// 			csv := csvFile{
-// 				metadata: csvFileMetadata{},
-// 				imported: test.imported,
-// 				filepath: test.filepath,
-// 			}
-// 			err := s.csvProcessor.CleanUpCSV(ctx, csv)
-// 			assert.Nil(err)
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			csv := csvFile{
+				metadata: csvFileMetadata{},
+				imported: test.imported,
+				filepath: test.filepath,
+			}
+			err := s.csvProcessor.CleanUpCSV(ctx, csv)
+			assert.Nil(err)
 
-// 		})
-// 	}
+		})
+	}
 
-// }
+}
 
 // func (s *S3ProcessorTestSuite) TestLoadCSV() {
 // 	assert := assert.New(s.T())
