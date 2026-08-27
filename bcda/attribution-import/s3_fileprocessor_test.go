@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -26,10 +28,35 @@ type S3ProcessorTestSuite struct {
 	csvProcessor  CSVFileProcessor
 }
 
+type mockS3ForCleanup struct {
+	bcdaaws.MockS3Client
+	deleted map[string]bool
+}
+
+func newMockS3ForCleanup() *mockS3ForCleanup {
+	return &mockS3ForCleanup{
+		deleted: make(map[string]bool),
+	}
+}
+
+func (m *mockS3ForCleanup) DeleteObject(ctx context.Context, input *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	if input != nil && input.Key != nil {
+		m.deleted[*input.Key] = true
+	}
+	return &s3.DeleteObjectOutput{}, nil
+}
+
+func (m *mockS3ForCleanup) HeadObject(ctx context.Context, input *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+	if input != nil && input.Key != nil && m.deleted[*input.Key] {
+		return nil, &s3types.NotFound{}
+	}
+	return &s3.HeadObjectOutput{}, nil
+}
+
 func (s *S3ProcessorTestSuite) SetupSuite() {
 	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
-	client := &bcdaaws.MockS3Client{}
+	client := newMockS3ForCleanup()
 
 	s.basePath = "../../shared_files"
 	s.cclfProcessor = &S3FileProcessor{
