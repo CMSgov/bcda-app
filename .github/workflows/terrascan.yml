@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       - name: Run Terrascan Script
         run: |
-          ./scripts/terrascan.sh ./terraform
+          ./scripts/terrascan.sh ./ops/services
           set +x
           high=$(jq '[.[].results.scan_summary.high] | add' < terrascan_report.json)
           if [[ $high -gt 0 ]];
