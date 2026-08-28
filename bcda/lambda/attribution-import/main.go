@@ -15,8 +15,8 @@ import (
 
 	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -32,6 +32,15 @@ type AttributionImportHandler struct {
 	CSVImporter  ai.CSVImporterInterface
 	CCLFImporter ai.CCLFImporterInterface
 	CheckIfCSV   func(filePath string) (bool, error)
+}
+
+func (h *AttributionImportHandler) newFileProcessor(logger *logrus.Entry) *ai.S3FileProcessor {
+	return &ai.S3FileProcessor{
+		Handler: fh.S3FileHandler{
+			Client: h.S3Client,
+			Logger: logger,
+		},
+	}
 }
 
 func main() {
@@ -140,20 +149,15 @@ func (h *AttributionImportHandler) handleCSVImport(ctx context.Context, s3Import
 	importer := h.CSVImporter
 	if importer == nil {
 		importer = ai.CSVImporter{
-			Logger:  logger,
-			PgxPool: h.Pool,
-			FileProcessor: &ai.S3FileProcessor{
-				Handler: bp.S3FileHandler{
-					Client: h.S3Client,
-					Logger: logger,
-				},
-			},
+			Logger:        logger,
+			PgxPool:       h.Pool,
+			FileProcessor: h.newFileProcessor(logger),
 		}
 	}
 
 	err := importer.ImportCSV(ctx, s3ImportPath)
 	if err != nil {
-		logger.Error("error returned from ImportCSV: ", err)
+		logger.WithError(err).Error("error returned from ImportCSV")
 		return "", err
 	}
 
@@ -168,18 +172,13 @@ func (h *AttributionImportHandler) handleCclfImport(ctx context.Context, s3Impor
 
 	importer := h.CCLFImporter
 	if importer == nil {
-		fileProcessor := &ai.S3FileProcessor{
-			Handler: bp.S3FileHandler{
-				Client: h.S3Client,
-				Logger: logger,
-			},
-		}
+		fileProcessor := h.newFileProcessor(logger)
 		importer = ai.NewCclfImporter(logger, fileProcessor, h.Pool)
 	}
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, s3ImportPath)
 	if err != nil {
-		logger.Error("error returned from ImportCCLFDirectory: ", err)
+		logger.WithError(err).Error("error returned from ImportCCLFDirectory")
 		return "", err
 	}
 
