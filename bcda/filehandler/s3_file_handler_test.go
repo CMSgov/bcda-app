@@ -62,13 +62,6 @@ func (m *configurableMockS3Client) DeleteObject(ctx context.Context, input *s3.D
 	return m.MockS3Client.DeleteObject(ctx, input, optFns...)
 }
 
-func mockHandler() *S3FileHandler {
-	return &S3FileHandler{
-		Client: &bcdaaws.MockS3Client{},
-		Logger: logrus.New(),
-	}
-}
-
 func TestLoggerFunctions(t *testing.T) {
 	logger, hook := test.NewNullLogger()
 	handler := &S3FileHandler{
