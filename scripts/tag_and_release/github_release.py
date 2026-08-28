@@ -15,6 +15,7 @@ def safe_path(path):
 def main(release, release_file, repo):
     access_token = os.environ['GITHUB_ACCESS_TOKEN']
 
+    resp = None
     with open(safe_path(release_file), 'r') as f:
         data = {
             "tag_name": release,
@@ -36,9 +37,10 @@ def main(release, release_file, repo):
             headers=headers,
             method='POST'
         )
-        resp = urllib.request.urlopen(req)
+        if req.host in 'https://api.github.com':
+            resp = urllib.request.urlopen(req)
 
-    if resp.status != 201:
+    if not resp or resp.status != 201:
         print("Could not create release: %s" % release)
         sys.exit(1)
     else:
