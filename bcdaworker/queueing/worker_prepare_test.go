@@ -370,13 +370,31 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
-	basepath := "/v1/fhir"
-	svc := &service.MockService{}
-	c := new(client.MockBlueButtonClient)
-	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
-	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r, pool: s.pool}
-	_, err := worker.GetBundleLastUpdated(basepath, worker_types.JobEnqueueArgs{})
-	assert.Nil(s.T(), err)
+	tests := []struct {
+		name     string
+		basepath string
+		hasErr   bool
+	}{
+		{"v1 fhir path", constants.BFDV1Path, false},
+		{"v2 fhir path", constants.BFDV2Path, false},
+		{"v3 fhir path", constants.BFDV3Path, false},
+		{"unknown path", "/unknown/path", true},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			svc := &service.MockService{}
+			c := new(client.MockBlueButtonClient)
+			c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, v3Client: c, r: s.r, pool: s.pool}
+			_, err := worker.GetBundleLastUpdated(tt.basepath, worker_types.JobEnqueueArgs{})
+			if tt.hasErr {
+				assert.NotNil(s.T(), err)
+			} else {
+				assert.Nil(s.T(), err)
+			}
+		})
+	}
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {

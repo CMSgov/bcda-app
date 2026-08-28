@@ -202,7 +202,8 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 		b, err := p.v2Client.GetPatient(jobData, "0")
 		return b.Meta.LastUpdated, err
 	case constants.BFDV3Path:
-		return jobData.TransactionTime, nil // TODO: see https://jira.cms.gov/browse/BCDA-10317
+		b, err := p.v3Client.GetPatient(jobData, "0")
+		return b.Meta.LastUpdated, err
 	default:
 		return time.Time{}, errors.New("no BFD base path")
 	}
