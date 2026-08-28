@@ -3,6 +3,7 @@ package filehandler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -132,9 +133,11 @@ func TestOpenFileBytes(t *testing.T) {
 					ContentLength: aws.Int64(int64(len(content))),
 				}, nil
 			},
-			getObjectFn: func(_ context.Context, _ *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+			getObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
 				return &s3.GetObjectOutput{
-					Body: io.NopCloser(strings.NewReader(content)),
+					Body:          io.NopCloser(strings.NewReader(content)),
+					ContentLength: aws.Int64(int64(len(content))),
+					ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
 				}, nil
 			},
 		}
