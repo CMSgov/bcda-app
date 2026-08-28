@@ -41,7 +41,7 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 }
 
 func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix string) ([]s3types.Object, error) {
-	handler.Infof("Listing objects in bucket %s, prefix %s\n", bucket, prefix)
+	handler.Infof("Listing objects in bucket %s, prefix %s", bucket, prefix)
 
 	resp, err := handler.Client.ListObjects(ctx, &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
@@ -57,7 +57,7 @@ func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix stri
 }
 
 func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string) ([]byte, error) {
-	handler.Infof("Opening file %s\n", filePath)
+	handler.Infof("Opening file %s", filePath)
 	bucket, file := bcdaaws.ParseS3Uri(filePath)
 
 	input := &s3.HeadObjectInput{
@@ -89,7 +89,7 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 		handler.Logger.WithField("file_size_bytes", numBytes).Infof("file downloaded: size=%d", numBytes)
 	}
 
-	return buff, err
+	return w.Bytes(), err
 }
 
 func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error {
@@ -101,7 +101,7 @@ func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error
 		Key:    aws.String(path),
 	})
 	if err != nil {
-		handler.Errorf("file %s failed to clean up properly, error occurred while deleting object: %v\n", filePath, err)
+		handler.Errorf("file %s failed to clean up properly, error occurred while deleting object: %v", filePath, err)
 		return err
 	} else {
 		err = s3.NewObjectNotExistsWaiter(handler.Client).Wait(
@@ -113,7 +113,7 @@ func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error
 			timeoutDuration,
 		)
 		if err != nil {
-			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", filePath, err)
+			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v", filePath, err)
 		}
 	}
 
