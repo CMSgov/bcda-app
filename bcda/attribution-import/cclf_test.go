@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -55,7 +55,7 @@ func (s *CCLFTestSuite) SetupTest() {
 	}
 
 	file_processor := &LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
+		Handler: fh.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,

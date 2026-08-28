@@ -15,7 +15,7 @@ import (
 	"time"
 
 	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
+	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -145,7 +145,7 @@ func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment
 	}
 
 	file_processor := &ai.LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
+		Handler: fh.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,

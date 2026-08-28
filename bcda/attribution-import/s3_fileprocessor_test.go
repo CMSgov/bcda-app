@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 )
@@ -60,14 +60,14 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 
 	s.basePath = "../../shared_files"
 	s.cclfProcessor = &S3FileProcessor{
-		Handler: bp.S3FileHandler{
+		Handler: fh.S3FileHandler{
 			Client:   client,
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
 		},
 	}
 	s.csvProcessor = &S3FileProcessor{
-		Handler: bp.S3FileHandler{
+		Handler: fh.S3FileHandler{
 			Client:   client,
 			Logger:   logrus.StandardLogger(),
 			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),

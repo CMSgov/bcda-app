@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
+	"github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -21,7 +21,7 @@ import (
 )
 
 type LocalFileProcessor struct {
-	Handler bp.LocalFileHandler
+	Handler filehandler.LocalFileHandler
 }
 
 func (processor *LocalFileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error) {

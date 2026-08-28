@@ -14,8 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -63,7 +63,7 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 	}
 
 	s.cclfProcessor = &LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
+		Handler: fh.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,
@@ -71,7 +71,7 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 	}
 	s.pendingDeletionDir = dir
 	s.csvProcessor = &LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
+		Handler: fh.LocalFileHandler{
 			Logger:                 log.API,
 			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
 			FileArchiveThresholdHr: hours,

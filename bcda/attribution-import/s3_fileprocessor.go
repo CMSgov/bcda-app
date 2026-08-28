@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
+	"github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/service"
 )
 
 type S3FileProcessor struct {
-	Handler bp.S3FileHandler
+	Handler filehandler.S3FileHandler
 }
 
 func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
