@@ -18,8 +18,6 @@ import (
 type S3FileHandler struct {
 	Client bcdaaws.CustomS3Client
 	Logger logrus.FieldLogger
-	// Optional S3 endpoint to use for connection.
-	Endpoint string
 }
 
 func (handler *S3FileHandler) Infof(format string, rest ...interface{}) {

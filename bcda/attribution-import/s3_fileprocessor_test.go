@@ -61,16 +61,14 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 	s.basePath = "../../shared_files"
 	s.cclfProcessor = &S3FileProcessor{
 		Handler: fh.S3FileHandler{
-			Client:   client,
-			Logger:   logrus.StandardLogger(),
-			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
+			Client: client,
+			Logger: logrus.StandardLogger(),
 		},
 	}
 	s.csvProcessor = &S3FileProcessor{
 		Handler: fh.S3FileHandler{
-			Client:   client,
-			Logger:   logrus.StandardLogger(),
-			Endpoint: conf.GetEnv("BFD_S3_ENDPOINT"),
+			Client: client,
+			Logger: logrus.StandardLogger(),
 		},
 	}
 }
