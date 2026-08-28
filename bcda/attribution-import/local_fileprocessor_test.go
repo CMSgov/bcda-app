@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -56,15 +55,11 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 	}
 
 	s.cclfProcessor = &LocalFileProcessor{
-		Handler: fh.LocalFileHandler{
-			Logger: log.API,
-		},
+		Logger: log.API,
 	}
 	s.pendingDeletionDir = dir
 	s.csvProcessor = &LocalFileProcessor{
-		Handler: fh.LocalFileHandler{
-			Logger: log.API,
-		},
+		Logger: log.API,
 	}
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 }

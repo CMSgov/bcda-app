@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -68,9 +67,8 @@ func (s *CSVTestSuite) SetupTest() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 	fp := &LocalFileProcessor{
-		Handler: fh.LocalFileHandler{
-			Logger: log.API,
-		}}
+		Logger: log.API,
+	}
 
 	c := CSVImporter{
 		Logger:        log.API,

@@ -13,7 +13,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -47,9 +46,7 @@ func (s *CCLFTestSuite) SetupTest() {
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 
 	file_processor := &LocalFileProcessor{
-		Handler: fh.LocalFileHandler{
-			Logger: log.API,
-		},
+		Logger: log.API,
 	}
 
 	s.importer = NewCclfImporter(log.API, file_processor, s.pool)

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -21,7 +20,14 @@ import (
 )
 
 type LocalFileProcessor struct {
-	Handler filehandler.LocalFileHandler
+	Logger logrus.FieldLogger
+}
+
+func (processor *LocalFileProcessor) logger() logrus.FieldLogger {
+	if processor.Logger != nil {
+		return processor.Logger
+	}
+	return log.API
 }
 
 func (processor *LocalFileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
@@ -220,7 +226,7 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
 			func() {
-				processor.Handler.Infof("Cleaning up file %s.", cclfZipMetadata.filePath)
+				processor.logger().Infof("Cleaning up file %s.", cclfZipMetadata.filePath)
 				folderName := fp.Base(cclfZipMetadata.filePath)
 				newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 				if !cclfZipMetadata.imported {
@@ -235,10 +241,10 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 						err := os.Rename(cclfZipMetadata.filePath, newpath)
 						if err != nil {
 							errCount++
-							processor.Handler.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+							processor.logger().Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 						} else {
 							deletedCount++
-							processor.Handler.Infof("file %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
+							processor.logger().Infof("file %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 						}
 					}
 				} else {
@@ -249,10 +255,10 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 					err := os.Rename(cclfZipMetadata.filePath, newpath)
 					if err != nil {
 						errCount++
-						processor.Handler.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+						processor.logger().Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 					} else {
 						deletedCount++
-						processor.Handler.Infof("file %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
+						processor.logger().Infof("file %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 					}
 				}
 			}()
@@ -274,7 +280,7 @@ func (processor *LocalFileProcessor) OpenZipArchive(ctx context.Context, filePat
 	return &reader.Reader, func() {
 		err := reader.Close()
 		if err != nil {
-			processor.Handler.Warningf("Could not close zip archive %s", filePath)
+			processor.logger().Warnf("Could not close zip archive %s", filePath)
 		}
 	}, err
 }
@@ -283,7 +289,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 	var err error
 
 	func() {
-		processor.Handler.Infof("Cleaning up file %s.", file.metadata.name)
+		processor.logger().Infof("Cleaning up file %s.", file.metadata.name)
 		folderName := fp.Base(file.filepath)
 		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 		if !file.imported {
@@ -297,9 +303,9 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 				// move the (un)successful files to the deletion dir
 				err = os.Rename(file.filepath, newpath)
 				if err != nil {
-					processor.Handler.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
+					processor.logger().Errorf("File %s failed to clean up properly: %v", file.filepath, err)
 				} else {
-					processor.Handler.Infof("File %s never ingested, moved to the pending deletion dir", file.filepath)
+					processor.logger().Infof("File %s never ingested, moved to the pending deletion dir", file.filepath)
 				}
 			}
 		} else {
@@ -308,10 +314,10 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 			}
 			err = os.Rename(file.filepath, newpath)
 			if err != nil {
-				processor.Handler.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
+				processor.logger().Errorf("File %s failed to clean up properly: %v", file.filepath, err)
 
 			} else {
-				processor.Handler.Infof("File %s successfully ingested, moved to the pending deletion dir", file.filepath)
+				processor.logger().Infof("File %s successfully ingested, moved to the pending deletion dir", file.filepath)
 			}
 		}
 	}()

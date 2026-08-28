@@ -15,7 +15,6 @@ import (
 	"time"
 
 	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
@@ -137,9 +136,7 @@ func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment
 	_ = zipWriter.Close()
 
 	file_processor := &ai.LocalFileProcessor{
-		Handler: fh.LocalFileHandler{
-			Logger: log.API,
-		},
+		Logger: log.API,
 	}
 
 	importer := ai.NewCclfImporter(log.API, file_processor, pgxPool)
