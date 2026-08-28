@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import urllib.request
+from urllib.parse import urlparse
 
 
 def safe_path(path):
@@ -25,20 +26,20 @@ def main(release, release_file, repo):
             "prerelease": False
         }
 
-        base_url = "https://api.github.com"
-        path = repo
+        url = "https://api.github.com" + repo
         headers = {
             "Authorization": "Bearer %s" % access_token
         }
 
-        req = urllib.request.Request(
-            base_url + path,
-            data=json.dumps(data).encode('utf-8'),
-            headers=headers,
-            method='POST'
-        )
-        if req.host in 'https://api.github.com':
+        if urlparse(url).hostname in 'https://api.github.com':
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers=headers,
+                method='POST'
+            )
             resp = urllib.request.urlopen(req)
+
 
     if not resp or resp.status != 201:
         print("Could not create release: %s" % release)
