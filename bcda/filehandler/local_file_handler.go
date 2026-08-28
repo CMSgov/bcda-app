@@ -6,9 +6,7 @@ import (
 
 // LocalFileHandler manages generic file operations from local directories.
 type LocalFileHandler struct {
-	Logger                 logrus.FieldLogger
-	PendingDeletionDir     string
-	FileArchiveThresholdHr uint
+	Logger logrus.FieldLogger
 }
 
 func (handler *LocalFileHandler) Infof(format string, rest ...interface{}) {

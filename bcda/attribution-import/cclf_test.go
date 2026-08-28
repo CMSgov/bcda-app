@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -19,10 +18,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/ccoveille/go-safecast"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -49,16 +46,9 @@ func (s *CCLFTestSuite) SetupTest() {
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 
-	var hours, err = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
-	if err != nil {
-		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", err)
-	}
-
 	file_processor := &LocalFileProcessor{
 		Handler: fh.LocalFileHandler{
-			Logger:                 log.API,
-			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: hours,
+			Logger: log.API,
 		},
 	}
 

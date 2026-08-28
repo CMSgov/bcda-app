@@ -220,7 +220,7 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
 			func() {
-				processor.Handler.Logger.Infof("Cleaning up file %s.\n", cclfZipMetadata.filePath)
+				processor.Handler.Infof("Cleaning up file %s.", cclfZipMetadata.filePath)
 				folderName := fp.Base(cclfZipMetadata.filePath)
 				newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 				if !cclfZipMetadata.imported {
@@ -235,10 +235,10 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 						err := os.Rename(cclfZipMetadata.filePath, newpath)
 						if err != nil {
 							errCount++
-							processor.Handler.Logger.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+							processor.Handler.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 						} else {
 							deletedCount++
-							processor.Handler.Logger.Infof("file %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
+							processor.Handler.Infof("file %s never ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 						}
 					}
 				} else {
@@ -249,10 +249,10 @@ func (processor *LocalFileProcessor) CleanUpCCLF(ctx context.Context, cclfMap ma
 					err := os.Rename(cclfZipMetadata.filePath, newpath)
 					if err != nil {
 						errCount++
-						processor.Handler.Logger.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
+						processor.Handler.Errorf("file %s failed to clean up properly: %v", cclfZipMetadata.filePath, err)
 					} else {
 						deletedCount++
-						processor.Handler.Logger.Infof("file %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
+						processor.Handler.Infof("file %s successfully ingested, moved to the pending deletion dir", cclfZipMetadata.filePath)
 					}
 				}
 			}()
@@ -274,7 +274,7 @@ func (processor *LocalFileProcessor) OpenZipArchive(ctx context.Context, filePat
 	return &reader.Reader, func() {
 		err := reader.Close()
 		if err != nil {
-			processor.Handler.Logger.Warningf("Could not close zip archive %s", filePath)
+			processor.Handler.Warningf("Could not close zip archive %s", filePath)
 		}
 	}, err
 }
@@ -283,7 +283,7 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 	var err error
 
 	func() {
-		processor.Handler.Logger.Infof("Cleaning up file %s.\n", file.metadata.name)
+		processor.Handler.Infof("Cleaning up file %s.", file.metadata.name)
 		folderName := fp.Base(file.filepath)
 		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 		if !file.imported {
@@ -297,9 +297,9 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 				// move the (un)successful files to the deletion dir
 				err = os.Rename(file.filepath, newpath)
 				if err != nil {
-					processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
+					processor.Handler.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
 				} else {
-					processor.Handler.Logger.Infof("File %s never ingested, moved to the pending deletion dir", file.filepath)
+					processor.Handler.Infof("File %s never ingested, moved to the pending deletion dir", file.filepath)
 				}
 			}
 		} else {
@@ -308,10 +308,10 @@ func (processor *LocalFileProcessor) CleanUpCSV(ctx context.Context, file csvFil
 			}
 			err = os.Rename(file.filepath, newpath)
 			if err != nil {
-				processor.Handler.Logger.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
+				processor.Handler.Errorf("File %s failed to clean up properly: %v", file.filepath, err)
 
 			} else {
-				processor.Handler.Logger.Infof("File %s successfully ingested, moved to the pending deletion dir", file.filepath)
+				processor.Handler.Infof("File %s successfully ingested, moved to the pending deletion dir", file.filepath)
 			}
 		}
 	}()
