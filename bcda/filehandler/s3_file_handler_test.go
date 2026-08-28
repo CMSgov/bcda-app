@@ -20,10 +20,11 @@ import (
 
 type configurableMockS3Client struct {
 	bcdaaws.MockS3Client
-	listObjectsFn  func(ctx context.Context, input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error)
-	headObjectFn   func(ctx context.Context, input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error)
-	getObjectFn    func(ctx context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error)
-	deleteObjectFn func(ctx context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error)
+	listObjectsFn   func(ctx context.Context, input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error)
+	listObjectsV2Fn func(ctx context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error)
+	headObjectFn    func(ctx context.Context, input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error)
+	getObjectFn     func(ctx context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error)
+	deleteObjectFn  func(ctx context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error)
 }
 
 func (m *configurableMockS3Client) ListObjects(ctx context.Context, input *s3.ListObjectsInput, optFns ...func(*s3.Options)) (*s3.ListObjectsOutput, error) {
@@ -31,6 +32,13 @@ func (m *configurableMockS3Client) ListObjects(ctx context.Context, input *s3.Li
 		return m.listObjectsFn(ctx, input)
 	}
 	return m.MockS3Client.ListObjects(ctx, input, optFns...)
+}
+
+func (m *configurableMockS3Client) ListObjectsV2(ctx context.Context, input *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	if m.listObjectsV2Fn != nil {
+		return m.listObjectsV2Fn(ctx, input)
+	}
+	return m.MockS3Client.ListObjectsV2(ctx, input, optFns...)
 }
 
 func (m *configurableMockS3Client) HeadObject(ctx context.Context, input *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
@@ -89,15 +97,16 @@ func TestNilLoggerFunctions(t *testing.T) {
 }
 
 func TestListFiles(t *testing.T) {
-	t.Run("success returning objects", func(t *testing.T) {
+	t.Run("success returning objects single page", func(t *testing.T) {
 		client := &configurableMockS3Client{
-			listObjectsFn: func(_ context.Context, input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error) {
+			listObjectsV2Fn: func(_ context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
 				assert.Equal(t, "test-bucket", *input.Bucket)
 				assert.Equal(t, "test-prefix/", *input.Prefix)
-				return &s3.ListObjectsOutput{
+				return &s3.ListObjectsV2Output{
 					Contents: []s3types.Object{
 						{Key: aws.String("test-prefix/file1.csv")},
 					},
+					IsTruncated: aws.Bool(false),
 				}, nil
 			},
 		}
@@ -108,10 +117,43 @@ func TestListFiles(t *testing.T) {
 		assert.Equal(t, "test-prefix/file1.csv", *objects[0].Key)
 	})
 
+	t.Run("success returning objects with pagination", func(t *testing.T) {
+		callCount := 0
+		client := &configurableMockS3Client{
+			listObjectsV2Fn: func(_ context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
+				callCount++
+				if callCount == 1 {
+					assert.Nil(t, input.ContinuationToken)
+					return &s3.ListObjectsV2Output{
+						Contents: []s3types.Object{
+							{Key: aws.String("test-prefix/file1.csv")},
+						},
+						IsTruncated:           aws.Bool(true),
+						NextContinuationToken: aws.String("next-token"),
+					}, nil
+				}
+				assert.Equal(t, "next-token", *input.ContinuationToken)
+				return &s3.ListObjectsV2Output{
+					Contents: []s3types.Object{
+						{Key: aws.String("test-prefix/file2.csv")},
+					},
+					IsTruncated: aws.Bool(false),
+				}, nil
+			},
+		}
+		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
+		objects, err := handler.ListFiles(context.Background(), "test-bucket", "test-prefix/")
+		require.NoError(t, err)
+		require.Len(t, objects, 2)
+		assert.Equal(t, "test-prefix/file1.csv", *objects[0].Key)
+		assert.Equal(t, "test-prefix/file2.csv", *objects[1].Key)
+		assert.Equal(t, 2, callCount)
+	})
+
 	t.Run("error listing objects", func(t *testing.T) {
 		mockErr := errors.New("s3 connection failed")
 		client := &configurableMockS3Client{
-			listObjectsFn: func(_ context.Context, _ *s3.ListObjectsInput) (*s3.ListObjectsOutput, error) {
+			listObjectsV2Fn: func(_ context.Context, _ *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
 				return nil, mockErr
 			},
 		}
@@ -196,6 +238,19 @@ func TestOpenFileBytes(t *testing.T) {
 func TestDelete(t *testing.T) {
 	path := "s3://test-bucket/test-prefix/test-file.txt"
 
+	t.Run("success deleting object", func(t *testing.T) {
+		client := &configurableMockS3Client{
+			deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
+				assert.Equal(t, "test-bucket", *input.Bucket)
+				assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
+				return &s3.DeleteObjectOutput{}, nil
+			},
+		}
+		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
+		err := handler.Delete(context.Background(), path)
+		require.NoError(t, err)
+	})
+
 	t.Run("delete object error", func(t *testing.T) {
 		mockErr := errors.New("delete object permission denied")
 		client := &configurableMockS3Client{
@@ -206,12 +261,5 @@ func TestDelete(t *testing.T) {
 		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
 		err := handler.Delete(context.Background(), path)
 		require.ErrorIs(t, err, mockErr)
-	})
-
-	t.Run("delete object waiter timeout", func(t *testing.T) {
-		handler := mockHandler()
-		t.Setenv("S3_DELETE_TIMEOUT", "1")
-		err := handler.Delete(context.Background(), path)
-		assert.ErrorContains(t, err, "exceeded max wait time for ObjectNotExists waiter")
 	})
 }

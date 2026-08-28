@@ -3,10 +3,8 @@ package filehandler
 import (
 	"context"
 	"fmt"
-	"time"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -41,17 +39,29 @@ func (handler *S3FileHandler) Errorf(format string, rest ...interface{}) {
 func (handler *S3FileHandler) ListFiles(ctx context.Context, bucket, prefix string) ([]s3types.Object, error) {
 	handler.Infof("Listing objects in bucket %s, prefix %s", bucket, prefix)
 
-	resp, err := handler.Client.ListObjects(ctx, &s3.ListObjectsInput{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(prefix),
-	})
+	var objects []s3types.Object
+	var continuationToken *string
 
-	if err != nil {
-		handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
-		return nil, err
+	for {
+		resp, err := handler.Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(bucket),
+			Prefix:            aws.String(prefix),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			handler.Errorf("Failed to list objects in S3 bucket %s, prefix %s: %s", bucket, prefix, err)
+			return nil, err
+		}
+
+		objects = append(objects, resp.Contents...)
+
+		if resp.IsTruncated == nil || !*resp.IsTruncated {
+			break
+		}
+		continuationToken = resp.NextContinuationToken
 	}
 
-	return resp.Contents, nil
+	return objects, nil
 }
 
 func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string) ([]byte, error) {
@@ -87,12 +97,11 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 		handler.Logger.WithField("file_size_bytes", numBytes).Infof("file downloaded: size=%d", numBytes)
 	}
 
-	return w.Bytes(), err
+	return w.Bytes(), nil
 }
 
 func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error {
 	bucket, path := bcdaaws.ParseS3Uri(filePath)
-	timeoutDuration := time.Duration(utils.GetEnvInt("S3_DELETE_TIMEOUT", 60)) * time.Second
 
 	_, err := handler.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
@@ -101,19 +110,7 @@ func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error
 	if err != nil {
 		handler.Errorf("file %s failed to clean up properly, error occurred while deleting object: %v", filePath, err)
 		return err
-	} else {
-		err = s3.NewObjectNotExistsWaiter(handler.Client).Wait(
-			ctx,
-			&s3.HeadObjectInput{
-				Bucket: aws.String(bucket),
-				Key:    aws.String(path),
-			},
-			timeoutDuration,
-		)
-		if err != nil {
-			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v", filePath, err)
-		}
 	}
 
-	return err
+	return nil
 }
