@@ -205,7 +205,7 @@ func TestOpenFileBytes(t *testing.T) {
 		}
 		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
 		bytes, err := handler.OpenFileBytes(context.Background(), path)
-		require.ErrorContains(t, err, "is empty or does not exist")
+		require.ErrorContains(t, err, "is empty")
 		assert.Empty(t, bytes)
 	})
 

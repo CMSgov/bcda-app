@@ -78,7 +78,7 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 		return nil, err
 	}
 	if output == nil || output.ContentLength == nil || *output.ContentLength <= 0 {
-		return []byte{}, fmt.Errorf("file %s is empty or does not exist", filePath)
+		return []byte{}, fmt.Errorf("file %s is empty", filePath)
 	}
 
 	buff := make([]byte, int(*output.ContentLength))
