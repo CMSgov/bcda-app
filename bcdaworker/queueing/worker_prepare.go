@@ -217,6 +217,7 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 
 	// Safeguard: If BFD lower environments return 1970/epoch or an unpopulated timestamp, fallback to request transaction time
 	if b == nil || b.Meta.LastUpdated.IsZero() || b.Meta.LastUpdated.Year() < 2000 {
+		log.Worker.Warnf("Bundle LastUpdated unavailable or invalid for %s; falling back to transaction time %s", basepath, jobData.TransactionTime)
 		return jobData.TransactionTime, nil
 	}
 
