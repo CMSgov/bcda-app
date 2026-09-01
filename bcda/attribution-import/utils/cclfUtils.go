@@ -15,12 +15,9 @@ import (
 	"time"
 
 	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/ccoveille/go-safecast"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -138,18 +135,8 @@ func ImportCCLFPackage(db *sql.DB, pgxPool *pgxv5Pool.Pool, acoSize, environment
 
 	_ = zipWriter.Close()
 
-	hours, err := safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
-
-	if err != nil {
-		return err
-	}
-
 	file_processor := &ai.LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
-			Logger:                 log.API,
-			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: hours,
-		},
+		Logger: log.API,
 	}
 
 	importer := ai.NewCclfImporter(log.API, file_processor, pgxPool)

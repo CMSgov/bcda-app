@@ -11,6 +11,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type CSVImporterInterface interface {
+	ImportCSV(ctx context.Context, filepath string) error
+}
+
+type CCLFImporterInterface interface {
+	ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error)
+}
+
 // A cclf8Importer is not safe for concurrent use by multiple goroutines.
 // It should be scoped to a single *sql.Tx
 type cclf8Importer struct {

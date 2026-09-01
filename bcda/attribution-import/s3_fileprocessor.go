@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
+	"github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/service"
 )
 
 type S3FileProcessor struct {
-	Handler bp.S3FileHandler
+	Handler filehandler.S3FileHandler
 }
 
 func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
@@ -34,7 +34,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string
 		// validate the top level zipped folder
 		cmsID, err := getCMSID(*obj.Key)
 		if err != nil {
-			processor.Handler.Errorf("Skipping CCLF archive (%s/%s): %w", bucket, *obj.Key, err)
+			processor.Handler.Errorf("Skipping CCLF archive (%s/%s): %v", bucket, *obj.Key, err)
 			continue
 		}
 
@@ -62,7 +62,7 @@ func (processor *S3FileProcessor) LoadCclfFiles(ctx context.Context, path string
 
 			if err != nil {
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-				processor.Handler.Errorf("Issue parsing filename into metadata: %w", err)
+				processor.Handler.Errorf("Issue parsing filename into metadata: %v", err)
 				continue
 			}
 
@@ -121,11 +121,11 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 			if !cclfZipMetadata.imported {
 				// Don't do anything. The S3 bucket should have a retention policy that
 				// automatically cleans up files after a specified period of time.
-				processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", cclfZipMetadata.filePath)
+				processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.", cclfZipMetadata.filePath)
 				continue
 			}
 
-			processor.Handler.Infof("Cleaning up file %s\n", cclfZipMetadata.filePath)
+			processor.Handler.Infof("Cleaning up file %s", cclfZipMetadata.filePath)
 			err := processor.Handler.Delete(ctx, cclfZipMetadata.filePath)
 
 			if err != nil {
@@ -134,7 +134,7 @@ func (processor *S3FileProcessor) CleanUpCCLF(ctx context.Context, cclfMap map[s
 			}
 
 			deletedCount++
-			processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", cclfZipMetadata.filePath)
+			processor.Handler.Infof("File %s successfully ingested and deleted from S3.", cclfZipMetadata.filePath)
 		}
 	}
 
@@ -149,7 +149,7 @@ func (processor *S3FileProcessor) OpenZipArchive(ctx context.Context, filePath s
 	byte_arr, err := processor.Handler.OpenFileBytes(ctx, filePath)
 
 	if err != nil {
-		processor.Handler.Errorf("Failed to download %s\n", filePath)
+		processor.Handler.Errorf("Failed to download %s", filePath)
 		return nil, nil, err
 	}
 
@@ -161,26 +161,26 @@ func (processor *S3FileProcessor) CleanUpCSV(ctx context.Context, file csvFile) 
 	if !file.imported {
 		// Don't do anything. The S3 bucket should have a retention policy that
 		// automatically cleans up files after a specified period of time.
-		processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.\n", file.filepath)
+		processor.Handler.Warningf("File %s was not imported successfully. Skipping cleanup.", file.filepath)
 		return nil
 	}
 
-	processor.Handler.Infof("Cleaning up file %s\n", file.filepath)
+	processor.Handler.Infof("Cleaning up file %s", file.filepath)
 	err := processor.Handler.Delete(ctx, file.filepath)
 
 	if err != nil {
-		processor.Handler.Logger.Error("Failed to clean up file %s\n", file.filepath)
+		processor.Handler.Errorf("Failed to clean up file %s: %v", file.filepath, err)
 		return err
 	}
 
-	processor.Handler.Infof("File %s successfully ingested and deleted from S3.\n", file.filepath)
+	processor.Handler.Infof("File %s successfully ingested and deleted from S3.", file.filepath)
 	return nil
 }
 
 func (processor *S3FileProcessor) LoadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
 	byte_arr, err := processor.Handler.OpenFileBytes(ctx, filepath)
 	if err != nil {
-		processor.Handler.Errorf("Failed to download %s\n", filepath)
+		processor.Handler.Errorf("Failed to download %s", filepath)
 		return nil, nil, err
 	}
 
