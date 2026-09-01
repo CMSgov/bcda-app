@@ -30,6 +30,7 @@ env:
   NEXT_RELEASE_VERSION: ${{ inputs.previous_release_version || '' }}
   PREVIOUS_RELEASE_VERSION: ${{ inputs.previous_release_version || '' }}
   MANUAL_TAG_ARGS: ''
+  APP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   tag_and_release:
@@ -57,7 +58,7 @@ jobs:
       - name: Run release script
         run: |
           echo "${{ env.BCDA_GPG_PUB_KEY }}" > ./${{ env.GPG_KEY_FILE_NAME }}
-          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash scripts/tag_and_release/release.sh ${{ env.MANUAL_TAG_ARGS }}
+          GITHUB_REPO_PATH='/CMSgov/bcda-app' GITHUB_ACCESS_TOKEN=$APP_GITHUB_TOKEN GITHUB_GPG_KEY_FILE=${{ env.GPG_KEY_FILE_NAME }} bash scripts/tag_and_release/release.sh ${{ env.MANUAL_TAG_ARGS }}
       # TODO: remove upload, download, and release steps for ops once repo is deprecated
       - name: Upload release scripts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
