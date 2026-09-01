@@ -386,6 +386,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 		bundle       *fhirModels.Bundle
 		clientErr    error
 		hasErr       bool
+		expectedErr  string
 		expectedTime time.Time
 	}{
 		{
@@ -396,11 +397,55 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			expectedTime: validTime,
 		},
 		{
+			name:         "v1 fhir path with epoch metadata falls back to tx time",
+			basepath:     constants.BFDV1Path,
+			bundle:       bundleWithTime(epochTime),
+			hasErr:       false,
+			expectedTime: txTime,
+		},
+		{
+			name:         "v1 fhir path with zero metadata falls back to tx time",
+			basepath:     constants.BFDV1Path,
+			bundle:       bundleWithTime(time.Time{}),
+			hasErr:       false,
+			expectedTime: txTime,
+		},
+		{
+			name:        "v1 fhir path with client error",
+			basepath:    constants.BFDV1Path,
+			bundle:      nil,
+			clientErr:   errors.New("bfd client error"),
+			hasErr:      true,
+			expectedErr: "bfd client error",
+		},
+		{
 			name:         "v2 fhir path with valid metadata",
 			basepath:     constants.BFDV2Path,
 			bundle:       bundleWithTime(validTime),
 			hasErr:       false,
 			expectedTime: validTime,
+		},
+		{
+			name:         "v2 fhir path with epoch metadata falls back to tx time",
+			basepath:     constants.BFDV2Path,
+			bundle:       bundleWithTime(epochTime),
+			hasErr:       false,
+			expectedTime: txTime,
+		},
+		{
+			name:         "v2 fhir path with zero metadata falls back to tx time",
+			basepath:     constants.BFDV2Path,
+			bundle:       bundleWithTime(time.Time{}),
+			hasErr:       false,
+			expectedTime: txTime,
+		},
+		{
+			name:        "v2 fhir path with client error",
+			basepath:    constants.BFDV2Path,
+			bundle:      nil,
+			clientErr:   errors.New("bfd client error"),
+			hasErr:      true,
+			expectedErr: "bfd client error",
 		},
 		{
 			name:         "v3 fhir path with valid metadata",
@@ -424,16 +469,25 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			expectedTime: txTime,
 		},
 		{
-			name:      "v3 fhir path with client error",
-			basepath:  constants.BFDV3Path,
-			bundle:    nil,
-			clientErr: errors.New("bfd client error"),
-			hasErr:    true,
+			name:         "v3 fhir path with nil bundle falls back to tx time",
+			basepath:     constants.BFDV3Path,
+			bundle:       nil,
+			hasErr:       false,
+			expectedTime: txTime,
 		},
 		{
-			name:     "unknown path",
-			basepath: "/unknown/path",
-			hasErr:   true,
+			name:        "v3 fhir path with client error",
+			basepath:    constants.BFDV3Path,
+			bundle:      nil,
+			clientErr:   errors.New("bfd client error"),
+			hasErr:      true,
+			expectedErr: "bfd client error",
+		},
+		{
+			name:        "unknown path",
+			basepath:    "/unknown/path",
+			hasErr:      true,
+			expectedErr: "unsupported BFD base path: /unknown/path",
 		},
 	}
 
@@ -443,13 +497,16 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			c := new(client.MockBlueButtonClient)
 			if tt.clientErr != nil {
 				c.On("GetPatient", mock.Anything, "0").Return((*fhirModels.Bundle)(nil), tt.clientErr)
-			} else if tt.bundle != nil {
+			} else if tt.basepath != "/unknown/path" {
 				c.On("GetPatient", mock.Anything, "0").Return(tt.bundle, nil)
 			}
 			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, v3Client: c, r: s.r, pool: s.pool}
 			result, err := worker.GetBundleLastUpdated(tt.basepath, worker_types.JobEnqueueArgs{TransactionTime: txTime})
 			if tt.hasErr {
 				assert.NotNil(s.T(), err)
+				if tt.expectedErr != "" {
+					assert.Contains(s.T(), err.Error(), tt.expectedErr)
+				}
 			} else {
 				assert.Nil(s.T(), err)
 				assert.Equal(s.T(), tt.expectedTime, result)
