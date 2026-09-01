@@ -208,7 +208,7 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 	case constants.BFDV3Path:
 		b, err = p.v3Client.GetPatient(jobData, "0")
 	default:
-		return time.Time{}, errors.New("no BFD base path")
+		return time.Time{}, fmt.Errorf("unsupported BFD base path: %s", basepath)
 	}
 
 	if err != nil {
@@ -216,7 +216,7 @@ func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_
 	}
 
 	// Safeguard: If BFD lower environments return 1970/epoch or an unpopulated timestamp, fallback to request transaction time
-	if b == nil || b.Meta.LastUpdated.Year() < 2000 {
+	if b == nil || b.Meta.LastUpdated.IsZero() || b.Meta.LastUpdated.Year() < 2000 {
 		return jobData.TransactionTime, nil
 	}
 
