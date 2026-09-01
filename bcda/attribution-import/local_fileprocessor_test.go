@@ -14,15 +14,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 
-	bp "github.com/CMSgov/bcda-app/bcda/bene-prefs"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 
-	"github.com/ccoveille/go-safecast"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,25 +54,12 @@ func setupSuiteHelper(s *LocalFileProcessorTestSuite) {
 		logrus.Fatal(err)
 	}
 
-	var hours, e = safecast.ToUint(utils.GetEnvInt("FILE_ARCHIVE_THRESHOLD_HR", 72))
-	if e != nil {
-		fmt.Println("Error converting FILE_ARCHIVE_THRESHOLD_HR to uint", e)
-	}
-
 	s.cclfProcessor = &LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
-			Logger:                 log.API,
-			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: hours,
-		},
+		Logger: log.API,
 	}
 	s.pendingDeletionDir = dir
 	s.csvProcessor = &LocalFileProcessor{
-		Handler: bp.LocalFileHandler{
-			Logger:                 log.API,
-			PendingDeletionDir:     conf.GetEnv("PENDING_DELETION_DIR"),
-			FileArchiveThresholdHr: hours,
-		},
+		Logger: log.API,
 	}
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 }
