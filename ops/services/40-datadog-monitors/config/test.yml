@@ -1,8 +1,6 @@
 enabled:
   ecs: true
-  sqs: true
   sns: false
-  lambda: true
   s3: true
   rds: true
   synthetics: true
@@ -19,3 +17,7 @@ health_check:
     - database
     - ssas
     - ssas_introspect
+
+static_site:
+  enabled: true
+  url: "https://stage.bcda.cms.gov/"

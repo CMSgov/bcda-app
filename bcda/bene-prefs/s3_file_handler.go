@@ -9,6 +9,7 @@ import (
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -49,7 +50,7 @@ func (handler *S3FileHandler) LoadBenePrefsFiles(ctx context.Context, path strin
 	}
 
 	for _, obj := range s3Objects {
-		metadata, err := ParseMetadata(*obj.Key)
+		metadata, err := parseMetadata(*obj.Key)
 		metadata.FilePath = fmt.Sprintf("s3://%s/%s", bucket, *obj.Key)
 		metadata.DeliveryDate = *obj.LastModified
 
@@ -106,6 +107,9 @@ func (handler *S3FileHandler) OpenFileBytes(ctx context.Context, filePath string
 	if err != nil {
 		return nil, err
 	}
+	if output == nil || output.ContentLength == nil || *output.ContentLength <= 0 {
+		return []byte{}, fmt.Errorf("file %s is empty or does not exist", filePath)
+	}
 
 	buff := make([]byte, int(*output.ContentLength))
 	w := manager.NewWriteAtBuffer(buff)
@@ -155,6 +159,7 @@ func (handler *S3FileHandler) CleanupBenePrefsFiles(ctx context.Context, suppres
 
 func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error {
 	bucket, path := bcdaaws.ParseS3Uri(filePath)
+	timeoutDuration := time.Duration(utils.GetEnvInt("S3_DELETE_TIMEOUT", 60)) * time.Second
 
 	_, err := handler.Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
@@ -170,7 +175,7 @@ func (handler *S3FileHandler) Delete(ctx context.Context, filePath string) error
 				Bucket: aws.String(bucket),
 				Key:    aws.String(path),
 			},
-			time.Minute,
+			timeoutDuration,
 		)
 		if err != nil {
 			handler.Errorf("File %s failed to clean up properly, error occurred while waiting for object to be deleted: %v\n", filePath, err)

@@ -76,7 +76,8 @@ func startWorker() {
 	logger.Info("Starting bcdaworker...")
 
 	err := profiler.Start(
-		profiler.WithService("BCDA"),
+		profiler.WithTags("application:bcda"),
+		profiler.WithService("worker"),
 		profiler.WithEnv(os.Getenv("ENV")),
 		profiler.WithVersion(constants.Version),
 	)

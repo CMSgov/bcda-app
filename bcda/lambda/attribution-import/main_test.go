@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 var (
@@ -23,23 +21,26 @@ var (
 	bucketcclf = "bucket/cclf/path"
 )
 
-type AttributionImportMainSuite struct {
-	suite.Suite
-	db *sql.DB
+type mockCSVImporter struct {
+	importCSVFn func(ctx context.Context, filepath string) error
 }
 
-func (s *AttributionImportMainSuite) SetupSuite() {
-	s.db = database.Connect()
-}
-
-func (s *AttributionImportMainSuite) TearDownSuite() {
-	if s.db != nil {
-		s.db.Close()
+func (m *mockCSVImporter) ImportCSV(ctx context.Context, filepath string) error {
+	if m.importCSVFn != nil {
+		return m.importCSVFn(ctx, filepath)
 	}
+	return nil
 }
 
-func TestAttributionImportMainSuite(t *testing.T) {
-	suite.Run(t, new(AttributionImportMainSuite))
+type mockCCLFImporter struct {
+	importCCLFDirectoryFn func(ctx context.Context, filePath string) (success, failure, skipped int, err error)
+}
+
+func (m *mockCCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
+	if m.importCCLFDirectoryFn != nil {
+		return m.importCCLFDirectoryFn(ctx, filePath)
+	}
+	return 0, 0, 0, nil
 }
 
 func TestConfigureLogger(t *testing.T) {
@@ -72,36 +73,25 @@ func TestConfigureLogger(t *testing.T) {
 	})
 }
 
-type csvImportFunc func(ctx context.Context, path string) error
-
-func handleCSVImportWithImporter(
-	ctx context.Context,
-	importFn csvImportFunc,
-	s3ImportPath string,
-	logger *logrus.Entry,
-) (string, error) {
-	if err := importFn(ctx, s3ImportPath); err != nil {
-		logger.Error("error returned from ImportCSV: ", err)
-		return "", err
-	}
-	return fmt.Sprintf(
-		"Completed CSV import.  Successfully imported %v.   See logs for more details.",
-		s3ImportPath,
-	), nil
-}
-
 func TestHandleCSVImport(t *testing.T) {
 	logger := configureLogger("test", testapp)
 
 	t.Run("success — returns result containing path", func(t *testing.T) {
 		called := false
-		importFn := func(ctx context.Context, path string) error {
-			called = true
-			assert.Equal(t, bucketcsv, path)
-			return nil
+		importer := &mockCSVImporter{
+			importCSVFn: func(ctx context.Context, path string) error {
+				called = true
+				assert.Equal(t, bucketcsv, path)
+				return nil
+			},
 		}
 
-		result, err := handleCSVImportWithImporter(context.Background(), importFn, bucketcsv, logger)
+		handler := &AttributionImportHandler{
+			Logger:      logger,
+			CSVImporter: importer,
+		}
+
+		result, err := handler.handleCSVImport(context.Background(), bucketcsv)
 
 		require.NoError(t, err)
 		assert.True(t, called, "import function was never called")
@@ -111,60 +101,54 @@ func TestHandleCSVImport(t *testing.T) {
 
 	t.Run("importer error — propagates error and returns empty result", func(t *testing.T) {
 		importErr := errors.New("csv import failed")
-		importFn := func(_ context.Context, _ string) error { return importErr }
+		importer := &mockCSVImporter{
+			importCSVFn: func(_ context.Context, _ string) error { return importErr },
+		}
 
-		result, err := handleCSVImportWithImporter(context.Background(), importFn, bucketcsv, logger)
+		handler := &AttributionImportHandler{
+			Logger:      logger,
+			CSVImporter: importer,
+		}
+
+		result, err := handler.handleCSVImport(context.Background(), bucketcsv)
 
 		require.ErrorIs(t, err, importErr)
 		assert.Empty(t, result)
 	})
 }
 
-type cclfImportFunc func(path string) (success, failure, skipped int, err error)
-
-func handleCclfImportWithImporter(
-	importFn cclfImportFunc,
-	s3ImportPath string,
-	logger *logrus.Entry,
-) (string, error) {
-	success, failure, skipped, err := importFn(s3ImportPath)
-	if err != nil {
-		logger.Error("error returned from ImportCCLFDirectory: ", err)
-		return "", err
-	}
-
-	if failure > 0 || skipped > 0 {
-		result := fmt.Sprintf(
-			"Successfully imported Attribution %v files.  Failed to import Attribution %v files.  Skipped %v Attribution files.  See logs for more details.",
-			success, failure, skipped,
-		)
-		return result, errors.New("files skipped or failed import. See logs for more details")
-	}
-
-	return fmt.Sprintf(
-		"Completed Attribution import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.",
-		success, failure, skipped,
-	), nil
-}
-
 func TestHandleCclfImport(t *testing.T) {
 	logger := configureLogger("test", testapp)
 
 	t.Run("all files succeed", func(t *testing.T) {
-		result, err := handleCclfImportWithImporter(
-			func(_ string) (int, int, int, error) { return 5, 0, 0, nil },
-			bucketcclf, logger,
-		)
+		importer := &mockCCLFImporter{
+			importCCLFDirectoryFn: func(_ context.Context, _ string) (int, int, int, error) {
+				return 5, 0, 0, nil
+			},
+		}
+		handler := &AttributionImportHandler{
+			Logger:       logger,
+			CCLFImporter: importer,
+		}
+
+		result, err := handler.handleCclfImport(context.Background(), bucketcclf)
 		require.NoError(t, err)
 		assert.Contains(t, result, "Completed Attribution import")
 		assert.Contains(t, result, "Successfully imported 5 files")
 	})
 
 	t.Run("zero files — treated as success", func(t *testing.T) {
-		result, err := handleCclfImportWithImporter(
-			func(_ string) (int, int, int, error) { return 0, 0, 0, nil },
-			bucketcclf, logger,
-		)
+		importer := &mockCCLFImporter{
+			importCCLFDirectoryFn: func(_ context.Context, _ string) (int, int, int, error) {
+				return 0, 0, 0, nil
+			},
+		}
+		handler := &AttributionImportHandler{
+			Logger:       logger,
+			CCLFImporter: importer,
+		}
+
+		result, err := handler.handleCclfImport(context.Background(), bucketcclf)
 		require.NoError(t, err)
 		assert.Contains(t, result, "Successfully imported 0 files")
 	})
@@ -201,10 +185,17 @@ func TestHandleCclfImport(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			s, f, sk := tc.success, tc.failure, tc.skipped
-			result, err := handleCclfImportWithImporter(
-				func(_ string) (int, int, int, error) { return s, f, sk, nil },
-				bucketcclf, logger,
-			)
+			importer := &mockCCLFImporter{
+				importCCLFDirectoryFn: func(_ context.Context, _ string) (int, int, int, error) {
+					return s, f, sk, nil
+				},
+			}
+			handler := &AttributionImportHandler{
+				Logger:       logger,
+				CCLFImporter: importer,
+			}
+
+			result, err := handler.handleCclfImport(context.Background(), bucketcclf)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "files skipped or failed import")
 			for _, part := range tc.wantResultParts {
@@ -215,12 +206,78 @@ func TestHandleCclfImport(t *testing.T) {
 
 	t.Run("importer error — propagates error and returns empty result", func(t *testing.T) {
 		importErr := errors.New("directory import failed")
-		result, err := handleCclfImportWithImporter(
-			func(_ string) (int, int, int, error) { return 0, 0, 0, importErr },
-			bucketcclf, logger,
-		)
+		importer := &mockCCLFImporter{
+			importCCLFDirectoryFn: func(_ context.Context, _ string) (int, int, int, error) {
+				return 0, 0, 0, importErr
+			},
+		}
+		handler := &AttributionImportHandler{
+			Logger:       logger,
+			CCLFImporter: importer,
+		}
+
+		result, err := handler.handleCclfImport(context.Background(), bucketcclf)
 		require.ErrorIs(t, err, importErr)
 		assert.Empty(t, result)
+	})
+}
+
+func TestHandleSQSEvent(t *testing.T) {
+	logger := configureLogger("test", testapp)
+
+	t.Run("empty sqs event returns safely", func(t *testing.T) {
+		handler := &AttributionImportHandler{Logger: logger}
+		result, err := handler.Handle(context.Background(), events.SQSEvent{})
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("routes CSV file correctly", func(t *testing.T) {
+		called := false
+		csvImporter := &mockCSVImporter{
+			importCSVFn: func(_ context.Context, path string) error {
+				called = true
+				assert.Equal(t, "test-bucket/cclf/archives/csv/P.PCPB.M2411.D181120.T1000000", path)
+				return nil
+			},
+		}
+		handler := &AttributionImportHandler{
+			Logger:      logger,
+			CSVImporter: csvImporter,
+			CheckIfCSV: func(filePath string) (bool, error) {
+				return true, nil
+			},
+		}
+
+		sqsEvent := testUtils.GetSQSEvent(t, "test-bucket", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000")
+		result, err := handler.Handle(context.Background(), sqsEvent)
+		require.NoError(t, err)
+		assert.True(t, called)
+		assert.Contains(t, result, "Completed CSV import")
+	})
+
+	t.Run("routes CCLF zip file correctly", func(t *testing.T) {
+		called := false
+		cclfImporter := &mockCCLFImporter{
+			importCCLFDirectoryFn: func(_ context.Context, path string) (int, int, int, error) {
+				called = true
+				assert.Equal(t, "test-bucket/cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000", path)
+				return 1, 0, 0, nil
+			},
+		}
+		handler := &AttributionImportHandler{
+			Logger:       logger,
+			CCLFImporter: cclfImporter,
+			CheckIfCSV: func(filePath string) (bool, error) {
+				return false, nil
+			},
+		}
+
+		sqsEvent := testUtils.GetSQSEvent(t, "test-bucket", "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
+		result, err := handler.Handle(context.Background(), sqsEvent)
+		require.NoError(t, err)
+		assert.True(t, called)
+		assert.Contains(t, result, "Completed Attribution import")
 	})
 }
 
