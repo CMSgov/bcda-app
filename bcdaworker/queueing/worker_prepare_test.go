@@ -370,28 +370,89 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
+	validTime := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	epochTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	txTime := time.Date(2026, 9, 1, 15, 0, 0, 0, time.UTC)
+
+	bundleWithTime := func(t time.Time) *fhirModels.Bundle {
+		var b fhirModels.Bundle
+		b.Meta.LastUpdated = t
+		return &b
+	}
+
 	tests := []struct {
-		name     string
-		basepath string
-		hasErr   bool
+		name         string
+		basepath     string
+		bundle       *fhirModels.Bundle
+		clientErr    error
+		hasErr       bool
+		expectedTime time.Time
 	}{
-		{"v1 fhir path", constants.BFDV1Path, false},
-		{"v2 fhir path", constants.BFDV2Path, false},
-		{"v3 fhir path", constants.BFDV3Path, false},
-		{"unknown path", "/unknown/path", true},
+		{
+			name:         "v1 fhir path with valid metadata",
+			basepath:     constants.BFDV1Path,
+			bundle:       bundleWithTime(validTime),
+			hasErr:       false,
+			expectedTime: validTime,
+		},
+		{
+			name:         "v2 fhir path with valid metadata",
+			basepath:     constants.BFDV2Path,
+			bundle:       bundleWithTime(validTime),
+			hasErr:       false,
+			expectedTime: validTime,
+		},
+		{
+			name:         "v3 fhir path with valid metadata",
+			basepath:     constants.BFDV3Path,
+			bundle:       bundleWithTime(validTime),
+			hasErr:       false,
+			expectedTime: validTime,
+		},
+		{
+			name:         "v3 fhir path with epoch metadata falls back to tx time",
+			basepath:     constants.BFDV3Path,
+			bundle:       bundleWithTime(epochTime),
+			hasErr:       false,
+			expectedTime: txTime,
+		},
+		{
+			name:         "v3 fhir path with zero metadata falls back to tx time",
+			basepath:     constants.BFDV3Path,
+			bundle:       bundleWithTime(time.Time{}),
+			hasErr:       false,
+			expectedTime: txTime,
+		},
+		{
+			name:      "v3 fhir path with client error",
+			basepath:  constants.BFDV3Path,
+			bundle:    nil,
+			clientErr: errors.New("bfd client error"),
+			hasErr:    true,
+		},
+		{
+			name:     "unknown path",
+			basepath: "/unknown/path",
+			hasErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			svc := &service.MockService{}
 			c := new(client.MockBlueButtonClient)
-			c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+			if tt.clientErr != nil {
+				c.On("GetPatient", mock.Anything, "0").Return((*fhirModels.Bundle)(nil), tt.clientErr)
+			} else if tt.bundle != nil {
+				c.On("GetPatient", mock.Anything, "0").Return(tt.bundle, nil)
+			}
 			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, v3Client: c, r: s.r, pool: s.pool}
-			_, err := worker.GetBundleLastUpdated(tt.basepath, worker_types.JobEnqueueArgs{})
+			result, err := worker.GetBundleLastUpdated(tt.basepath, worker_types.JobEnqueueArgs{TransactionTime: txTime})
 			if tt.hasErr {
 				assert.NotNil(s.T(), err)
 			} else {
 				assert.Nil(s.T(), err)
+				assert.Equal(s.T(), tt.expectedTime, result)
 			}
 		})
 	}
