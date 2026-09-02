@@ -5,13 +5,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
@@ -68,7 +68,7 @@ func NewCclfImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Clien
 	}
 }
 
-func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
+func (importer CclfImporter) importCCLF0(zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
 	fileMetadata := zipMetadata.cclf0Metadata
 	importer.logger.Infof("Importing CCLF0 file %s...", fileMetadata)
 
@@ -80,7 +80,7 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 
 	rc, err := zipMetadata.cclf0File.Open()
 	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, zipMetadata.filePath)
+		err = fmt.Errorf("could not read file %s in CCLF0 archive %s, err: %w", fileMetadata.name, zipMetadata.filePath, err)
 		importer.logger.Error(err)
 		return nil, err
 	}
@@ -103,13 +103,13 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 
 				count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
 				if err != nil {
-					err = errors.Wrapf(err, "failed to parse %s record count from CCLF0 file", filetype)
+					err = fmt.Errorf("failed to parse %s record count from CCLF0 file, err: %w", filetype, err)
 					importer.logger.Error(err)
 					return nil, err
 				}
 				length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
 				if err != nil {
-					err = errors.Wrapf(err, "failed to parse %s record length from CCLF0 file", filetype)
+					err = fmt.Errorf("failed to parse %s record length from CCLF0 file, err: %w", filetype, err)
 					importer.logger.Error(err)
 					return nil, err
 				}
@@ -117,6 +117,9 @@ func (importer CclfImporter) importCCLF0(ctx context.Context, zipMetadata *cclfZ
 				validator = &cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
 			}
 		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("error encountered during scanning: %w", err)
 	}
 
 	if validator != nil {
@@ -154,7 +157,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	// Step 2: Check if file exists using pgx transaction
 	exists, err := importer.pgxRepo.GetCCLFFileExistsByNameTx(ctx, pgxTx, fileMetadata.name)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
+		err = fmt.Errorf("failed to check existence of CCLF%d file, err: %w", fileMetadata.cclfNum, err)
 		importer.logger.Error(err)
 		return err
 	}
@@ -178,7 +181,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	}
 	cclfFile.ID, err = importer.pgxRepo.CreateCCLFFileTx(ctx, pgxTx, cclfFile)
 	if err != nil {
-		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
+		err = fmt.Errorf("could not create CCLF%d file record, err: %w", fileMetadata.cclfNum, err)
 		importer.logger.Error(err)
 		return err
 	}
@@ -187,7 +190,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 	rc, err := zipMetadata.cclf8File.Open()
 	if err != nil {
-		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, zipMetadata.filePath)
+		err = fmt.Errorf("could not read file %s for CCLF%d in archive %s, err: %w", cclfFile.Name, fileMetadata.cclfNum, zipMetadata.filePath, err)
 		importer.logger.Error(err)
 		return err
 	}
@@ -197,11 +200,11 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	// Step 4: Bulk insert using pgx transaction
 	importedCount, recordCount, err := CopyFrom(ctx, pgxTx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000), importer.logger, validator.maxRecordLength)
 	if err != nil {
-		return errors.Wrap(err, "failed to copy data to beneficiaries table")
+		return fmt.Errorf("failed to copy data to beneficiaries table: %w", err)
 	}
 
 	if recordCount > validator.totalRecordCount {
-		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
+		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d), err: %w", fileMetadata.name, validator.totalRecordCount, recordCount, err)
 		importer.logger.Error(err)
 		return err
 	}
@@ -209,16 +212,16 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	// Step 5: Update file status using pgx transaction
 	err = importer.pgxRepo.UpdateCCLFFileImportStatusTx(ctx, pgxTx, fileMetadata.fileID, constants.ImportComplete)
 	if err != nil {
-		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata.name)
+		err = fmt.Errorf("could not update cclf file record for file: %s, err: %w", fileMetadata.name, err)
 		importer.logger.Error(err)
 		return err
 	}
 
 	// Step 6: Commit pgx transaction
 	if err = pgxTx.Commit(ctx); err != nil {
-		importer.logger.Error(err.Error())
-		failMsg := fmt.Sprintf("failed to commit pgx transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata.name)
-		return errors.Wrap(err, failMsg)
+		errMsg := fmt.Errorf("failed to commit pgx transaction for CCLF%d import file %s, err: %w", fileMetadata.cclfNum, fileMetadata.name, err)
+		importer.logger.Error(errMsg)
+		return errMsg
 	}
 
 	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata.name)
@@ -244,9 +247,9 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 			func() {
 				defer zipMetadata.zipCloser()
 
-				cclfvalidator, err := importer.importCCLF0(ctx, zipMetadata)
+				cclfvalidator, err := importer.importCCLF0(zipMetadata)
 				if err != nil {
-					importer.logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata)
+					importer.logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s, err: %v", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata, err)
 					failure++
 					skipped += 2
 				} else {
@@ -254,7 +257,7 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 				}
 
 				if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
-					importer.logger.Errorf("Failed to import CCLF8 file: %s %s", zipMetadata.cclf8Metadata, err)
+					importer.logger.Errorf("Failed to import CCLF8 file: %s, err: %v", zipMetadata.cclf8Metadata, err)
 					failure++
 				} else {
 					zipMetadata.imported = true
@@ -337,20 +340,20 @@ func (importer CclfImporter) LoadCclfFiles(ctx context.Context, path string) (cc
 
 			if metadata.cclfNum == 0 {
 				if cclf0Metadata != nil {
-					readError = fmt.Errorf("multiple CCLF0 files found in zip (%s/%s)", bucket, *obj.Key)
+					readError = fmt.Errorf("multiple CCLF0 files found in zip (%s/%s), err: %w", bucket, *obj.Key, err)
 					break
 				}
 				cclf0Metadata = &metadata
 				cclf0File = f
 			} else if metadata.cclfNum == 8 {
 				if cclf8Metadata != nil {
-					readError = fmt.Errorf("multiple CCLF8 files found in zip (%s/%s)", bucket, *obj.Key)
+					readError = fmt.Errorf("multiple CCLF8 files found in zip (%s/%s), err: %w", bucket, *obj.Key, err)
 					break
 				}
 				cclf8Metadata = &metadata
 				cclf8File = f
 			} else {
-				readError = fmt.Errorf("unexpected CCLF num %d processed (%s/%s)", metadata.cclfNum, bucket, *obj.Key)
+				readError = fmt.Errorf("unexpected CCLF num %d processed (%s/%s), err: %w", metadata.cclfNum, bucket, *obj.Key, err)
 				break
 			}
 		}

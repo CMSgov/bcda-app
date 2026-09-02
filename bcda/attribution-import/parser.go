@@ -1,6 +1,7 @@
 package attributionimport
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/pkg/errors"
 )
 
 func getCMSID(name string) (string, error) {
@@ -213,20 +213,20 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 
 	cclfNum, err := strconv.Atoi(parts[3])
 	if err != nil {
-		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", fileName)
+		err = fmt.Errorf("failed to parse CCLF number from file: %s, err: %w", fileName, err)
 		return metadata, err
 	}
 
 	perfYear, err := strconv.Atoi(parts[5])
 	if err != nil {
-		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
+		err = fmt.Errorf("failed to parse performance year from file: %s, err: %w", fileName, err)
 		return metadata, err
 	}
 
 	filenameDate := parts[6]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
+		err = fmt.Errorf("failed to parse date '%s' from file: %s, err: %w", filenameDate, fileName, err)
 		return metadata, err
 	}
 

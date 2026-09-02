@@ -101,8 +101,6 @@ func TestCCLFTestSuite(t *testing.T) {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
-	ctx := context.Background()
-
 	assert := assert.New(s.T())
 
 	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
@@ -110,7 +108,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	defer zipCloser1()
 
 	// positive
-	validator, err := s.importer.importCCLF0(ctx, metadata)
+	validator, err := s.importer.importCCLF0(metadata)
 	assert.Nil(err)
 	assert.Equal(&cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator)
 
@@ -119,7 +117,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser2()
 
-	_, err = s.importer.importCCLF0(ctx, metadata)
+	_, err = s.importer.importCCLF0(metadata)
 	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
 	// duplicate file types from cclf0
@@ -127,7 +125,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
 	defer zipCloser3()
 
-	_, err = s.importer.importCCLF0(ctx, metadata)
+	_, err = s.importer.importCCLF0(metadata)
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
 
 	//invalid record count
@@ -135,7 +133,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
 	defer zipCloser4()
 
-	_, err = s.importer.importCCLF0(ctx, metadata)
+	_, err = s.importer.importCCLF0(metadata)
 	assert.EqualError(err, "failed to parse CCLF8 record count from CCLF0 file: strconv.Atoi: parsing \"N\": invalid syntax")
 
 	//invalid record length
@@ -143,7 +141,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
 	defer zipCloser5()
 
-	_, err = s.importer.importCCLF0(ctx, metadata)
+	_, err = s.importer.importCCLF0(metadata)
 	assert.EqualError(err, "failed to parse CCLF8 record length from CCLF0 file: strconv.Atoi: parsing \"Num\": invalid syntax")
 }
 
