@@ -41,9 +41,13 @@ jobs:
       - name: Install psql
         run: |
           sudo dnf install postgresql16 -y
+      - name: Checkout BCDA
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
       - name: Refresh all environments
         run: |
           set -euo pipefail
+
+          
 
           HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ matrix.vars.env }}-aurora 2>> error.log | jq -r '.DBClusterEndpoints[0].Endpoint' 2>> error.log)
           if [ $? -ne 0 ]; then
@@ -51,8 +55,15 @@ jobs:
               exit 1
           fi
 
+          echo "set HOST"
+
           CONNECTION_URL=$(echo ${{ env.DB_URL }} 2>> error.log | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>> error.log)
+          
+          echo "set CONN"
+
           ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>> error.log
+
+          echo "attempted to run script HOST"
 
           if [ $? -ne 0 ]; then
               echo "Error: Refresh failed; run script locally for more details."
