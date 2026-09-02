@@ -214,7 +214,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           # Sends to bcda-deploy
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: good
                 text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
@@ -227,7 +227,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: danger
                 text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
