@@ -35,7 +35,7 @@ pyzmq==27.0.1
 requests==2.33.0
 six==1.17.0
 stack-data==0.6.3
-tornado==6.5.7
+tornado==6.5.8
 traitlets==5.14.3
 tzdata==2025.2
 urllib3==2.7.0
