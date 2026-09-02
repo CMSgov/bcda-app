@@ -76,7 +76,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           # Sends to bcda-deploy
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: good
                 text: "SUCCESS: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
@@ -89,7 +89,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: danger
                 text: "FAILURE: DB Migrations in ${{ inputs.env }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
