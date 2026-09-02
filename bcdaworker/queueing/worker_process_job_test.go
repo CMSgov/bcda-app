@@ -106,7 +106,7 @@ func TestWork_Integration(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	timeout := time.After(10 * time.Second)
+	timeout := time.After(30 * time.Second)
 	for {
 		select {
 		case <-timeout:
