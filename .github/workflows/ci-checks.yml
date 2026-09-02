@@ -127,6 +127,7 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=testcoverage.out
             -Dsonar.coverage.exclusions=**/*test.go,**/test/**/*,**/testUtils/*,**/scripts/**/*,**/ops/*,**/mock*.go,**/mock/**/*
+            -Dsonar.exclusions=**/scripts/**/*
             -Dsonar.branch.name=${{ env.REF }}
             -Dsonar.projectVersion=${{ github.sha }}
             -Dsonar.qualitygate.wait=true
