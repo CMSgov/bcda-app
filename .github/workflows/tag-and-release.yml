@@ -96,18 +96,18 @@ jobs:
                 text: "SUCCESS: Tag and Release BCDA (${{ env.RELEASE_VERSION }}) and OPS (${{ env.OPS_RELEASE_VERSION }}).  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
-      # - name: Failure Alert
-      #   if: ${{ failure() }}
-      #   uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
-      #   with:
-      #     method: chat.postMessage
-      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
-      #     payload: |
-      #       channel: ${{ secrets.SLACK_CHANNEL_ID }}
-      #       attachments:
-      #         - color: danger
-      #           text: "FAILURE: Tag and Release BCDA (${{ env.RELEASE_VERSION }}) and OPS (${{ env.OPS_RELEASE_VERSION }}).  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
-      #           mrkdown_in:
-      #             - text
+      - name: Failure Alert
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            attachments:
+              - color: danger
+                text: "FAILURE: Tag and Release BCDA (${{ env.RELEASE_VERSION }}) and OPS (${{ env.OPS_RELEASE_VERSION }}).  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+                mrkdown_in:
+                  - text
 
 
