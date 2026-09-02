@@ -539,7 +539,7 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		{name: "Is not an Attribution MDTCoC CSV File path (incorrect fourth)", path: "P.PCPB.M2014.D00302.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution MDTCoC CSV File path (incorrect fifth)", path: "P.PCPB.M2014.D00302.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution MDTCoC CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
-		{name: "Is not an Attribution MDTCoC CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+		{name: "Is not an Attribution MDTCoC CSV File path (bene-prefs file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 
 		{name: "Is an Attribution CDAC CSV File path", path: "P.BCD.DA0000.MBIY25.D003026.T0000001", testIsCSV: true},
 		{name: "Is not an Attribution CDAC CSV File path (incorrect first)", path: "x.BCD.DA0000.MBIY25.D00302.T2420001", testIsCSV: false},
@@ -548,7 +548,7 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		{name: "Is not an Attribution CDAC CSV File path (incorrect fourth)", path: "P.BCD.DA0000.MBxY2x.D00302.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution CDAC CSV File path (incorrect fifth)", path: "P.BCD.DA0000.MBIY25.D0x30x.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution CDAC CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
-		{name: "Is not an Attribution CDAC CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+		{name: "Is not an Attribution CDAC CSV File path (bene-prefs file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 
 		{name: "Is an Attribution GUIDE CSV File path", path: "P.GUIDE.GUIDE-0001.Y25.D003026.T0000001", testIsCSV: true},
 		{name: "Is not an Attribution GUIDE CSV File path (incorrect first)", path: "x.GUIDE.GUIDE-0001.Y25.D00302.T2420001", testIsCSV: false},
@@ -557,7 +557,7 @@ func TestCheckIfAttributionCSVFile(t *testing.T) {
 		{name: "Is not an Attribution GUIDE CSV File path (incorrect fourth)", path: "P.GUIDE.GUIDE-0001.Y2x.D00302.T2420001", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (incorrect fifth)", path: "P.GUIDE.GUIDE-0001.Y25.D0x30x.T24200011", testIsCSV: false},
 		{name: "Is not an Attribution GUIDE CSV File path (CCLF file)", path: "T.BCD.A0001.ZCY18.D181121.T1000000", testIsCSV: false},
-		{name: "Is not an Attribution GUIDE CSV File path (opt-out file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
+		{name: "Is not an Attribution GUIDE CSV File path (bene-prefs file)", path: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", testIsCSV: false},
 
 		{name: "Is an Attribution ACCESS CSV File path", path: "T.ACCESS.ACCES00001.Y26.D260616.T2044071", testIsCSV: true},
 		{name: "Is not an Attribution ACCESS CSV File path (incorrect first)", path: "x.ACCESS.ACCES00001.Y26.D260616.T2044071", testIsCSV: false},

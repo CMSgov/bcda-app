@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/sirupsen/logrus"
@@ -23,7 +24,7 @@ const (
 )
 
 type BenePrefsImporter struct {
-	FileHandler          BenePrefsFileHandler
+	FileHandler          bcdaaws.S3Helper
 	Repo                 models.Repository
 	Logger               logrus.FieldLogger
 	ImportStatusInterval int
@@ -32,7 +33,7 @@ type BenePrefsImporter struct {
 // ImportDirectory takes a dir path and processes all bene-prefs files, creating a suppression_files db record for each file and a suppressions db record for each entry in that file.
 // returns the number of files successfully imported, the number of files that failed to import, and the number of files that were skipped (not bene-prefs files).
 func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path string) (success, failure, skipped int, err error) {
-	suppresslist, skipped, err := importer.FileHandler.LoadBenePrefsFiles(ctx, path)
+	suppresslist, skipped, err := LoadBenePrefsFiles(ctx, importer.FileHandler, path)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -59,7 +60,7 @@ func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path stri
 		}
 	}
 
-	err = importer.FileHandler.CleanupBenePrefsFiles(ctx, *suppresslist)
+	err = CleanupBenePrefsFiles(ctx, importer.FileHandler, *suppresslist)
 	if err != nil {
 		importer.Logger.Error(err)
 	}
@@ -79,7 +80,7 @@ func (importer BenePrefsImporter) validate(ctx context.Context, metadata *models
 	importer.Logger.Infof("validating bene-prefs file %s...", metadata)
 
 	count := 0
-	sc, close, err := importer.FileHandler.OpenFile(ctx, metadata)
+	sc, close, err := importer.FileHandler.OpenFileAsScanner(ctx, metadata.FilePath)
 	if err != nil {
 		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
@@ -192,7 +193,7 @@ func (importer BenePrefsImporter) scanAndImport(ctx context.Context, metadata *m
 
 	importedCount := 0
 
-	sc, close, err := importer.FileHandler.OpenFile(ctx, metadata)
+	sc, close, err := importer.FileHandler.OpenFileAsScanner(ctx, metadata.FilePath)
 	if err != nil {
 		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		importer.Logger.Error(err)

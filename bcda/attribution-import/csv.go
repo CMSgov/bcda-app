@@ -14,6 +14,7 @@ import (
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -49,9 +50,9 @@ type csvFileMetadata struct {
 }
 
 type CSVImporter struct {
-	Logger        logrus.FieldLogger
-	FileProcessor CSVFileProcessor
-	PgxPool       *pgxv5Pool.Pool
+	Logger     logrus.FieldLogger
+	FileHelper bcdaaws.S3Helper
+	PgxPool    *pgxv5Pool.Pool
 }
 
 func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) error {
@@ -67,7 +68,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 	}
 	file.metadata = metadata
 
-	data, _, err := importer.FileProcessor.LoadCSV(ctx, filepath)
+	data, _, err := LoadCSV(ctx, importer.FileHelper, filepath)
 	if err != nil {
 		return err
 	}
@@ -81,7 +82,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 		file.imported = true
 	}
 
-	err = importer.FileProcessor.CleanUpCSV(ctx, file)
+	err = CleanUpCSV(ctx, importer.FileHelper, file)
 	if err != nil {
 		return err
 	}

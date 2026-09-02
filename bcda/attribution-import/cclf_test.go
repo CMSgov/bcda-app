@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -32,7 +33,8 @@ type CCLFTestSuite struct {
 
 	basePath string
 	importer CclfImporter
-	cleanup  func()
+	// fileHelper bcdaaws.S3Helper
+	cleanup func()
 
 	origDate string
 
@@ -45,11 +47,13 @@ func (s *CCLFTestSuite) SetupTest() {
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 
-	file_processor := &LocalFileProcessor{
-		Logger: log.API,
+	logger := testUtils.GetLogger(log.API)
+	client := bcdaaws.MockS3Client{}
+	fileHelper := bcdaaws.S3Helper{
+		Client: &client,
+		Logger: logger,
 	}
-
-	s.importer = NewCclfImporter(log.API, file_processor, s.pool)
+	s.importer = NewCclfImporter(logger, fileHelper, s.pool)
 }
 
 func (s *CCLFTestSuite) SetupSuite() {
@@ -85,7 +89,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
 	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
-	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser1()
 
 	// positive
@@ -95,7 +99,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	// missing cclf8 from cclf0
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
-	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser2()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -103,7 +107,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	// duplicate file types from cclf0
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
-	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
+	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
 	defer zipCloser3()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -111,7 +115,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	//invalid record count
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
-	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
+	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
 	defer zipCloser4()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -119,7 +123,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	//invalid record length
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
-	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
+	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
 	defer zipCloser5()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -171,7 +175,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileProcessor, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
 	metadata.cclf8Metadata.timestamp = fileTime
 	defer zipCloser()
 
@@ -235,7 +239,7 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0002")
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -263,7 +267,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: constants.CCLF8Name}
 	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileProcessor, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -293,7 +297,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
 	defer os.Remove(fileName)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileProcessor, "1234", fileName, "", cclfName, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "1234", fileName, "", cclfName, models.FileTypeDefault)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -329,7 +333,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), mbi)
 			defer os.Remove(fileName)
 
-			metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileProcessor, "1234", fileName, "", cclfName, tt.fileType)
+			metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "1234", fileName, "", cclfName, tt.fileType)
 			defer zipCloser()
 
 			validator := cclfFileValidator{
@@ -363,8 +367,9 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 	return f.Name(), cclfName
 }
 
-func buildZipMetadata(t *testing.T, processor CclfFileProcessor, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
-	zipReader, zipCloser, err := processor.OpenZipArchive(context.Background(), zipName)
+func buildZipMetadata(t *testing.T, fileHelper bcdaaws.S3Helper, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
+
+	zipReader, zipCloser, err := OpenZipArchive(context.Background(), fileHelper, zipName)
 	assert.Nil(t, err)
 
 	metadata := cclfZipMetadata{

@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -60,18 +61,18 @@ type CclfFileProcessor interface {
 
 // Manages the import process for CCLF files from a given source
 type CclfImporter struct {
-	logger        logrus.FieldLogger
-	fileProcessor CclfFileProcessor
-	pgxPool       *pgxv5Pool.Pool
-	pgxRepo       *postgres.PgxRepository
+	logger     logrus.FieldLogger
+	fileHelper bcdaaws.S3Helper
+	pgxPool    *pgxv5Pool.Pool
+	pgxRepo    *postgres.PgxRepository
 }
 
-func NewCclfImporter(logger logrus.FieldLogger, fileProcessor CclfFileProcessor, pgxPool *pgxv5Pool.Pool) CclfImporter {
+func NewCclfImporter(logger logrus.FieldLogger, fileHelper bcdaaws.S3Helper, pgxPool *pgxv5Pool.Pool) CclfImporter {
 	return CclfImporter{
-		logger:        logger,
-		fileProcessor: fileProcessor,
-		pgxPool:       pgxPool,
-		pgxRepo:       postgres.NewPgxRepositoryWithPool(pgxPool),
+		logger:     logger,
+		fileHelper: fileHelper,
+		pgxPool:    pgxPool,
+		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
 	}
 }
 
@@ -236,7 +237,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
 	success = 0
-	cclfMap, skipped, failure, err := importer.fileProcessor.LoadCclfFiles(ctx, filePath)
+	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, importer.fileHelper, filePath)
 	if err != nil {
 		return success, failure, skipped, err
 	}
@@ -272,7 +273,7 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 	}
 
 	if err = func() error {
-		_, err := importer.fileProcessor.CleanUpCCLF(ctx, cclfMap)
+		_, err := CleanUpCCLF(ctx, importer.fileHelper, cclfMap)
 		return err
 	}(); err != nil {
 		importer.logger.Error(err)

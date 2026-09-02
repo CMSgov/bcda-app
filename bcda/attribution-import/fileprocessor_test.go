@@ -15,7 +15,6 @@ import (
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 )
@@ -24,6 +23,7 @@ type S3ProcessorTestSuite struct {
 	suite.Suite
 	cclfRefDate   string
 	basePath      string
+	fileHelper    bcdaaws.S3Helper
 	cclfProcessor CclfFileProcessor
 	csvProcessor  CSVFileProcessor
 }
@@ -57,20 +57,12 @@ func (s *S3ProcessorTestSuite) SetupSuite() {
 	s.cclfRefDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 	client := newMockS3ForCleanup()
+	s.fileHelper = bcdaaws.S3Helper{
+		Client: client,
+		Logger: logrus.StandardLogger(),
+	}
 
 	s.basePath = "../../shared_files"
-	s.cclfProcessor = &S3FileProcessor{
-		Handler: fh.S3FileHandler{
-			Client: client,
-			Logger: logrus.StandardLogger(),
-		},
-	}
-	s.csvProcessor = &S3FileProcessor{
-		Handler: fh.S3FileHandler{
-			Client: client,
-			Logger: logrus.StandardLogger(),
-		},
-	}
 }
 
 func (s *S3ProcessorTestSuite) TearDownSuite() {
@@ -103,7 +95,7 @@ func (s *S3ProcessorTestSuite) TearDownSuite() {
 // 			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
 // 			// defer cleanup()
 
-// 			cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, filepath.Join(bucketName, tt.path))
+// 			cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, filepath.Join(bucketName, tt.path))
 // 			cclfZipFiles := cclfMap[cmsID]
 // 			assert.NoError(t, err)
 // 			assert.Equal(t, tt.skipped, skipped)
@@ -128,7 +120,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 	// bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
 	// s.T().Cleanup(func() { cleanupS3() })
 
-	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, bucketName)
+	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, bucketName)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
@@ -152,7 +144,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 // 	// )
 // 	// defer cleanupS3()
 
-// 	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, bucketName)
+// 	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, bucketName)
 // 	assert.Nil(s.T(), err)
 // 	assert.Equal(s.T(), 0, skipped)
 // 	assert.Equal(s.T(), 2, failure)
@@ -178,7 +170,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 // 			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
 // 			// defer cleanup()
 
-// 			cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, filepath.Join(bucketName, tt.path, tt.filename))
+// 			cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, filepath.Join(bucketName, tt.path, tt.filename))
 // 			cclfZipFiles := cclfMap[cmsID]
 // 			assert.NoError(t, err)
 // 			assert.Equal(t, tt.skipped, skipped)
@@ -197,7 +189,7 @@ func (s *S3ProcessorTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 
 // func (s *S3ProcessorTestSuite) TestLoadCclfFiles_InvalidPath() {
 // 	ctx := context.Background()
-// 	cclfMap, skipped, failure, err := s.cclfProcessor.LoadCclfFiles(ctx, "foo")
+// 	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, "foo")
 // 	assert.ErrorContains(s.T(), err, "NoSuchBucket")
 // 	assert.Equal(s.T(), 0, skipped)
 // 	assert.Equal(s.T(), 0, failure)
@@ -240,7 +232,7 @@ func TestS3ProcessorTestSuite(t *testing.T) {
 // 	// )
 // 	// s.T().Cleanup(func() { cleanup() })
 
-// 	m, skipped, f, err := s.cclfProcessor.LoadCclfFiles(ctx, bucketName)
+// 	m, skipped, f, err := LoadCclfFiles(ctx, s.fileHelper, bucketName)
 // 	assert.NoError(s.T(), err)
 // 	assert.Equal(s.T(), 0, skipped)
 // 	assert.Equal(s.T(), 0, f)

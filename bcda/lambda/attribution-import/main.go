@@ -16,8 +16,6 @@ import (
 	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
-
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -32,15 +30,6 @@ type AttributionImportHandler struct {
 	CSVImporter  ai.CSVImporterInterface
 	CCLFImporter ai.CCLFImporterInterface
 	CheckIfCSV   func(filePath string) (bool, error)
-}
-
-func (h *AttributionImportHandler) newFileProcessor(logger *logrus.Entry) *ai.S3FileProcessor {
-	return &ai.S3FileProcessor{
-		Handler: fh.S3FileHandler{
-			Client: h.S3Client,
-			Logger: logger,
-		},
-	}
 }
 
 func main() {
@@ -149,9 +138,12 @@ func (h *AttributionImportHandler) handleCSVImport(ctx context.Context, s3Import
 	importer := h.CSVImporter
 	if importer == nil {
 		importer = ai.CSVImporter{
-			Logger:        logger,
-			PgxPool:       h.Pool,
-			FileProcessor: h.newFileProcessor(logger),
+			Logger:  logger,
+			PgxPool: h.Pool,
+			FileHelper: bcdaaws.S3Helper{
+				Client: h.S3Client,
+				Logger: logger,
+			},
 		}
 	}
 
@@ -172,8 +164,11 @@ func (h *AttributionImportHandler) handleCclfImport(ctx context.Context, s3Impor
 
 	importer := h.CCLFImporter
 	if importer == nil {
-		fileProcessor := h.newFileProcessor(logger)
-		importer = ai.NewCclfImporter(logger, fileProcessor, h.Pool)
+		fileHelper := bcdaaws.S3Helper{
+			Client: h.S3Client,
+			Logger: logger,
+		}
+		importer = ai.NewCclfImporter(logger, fileHelper, h.Pool)
 	}
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, s3ImportPath)
