@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
@@ -49,28 +51,18 @@ type cclfFileValidator struct {
 	maxRecordLength  int
 }
 
-// Manages the interaction of CCLF files from a given source
-type CclfFileProcessor interface {
-	// Load a list of valid CCLF files to be imported
-	LoadCclfFiles(ctx context.Context, path string) (cclfList map[string][]*cclfZipMetadata, skipped int, failed int, err error)
-	// Clean up CCLF files after failed or successful import runs
-	CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error)
-	// Open a zip archive
-	OpenZipArchive(ctx context.Context, name string) (*zip.Reader, func(), error)
-}
-
 // Manages the import process for CCLF files from a given source
 type CclfImporter struct {
 	logger     logrus.FieldLogger
-	fileHelper bcdaaws.S3Helper
+	fileClient bcdaaws.CustomS3Client
 	pgxPool    *pgxv5Pool.Pool
 	pgxRepo    *postgres.PgxRepository
 }
 
-func NewCclfImporter(logger logrus.FieldLogger, fileHelper bcdaaws.S3Helper, pgxPool *pgxv5Pool.Pool) CclfImporter {
+func NewCclfImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CclfImporter {
 	return CclfImporter{
 		logger:     logger,
-		fileHelper: fileHelper,
+		fileClient: fileClient,
 		pgxPool:    pgxPool,
 		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
 	}
@@ -237,7 +229,7 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 
 func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
 	success = 0
-	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, importer.fileHelper, filePath)
+	cclfMap, skipped, failure, err := importer.LoadCclfFiles(ctx, filePath)
 	if err != nil {
 		return success, failure, skipped, err
 	}
@@ -273,7 +265,7 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 	}
 
 	if err = func() error {
-		_, err := CleanUpCCLF(ctx, importer.fileHelper, cclfMap)
+		_, err := importer.CleanUpCCLF(ctx, cclfMap)
 		return err
 	}(); err != nil {
 		importer.logger.Error(err)
@@ -291,4 +283,145 @@ func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 
 func (m cclfFileMetadata) String() string {
 	return m.name
+}
+
+func (importer CclfImporter) LoadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
+	cclfMap = make(map[string][]*cclfZipMetadata)
+	bucket, prefix := bcdaaws.ParseS3Uri(path)
+	s3Objects, err := bcdaaws.ListFiles(ctx, importer.fileClient, bucket, prefix)
+
+	if err != nil {
+		return cclfMap, skipped, failed, err
+	}
+
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		return cclfMap, skipped, failed, err
+	}
+
+	for _, obj := range s3Objects {
+		// validate the top level zipped folder
+		cmsID, err := getCMSID(*obj.Key)
+		if err != nil {
+			importer.logger.Errorf("Skipping CCLF archive (%s/%s): %v", bucket, *obj.Key, err)
+			continue
+		}
+
+		supported := cfg.IsSupportedACO(cmsID)
+		if !supported {
+			importer.logger.Errorf("Skipping CCLF archive (%s/%s): cmsID %s not supported.", bucket, *obj.Key, cmsID)
+			continue
+		}
+
+		zipReader, zipCloser, err := importer.OpenZipArchive(ctx, filepath.Join(bucket, *obj.Key))
+
+		if err != nil {
+			failed++
+			importer.logger.Errorf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
+			continue
+		}
+
+		var cclf0Metadata, cclf8Metadata *cclfFileMetadata
+		var cclf0File, cclf8File *zip.File
+		var readError error
+
+		for _, f := range zipReader.File {
+			metadata, err := getCCLFFileMetadata(cmsID, f.Name)
+			metadata.deliveryDate = *obj.LastModified
+
+			if err != nil {
+				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
+				importer.logger.Errorf("Issue parsing filename into metadata: %v", err)
+				continue
+			}
+
+			if metadata.cclfNum == 0 {
+				if cclf0Metadata != nil {
+					readError = fmt.Errorf("multiple CCLF0 files found in zip (%s/%s)", bucket, *obj.Key)
+					break
+				}
+				cclf0Metadata = &metadata
+				cclf0File = f
+			} else if metadata.cclfNum == 8 {
+				if cclf8Metadata != nil {
+					readError = fmt.Errorf("multiple CCLF8 files found in zip (%s/%s)", bucket, *obj.Key)
+					break
+				}
+				cclf8Metadata = &metadata
+				cclf8File = f
+			} else {
+				readError = fmt.Errorf("unexpected CCLF num %d processed (%s/%s)", metadata.cclfNum, bucket, *obj.Key)
+				break
+			}
+		}
+
+		if readError != nil {
+			failed++
+			importer.logger.Errorf(readError.Error())
+			zipCloser()
+		} else if cclf0Metadata == nil || cclf8Metadata == nil {
+			failed++
+			importer.logger.Errorf("Missing CCLF0 or CCLF8 file in zip (%s/%s)", bucket, *obj.Key)
+			zipCloser()
+		} else {
+			zipMetadata := cclfZipMetadata{
+				acoID:         cmsID,
+				zipReader:     zipReader,
+				zipCloser:     zipCloser,
+				cclf0Metadata: *cclf0Metadata,
+				cclf8Metadata: *cclf8Metadata,
+				cclf0File:     *cclf0File,
+				cclf8File:     *cclf8File,
+				filePath:      filepath.Join(bucket, *obj.Key),
+			}
+
+			cclfMap[cmsID] = append(cclfMap[cmsID], &zipMetadata)
+		}
+	}
+
+	return cclfMap, skipped, failed, err
+}
+
+func (importer CclfImporter) CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error) {
+	errCount := 0
+
+	for acoID := range cclfMap {
+		for _, cclfZipMetadata := range cclfMap[acoID] {
+			if !cclfZipMetadata.imported {
+				// Don't do anything. The S3 bucket should have a retention policy that
+				// automatically cleans up files after a specified period of time.
+				importer.logger.Warningf("File %s was not imported successfully. Skipping cleanup.", cclfZipMetadata.filePath)
+				continue
+			}
+
+			importer.logger.Infof("Cleaning up file %s", cclfZipMetadata.filePath)
+			err := bcdaaws.Delete(ctx, importer.fileClient, cclfZipMetadata.filePath)
+
+			if err != nil {
+				errCount++
+				continue
+			}
+
+			deletedCount++
+			importer.logger.Infof("File %s successfully ingested and deleted from S3.", cclfZipMetadata.filePath)
+		}
+	}
+
+	if errCount > 0 {
+		return deletedCount, fmt.Errorf("%d files could not be cleaned up", errCount)
+	}
+
+	return deletedCount, nil
+}
+
+func (importer CclfImporter) OpenZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
+	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.fileClient, filePath)
+
+	if err != nil {
+		importer.logger.Errorf("Failed to download %s", filePath)
+		return nil, nil, err
+	}
+
+	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
+	return reader, func() {}, err
 }

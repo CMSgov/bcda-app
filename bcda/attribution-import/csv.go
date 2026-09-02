@@ -23,12 +23,12 @@ import (
 
 // FileProcessors for attribution are created as interfaces so that they can be passed in place of the implementation; local development and other envs will require different processors.
 // This interface has two implementations; one for ingesting and testing locally, and one for ingesting in s3.
-type CSVFileProcessor interface {
-	// Fetch the csv attribution file to be imported.
-	LoadCSV(ctx context.Context, path string) (*bytes.Reader, func(), error)
-	// Remove csv attribution file that was successfully imported.
-	CleanUpCSV(ctx context.Context, file csvFile) (err error)
-}
+// type CSVFileProcessor interface {
+// 	// Fetch the csv attribution file to be imported.
+// 	LoadCSV(ctx context.Context, path string) (*bytes.Reader, func(), error)
+// 	// Remove csv attribution file that was successfully imported.
+// 	CleanUpCSV(ctx context.Context, file csvFile) (err error)
+// }
 
 type csvFile struct {
 	metadata csvFileMetadata
@@ -51,7 +51,7 @@ type csvFileMetadata struct {
 
 type CSVImporter struct {
 	Logger     logrus.FieldLogger
-	FileHelper bcdaaws.S3Helper
+	FileClient bcdaaws.CustomS3Client
 	PgxPool    *pgxv5Pool.Pool
 }
 
@@ -68,7 +68,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 	}
 	file.metadata = metadata
 
-	data, _, err := LoadCSV(ctx, importer.FileHelper, filepath)
+	data, _, err := importer.LoadCSV(ctx, filepath)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 		file.imported = true
 	}
 
-	err = CleanUpCSV(ctx, importer.FileHelper, file)
+	err = importer.CleanUpCSV(ctx, file)
 	if err != nil {
 		return err
 	}
@@ -203,5 +203,35 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 		count++
 	}
 	return rows, count, err
+}
 
+func (importer CSVImporter) CleanUpCSV(ctx context.Context, file csvFile) error {
+	if !file.imported {
+		// Don't do anything. The S3 bucket should have a retention policy that
+		// automatically cleans up files after a specified period of time.
+		importer.Logger.Warningf("File %s was not imported successfully. Skipping cleanup.", file.filepath)
+		return nil
+	}
+
+	importer.Logger.Infof("Cleaning up file %s", file.filepath)
+	err := bcdaaws.Delete(ctx, importer.FileClient, file.filepath)
+
+	if err != nil {
+		importer.Logger.Errorf("Failed to clean up file %s: %v", file.filepath, err)
+		return err
+	}
+
+	importer.Logger.Infof("File %s successfully ingested and deleted from S3.", file.filepath)
+	return nil
+}
+
+func (importer CSVImporter) LoadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
+	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.FileClient, filepath)
+	if err != nil {
+		importer.Logger.Errorf("Failed to download %s", filepath)
+		return nil, nil, err
+	}
+
+	reader := bytes.NewReader(byte_arr)
+	return reader, func() {}, err
 }

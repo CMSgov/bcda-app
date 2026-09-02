@@ -30,31 +30,38 @@ import (
 type CCLFTestSuite struct {
 	suite.Suite
 	pendingDeletionDir string
-
-	basePath string
-	importer CclfImporter
-	// fileHelper bcdaaws.S3Helper
-	cleanup func()
-
-	origDate string
-
-	db   *sql.DB
-	pool *pgxv5Pool.Pool
+	basePath           string
+	origDate           string
+	importer           CclfImporter
+	cleanup            func()
+	db                 *sql.DB
+	pool               *pgxv5Pool.Pool
 }
 
-func (s *CCLFTestSuite) SetupTest() {
-	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
+// type mockS3ForCleanup struct {
+// 	bcdaaws.MockS3Client
+// 	deleted map[string]bool
+// }
 
-	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
+// func newMockS3ForCleanup() *mockS3ForCleanup {
+// 	return &mockS3ForCleanup{
+// 		deleted: make(map[string]bool),
+// 	}
+// }
 
-	logger := testUtils.GetLogger(log.API)
-	client := bcdaaws.MockS3Client{}
-	fileHelper := bcdaaws.S3Helper{
-		Client: &client,
-		Logger: logger,
-	}
-	s.importer = NewCclfImporter(logger, fileHelper, s.pool)
-}
+// func (m *mockS3ForCleanup) DeleteObject(ctx context.Context, input *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+// 	if input != nil && input.Key != nil {
+// 		m.deleted[*input.Key] = true
+// 	}
+// 	return &s3.DeleteObjectOutput{}, nil
+// }
+
+// func (m *mockS3ForCleanup) HeadObject(ctx context.Context, input *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+// 	if input != nil && input.Key != nil && m.deleted[*input.Key] {
+// 		return nil, &s3types.NotFound{}
+// 	}
+// 	return &s3.HeadObjectOutput{}, nil
+// }
 
 func (s *CCLFTestSuite) SetupSuite() {
 	s.origDate = conf.GetEnv("CCLF_REF_DATE")
@@ -68,6 +75,16 @@ func (s *CCLFTestSuite) SetupSuite() {
 
 	s.db = database.Connect()
 	s.pool = database.ConnectPool()
+}
+
+func (s *CCLFTestSuite) SetupTest() {
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
+
+	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
+
+	logger := testUtils.GetLogger(log.API)
+	client := bcdaaws.MockS3Client{}
+	s.importer = NewCclfImporter(logger, &client, s.pool)
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -89,7 +106,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
 	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
-	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser1()
 
 	// positive
@@ -99,7 +116,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	// missing cclf8 from cclf0
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
-	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
+	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser2()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -107,7 +124,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	// duplicate file types from cclf0
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
-	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
+	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
 	defer zipCloser3()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -115,7 +132,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	//invalid record count
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
-	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
+	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
 	defer zipCloser4()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -123,7 +140,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	//invalid record length
 	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
-	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
+	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
 	defer zipCloser5()
 
 	_, err = s.importer.importCCLF0(ctx, metadata)
@@ -175,7 +192,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
 	metadata.cclf8Metadata.timestamp = fileTime
 	defer zipCloser()
 
@@ -239,7 +256,7 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0002")
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -267,7 +284,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: constants.CCLF8Name}
 	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -297,7 +314,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
 	defer os.Remove(fileName)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "1234", fileName, "", cclfName, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "1234", fileName, "", cclfName, models.FileTypeDefault)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -333,7 +350,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), mbi)
 			defer os.Remove(fileName)
 
-			metadata, zipCloser := buildZipMetadata(s.T(), s.importer.fileHelper, "1234", fileName, "", cclfName, tt.fileType)
+			metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "1234", fileName, "", cclfName, tt.fileType)
 			defer zipCloser()
 
 			validator := cclfFileValidator{
@@ -367,10 +384,10 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 	return f.Name(), cclfName
 }
 
-func buildZipMetadata(t *testing.T, fileHelper bcdaaws.S3Helper, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
+func buildZipMetadata(t *testing.T, importer CclfImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
 
-	zipReader, zipCloser, err := OpenZipArchive(context.Background(), fileHelper, zipName)
-	assert.Nil(t, err)
+	zipReader, zipCloser, err := importer.OpenZipArchive(context.Background(), zipName)
+	assert.NoError(t, err)
 
 	metadata := cclfZipMetadata{
 		filePath:  zipName,
@@ -403,4 +420,226 @@ func buildZipMetadata(t *testing.T, fileHelper bcdaaws.S3Helper, cmsID, zipName,
 	}
 
 	return &metadata, zipCloser
+}
+
+// some of these integration tests are disabled because they require a local S3 instance to run.
+// They are useful for testing the import of CCLF files from S3 but are not part of the normal test suite.
+
+// func (s *CCLFTestSuite) TestLoadCclfFiles() {
+// 	ctx := context.Background()
+// 	cmsID := "A0001"
+// 	tests := []struct {
+// 		path            string
+// 		numCCLFZipFiles int
+// 		skipped         int
+// 		failure         int
+// 	}{
+// 		{"cclf/archives/valid/", 1, 0, 0},
+// 		{"cclf/mixed/with_invalid_filenames/", 1, 0, 0},
+// 		{"cclf/mixed/0/valid_names/", 0, 0, 3},
+// 		{"cclf/archives/8/valid/", 0, 0, 5},
+// 		{"cclf/files/9/valid_names/", 0, 0, 0},
+// 		{"cclf/mixed/with_folders/", 1, 0, 0},
+// 	}
+
+// 	for _, tt := range tests {
+// 		s.T().Run(tt.path, func(t *testing.T) {
+// 			bucketName := filepath.Join(s.basePath, tt.path)
+// 			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
+// 			// defer cleanup()
+
+// 			cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, filepath.Join(bucketName, tt.path))
+// 			cclfZipFiles := cclfMap[cmsID]
+// 			assert.NoError(t, err)
+// 			assert.Equal(t, tt.skipped, skipped)
+// 			assert.Equal(t, tt.failure, failure)
+// 			assert.Equal(t, tt.numCCLFZipFiles, len(cclfZipFiles))
+// 			for _, cclfZipFile := range cclfZipFiles {
+// 				assert.Equal(t, 18, cclfZipFile.cclf0Metadata.perfYear)
+// 				assert.Equal(t, 18, cclfZipFile.cclf8Metadata.perfYear)
+// 				assert.Equal(t, models.FileTypeDefault, cclfZipFile.cclf0Metadata.fileType)
+// 				assert.Equal(t, models.FileTypeDefault, cclfZipFile.cclf8Metadata.fileType)
+// 			}
+// 		})
+// 	}
+// }
+
+func (s *CCLFTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
+	ctx := context.Background()
+	cleanupEnvVars := testUtils.SetEnvVars(s.T(), []testUtils.EnvVar{{Name: "ENV", Value: "dev"}})
+	s.T().Cleanup(func() { cleanupEnvVars() })
+
+	bucketName := uuid.NewRandom().String()
+	// bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
+	// s.T().Cleanup(func() { cleanupS3() })
+
+	cclfMap, skipped, failure, err := s.importer.LoadCclfFiles(ctx, bucketName)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 0, skipped)
+	assert.Equal(s.T(), 0, failure)
+	assert.Empty(s.T(), cclfMap)
+}
+
+// func (s *CCLFTestSuite) TestLoadCclfFiles_DuplicateCCLFs() {
+// 	ctx := context.Background()
+// 	bucketName := uuid.NewString()
+// 	// bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(),
+// 	// 	// Multiple CCLF0s
+// 	// 	testUtils.ZipInput{
+// 	// 		ZipName:   "T.BCD.A9990.ZCY20.D201113.T0000000",
+// 	// 		CclfNames: []string{"T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC0Y20.D201113.T0000011", "T.BCD.A9990.ZC8Y20.D201113.T0000010"},
+// 	// 	},
+// 	// 	// Multiple CCLF8s
+// 	// 	testUtils.ZipInput{
+// 	// 		ZipName:   "T.BCD.A9990.ZCY19.D201113.T0000000",
+// 	// 		CclfNames: []string{"T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000011"},
+// 	// 	},
+// 	// )
+// 	// defer cleanupS3()
+
+// 	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, bucketName)
+// 	assert.Nil(s.T(), err)
+// 	assert.Equal(s.T(), 0, skipped)
+// 	assert.Equal(s.T(), 2, failure)
+// 	assert.Empty(s.T(), cclfMap)
+// }
+
+// func (s *CCLFTestSuite) TestLoadCclfFiles_SingleFile() {
+// 	ctx := context.Background()
+// 	cmsID := "A0001"
+// 	tests := []struct {
+// 		path            string
+// 		filename        string
+// 		numCCLFZipFiles int // Expected count for the cmsID, perfYear above
+// 		skipped         int
+// 		failure         int
+// 	}{
+// 		{"cclf/archives/valid/", "T.BCD.A0001.ZCY18.D181120.T1000000", 1, 0, 0},
+// 	}
+
+// 	for _, tt := range tests {
+// 		s.T().Run(tt.path, func(t *testing.T) {
+// 			bucketName := uuid.NewString()
+// 			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
+// 			// defer cleanup()
+
+// 			cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, filepath.Join(bucketName, tt.path, tt.filename))
+// 			cclfZipFiles := cclfMap[cmsID]
+// 			assert.NoError(t, err)
+// 			assert.Equal(t, tt.skipped, skipped)
+// 			assert.Equal(t, tt.failure, failure)
+// 			assert.Equal(t, tt.numCCLFZipFiles, len(cclfZipFiles))
+
+// 			for _, cclfZipFile := range cclfZipFiles {
+// 				assert.Equal(t, 18, cclfZipFile.cclf0Metadata.perfYear)
+// 				assert.Equal(t, 18, cclfZipFile.cclf8Metadata.perfYear)
+// 				assert.Equal(t, models.FileTypeDefault, cclfZipFile.cclf0Metadata.fileType)
+// 				assert.Equal(t, models.FileTypeDefault, cclfZipFile.cclf8Metadata.fileType)
+// 			}
+// 		})
+// 	}
+// }
+
+// func (s *CCLFTestSuite) TestLoadCclfFiles_InvalidPath() {
+// 	ctx := context.Background()
+// 	cclfMap, skipped, failure, err := LoadCclfFiles(ctx, s.fileHelper, "foo")
+// 	assert.ErrorContains(s.T(), err, "NoSuchBucket")
+// 	assert.Equal(s.T(), 0, skipped)
+// 	assert.Equal(s.T(), 0, failure)
+// 	assert.Empty(s.T(), cclfMap)
+// }
+
+// func (s *CCLFTestSuite) TestMultipleFileTypes() {
+// 	ctx := context.Background()
+// 	// Hard code the reference date to ensure we do not reject any CCLF files because they are too old.
+// 	origDate := conf.GetEnv("CCLF_REF_DATE")
+// 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "201201")
+// 	s.T().Cleanup(func() { conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate) })
+// 	bucketName := uuid.NewString()
+
+// 	// Create various CCLF files that have unique perfYear:fileType
+// 	// bucketName, cleanup := testUtils.CreateZipsInS3(s.T(),
+// 	// 	testUtils.ZipInput{
+// 	// 		ZipName:   "T.BCD.A9990.ZCY20.D201113.T0000000",
+// 	// 		CclfNames: []string{"T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010"},
+// 	// 	},
+// 	// 	// different perf year
+// 	// 	testUtils.ZipInput{
+// 	// 		ZipName:   "T.BCD.A9990.ZCY19.D201113.T0000000",
+// 	// 		CclfNames: []string{"T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010"},
+// 	// 	},
+// 	// 	// different file type
+// 	// 	testUtils.ZipInput{
+// 	// 		ZipName:   "T.BCD.A9990.ZCR20.D201113.T0000000",
+// 	// 		CclfNames: []string{"T.BCD.A9990.ZC0R20.D201113.T0000010", "T.BCD.A9990.ZC8R20.D201113.T0000010"},
+// 	// 	},
+// 	// 	// different perf year and file type
+// 	// 	testUtils.ZipInput{
+// 	// 		ZipName:   "T.BCD.A9990.ZCR19.D201113.T0000000",
+// 	// 		CclfNames: []string{"T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010"},
+// 	// 	},
+// 	// )
+// 	// s.T().Cleanup(func() { cleanup() })
+
+// 	m, skipped, f, err := LoadCclfFiles(ctx, s.fileHelper, bucketName)
+// 	assert.NoError(s.T(), err)
+// 	assert.Equal(s.T(), 0, skipped)
+// 	assert.Equal(s.T(), 0, f)
+// 	assert.Equal(s.T(), 1, len(m)) // Only one ACO present
+
+// 	for _, fileMap := range m {
+// 		// We should contain 4 unique entries, one for each unique perfYear:fileType tuple
+// 		assert.Equal(s.T(), 4, len(fileMap))
+// 	}
+// }
+
+func (s *CCLFTestSuite) TestCleanupCCLF() {
+	assert := assert.New(s.T())
+	cclfmap := make(map[string][]*cclfZipMetadata)
+	acoID := "A0001"
+
+	bucketName := uuid.NewRandom().String()
+
+	// failed import: stay put
+	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
+	cclf0metadata := &cclfFileMetadata{
+		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
+		env:          "test",
+		acoID:        acoID,
+		cclfNum:      8,
+		perfYear:     18,
+		timestamp:    fileTime,
+		deliveryDate: time.Now(),
+	}
+
+	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
+	cclf8metadata := &cclfFileMetadata{
+		name:         constants.CCLF8Name,
+		env:          "test",
+		acoID:        acoID,
+		cclfNum:      8,
+		perfYear:     18,
+		timestamp:    fileTime,
+		deliveryDate: time.Now(),
+	}
+
+	cclfmap[acoID] = []*cclfZipMetadata{
+		{
+			cclf0Metadata: *cclf0metadata,
+			cclf8Metadata: *cclf8metadata,
+			filePath:      filepath.Join(bucketName, constants.CCLF8CompPath),
+			imported:      false,
+		},
+	}
+
+	deletedCount, err := s.importer.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(0, deletedCount)
+	assert.Nil(err)
+
+	// Cleanup file after import
+	cclfmap[acoID][0].imported = true
+
+	deletedCount, err = s.importer.CleanUpCCLF(context.Background(), cclfmap)
+	assert.Equal(1, deletedCount)
+	assert.Nil(err)
 }

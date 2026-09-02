@@ -123,10 +123,7 @@ func (h *BenePrefsImportHandler) importHandler(ctx context.Context, sqsEvent eve
 
 func (h *BenePrefsImportHandler) importDir(ctx context.Context, s3ImportPath string) (string, error) {
 	importer := bp.BenePrefsImporter{
-		FileHandler: bcdaaws.S3Helper{
-			Client: h.s3Client,
-			Logger: h.logger,
-		},
+		FileClient:           h.s3Client,
 		Repo:                 h.repo,
 		Logger:               h.logger,
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),

@@ -24,7 +24,7 @@ const (
 )
 
 type BenePrefsImporter struct {
-	FileHandler          bcdaaws.S3Helper
+	FileClient           bcdaaws.CustomS3Client
 	Repo                 models.Repository
 	Logger               logrus.FieldLogger
 	ImportStatusInterval int
@@ -33,7 +33,7 @@ type BenePrefsImporter struct {
 // ImportDirectory takes a dir path and processes all bene-prefs files, creating a suppression_files db record for each file and a suppressions db record for each entry in that file.
 // returns the number of files successfully imported, the number of files that failed to import, and the number of files that were skipped (not bene-prefs files).
 func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path string) (success, failure, skipped int, err error) {
-	suppresslist, skipped, err := LoadBenePrefsFiles(ctx, importer.FileHandler, path)
+	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, path)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -60,7 +60,7 @@ func (importer BenePrefsImporter) ImportDirectory(ctx context.Context, path stri
 		}
 	}
 
-	err = CleanupBenePrefsFiles(ctx, importer.FileHandler, *suppresslist)
+	err = importer.cleanupBenePrefsFiles(ctx, *suppresslist)
 	if err != nil {
 		importer.Logger.Error(err)
 	}
@@ -80,7 +80,7 @@ func (importer BenePrefsImporter) validate(ctx context.Context, metadata *models
 	importer.Logger.Infof("validating bene-prefs file %s...", metadata)
 
 	count := 0
-	sc, close, err := importer.FileHandler.OpenFileAsScanner(ctx, metadata.FilePath)
+	sc, close, err := bcdaaws.OpenFileAsScanner(ctx, importer.FileClient, metadata.FilePath)
 	if err != nil {
 		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
@@ -193,7 +193,7 @@ func (importer BenePrefsImporter) scanAndImport(ctx context.Context, metadata *m
 
 	importedCount := 0
 
-	sc, close, err := importer.FileHandler.OpenFileAsScanner(ctx, metadata.FilePath)
+	sc, close, err := bcdaaws.OpenFileAsScanner(ctx, importer.FileClient, metadata.FilePath)
 	if err != nil {
 		err = fmt.Errorf("could not read file %s, err: %w", metadata, err)
 		importer.Logger.Error(err)
@@ -241,6 +241,62 @@ func (importer BenePrefsImporter) createBenePrefsRecord(ctx context.Context, met
 		err = fmt.Errorf("failed to create bene-prefs record, err: %w", err)
 		importer.Logger.Error(err)
 		return err
+	}
+
+	return nil
+}
+
+func (importer BenePrefsImporter) loadBenePrefsFiles(ctx context.Context, path string) (suppressList *[]*models.BenePrefsFilenameMetadata, skipped int, err error) {
+	var result []*models.BenePrefsFilenameMetadata
+
+	bucket, prefix := bcdaaws.ParseS3Uri(path)
+	s3Objects, err := bcdaaws.ListFiles(ctx, importer.FileClient, bucket, prefix)
+	if err != nil {
+		return &result, skipped, err
+	}
+
+	for _, obj := range s3Objects {
+		metadata, err := parseMetadata(*obj.Key)
+		metadata.FilePath = fmt.Sprintf("s3://%s/%s", bucket, *obj.Key)
+		metadata.DeliveryDate = *obj.LastModified
+
+		if err != nil {
+			// Skip files with a bad name.  An unknown file in this dir isn't a blocker
+			importer.Logger.Errorf("Issue parsing filename into metadata: %v", err)
+			skipped = skipped + 1
+			continue
+		}
+
+		result = append(result, &metadata)
+	}
+
+	return &result, skipped, err
+}
+
+func (importer BenePrefsImporter) cleanupBenePrefsFiles(ctx context.Context, suppresslist []*models.BenePrefsFilenameMetadata) error {
+	errCount := 0
+
+	for _, bpFile := range suppresslist {
+		if !bpFile.Imported {
+			// Don't do anything. The S3 bucket should have a retention policy that
+			// automatically cleans up files after a specified period of time,
+			importer.Logger.Warningf("File %s was not imported successfully. Skipping cleanup", bpFile)
+			continue
+		}
+
+		importer.Logger.Infof("Cleaning up file %s\n", bpFile)
+		err := bcdaaws.Delete(ctx, importer.FileClient, bpFile.FilePath)
+
+		if err != nil {
+			errCount++
+			continue
+		}
+
+		importer.Logger.Infof("File %s successfully ingested and deleted from S3", bpFile)
+	}
+
+	if errCount > 0 {
+		return fmt.Errorf("%d files could not be cleaned up", errCount)
 	}
 
 	return nil

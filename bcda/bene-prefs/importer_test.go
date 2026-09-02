@@ -50,10 +50,7 @@ func (s *BenePrefsTestSuite) createImporter(repo models.Repository) BenePrefsImp
 	logger := log.StandardLogger()
 	client := &bcdaaws.MockS3Client{}
 	return BenePrefsImporter{
-		FileHandler: bcdaaws.S3Helper{
-			Client: client,
-			Logger: logger,
-		},
+		FileClient:           client,
 		Repo:                 repo,
 		Logger:               logger,
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
@@ -214,19 +211,19 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	ctx := context.Background()
 
 	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	suppresslist, skipped, err := LoadBenePrefsFiles(ctx, importer.FileHandler, filePath)
+	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, filePath)
 	assert.Nil(err)
 	assert.Equal(2, len(*suppresslist))
 	assert.Equal(0, skipped)
 
 	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
-	suppresslist, skipped, err = LoadBenePrefsFiles(ctx, importer.FileHandler, filePath)
+	suppresslist, skipped, err = importer.loadBenePrefsFiles(ctx, filePath)
 	assert.Nil(err)
 	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
 
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	suppresslist, _, err = LoadBenePrefsFiles(ctx, importer.FileHandler, filePath)
+	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filePath)
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
 	// check current value and change mod time
@@ -241,7 +238,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	}
 
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-	suppresslist, _, err = LoadBenePrefsFiles(ctx, importer.FileHandler, filePath)
+	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filePath)
 	assert.Nil(err)
 	for _, f := range *suppresslist {
 		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
@@ -264,7 +261,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	suppresslist, skipped, err := LoadBenePrefsFiles(ctx, importer.FileHandler, folderPath)
+	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, folderPath)
 	assert.Nil(err)
 	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
@@ -280,7 +277,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	suppresslist, skipped, err = LoadBenePrefsFiles(ctx, importer.FileHandler, folderPath)
+	suppresslist, skipped, err = importer.loadBenePrefsFiles(ctx, folderPath)
 	assert.Nil(err)
 	assert.Equal(0, len(*suppresslist))
 	assert.Equal(2, skipped)
@@ -301,12 +298,12 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles_TimeChange() {
 		s.FailNow(constants.TestChangeTimeErr, err)
 	}
 
-	// importer.FileHandler.(*LocalFileHandler).PendingDeletionDir = "\n"
-	_, _, err = LoadBenePrefsFiles(ctx, importer.FileHandler, folderPath)
+	// importer.FileHelper.(*LocalFileHelper).PendingDeletionDir = "\n"
+	_, _, err = importer.loadBenePrefsFiles(ctx, folderPath)
 	assert.Equal(true, strings.Contains(err.Error(), "error moving unknown file"))
 }
 
-func (s *BenePrefsTestSuite) TestCleanupSuppression() {
+func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
 	assert := assert.New(s.T())
 	ctx := context.Background()
 	repo := &models.MockRepository{}
@@ -344,7 +341,7 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression() {
 	}
 
 	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
-	err := CleanupBenePrefsFiles(ctx, importer.FileHandler, suppresslist)
+	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
 	assert.Nil(err)
 
 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
@@ -362,12 +359,12 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression() {
 	}
 }
 
-func (s *BenePrefsTestSuite) TestCleanupSuppression_Bad() {
+func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_Bad() {
 	assert := assert.New(s.T())
 	ctx := context.Background()
 	repo := &models.MockRepository{}
 	importer := s.createImporter(repo)
-	// importer.FileHandler.(*LocalFileHandler).PendingDeletionDir = "\n"
+	// importer.FileHelper.(*LocalFileHelper).PendingDeletionDir = "\n"
 
 	var suppresslist []*models.BenePrefsFilenameMetadata
 
@@ -391,16 +388,16 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression_Bad() {
 	}
 
 	suppresslist = []*models.BenePrefsFilenameMetadata{metadata1, metadata2}
-	err := CleanupBenePrefsFiles(ctx, importer.FileHandler, suppresslist)
+	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
 	assert.EqualError(err, "2 files could not be cleaned up")
 }
 
-func (s *BenePrefsTestSuite) TestCleanupSuppression_RenameFileError() {
+func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_RenameFileError() {
 	assert := assert.New(s.T())
 	ctx := context.Background()
 	repo := &models.MockRepository{}
 	importer := s.createImporter(repo)
-	// importer.FileHandler.(*LocalFileHandler).PendingDeletionDir = "\n"
+	// importer.FileHelper.(*LocalFileHelper).PendingDeletionDir = "\n"
 
 	var suppresslist []*models.BenePrefsFilenameMetadata
 
@@ -415,7 +412,7 @@ func (s *BenePrefsTestSuite) TestCleanupSuppression_RenameFileError() {
 	}
 
 	suppresslist = []*models.BenePrefsFilenameMetadata{metadata1}
-	err := CleanupBenePrefsFiles(ctx, importer.FileHandler, suppresslist)
+	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
 	assert.EqualError(err, "1 files could not be cleaned up")
 }
 
@@ -467,3 +464,21 @@ func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
 		})
 	}
 }
+
+// unfortunately due to the aws s3 mock being used a lot of these tests are pretty limited in coverage
+// func TestLoadBenePrefsFiles(t *testing.T) {
+// 	helper := mockHelper()
+
+// 	path := "s3://test-bucket/test-prefix/"
+// 	suppressList, skipped, err := loadBenePrefsFiles(t.Context(), helper, path)
+// 	assert.NoError(t, err)
+// 	assert.NotNil(t, suppressList)
+// 	assert.Equal(t, 0, skipped)
+// }
+
+// func TestcleanupBenePrefsFiles(t *testing.T) {
+// 	helper := mockHelper()
+
+// 	err := cleanupBenePrefsFiles(t.Context(), helper, []*models.BenePrefsFilenameMetadata{})
+// 	assert.NoError(t, err)
+// }

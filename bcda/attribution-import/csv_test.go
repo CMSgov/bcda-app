@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,17 +69,13 @@ func (s *CSVTestSuite) SetupTest() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 	logger := testUtils.GetLogger(log.API)
-	fileHelper := bcdaaws.S3Helper{
-		Client: &bcdaaws.MockS3Client{},
-		Logger: logger,
-	}
+	client := &bcdaaws.MockS3Client{}
 
 	c := CSVImporter{
 		Logger:     logger,
-		FileHelper: fileHelper,
+		FileClient: client,
 	}
 	s.importer = c
-
 }
 
 func (s *CSVTestSuite) TearDownTest() {
@@ -265,3 +262,68 @@ func (s *CSVTestSuite) TestPrepareCSVData() {
 	}
 
 }
+
+func (s *CSVTestSuite) TestCleanupCSV() {
+	assert := assert.New(s.T())
+	ctx := context.Background()
+	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+	bucketName := uuid.NewRandom().String()
+
+	tests := []struct {
+		name     string
+		filepath string
+		imported bool
+		err      error
+	}{
+		{"Clean up sucessful import", filepath.Join(bucketName, path), true, nil},
+		{"Clean up failed import", filepath.Join(bucketName, path), false, nil},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			csv := csvFile{
+				metadata: csvFileMetadata{},
+				imported: test.imported,
+				filepath: test.filepath,
+			}
+			err := s.importer.CleanUpCSV(ctx, csv)
+			assert.Nil(err)
+
+		})
+	}
+
+}
+
+// func (s *CSVTestSuite) TestLoadCSV() {
+// 	assert := assert.New(s.T())
+// 	ctx := context.Background()
+// 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
+
+// 	bucketName := uuid.NewString()
+// 	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+// 	// defer cleanup()
+
+// 	tests := []struct {
+// 		name     string
+// 		filepath string
+// 		err      error
+// 	}{
+// 		{"Load CSV sucessful", filepath.Join(bucketName, path), nil},
+// 		{"Load CSV failed", "foo/bar", errors.New("S3 error")},
+// 	}
+
+// 	for _, test := range tests {
+// 		s.T().Run(test.name, func(tt *testing.T) {
+// 			// defer cleanup()
+// 			r, _, err := s.csvProcessor.LoadCSV(ctx, test.filepath)
+// 			if test.err == nil {
+// 				assert.Nil(err)
+// 				assert.NotNil(r)
+// 			} else {
+// 				s.T().Log("FOO BAR")
+// 				assert.NotNil(err)
+// 				assert.Nil(r)
+// 			}
+// 		})
+// 	}
+// }
