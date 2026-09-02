@@ -1,6 +1,7 @@
 package queueing
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 	"github.com/pborman/uuid"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,6 +74,13 @@ func TestWork_Integration(t *testing.T) {
 
 	ctx := t.Context()
 
+	driver := riverpgxv5.New(pool)
+	err = driver.GetExecutor().Exec(ctx, `delete from river_job`)
+	assert.Nil(t, err)
+	t.Cleanup(func() {
+		_ = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	})
+
 	riverLogger := log.NewSlogLogger("worker")
 	riverClient := CreateRiverClient(riverLogger, db, 1)
 
@@ -106,7 +115,7 @@ func TestWork_Integration(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	timeout := time.After(30 * time.Second)
+	timeout := time.After(10 * time.Second)
 	for {
 		select {
 		case <-timeout:
