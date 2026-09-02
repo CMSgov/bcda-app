@@ -48,7 +48,7 @@ def main(release, release_file, repo):
         print("Successfully created release: %s" % release)
 
 def verify_repo(repo):
-    if not repo.startswith('bcda'):
+    if not repo.startswith('/repos/CMSgov/bcda'):
         raise argparse.ArgumentTypeError(f"non-bcda repo '{repo}' passed as argument")
 
 def verify_release(release):
