@@ -6,18 +6,10 @@ import urllib.request
 from urllib.parse import urlparse
 
 
-def safe_path(path):
-    resolved = os.path.realpath(path)
-    base_dir = os.path.realpath(os.getcwd())
-    if resolved != base_dir and not resolved.startswith(base_dir + os.sep):
-        raise ValueError(f"path {path!r} is outside the allowed directory")
-    return resolved
-
 def main(release, release_file, repo):
     access_token = os.environ['GITHUB_ACCESS_TOKEN']
 
-    resp = None
-    with open(safe_path(release_file), 'r') as f:
+    with open(release_file, 'r') as f:
         data = {
             "tag_name": release,
             "name": release,
