@@ -1,6 +1,7 @@
 package queueing
 
 import (
+	"context"
 	"crypto/rand"
 	"math"
 	"math/big"
@@ -47,6 +48,9 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	driver := riverpgxv5.New(pool)
 	err := driver.GetExecutor().Exec(ctx, `delete from river_job`)
 	assert.Nil(t, err)
+	t.Cleanup(func() {
+		_ = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
+	})
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
