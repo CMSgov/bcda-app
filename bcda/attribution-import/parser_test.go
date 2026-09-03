@@ -97,13 +97,13 @@ func TestGetCSVMetadata(t *testing.T) {
 			fileType:  models.FileTypeDefault,
 		},
 		},
-		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - dupe match", "P.P.GUIDE.GUIDE-.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - dupe match", "T.GUIDE.Y25." + fileDateTime, "Invalid filename", csvFileMetadata{}},
-		{"invalid csv filename - entity id length", "T.ACCESS.ACCES0000001.Y25" + fileDateTime, "Invalid filename", csvFileMetadata{}},
+		{"invalid csv filename", "P.PPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - extra digit", "P.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - env", "A.PCPB.M24112." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.PCPBPCPB.M2411." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "P.P.GUIDE.GUIDE-.Y25." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - dupe match", "T.GUIDE.Y25." + fileDateTime, "invalid filename", csvFileMetadata{}},
+		{"invalid csv filename - entity id length", "T.ACCESS.ACCES0000001.Y25" + fileDateTime, "invalid filename", csvFileMetadata{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
