@@ -464,21 +464,3 @@ func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
 		})
 	}
 }
-
-// unfortunately due to the aws s3 mock being used a lot of these tests are pretty limited in coverage
-// func TestLoadBenePrefsFiles(t *testing.T) {
-// 	helper := mockHelper()
-
-// 	path := "s3://test-bucket/test-prefix/"
-// 	suppressList, skipped, err := loadBenePrefsFiles(t.Context(), helper, path)
-// 	assert.NoError(t, err)
-// 	assert.NotNil(t, suppressList)
-// 	assert.Equal(t, 0, skipped)
-// }
-
-// func TestcleanupBenePrefsFiles(t *testing.T) {
-// 	helper := mockHelper()
-
-// 	err := cleanupBenePrefsFiles(t.Context(), helper, []*models.BenePrefsFilenameMetadata{})
-// 	assert.NoError(t, err)
-// }

@@ -68,21 +68,21 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 	}
 	file.metadata = metadata
 
-	data, _, err := importer.LoadCSV(ctx, filepath)
+	data, _, err := importer.loadCSV(ctx, filepath)
 	if err != nil {
 		return err
 	}
 
 	file.data = data
 
-	err = importer.ProcessCSV(file)
+	err = importer.processCSV(file)
 	if err != nil {
 		return err
 	} else {
 		file.imported = true
 	}
 
-	err = importer.CleanUpCSV(ctx, file)
+	err = importer.cleanUpCSV(ctx, file)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 // ProcessCSV() will take provided metadata and write a new record to the cclf_files table and the contents of the file and write new record(s) to the cclf_beneficiaries table.
 // If any step of writing to the database should fail, the whole transaction will fail. If the new records are written successfully, then the new record in the cclf_files
 // table will have its import status updated.
-func (importer CSVImporter) ProcessCSV(csv csvFile) error {
+func (importer CSVImporter) processCSV(csv csvFile) error {
 	ctx := context.Background()
 	if importer.PgxPool == nil {
 		return errors.New("pgx pool is required for import operations")
@@ -205,7 +205,7 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 	return rows, count, err
 }
 
-func (importer CSVImporter) CleanUpCSV(ctx context.Context, file csvFile) error {
+func (importer CSVImporter) cleanUpCSV(ctx context.Context, file csvFile) error {
 	if !file.imported {
 		// Don't do anything. The S3 bucket should have a retention policy that
 		// automatically cleans up files after a specified period of time.
@@ -225,7 +225,7 @@ func (importer CSVImporter) CleanUpCSV(ctx context.Context, file csvFile) error 
 	return nil
 }
 
-func (importer CSVImporter) LoadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
+func (importer CSVImporter) loadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
 	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.FileClient, filepath)
 	if err != nil {
 		importer.Logger.Errorf("Failed to download %s", filepath)

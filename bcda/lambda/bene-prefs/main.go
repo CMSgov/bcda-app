@@ -86,6 +86,7 @@ func initHandler(ctx context.Context) (*BenePrefsImportHandler, error) {
 
 	db := database.Connect()
 	repo := postgres.NewRepository(db)
+
 	return &BenePrefsImportHandler{
 		db:       db,
 		logger:   logger,
@@ -130,9 +131,15 @@ func (h *BenePrefsImportHandler) importDir(ctx context.Context, s3ImportPath str
 	}
 
 	s, f, sk, err := importer.ImportDirectory(ctx, s3ImportPath)
-	result := fmt.Sprintf("Completed Bene-Prefs suppression data import.  Files imported: %v, Files failed: %v, Files skipped: %v", s, f, sk)
-	h.logger.Info(result)
-	return result, err
+	if err != nil {
+		errMsg := fmt.Errorf("error importing directory %s: %w", s3ImportPath, err)
+		h.logger.Error(errMsg)
+		return errMsg.Error(), err
+	}
+
+	resultMsg := fmt.Sprintf("Completed Bene-Prefs suppression data import.  Files imported: %v, Files failed: %v, Files skipped: %v", s, f, sk)
+	h.logger.Info(resultMsg)
+	return resultMsg, nil
 }
 
 func configureLogger(env, appName string) *logrus.Entry {

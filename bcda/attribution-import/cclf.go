@@ -52,15 +52,15 @@ type cclfFileValidator struct {
 }
 
 // Manages the import process for CCLF files from a given source
-type CclfImporter struct {
+type CCLFImporter struct {
 	logger     logrus.FieldLogger
 	fileClient bcdaaws.CustomS3Client
 	pgxPool    *pgxv5Pool.Pool
 	pgxRepo    *postgres.PgxRepository
 }
 
-func NewCclfImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CclfImporter {
-	return CclfImporter{
+func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
+	return CCLFImporter{
 		logger:     logger,
 		fileClient: fileClient,
 		pgxPool:    pgxPool,
@@ -68,7 +68,61 @@ func NewCclfImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Clien
 	}
 }
 
-func (importer CclfImporter) importCCLF0(zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
+func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
+	success = 0
+	cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, filePath)
+	if err != nil {
+		return success, failure, skipped, err
+	}
+
+	if len(cclfMap) == 0 {
+		importer.logger.Info("Did not find any CCLF files in directory -- returning safely.")
+		return success, failure, skipped, err
+	}
+
+	for acoID := range cclfMap {
+		for _, zipMetadata := range cclfMap[acoID] {
+			func() {
+				defer zipMetadata.zipCloser()
+
+				cclfvalidator, err := importer.importCCLF0(zipMetadata)
+				if err != nil {
+					importer.logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s, err: %v", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata, err)
+					failure++
+					skipped += 2
+				} else {
+					success++
+				}
+
+				if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
+					importer.logger.Errorf("Failed to import CCLF8 file: %s, err: %v", zipMetadata.cclf8Metadata, err)
+					failure++
+				} else {
+					zipMetadata.imported = true
+					success++
+				}
+			}()
+		}
+	}
+
+	if err = func() error {
+		_, err := importer.cleanUpCCLF(ctx, cclfMap)
+		return err
+	}(); err != nil {
+		importer.logger.Error(err)
+	}
+
+	if failure > 0 {
+		err = fmt.Errorf("failed to import %d files", failure)
+		importer.logger.Error(err)
+	} else {
+		err = nil
+	}
+
+	return success, failure, skipped, err
+}
+
+func (importer CCLFImporter) importCCLF0(zipMetadata *cclfZipMetadata) (*cclfFileValidator, error) {
 	fileMetadata := zipMetadata.cclf0Metadata
 	importer.logger.Infof("Importing CCLF0 file %s...", fileMetadata)
 
@@ -132,7 +186,7 @@ func (importer CclfImporter) importCCLF0(zipMetadata *cclfZipMetadata) (*cclfFil
 	return nil, err
 }
 
-func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
+func (importer CCLFImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZipMetadata, validator cclfFileValidator) (err error) {
 	fileMetadata := zipMetadata.cclf8Metadata
 
 	// Step 1: Begin pgx transaction for all operations
@@ -230,65 +284,11 @@ func (importer CclfImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	return nil
 }
 
-func (importer CclfImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
-	success = 0
-	cclfMap, skipped, failure, err := importer.LoadCclfFiles(ctx, filePath)
-	if err != nil {
-		return success, failure, skipped, err
-	}
-
-	if len(cclfMap) == 0 {
-		importer.logger.Info("Did not find any CCLF files in directory -- returning safely.")
-		return success, failure, skipped, err
-	}
-
-	for acoID := range cclfMap {
-		for _, zipMetadata := range cclfMap[acoID] {
-			func() {
-				defer zipMetadata.zipCloser()
-
-				cclfvalidator, err := importer.importCCLF0(zipMetadata)
-				if err != nil {
-					importer.logger.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s, err: %v", zipMetadata.cclf0Metadata, zipMetadata.cclf8Metadata, err)
-					failure++
-					skipped += 2
-				} else {
-					success++
-				}
-
-				if err = importer.importCCLF8(ctx, zipMetadata, *cclfvalidator); err != nil {
-					importer.logger.Errorf("Failed to import CCLF8 file: %s, err: %v", zipMetadata.cclf8Metadata, err)
-					failure++
-				} else {
-					zipMetadata.imported = true
-					success++
-				}
-			}()
-		}
-	}
-
-	if err = func() error {
-		_, err := importer.CleanUpCCLF(ctx, cclfMap)
-		return err
-	}(); err != nil {
-		importer.logger.Error(err)
-	}
-
-	if failure > 0 {
-		err = errors.New(fmt.Sprintf("Failed to import %d files", failure))
-		importer.logger.Error(err)
-	} else {
-		err = nil
-	}
-
-	return success, failure, skipped, err
-}
-
 func (m cclfFileMetadata) String() string {
 	return m.name
 }
 
-func (importer CclfImporter) LoadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
+func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
 	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := bcdaaws.ListFiles(ctx, importer.fileClient, bucket, prefix)
@@ -316,7 +316,7 @@ func (importer CclfImporter) LoadCclfFiles(ctx context.Context, path string) (cc
 			continue
 		}
 
-		zipReader, zipCloser, err := importer.OpenZipArchive(ctx, filepath.Join(bucket, *obj.Key))
+		zipReader, zipCloser, err := importer.openZipArchive(ctx, filepath.Join(bucket, *obj.Key))
 
 		if err != nil {
 			failed++
@@ -385,7 +385,7 @@ func (importer CclfImporter) LoadCclfFiles(ctx context.Context, path string) (cc
 	return cclfMap, skipped, failed, err
 }
 
-func (importer CclfImporter) CleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error) {
+func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string][]*cclfZipMetadata) (deletedCount int, err error) {
 	errCount := 0
 
 	for acoID := range cclfMap {
@@ -417,7 +417,7 @@ func (importer CclfImporter) CleanUpCCLF(ctx context.Context, cclfMap map[string
 	return deletedCount, nil
 }
 
-func (importer CclfImporter) OpenZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
+func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
 	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.fileClient, filePath)
 
 	if err != nil {

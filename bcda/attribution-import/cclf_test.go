@@ -32,7 +32,7 @@ type CCLFTestSuite struct {
 	pendingDeletionDir string
 	basePath           string
 	origDate           string
-	importer           CclfImporter
+	importer           CCLFImporter
 	cleanup            func()
 	db                 *sql.DB
 	pool               *pgxv5Pool.Pool
@@ -84,7 +84,7 @@ func (s *CCLFTestSuite) SetupTest() {
 
 	logger := testUtils.GetLogger(log.API)
 	client := bcdaaws.MockS3Client{}
-	s.importer = NewCclfImporter(logger, &client, s.pool)
+	s.importer = NewCCLFImporter(logger, &client, s.pool)
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -382,9 +382,9 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 	return f.Name(), cclfName
 }
 
-func buildZipMetadata(t *testing.T, importer CclfImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
+func buildZipMetadata(t *testing.T, importer CCLFImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
 
-	zipReader, zipCloser, err := importer.OpenZipArchive(context.Background(), zipName)
+	zipReader, zipCloser, err := importer.openZipArchive(context.Background(), zipName)
 	assert.NoError(t, err)
 
 	metadata := cclfZipMetadata{
@@ -471,7 +471,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_SkipOtherEnvs() {
 	// bucketName, cleanupS3 := testUtils.CreateZipsInS3(s.T(), testUtils.ZipInput{ZipName: "blah/not-dev/T.BCD.A0001.ZCY18.D181120.T1000000", CclfNames: []string{"T.BCD.A0001.ZC0Y18.D181120.T1000000", "T.BCD.A0001.ZC8Y18.D181120.T1000000"}})
 	// s.T().Cleanup(func() { cleanupS3() })
 
-	cclfMap, skipped, failure, err := s.importer.LoadCclfFiles(ctx, bucketName)
+	cclfMap, skipped, failure, err := s.importer.loadCclfFiles(ctx, bucketName)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 0, skipped)
 	assert.Equal(s.T(), 0, failure)
@@ -630,14 +630,14 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		},
 	}
 
-	deletedCount, err := s.importer.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err := s.importer.cleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(0, deletedCount)
 	assert.Nil(err)
 
 	// Cleanup file after import
 	cclfmap[acoID][0].imported = true
 
-	deletedCount, err = s.importer.CleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err = s.importer.cleanUpCCLF(context.Background(), cclfmap)
 	assert.Equal(1, deletedCount)
 	assert.Nil(err)
 }

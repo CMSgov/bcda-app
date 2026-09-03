@@ -161,7 +161,7 @@ func (h *AttributionImportHandler) handleCclfImport(ctx context.Context, s3Impor
 
 	importer := h.cclfImporter
 	if importer == nil {
-		importer = ai.NewCclfImporter(logger, h.fileClient, h.pool)
+		importer = ai.NewCCLFImporter(logger, h.fileClient, h.pool)
 	}
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, s3ImportPath)
