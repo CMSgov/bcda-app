@@ -1,0 +1,19 @@
+name: code-checks (snyk code scheduled)
+
+on:
+  schedule:
+    - cron: '0 0 */2 * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  scheduled-code-checks:
+    name: 'Scheduled Code Checks for BCDA'
+    uses: CMSGov/CDAP/.github/workflows/code-checks-snyk.yml@028524afd97e26370e0dd812faad64b9a2ad558b
+    with:
+      app: bcda
+      ref: main
+    secrets: inherit
