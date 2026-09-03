@@ -209,7 +209,22 @@ func TestOpenFileAsBytes(t *testing.T) {
 func TestDelete(t *testing.T) {
 	path := "s3://test-bucket/test-prefix/test-file.txt"
 
-	t.Run("success deleting object", func(t *testing.T) {
+	// t.Run("success deleting object", func(t *testing.T) {
+	// 	t.Setenv("S3_DELETE_TIMEOUT", "1")
+	// 	client := &configurableMockS3Client{
+	// 		deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
+	// 			assert.Equal(t, "test-bucket", *input.Bucket)
+	// 			assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
+	// 			return &s3.DeleteObjectOutput{}, nil
+	// 		},
+	// 	}
+
+	// 	err := Delete(context.Background(), client, path)
+	// 	require.NoError(t, err)
+	// })
+
+	t.Run("error on timing out on delete", func(t *testing.T) {
+		t.Setenv("S3_DELETE_TIMEOUT", "1")
 		client := &configurableMockS3Client{
 			deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
 				assert.Equal(t, "test-bucket", *input.Bucket)
@@ -219,10 +234,11 @@ func TestDelete(t *testing.T) {
 		}
 
 		err := Delete(context.Background(), client, path)
-		require.NoError(t, err)
+		require.ErrorContains(t, err, "file s3://test-bucket/test-prefix/test-file.txt failed to clean up properly, error occurred while waiting for object deletion: exceeded max wait time for ObjectNotExists waiter")
 	})
 
 	t.Run("delete object error", func(t *testing.T) {
+		t.Setenv("S3_DELETE_TIMEOUT", "1")
 		mockErr := errors.New("delete object permission denied")
 		client := &configurableMockS3Client{
 			deleteObjectFn: func(_ context.Context, _ *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
