@@ -21,15 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 )
 
-// FileProcessors for attribution are created as interfaces so that they can be passed in place of the implementation; local development and other envs will require different processors.
-// This interface has two implementations; one for ingesting and testing locally, and one for ingesting in s3.
-// type CSVFileProcessor interface {
-// 	// Fetch the csv attribution file to be imported.
-// 	LoadCSV(ctx context.Context, path string) (*bytes.Reader, func(), error)
-// 	// Remove csv attribution file that was successfully imported.
-// 	CleanUpCSV(ctx context.Context, file csvFile) (err error)
-// }
-
 type csvFile struct {
 	metadata csvFileMetadata
 	data     *bytes.Reader
