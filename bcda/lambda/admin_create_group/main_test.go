@@ -6,20 +6,22 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )
 
-type mockSSASClient struct {
-}
+// type mockSSASClient struct {
+// }
 
-func (s *mockSSASClient) CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error) {
-	return []byte(`{"group_id":"00001"}`), nil
-}
+// func (s *mockSSASClient) CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error) {
+// 	return []byte(`{"group_id":"00001"}`), nil
+// }
 
 func TestHandleCreateGroup(t *testing.T) {
 	tests := []struct {
@@ -57,8 +59,9 @@ func TestHandleCreateGroup(t *testing.T) {
 					t.FailNow()
 				}
 			}()
-			r := postgres.NewRepository(db) // test database
-			c := &mockSSASClient{}          // mock ssas client
+			r := postgres.NewRepository(db)   // test database
+			c := &client.MockSSASHTTPClient{} // mock ssas client
+			c.On("CreateGroup", mock.Anything, mock.Anything, mock.Anything).Return([]byte(`{"group_id":"00001"}`), nil)
 			err = handleCreateGroup(c, r, tt.payload)
 			if tt.err != "" {
 				assert.Contains(t, err.Error(), tt.err)

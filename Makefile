@@ -178,7 +178,7 @@ fhir_testing:
 	fhir_testing
 
 generate-mocks:
-	docker run -v "$PWD":/src -w /src vektra/mockery:v3.6.1
+	docker run -v ${PWD}:/src -w /src vektra/mockery:latest
 
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build generate-mocks lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 

@@ -50,6 +50,9 @@ func (m *MockSSMClient) GetParameters(ctx context.Context, input *ssm.GetParamet
 }
 
 func (m *MockSSMClient) PutParameter(ctx context.Context, input *ssm.PutParameterInput, optFns ...func(*ssm.Options)) (*ssm.PutParameterOutput, error) {
+	if m.Params == nil {
+		m.Params = make(map[string]string)
+	}
 	m.Params[*input.Name] = *input.Value
 	output := &ssm.PutParameterOutput{}
 	return output, nil
