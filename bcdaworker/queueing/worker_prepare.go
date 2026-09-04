@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
@@ -194,18 +195,34 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
 func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
+	var (
+		b   *fhirModels.Bundle
+		err error
+	)
+
 	switch basepath {
 	case constants.BFDV1Path:
-		b, err := p.v1Client.GetPatient(jobData, "0")
-		return b.Meta.LastUpdated, err
+		b, err = p.v1Client.GetPatient(jobData, "0")
 	case constants.BFDV2Path:
-		b, err := p.v2Client.GetPatient(jobData, "0")
-		return b.Meta.LastUpdated, err
+		b, err = p.v2Client.GetPatient(jobData, "0")
 	case constants.BFDV3Path:
-		return jobData.TransactionTime, nil // TODO: see https://jira.cms.gov/browse/BCDA-10317
+		b, err = p.v3Client.GetPatient(jobData, "0")
 	default:
-		return time.Time{}, errors.New("no BFD base path")
+		return time.Time{}, fmt.Errorf("unsupported BFD base path: %s", basepath)
 	}
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// Safeguard: If BFD lower environments return 1970/epoch or an unpopulated timestamp, fallback to request transaction time. minValidYear guards against epoch (1970) or bogus default dates from mock/lower-environment BFD servers.
+	const minValidYear = 2000
+	if b == nil || b.Meta.LastUpdated.IsZero() || b.Meta.LastUpdated.Year() < minValidYear {
+		log.Worker.Warnf("Bundle LastUpdated unavailable or invalid for %s; falling back to transaction time %s", basepath, jobData.TransactionTime)
+		return jobData.TransactionTime, nil
+	}
+
+	return b.Meta.LastUpdated, nil
 }
 
 func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs, since time.Time) error {
