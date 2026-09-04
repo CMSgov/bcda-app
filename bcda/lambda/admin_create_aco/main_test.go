@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/jackc/pgx/v5"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/pborman/uuid"
@@ -140,8 +142,15 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{})
+	env := conf.GetEnv("ENV")
+	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
+	slackParamName := "/slack/token/workflow-alerts"
+	storedParams := map[string]string{
+		dbURLName:      "db://url",
+		slackParamName: "test-slack-token",
+	}
+	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{Params: storedParams})
 	assert.Nil(t, err)
-	assert.Equal(t, "value1", params.slackToken)
-	assert.Equal(t, "value2", params.dbURL)
+	assert.Equal(t, "test-slack-token", params.slackToken)
+	assert.Equal(t, "db://url", params.dbURL)
 }
