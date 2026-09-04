@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"strings"
@@ -27,35 +28,42 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-func main() {
-	lambda.Start(optOutImportHandler)
+type BenePrefsImportHandler struct {
+	db       *sql.DB
+	logger   *logrus.Entry
+	repo     models.Repository
+	s3Client bcdaaws.CustomS3Client
 }
 
-func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
+func main() {
+	ctx := context.Background()
+	handler, err := initHandler(ctx)
+	if err != nil {
+		logrus.Fatalf("failed to initialize handler: %v", err)
+	}
+	if handler.db != nil {
+		defer handler.db.Close()
+	}
+
+	lambda.Start(handler.importHandler)
+}
+
+func initHandler(ctx context.Context) (*BenePrefsImportHandler, error) {
 	env := conf.GetEnv("ENV")
 	appName := conf.GetEnv("APP_NAME")
 	logger := configureLogger(env, appName)
 
-	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
-	if err != nil {
-		logger.Errorf("Failed to parse S3 event: %v", err)
-		return "", err
-	} else if s3Event == nil {
-		logger.Info("No S3 event found, skipping safely.")
-		return "", nil
-	}
-
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		logger.Error("Failed to load Default Config")
-		return "", err
+		return nil, err
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
 
 	s3AssumeRoleArn, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/bene-prefs/sensitive/iam_bucket_role_arn", env))
 	if err != nil {
 		logger.Errorf("error getting param: %+v", err)
-		return "", err
+		return nil, err
 	}
 	stsClient := sts.NewFromConfig(cfg)
 	appCreds := stscreds.NewAssumeRoleProvider(stsClient, s3AssumeRoleArn)
@@ -67,49 +75,71 @@ func optOutImportHandler(ctx context.Context, sqsEvent events.SQSEvent) (string,
 	dbURL, err := bcdaaws.GetParameter(ctx, ssmClient, fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env))
 	if err != nil {
 		logger.Error("failed to load DB URL")
-		return "", err
+		return nil, err
 	}
 
 	err = os.Setenv("DATABASE_URL", dbURL)
 	if err != nil {
 		logger.Errorf("error setting dbURL env var: %+v", err)
-		return "", err
+		return nil, err
 	}
 
 	db := database.Connect()
 	repo := postgres.NewRepository(db)
 
-	for _, e := range s3Event.Records {
+	return &BenePrefsImportHandler{
+		db:       db,
+		logger:   logger,
+		repo:     repo,
+		s3Client: s3Client,
+	}, nil
+}
+
+func (h *BenePrefsImportHandler) importHandler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
+	if len(sqsEvent.Records) == 0 {
+		h.logger.Info("no SQS records found, skipping safely")
+		return "", nil
+	}
+
+	event, err := bcdaaws.ParseSQSEvent(sqsEvent)
+	if err != nil {
+		h.logger.Errorf("failed to parse S3 event: %v", err)
+		return "", err
+	} else if event == nil {
+		h.logger.Info("no S3 event found, skipping safely")
+		return "", nil
+	}
+
+	for _, e := range event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
 			dir := bcdaaws.ParseS3Directory(e.S3.Bucket.Name, e.S3.Object.Key)
-			logger.Infof("Reading %s event for directory %s", e.EventName, dir)
-			return handleOptOutImport(ctx, repo, s3Client, dir)
+			h.logger.Infof("Reading %s event for directory %s", e.EventName, dir)
+			return h.importDir(ctx, dir)
 		}
 	}
 
-	logger.Info("No ObjectCreated events found, skipping safely.")
+	h.logger.Info("No ObjectCreated events found, skipping safely.")
 	return "", nil
 }
 
-func handleOptOutImport(ctx context.Context, repo models.Repository, s3Client bcdaaws.CustomS3Client, s3ImportPath string) (string, error) {
-	env := conf.GetEnv("ENV")
-	appName := conf.GetEnv("APP_NAME")
-	logger := configureLogger(env, appName)
-
+func (h *BenePrefsImportHandler) importDir(ctx context.Context, s3ImportPath string) (string, error) {
 	importer := bp.BenePrefsImporter{
-		FileHandler: &bp.S3FileHandler{
-			Client: s3Client,
-			Logger: logger,
-		},
-		Repo:                 repo,
-		Logger:               logger,
+		FileClient:           h.s3Client,
+		Repo:                 h.repo,
+		Logger:               h.logger,
 		ImportStatusInterval: utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000),
 	}
 
 	s, f, sk, err := importer.ImportDirectory(ctx, s3ImportPath)
-	result := fmt.Sprintf("Completed Bene-Prefs suppression data import.  Files imported: %v, Files failed: %v, Files skipped: %v", s, f, sk)
-	logger.Info(result)
-	return result, err
+	if err != nil {
+		errMsg := fmt.Errorf("error importing directory %s: %w", s3ImportPath, err)
+		h.logger.Error(errMsg)
+		return errMsg.Error(), err
+	}
+
+	resultMsg := fmt.Sprintf("Completed Bene-Prefs suppression data import.  Files imported: %v, Files failed: %v, Files skipped: %v", s, f, sk)
+	h.logger.Info(resultMsg)
+	return resultMsg, nil
 }
 
 func configureLogger(env, appName string) *logrus.Entry {

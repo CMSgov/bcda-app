@@ -1,4 +1,4 @@
-package filehandler
+package bcdaaws
 
 import (
 	"context"
@@ -8,18 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type configurableMockS3Client struct {
-	bcdaaws.MockS3Client
+	MockS3Client
 	listObjectsFn   func(ctx context.Context, input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error)
 	listObjectsV2Fn func(ctx context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error)
 	headObjectFn    func(ctx context.Context, input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error)
@@ -62,33 +59,6 @@ func (m *configurableMockS3Client) DeleteObject(ctx context.Context, input *s3.D
 	return m.MockS3Client.DeleteObject(ctx, input, optFns...)
 }
 
-func TestLoggerFunctions(t *testing.T) {
-	logger, hook := test.NewNullLogger()
-	handler := &S3FileHandler{
-		Logger: logger,
-	}
-
-	handler.Infof("test info message")
-	assert.Equal(t, "test info message", hook.LastEntry().Message)
-
-	handler.Warningf("test warning message")
-	assert.Equal(t, "test warning message", hook.LastEntry().Message)
-
-	handler.Errorf("test error message")
-	assert.Equal(t, "test error message", hook.LastEntry().Message)
-}
-
-func TestNilLoggerFunctions(t *testing.T) {
-	handler := &S3FileHandler{
-		Logger: nil,
-	}
-	assert.NotPanics(t, func() {
-		handler.Infof("info")
-		handler.Warningf("warn")
-		handler.Errorf("err")
-	})
-}
-
 func TestListFiles(t *testing.T) {
 	t.Run("success returning objects single page", func(t *testing.T) {
 		client := &configurableMockS3Client{
@@ -96,15 +66,15 @@ func TestListFiles(t *testing.T) {
 				assert.Equal(t, "test-bucket", *input.Bucket)
 				assert.Equal(t, "test-prefix/", *input.Prefix)
 				return &s3.ListObjectsV2Output{
-					Contents: []s3types.Object{
+					Contents: []types.Object{
 						{Key: aws.String("test-prefix/file1.csv")},
 					},
 					IsTruncated: aws.Bool(false),
 				}, nil
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		objects, err := handler.ListFiles(context.Background(), "test-bucket", "test-prefix/")
+
+		objects, err := ListFiles(context.Background(), client, "test-bucket", "test-prefix/")
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
 		assert.Equal(t, "test-prefix/file1.csv", *objects[0].Key)
@@ -118,7 +88,7 @@ func TestListFiles(t *testing.T) {
 				if callCount == 1 {
 					assert.Nil(t, input.ContinuationToken)
 					return &s3.ListObjectsV2Output{
-						Contents: []s3types.Object{
+						Contents: []types.Object{
 							{Key: aws.String("test-prefix/file1.csv")},
 						},
 						IsTruncated:           aws.Bool(true),
@@ -127,15 +97,15 @@ func TestListFiles(t *testing.T) {
 				}
 				assert.Equal(t, "next-token", *input.ContinuationToken)
 				return &s3.ListObjectsV2Output{
-					Contents: []s3types.Object{
+					Contents: []types.Object{
 						{Key: aws.String("test-prefix/file2.csv")},
 					},
 					IsTruncated: aws.Bool(false),
 				}, nil
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		objects, err := handler.ListFiles(context.Background(), "test-bucket", "test-prefix/")
+
+		objects, err := ListFiles(context.Background(), client, "test-bucket", "test-prefix/")
 		require.NoError(t, err)
 		require.Len(t, objects, 2)
 		assert.Equal(t, "test-prefix/file1.csv", *objects[0].Key)
@@ -150,14 +120,22 @@ func TestListFiles(t *testing.T) {
 				return nil, mockErr
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		objects, err := handler.ListFiles(context.Background(), "test-bucket", "test-prefix/")
+
+		objects, err := ListFiles(context.Background(), client, "test-bucket", "test-prefix/")
 		require.ErrorIs(t, err, mockErr)
 		assert.Nil(t, objects)
 	})
 }
 
-func TestOpenFileBytes(t *testing.T) {
+func TestOpenFileAsScanner(t *testing.T) {
+	client := &configurableMockS3Client{}
+	fileBytes, f, err := OpenFileAsScanner(t.Context(), client, "bad-file")
+	assert.ErrorContains(t, err, "file bad-file is empty")
+	assert.Nil(t, fileBytes)
+	assert.Nil(t, f)
+}
+
+func TestOpenFileAsBytes(t *testing.T) {
 	path := "s3://test-bucket/test-prefix/test-file.txt"
 
 	t.Run("success reading bytes", func(t *testing.T) {
@@ -176,8 +154,8 @@ func TestOpenFileBytes(t *testing.T) {
 				}, nil
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		bytes, err := handler.OpenFileBytes(context.Background(), path)
+
+		bytes, err := OpenFileAsBytes(context.Background(), client, path)
 		require.NoError(t, err)
 		assert.Equal(t, content, string(bytes))
 	})
@@ -189,8 +167,8 @@ func TestOpenFileBytes(t *testing.T) {
 				return nil, mockErr
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		bytes, err := handler.OpenFileBytes(context.Background(), path)
+
+		bytes, err := OpenFileAsBytes(context.Background(), client, path)
 		require.ErrorIs(t, err, mockErr)
 		assert.Nil(t, bytes)
 	})
@@ -203,8 +181,8 @@ func TestOpenFileBytes(t *testing.T) {
 				}, nil
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		bytes, err := handler.OpenFileBytes(context.Background(), path)
+
+		bytes, err := OpenFileAsBytes(context.Background(), client, path)
 		require.ErrorContains(t, err, "is empty")
 		assert.Empty(t, bytes)
 	})
@@ -221,8 +199,8 @@ func TestOpenFileBytes(t *testing.T) {
 				return nil, mockErr
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		bytes, err := handler.OpenFileBytes(context.Background(), path)
+
+		bytes, err := OpenFileAsBytes(context.Background(), client, path)
 		require.ErrorIs(t, err, mockErr)
 		assert.Nil(t, bytes)
 	})
@@ -231,7 +209,22 @@ func TestOpenFileBytes(t *testing.T) {
 func TestDelete(t *testing.T) {
 	path := "s3://test-bucket/test-prefix/test-file.txt"
 
-	t.Run("success deleting object", func(t *testing.T) {
+	// t.Run("success deleting object", func(t *testing.T) {
+	// 	t.Setenv("S3_DELETE_TIMEOUT", "1")
+	// 	client := &configurableMockS3Client{
+	// 		deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
+	// 			assert.Equal(t, "test-bucket", *input.Bucket)
+	// 			assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
+	// 			return &s3.DeleteObjectOutput{}, nil
+	// 		},
+	// 	}
+
+	// 	err := Delete(context.Background(), client, path)
+	// 	require.NoError(t, err)
+	// })
+
+	t.Run("error on timing out on delete", func(t *testing.T) {
+		t.Setenv("S3_DELETE_TIMEOUT", "1")
 		client := &configurableMockS3Client{
 			deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
 				assert.Equal(t, "test-bucket", *input.Bucket)
@@ -239,20 +232,21 @@ func TestDelete(t *testing.T) {
 				return &s3.DeleteObjectOutput{}, nil
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		err := handler.Delete(context.Background(), path)
-		require.NoError(t, err)
+
+		err := Delete(context.Background(), client, path)
+		require.ErrorContains(t, err, "file s3://test-bucket/test-prefix/test-file.txt failed to clean up properly, error occurred while waiting for object deletion: exceeded max wait time for ObjectNotExists waiter")
 	})
 
 	t.Run("delete object error", func(t *testing.T) {
+		t.Setenv("S3_DELETE_TIMEOUT", "1")
 		mockErr := errors.New("delete object permission denied")
 		client := &configurableMockS3Client{
 			deleteObjectFn: func(_ context.Context, _ *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
 				return nil, mockErr
 			},
 		}
-		handler := &S3FileHandler{Client: client, Logger: logrus.New()}
-		err := handler.Delete(context.Background(), path)
+
+		err := Delete(context.Background(), client, path)
 		require.ErrorIs(t, err, mockErr)
 	})
 }

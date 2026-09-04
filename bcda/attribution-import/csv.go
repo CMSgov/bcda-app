@@ -14,20 +14,12 @@ import (
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 
+	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	ers "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 )
-
-// FileProcessors for attribution are created as interfaces so that they can be passed in place of the implementation; local development and other envs will require different processors.
-// This interface has two implementations; one for ingesting and testing locally, and one for ingesting in s3.
-type CSVFileProcessor interface {
-	// Fetch the csv attribution file to be imported.
-	LoadCSV(ctx context.Context, path string) (*bytes.Reader, func(), error)
-	// Remove csv attribution file that was successfully imported.
-	CleanUpCSV(ctx context.Context, file csvFile) (err error)
-}
 
 type csvFile struct {
 	metadata csvFileMetadata
@@ -49,9 +41,9 @@ type csvFileMetadata struct {
 }
 
 type CSVImporter struct {
-	Logger        logrus.FieldLogger
-	FileProcessor CSVFileProcessor
-	PgxPool       *pgxv5Pool.Pool
+	Logger     logrus.FieldLogger
+	FileClient bcdaaws.CustomS3Client
+	PgxPool    *pgxv5Pool.Pool
 }
 
 func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) error {
@@ -67,21 +59,21 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 	}
 	file.metadata = metadata
 
-	data, _, err := importer.FileProcessor.LoadCSV(ctx, filepath)
+	data, _, err := importer.loadCSV(ctx, filepath)
 	if err != nil {
 		return err
 	}
 
 	file.data = data
 
-	err = importer.ProcessCSV(file)
+	err = importer.processCSV(file)
 	if err != nil {
 		return err
 	} else {
 		file.imported = true
 	}
 
-	err = importer.FileProcessor.CleanUpCSV(ctx, file)
+	err = importer.cleanUpCSV(ctx, file)
 	if err != nil {
 		return err
 	}
@@ -91,7 +83,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 // ProcessCSV() will take provided metadata and write a new record to the cclf_files table and the contents of the file and write new record(s) to the cclf_beneficiaries table.
 // If any step of writing to the database should fail, the whole transaction will fail. If the new records are written successfully, then the new record in the cclf_files
 // table will have its import status updated.
-func (importer CSVImporter) ProcessCSV(csv csvFile) error {
+func (importer CSVImporter) processCSV(csv csvFile) error {
 	ctx := context.Background()
 	if importer.PgxPool == nil {
 		return errors.New("pgx pool is required for import operations")
@@ -202,5 +194,35 @@ func (importer CSVImporter) prepareCSVData(csvfile *bytes.Reader, id uint) ([][]
 		count++
 	}
 	return rows, count, err
+}
 
+func (importer CSVImporter) cleanUpCSV(ctx context.Context, file csvFile) error {
+	if !file.imported {
+		// Don't do anything. The S3 bucket should have a retention policy that
+		// automatically cleans up files after a specified period of time.
+		importer.Logger.Warningf("File %s was not imported successfully. Skipping cleanup.", file.filepath)
+		return nil
+	}
+
+	importer.Logger.Infof("Cleaning up file %s", file.filepath)
+	err := bcdaaws.Delete(ctx, importer.FileClient, file.filepath)
+
+	if err != nil {
+		importer.Logger.Errorf("Failed to clean up file %s: %v", file.filepath, err)
+		return err
+	}
+
+	importer.Logger.Infof("File %s successfully ingested and deleted from S3.", file.filepath)
+	return nil
+}
+
+func (importer CSVImporter) loadCSV(ctx context.Context, filepath string) (*bytes.Reader, func(), error) {
+	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.FileClient, filepath)
+	if err != nil {
+		importer.Logger.Errorf("Failed to download %s", filepath)
+		return nil, nil, err
+	}
+
+	reader := bytes.NewReader(byte_arr)
+	return reader, func() {}, err
 }
