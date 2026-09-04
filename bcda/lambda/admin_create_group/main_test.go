@@ -6,20 +6,22 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 )
 
-type mockSSASClient struct {
-}
+// type mockSSASClient struct {
+// }
 
-func (s *mockSSASClient) CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error) {
-	return []byte(`{"group_id":"00001"}`), nil
-}
+// func (s *mockSSASClient) CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error) {
+// 	return []byte(`{"group_id":"00001"}`), nil
+// }
 
 func TestHandleCreateGroup(t *testing.T) {
 	tests := []struct {
@@ -57,8 +59,9 @@ func TestHandleCreateGroup(t *testing.T) {
 					t.FailNow()
 				}
 			}()
-			r := postgres.NewRepository(db) // test database
-			c := &mockSSASClient{}          // mock ssas client
+			r := postgres.NewRepository(db)   // test database
+			c := &client.MockSSASHTTPClient{} // mock ssas client
+			c.On("CreateGroup", mock.Anything, mock.Anything, mock.Anything).Return([]byte(`{"group_id":"00001"}`), nil)
 			err = handleCreateGroup(c, r, tt.payload)
 			if tt.err != "" {
 				assert.Contains(t, err.Error(), tt.err)
@@ -93,14 +96,24 @@ func TestSetupEnvironment(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
-	slackName, err := setupEnv(context.Background(), &bcdaaws.MockSSMClient{})
+	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
+		"/slack/token/workflow-alerts":                  "test-slack-token",
+		"/bcda/local/sensitive/api/DATABASE_URL":        "test-db-url",
+		"/bcda/local/sensitive/api/SSAS_URL":            "test-ssas-url",
+		"/bcda/local/sensitive/api/BCDA_SSAS_CLIENT_ID": "test-client-id",
+		"/bcda/local/sensitive/api/BCDA_SSAS_SECRET":    "test-client-secret",
+		"/bcda/local/sensitive/api/BCDA_CA_FILE.pem":    "test-ca-file",
+		"/bcda/local/sensitive/aco_creds_bucket":        "test-creds-bucket",
+	}} // #nosec G101
+
+	slackName, err := setupEnv(context.Background(), &ssmClient)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "value1", slackName)
-	assert.Equal(t, "true", os.Getenv("SSAS_USE_TLS"))
-	assert.Equal(t, "value3", os.Getenv("SSAS_URL"))
-	assert.Equal(t, "value4", os.Getenv("BCDA_SSAS_CLIENT_ID"))
-	assert.Equal(t, "value5", os.Getenv("BCDA_SSAS_SECRET"))
+	assert.Equal(t, "test-slack-token", slackName)
+	assert.Equal(t, "test-db-url", os.Getenv("DATABASE_URL"))
+	assert.Equal(t, "test-ssas-url", os.Getenv("SSAS_URL"))
+	assert.Equal(t, "test-client-id", os.Getenv("BCDA_SSAS_CLIENT_ID"))
+	assert.Equal(t, "test-client-secret", os.Getenv("BCDA_SSAS_SECRET"))
 	assert.Equal(t, "true", os.Getenv("SSAS_USE_TLS"))
 	assert.Equal(t, "/tmp/BCDA_CA_FILE.pem", os.Getenv("BCDA_CA_FILE"))
 	assert.FileExists(t, "/tmp/BCDA_CA_FILE.pem")

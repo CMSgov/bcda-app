@@ -76,7 +76,7 @@ type MockService_CancelJob_Call struct {
 // CancelJob is a helper method to define mock.On call
 //   - ctx context.Context
 //   - jobID uint
-func (_e *MockService_Expecter) CancelJob(ctx interface{}, jobID interface{}) *MockService_CancelJob_Call {
+func (_e *MockService_Expecter) CancelJob(ctx any, jobID any) *MockService_CancelJob_Call {
 	return &MockService_CancelJob_Call{Call: _e.mock.On("CancelJob", ctx, jobID)}
 }
 
@@ -144,7 +144,7 @@ type MockService_FindOldCCLFFile_Call struct {
 //   - cmsID string
 //   - since time.Time
 //   - cclfTimestamp time.Time
-func (_e *MockService_Expecter) FindOldCCLFFile(ctx interface{}, cmsID interface{}, since interface{}, cclfTimestamp interface{}) *MockService_FindOldCCLFFile_Call {
+func (_e *MockService_Expecter) FindOldCCLFFile(ctx any, cmsID any, since any, cclfTimestamp any) *MockService_FindOldCCLFFile_Call {
 	return &MockService_FindOldCCLFFile_Call{Call: _e.mock.On("FindOldCCLFFile", ctx, cmsID, since, cclfTimestamp)}
 }
 
@@ -221,7 +221,7 @@ type MockService_GetACOConfigForID_Call struct {
 
 // GetACOConfigForID is a helper method to define mock.On call
 //   - cmsID string
-func (_e *MockService_Expecter) GetACOConfigForID(cmsID interface{}) *MockService_GetACOConfigForID_Call {
+func (_e *MockService_Expecter) GetACOConfigForID(cmsID any) *MockService_GetACOConfigForID_Call {
 	return &MockService_GetACOConfigForID_Call{Call: _e.mock.On("GetACOConfigForID", cmsID)}
 }
 
@@ -285,7 +285,7 @@ type MockService_GetCutoffTime_Call struct {
 //   - since time.Time
 //   - timeConstraints TimeConstraints
 //   - fileType models.CCLFFileType
-func (_e *MockService_Expecter) GetCutoffTime(ctx interface{}, reqType interface{}, since interface{}, timeConstraints interface{}, fileType interface{}) *MockService_GetCutoffTime_Call {
+func (_e *MockService_Expecter) GetCutoffTime(ctx any, reqType any, since any, timeConstraints any, fileType any) *MockService_GetCutoffTime_Call {
 	return &MockService_GetCutoffTime_Call{Call: _e.mock.On("GetCutoffTime", ctx, reqType, since, timeConstraints, fileType)}
 }
 
@@ -376,7 +376,7 @@ type MockService_GetJobAndKeys_Call struct {
 // GetJobAndKeys is a helper method to define mock.On call
 //   - ctx context.Context
 //   - jobID uint
-func (_e *MockService_Expecter) GetJobAndKeys(ctx interface{}, jobID interface{}) *MockService_GetJobAndKeys_Call {
+func (_e *MockService_Expecter) GetJobAndKeys(ctx any, jobID any) *MockService_GetJobAndKeys_Call {
 	return &MockService_GetJobAndKeys_Call{Call: _e.mock.On("GetJobAndKeys", ctx, jobID)}
 }
 
@@ -445,7 +445,7 @@ type MockService_GetJobKey_Call struct {
 //   - ctx context.Context
 //   - jobID uint
 //   - filename string
-func (_e *MockService_Expecter) GetJobKey(ctx interface{}, jobID interface{}, filename interface{}) *MockService_GetJobKey_Call {
+func (_e *MockService_Expecter) GetJobKey(ctx any, jobID any, filename any) *MockService_GetJobKey_Call {
 	return &MockService_GetJobKey_Call{Call: _e.mock.On("GetJobKey", ctx, jobID, filename)}
 }
 
@@ -508,7 +508,7 @@ type MockService_GetJobPriority_Call struct {
 //   - acoID string
 //   - resourceType string
 //   - sinceParam bool
-func (_e *MockService_Expecter) GetJobPriority(acoID interface{}, resourceType interface{}, sinceParam interface{}) *MockService_GetJobPriority_Call {
+func (_e *MockService_Expecter) GetJobPriority(acoID any, resourceType any, sinceParam any) *MockService_GetJobPriority_Call {
 	return &MockService_GetJobPriority_Call{Call: _e.mock.On("GetJobPriority", acoID, resourceType, sinceParam)}
 }
 
@@ -588,9 +588,9 @@ type MockService_GetJobs_Call struct {
 //   - ctx context.Context
 //   - acoID uuid.UUID
 //   - statuses ...models.JobStatus
-func (_e *MockService_Expecter) GetJobs(ctx interface{}, acoID interface{}, statuses ...interface{}) *MockService_GetJobs_Call {
+func (_e *MockService_Expecter) GetJobs(ctx any, acoID any, statuses ...any) *MockService_GetJobs_Call {
 	return &MockService_GetJobs_Call{Call: _e.mock.On("GetJobs",
-		append([]interface{}{ctx, acoID}, statuses...)...)}
+		append([]any{ctx, acoID}, statuses...)...)}
 }
 
 func (_c *MockService_GetJobs_Call) Run(run func(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus)) *MockService_GetJobs_Call {
@@ -667,7 +667,7 @@ type MockService_GetLatestCCLFFile_Call struct {
 //   - lowerBound time.Time
 //   - upperBound time.Time
 //   - fileType models.CCLFFileType
-func (_e *MockService_Expecter) GetLatestCCLFFile(ctx interface{}, cmsID interface{}, lowerBound interface{}, upperBound interface{}, fileType interface{}) *MockService_GetLatestCCLFFile_Call {
+func (_e *MockService_Expecter) GetLatestCCLFFile(ctx any, cmsID any, lowerBound any, upperBound any, fileType any) *MockService_GetLatestCCLFFile_Call {
 	return &MockService_GetLatestCCLFFile_Call{Call: _e.mock.On("GetLatestCCLFFile", ctx, cmsID, lowerBound, upperBound, fileType)}
 }
 
@@ -756,7 +756,7 @@ type MockService_GetQueJobs_Call struct {
 // GetQueJobs is a helper method to define mock.On call
 //   - ctx context.Context
 //   - args worker_types.PrepareJobArgs
-func (_e *MockService_Expecter) GetQueJobs(ctx interface{}, args interface{}) *MockService_GetQueJobs_Call {
+func (_e *MockService_Expecter) GetQueJobs(ctx any, args any) *MockService_GetQueJobs_Call {
 	return &MockService_GetQueJobs_Call{Call: _e.mock.On("GetQueJobs", ctx, args)}
 }
 
@@ -822,7 +822,7 @@ type MockService_GetTimeConstraints_Call struct {
 // GetTimeConstraints is a helper method to define mock.On call
 //   - ctx context.Context
 //   - cmsID string
-func (_e *MockService_Expecter) GetTimeConstraints(ctx interface{}, cmsID interface{}) *MockService_GetTimeConstraints_Call {
+func (_e *MockService_Expecter) GetTimeConstraints(ctx any, cmsID any) *MockService_GetTimeConstraints_Call {
 	return &MockService_GetTimeConstraints_Call{Call: _e.mock.On("GetTimeConstraints", ctx, cmsID)}
 }
 
@@ -878,7 +878,7 @@ type MockService_IsV3NoPartialClaimsModel_Call struct {
 
 // IsV3NoPartialClaimsModel is a helper method to define mock.On call
 //   - model string
-func (_e *MockService_Expecter) IsV3NoPartialClaimsModel(model interface{}) *MockService_IsV3NoPartialClaimsModel_Call {
+func (_e *MockService_Expecter) IsV3NoPartialClaimsModel(model any) *MockService_IsV3NoPartialClaimsModel_Call {
 	return &MockService_IsV3NoPartialClaimsModel_Call{Call: _e.mock.On("IsV3NoPartialClaimsModel", model)}
 }
 
