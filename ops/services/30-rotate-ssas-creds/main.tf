@@ -28,8 +28,9 @@ module "rotate_ssas_creds_function" {
   platform     = module.platform
   architecture = "arm64"
 
-  name        = local.service
-  description = "Rotates the SSAS credentials for a specific set of systems"
+  name                = local.service
+  description         = "Rotates the SSAS credentials for a specific set of systems"
+  schedule_expression = "cron(0 9 ? * MON *)" # Run every Monday at 9am UTC (early morning ET)
 
   handler                = "bootstrap"
   runtime                = "provided.al2023"
