@@ -44,31 +44,6 @@ type CCLFTestSuite struct {
 	pool               *pgxv5Pool.Pool
 }
 
-// type mockS3ForCleanup struct {
-// 	bcdaaws.MockS3Client
-// 	deleted map[string]bool
-// }
-
-// func newMockS3ForCleanup() *mockS3ForCleanup {
-// 	return &mockS3ForCleanup{
-// 		deleted: make(map[string]bool),
-// 	}
-// }
-
-// func (m *mockS3ForCleanup) DeleteObject(ctx context.Context, input *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-// 	if input != nil && input.Key != nil {
-// 		m.deleted[*input.Key] = true
-// 	}
-// 	return &s3.DeleteObjectOutput{}, nil
-// }
-
-// func (m *mockS3ForCleanup) HeadObject(ctx context.Context, input *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
-// 	if input != nil && input.Key != nil && m.deleted[*input.Key] {
-// 		return nil, &types.NotFound{}
-// 	}
-// 	return &s3.HeadObjectOutput{}, nil
-// }
-
 func (s *CCLFTestSuite) SetupSuite() {
 	s.origDate = conf.GetEnv("CCLF_REF_DATE")
 
@@ -81,6 +56,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 
 	s.db = database.Connect()
 	s.pool = database.ConnectPool()
+	s.T().Setenv("S3_DELETE_TIMEOUT", "1")
 }
 
 func (s *CCLFTestSuite) SetupTest() {

@@ -50,6 +50,7 @@ func (s *CSVTestSuite) SetupSuite() {
 	s.origDate = conf.GetEnv("CCLF_REF_DATE")
 	s.dbContainer, err = db.NewTestDatabaseContainer()
 	require.NoError(s.T(), err)
+	s.T().Setenv("S3_DELETE_TIMEOUT", "1")
 }
 
 func (s *CSVTestSuite) TearDownSuite() {
