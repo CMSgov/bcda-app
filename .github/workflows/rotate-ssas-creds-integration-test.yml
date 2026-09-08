@@ -1,11 +1,6 @@
 name: Rotate SSAS Creds Integration Test
 
 on:
-  pull_request:
-    paths:
-      - .github/workflows/rotate-ssas-creds-integration-test.yml
-      - .github/workflows/rotate-ssas-creds-deploy.yml
-      - bcda/lambda/rotate_ssas_creds/**
   workflow_dispatch:
 
 permissions:
