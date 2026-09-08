@@ -12,6 +12,7 @@ import (
 )
 
 func TestGetAWSParams(t *testing.T) {
+	t.Setenv("ENV", "local")
 	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
 		"/bcda/local/sensitive/api/SSAS_URL":            "test-ssas-url",
 		"/bcda/local/sensitive/api/BCDA_SSAS_CLIENT_ID": "test-client-id",
@@ -69,6 +70,7 @@ func TestSetupEnv(t *testing.T) {
 }
 
 func TestGetRotationSystemsParam(t *testing.T) {
+	t.Setenv("ENV", "local")
 	stored := rotationSystem{SystemId: "11", CredsParam: "TestRotationACO"}
 	jsonBytes, _ := json.Marshal([]rotationSystem{stored})
 	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
@@ -81,6 +83,7 @@ func TestGetRotationSystemsParam(t *testing.T) {
 }
 
 func TestUpdateCredsParam(t *testing.T) {
+	t.Setenv("ENV", "local")
 	name := "TestACOCreds"
 	value := "test-creds-value"
 	ssmClient := bcdaaws.MockSSMClient{}
@@ -92,5 +95,4 @@ func TestUpdateCredsParam(t *testing.T) {
 	param, err := ssmClient.GetParameter(t.Context(), &input)
 	assert.Nil(t, err)
 	assert.Equal(t, value, *param.Parameter.Value)
-
 }

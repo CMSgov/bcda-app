@@ -142,6 +142,7 @@ func (c *HandleCreateACOTestSuite) TestHandleCreateACOMissingCMSID() {
 }
 
 func TestGetAWSParams(t *testing.T) {
+	t.Setenv("ENV", "local")
 	env := conf.GetEnv("ENV")
 	dbURLName := fmt.Sprintf("/bcda/%s/sensitive/api/DATABASE_URL", env)
 	slackParamName := "/slack/token/workflow-alerts"
