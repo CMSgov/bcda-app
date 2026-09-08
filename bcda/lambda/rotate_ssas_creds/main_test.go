@@ -57,7 +57,7 @@ func TestRotateCreds(t *testing.T) {
 	mockSSAS.On("ResetCredentials", mock.Anything).Return(marshalledCreds, nil)
 	handler := RotateSSASCredsHandler{logger: logger, ssmClient: &ssmClient, ssas: mockSSAS, slackClient: nil}
 
-	rs := rotationSystem{CredsParam: credsParam, SystemId: systemID}
+	rs := rotationSystem{CredsName: credsParam, SystemId: systemID}
 	err := handler.rotateCreds(t.Context(), rs)
 	assert.Nil(t, err)
 

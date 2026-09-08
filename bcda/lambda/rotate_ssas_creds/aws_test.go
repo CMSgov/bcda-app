@@ -71,7 +71,7 @@ func TestSetupEnv(t *testing.T) {
 
 func TestGetRotationSystemsParam(t *testing.T) {
 	t.Setenv("ENV", "local")
-	stored := rotationSystem{SystemId: "11", CredsParam: "TestRotationACO"}
+	stored := rotationSystem{SystemId: "11", CredsName: "TestRotationACO"}
 	jsonBytes, _ := json.Marshal([]rotationSystem{stored})
 	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
 		"/bcda/local/sensitive/rotation_systems": string(jsonBytes),
@@ -79,7 +79,7 @@ func TestGetRotationSystemsParam(t *testing.T) {
 	rotationSystems, err := getRotationSystemsParam(t.Context(), &ssmClient)
 	assert.Nil(t, err)
 	assert.Equal(t, stored.SystemId, rotationSystems[0].SystemId)
-	assert.Equal(t, stored.CredsParam, rotationSystems[0].CredsParam)
+	assert.Equal(t, stored.CredsName, rotationSystems[0].CredsName)
 }
 
 func TestUpdateCredsParam(t *testing.T) {

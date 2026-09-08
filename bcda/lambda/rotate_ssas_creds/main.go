@@ -18,8 +18,8 @@ import (
 )
 
 type rotationSystem struct {
-	SystemId   string `json:"system_id"`
-	CredsParam string `json:"creds_param"`
+	SystemId  string `json:"system_id"`
+	CredsName string `json:"creds_name"`
 }
 
 type shortCreds struct {
@@ -94,10 +94,10 @@ func (h RotateSSASCredsHandler) Handle(ctx context.Context) error {
 	for _, rs := range rotationSystems {
 		err := h.rotateCreds(ctx, rs)
 		if err != nil {
-			h.logger.Errorf("failed to rotate creds for system %s", rs.CredsParam)
+			h.logger.Errorf("failed to rotate creds for system %s", rs.CredsName)
 			failures += 1
 		} else {
-			h.logger.Infof("successfully rotated creds for system %s", rs.CredsParam)
+			h.logger.Infof("successfully rotated creds for system %s", rs.CredsName)
 			successes += 1
 		}
 	}
@@ -115,30 +115,30 @@ func (h RotateSSASCredsHandler) Handle(ctx context.Context) error {
 
 func (h RotateSSASCredsHandler) rotateCreds(ctx context.Context, rs rotationSystem) error {
 	if len(rs.SystemId) == 0 {
-		h.logger.Errorf("failed to get system id for system %s", rs.CredsParam)
+		h.logger.Errorf("failed to get system id for system %s", rs.CredsName)
 	}
-	if len(rs.CredsParam) == 0 {
+	if len(rs.CredsName) == 0 {
 		h.logger.Errorf("failed to get creds param for a system")
 	}
 	var newCreds shortCreds
 	credsBytes, err := h.ssas.ResetCredentials(rs.SystemId)
 	if err != nil {
-		h.logger.Errorf("failed to reset creds for system %s: %+v", rs.CredsParam, err)
+		h.logger.Errorf("failed to reset creds for system %s: %+v", rs.CredsName, err)
 		return err
 	}
 
 	err = json.Unmarshal(credsBytes, &newCreds)
 	if err != nil {
-		h.logger.Errorf("failed to unmarshal new creds for system %s", rs.CredsParam)
+		h.logger.Errorf("failed to unmarshal new creds for system %s", rs.CredsName)
 		return err
 	}
 	newValueBytes, err := json.Marshal(newCreds)
 	if err != nil {
-		h.logger.Errorf("failed to re-marshal new creds for system %s", rs.CredsParam)
+		h.logger.Errorf("failed to re-marshal new creds for system %s", rs.CredsName)
 		return err
 	}
 	newValue := string(newValueBytes)
-	return updateCredsParam(ctx, h.ssmClient, rs.CredsParam, newValue)
+	return updateCredsParam(ctx, h.ssmClient, rs.CredsName, newValue)
 }
 
 func configureLogger(env, appName string) *logrus.Entry {
