@@ -292,7 +292,6 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 	cclfMap = make(map[string][]*cclfZipMetadata)
 	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := bcdaaws.ListFiles(ctx, importer.fileClient, bucket, prefix)
-
 	if err != nil {
 		return cclfMap, skipped, failed, err
 	}
@@ -330,13 +329,13 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 
 		for _, f := range zipReader.File {
 			metadata, err := getCCLFFileMetadata(cmsID, f.Name)
-			metadata.deliveryDate = *obj.LastModified
-
 			if err != nil {
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 				importer.logger.Errorf("Issue parsing filename into metadata: %v", err)
 				continue
 			}
+
+			metadata.deliveryDate = *obj.LastModified
 
 			if metadata.cclfNum == 0 {
 				if cclf0Metadata != nil {

@@ -15,54 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type configurableMockS3Client struct {
-	MockS3Client
-	listObjectsFn   func(ctx context.Context, input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error)
-	listObjectsV2Fn func(ctx context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error)
-	headObjectFn    func(ctx context.Context, input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error)
-	getObjectFn     func(ctx context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error)
-	deleteObjectFn  func(ctx context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error)
-}
-
-func (m *configurableMockS3Client) ListObjects(ctx context.Context, input *s3.ListObjectsInput, optFns ...func(*s3.Options)) (*s3.ListObjectsOutput, error) {
-	if m.listObjectsFn != nil {
-		return m.listObjectsFn(ctx, input)
-	}
-	return m.MockS3Client.ListObjects(ctx, input, optFns...)
-}
-
-func (m *configurableMockS3Client) ListObjectsV2(ctx context.Context, input *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
-	if m.listObjectsV2Fn != nil {
-		return m.listObjectsV2Fn(ctx, input)
-	}
-	return m.MockS3Client.ListObjectsV2(ctx, input, optFns...)
-}
-
-func (m *configurableMockS3Client) HeadObject(ctx context.Context, input *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
-	if m.headObjectFn != nil {
-		return m.headObjectFn(ctx, input)
-	}
-	return m.MockS3Client.HeadObject(ctx, input, optFns...)
-}
-
-func (m *configurableMockS3Client) GetObject(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
-	if m.getObjectFn != nil {
-		return m.getObjectFn(ctx, input)
-	}
-	return m.MockS3Client.GetObject(ctx, input, optFns...)
-}
-
-func (m *configurableMockS3Client) DeleteObject(ctx context.Context, input *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-	if m.deleteObjectFn != nil {
-		return m.deleteObjectFn(ctx, input)
-	}
-	return m.MockS3Client.DeleteObject(ctx, input, optFns...)
-}
-
 func TestListFiles(t *testing.T) {
 	t.Run("success returning objects single page", func(t *testing.T) {
-		client := &configurableMockS3Client{
-			listObjectsV2Fn: func(_ context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
+		client := &ConfigurableMockS3Client{
+			ListObjectsV2Fn: func(_ context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
 				assert.Equal(t, "test-bucket", *input.Bucket)
 				assert.Equal(t, "test-prefix/", *input.Prefix)
 				return &s3.ListObjectsV2Output{
@@ -82,8 +38,8 @@ func TestListFiles(t *testing.T) {
 
 	t.Run("success returning objects with pagination", func(t *testing.T) {
 		callCount := 0
-		client := &configurableMockS3Client{
-			listObjectsV2Fn: func(_ context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
+		client := &ConfigurableMockS3Client{
+			ListObjectsV2Fn: func(_ context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
 				callCount++
 				if callCount == 1 {
 					assert.Nil(t, input.ContinuationToken)
@@ -115,8 +71,8 @@ func TestListFiles(t *testing.T) {
 
 	t.Run("error listing objects", func(t *testing.T) {
 		mockErr := errors.New("s3 connection failed")
-		client := &configurableMockS3Client{
-			listObjectsV2Fn: func(_ context.Context, _ *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
+		client := &ConfigurableMockS3Client{
+			ListObjectsV2Fn: func(_ context.Context, _ *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error) {
 				return nil, mockErr
 			},
 		}
@@ -128,7 +84,7 @@ func TestListFiles(t *testing.T) {
 }
 
 func TestOpenFileAsScanner(t *testing.T) {
-	client := &configurableMockS3Client{}
+	client := &ConfigurableMockS3Client{}
 	fileBytes, f, err := OpenFileAsScanner(t.Context(), client, "bad-file")
 	assert.ErrorContains(t, err, "file bad-file is empty")
 	assert.Nil(t, fileBytes)
@@ -140,13 +96,13 @@ func TestOpenFileAsBytes(t *testing.T) {
 
 	t.Run("success reading bytes", func(t *testing.T) {
 		content := "hello world"
-		client := &configurableMockS3Client{
-			headObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+		client := &ConfigurableMockS3Client{
+			HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
 				return &s3.HeadObjectOutput{
 					ContentLength: aws.Int64(int64(len(content))),
 				}, nil
 			},
-			getObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+			GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
 				return &s3.GetObjectOutput{
 					Body:          io.NopCloser(strings.NewReader(content)),
 					ContentLength: aws.Int64(int64(len(content))),
@@ -162,8 +118,8 @@ func TestOpenFileAsBytes(t *testing.T) {
 
 	t.Run("head object error", func(t *testing.T) {
 		mockErr := errors.New("s3 head object error")
-		client := &configurableMockS3Client{
-			headObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+		client := &ConfigurableMockS3Client{
+			HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
 				return nil, mockErr
 			},
 		}
@@ -174,8 +130,8 @@ func TestOpenFileAsBytes(t *testing.T) {
 	})
 
 	t.Run("file empty or zero content length", func(t *testing.T) {
-		client := &configurableMockS3Client{
-			headObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+		client := &ConfigurableMockS3Client{
+			HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
 				return &s3.HeadObjectOutput{
 					ContentLength: aws.Int64(0),
 				}, nil
@@ -189,13 +145,13 @@ func TestOpenFileAsBytes(t *testing.T) {
 
 	t.Run("download error", func(t *testing.T) {
 		mockErr := errors.New("s3 download body error")
-		client := &configurableMockS3Client{
-			headObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+		client := &ConfigurableMockS3Client{
+			HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
 				return &s3.HeadObjectOutput{
 					ContentLength: aws.Int64(10),
 				}, nil
 			},
-			getObjectFn: func(_ context.Context, _ *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+			GetObjectFn: func(_ context.Context, _ *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
 				return nil, mockErr
 			},
 		}
@@ -211,7 +167,7 @@ func TestDelete(t *testing.T) {
 
 	// t.Run("success deleting object", func(t *testing.T) {
 	// 	t.Setenv("S3_DELETE_TIMEOUT", "1")
-	// 	client := &configurableMockS3Client{
+	// 	client := &ConfigurableMockS3Client{
 	// 		deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
 	// 			assert.Equal(t, "test-bucket", *input.Bucket)
 	// 			assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
@@ -225,8 +181,8 @@ func TestDelete(t *testing.T) {
 
 	t.Run("error on timing out on delete", func(t *testing.T) {
 		t.Setenv("S3_DELETE_TIMEOUT", "1")
-		client := &configurableMockS3Client{
-			deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
+		client := &ConfigurableMockS3Client{
+			DeleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
 				assert.Equal(t, "test-bucket", *input.Bucket)
 				assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
 				return &s3.DeleteObjectOutput{}, nil
@@ -240,8 +196,8 @@ func TestDelete(t *testing.T) {
 	t.Run("delete object error", func(t *testing.T) {
 		t.Setenv("S3_DELETE_TIMEOUT", "1")
 		mockErr := errors.New("delete object permission denied")
-		client := &configurableMockS3Client{
-			deleteObjectFn: func(_ context.Context, _ *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
+		client := &ConfigurableMockS3Client{
+			DeleteObjectFn: func(_ context.Context, _ *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
 				return nil, mockErr
 			},
 		}
