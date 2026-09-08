@@ -16,13 +16,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-// type mockSSASClient struct {
-// }
-
-// func (s *mockSSASClient) CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error) {
-// 	return []byte(`{"group_id":"00001"}`), nil
-// }
-
 func TestHandleCreateGroup(t *testing.T) {
 	tests := []struct {
 		name    string
