@@ -66,7 +66,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 
 	file.data = data
 
-	err = importer.processCSV(file)
+	err = importer.processCSV(ctx, file)
 	if err != nil {
 		return err
 	} else {
@@ -83,8 +83,7 @@ func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) erro
 // ProcessCSV() will take provided metadata and write a new record to the cclf_files table and the contents of the file and write new record(s) to the cclf_beneficiaries table.
 // If any step of writing to the database should fail, the whole transaction will fail. If the new records are written successfully, then the new record in the cclf_files
 // table will have its import status updated.
-func (importer CSVImporter) processCSV(csv csvFile) error {
-	ctx := context.Background()
+func (importer CSVImporter) processCSV(ctx context.Context, csv csvFile) error {
 	if importer.PgxPool == nil {
 		return errors.New("pgx pool is required for import operations")
 	}

@@ -257,9 +257,6 @@ func (importer BenePrefsImporter) loadBenePrefsFiles(ctx context.Context, path s
 
 	for _, obj := range s3Objects {
 		metadata, err := parseMetadata(*obj.Key)
-		metadata.FilePath = fmt.Sprintf("s3://%s/%s", bucket, *obj.Key)
-		metadata.DeliveryDate = *obj.LastModified
-
 		if err != nil {
 			// Skip files with a bad name.  An unknown file in this dir isn't a blocker
 			importer.Logger.Errorf("Issue parsing filename into metadata: %v", err)
@@ -267,6 +264,8 @@ func (importer BenePrefsImporter) loadBenePrefsFiles(ctx context.Context, path s
 			continue
 		}
 
+		metadata.FilePath = fmt.Sprintf("s3://%s/%s", bucket, *obj.Key)
+		metadata.DeliveryDate = *obj.LastModified
 		result = append(result, &metadata)
 	}
 

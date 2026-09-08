@@ -258,7 +258,7 @@ func (importer CCLFImporter) importCCLF8(ctx context.Context, zipMetadata *cclfZ
 	}
 
 	if recordCount > validator.totalRecordCount {
-		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d), err: %w", fileMetadata.name, validator.totalRecordCount, recordCount, err)
+		err := fmt.Errorf("unexpected number of records imported for file %s (expected: %d, actual: %d)", fileMetadata.name, validator.totalRecordCount, recordCount)
 		importer.logger.Error(err)
 		return err
 	}
@@ -340,7 +340,7 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 
 			if metadata.cclfNum == 0 {
 				if cclf0Metadata != nil {
-					readError = fmt.Errorf("multiple CCLF0 files found in zip (%s/%s), err: %w", bucket, *obj.Key, err)
+					readError = fmt.Errorf("multiple CCLF0 files found in zip (%s/%s)", bucket, *obj.Key)
 					break
 				}
 				cclf0Metadata = &metadata

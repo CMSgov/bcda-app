@@ -193,12 +193,12 @@ func (s *CSVTestSuite) TestProcessCSV_Integration() {
 
 	for _, test := range tests {
 		s.Run(test.name, func() {
-			err := s.importer.processCSV(test.file)
+			err := s.importer.processCSV(s.T().Context(), test.file)
 			if test.err != nil {
 				cclfRecord := postgrestest.GetCCLFFilesByName(s.T(), s.db, file.metadata.name)
 				assert.Equal(s.T(), 1, len(cclfRecord))
 				assert.Nil(s.T(), err)
-				err = s.importer.processCSV(test.file)
+				err = s.importer.processCSV(s.T().Context(), test.file)
 				assert.NotNil(s.T(), err)
 				assert.Contains(s.T(), err.Error(), test.err.Error())
 			} else {

@@ -39,6 +39,9 @@ func ListFiles(ctx context.Context, client CustomS3Client, bucket, prefix string
 	return objects, nil
 }
 
+// OpenFileAsScanner opens a file from S3 and returns a bufio.Scanner for reading its contents line by line.
+// It also returns a cleanup function and an error if any occurred.
+// Be warned this is not memory efficient for large files as it reads the entire file into memory.
 func OpenFileAsScanner(ctx context.Context, client CustomS3Client, filePath string) (*bufio.Scanner, func(), error) {
 	byte_arr, err := OpenFileAsBytes(ctx, client, filePath)
 	if err != nil {
