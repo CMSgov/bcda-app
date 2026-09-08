@@ -16,10 +16,6 @@ permissions:
 concurrency:
   group: rotate-ssas-creds-integration-test
 
-env:
-  ACO: A5555
-  GROUP: A5555-group
-
 jobs:
   trigger:
     if: ${{ always() }}
