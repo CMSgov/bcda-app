@@ -115,7 +115,7 @@ func getRotationSystemsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMCli
 }
 
 func updateCredsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMClient, name string, value string) error {
-	fullCredsParam := fmt.Sprintf("/bcda/%s/creds/%s", conf.GetEnv("ENV"), name)
+	fullCredsParam := fmt.Sprintf("/bcda/%s/rotate-ssas-creds/%s", conf.GetEnv("ENV"), name)
 	input := &ssm.PutParameterInput{
 		Name:        aws.String(fullCredsParam),
 		Value:       aws.String(value),

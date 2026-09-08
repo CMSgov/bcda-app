@@ -61,7 +61,7 @@ func TestRotateCreds(t *testing.T) {
 	err := handler.rotateCreds(t.Context(), rs)
 	assert.Nil(t, err)
 
-	fullCredsParamName := fmt.Sprintf("/bcda/local/creds/%s", credsParam)
+	fullCredsParamName := fmt.Sprintf("/bcda/local/rotate-ssas-creds/%s", credsParam)
 	newCredsParam, err := ssmClient.GetParameter(t.Context(), &ssm.GetParameterInput{Name: &fullCredsParamName})
 	assert.Nil(t, err)
 	assert.Equal(t, string(marshalledCreds), *newCredsParam.Parameter.Value)

@@ -87,7 +87,7 @@ func TestUpdateCredsParam(t *testing.T) {
 	err := updateCredsParam(t.Context(), &ssmClient, name, value)
 	assert.Nil(t, err)
 
-	fullParamName := "/bcda/local/creds/TestACOCreds"
+	fullParamName := "/bcda/local/rotate-ssas-creds/TestACOCreds"
 	input := ssm.GetParameterInput{Name: &fullParamName}
 	param, err := ssmClient.GetParameter(t.Context(), &input)
 	assert.Nil(t, err)
