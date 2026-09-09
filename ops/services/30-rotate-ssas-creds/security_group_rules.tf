@@ -1,7 +1,3 @@
-data "aws_security_group" "db" {
-  name = local.db_sg_name
-}
-
 resource "aws_vpc_security_group_egress_rule" "ssas_admin" {
   from_port   = 444
   to_port     = 444
