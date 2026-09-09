@@ -7,7 +7,6 @@ import (
 	"os"
 
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
@@ -24,9 +23,7 @@ type awsParams struct {
 	slackToken   string
 }
 
-func getAWSParams(ctx context.Context, client bcdaaws.CustomSSMClient) (awsParams, error) {
-	env := conf.GetEnv("ENV")
-
+func getAWSParams(ctx context.Context, client bcdaaws.CustomSSMClient, env string) (awsParams, error) {
 	ssasURLName := fmt.Sprintf("/bcda/%s/sensitive/api/SSAS_URL", env)
 	clientIDName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_CLIENT_ID", env)
 	clientSecretName := fmt.Sprintf("/bcda/%s/sensitive/api/BCDA_SSAS_SECRET", env)
@@ -96,8 +93,7 @@ func setupEnv(params awsParams) error {
 	return nil
 }
 
-func getRotationSystemsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMClient) ([]rotationSystem, error) {
-	env := conf.GetEnv("ENV")
+func getRotationSystemsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMClient, env string) ([]rotationSystem, error) {
 	rotationSystemsName := fmt.Sprintf("/bcda/%s/sensitive/rotation_systems", env)
 	param, err := bcdaaws.GetParameter(ctx, ssmClient, rotationSystemsName)
 	if err != nil {
@@ -114,14 +110,15 @@ func getRotationSystemsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMCli
 	return rotationSystems, nil
 }
 
-func updateCredsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMClient, name string, value string) error {
-	fullCredsParam := fmt.Sprintf("/bcda/%s/rotate-ssas-creds/%s", conf.GetEnv("ENV"), name)
+func updateCredsParam(ctx context.Context, ssmClient bcdaaws.CustomSSMClient, env string, keyAlias string, name string, value string) error {
+	fullCredsParam := fmt.Sprintf("/bcda/%s/rotate-ssas-creds/%s", env, name)
 	input := &ssm.PutParameterInput{
 		Name:        aws.String(fullCredsParam),
 		Value:       aws.String(value),
 		Type:        types.ParameterTypeSecureString,
 		Overwrite:   aws.Bool(true),
 		Description: aws.String(fmt.Sprintf("Creds for system %s", name)),
+		KeyId:       aws.String(keyAlias),
 	}
 
 	_, err := ssmClient.PutParameter(ctx, input)

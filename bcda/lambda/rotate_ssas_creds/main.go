@@ -32,6 +32,8 @@ type RotateSSASCredsHandler struct {
 	ssmClient   bcdaaws.CustomSSMClient
 	ssas        client.SSASHTTPClient
 	slackClient *slack.Client
+	env         string
+	keyAlias    string
 }
 
 func main() {
@@ -44,8 +46,21 @@ func main() {
 }
 
 func initHandler(ctx context.Context) (*RotateSSASCredsHandler, error) {
-	env := conf.GetEnv("ENV")
-	appName := conf.GetEnv("APP_NAME")
+	env, err := getRequiredEnv("ENV")
+	if err != nil {
+		logrus.Fatalf("failed to fetch environment variable: %+v", err)
+	}
+
+	appName, err := getRequiredEnv("APP_NAME")
+	if err != nil {
+		logrus.Fatalf("failed to fetch environment variable: %+v", err)
+	}
+
+	keyAlias, err := getRequiredEnv("KEY_ALIAS")
+	if err != nil {
+		logrus.Fatalf("failed to fetch environment variable: %+v", err)
+	}
+
 	logger := configureLogger(env, appName)
 
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -54,7 +69,7 @@ func initHandler(ctx context.Context) (*RotateSSASCredsHandler, error) {
 		return nil, err
 	}
 	ssmClient := ssm.NewFromConfig(cfg)
-	params, err := getAWSParams(ctx, ssmClient)
+	params, err := getAWSParams(ctx, ssmClient, env)
 	if err != nil {
 		logger.Errorf("failed to retrieve AWS params: %+v", err)
 		return nil, err
@@ -77,13 +92,13 @@ func initHandler(ctx context.Context) (*RotateSSASCredsHandler, error) {
 		return nil, err
 	}
 
-	handler := RotateSSASCredsHandler{logger: logger, ssmClient: ssmClient, ssas: ssas, slackClient: slackClient}
+	handler := RotateSSASCredsHandler{logger: logger, ssmClient: ssmClient, ssas: ssas, slackClient: slackClient, env: env, keyAlias: keyAlias}
 	return &handler, nil
 }
 
 func (h RotateSSASCredsHandler) Handle(ctx context.Context) error {
 	successes, failures := 0, 0
-	rotationSystems, err := getRotationSystemsParam(ctx, h.ssmClient)
+	rotationSystems, err := getRotationSystemsParam(ctx, h.ssmClient, h.env)
 	if err != nil {
 		h.logger.Errorf("failed to retrieve AWS params: %+v", err)
 		failureMsg := "failed to retrieve AWS params in rotate-ssas-creds lambda"
@@ -138,7 +153,7 @@ func (h RotateSSASCredsHandler) rotateCreds(ctx context.Context, rs rotationSyst
 		return err
 	}
 	newValue := string(newValueBytes)
-	return updateCredsParam(ctx, h.ssmClient, rs.CredsName, newValue)
+	return updateCredsParam(ctx, h.ssmClient, h.env, h.keyAlias, rs.CredsName, newValue)
 }
 
 func configureLogger(env, appName string) *logrus.Entry {
@@ -154,4 +169,12 @@ func configureLogger(env, appName string) *logrus.Entry {
 		"application": appName,
 		"environment": env,
 	})
+}
+
+func getRequiredEnv(envVar string) (string, error) {
+	value := conf.GetEnv(envVar)
+	if len(value) == 0 {
+		return "", fmt.Errorf("failed to get %s from environment", envVar)
+	}
+	return value, nil
 }

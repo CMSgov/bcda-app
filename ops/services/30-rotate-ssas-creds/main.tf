@@ -1,14 +1,15 @@
 locals {
-  app         = "bcda"
-  env         = terraform.workspace
-  full_name   = "${local.app}-${local.env}-${local.service}"
-  db_sg_name  = "bcda-${local.env}-db"
-  memory_size = 2048
-  service     = "rotate-ssas-creds"
+  app            = "bcda"
+  env            = terraform.workspace
+  full_name      = "${local.app}-${local.env}-${local.service}"
+  db_sg_name     = "bcda-${local.env}-db"
+  memory_size    = 2048
+  service        = "rotate-ssas-creds"
+  app-config-key = "alias/bcda-${local.env}-app-config-kms"
 }
 
 data "aws_kms_alias" "bcda_app_config_kms_key" {
-  name = "alias/bcda-${local.env}-app-config-kms"
+  name = local.app-config-key
 }
 
 module "platform" {
@@ -39,8 +40,9 @@ module "rotate_ssas_creds_function" {
   memory_size = local.memory_size
 
   environment_variables = {
-    ENV      = local.env
-    APP_NAME = "${local.full_name}"
+    ENV       = local.env
+    APP_NAME  = "${local.full_name}"
+    KEY_ALIAS = module.platform.kms_alias_primary.id
   }
 
   function_role_inline_policies = {

@@ -12,7 +12,6 @@ import (
 )
 
 func TestGetAWSParams(t *testing.T) {
-	t.Setenv("ENV", "local")
 	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
 		"/bcda/local/sensitive/api/SSAS_URL":            "test-ssas-url",
 		"/bcda/local/sensitive/api/BCDA_SSAS_CLIENT_ID": "test-client-id",
@@ -21,7 +20,7 @@ func TestGetAWSParams(t *testing.T) {
 		"/slack/token/workflow-alerts":                  "test-slack-token",
 	}} // #nosec G101
 
-	params, err := getAWSParams(context.Background(), &ssmClient)
+	params, err := getAWSParams(context.Background(), &ssmClient, "local")
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test-ssas-url", params.ssasURL)
@@ -70,13 +69,12 @@ func TestSetupEnv(t *testing.T) {
 }
 
 func TestGetRotationSystemsParam(t *testing.T) {
-	t.Setenv("ENV", "local")
 	stored := rotationSystem{SystemId: "11", CredsName: "TestRotationACO"}
 	jsonBytes, _ := json.Marshal([]rotationSystem{stored})
 	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
 		"/bcda/local/sensitive/rotation_systems": string(jsonBytes),
 	}}
-	rotationSystems, err := getRotationSystemsParam(t.Context(), &ssmClient)
+	rotationSystems, err := getRotationSystemsParam(t.Context(), &ssmClient, "local")
 	assert.Nil(t, err)
 	assert.Equal(t, stored.SystemId, rotationSystems[0].SystemId)
 	assert.Equal(t, stored.CredsName, rotationSystems[0].CredsName)
@@ -87,7 +85,7 @@ func TestUpdateCredsParam(t *testing.T) {
 	name := "TestACOCreds"
 	value := "test-creds-value"
 	ssmClient := bcdaaws.MockSSMClient{}
-	err := updateCredsParam(t.Context(), &ssmClient, name, value)
+	err := updateCredsParam(t.Context(), &ssmClient, "local", "test-key-alias", name, value)
 	assert.Nil(t, err)
 
 	fullParamName := "/bcda/local/rotate-ssas-creds/TestACOCreds"
