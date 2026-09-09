@@ -3,8 +3,8 @@ package slackmessenger
 import (
 	"context"
 	"fmt"
-	"os"
 
+	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 )
@@ -30,14 +30,14 @@ func SendSlackMessage(sc *slack.Client, channel string, msg string, color string
 }
 
 func SendSuccessToOperations(sc *slack.Client, msg string) {
-	formattedMsg := fmt.Sprintf("%s: [%s environment]: %s ", SuccessMsg, os.Getenv("ENV"), msg)
+	formattedMsg := fmt.Sprintf("%s: [%s environment] %s ", SuccessMsg, conf.GetEnv("ENV"), msg)
 	color := Good
 	channel := OperationsChannel
 	SendSlackMessage(sc, channel, formattedMsg, color)
 }
 
 func SendFailureToAlerts(sc *slack.Client, msg string) {
-	formattedMsg := fmt.Sprintf("%s: [%s environment] %s ", FailureMsg, os.Getenv("ENV"), msg)
+	formattedMsg := fmt.Sprintf("%s: [%s environment] %s ", FailureMsg, conf.GetEnv("ENV"), msg)
 	color := Danger
 	channel := AlertsChannel
 	SendSlackMessage(sc, channel, formattedMsg, color)
