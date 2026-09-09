@@ -198,6 +198,21 @@ jobs:
         working-directory: ops/services/10-config
         run: |
           tofu apply bcda-release-sops.tfplan
+      - name: Install OpenTofu for Cluster
+        if: ${{ contains(fromJSON('["dev", "test"]'), env.RELEASE_ENV) }}
+        working-directory: ops/services/50-bcda
+        run: tenv tofu install
+      - name: Plan Cluster
+        if: ${{ contains(fromJSON('["dev", "test"]'), env.RELEASE_ENV) }}
+        working-directory: ops/services/50-bcda
+        run: |
+          TF_WORKSPACE=default tofu init -var env=${{ env.RELEASE_ENV }} -reconfigure && tofu workspace select -or-create ${{ env.RELEASE_ENV }}
+          tofu plan -var 'env=${{ env.RELEASE_ENV }}' -out 'bcda-release-cluster.tfplan'
+      - name: Apply Cluster
+        if: ${{ contains(fromJSON('["dev", "test"]'), env.RELEASE_ENV) }}
+        working-directory: ops/services/50-bcda
+        run: |
+          tofu apply bcda-release-cluster.tfplan
       - name: Checkout bcda-ops
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
