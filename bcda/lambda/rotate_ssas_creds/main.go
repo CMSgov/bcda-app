@@ -82,7 +82,7 @@ func initHandler(ctx context.Context) (*RotateSSASCredsHandler, error) {
 	}
 
 	slackClient := slack.New(params.slackToken)
-	if err != nil {
+	if slackClient == nil {
 		logger.Errorf("failed to create slack client: %+v", err)
 		return nil, err
 	}
@@ -130,10 +130,10 @@ func (h RotateSSASCredsHandler) Handle(ctx context.Context) error {
 
 func (h RotateSSASCredsHandler) rotateCreds(ctx context.Context, rs rotationSystem) error {
 	if len(rs.SystemId) == 0 {
-		h.logger.Errorf("failed to get system id for system %s", rs.CredsName)
+		return fmt.Errorf("failed to get system id for system %s", rs.CredsName)
 	}
 	if len(rs.CredsName) == 0 {
-		h.logger.Errorf("failed to get creds param for a system")
+		return fmt.Errorf("failed to get creds param for a system")
 	}
 	var newCreds shortCreds
 	credsBytes, err := h.ssas.ResetCredentials(rs.SystemId)

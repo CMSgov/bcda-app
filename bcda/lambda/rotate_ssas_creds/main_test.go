@@ -46,9 +46,7 @@ func TestConfigureLogger(t *testing.T) {
 }
 
 func TestRotateCreds(t *testing.T) {
-	systemID := "98"
-	credsParam := "TestRotateACO"
-	newCreds := shortCreds{ClientID: systemID, ClientSecret: "abc123"}
+	newCreds := shortCreds{ClientID: "98", ClientSecret: "abc123"}
 	marshalledCreds, _ := json.Marshal(newCreds)
 
 	logger := configureLogger("test", "testapp")
@@ -57,12 +55,51 @@ func TestRotateCreds(t *testing.T) {
 	mockSSAS.On("ResetCredentials", mock.Anything).Return(marshalledCreds, nil)
 	handler := RotateSSASCredsHandler{logger: logger, ssmClient: &ssmClient, ssas: mockSSAS, slackClient: nil, env: "local", keyAlias: "test-key-alias"}
 
-	rs := rotationSystem{CredsName: credsParam, SystemId: systemID}
-	err := handler.rotateCreds(t.Context(), rs)
-	assert.Nil(t, err)
+	tests := []struct {
+		name          string
+		systemID      string
+		credsName     string
+		err           bool
+		expectedCreds string
+	}{
+		{
+			name:          "Success",
+			systemID:      "98",
+			credsName:     "TestRotateACO",
+			err:           false,
+			expectedCreds: string(marshalledCreds),
+		},
+		{
+			name:          "No SystemID error",
+			systemID:      "",
+			credsName:     "TestRotateACO",
+			err:           true,
+			expectedCreds: "",
+		},
+		{
+			name:          "No CredsName error",
+			systemID:      "98",
+			credsName:     "",
+			err:           true,
+			expectedCreds: "",
+		},
+	}
 
-	fullCredsParamName := fmt.Sprintf("/bcda/local/rotate-ssas-creds/%s", credsParam)
-	newCredsParam, err := ssmClient.GetParameter(t.Context(), &ssm.GetParameterInput{Name: &fullCredsParamName})
-	assert.Nil(t, err)
-	assert.Equal(t, string(marshalledCreds), *newCredsParam.Parameter.Value)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rs := rotationSystem{CredsName: tt.credsName, SystemId: tt.systemID}
+			err := handler.rotateCreds(t.Context(), rs)
+
+			if tt.err {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+				fullCredsParamName := fmt.Sprintf("/bcda/local/rotate-ssas-creds/%s", tt.credsName)
+				newCredsParam, err := ssmClient.GetParameter(t.Context(), &ssm.GetParameterInput{Name: &fullCredsParamName})
+				assert.Nil(t, err)
+				assert.Equal(t, string(marshalledCreds), *newCredsParam.Parameter.Value)
+
+			}
+		})
+	}
 }
