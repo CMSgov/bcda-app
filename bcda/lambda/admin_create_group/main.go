@@ -101,7 +101,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 		return errors.New("failed to load config")
 	}
 
-	if match := cfg.IsSupportedACO(data.ACO_ID); match {
+	if cfg.IsSupportedACO(data.ACO_ID) || cfg.IsTestACO(data.ACO_ID) {
 		aco, err = r.GetACOByCMSID(context.Background(), data.ACO_ID)
 		if err != nil {
 			return err
