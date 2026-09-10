@@ -16,4 +16,5 @@ jobs:
     with:
       app: bcda
       ref: main
-    secrets: inherit
+    secrets:
+      PROD_ACCOUNT: ${{ secrets.PROD_ACCOUNT_ID }}
