@@ -19,16 +19,26 @@ func TestPutObject(t *testing.T) {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{})
+	ssmClient := bcdaaws.MockSSMClient{Params: map[string]string{
+		"/slack/token/workflow-alerts":                  "test-slack-token",
+		"/bcda/local/sensitive/api/DATABASE_URL":        "test-db-url",
+		"/bcda/local/sensitive/api/SSAS_URL":            "test-ssas-url",
+		"/bcda/local/sensitive/api/BCDA_SSAS_CLIENT_ID": "test-client-id",
+		"/bcda/local/sensitive/api/BCDA_SSAS_SECRET":    "test-client-secret",
+		"/bcda/local/sensitive/api/BCDA_CA_FILE.pem":    "test-ca-file",
+		"/bcda/local/sensitive/aco_creds_bucket":        "test-creds-bucket",
+	}} // #nosec G101
+
+	params, err := getAWSParams(context.Background(), &ssmClient)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "value1", params.slackToken)
-	assert.Equal(t, "value2", params.dbURL)
-	assert.Equal(t, "value3", params.ssasURL)
-	assert.Equal(t, "value4", params.clientID)
-	assert.Equal(t, "value5", params.clientSecret)
-	assert.Equal(t, "value6", params.ssasPEM)
-	assert.Equal(t, "value7", params.credsBucket)
+	assert.Equal(t, "test-slack-token", params.slackToken)
+	assert.Equal(t, "test-db-url", params.dbURL)
+	assert.Equal(t, "test-ssas-url", params.ssasURL)
+	assert.Equal(t, "test-client-id", params.clientID)
+	assert.Equal(t, "test-client-secret", params.clientSecret)
+	assert.Equal(t, "test-ca-file", params.ssasPEM)
+	assert.Equal(t, "test-creds-bucket", params.credsBucket)
 
 }
 

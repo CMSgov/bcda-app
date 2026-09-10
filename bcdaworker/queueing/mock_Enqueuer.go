@@ -66,7 +66,7 @@ type MockEnqueuer_AddJob_Call struct {
 //   - tx pgx.Tx
 //   - job worker_types.JobEnqueueArgs
 //   - priority int
-func (_e *MockEnqueuer_Expecter) AddJob(ctx interface{}, tx interface{}, job interface{}, priority interface{}) *MockEnqueuer_AddJob_Call {
+func (_e *MockEnqueuer_Expecter) AddJob(ctx any, tx any, job any, priority any) *MockEnqueuer_AddJob_Call {
 	return &MockEnqueuer_AddJob_Call{Call: _e.mock.On("AddJob", ctx, tx, job, priority)}
 }
 
@@ -133,7 +133,7 @@ type MockEnqueuer_AddPrepareJob_Call struct {
 // AddPrepareJob is a helper method to define mock.On call
 //   - ctx context.Context
 //   - job worker_types.PrepareJobArgs
-func (_e *MockEnqueuer_Expecter) AddPrepareJob(ctx interface{}, job interface{}) *MockEnqueuer_AddPrepareJob_Call {
+func (_e *MockEnqueuer_Expecter) AddPrepareJob(ctx any, job any) *MockEnqueuer_AddPrepareJob_Call {
 	return &MockEnqueuer_AddPrepareJob_Call{Call: _e.mock.On("AddPrepareJob", ctx, job)}
 }
 

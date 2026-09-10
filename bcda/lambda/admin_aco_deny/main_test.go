@@ -25,8 +25,15 @@ func TestHandleACODenies(t *testing.T) {
 }
 
 func TestGetAWSParams(t *testing.T) {
-	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{})
+	dbURLName := "/bcda/local/sensitive/api/DATABASE_URL"
+	slackParamName := "/slack/token/workflow-alerts"
+	storedParams := map[string]string{
+		dbURLName:      "db://url",
+		slackParamName: "test-slack-token",
+	}
+	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{Params: storedParams})
 	assert.Nil(t, err)
-	assert.Equal(t, "value1", params.SlackToken)
-	assert.Equal(t, "value2", params.DBURL)
+	assert.Equal(t, "test-slack-token", params.SlackToken)
+	assert.Equal(t, "db://url", params.DBURL)
+	print(dbURLName)
 }

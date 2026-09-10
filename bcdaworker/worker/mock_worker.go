@@ -66,7 +66,7 @@ type MockWorker_ProcessJob_Call struct {
 //   - queJobID int64
 //   - job models.Job
 //   - jobArgs worker_types.JobEnqueueArgs
-func (_e *MockWorker_Expecter) ProcessJob(ctx interface{}, queJobID interface{}, job interface{}, jobArgs interface{}) *MockWorker_ProcessJob_Call {
+func (_e *MockWorker_Expecter) ProcessJob(ctx any, queJobID any, job any, jobArgs any) *MockWorker_ProcessJob_Call {
 	return &MockWorker_ProcessJob_Call{Call: _e.mock.On("ProcessJob", ctx, queJobID, job, jobArgs)}
 }
 
@@ -145,7 +145,7 @@ type MockWorker_ValidateJob_Call struct {
 //   - ctx context.Context
 //   - queJobID int64
 //   - jobArgs worker_types.JobEnqueueArgs
-func (_e *MockWorker_Expecter) ValidateJob(ctx interface{}, queJobID interface{}, jobArgs interface{}) *MockWorker_ValidateJob_Call {
+func (_e *MockWorker_Expecter) ValidateJob(ctx any, queJobID any, jobArgs any) *MockWorker_ValidateJob_Call {
 	return &MockWorker_ValidateJob_Call{Call: _e.mock.On("ValidateJob", ctx, queJobID, jobArgs)}
 }
 

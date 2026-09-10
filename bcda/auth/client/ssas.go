@@ -28,6 +28,7 @@ import (
 
 type SSASHTTPClient interface {
 	CreateGroup(groupId string, name string, acoCMSID string) ([]byte, error)
+	ResetCredentials(systemID string) ([]byte, error)
 }
 
 // SSASClient is a client for interacting with the System-to-System Authentication Service.

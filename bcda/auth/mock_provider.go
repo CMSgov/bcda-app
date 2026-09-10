@@ -73,7 +73,7 @@ type MockProvider_FindAndCreateACOCredentials_Call struct {
 // FindAndCreateACOCredentials is a helper method to define mock.On call
 //   - ACOID string
 //   - IPs []string
-func (_e *MockProvider_Expecter) FindAndCreateACOCredentials(ACOID interface{}, IPs interface{}) *MockProvider_FindAndCreateACOCredentials_Call {
+func (_e *MockProvider_Expecter) FindAndCreateACOCredentials(ACOID any, IPs any) *MockProvider_FindAndCreateACOCredentials_Call {
 	return &MockProvider_FindAndCreateACOCredentials_Call{Call: _e.mock.On("FindAndCreateACOCredentials", ACOID, IPs)}
 }
 
@@ -138,7 +138,7 @@ type MockProvider_GetAuthData_Call struct {
 
 // GetAuthData is a helper method to define mock.On call
 //   - clientID string
-func (_e *MockProvider_Expecter) GetAuthData(clientID interface{}) *MockProvider_GetAuthData_Call {
+func (_e *MockProvider_Expecter) GetAuthData(clientID any) *MockProvider_GetAuthData_Call {
 	return &MockProvider_GetAuthData_Call{Call: _e.mock.On("GetAuthData", clientID)}
 }
 
@@ -252,7 +252,7 @@ type MockProvider_MakeAccessToken_Call struct {
 // MakeAccessToken is a helper method to define mock.On call
 //   - credentials Credentials
 //   - r *http.Request
-func (_e *MockProvider_Expecter) MakeAccessToken(credentials interface{}, r interface{}) *MockProvider_MakeAccessToken_Call {
+func (_e *MockProvider_Expecter) MakeAccessToken(credentials any, r any) *MockProvider_MakeAccessToken_Call {
 	return &MockProvider_MakeAccessToken_Call{Call: _e.mock.On("MakeAccessToken", credentials, r)}
 }
 
@@ -326,9 +326,9 @@ type MockProvider_RegisterSystem_Call struct {
 //   - publicKey string
 //   - groupID string
 //   - ips ...string
-func (_e *MockProvider_Expecter) RegisterSystem(localID interface{}, publicKey interface{}, groupID interface{}, ips ...interface{}) *MockProvider_RegisterSystem_Call {
+func (_e *MockProvider_Expecter) RegisterSystem(localID any, publicKey any, groupID any, ips ...any) *MockProvider_RegisterSystem_Call {
 	return &MockProvider_RegisterSystem_Call{Call: _e.mock.On("RegisterSystem",
-		append([]interface{}{localID, publicKey, groupID}, ips...)...)}
+		append([]any{localID, publicKey, groupID}, ips...)...)}
 }
 
 func (_c *MockProvider_RegisterSystem_Call) Run(run func(localID string, publicKey string, groupID string, ips ...string)) *MockProvider_RegisterSystem_Call {
@@ -404,7 +404,7 @@ type MockProvider_ResetSecret_Call struct {
 
 // ResetSecret is a helper method to define mock.On call
 //   - clientID string
-func (_e *MockProvider_Expecter) ResetSecret(clientID interface{}) *MockProvider_ResetSecret_Call {
+func (_e *MockProvider_Expecter) ResetSecret(clientID any) *MockProvider_ResetSecret_Call {
 	return &MockProvider_ResetSecret_Call{Call: _e.mock.On("ResetSecret", clientID)}
 }
 
@@ -455,7 +455,7 @@ type MockProvider_RevokeAccessToken_Call struct {
 
 // RevokeAccessToken is a helper method to define mock.On call
 //   - tokenString string
-func (_e *MockProvider_Expecter) RevokeAccessToken(tokenString interface{}) *MockProvider_RevokeAccessToken_Call {
+func (_e *MockProvider_Expecter) RevokeAccessToken(tokenString any) *MockProvider_RevokeAccessToken_Call {
 	return &MockProvider_RevokeAccessToken_Call{Call: _e.mock.On("RevokeAccessToken", tokenString)}
 }
 
@@ -506,7 +506,7 @@ type MockProvider_RevokeSystemCredentials_Call struct {
 
 // RevokeSystemCredentials is a helper method to define mock.On call
 //   - clientID string
-func (_e *MockProvider_Expecter) RevokeSystemCredentials(clientID interface{}) *MockProvider_RevokeSystemCredentials_Call {
+func (_e *MockProvider_Expecter) RevokeSystemCredentials(clientID any) *MockProvider_RevokeSystemCredentials_Call {
 	return &MockProvider_RevokeSystemCredentials_Call{Call: _e.mock.On("RevokeSystemCredentials", clientID)}
 }
 
@@ -569,7 +569,7 @@ type MockProvider_VerifyToken_Call struct {
 // VerifyToken is a helper method to define mock.On call
 //   - ctx context.Context
 //   - tokenString string
-func (_e *MockProvider_Expecter) VerifyToken(ctx interface{}, tokenString interface{}) *MockProvider_VerifyToken_Call {
+func (_e *MockProvider_Expecter) VerifyToken(ctx any, tokenString any) *MockProvider_VerifyToken_Call {
 	return &MockProvider_VerifyToken_Call{Call: _e.mock.On("VerifyToken", ctx, tokenString)}
 }
 
@@ -634,7 +634,7 @@ type MockProvider_getAuthDataFromClaims_Call struct {
 
 // getAuthDataFromClaims is a helper method to define mock.On call
 //   - commonClaims *CommonClaims
-func (_e *MockProvider_Expecter) getAuthDataFromClaims(commonClaims interface{}) *MockProvider_getAuthDataFromClaims_Call {
+func (_e *MockProvider_Expecter) getAuthDataFromClaims(commonClaims any) *MockProvider_getAuthDataFromClaims_Call {
 	return &MockProvider_getAuthDataFromClaims_Call{Call: _e.mock.On("getAuthDataFromClaims", commonClaims)}
 }
 
