@@ -35,6 +35,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -149,7 +150,7 @@ func TestAWSConfig(t *testing.T) aws.Config {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(constants.DefaultRegion),
 	)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	return cfg
 }
@@ -323,11 +324,11 @@ func putParameter(t *testing.T, input ssm.PutParameterInput) error {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(constants.DefaultRegion),
 	)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	client := ssm.NewFromConfig(cfg)
 
 	_, err = client.PutParameter(ctx, &input)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	return nil
 }
@@ -339,11 +340,11 @@ func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(constants.DefaultRegion),
 	)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	client := ssm.NewFromConfig(cfg)
 
 	_, err = client.DeleteParameters(ctx, &input)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	return nil
 }

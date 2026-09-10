@@ -4,10 +4,12 @@
 # and initializes the default state of the ministack instance
 #
 
+set -euo pipefail
+
 # upload default config files to s3 bucket
 function init_config_bucket() {
     CONFIG_BUCKET=bcda-local-config
-    awslocal s3api create-bucket --bucket $CONFIG_BUCKET
+    awslocal s3api create-bucket --bucket "$CONFIG_BUCKET" >/dev/null 2>&1 || true
     awslocal s3 sync /etc/config s3://$CONFIG_BUCKET/api
     awslocal s3 sync /etc/config s3://$CONFIG_BUCKET/worker
 }

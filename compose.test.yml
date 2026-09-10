@@ -58,7 +58,7 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - SERVICES=s3,ssm,cloudwatch,sts,iam
       - LOG_LEVEL=DEBUG
-      - DOCKER_NETWORK=ministack_default
+      - DOCKER_NETWORK=bcda-app-net
       - GATEWAY_PORT=4567
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
