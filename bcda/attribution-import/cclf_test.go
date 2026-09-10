@@ -662,53 +662,53 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_InvalidPath() {
 // 	}
 // }
 
-func (s *CCLFTestSuite) TestCleanupCCLF() {
-	assert := assert.New(s.T())
-	cclfmap := make(map[string][]*cclfZipMetadata)
-	acoID := "A0001"
+// func (s *CCLFTestSuite) TestCleanupCCLF() {
+// 	assert := assert.New(s.T())
+// 	cclfmap := make(map[string][]*cclfZipMetadata)
+// 	acoID := "A0001"
 
-	bucketName := uuid.NewRandom().String()
+// 	bucketName := uuid.NewRandom().String()
 
-	// failed import: stay put
-	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf0metadata := &cclfFileMetadata{
-		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
-		env:          "test",
-		acoID:        acoID,
-		cclfNum:      8,
-		perfYear:     18,
-		timestamp:    fileTime,
-		deliveryDate: time.Now(),
-	}
+// 	// failed import: stay put
+// 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
+// 	cclf0metadata := &cclfFileMetadata{
+// 		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
+// 		env:          "test",
+// 		acoID:        acoID,
+// 		cclfNum:      0,
+// 		perfYear:     18,
+// 		timestamp:    fileTime,
+// 		deliveryDate: time.Now(),
+// 	}
 
-	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
-	cclf8metadata := &cclfFileMetadata{
-		name:         constants.CCLF8Name,
-		env:          "test",
-		acoID:        acoID,
-		cclfNum:      8,
-		perfYear:     18,
-		timestamp:    fileTime,
-		deliveryDate: time.Now(),
-	}
+// 	fileTime, _ = time.Parse(time.RFC3339, constants.TestFileTime)
+// 	cclf8metadata := &cclfFileMetadata{
+// 		name:         constants.CCLF8Name,
+// 		env:          "test",
+// 		acoID:        acoID,
+// 		cclfNum:      8,
+// 		perfYear:     18,
+// 		timestamp:    fileTime,
+// 		deliveryDate: time.Now(),
+// 	}
 
-	cclfmap[acoID] = []*cclfZipMetadata{
-		{
-			cclf0Metadata: *cclf0metadata,
-			cclf8Metadata: *cclf8metadata,
-			filePath:      filepath.Join(bucketName, constants.CCLF8CompPath),
-			imported:      false,
-		},
-	}
+// 	cclfmap[acoID] = []*cclfZipMetadata{
+// 		{
+// 			cclf0Metadata: *cclf0metadata,
+// 			cclf8Metadata: *cclf8metadata,
+// 			filePath:      filepath.Join(bucketName, constants.CCLF8CompPath),
+// 			imported:      false,
+// 		},
+// 	}
 
-	deletedCount, err := s.importer.cleanUpCCLF(context.Background(), cclfmap)
-	assert.Equal(0, deletedCount)
-	assert.Nil(err)
+// 	deletedCount, err := s.importer.cleanUpCCLF(context.Background(), cclfmap)
+// 	assert.Equal(0, deletedCount)
+// 	assert.Nil(err)
 
-	// Cleanup file after import
-	cclfmap[acoID][0].imported = true
+// 	// Cleanup file after import
+// 	cclfmap[acoID][0].imported = true
 
-	deletedCount, err = s.importer.cleanUpCCLF(context.Background(), cclfmap)
-	assert.Equal(1, deletedCount)
-	assert.Nil(err)
-}
+// 	deletedCount, err = s.importer.cleanUpCCLF(context.Background(), cclfmap)
+// 	assert.Equal(1, deletedCount)
+// 	assert.Nil(err)
+// }

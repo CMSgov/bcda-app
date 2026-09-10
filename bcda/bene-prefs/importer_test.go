@@ -20,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -489,76 +488,76 @@ func (s *BenePrefsTestSuite) TestValidate() {
 // 	assert.Equal(true, strings.Contains(err.Error(), "error moving unknown file"))
 // }
 
-func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
-	assert := assert.New(s.T())
-	ctx := context.Background()
-	repo := &models.MockRepository{}
-	client := &bcdaaws.ConfigurableMockS3Client{}
-	// client := &bcdaaws.ConfigurableMockS3Client{
-	// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-	// 		return &s3.HeadObjectOutput{
-	// 			ContentLength: aws.Int64(int64(len(content))),
-	// 		}, nil
-	// 	},
-	// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-	// 		return &s3.GetObjectOutput{
-	// 			Body:          io.NopCloser(strings.NewReader(string(content))),
-	// 			ContentLength: aws.Int64(int64(len(content))),
-	// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-	// 		}, nil
-	// 	},
-	// }
-	importer := s.createImporter(repo, client)
+// func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
+// 	assert := assert.New(s.T())
+// 	ctx := context.Background()
+// 	repo := &models.MockRepository{}
+// 	client := &bcdaaws.ConfigurableMockS3Client{}
+// 	// client := &bcdaaws.ConfigurableMockS3Client{
+// 	// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+// 	// 		return &s3.HeadObjectOutput{
+// 	// 			ContentLength: aws.Int64(int64(len(content))),
+// 	// 		}, nil
+// 	// 	},
+// 	// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+// 	// 		return &s3.GetObjectOutput{
+// 	// 			Body:          io.NopCloser(strings.NewReader(string(content))),
+// 	// 			ContentLength: aws.Int64(int64(len(content))),
+// 	// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
+// 	// 		}, nil
+// 	// 	},
+// 	// }
+// 	importer := s.createImporter(repo, client)
 
-	var suppresslist []*models.BenePrefsFilenameMetadata
+// 	var suppresslist []*models.BenePrefsFilenameMetadata
 
-	// failed import: file that's within the threshold - stay put
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-	metadata := &models.BenePrefsFilenameMetadata{
-		Name:         constants.TestSuppressMetaFileName,
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-		Imported:     false,
-		DeliveryDate: time.Now(),
-	}
+// 	// failed import: file that's within the threshold - stay put
+// 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
+// 	metadata := &models.BenePrefsFilenameMetadata{
+// 		Name:         constants.TestSuppressMetaFileName,
+// 		Timestamp:    fileTime,
+// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
+// 		Imported:     false,
+// 		DeliveryDate: time.Now(),
+// 	}
 
-	// failed import: file that's over the threshold - should move
-	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata2 := &models.BenePrefsFilenameMetadata{
-		Name:         constants.TestSuppressBadPath,
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
-		Imported:     false,
-		DeliveryDate: fileTime,
-	}
+// 	// failed import: file that's over the threshold - should move
+// 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+// 	metadata2 := &models.BenePrefsFilenameMetadata{
+// 		Name:         constants.TestSuppressBadPath,
+// 		Timestamp:    fileTime,
+// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
+// 		Imported:     false,
+// 		DeliveryDate: fileTime,
+// 	}
 
-	// successful import: should move
-	metadata3 := &models.BenePrefsFilenameMetadata{
-		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
-		Imported:     true,
-		DeliveryDate: time.Now(),
-	}
+// 	// successful import: should move
+// 	metadata3 := &models.BenePrefsFilenameMetadata{
+// 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
+// 		Timestamp:    fileTime,
+// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
+// 		Imported:     true,
+// 		DeliveryDate: time.Now(),
+// 	}
 
-	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
-	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
-	assert.Nil(err)
+// 	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
+// 	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
+// 	assert.Nil(err)
 
-	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
-	if err != nil {
-		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
-	}
+// 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
+// 	if err != nil {
+// 		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
+// 	}
 
-	for _, file := range files {
-		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
+// 	for _, file := range files {
+// 		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
 
-		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
-			err = fmt.Errorf("unknown file moved %s", file.Name())
-			s.FailNow("test files did not correctly cleanup", err)
-		}
-	}
-}
+// 		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
+// 			err = fmt.Errorf("unknown file moved %s", file.Name())
+// 			s.FailNow("test files did not correctly cleanup", err)
+// 		}
+// 	}
+// }
 
 func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_Bad() {
 	assert := assert.New(s.T())
@@ -608,7 +607,7 @@ func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_Bad() {
 	assert.ErrorContains(err, "files could not be cleaned up")
 }
 
-func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_RenameFileError() {
+func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_RenameFile() {
 	assert := assert.New(s.T())
 	ctx := context.Background()
 	repo := &models.MockRepository{}

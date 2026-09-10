@@ -84,6 +84,28 @@ func TestListFiles(t *testing.T) {
 }
 
 func TestOpenFileAsScanner(t *testing.T) {
+	content := "hello world"
+	client := &ConfigurableMockS3Client{
+		HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+			return &s3.HeadObjectOutput{
+				ContentLength: aws.Int64(int64(len(content))),
+			}, nil
+		},
+		GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(strings.NewReader(content)),
+				ContentLength: aws.Int64(int64(len(content))),
+				ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
+			}, nil
+		},
+	}
+
+	fileBytes, _, err := OpenFileAsScanner(t.Context(), client, "mock-file-path")
+	assert.NoError(t, err)
+	assert.NotNil(t, fileBytes)
+}
+
+func TestOpenFileAsScanner_BadFileError(t *testing.T) {
 	client := &ConfigurableMockS3Client{}
 	fileBytes, f, err := OpenFileAsScanner(t.Context(), client, "bad-file")
 	assert.ErrorContains(t, err, "file bad-file is empty")
