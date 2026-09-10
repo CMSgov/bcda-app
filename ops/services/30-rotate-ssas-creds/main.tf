@@ -2,7 +2,6 @@ locals {
   app            = "bcda"
   env            = terraform.workspace
   full_name      = "${local.app}-${local.env}-${local.service}"
-  db_sg_name     = "bcda-${local.env}-db"
   memory_size    = 256
   service        = "rotate-ssas-creds"
   app-config-key = "alias/bcda-${local.env}-app-config-kms"
