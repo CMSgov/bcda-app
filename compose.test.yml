@@ -52,8 +52,6 @@ services:
       dockerfile: docker/Dockerfile.postman_test
   ministack-unit-test:
     image: ministackorg/ministack:latest
-    ports:
-      - "4567:4566"
     environment:
       - AWS_DEFAULT_REGION=us-east-1
       - SERVICES=s3,ssm,cloudwatch,sts,iam
