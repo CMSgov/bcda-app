@@ -76,6 +76,7 @@ func setupEnv(params awsParams) error {
 	err = os.Setenv("BCDA_CA_FILE", pemFilePath)
 	if err != nil {
 		log.Errorf("error setting BCDA_CA_FILE env var: %+v", err)
+		return err
 	}
 
 	// parameter store returns the value of the parameter and SSAS expects a file, so we need to create it
