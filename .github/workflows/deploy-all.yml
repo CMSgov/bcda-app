@@ -216,7 +216,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           # Sends to bcda-deploy
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: good
                 text: "Started deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
@@ -355,7 +355,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           # Sends to bcda-deploy
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: good
                 pretext: "Deployment information for BCDA environment *${{ env.RELEASE_ENV }}*"
@@ -380,7 +380,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: danger
                 text: "FAILURE: Deploy to ${{ env.RELEASE_ENV }} (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."

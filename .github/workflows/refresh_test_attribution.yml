@@ -41,24 +41,20 @@ jobs:
       - name: Install psql
         run: |
           sudo dnf install postgresql16 -y
-      - name: checkout bcda-ops
+      - name: Checkout BCDA
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
-        with:
-          repository: CMSgov/bcda-ops
-          ref: 'main'
-          token: ${{ env.GITHUB_TOKEN }}
       - name: Refresh all environments
         run: |
           set -euo pipefail
 
-          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ matrix.vars.env }}-aurora 2>&1 | jq -r '.DBClusterEndpoints[0].Endpoint' 2>&1)
+          HOST=$(aws rds describe-db-cluster-endpoints --db-cluster-identifier bcda-${{ matrix.vars.env }}-aurora 2>> error.log | jq -r '.DBClusterEndpoints[0].Endpoint' 2>> error.log)
           if [ $? -ne 0 ]; then
               echo "Error: failed to retrieve database host."
               exit 1
           fi
 
-          CONNECTION_URL=$(echo ${{ env.DB_URL }} 2>&1 | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>&1)
-          ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>&1
+          CONNECTION_URL=$(echo ${{ env.DB_URL }} 2>> error.log | sed -E "s/@.*\/bcda/\@$HOST\/bcda/" 2>> error.log)
+          ./scripts/refresh_test_attribution.sh -c "${CONNECTION_URL}" -f > /dev/null 2>> error.log
 
           if [ $? -ne 0 ]; then
               echo "Error: Refresh failed; run script locally for more details."
@@ -73,7 +69,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
-            channel: "C03S23MJFJS"
+            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
             attachments:
               - color: danger
                 text: "FAILURE: Refresh Test Attribution (run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>)."
