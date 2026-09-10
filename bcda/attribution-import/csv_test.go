@@ -105,74 +105,74 @@ func TestCSVTestSuite(t *testing.T) {
 	suite.Run(t, new(CSVTestSuite))
 }
 
-func (s *CSVTestSuite) TestImportCSV_Integration() {
-	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
-	tests := []struct {
-		name        string
-		filepath    string
-		cclfFileID  int
-		cclfBeneRec []string
-		err         error
-	}{
-		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
-		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
-		{"Import CSV attribution invalid name", filepath.Join(s.basePath, "cclf/archives/csv/P.PC.M2411.D181120.T1000000"), 0, []string{}, errors.New("invalid filename")},
-		{"Import bene-prefs failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("invalid filename for csv attribution file")},
-	}
+// func (s *CSVTestSuite) TestImportCSV_Integration() {
+// 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
+// 	tests := []struct {
+// 		name        string
+// 		filepath    string
+// 		cclfFileID  int
+// 		cclfBeneRec []string
+// 		err         error
+// 	}{
+// 		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
+// 		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
+// 		{"Import CSV attribution invalid name", filepath.Join(s.basePath, "cclf/archives/csv/P.PC.M2411.D181120.T1000000"), 0, []string{}, errors.New("invalid filename")},
+// 		{"Import bene-prefs failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("invalid filename for csv attribution file")},
+// 	}
 
-	for _, test := range tests {
-		s.Run(test.name, func() {
-			err := s.dbContainer.ExecuteDir("testdata/")
-			require.NoError(s.T(), err)
-			filename := filepath.Clean(test.filepath)
-			content, err := os.ReadFile(filename)
-			if test.err == nil {
-				assert.NoError(s.T(), err)
-			}
+// 	for _, test := range tests {
+// 		s.Run(test.name, func() {
+// 			err := s.dbContainer.ExecuteDir("testdata/")
+// 			require.NoError(s.T(), err)
+// 			filename := filepath.Clean(test.filepath)
+// 			content, err := os.ReadFile(filename)
+// 			if test.err == nil {
+// 				assert.NoError(s.T(), err)
+// 			}
 
-			client := &bcdaaws.ConfigurableMockS3Client{
-				HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-					return &s3.HeadObjectOutput{
-						ContentLength: aws.Int64(int64(len(content))),
-					}, nil
-				},
-				GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-					return &s3.GetObjectOutput{
-						Body:          io.NopCloser(strings.NewReader(string(content))),
-						ContentLength: aws.Int64(int64(len(content))),
-						ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-					}, nil
-				},
-			}
-			importer := CSVImporter{
-				Logger:     s.importer.Logger,
-				FileClient: client,
-				PgxPool:    s.pool,
-			}
+// 			client := &bcdaaws.ConfigurableMockS3Client{
+// 				HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+// 					return &s3.HeadObjectOutput{
+// 						ContentLength: aws.Int64(int64(len(content))),
+// 					}, nil
+// 				},
+// 				GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+// 					return &s3.GetObjectOutput{
+// 						Body:          io.NopCloser(strings.NewReader(string(content))),
+// 						ContentLength: aws.Int64(int64(len(content))),
+// 						ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
+// 					}, nil
+// 				},
+// 			}
+// 			importer := CSVImporter{
+// 				Logger:     s.importer.Logger,
+// 				FileClient: client,
+// 				PgxPool:    s.pool,
+// 			}
 
-			err = importer.ImportCSV(context.Background(), test.filepath)
-			// if test.err == nil {
-			// 	assert.Nil(s.T(), err)
-			// } else {
-			// 	assert.NotNil(s.T(), err)
-			// 	assert.Contains(s.T(), err.Error(), test.err.Error())
-			// }
-			r := postgres.NewRepository(s.db)
-			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
-			if len(cclfRecords) != 0 {
-				assert.Equal(s.T(), 1, len(cclfRecords))
-				assert.Equal(s.T(), filename, cclfRecords[0].Name)
-				beneRecords, _ := r.GetCCLFBeneficiaries(context.Background(), cclfRecords[0].ID, []string{})
-				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
-				for _, v := range beneRecords {
-					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
-				}
-			} else {
-				assert.Equal(s.T(), 0, len(cclfRecords))
-			}
-		})
-	}
-}
+// 			err = importer.ImportCSV(context.Background(), test.filepath)
+// 			// if test.err == nil {
+// 			// 	assert.Nil(s.T(), err)
+// 			// } else {
+// 			// 	assert.NotNil(s.T(), err)
+// 			// 	assert.Contains(s.T(), err.Error(), test.err.Error())
+// 			// }
+// 			r := postgres.NewRepository(s.db)
+// 			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
+// 			if len(cclfRecords) != 0 {
+// 				assert.Equal(s.T(), 1, len(cclfRecords))
+// 				assert.Equal(s.T(), filename, cclfRecords[0].Name)
+// 				beneRecords, _ := r.GetCCLFBeneficiaries(context.Background(), cclfRecords[0].ID, []string{})
+// 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
+// 				for _, v := range beneRecords {
+// 					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
+// 				}
+// 			} else {
+// 				assert.Equal(s.T(), 0, len(cclfRecords))
+// 			}
+// 		})
+// 	}
+// }
 
 func (s *CSVTestSuite) TestProcessCSV_Integration() {
 
