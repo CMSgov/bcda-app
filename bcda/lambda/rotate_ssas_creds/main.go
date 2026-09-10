@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -121,6 +122,7 @@ func (h RotateSSASCredsHandler) Handle(ctx context.Context) error {
 	h.logger.Info(reportMsg)
 	if failures > 0 {
 		msgr.SendFailureToAlerts(h.slackClient, reportMsg)
+		return errors.New("failed to rotate one or more ssas creds -- see lambda logs for details")
 	} else {
 		msgr.SendSuccessToOperations(h.slackClient, reportMsg)
 	}
