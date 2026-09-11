@@ -24,6 +24,9 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/middleware"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/go-chi/chi/v5"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -32,6 +35,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -140,16 +144,16 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 	return newPath, cleanup
 }
 
-// func TestAWSConfig(t *testing.T) aws.Config {
-// 	ctx := context.Background()
+func TestAWSConfig(t *testing.T) aws.Config {
+	ctx := context.Background()
 
-// 	cfg, err := config.LoadDefaultConfig(ctx,
-// 		config.WithRegion(constants.DefaultRegion),
-// 	)
-// 	assert.Nil(t, err)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(constants.DefaultRegion),
+	)
+	require.Nil(t, err)
 
-// 	return cfg
-// }
+	return cfg
+}
 
 // func TestS3Client(t *testing.T, cfg aws.Config) *s3.Client {
 // 	return s3.NewFromConfig(cfg, func(o *s3.Options) {
@@ -157,9 +161,9 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 // 	})
 // }
 
-// func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
-// 	return ssm.NewFromConfig(cfg)
-// }
+func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
+	return ssm.NewFromConfig(cfg)
+}
 
 // CopyToS3 copies all of the content found at src into a temporary S3 folder within localstack.
 // The path to the temporary S3 directory is returned along with a function that can be called to clean up the data.
@@ -313,54 +317,54 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 // 	return tempBucket, cleanup
 // }
 
-// // Inserts the provided parameter into localstack.
-// func putParameter(t *testing.T, input ssm.PutParameterInput) error {
-// 	ctx := context.Background()
+// Inserts the provided parameter into localstack.
+func putParameter(t *testing.T, input ssm.PutParameterInput) error {
+	ctx := context.Background()
 
-// 	cfg, err := config.LoadDefaultConfig(ctx,
-// 		config.WithRegion(constants.DefaultRegion),
-// 	)
-// 	assert.Nil(t, err)
-// 	client := ssm.NewFromConfig(cfg)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(constants.DefaultRegion),
+	)
+	require.Nil(t, err)
+	client := ssm.NewFromConfig(cfg)
 
-// 	_, err = client.PutParameter(ctx, &input)
-// 	assert.Nil(t, err)
+	_, err = client.PutParameter(ctx, &input)
+	require.Nil(t, err)
 
-// 	return nil
-// }
+	return nil
+}
 
-// // Deletes the provided parameters from localstack.
-// func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
-// 	ctx := context.Background()
+// Deletes the provided parameters from localstack.
+func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
+	ctx := context.Background()
 
-// 	cfg, err := config.LoadDefaultConfig(ctx,
-// 		config.WithRegion(constants.DefaultRegion),
-// 	)
-// 	assert.Nil(t, err)
-// 	client := ssm.NewFromConfig(cfg)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(constants.DefaultRegion),
+	)
+	require.Nil(t, err)
+	client := ssm.NewFromConfig(cfg)
 
-// 	_, err = client.DeleteParameters(ctx, &input)
-// 	assert.Nil(t, err)
+	_, err = client.DeleteParameters(ctx, &input)
+	require.Nil(t, err)
 
-// 	return nil
-// }
+	return nil
+}
 
-// // Insert all given parameters into localstack and return a method for deferring cleanup.
-// func SetParameter(t *testing.T, name, value string) func() {
-// 	err := putParameter(t, ssm.PutParameterInput{
-// 		Name:  &name,
-// 		Value: &value,
-// 		Type:  "String",
-// 	})
-// 	assert.Nil(t, err)
+// Insert all given parameters into localstack and return a method for deferring cleanup.
+func SetParameter(t *testing.T, name, value string) func() {
+	err := putParameter(t, ssm.PutParameterInput{
+		Name:  &name,
+		Value: &value,
+		Type:  "String",
+	})
+	assert.Nil(t, err)
 
-// 	cleanup := func() {
-// 		err := deleteParameters(t, ssm.DeleteParametersInput{Names: []string{name}})
-// 		assert.Nil(t, err)
-// 	}
+	cleanup := func() {
+		err := deleteParameters(t, ssm.DeleteParametersInput{Names: []string{name}})
+		assert.Nil(t, err)
+	}
 
-// 	return cleanup
-// }
+	return cleanup
+}
 
 type EnvVar struct {
 	Name  string

@@ -8,6 +8,12 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
+      # Set default values for ministack to work
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-foobar}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-foobar}
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://ministack-unit-test:4567
+      - BFD_S3_ENDPOINT=${BFD_S3_ENDPOINT:-http://ministack-unit-test:4567}
       - ENV=local
       - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
@@ -21,6 +27,8 @@ services:
     depends_on:
       db-unit-test:
         condition: service_started
+      ministack-unit-test:
+        condition: service_healthy
   db-unit-test:
     image: postgres:16
     # Pass a flag so we'll log all queries executed on the test db.
@@ -42,6 +50,23 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.postman_test
+  ministack-unit-test:
+    image: ministackorg/ministack:latest
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - SERVICES=s3,ssm,cloudwatch,sts,iam
+      - LOG_LEVEL=DEBUG
+      - DOCKER_NETWORK=bcda-app-net
+      - GATEWAY_PORT=4567
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "./shared_files/decrypted:/etc/config"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4567/_ministack/health')"]
+      interval: 1m30s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
 networks:
   default:
