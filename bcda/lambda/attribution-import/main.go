@@ -16,8 +16,6 @@ import (
 	ai "github.com/CMSgov/bcda-app/bcda/attribution-import"
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	fh "github.com/CMSgov/bcda-app/bcda/filehandler"
-
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -26,21 +24,12 @@ import (
 )
 
 type AttributionImportHandler struct {
-	Logger       *logrus.Entry
-	Pool         *pgxpool.Pool
-	S3Client     bcdaaws.CustomS3Client
-	CSVImporter  ai.CSVImporterInterface
-	CCLFImporter ai.CCLFImporterInterface
-	CheckIfCSV   func(filePath string) (bool, error)
-}
-
-func (h *AttributionImportHandler) newFileProcessor(logger *logrus.Entry) *ai.S3FileProcessor {
-	return &ai.S3FileProcessor{
-		Handler: fh.S3FileHandler{
-			Client: h.S3Client,
-			Logger: logger,
-		},
-	}
+	logger       *logrus.Entry
+	pool         *pgxpool.Pool
+	fileClient   bcdaaws.CustomS3Client
+	csvImporter  ai.CSVImporterInterface
+	cclfImporter ai.CCLFImporterInterface
+	checkIfCSV   func(filePath string) (bool, error)
 }
 
 func main() {
@@ -49,11 +38,11 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("failed to initialize handler: %v", err)
 	}
-	if handler.Pool != nil {
-		defer handler.Pool.Close()
+	if handler.pool != nil {
+		defer handler.pool.Close()
 	}
 
-	lambda.Start(handler.Handle)
+	lambda.Start(handler.handleImport)
 }
 
 func initHandler(ctx context.Context) (*AttributionImportHandler, error) {
@@ -93,30 +82,30 @@ func initHandler(ctx context.Context) (*AttributionImportHandler, error) {
 	}
 
 	handler := &AttributionImportHandler{
-		Logger:   logger,
-		Pool:     pool,
-		S3Client: s3Client,
+		logger:     logger,
+		pool:       pool,
+		fileClient: s3Client,
 	}
 
 	return handler, nil
 }
 
-func (h *AttributionImportHandler) Handle(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
+func (h *AttributionImportHandler) handleImport(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
 	if len(sqsEvent.Records) == 0 {
-		h.Logger.Info("No SQS records found, skipping safely.")
+		h.logger.Info("No SQS records found, skipping safely.")
 		return "", nil
 	}
 
 	s3Event, err := bcdaaws.ParseSQSEvent(sqsEvent)
 	if err != nil {
-		h.Logger.Errorf("failed to parse S3 event: %v", err)
+		h.logger.Errorf("failed to parse S3 event: %v", err)
 		return "", err
 	} else if s3Event == nil {
-		h.Logger.Info("No S3 event found, skipping safely.")
+		h.logger.Info("No S3 event found, skipping safely.")
 		return "", nil
 	}
 
-	checkCSV := h.CheckIfCSV
+	checkCSV := h.checkIfCSV
 	if checkCSV == nil {
 		checkCSV = ai.CheckIfAttributionCSVFile
 	}
@@ -126,10 +115,10 @@ func (h *AttributionImportHandler) Handle(ctx context.Context, sqsEvent events.S
 	for _, e := range s3Event.Records {
 		if strings.Contains(e.EventName, "ObjectCreated") {
 			filepath := fmt.Sprintf("%s/%s", e.S3.Bucket.Name, e.S3.Object.Key)
-			h.Logger.Infof("Reading %s event for file %s", e.EventName, filepath)
+			h.logger.Infof("Reading %s event for file %s", e.EventName, filepath)
 			isCSV, err := checkCSV(e.S3.Object.Key)
 			if err != nil {
-				h.Logger.Errorf("error checking if file is CSV: %v", err)
+				h.logger.Errorf("error checking if file is CSV: %v", err)
 				return "", err
 			} else if isCSV {
 				return h.handleCSVImport(ctx, filepath)
@@ -139,19 +128,19 @@ func (h *AttributionImportHandler) Handle(ctx context.Context, sqsEvent events.S
 		}
 	}
 
-	h.Logger.Info("No S3 ObjectCreated events found, skipping safely.")
+	h.logger.Info("No S3 ObjectCreated events found, skipping safely.")
 	return "", nil
 }
 
 func (h *AttributionImportHandler) handleCSVImport(ctx context.Context, s3ImportPath string) (string, error) {
-	logger := h.Logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+	logger := h.logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
-	importer := h.CSVImporter
+	importer := h.csvImporter
 	if importer == nil {
 		importer = ai.CSVImporter{
-			Logger:        logger,
-			PgxPool:       h.Pool,
-			FileProcessor: h.newFileProcessor(logger),
+			Logger:     logger,
+			PgxPool:    h.pool,
+			FileClient: h.fileClient,
 		}
 	}
 
@@ -168,12 +157,11 @@ func (h *AttributionImportHandler) handleCSVImport(ctx context.Context, s3Import
 }
 
 func (h *AttributionImportHandler) handleCclfImport(ctx context.Context, s3ImportPath string) (string, error) {
-	logger := h.Logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
+	logger := h.logger.WithFields(logrus.Fields{"import_filename": s3ImportPath})
 
-	importer := h.CCLFImporter
+	importer := h.cclfImporter
 	if importer == nil {
-		fileProcessor := h.newFileProcessor(logger)
-		importer = ai.NewCclfImporter(logger, fileProcessor, h.Pool)
+		importer = ai.NewCCLFImporter(logger, h.fileClient, h.pool)
 	}
 
 	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, s3ImportPath)
