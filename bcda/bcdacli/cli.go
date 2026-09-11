@@ -20,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 
-	cclfUtils "github.com/CMSgov/bcda-app/bcda/attribution-import/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -68,7 +67,7 @@ func setUpApp() *cli.App {
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, environment, groupID, groupName, ips, fileType string
+	var acoName, acoCMSID, acoID, accessToken, filePath, groupID, groupName, ips string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -303,41 +302,6 @@ func setUpApp() *cli.App {
 				}
 				fmt.Fprintf(app.Writer, "Completed CCLF runout file generation. Generated %d zip files.", rc)
 				return nil
-			},
-		},
-		{
-			Name:     "import-synthetic-cclf-package",
-			Category: constants.CliDataImpCategory,
-			Usage:    "Import a package of synthetic CCLF files",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "acoSize",
-					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'dev-auth', 'dev-cec', 'dev-cec-auth', 'dev-ng', 'dev-ng-auth', 'small', 'medium', 'large', or 'extra-large'",
-					Destination: &acoSize,
-				},
-				cli.StringFlag{
-					Name:        "environment",
-					Usage:       "Which set of files to use.",
-					Destination: &environment,
-				},
-				cli.StringFlag{
-					Name:        "fileType",
-					Usage:       "Type of CCLF File to generate. Must be one of 'default', 'runout'. Defaults to 'default'",
-					Destination: &fileType,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				ft := models.FileTypeDefault
-				if fileType != "" {
-					switch fileType {
-					case "runout":
-						ft = models.FileTypeRunout
-					default:
-						return errors.New("Unsupported file type.")
-					}
-				}
-				err := cclfUtils.ImportCCLFPackage(db, pool, acoSize, environment, ft)
-				return err
 			},
 		},
 		{

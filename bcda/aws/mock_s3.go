@@ -52,3 +52,47 @@ func (m *MockS3Client) DeleteObject(ctx context.Context, input *s3.DeleteObjectI
 	output := &s3.DeleteObjectOutput{}
 	return output, nil
 }
+
+type ConfigurableMockS3Client struct {
+	MockS3Client
+	ListObjectsFn   func(ctx context.Context, input *s3.ListObjectsInput) (*s3.ListObjectsOutput, error)
+	ListObjectsV2Fn func(ctx context.Context, input *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, error)
+	HeadObjectFn    func(ctx context.Context, input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error)
+	GetObjectFn     func(ctx context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error)
+	DeleteObjectFn  func(ctx context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error)
+}
+
+func (m *ConfigurableMockS3Client) ListObjects(ctx context.Context, input *s3.ListObjectsInput, optFns ...func(*s3.Options)) (*s3.ListObjectsOutput, error) {
+	if m.ListObjectsFn != nil {
+		return m.ListObjectsFn(ctx, input)
+	}
+	return m.MockS3Client.ListObjects(ctx, input, optFns...)
+}
+
+func (m *ConfigurableMockS3Client) ListObjectsV2(ctx context.Context, input *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	if m.ListObjectsV2Fn != nil {
+		return m.ListObjectsV2Fn(ctx, input)
+	}
+	return m.MockS3Client.ListObjectsV2(ctx, input, optFns...)
+}
+
+func (m *ConfigurableMockS3Client) HeadObject(ctx context.Context, input *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+	if m.HeadObjectFn != nil {
+		return m.HeadObjectFn(ctx, input)
+	}
+	return m.MockS3Client.HeadObject(ctx, input, optFns...)
+}
+
+func (m *ConfigurableMockS3Client) GetObject(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	if m.GetObjectFn != nil {
+		return m.GetObjectFn(ctx, input)
+	}
+	return m.MockS3Client.GetObject(ctx, input, optFns...)
+}
+
+func (m *ConfigurableMockS3Client) DeleteObject(ctx context.Context, input *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	if m.DeleteObjectFn != nil {
+		return m.DeleteObjectFn(ctx, input)
+	}
+	return m.MockS3Client.DeleteObject(ctx, input, optFns...)
+}

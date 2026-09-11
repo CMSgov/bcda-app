@@ -1,6 +1,7 @@
 package attributionimport
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/pkg/errors"
 )
 
 func getCMSID(name string) (string, error) {
@@ -69,10 +69,10 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 
 	acos, err := getACOConfigs()
 	if err != nil {
-		return csvFileMetadata{}, errors.New("Failed to load ACO configs")
+		return csvFileMetadata{}, errors.New("failed to load ACO configs")
 	}
 	if acos == nil {
-		return csvFileMetadata{}, errors.New("No ACO configs found.")
+		return csvFileMetadata{}, errors.New("no ACO configs found")
 	}
 
 	for _, v := range acos {
@@ -96,7 +96,7 @@ func GetCSVMetadata(path string) (csvFileMetadata, error) {
 	}
 
 	if metadata == (csvFileMetadata{}) {
-		return metadata, errors.New("Invalid filename for csv attribution file")
+		return metadata, errors.New("invalid filename for csv attribution file")
 	}
 
 	metadata.name = path
@@ -213,20 +213,20 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 
 	cclfNum, err := strconv.Atoi(parts[3])
 	if err != nil {
-		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", fileName)
+		err = fmt.Errorf("failed to parse CCLF number from file: %s, err: %w", fileName, err)
 		return metadata, err
 	}
 
 	perfYear, err := strconv.Atoi(parts[5])
 	if err != nil {
-		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
+		err = fmt.Errorf("failed to parse performance year from file: %s, err: %w", fileName, err)
 		return metadata, err
 	}
 
 	filenameDate := parts[6]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
+		err = fmt.Errorf("failed to parse date '%s' from file: %s, err: %w", filenameDate, fileName, err)
 		return metadata, err
 	}
 
@@ -241,7 +241,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
 	filesNotAfter := refDate
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
-		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", filenameDate, fileName, refDate.Format("060102")))
+		err = fmt.Errorf("date '%s' from file %s out of range; comparison date %s", filenameDate, fileName, refDate.Format("060102"))
 		return metadata, err
 	}
 

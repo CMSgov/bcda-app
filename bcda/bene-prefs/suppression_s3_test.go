@@ -228,7 +228,7 @@ package beneprefs
 // 	assert.Equal(2, skipped)
 // }
 
-// func (s *SuppressionS3TestSuite) TestCleanupSuppression() {
+// func (s *SuppressionS3TestSuite) TestCleanupBenePrefsFiles() {
 // 	assert := assert.New(s.T())
 // 	importer, _ := s.createImporter()
 
