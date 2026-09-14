@@ -144,20 +144,20 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 	return newPath, cleanup
 }
 
-func TestAWSConfig(t *testing.T) aws.Config {
-	ctx := context.Background()
+func TestAWSConfig(t *testing.T) (aws.Config, context.Context) {
+	ctx := t.Context()
 
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(constants.DefaultRegion),
 	)
 	require.Nil(t, err)
 
-	return cfg
+	return cfg, ctx
 }
 
 // func TestS3Client(t *testing.T, cfg aws.Config) *s3.Client {
 // 	return s3.NewFromConfig(cfg, func(o *s3.Options) {
-// 		o.UsePathStyle = true // required for localstack buckets
+// 		o.UsePathStyle = true // required for ministack buckets
 // 	})
 // }
 
@@ -165,7 +165,7 @@ func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
 	return ssm.NewFromConfig(cfg)
 }
 
-// CopyToS3 copies all of the content found at src into a temporary S3 folder within localstack.
+// CopyToS3 copies all of the content found at src into a temporary S3 folder within ministack.
 // The path to the temporary S3 directory is returned along with a function that can be called to clean up the data.
 // func CopyToS3(t *testing.T, src string) (string, func()) {
 // 	ctx := context.Background()
@@ -317,49 +317,23 @@ func TestSSMClient(t *testing.T, cfg aws.Config) *ssm.Client {
 // 	return tempBucket, cleanup
 // }
 
-// Inserts the provided parameter into localstack.
-func putParameter(t *testing.T, input ssm.PutParameterInput) error {
-	ctx := context.Background()
-
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(constants.DefaultRegion),
-	)
-	require.Nil(t, err)
-	client := ssm.NewFromConfig(cfg)
-
-	_, err = client.PutParameter(ctx, &input)
-	require.Nil(t, err)
-
-	return nil
-}
-
-// Deletes the provided parameters from localstack.
-func deleteParameters(t *testing.T, input ssm.DeleteParametersInput) error {
-	ctx := context.Background()
-
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(constants.DefaultRegion),
-	)
-	require.Nil(t, err)
-	client := ssm.NewFromConfig(cfg)
-
-	_, err = client.DeleteParameters(ctx, &input)
-	require.Nil(t, err)
-
-	return nil
-}
-
-// Insert all given parameters into localstack and return a method for deferring cleanup.
+// Insert given parameter into ministack and return a method for deferring cleanup.
 func SetParameter(t *testing.T, name, value string) func() {
-	err := putParameter(t, ssm.PutParameterInput{
-		Name:  &name,
-		Value: &value,
-		Type:  "String",
-	})
-	assert.Nil(t, err)
+	cfg, ctx := TestAWSConfig(t)
+	client := TestSSMClient(t, cfg)
+	input := ssm.PutParameterInput{
+		Name:      &name,
+		Value:     &value,
+		Type:      "String",
+		Overwrite: aws.Bool(true),
+	}
+
+	_, err := client.PutParameter(ctx, &input)
+	require.Nil(t, err)
 
 	cleanup := func() {
-		err := deleteParameters(t, ssm.DeleteParametersInput{Names: []string{name}})
+		input := ssm.DeleteParametersInput{Names: []string{name}}
+		_, err := client.DeleteParameters(ctx, &input)
 		assert.Nil(t, err)
 	}
 

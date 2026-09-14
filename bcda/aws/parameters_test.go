@@ -44,7 +44,8 @@ func TestGetParameter(t *testing.T) {
 		},
 	}
 
-	client := testUtils.TestSSMClient(t, testUtils.TestAWSConfig(t))
+	cfg, _ := testUtils.TestAWSConfig(t)
+	client := testUtils.TestSSMClient(t, cfg)
 	for _, test := range tests {
 		value, err := GetParameter(t.Context(), client, test.keyname)
 		assert.Equal(t, test.expectedValue, value)
@@ -96,9 +97,10 @@ func TestGetParameters(t *testing.T) {
 		},
 	}
 
-	client := testUtils.TestSSMClient(t, testUtils.TestAWSConfig(t))
+	cfg, ctx := testUtils.TestAWSConfig(t)
+	client := testUtils.TestSSMClient(t, cfg)
 	for _, test := range tests {
-		vals, err := GetParameters(t.Context(), client, test.keys)
+		vals, err := GetParameters(ctx, client, test.keys)
 
 		assert.Equal(t, test.vals, vals)
 		assert.Equal(t, test.err, err)
