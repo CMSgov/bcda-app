@@ -21,9 +21,19 @@ type PgxConnection interface {
 }
 
 func denyACOs(ctx context.Context, conn PgxConnection, data payload) error {
+	cutoffDate := time.Now()
+	if data.CutoffDate != nil && !data.CutoffDate.IsZero() {
+		cutoffDate = *data.CutoffDate
+	}
+
+	termDate := cutoffDate
+	if data.TerminationDate != nil && !data.TerminationDate.IsZero() {
+		termDate = *data.TerminationDate
+	}
+
 	td := &models.Termination{
-		TerminationDate: time.Now(),
-		CutoffDate:      time.Now(),
+		TerminationDate: termDate,
+		CutoffDate:      cutoffDate,
 		DenylistType:    models.Involuntary,
 	}
 
