@@ -2,8 +2,8 @@ locals {
   app                                   = "bcda"
   default_tags                          = module.platform.default_tags
   env                                   = terraform.workspace
-  cdap_env                              = local.env == "prod" || local.env == "sandbox" ? "prod" : "test"
-  is_prod                               = contains(["prod", "sandbox"], local.env)
+  cdap_env                              = local.parent_env == "prod" || local.env == "sandbox" ? "prod" : "test"
+  is_prod                               = contains(["prod", "sandbox"], local.parent_env)
   service                               = "cluster"
   local_zone_name                       = "bcda-${local.env}.local"
   cloudwatch_alarms_topic_name          = "bcda-${local.env}-cloudwatch-alarms"
