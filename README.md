@@ -179,12 +179,6 @@ Spin up the Postgres container & run migrations:
 $ make unit-test-db
 ```
 
-If you are running any tests that require localstack, spin up localstack as well:
-
-```sh
-$ make unit-test-localstack
-```
-
 #### 2. Source Environment Variables
 
 Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
