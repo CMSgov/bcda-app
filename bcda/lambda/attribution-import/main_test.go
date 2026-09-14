@@ -87,8 +87,8 @@ func TestHandleCSVImport(t *testing.T) {
 		}
 
 		handler := &AttributionImportHandler{
-			Logger:      logger,
-			CSVImporter: importer,
+			logger:      logger,
+			csvImporter: importer,
 		}
 
 		result, err := handler.handleCSVImport(context.Background(), bucketcsv)
@@ -106,8 +106,8 @@ func TestHandleCSVImport(t *testing.T) {
 		}
 
 		handler := &AttributionImportHandler{
-			Logger:      logger,
-			CSVImporter: importer,
+			logger:      logger,
+			csvImporter: importer,
 		}
 
 		result, err := handler.handleCSVImport(context.Background(), bucketcsv)
@@ -127,8 +127,8 @@ func TestHandleCclfImport(t *testing.T) {
 			},
 		}
 		handler := &AttributionImportHandler{
-			Logger:       logger,
-			CCLFImporter: importer,
+			logger:       logger,
+			cclfImporter: importer,
 		}
 
 		result, err := handler.handleCclfImport(context.Background(), bucketcclf)
@@ -144,8 +144,8 @@ func TestHandleCclfImport(t *testing.T) {
 			},
 		}
 		handler := &AttributionImportHandler{
-			Logger:       logger,
-			CCLFImporter: importer,
+			logger:       logger,
+			cclfImporter: importer,
 		}
 
 		result, err := handler.handleCclfImport(context.Background(), bucketcclf)
@@ -191,8 +191,8 @@ func TestHandleCclfImport(t *testing.T) {
 				},
 			}
 			handler := &AttributionImportHandler{
-				Logger:       logger,
-				CCLFImporter: importer,
+				logger:       logger,
+				cclfImporter: importer,
 			}
 
 			result, err := handler.handleCclfImport(context.Background(), bucketcclf)
@@ -212,8 +212,8 @@ func TestHandleCclfImport(t *testing.T) {
 			},
 		}
 		handler := &AttributionImportHandler{
-			Logger:       logger,
-			CCLFImporter: importer,
+			logger:       logger,
+			cclfImporter: importer,
 		}
 
 		result, err := handler.handleCclfImport(context.Background(), bucketcclf)
@@ -226,8 +226,8 @@ func TestHandleSQSEvent(t *testing.T) {
 	logger := configureLogger("test", testapp)
 
 	t.Run("empty sqs event returns safely", func(t *testing.T) {
-		handler := &AttributionImportHandler{Logger: logger}
-		result, err := handler.Handle(context.Background(), events.SQSEvent{})
+		handler := &AttributionImportHandler{logger: logger}
+		result, err := handler.handleImport(context.Background(), events.SQSEvent{})
 		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -242,15 +242,15 @@ func TestHandleSQSEvent(t *testing.T) {
 			},
 		}
 		handler := &AttributionImportHandler{
-			Logger:      logger,
-			CSVImporter: csvImporter,
-			CheckIfCSV: func(filePath string) (bool, error) {
+			logger:      logger,
+			csvImporter: csvImporter,
+			checkIfCSV: func(filePath string) (bool, error) {
 				return true, nil
 			},
 		}
 
 		sqsEvent := testUtils.GetSQSEvent(t, "test-bucket", "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000")
-		result, err := handler.Handle(context.Background(), sqsEvent)
+		result, err := handler.handleImport(context.Background(), sqsEvent)
 		require.NoError(t, err)
 		assert.True(t, called)
 		assert.Contains(t, result, "Completed CSV import")
@@ -266,15 +266,15 @@ func TestHandleSQSEvent(t *testing.T) {
 			},
 		}
 		handler := &AttributionImportHandler{
-			Logger:       logger,
-			CCLFImporter: cclfImporter,
-			CheckIfCSV: func(filePath string) (bool, error) {
+			logger:       logger,
+			cclfImporter: cclfImporter,
+			checkIfCSV: func(filePath string) (bool, error) {
 				return false, nil
 			},
 		}
 
 		sqsEvent := testUtils.GetSQSEvent(t, "test-bucket", "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
-		result, err := handler.Handle(context.Background(), sqsEvent)
+		result, err := handler.handleImport(context.Background(), sqsEvent)
 		require.NoError(t, err)
 		assert.True(t, called)
 		assert.Contains(t, result, "Completed Attribution import")

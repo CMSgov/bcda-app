@@ -82,6 +82,9 @@ func main() {
 			}
 			recCount += len(recs)
 		}
+		if err := s.Err(); err != nil {
+			panic(fmt.Errorf("error encountered during scanning: %w", err))
+		}
 
 		str = fmt.Sprintf("TRL_BENEDATASHR%s%-10d", now.Format("20060102"), recCount)
 		_, err = outf.WriteString(str)
