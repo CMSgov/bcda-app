@@ -258,7 +258,6 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 		return 0, err
 	}
 
-	// Check if the job is pending or in progress.
 	if job.Status == models.JobStatusPending || job.Status == models.JobStatusInProgress || job.Status == models.JobStatusCompleted {
 		job.Status = models.JobStatusCancelled
 		err = s.repository.UpdateJob(ctx, *job)
