@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -22,8 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -49,7 +46,6 @@ func (s *CSVTestSuite) SetupSuite() {
 	s.origDate = conf.GetEnv("CCLF_REF_DATE")
 	s.dbContainer, err = db.NewTestDatabaseContainer()
 	require.NoError(s.T(), err)
-	s.T().Setenv("S3_DELETE_TIMEOUT", "1")
 }
 
 func (s *CSVTestSuite) TearDownSuite() {
@@ -73,6 +69,8 @@ func (s *CSVTestSuite) SetupTest() {
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
 	logger := testUtils.GetLogger(log.API)
 	client := &bcdaaws.ConfigurableMockS3Client{}
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
 	c := CSVImporter{
 		Logger:     logger,
 		FileClient: client,
@@ -83,7 +81,6 @@ func (s *CSVTestSuite) SetupTest() {
 
 func (s *CSVTestSuite) TearDownTest() {
 	s.cleanup()
-
 }
 
 func (s *CSVTestSuite) SetupSubTest() {
@@ -105,74 +102,63 @@ func TestCSVTestSuite(t *testing.T) {
 	suite.Run(t, new(CSVTestSuite))
 }
 
-// func (s *CSVTestSuite) TestImportCSV_Integration() {
-// 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
-// 	tests := []struct {
-// 		name        string
-// 		filepath    string
-// 		cclfFileID  int
-// 		cclfBeneRec []string
-// 		err         error
-// 	}{
-// 		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
-// 		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
-// 		{"Import CSV attribution invalid name", filepath.Join(s.basePath, "cclf/archives/csv/P.PC.M2411.D181120.T1000000"), 0, []string{}, errors.New("invalid filename")},
-// 		{"Import bene-prefs failure", filepath.Join(s.basePath, "cclf/archives/csv/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"), 0, []string{}, errors.New("invalid filename for csv attribution file")},
-// 	}
+func (s *CSVTestSuite) TestImportCSV_Integration() {
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
 
-// 	for _, test := range tests {
-// 		s.Run(test.name, func() {
-// 			err := s.dbContainer.ExecuteDir("testdata/")
-// 			require.NoError(s.T(), err)
-// 			filename := filepath.Clean(test.filepath)
-// 			content, err := os.ReadFile(filename)
-// 			if test.err == nil {
-// 				assert.NoError(s.T(), err)
-// 			}
+	tests := []struct {
+		name        string
+		filepath    string
+		cclfFileID  int
+		cclfBeneRec []string
+		err         error
+	}{
+		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
+		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
+	}
 
-// 			client := &bcdaaws.ConfigurableMockS3Client{
-// 				HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-// 					return &s3.HeadObjectOutput{
-// 						ContentLength: aws.Int64(int64(len(content))),
-// 					}, nil
-// 				},
-// 				GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-// 					return &s3.GetObjectOutput{
-// 						Body:          io.NopCloser(strings.NewReader(string(content))),
-// 						ContentLength: aws.Int64(int64(len(content))),
-// 						ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-// 					}, nil
-// 				},
-// 			}
-// 			importer := CSVImporter{
-// 				Logger:     s.importer.Logger,
-// 				FileClient: client,
-// 				PgxPool:    s.pool,
-// 			}
+	for _, test := range tests {
+		s.Run(test.name, func() {
+			err := s.dbContainer.ExecuteDir("testdata/")
+			require.NoError(s.T(), err)
+			fpath := filepath.Clean(test.filepath)
 
-// 			err = importer.ImportCSV(context.Background(), test.filepath)
-// 			// if test.err == nil {
-// 			// 	assert.Nil(s.T(), err)
-// 			// } else {
-// 			// 	assert.NotNil(s.T(), err)
-// 			// 	assert.Contains(s.T(), err.Error(), test.err.Error())
-// 			// }
-// 			r := postgres.NewRepository(s.db)
-// 			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
-// 			if len(cclfRecords) != 0 {
-// 				assert.Equal(s.T(), 1, len(cclfRecords))
-// 				assert.Equal(s.T(), filename, cclfRecords[0].Name)
-// 				beneRecords, _ := r.GetCCLFBeneficiaries(context.Background(), cclfRecords[0].ID, []string{})
-// 				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
-// 				for _, v := range beneRecords {
-// 					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
-// 				}
-// 			} else {
-// 				assert.Equal(s.T(), 0, len(cclfRecords))
-// 			}
-// 		})
-// 	}
-// }
+			bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
+			defer cleanup()
+			if test.err == nil {
+				assert.NoError(s.T(), err)
+			}
+
+			importer := CSVImporter{
+				Logger:     s.importer.Logger,
+				FileClient: client,
+				PgxPool:    s.pool,
+			}
+
+			err = importer.ImportCSV(ctx, filepath.Join(bucketName, fpath))
+			if test.err == nil {
+				assert.Nil(s.T(), err)
+			} else {
+				assert.NotNil(s.T(), err)
+				assert.Contains(s.T(), err.Error(), test.err.Error())
+			}
+			r := postgres.NewRepository(s.db)
+			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
+			if len(cclfRecords) != 0 {
+				assert.Equal(s.T(), 1, len(cclfRecords))
+				assert.Equal(s.T(), fpath, cclfRecords[0].Name)
+				beneRecords, _ := r.GetCCLFBeneficiaries(ctx, cclfRecords[0].ID, []string{})
+				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
+				for _, v := range beneRecords {
+					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
+				}
+			} else {
+				assert.Equal(s.T(), 0, len(cclfRecords))
+			}
+		})
+	}
+}
 
 func (s *CSVTestSuite) TestProcessCSV_Integration() {
 
@@ -290,60 +276,49 @@ func (s *CSVTestSuite) TestPrepareCSVData() {
 
 }
 
-// func (s *CSVTestSuite) TestCleanupCSV() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
-// 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
-// 	bucketName := uuid.NewRandom().String()
+func (s *CSVTestSuite) TestCleanupCSV() {
+	assert := assert.New(s.T())
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
+	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
 
-// 	tests := []struct {
-// 		name     string
-// 		filepath string
-// 		imported bool
-// 		err      error
-// 	}{
-// 		{"Clean up sucessful import", filepath.Join(bucketName, path), true, nil},
-// 		{"Clean up failed import", filepath.Join(bucketName, path), false, nil},
-// 	}
+	tests := []struct {
+		name     string
+		imported bool
+		err      error
+	}{
+		{"Clean up sucessful import", true, nil},
+		{"Clean up failed import", false, nil},
+	}
 
-// for _, test := range tests {
-// 	s.T().Run(test.name, func(tt *testing.T) {
-// 		csv := csvFile{
-// 			metadata: csvFileMetadata{},
-// 			imported: test.imported,
-// 			filepath: test.filepath,
-// 		}
+	for _, test := range tests {
+		s.T().Run(test.name, func(tt *testing.T) {
+			bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+			defer cleanup()
 
-// filename := filepath.Clean(test.filepath)
-// content, err := os.ReadFile(filename)
-// assert.NoError(err)
+			csv := csvFile{
+				metadata: csvFileMetadata{},
+				imported: test.imported,
+				filepath: bucketName + "/" + path,
+			}
 
-// client := &bcdaaws.ConfigurableMockS3Client{
-// 	DeleteObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-// 		return &s3.DeleteObjectOutput{
-// 			ContentLength: aws.Int64(int64(len(content))),
-// 		}, nil
-// 	},
-// }
-// importer := CSVImporter{
-// 	Logger:     s.importer.Logger,
-// 	FileClient: client,
-// }
+			importer := CSVImporter{
+				Logger:     s.importer.Logger,
+				FileClient: client,
+				PgxPool:    s.pool,
+			}
 
-// err := s.importer.cleanUpCSV(ctx, csv)
-// assert.Nil(err)
-// })
-// 	}
-// }
+			err := importer.cleanUpCSV(ctx, csv)
+			assert.Nil(err)
+		})
+	}
+}
 
 func (s *CSVTestSuite) TestLoadCSV() {
 	assert := assert.New(s.T())
-	ctx := context.Background()
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
 	path := "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"
-
-	// bucketName := uuid.NewRandom().String()
-	// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
-	// defer cleanup()
 
 	tests := []struct {
 		name     string
@@ -356,34 +331,16 @@ func (s *CSVTestSuite) TestLoadCSV() {
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(tt *testing.T) {
+			bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, path))
+			defer cleanup()
 
-			filename := filepath.Clean(test.filepath)
-			content, err := os.ReadFile(filename)
-			if test.err == nil {
-				assert.NoError(err)
-			}
-
-			client := &bcdaaws.ConfigurableMockS3Client{
-				HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-					return &s3.HeadObjectOutput{
-						ContentLength: aws.Int64(int64(len(content))),
-					}, nil
-				},
-				GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-					return &s3.GetObjectOutput{
-						Body:          io.NopCloser(strings.NewReader(string(content))),
-						ContentLength: aws.Int64(int64(len(content))),
-						ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-					}, nil
-				},
-			}
 			importer := CSVImporter{
 				Logger:     s.importer.Logger,
 				FileClient: client,
 				PgxPool:    s.pool,
 			}
 
-			r, _, err := importer.loadCSV(ctx, test.filepath)
+			r, _, err := importer.loadCSV(ctx, filepath.Join(bucketName, test.filepath))
 			if test.err == nil {
 				assert.Nil(err)
 				assert.NotNil(r)

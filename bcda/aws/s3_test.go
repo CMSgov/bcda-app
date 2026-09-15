@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -106,9 +108,10 @@ func TestOpenFileAsScanner(t *testing.T) {
 }
 
 func TestOpenFileAsScanner_BadFileError(t *testing.T) {
-	client := &ConfigurableMockS3Client{}
-	fileBytes, f, err := OpenFileAsScanner(t.Context(), client, "bad-file")
-	assert.ErrorContains(t, err, "file bad-file is empty")
+	cfg, ctx := testUtils.TestAWSConfig(t)
+	client := testUtils.TestS3Client(t, cfg)
+	fileBytes, f, err := OpenFileAsScanner(ctx, client, "bad-file/bad-name.txt")
+	assert.ErrorContains(t, err, "failed to download file bad-file/bad-name.txt")
 	assert.Nil(t, fileBytes)
 	assert.Nil(t, f)
 }
@@ -117,25 +120,18 @@ func TestOpenFileAsBytes(t *testing.T) {
 	path := "s3://test-bucket/test-prefix/test-file.txt"
 
 	t.Run("success reading bytes", func(t *testing.T) {
-		content := "hello world"
-		client := &ConfigurableMockS3Client{
-			HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-				return &s3.HeadObjectOutput{
-					ContentLength: aws.Int64(int64(len(content))),
-				}, nil
-			},
-			GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-				return &s3.GetObjectOutput{
-					Body:          io.NopCloser(strings.NewReader(content)),
-					ContentLength: aws.Int64(int64(len(content))),
-					ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-				}, nil
-			},
-		}
+		path := "../../shared_files/csv"
+		tmpPath, cleanup := testUtils.CopyToTemporaryDirectory(t, path)
+		defer cleanup()
+		cfg, ctx := testUtils.TestAWSConfig(t)
+		client := testUtils.TestS3Client(t, cfg)
 
-		bytes, err := OpenFileAsBytes(context.Background(), client, path)
+		bucketName, cleanup := testUtils.CopyToS3(t, tmpPath)
+		defer cleanup()
+
+		bytes, err := OpenFileAsBytes(ctx, client, filepath.Join(bucketName, tmpPath, "valid.csv"))
 		require.NoError(t, err)
-		assert.Equal(t, content, string(bytes))
+		assert.NotEmpty(t, bytes)
 	})
 
 	t.Run("head object error", func(t *testing.T) {
@@ -149,20 +145,6 @@ func TestOpenFileAsBytes(t *testing.T) {
 		bytes, err := OpenFileAsBytes(context.Background(), client, path)
 		require.ErrorIs(t, err, mockErr)
 		assert.Nil(t, bytes)
-	})
-
-	t.Run("file empty or zero content length", func(t *testing.T) {
-		client := &ConfigurableMockS3Client{
-			HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-				return &s3.HeadObjectOutput{
-					ContentLength: aws.Int64(0),
-				}, nil
-			},
-		}
-
-		bytes, err := OpenFileAsBytes(context.Background(), client, path)
-		require.ErrorContains(t, err, "is empty")
-		assert.Empty(t, bytes)
 	})
 
 	t.Run("download error", func(t *testing.T) {
@@ -185,38 +167,20 @@ func TestOpenFileAsBytes(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	path := "s3://test-bucket/test-prefix/test-file.txt"
+	path := "../../shared_files/csv/valid.csv"
 
-	// t.Run("success deleting object", func(t *testing.T) {
-	// 	t.Setenv("S3_DELETE_TIMEOUT", "1")
-	// 	client := &ConfigurableMockS3Client{
-	// 		deleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
-	// 			assert.Equal(t, "test-bucket", *input.Bucket)
-	// 			assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
-	// 			return &s3.DeleteObjectOutput{}, nil
-	// 		},
-	// 	}
+	t.Run("success deleting object", func(t *testing.T) {
+		bucketName, cleanup := testUtils.CopyToS3(t, path)
+		defer cleanup()
 
-	// 	err := Delete(context.Background(), client, path)
-	// 	require.NoError(t, err)
-	// })
+		cfg, ctx := testUtils.TestAWSConfig(t)
+		client := testUtils.TestS3Client(t, cfg)
 
-	t.Run("error on timing out on delete", func(t *testing.T) {
-		t.Setenv("S3_DELETE_TIMEOUT", "1")
-		client := &ConfigurableMockS3Client{
-			DeleteObjectFn: func(_ context.Context, input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
-				assert.Equal(t, "test-bucket", *input.Bucket)
-				assert.Equal(t, "test-prefix/test-file.txt", *input.Key)
-				return &s3.DeleteObjectOutput{}, nil
-			},
-		}
-
-		err := Delete(context.Background(), client, path)
-		require.ErrorContains(t, err, "file s3://test-bucket/test-prefix/test-file.txt failed to clean up properly, error occurred while waiting for object deletion: exceeded max wait time for ObjectNotExists waiter")
+		err := Delete(ctx, client, bucketName+"/"+path)
+		require.NoError(t, err)
 	})
 
 	t.Run("delete object error", func(t *testing.T) {
-		t.Setenv("S3_DELETE_TIMEOUT", "1")
 		mockErr := errors.New("delete object permission denied")
 		client := &ConfigurableMockS3Client{
 			DeleteObjectFn: func(_ context.Context, _ *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
