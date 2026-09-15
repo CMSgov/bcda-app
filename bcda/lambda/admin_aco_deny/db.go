@@ -37,7 +37,7 @@ func denyACOs(ctx context.Context, conn PgxConnection, data payload) error {
 	}
 
 	if termDate.After(cutoffDate) {
-		return errors.New("termination_date cannot be after cutoff_date")
+		return errors.New("termination_date cannot be after cutoff_date (a cutoff_date is required if termination_date is in the future)")
 	}
 
 	td := &models.Termination{

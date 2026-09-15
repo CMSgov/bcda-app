@@ -148,7 +148,7 @@ func TestDenyACOsTerminationDateAfterCutoffDate(t *testing.T) {
 		CutoffDate:      &cutoffDate,
 		TerminationDate: &termDate,
 	})
-	assert.EqualError(t, err, "termination_date cannot be after cutoff_date")
+	assert.EqualError(t, err, "termination_date cannot be after cutoff_date (a cutoff_date is required if termination_date is in the future)")
 }
 
 func TestDenyACOsFutureTerminationDateWithoutCutoffDate(t *testing.T) {
@@ -163,7 +163,7 @@ func TestDenyACOsFutureTerminationDateWithoutCutoffDate(t *testing.T) {
 		DenyACOIDs:      testACODenies,
 		TerminationDate: &futureTermDate,
 	})
-	assert.EqualError(t, err, "termination_date cannot be after cutoff_date")
+	assert.EqualError(t, err, "termination_date cannot be after cutoff_date (a cutoff_date is required if termination_date is in the future)")
 }
 
 func TestDenyACOsPastTerminationDateWithoutCutoffDate(t *testing.T) {
