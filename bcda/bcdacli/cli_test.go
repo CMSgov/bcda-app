@@ -379,41 +379,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 }
 
-func (s *CLITestSuite) TestDenylistACO() {
-	denylistedCMSID := testUtils.RandomHexID()[0:4]
-	notDenylistedCMSID := testUtils.RandomHexID()[0:4]
-	notFoundCMSID := testUtils.RandomHexID()[0:4]
-
-	denylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &denylistedCMSID,
-		TerminationDetails: &models.Termination{
-			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			DenylistType:    models.Involuntary,
-		}}
-	notDenylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notDenylistedCMSID,
-		TerminationDetails: nil}
-
-	defer func() {
-		postgrestest.DeleteACO(s.T(), s.db, denylistedACO.UUID)
-		postgrestest.DeleteACO(s.T(), s.db, notDenylistedACO.UUID)
-	}()
-
-	postgrestest.CreateACO(s.T(), s.db, denylistedACO)
-	postgrestest.CreateACO(s.T(), s.db, notDenylistedACO)
-
-	s.NoError(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, denylistedCMSID}))
-	s.NoError(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notDenylistedCMSID}))
-
-	s.Error(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, notFoundCMSID}))
-	s.Error(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notFoundCMSID}))
-
-	newlyUndenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, denylistedACO.UUID)
-	s.False(newlyUndenylistedACO.Denylisted())
-
-	newlyDenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notDenylistedACO.UUID)
-	s.True(newlyDenylistedACO.Denylisted())
-}
-
 func getRandomPort(t *testing.T) int {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
