@@ -24,7 +24,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir/typefilter"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
@@ -1395,7 +1395,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	tests := []struct {
 		name          string
 		cmsID         string
-		typeFilter    fhir.TypeFilterSubquery
+		typeFilter    typefilter.TypeFilterSubquery
 		acoConfig     *service.ACOConfig
 		shouldFail    bool
 		expectedError string
@@ -1584,7 +1584,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmsID        string
-		typeFilter   fhir.TypeFilterSubquery
+		typeFilter   typefilter.TypeFilterSubquery
 		acoConfig    *service.ACOConfig
 		expectedTags []string // Expected _tag values in the returned filter
 		description  string
@@ -1592,9 +1592,9 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "NonPACNoFilter",
 			cmsID: "NOPAC0000",
-			typeFilter: fhir.TypeFilterSubquery{
+			typeFilter: typefilter.TypeFilterSubquery{
 				ResourceType:    "",
-				QueryParameters: []fhir.TypeFilterSubqueryParam{},
+				QueryParameters: []typefilter.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
@@ -1627,9 +1627,9 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "PACNoFilter",
 			cmsID: "PAC0000",
-			typeFilter: fhir.TypeFilterSubquery{
+			typeFilter: typefilter.TypeFilterSubquery{
 				ResourceType:    "",
-				QueryParameters: []fhir.TypeFilterSubqueryParam{},
+				QueryParameters: []typefilter.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithPAC,
 			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
@@ -1675,13 +1675,13 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 			}
 
 			// Verify other parameters are preserved
-			var otherParams []fhir.TypeFilterSubqueryParam
+			var otherParams []typefilter.TypeFilterSubqueryParam
 			for _, subqueryParam := range result.QueryParameters {
 				if subqueryParam.Name != "_tag" {
 					otherParams = append(otherParams, subqueryParam)
 				}
 			}
-			var expectedOtherParams []fhir.TypeFilterSubqueryParam
+			var expectedOtherParams []typefilter.TypeFilterSubqueryParam
 			for _, subqueryParam := range test.typeFilter.QueryParameters {
 				if subqueryParam.Name != "_tag" {
 					expectedOtherParams = append(expectedOtherParams, subqueryParam)
@@ -1707,7 +1707,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
-	typeFilter := fhir.TypeFilterSubquery{}
+	typeFilter := typefilter.TypeFilterSubquery{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemByDefault(typeFilter)
@@ -1735,20 +1735,20 @@ func (e DatabaseError) Error() string {
 	return "error"
 }
 
-func makeTypeFilterParam(params [][]string) fhir.TypeFilterSubquery {
-	var typeFilterParam fhir.TypeFilterSubquery
+func makeTypeFilterParam(params [][]string) typefilter.TypeFilterSubquery {
+	var typeFilterParam typefilter.TypeFilterSubquery
 	if len(params) == 0 {
 		return typeFilterParam
 	}
 
-	var subQueryParams []fhir.TypeFilterSubqueryParam
+	var subQueryParams []typefilter.TypeFilterSubqueryParam
 	for _, param := range params {
-		subQueryParams = append(subQueryParams, fhir.TypeFilterSubqueryParam{
+		subQueryParams = append(subQueryParams, typefilter.TypeFilterSubqueryParam{
 			Name:  param[0],
 			Value: param[1],
 		})
 	}
-	typeFilterParam = fhir.TypeFilterSubquery{
+	typeFilterParam = typefilter.TypeFilterSubquery{
 		ResourceType:    "ExplanationOfBenefit",
 		QueryParameters: subQueryParams,
 	}

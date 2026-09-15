@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir/typefilter"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -374,9 +374,9 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
 	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
-	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: fhir.TypeFilterSubquery{
+	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: typefilter.TypeFilterSubquery{
 		ResourceType: "ExplanationOfBenefit",
-		QueryParameters: []fhir.TypeFilterSubqueryParam{
+		QueryParameters: []typefilter.TypeFilterSubqueryParam{
 			{
 				Name:  "service-date",
 				Value: "gt2022-06-26",

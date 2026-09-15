@@ -1,4 +1,4 @@
-package fhir
+package typefilter
 
 import (
 	"fmt"
