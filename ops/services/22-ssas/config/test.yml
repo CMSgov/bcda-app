@@ -1,0 +1,7 @@
+scaling:
+  min: 2
+  max: 4
+
+ecs:
+  cpu: 256
+  mem: 512

@@ -1,0 +1,16 @@
+ports:
+  admin_port: 444
+  https_port: 443
+  ssas_public_port: 3003
+  ssas_admin_port: 3004
+
+health_check:
+  path: "/_health"
+  idle_timeout: 60
+  interval: 15
+  healthy_threshold: 2
+  unhealthy_threshold: 5
+  timeout: 5
+  start_period: 10
+
+ssl_policy: "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
