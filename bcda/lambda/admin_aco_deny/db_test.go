@@ -112,6 +112,33 @@ func TestDenyACOsQueryFailure(t *testing.T) {
 	assert.ErrorContains(t, err, "test error")
 }
 
+func TestDenyACOsNoACOIDs(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	err = denyACOs(ctx, mock, payload{DenyACOIDs: []string{}})
+	assert.EqualError(t, err, "no ACO IDs provided to deny")
+}
+
+func TestDenyACOsTerminationDateAfterCutoffDate(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	cutoffDate := time.Now()
+	termDate := cutoffDate.Add(24 * time.Hour)
+
+	err = denyACOs(ctx, mock, payload{
+		DenyACOIDs:      testACODenies,
+		CutoffDate:      &cutoffDate,
+		TerminationDate: &termDate,
+	})
+	assert.EqualError(t, err, "termination_date cannot be after cutoff_date")
+}
+
 func TestDenyACOs_Integration(t *testing.T) {
 	ctx := context.Background()
 
