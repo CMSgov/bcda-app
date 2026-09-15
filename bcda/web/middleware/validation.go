@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -191,62 +190,44 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 // GetTypeFilterParams parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
 func GetTypeFilterParams(params []string) (fhir.TypeFilterSubquery, error) {
-	var typeFilterParam fhir.TypeFilterSubquery
+	var subquery fhir.TypeFilterSubquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
-		return typeFilterParam, fmt.Errorf("failed to process request given more that one _typeFilter parameter")
+		return subquery, fmt.Errorf("failed to process request given more that one _typeFilter parameter")
 	}
 
-	// The subquery is url-encoded. So we will first decode so we can parse it
-	decodedQuery, err := url.QueryUnescape(params[0])
+	subquery, err := fhir.ParseTypeFilterSubquery(params[0])
 	if err != nil {
-		return typeFilterParam, fmt.Errorf("failed to unescape %s", params[0])
-	}
-
-	// Expected format is: <resourceType>?<paramList>
-	resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
-	if !ok {
-		return typeFilterParam, fmt.Errorf("missing question mark %s", decodedQuery)
+		return subquery, err
 	}
 
 	// Right now, we are only accepting ExplanationOfBenefit subqueries
-	if resourceType != "ExplanationOfBenefit" {
-		return typeFilterParam, fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
+	if subquery.ResourceType != "ExplanationOfBenefit" {
+		return subquery, fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", subquery.ResourceType)
 	}
 
-	var typeFilterSubqueryParams []fhir.TypeFilterSubqueryParam
-	// Loop through the param list from the subquery
-	paramAry := strings.Split(queryParams, "&")
-	for _, paramPair := range paramAry {
-		paramName, paramValue, ok := strings.Cut(paramPair, "=")
-		if !ok {
-			return typeFilterParam, fmt.Errorf("invalid _typeFilter parameter/value: %s", paramPair)
-		}
-
-		if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
+	for _, param := range subquery.QueryParameters {
+		if slices.Contains([]string{"service-date", "_tag", "outcome"}, param.Name) {
 			var validationErr error
-			switch paramName {
+			switch param.Name {
 			case "_tag":
-				validationErr = validateSubqueryParameterList(paramValue, validateTagSubqueryParameter)
+				validationErr = validateSubqueryParameterList(param.Value, validateTagSubqueryParameter)
 			case "outcome":
-				validationErr = validateSubqueryParameterList(paramValue, validateOutcomeSubqueryParameter)
+				validationErr = validateSubqueryParameterList(param.Value, validateOutcomeSubqueryParameter)
 			case "service-date":
-				validationErr = validateSubqueryParameterList(paramValue, validateServiceDateSubqueryParameter)
+				validationErr = validateSubqueryParameterList(param.Value, validateServiceDateSubqueryParameter)
 			}
 
 			if validationErr != nil {
-				return typeFilterParam, validationErr
+				return subquery, validationErr
 			}
-
-			typeFilterSubqueryParams = append(typeFilterSubqueryParams, fhir.TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
 		} else {
-			return typeFilterParam, fmt.Errorf("invalid _typeFilter subquery parameter: %s", paramName)
+			return subquery, fmt.Errorf("invalid _typeFilter subquery parameter: %s", param.Name)
 		}
 	}
 
-	typeFilterParam = fhir.TypeFilterSubquery{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
-	return typeFilterParam, nil
+	return subquery, nil
 }
 
 func HasSharedSystemTag(typeFilter fhir.TypeFilterSubquery) bool {
