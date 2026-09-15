@@ -15,7 +15,7 @@ type JobEnqueueArgs struct {
 	BeneficiaryIDs  []string
 	ResourceType    string
 	Since           string
-	TypeFilter      fhir.TypeFilterParameter
+	TypeFilter      fhir.TypeFilterSubquery
 	TransactionID   string
 	TransactionTime time.Time
 	BBBasePath      string

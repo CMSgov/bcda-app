@@ -1,6 +1,6 @@
 package fhir
 
-type TypeFilterParameter struct {
+type TypeFilterSubquery struct {
 	ResourceType    string
 	QueryParameters []TypeFilterSubqueryParam
 }

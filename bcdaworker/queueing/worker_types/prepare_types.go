@@ -22,7 +22,7 @@ type PrepareJobArgs struct {
 	ComplexDataRequestType string
 	ResourceTypes          []string
 	Since                  time.Time
-	TypeFilter             fhir.TypeFilterParameter
+	TypeFilter             fhir.TypeFilterSubquery
 	CreationTime           time.Time
 	ClaimsDate             time.Time
 	OptOutDate             time.Time

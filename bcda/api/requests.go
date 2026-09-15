@@ -838,7 +838,7 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterSubquery, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
@@ -892,7 +892,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter) fhir.TypeFilterParameter {
+func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) fhir.TypeFilterSubquery {
 	// If relevant filter is already present, no need to add default
 	if middleware.HasSharedSystemTag(typeFilter) {
 		return typeFilter
@@ -910,7 +910,7 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter)
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
 	if len(typeFilter.QueryParameters) == 0 {
-		return fhir.TypeFilterParameter{
+		return fhir.TypeFilterSubquery{
 			ResourceType:    "ExplanationOfBenefit",
 			QueryParameters: []fhir.TypeFilterSubqueryParam{subqueryParam},
 		}

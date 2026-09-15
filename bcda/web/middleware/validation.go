@@ -29,7 +29,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    fhir.TypeFilterParameter
+	TypeFilter    fhir.TypeFilterSubquery
 }
 
 // requestkey is an unexported context key to avoid collisions
@@ -166,8 +166,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 }
 
 // validateTypeFilterParameter validates the contents of the typeFilter param.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterParameter, bool) {
-	var typeFilterParam fhir.TypeFilterParameter
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterSubquery, bool) {
+	var typeFilterParam fhir.TypeFilterSubquery
 	ctx := r.Context()
 
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -190,8 +190,8 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 // GetTypeFilterParams parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func GetTypeFilterParams(params []string) (fhir.TypeFilterParameter, error) {
-	var typeFilterParam fhir.TypeFilterParameter
+func GetTypeFilterParams(params []string) (fhir.TypeFilterSubquery, error) {
+	var typeFilterParam fhir.TypeFilterSubquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
@@ -245,11 +245,11 @@ func GetTypeFilterParams(params []string) (fhir.TypeFilterParameter, error) {
 		}
 	}
 
-	typeFilterParam = fhir.TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
+	typeFilterParam = fhir.TypeFilterSubquery{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
 	return typeFilterParam, nil
 }
 
-func HasSharedSystemTag(typeFilter fhir.TypeFilterParameter) bool {
+func HasSharedSystemTag(typeFilter fhir.TypeFilterSubquery) bool {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		if subqueryParam.Name == "_tag" {
 			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)

@@ -1395,7 +1395,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	tests := []struct {
 		name          string
 		cmsID         string
-		typeFilter    fhir.TypeFilterParameter
+		typeFilter    fhir.TypeFilterSubquery
 		acoConfig     *service.ACOConfig
 		shouldFail    bool
 		expectedError string
@@ -1584,7 +1584,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmsID        string
-		typeFilter   fhir.TypeFilterParameter
+		typeFilter   fhir.TypeFilterSubquery
 		acoConfig    *service.ACOConfig
 		expectedTags []string // Expected _tag values in the returned filter
 		description  string
@@ -1592,7 +1592,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "NonPACNoFilter",
 			cmsID: "NOPAC0000",
-			typeFilter: fhir.TypeFilterParameter{
+			typeFilter: fhir.TypeFilterSubquery{
 				ResourceType:    "",
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
@@ -1627,7 +1627,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "PACNoFilter",
 			cmsID: "PAC0000",
-			typeFilter: fhir.TypeFilterParameter{
+			typeFilter: fhir.TypeFilterSubquery{
 				ResourceType:    "",
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
@@ -1707,7 +1707,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
-	typeFilter := fhir.TypeFilterParameter{}
+	typeFilter := fhir.TypeFilterSubquery{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemByDefault(typeFilter)
@@ -1735,8 +1735,8 @@ func (e DatabaseError) Error() string {
 	return "error"
 }
 
-func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
-	var typeFilterParam fhir.TypeFilterParameter
+func makeTypeFilterParam(params [][]string) fhir.TypeFilterSubquery {
+	var typeFilterParam fhir.TypeFilterSubquery
 	if len(params) == 0 {
 		return typeFilterParam
 	}
@@ -1748,7 +1748,7 @@ func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
 			Value: param[1],
 		})
 	}
-	typeFilterParam = fhir.TypeFilterParameter{
+	typeFilterParam = fhir.TypeFilterSubquery{
 		ResourceType:    "ExplanationOfBenefit",
 		QueryParameters: subQueryParams,
 	}
