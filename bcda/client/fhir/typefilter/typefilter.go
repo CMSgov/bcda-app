@@ -6,37 +6,37 @@ import (
 	"strings"
 )
 
-type TypeFilterSubquery struct {
+type Subquery struct {
 	ResourceType    string
-	QueryParameters []TypeFilterSubqueryParam
+	QueryParameters []SubqueryParam
 }
 
-type TypeFilterSubqueryParam struct {
+type SubqueryParam struct {
 	Name  string
 	Value string
 }
 
-func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
+func ParseTypeFilterSubquery(s string) (Subquery, error) {
 	// The subquery is url-encoded. So we will first decode so we can parse it
 	decodedQuery, err := url.QueryUnescape(s)
 	if err != nil {
-		return TypeFilterSubquery{}, fmt.Errorf("failed to unescape %s", s)
+		return Subquery{}, fmt.Errorf("failed to unescape %s", s)
 	}
 
 	// Expected format is: <resourceType>?<paramList>
 	resourceType, params, ok := strings.Cut(decodedQuery, "?")
 	if !ok {
-		return TypeFilterSubquery{}, fmt.Errorf("missing question mark %s", decodedQuery)
+		return Subquery{}, fmt.Errorf("missing question mark %s", decodedQuery)
 	}
 
-	var subqueryParams []TypeFilterSubqueryParam
+	var subqueryParams []SubqueryParam
 	paramAry := strings.SplitSeq(params, "&")
 	for paramPair := range paramAry {
 		name, value, ok := strings.Cut(paramPair, "=")
 		if !ok {
-			return TypeFilterSubquery{}, fmt.Errorf("invalid _typeFilter parameter/value: %s", paramPair)
+			return Subquery{}, fmt.Errorf("invalid _typeFilter parameter/value: %s", paramPair)
 		}
-		subqueryParams = append(subqueryParams, TypeFilterSubqueryParam{Name: name, Value: value})
+		subqueryParams = append(subqueryParams, SubqueryParam{Name: name, Value: value})
 	}
-	return TypeFilterSubquery{ResourceType: resourceType, QueryParameters: subqueryParams}, nil
+	return Subquery{ResourceType: resourceType, QueryParameters: subqueryParams}, nil
 }

@@ -28,7 +28,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    typefilter.TypeFilterSubquery
+	TypeFilter    typefilter.Subquery
 }
 
 // requestkey is an unexported context key to avoid collisions
@@ -165,8 +165,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 }
 
 // validateTypeFilterParameter validates the contents of the typeFilter param.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (typefilter.TypeFilterSubquery, bool) {
-	var typeFilterParam typefilter.TypeFilterSubquery
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (typefilter.Subquery, bool) {
+	var typeFilterParam typefilter.Subquery
 	ctx := r.Context()
 
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -189,8 +189,8 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 // GetTypeFilterParams parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func GetTypeFilterParams(params []string) (typefilter.TypeFilterSubquery, error) {
-	var subquery typefilter.TypeFilterSubquery
+func GetTypeFilterParams(params []string) (typefilter.Subquery, error) {
+	var subquery typefilter.Subquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
@@ -230,7 +230,7 @@ func GetTypeFilterParams(params []string) (typefilter.TypeFilterSubquery, error)
 	return subquery, nil
 }
 
-func HasSharedSystemTag(typeFilter typefilter.TypeFilterSubquery) bool {
+func HasSharedSystemTag(typeFilter typefilter.Subquery) bool {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		if subqueryParam.Name == "_tag" {
 			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)

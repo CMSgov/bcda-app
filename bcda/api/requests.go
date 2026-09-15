@@ -838,7 +838,7 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter typefilter.TypeFilterSubquery, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter typefilter.Subquery, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
@@ -892,7 +892,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(typeFilter typefilter.TypeFilterSubquery) typefilter.TypeFilterSubquery {
+func (h *Handler) omitSharedSystemByDefault(typeFilter typefilter.Subquery) typefilter.Subquery {
 	// If relevant filter is already present, no need to add default
 	if middleware.HasSharedSystemTag(typeFilter) {
 		return typeFilter
@@ -903,16 +903,16 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter typefilter.TypeFilterSubq
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
-	subqueryParam := typefilter.TypeFilterSubqueryParam{
+	subqueryParam := typefilter.SubqueryParam{
 		Name:  "_tag",
 		Value: tagValue,
 	}
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
 	if len(typeFilter.QueryParameters) == 0 {
-		return typefilter.TypeFilterSubquery{
+		return typefilter.Subquery{
 			ResourceType:    "ExplanationOfBenefit",
-			QueryParameters: []typefilter.TypeFilterSubqueryParam{subqueryParam},
+			QueryParameters: []typefilter.SubqueryParam{subqueryParam},
 		}
 	}
 

@@ -537,7 +537,7 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	}
 }
 
-func updateParamWithTypeFilter(params *url.Values, typeFilter typefilter.TypeFilterSubquery) {
+func updateParamWithTypeFilter(params *url.Values, typeFilter typefilter.Subquery) {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		params.Add(subqueryParam.Name, subqueryParam.Value)
 	}

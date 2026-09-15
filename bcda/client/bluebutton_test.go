@@ -374,9 +374,9 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
 	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
-	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: typefilter.TypeFilterSubquery{
+	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: typefilter.Subquery{
 		ResourceType: "ExplanationOfBenefit",
-		QueryParameters: []typefilter.TypeFilterSubqueryParam{
+		QueryParameters: []typefilter.SubqueryParam{
 			{
 				Name:  "service-date",
 				Value: "gt2022-06-26",
