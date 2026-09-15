@@ -74,6 +74,7 @@ func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 	if err != nil {
 		return success, failure, skipped, err
 	}
+	fmt.Printf("----- cclfMap: %+v\n", cclfMap)
 
 	if len(cclfMap) == 0 {
 		importer.logger.Info("Did not find any CCLF files in directory -- returning safely.")
@@ -82,6 +83,7 @@ func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 
 	for acoID := range cclfMap {
 		for _, zipMetadata := range cclfMap[acoID] {
+			fmt.Printf("----- processing cclfZipMetadata: %+v\n", zipMetadata)
 			func() {
 				defer zipMetadata.zipCloser()
 

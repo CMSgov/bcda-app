@@ -130,37 +130,58 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	assert := assert.New(s.T())
-	//Happy case, with directory containing valid BCD files.
-	_, _, _, err := s.importer.ImportCCLFDirectory(s.T().Context(), filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid"))
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
+	importer := CCLFImporter{
+		logger:     s.logger,
+		fileClient: client,
+		pgxPool:    s.pool,
+	}
+
+	fpath := filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid")
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
+	defer cleanup()
+
+	success, failure, skipped, err := importer.ImportCCLFDirectory(ctx, filepath.Join(bucketName, fpath))
 	assert.Nil(err)
+	assert.Equal(6, success)
+	assert.Equal(0, failure)
+	assert.Equal(0, skipped)
 }
 
-// func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
-// 	assert := assert.New(s.T())
-// 	//Directory with mixed file types + at least one bad file.
-// 	cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
-// 	cfg, ctx := testUtils.TestAWSConfig(s.T())
-// 	client := testUtils.TestS3Client(s.T(), cfg)
-// 	importer := CCLFImporter{
-// 		logger:     s.logger,
-// 		fileClient: client,
-// 		pgxPool:    s.pool,
-// 	}
+func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
+	assert := assert.New(s.T())
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
+	importer := CCLFImporter{
+		logger:     s.logger,
+		fileClient: client,
+		pgxPool:    s.pool,
+	}
 
-// 	bucketName, cleanup := testUtils.CopyToS3(s.T(), cclfDirectory)
-// 	defer cleanup()
+	s.T().Run("Directory with mixed file types + at least one bad file", func(t *testing.T) {
+		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
 
-// 	_, _, _, err := importer.ImportCCLFDirectory(ctx, bucketName+cclfDirectory)
-// 	assert.EqualError(err, "Failed to import 15 files")
+		bucketName, cleanup := testUtils.CopyToS3(s.T(), cclfDirectory)
+		defer cleanup()
 
-// 	//Target bad file directory
-// 	cclfDirectory = filepath.Join(s.basePath, constants.CCLFDIR, "archives", "invalid_bcd")
-// 	imported, failed, skipped, err := s.importer.ImportCCLFDirectory(ctx, cclfDirectory)
-// 	assert.NoError(err)
-// 	assert.Equal(0, imported)
-// 	assert.Equal(4, failed)
-// 	assert.Equal(0, skipped)
-// }
+		_, _, _, err := importer.ImportCCLFDirectory(ctx, filepath.Join(bucketName, cclfDirectory))
+		assert.EqualError(err, "failed to import 16 files")
+	})
+
+	s.T().Run("Try to import directory with bad files", func(t *testing.T) {
+		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR, "archives", "invalid_bcd")
+
+		bucketName, cleanup := testUtils.CopyToS3(s.T(), cclfDirectory)
+		defer cleanup()
+
+		imported, failed, skipped, err := importer.ImportCCLFDirectory(ctx, filepath.Join(bucketName, cclfDirectory))
+		assert.NoError(err)
+		assert.Equal(0, imported)
+		assert.Equal(4, failed)
+		assert.Equal(0, skipped)
+	})
+}
 
 func (s *CCLFTestSuite) TestImportCCLFDirectoryTwoLevels() {
 	assert := assert.New(s.T())
