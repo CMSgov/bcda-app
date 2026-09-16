@@ -4,15 +4,11 @@ The ACO Deny administrative task lambda will add an existing ACO to our deny lis
 
 The Lambda expects a JSON payload with the following fields:
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `deny_aco_ids` | `[]string` | **Yes** | List of ACO CMS IDs to deny. Must not be empty. |
-| `cutoff_date` | `string` (RFC3339) | No | Date and time after which the ACO will have no access and requests will be blocked (denylisted). Defaults to current time (`time.Now()`) if omitted. |
-| `termination_date` | `string` (RFC3339) | No | Date and time when the ACO moved from full to limited access. Defaults to `cutoff_date` if omitted. Cannot be after `cutoff_date`. If `termination_date` is in the future, a `cutoff_date` is required. |
-
-### Timestamp Format Requirement
-
-> **IMPORTANT:** Date fields (`cutoff_date` and `termination_date`) MUST be formatted in standard RFC3339 / ISO 8601 format including time and timezone (e.g., `"2026-12-31T23:59:59Z"`). Plain date strings such as `"2026-12-31"` are not supported and will result in a JSON unmarshaling error.
+| Field | Type | Required | Description | Example |
+|---|---|---|---|---|
+| `deny_aco_ids` | `[]string` | **Yes** | List of ACO CMS IDs to deny. Must not be empty. | A1220 |
+| `cutoff_date` | `string` (RFC3339) | No | Date and time after which the ACO will have no access and requests will be blocked (denylisted). Defaults to current time (`time.Now()`) if omitted. | 2026-12-31T23:59:59Z |
+| `termination_date` | `string` (RFC3339) | No | Date and time when the ACO moved from full to limited access. Defaults to `cutoff_date` if omitted. Cannot be after `cutoff_date`. If `termination_date` is in the future, a `cutoff_date` is required. | 2026-12-31T23:59:59Z |
 
 ### Example Payloads
 
