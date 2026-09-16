@@ -17,6 +17,7 @@ locals {
 
   default_tags = module.platform.default_tags
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
+  is_prod      = contains(["prod", "sandbox"], local.parent_env)
 
   # Network
   ssas_domain = "ssas.${module.platform.env}.bcda.cms.gov"
@@ -35,14 +36,10 @@ module "platform" {
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/${basename(abspath(path.module))}"
   service     = local.service
 }
+
 ##############
 # Networking #
 ##############
-
-resource "aws_security_group" "ssas_alb" {
-  name   = "ssas-alb"
-  vpc_id = module.platform.vpc_id
-}
 
 resource "aws_lb" "ssas_alb" {
   name               = "bcda-ssas-${module.platform.env}"
@@ -51,7 +48,7 @@ resource "aws_lb" "ssas_alb" {
   idle_timeout       = 60
 
   security_groups = [
-    aws_security_group.ssas_alb.id,
+    data.aws_security_group.ssas_alb.id,
     module.platform.security_groups["remote-management"].id,
     module.platform.security_groups["zscaler-private"].id,
     module.platform.security_groups["zscaler-public"].id,

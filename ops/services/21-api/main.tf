@@ -13,22 +13,3 @@ module "platform" {
   root_module = "https://github.com/CMSgov/bcda-app/tree/main/ops/services/${basename(abspath(path.module))}"
   service     = local.service
 }
-
-/* ------ API/SSAS Security Group ------- */
-resource "aws_security_group" "app_sg" {
-  name        = local.app_sg_name
-  description = "bcda api app security group"
-  vpc_id      = module.platform.vpc_id
-
-  tags = {
-    Name = local.app_sg_name
-  }
-
-  lifecycle {
-    create_before_destroy = true
-    ignore_changes = [
-      id,
-      description,
-    ]
-  }
-}
