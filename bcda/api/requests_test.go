@@ -994,9 +994,10 @@ func (s *RequestsTestSuite) TestDeleteJob() {
 		name           string
 		jobId          string
 		responseHeader int
+		msg            string
 		useMockService bool
 	}{
-		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, useMockService: true},
+		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, msg: "Job files will be designated for deletion", useMockService: true},
 		{name: "Invalid Job ID (Overflow)", jobId: "112341234123412341234123412341234123", responseHeader: http.StatusBadRequest, useMockService: false},
 		{name: "Unable to cancel job", jobId: "1", responseHeader: http.StatusGone, useMockService: true},
 		{name: "Internal Server Error Deleting Job", jobId: "1", responseHeader: http.StatusInternalServerError, useMockService: true},
@@ -1039,6 +1040,9 @@ func (s *RequestsTestSuite) TestDeleteJob() {
 			handler.DeleteJob(w, r)
 
 			assert.Equal(t, tt.responseHeader, w.Code)
+			if tt.msg != "" {
+				assert.Contains(t, w.Body.String(), tt.msg, tt.name)
+			}
 		})
 	}
 
