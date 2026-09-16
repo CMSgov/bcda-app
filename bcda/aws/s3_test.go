@@ -167,16 +167,18 @@ func TestOpenFileAsBytes(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	path := "../../shared_files/csv/valid.csv"
+	path := "../../shared_files/csv"
+	tmpPath, cleanup := testUtils.CopyToTemporaryDirectory(t, path)
+	defer cleanup()
 
 	t.Run("success deleting object", func(t *testing.T) {
-		bucketName, cleanup := testUtils.CopyToS3(t, path)
+		bucketName, cleanup := testUtils.CopyToS3(t, tmpPath)
 		defer cleanup()
 
 		cfg, ctx := testUtils.TestAWSConfig(t)
 		client := testUtils.TestS3Client(t, cfg)
 
-		err := Delete(ctx, client, bucketName+"/"+path)
+		err := Delete(ctx, client, filepath.Join(bucketName, tmpPath, "valid.csv"))
 		require.NoError(t, err)
 	})
 

@@ -132,11 +132,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	assert := assert.New(s.T())
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := CCLFImporter{
-		logger:     s.logger,
-		fileClient: client,
-		pgxPool:    s.pool,
-	}
+	importer := NewCCLFImporter(s.logger, client, s.pool)
 
 	fpath := filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid")
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
@@ -153,11 +149,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	assert := assert.New(s.T())
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := CCLFImporter{
-		logger:     s.logger,
-		fileClient: client,
-		pgxPool:    s.pool,
-	}
+	importer := NewCCLFImporter(s.logger, client, s.pool)
 
 	s.T().Run("Directory with mixed file types + at least one bad file", func(t *testing.T) {
 		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
@@ -684,6 +676,9 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string][]*cclfZipMetadata)
 	acoID := "A0001"
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
+	importer := NewCCLFImporter(s.logger, client, s.pool)
 
 	fpath := filepath.Join(s.basePath, constants.CCLF8CompPath)
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
@@ -721,14 +716,14 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		},
 	}
 
-	deletedCount, err := s.importer.cleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err := importer.cleanUpCCLF(ctx, cclfmap)
 	assert.Equal(0, deletedCount)
 	assert.Nil(err)
 
 	// Cleanup file after import
 	cclfmap[acoID][0].imported = true
 
-	deletedCount, err = s.importer.cleanUpCCLF(context.Background(), cclfmap)
+	deletedCount, err = importer.cleanUpCCLF(ctx, cclfmap)
 	assert.Equal(1, deletedCount)
 	assert.Nil(err)
 }

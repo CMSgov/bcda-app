@@ -298,7 +298,7 @@ func (s *CSVTestSuite) TestCleanupCSV() {
 			csv := csvFile{
 				metadata: csvFileMetadata{},
 				imported: test.imported,
-				filepath: bucketName + "/" + path,
+				filepath: bucketName + filepath.Join(s.basePath, path),
 			}
 
 			importer := CSVImporter{

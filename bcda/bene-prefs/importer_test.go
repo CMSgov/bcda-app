@@ -20,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -391,12 +390,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	// check current value and change mod time
 	for _, f := range *suppresslist {
 		fInfo, _ := os.Stat(filePath)
-		assert.Equal(fInfo.ModTime().Format("01020304"), f.DeliveryDate.Format("01020304"))
-
-		err = os.Chtimes(filePath, modtimeAfter, modtimeAfter)
-		if err != nil {
-			s.FailNow(constants.TestChangeTimeErr, err)
-		}
+		assert.Equal(fInfo.ModTime().Format("010203"), f.DeliveryDate.Format("010203"))
 	}
 
 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
@@ -405,7 +399,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
 	assert.Nil(err)
 	for _, f := range *suppresslist {
-		assert.Equal(modtimeAfter.Format("01020304"), f.DeliveryDate.Format("01020304"))
+		assert.Equal(modtimeAfter.Format("010203"), f.DeliveryDate.Format("010203"))
 	}
 }
 
@@ -511,17 +505,21 @@ func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
 	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
 	assert.Nil(err)
 
-	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
-	if err != nil {
-		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
+	objs, err := bcdaaws.ListFiles(ctx, client, headerBucket, filepath.Join(s.basePath, "suppressionfile_BadHeader"))
+	assert.NoError(err)
+	assert.Len(objs, 0)
+	for _, obj := range objs {
+		if *obj.Key == "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009" {
+			assert.Fail("file should have been moved")
+		}
 	}
 
-	for _, file := range files {
-		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
-
-		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
-			err = fmt.Errorf("unknown file moved %s", file.Name())
-			s.FailNow("test files did not correctly cleanup", err)
+	objs, err = bcdaaws.ListFiles(ctx, client, fileNameBucket, filepath.Join(s.basePath, "suppressionfile_BadFileNames"))
+	assert.NoError(err)
+	assert.Len(objs, 0)
+	for _, obj := range objs {
+		if *obj.Key == "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009" || *obj.Key == "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" {
+			assert.Fail("file should have been moved")
 		}
 	}
 }

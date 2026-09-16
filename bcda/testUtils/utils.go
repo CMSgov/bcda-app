@@ -201,6 +201,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 
 		key := path
 		parts := strings.Split(path, "shared_files/")

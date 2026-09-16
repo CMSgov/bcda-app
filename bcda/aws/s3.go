@@ -62,10 +62,18 @@ func OpenFileAsBytes(ctx context.Context, client CustomS3Client, filePath string
 	if err != nil {
 		return nil, fmt.Errorf("failed to download file %s, err: %w", filePath, err)
 	}
+	defer func() {
+		if closer, ok := output.Body.(io.Closer); ok {
+			closer.Close()
+		}
+	}()
 
 	bytes, err := io.ReadAll(output.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s, err: %w", filePath, err)
+	}
+	if len(bytes) == 0 {
+		return nil, fmt.Errorf("file %s is empty", filePath)
 	}
 
 	return bytes, nil
