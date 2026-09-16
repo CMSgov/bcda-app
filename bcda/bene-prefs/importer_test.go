@@ -391,7 +391,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	// check current value and change mod time
 	for _, f := range *suppresslist {
 		fInfo, _ := os.Stat(filePath)
-		assert.Equal(fInfo.ModTime().Format("010203040506"), f.DeliveryDate.Format("010203040506"))
+		assert.Equal(fInfo.ModTime().Format("01020304"), f.DeliveryDate.Format("01020304"))
 
 		err = os.Chtimes(filePath, modtimeAfter, modtimeAfter)
 		if err != nil {
@@ -405,7 +405,7 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
 	assert.Nil(err)
 	for _, f := range *suppresslist {
-		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
+		assert.Equal(modtimeAfter.Format("01020304"), f.DeliveryDate.Format("01020304"))
 	}
 }
 
