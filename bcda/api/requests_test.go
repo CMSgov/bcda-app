@@ -997,7 +997,7 @@ func (s *RequestsTestSuite) TestDeleteJob() {
 		msg            string
 		useMockService bool
 	}{
-		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, msg: "Job files will be deleted within 24 hours", useMockService: true},
+		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, msg: "Job files will be designated for deletion", useMockService: true},
 		{name: "Invalid Job ID (Overflow)", jobId: "112341234123412341234123412341234123", responseHeader: http.StatusBadRequest, useMockService: false},
 		{name: "Unable to cancel job", jobId: "1", responseHeader: http.StatusGone, useMockService: true},
 		{name: "Internal Server Error Deleting Job", jobId: "1", responseHeader: http.StatusInternalServerError, useMockService: true},
