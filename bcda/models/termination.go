@@ -41,7 +41,7 @@ const (
 )
 
 type Termination struct {
-	TerminationDate time.Time // When caller moved from full to limited access, currently not evaluated
+	TerminationDate time.Time // When caller moved from full to limited access, currently not evaluated for limited access as limited access is not implemented.
 	CutoffDate      time.Time // When caller moved to no access
 
 	DenylistType        Denylist
