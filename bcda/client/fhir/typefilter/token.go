@@ -14,11 +14,6 @@ type TokenParam struct {
 	Name     string
 	Modifier string
 	Values   []TokenValue
-	raw      string
-}
-
-func (t TokenParam) String() string {
-	return t.raw
 }
 
 type TokenValue struct {
@@ -27,9 +22,10 @@ type TokenValue struct {
 }
 
 func ParseToken(subqueryParam SubqueryParam) (TokenParam, error) {
-	t := TokenParam{raw: fmt.Sprintf("%s=%s", subqueryParam.Name, subqueryParam.Value)}
+	t := TokenParam{}
 	if len(subqueryParam.Name) == 0 {
 		return t, errors.New("keys must be present in typefilter parameters")
+
 	}
 	t.Name, t.Modifier, _ = strings.Cut(subqueryParam.Name, ":")
 	if len(subqueryParam.Value) == 0 {
@@ -37,8 +33,12 @@ func ParseToken(subqueryParam SubqueryParam) (TokenParam, error) {
 	}
 	values := strings.SplitSeq(subqueryParam.Value, ",")
 	for value := range values {
-		system, code, _ := strings.Cut(value, "|")
-		t.Values = append(t.Values, TokenValue{System: system, Code: code})
+		before, after, found := strings.Cut(value, "|")
+		if found {
+			t.Values = append(t.Values, TokenValue{System: before, Code: after})
+		} else {
+			t.Values = append(t.Values, TokenValue{Code: before})
+		}
 	}
 	return t, nil
 }
