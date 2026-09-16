@@ -481,7 +481,6 @@ func (s *CCLFTestSuite) TestLoadCclfFiles() {
 	for _, tt := range tests {
 		s.T().Run(tt.path, func(t *testing.T) {
 			fpath := filepath.Join(s.basePath, tt.path)
-			fmt.Printf("----- starting test path: %+v, fpath: %+v\n", tt.path, fpath)
 			bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
 			defer cleanup()
 
@@ -491,7 +490,6 @@ func (s *CCLFTestSuite) TestLoadCclfFiles() {
 			}
 
 			cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, bucketName+fpath)
-			fmt.Printf("----- cclfmap: %+v, skipped: %+v, failure: %+v, err: %+v\n", cclfMap, skipped, failure, err)
 			cclfZipFiles := cclfMap[cmsID]
 			assert.NoError(t, err)
 			assert.Equal(t, tt.skipped, skipped)
@@ -567,9 +565,6 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_SingleFile() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.path, func(t *testing.T) {
-			// bucketName := uuid.NewRandom().String()
-			// bucketName, cleanup := testUtils.CopyToS3(s.T(), filepath.Join(s.basePath, tt.path))
-			// defer cleanup()
 			fullFilePath := filepath.Join(s.basePath, tt.path, tt.filename)
 
 			content, err := os.ReadFile(fullFilePath)
@@ -644,7 +639,6 @@ func (s *CCLFTestSuite) TestMultipleFileTypes() {
 	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "201201")
 	s.T().Cleanup(func() { conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate) })
-	// bucketName := uuid.NewRandom().String()
 
 	// Create various CCLF files that have unique perfYear:fileType
 	bucketName, cleanup := testUtils.CreateZipsInS3(s.T(),
@@ -695,8 +689,6 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	fpath := filepath.Join(s.basePath, constants.CCLF8CompPath)
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
 	defer cleanup()
-
-	// bucketName := uuid.NewRandom().String()
 
 	// failed import: stay put
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)

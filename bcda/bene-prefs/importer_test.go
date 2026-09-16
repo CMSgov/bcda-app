@@ -386,13 +386,11 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	bucketName, cleanup = testUtils.CopyToS3(s.T(), filePath)
 	defer cleanup()
 	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
-	fmt.Printf("-----suppresslist: %+v, first: %+v, first filepath, date %+v, %+v", *suppresslist, (*suppresslist)[0], (*suppresslist)[0].FilePath, (*suppresslist)[0].DeliveryDate)
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
 	// check current value and change mod time
 	for _, f := range *suppresslist {
 		fInfo, _ := os.Stat(filePath)
-		fmt.Printf("-----fInfo: %+v, f: %+v\n", fInfo, f)
 		assert.Equal(fInfo.ModTime().Format("010203040506"), f.DeliveryDate.Format("010203040506"))
 
 		err = os.Chtimes(filePath, modtimeAfter, modtimeAfter)

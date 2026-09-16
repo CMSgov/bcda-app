@@ -265,7 +265,6 @@ func (s *CSVTestSuite) TestPrepareCSVData() {
 	}
 	for _, test := range tests {
 		s.Run(test.name, func() {
-			fmt.Print(test.name)
 			rows, _, err := c.prepareCSVData(test.data, uint(1))
 			assert.Equal(s.T(), test.expected, rows)
 			if err != nil {

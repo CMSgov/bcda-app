@@ -53,14 +53,12 @@ func OpenFileAsScanner(ctx context.Context, client CustomS3Client, filePath stri
 
 func OpenFileAsBytes(ctx context.Context, client CustomS3Client, filePath string) ([]byte, error) {
 	bucket, file := ParseS3Uri(filePath)
-	fmt.Printf("----- OpenFileAsBytes: bucket: %+v, file: %+v\n", bucket, file)
 
 	manager := transfermanager.New(client)
 	output, err := manager.GetObject(ctx, &transfermanager.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(file),
 	})
-	fmt.Printf("----- GetObject output: %+v, err: %+v\n", output, err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download file %s, err: %w", filePath, err)
 	}
@@ -76,11 +74,10 @@ func OpenFileAsBytes(ctx context.Context, client CustomS3Client, filePath string
 func Delete(ctx context.Context, client CustomS3Client, filePath string) error {
 	bucket, path := ParseS3Uri(filePath)
 
-	output, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
+	_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(path),
 	})
-	fmt.Printf("----- delete s3 file output: %+v, %+v", output, err)
 	if err != nil {
 		return fmt.Errorf("file %s failed to clean up properly, error occurred while deleting object: %w", filePath, err)
 	}

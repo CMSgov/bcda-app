@@ -74,7 +74,6 @@ func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 	if err != nil {
 		return success, failure, skipped, err
 	}
-	fmt.Printf("----- cclfMap: %+v\n", cclfMap)
 
 	if len(cclfMap) == 0 {
 		importer.logger.Info("Did not find any CCLF files in directory -- returning safely.")
@@ -83,7 +82,6 @@ func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath s
 
 	for acoID := range cclfMap {
 		for _, zipMetadata := range cclfMap[acoID] {
-			fmt.Printf("----- processing cclfZipMetadata: %+v\n", zipMetadata)
 			func() {
 				defer zipMetadata.zipCloser()
 
@@ -292,7 +290,6 @@ func (m cclfFileMetadata) String() string {
 func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
 	bucket, prefix := bcdaaws.ParseS3Uri(path)
-	fmt.Printf("----- loading s3 bucket: %+v, prefix: %+v\n", bucket, prefix)
 	s3Objects, err := bcdaaws.ListFiles(ctx, importer.fileClient, bucket, prefix)
 	if err != nil {
 		return cclfMap, skipped, failed, err
@@ -303,9 +300,7 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 		return cclfMap, skipped, failed, err
 	}
 
-	fmt.Printf("----- s3 objects: %+v\n", s3Objects)
 	for _, obj := range s3Objects {
-		fmt.Printf("----- loading s3 object: %+v, %+v\n", *obj.Key, obj)
 		// validate the top level zipped folder
 		cmsID, err := getCMSID(*obj.Key)
 		if err != nil {
@@ -394,7 +389,6 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 
 	for acoID := range cclfMap {
 		for _, cclfZipMetadata := range cclfMap[acoID] {
-			fmt.Printf("----- cleaning up s3 file: %+v, %+v", cclfZipMetadata.filePath, cclfZipMetadata)
 			if !cclfZipMetadata.imported {
 				// Don't do anything. The S3 bucket should have a retention policy that
 				// automatically cleans up files after a specified period of time.
@@ -406,7 +400,6 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 			err := bcdaaws.Delete(ctx, importer.fileClient, cclfZipMetadata.filePath)
 
 			if err != nil {
-				fmt.Printf("----- aws delete err: %+v", err)
 				errCount++
 				continue
 			}
@@ -424,7 +417,6 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 }
 
 func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
-	fmt.Printf("----- openZipArchive: %+v\n", filePath)
 	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.fileClient, filePath)
 
 	if err != nil {

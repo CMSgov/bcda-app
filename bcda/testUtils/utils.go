@@ -188,7 +188,6 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 	}
 
 	manager := transfermanager.New(client)
-	fmt.Printf("----- Copying files to S3 bucket: %s, src: %s", tempBucket, src)
 	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			t.Fatalf("Unexpected error reading path")

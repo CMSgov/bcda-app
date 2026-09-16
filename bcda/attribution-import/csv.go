@@ -47,7 +47,6 @@ type CSVImporter struct {
 }
 
 func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) error {
-	fmt.Printf("----- importing CSV file: %+v\n", filepath)
 	file := csvFile{filepath: filepath}
 
 	short := f.Base(filepath)
