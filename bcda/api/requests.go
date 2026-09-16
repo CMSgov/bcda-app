@@ -449,7 +449,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	h.RespWriter.Success(ctx, w, http.StatusAccepted, "", "Job files will be deleted within 24 hours")
+	h.RespWriter.Success(ctx, w, http.StatusAccepted, "", "Job files will be designated for deletion")
 }
 
 type AttributionFileStatus struct {
