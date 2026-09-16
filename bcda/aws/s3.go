@@ -64,7 +64,10 @@ func OpenFileAsBytes(ctx context.Context, client CustomS3Client, filePath string
 	}
 	defer func() {
 		if closer, ok := output.Body.(io.Closer); ok {
-			closer.Close()
+			err := closer.Close()
+			if err != nil {
+				fmt.Printf("failed to close S3 object body: %v\n", err)
+			}
 		}
 	}()
 
