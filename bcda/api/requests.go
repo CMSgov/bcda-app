@@ -60,6 +60,7 @@ type Handler struct {
 }
 
 type fhirResponseWriter interface {
+	Success(context.Context, http.ResponseWriter, int, string, string)
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
 	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
@@ -448,7 +449,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.WriteHeader(http.StatusAccepted)
+	h.RespWriter.Success(ctx, w, http.StatusAccepted, "", "Job files will be deleted within 24 hours")
 }
 
 type AttributionFileStatus struct {
