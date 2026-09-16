@@ -202,29 +202,9 @@ func GetTypeFilterParams(params []string) (typefilter.Subquery, error) {
 		return subquery, err
 	}
 
-	// Right now, we are only accepting ExplanationOfBenefit subqueries
-	if subquery.ResourceType != "ExplanationOfBenefit" {
-		return subquery, fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", subquery.ResourceType)
-	}
-
-	for _, param := range subquery.QueryParameters {
-		if slices.Contains([]string{"service-date", "_tag", "outcome"}, param.Name) {
-			var validationErr error
-			switch param.Name {
-			case "_tag":
-				validationErr = validateSubqueryParameterList(param.Value, validateTagSubqueryParameter)
-			case "outcome":
-				validationErr = validateSubqueryParameterList(param.Value, validateOutcomeSubqueryParameter)
-			case "service-date":
-				validationErr = validateSubqueryParameterList(param.Value, validateServiceDateSubqueryParameter)
-			}
-
-			if validationErr != nil {
-				return subquery, validationErr
-			}
-		} else {
-			return subquery, fmt.Errorf("invalid _typeFilter subquery parameter: %s", param.Name)
-		}
+	err = typefilter.ValidateSubquery(subquery)
+	if err != nil {
+		return subquery, err
 	}
 
 	return subquery, nil

@@ -589,21 +589,21 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "invalidTagPartiallyAdjudicated",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag value: PartiallyAdjudicated. Searching by tag requires a token (system|code) to be specified",
+			errMsg:      "invalid _tag parameter: _tag=PartiallyAdjudicated. Searching by tag requires a token (system|code) to be specified",
 			description: "Old PartiallyAdjudicated tag should be rejected",
 		},
 		{
 			name:        "invalidTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified",
+			errMsg:      "invalid _tag parameter: _tag=SharedSystem. Searching by tag requires a token (system|code) to be specified",
 			description: "Only code, no system should be rejected. even with valid code",
 		},
 		{
 			name:        "invalidTagRandomValue",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DInvalidTag", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag value: InvalidTag. Searching by tag requires a token (system|code) to be specified",
+			errMsg:      "invalid _tag parameter: _tag=InvalidTag. Searching by tag requires a token (system|code) to be specified",
 			description: "Random invalid tag should be rejected",
 		},
 		{
@@ -667,7 +667,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "multipleTagsOneInvalid",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag value: PartiallyAdjudicated",
+			errMsg:      "invalid _tag parameter: _tag=PartiallyAdjudicated",
 			description: "Multiple tags with one invalid should fail",
 		},
 		{

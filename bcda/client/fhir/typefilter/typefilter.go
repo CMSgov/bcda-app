@@ -40,3 +40,46 @@ func ParseTypeFilterSubquery(s string) (Subquery, error) {
 	}
 	return Subquery{ResourceType: resourceType, QueryParameters: subqueryParams}, nil
 }
+
+func ValidateSubquery(subquery Subquery) error {
+	if subquery.ResourceType != "ExplanationOfBenefit" {
+		return fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", subquery.ResourceType)
+	}
+
+	var serviceDateParams []DateParam
+	for _, param := range subquery.QueryParameters {
+		switch param.Name {
+		case TAG:
+			tag, err := ParseToken(param)
+			if err != nil {
+				return err
+			}
+			err = ValidateTag(tag)
+			if err != nil {
+				return err
+			}
+		case SERVICE_DATE:
+			date, err := ParseDate(param)
+			if err != nil {
+				return err
+			}
+			serviceDateParams = append(serviceDateParams, date)
+		case OUTCOME:
+			outcome, err := ParseString(param)
+			if err != nil {
+				return err
+			}
+			err = ValidateOutcome(outcome)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("invalid _typeFilter subquery parameter: %s", param.Name)
+		}
+	}
+	err := ValidateServiceDates(serviceDateParams)
+	if err != nil {
+		return err
+	}
+	return nil
+}
