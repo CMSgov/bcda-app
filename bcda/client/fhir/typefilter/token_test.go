@@ -69,7 +69,8 @@ func TestValidateTag(t *testing.T) {
 		tokenParam  TokenParam
 		expectedErr bool
 	}{
-		{name: "valid system and code",
+		{
+			name:        "valid system and code",
 			tokenParam:  TokenParam{Name: "_tag", Values: []TokenValue{{System: constants.BFDSystemTypeURL, Code: "NationalClaimsHistory"}}},
 			expectedErr: false,
 		},

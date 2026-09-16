@@ -11,15 +11,10 @@ type StringParam struct {
 	Name     string
 	Modifier string
 	Values   []string
-	raw      string
-}
-
-func (s StringParam) String() string {
-	return s.raw
 }
 
 func ParseString(subqueryParam SubqueryParam) (StringParam, error) {
-	s := StringParam{raw: fmt.Sprintf("%s=%s", subqueryParam.Name, subqueryParam.Value)}
+	s := StringParam{}
 	if len(subqueryParam.Name) == 0 {
 		return s, errors.New("keys must be present in typefilter parameter")
 	}
