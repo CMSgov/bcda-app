@@ -305,14 +305,12 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 		cmsID, err := getCMSID(*obj.Key)
 		if err != nil {
 			importer.logger.Errorf("Skipping CCLF archive (%s/%s): %v", bucket, *obj.Key, err)
-			// skipped++
 			continue
 		}
 
 		supported := cfg.IsSupportedACO(cmsID)
 		if !supported {
 			importer.logger.Errorf("Skipping CCLF archive (%s/%s): cmsID %s not supported.", bucket, *obj.Key, cmsID)
-			// skipped++
 			continue
 		}
 
