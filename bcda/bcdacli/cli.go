@@ -304,41 +304,6 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
-		{
-			Name:     "denylist-aco",
-			Category: constants.CliAuthToolsCategory,
-			Usage:    "Denylists an ACO by their CMS ID",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        constants.CliCMSIDArg,
-					Usage:       constants.CliCMSIDDesc,
-					Destination: &acoCMSID,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				td := &models.Termination{
-					TerminationDate: time.Now(),
-					CutoffDate:      time.Now(),
-					DenylistType:    models.Involuntary,
-				}
-				return setDenylistState(repository, acoCMSID, td)
-			},
-		},
-		{
-			Name:     "undenylist-aco",
-			Category: constants.CliAuthToolsCategory,
-			Usage:    "Undenylists an ACO by their CMS ID",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        constants.CliCMSIDArg,
-					Usage:       constants.CliCMSIDDesc,
-					Destination: &acoCMSID,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				return setDenylistState(repository, acoCMSID, nil)
-			},
-		},
 	}
 	return app
 }
@@ -462,15 +427,6 @@ func revokeAccessToken(p auth.Provider, accessToken string) error {
 	}
 
 	return p.RevokeAccessToken(accessToken)
-}
-
-func setDenylistState(r models.Repository, cmsID string, td *models.Termination) error {
-	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
-	if err != nil {
-		return err
-	}
-	return r.UpdateACO(context.Background(), aco.UUID,
-		map[string]interface{}{"termination_details": td})
 }
 
 // CCLF file name pattern and regex
