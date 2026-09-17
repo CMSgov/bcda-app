@@ -1,6 +1,7 @@
 locals {
-  defaults   = yamldecode(file("config/defaults.yml"))
-  env_config = yamldecode(file("config/${module.platform.parent_env}.yml"))
+  defaults        = yamldecode(file("${path.module}/config/defaults.yml"))
+  env_config_path = "${path.module}/config/${module.platform.parent_env}.yml"
+  env_config      = fileexists(local.env_config_path) ? yamldecode(file(local.env_config_path)) : {}
 
   config = {
     for key in distinct(concat(keys(local.defaults), keys(local.env_config))) :
@@ -54,7 +55,7 @@ resource "aws_lb" "ssas_alb" {
     module.platform.security_groups["zscaler-public"].id,
   ]
 
-  subnets = module.platform.private_subnets[*].id
+  subnets = toset(keys(module.platform.private_subnets))
 
   access_logs {
     bucket  = "cms-cloud-${module.platform.account_id}-${module.platform.primary_region.name}"
@@ -126,13 +127,13 @@ module "ecs_ssas" {
   source                        = "github.com/CMSgov/cdap/terraform/modules/service?ref=e8af7a286d7e7637e41de27adf00af2d0d58f4e7"
   service_name_override         = local.service
   platform                      = module.platform
-  cluster_arn                   = module.ecs_cluster.this.arn
+  cluster_arn                   = data.aws_ecs_cluster.this.arn
   image                         = "${data.aws_ecr_repository.ecr_ssas.repository_url}:${var.image_tag}"
   cpu                           = local.config.ecs.cpu
   memory                        = local.config.ecs.mem
   desired_count                 = local.config.scaling.min
   port_mappings                 = [{ containerPort = local.config.ports.ssas_public_port }, { containerPort = local.config.ports.ssas_admin_port }]
-  security_groups               = [aws_security_group.app_sg.id]
+  security_groups               = [data.aws_security_group.app_sg.id]
   additional_task_role_policies = { bootstrap_policy = tostring(aws_iam_policy.ssas_task.arn) }
   cpu_architecture              = "ARM64"
 
@@ -177,7 +178,7 @@ module "ecs_ssas" {
 resource "aws_appautoscaling_target" "ecs_ssas_cpu_target" {
   max_capacity       = local.config.scaling.max
   min_capacity       = local.config.scaling.min
-  resource_id        = "service/${data.terraform_remote_state.cluster.outputs.cluster_name}/${module.ecs_ssas.service.name}"
+  resource_id        = "service/${data.aws_ecs_cluster.this.cluster_name}/${module.ecs_ssas.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
@@ -205,10 +206,10 @@ module "ssas_ecs_alarms" {
   source = "../../modules/ecs_alarms"
 
   service_name = module.ecs_ssas.service.name
-  cluster_name = module.ecs_cluster.this.name
+  cluster_name = data.aws_ecs_cluster.this.cluster_name
 
-  alarm_notification_arn = aws_sns_topic.cloudwatch_alarms_topic.arn
-  ok_notification_arn    = aws_sns_topic.cloudwatch_alarms_topic.arn
+  alarm_notification_arn = data.aws_sns_topic.cloudwatch_alarms_topic.arn
+  ok_notification_arn    = data.aws_sns_topic.cloudwatch_alarms_topic.arn
 
   alarms = [
     {
