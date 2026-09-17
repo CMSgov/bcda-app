@@ -173,7 +173,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		return typeFilterParam, true
 	}
 
-	typeFilterParams, err := GetTypeFilterParams(params)
+	typeFilterParams, err := GetTypeFilterSubquery(params)
 	if err != nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
@@ -186,9 +186,9 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 	return typeFilterParams, true
 }
 
-// GetTypeFilterParams parses the _typeFilter subquery
+// GetTypeFilterSubquery parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func GetTypeFilterParams(params []string) (search.TypeFilterSubquery, error) {
+func GetTypeFilterSubquery(params []string) (search.TypeFilterSubquery, error) {
 	var subquery search.TypeFilterSubquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet

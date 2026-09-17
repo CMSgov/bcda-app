@@ -906,7 +906,7 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter search.TypeFilterSubquery
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	subqueryParam := search.TypeFilterSubqueryParam{
-		Name:  "_tag",
+		Name:  string(search.TypeFilterParamTag),
 		Value: tagValue,
 	}
 
