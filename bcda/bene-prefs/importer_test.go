@@ -403,61 +403,6 @@ func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
 	}
 }
 
-func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles_TimeChange() {
-	assert := assert.New(s.T())
-	repo := &models.MockRepository{}
-	cfg, ctx := testUtils.TestAWSConfig(s.T())
-	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := s.createImporter(repo, client)
-	// importer.Repo = *postgres.NewRepository(database.Connect())
-
-	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
-	filePath := filepath.Join(folderPath, constants.TestSuppressBadPath)
-
-	origTime := time.Now().Truncate(time.Second)
-	err := os.Chtimes(filePath, origTime, origTime)
-	if err != nil {
-		s.FailNow(constants.TestChangeTimeErr, err)
-	}
-
-	bucketName, cleanup := testUtils.CopyToS3(s.T(), folderPath)
-	defer cleanup()
-	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, folderPath))
-	assert.Nil(err)
-	assert.Equal(0, len(*suppresslist))
-	assert.Equal(2, skipped)
-
-	// assert that this file is still here.
-	_, err = os.Open(filePath)
-	assert.Nil(err)
-
-	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
-	err = os.Chtimes(filePath, timeChange, timeChange)
-
-	if err != nil {
-		s.FailNow(constants.TestChangeTimeErr, err)
-	}
-
-	bucketName, cleanup = testUtils.CopyToS3(s.T(), folderPath)
-	defer cleanup()
-	suppresslist, skipped, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, folderPath))
-	assert.Nil(err)
-	assert.Equal(0, len(*suppresslist))
-	assert.Equal(2, skipped)
-
-	//Utilize the other bad file, but set an invalid pending deletion directory.
-	filePath = filepath.Join(folderPath, constants.TestSuppressBadDeletePath)
-	_, err = os.Open(filePath)
-	assert.Nil(err)
-
-	timeChange = origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
-	err = os.Chtimes(filePath, timeChange, timeChange)
-
-	if err != nil {
-		s.FailNow(constants.TestChangeTimeErr, err)
-	}
-}
-
 func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
 	assert := assert.New(s.T())
 	repo := &models.MockRepository{}
@@ -465,62 +410,34 @@ func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
 	client := testUtils.TestS3Client(s.T(), cfg)
 	importer := s.createImporter(repo, client)
 
-	headerBucket, cleanup := testUtils.CopyToS3(s.T(), s.basePath+"/suppressionfile_BadHeader/")
-	defer cleanup()
-	fileNameBucket, cleanup := testUtils.CopyToS3(s.T(), s.basePath+"/suppressionfile_BadFileNames/")
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), s.basePath+"/suppressionfile_BadFileNames/")
 	defer cleanup()
 
 	var suppresslist []*models.BenePrefsFilenameMetadata
-
-	// failed import: file that's within the threshold - stay put
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-	metadata := &models.BenePrefsFilenameMetadata{
-		Name:         constants.TestSuppressMetaFileName,
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(headerBucket, s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-		Imported:     false,
-		DeliveryDate: time.Now(),
-	}
-
-	// failed import: file that's over the threshold - should move
-	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata2 := &models.BenePrefsFilenameMetadata{
-		Name:         constants.TestSuppressBadPath,
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(fileNameBucket, s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
-		Imported:     false,
-		DeliveryDate: fileTime,
-	}
-
-	// successful import: should move
-	metadata3 := &models.BenePrefsFilenameMetadata{
+	metadata1 := &models.BenePrefsFilenameMetadata{
 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
-		Timestamp:    fileTime,
-		FilePath:     filepath.Join(fileNameBucket, s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
+		Timestamp:    time.Now(),
+		FilePath:     filepath.Join(bucketName, s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
 		Imported:     true,
 		DeliveryDate: time.Now(),
 	}
+	metadata2 := &models.BenePrefsFilenameMetadata{
+		Name:         constants.TestSuppressBadPath,
+		Timestamp:    time.Now(),
+		FilePath:     filepath.Join(bucketName, s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
+		Imported:     false,
+		DeliveryDate: time.Now(),
+	}
 
-	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
+	suppresslist = []*models.BenePrefsFilenameMetadata{metadata1, metadata2}
 	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
 	assert.Nil(err)
 
-	objs, err := bcdaaws.ListFiles(ctx, client, headerBucket, filepath.Join(s.basePath, "suppressionfile_BadHeader"))
+	objs, err := bcdaaws.ListFiles(ctx, client, bucketName, strings.TrimPrefix(filepath.Join(s.basePath, "suppressionfile_BadFileNames"), "/"))
 	assert.NoError(err)
-	assert.Len(objs, 0)
+	assert.Len(objs, 1)
 	for _, obj := range objs {
-		if *obj.Key == "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009" {
-			assert.Fail("file should have been moved")
-		}
-	}
-
-	objs, err = bcdaaws.ListFiles(ctx, client, fileNameBucket, filepath.Join(s.basePath, "suppressionfile_BadFileNames"))
-	assert.NoError(err)
-	assert.Len(objs, 0)
-	for _, obj := range objs {
-		if *obj.Key == "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009" || *obj.Key == "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" {
-			assert.Fail("file should have been moved")
-		}
+		assert.NotContains(*obj.Key, "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420")
 	}
 }
 

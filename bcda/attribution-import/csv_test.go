@@ -77,6 +77,11 @@ func (s *CSVTestSuite) SetupTest() {
 		PgxPool:    s.pool,
 	}
 	s.importer = c
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	require.NoError(s.T(), err)
+	s.importer.PgxPool = s.pool
 }
 
 func (s *CSVTestSuite) TearDownTest() {
@@ -106,58 +111,42 @@ func (s *CSVTestSuite) TestImportCSV_Integration() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-
-	tests := []struct {
-		name        string
-		filepath    string
-		cclfFileID  int
-		cclfBeneRec []string
-		err         error
-	}{
-		{"Import CSV attribution success", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181120.T1000000"), 0, []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}, nil},
-		{"Import CSV attribution that already exists", filepath.Join(s.basePath, "cclf/archives/csv/P.PCPB.M2411.D181121.T1000000"), 0, []string{}, errors.New("already exists")},
+	err := s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	dirpath := filepath.Join(s.basePath, "cclf/archives/csv")
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), dirpath)
+	defer cleanup()
+	importer := CSVImporter{
+		Logger:     s.importer.Logger,
+		FileClient: client,
+		PgxPool:    s.pool,
 	}
+	r := postgres.NewRepository(s.db)
 
-	for _, test := range tests {
-		s.Run(test.name, func() {
-			err := s.dbContainer.ExecuteDir("testdata/")
-			require.NoError(s.T(), err)
-			fpath := filepath.Clean(test.filepath)
+	s.T().Run("Import CSV attribution success", func(t *testing.T) {
+		fname := "P.PCPB.M2411.D181120.T1000000"
+		benes := []string{"MBI000001", "MBI000002", "MBI000003", "MBI000004", "MBI000005"}
+		err = importer.ImportCSV(ctx, filepath.Join(bucketName, dirpath, fname))
+		assert.Nil(s.T(), err)
 
-			bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
-			defer cleanup()
-			if test.err == nil {
-				assert.NoError(s.T(), err)
-			}
+		cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(fname))
+		require.Equal(s.T(), 1, len(cclfRecords))
+		assert.Equal(s.T(), fname, cclfRecords[0].Name)
 
-			importer := CSVImporter{
-				Logger:     s.importer.Logger,
-				FileClient: client,
-				PgxPool:    s.pool,
-			}
+		beneRecords, err := r.GetCCLFBeneficiaries(ctx, cclfRecords[0].ID, []string{})
+		assert.NoError(s.T(), err)
+		assert.Equal(s.T(), len(benes), len(beneRecords))
+		for _, v := range beneRecords {
+			assert.Contains(s.T(), benes, (strings.ReplaceAll(v.MBI, " ", "")))
+		}
+	})
 
-			err = importer.ImportCSV(ctx, filepath.Join(bucketName, fpath))
-			if test.err == nil {
-				assert.Nil(s.T(), err)
-			} else {
-				assert.NotNil(s.T(), err)
-				assert.Contains(s.T(), err.Error(), test.err.Error())
-			}
-			r := postgres.NewRepository(s.db)
-			cclfRecords := postgrestest.GetCCLFFilesByName(s.T(), s.db, filepath.Clean(test.filepath))
-			if len(cclfRecords) != 0 {
-				assert.Equal(s.T(), 1, len(cclfRecords))
-				assert.Equal(s.T(), fpath, cclfRecords[0].Name)
-				beneRecords, _ := r.GetCCLFBeneficiaries(ctx, cclfRecords[0].ID, []string{})
-				assert.Equal(s.T(), len(test.cclfBeneRec), len(beneRecords))
-				for _, v := range beneRecords {
-					assert.Contains(s.T(), test.cclfBeneRec, (strings.ReplaceAll(v.MBI, " ", "")))
-				}
-			} else {
-				assert.Equal(s.T(), 0, len(cclfRecords))
-			}
-		})
-	}
+	s.T().Run("Import CSV attribution that already exists", func(t *testing.T) {
+		fname := "P.PCPB.M2411.D181121.T1000000"
+		err = importer.ImportCSV(ctx, filepath.Join(bucketName, dirpath, fname))
+		assert.NotNil(s.T(), err)
+		assert.Contains(s.T(), err.Error(), "already exists")
+	})
 }
 
 func (s *CSVTestSuite) TestProcessCSV_Integration() {

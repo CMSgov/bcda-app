@@ -203,14 +203,8 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 		}
 		defer f.Close()
 
-		key := path
-		parts := strings.Split(path, "shared_files/")
-		if len(parts) > 1 {
-			key = parts[1]
-		}
-		if key[0] == '/' {
-			key = key[1:] // strip preceding slash as per AWS preferences on key names
-		}
+		key := strings.TrimPrefix(path, "shared_files/")
+		key = strings.TrimPrefix(key, "/")
 
 		_, err = manager.UploadObject(ctx, &transfermanager.UploadObjectInput{
 			Bucket: aws.String(tempBucket),
