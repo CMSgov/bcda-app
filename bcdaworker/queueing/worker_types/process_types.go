@@ -3,7 +3,7 @@ package worker_types
 import (
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir/search"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
 )
 
 const QUE_PROCESS_JOB = "ProcessJob"
