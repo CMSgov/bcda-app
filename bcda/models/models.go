@@ -86,16 +86,16 @@ type ACO struct {
 }
 
 // Denylisted returns bool based on TerminationDetails.
+// If CutoffDate is specified, the ACO is denylisted when time.Now() >= CutoffDate.
+// If CutoffDate is not specified, it falls back to checking DenylistType.
 func (aco *ACO) Denylisted() bool {
 	if aco.TerminationDetails != nil {
-		if aco.TerminationDetails.DenylistType == Involuntary || aco.TerminationDetails.DenylistType == Voluntary {
-			return true
-		} else {
-			return false
+		if !aco.TerminationDetails.CutoffDate.IsZero() {
+			return !time.Now().Before(aco.TerminationDetails.CutoffDate)
 		}
-	} else {
-		return false
+		return aco.TerminationDetails.DenylistType == Involuntary || aco.TerminationDetails.DenylistType == Voluntary
 	}
+	return false
 }
 
 type CCLFFileType int16

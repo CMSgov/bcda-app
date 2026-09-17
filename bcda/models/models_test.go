@@ -31,32 +31,23 @@ func (s *ModelsTestSuite) TestJobStatusMessage() {
 }
 
 func (s *ModelsTestSuite) TestACODenylist() {
-	denyListDate := time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local)
-	denyListValues := []Termination{
-		{
-			TerminationDate: denyListDate,
-			CutoffDate:      denyListDate,
-			DenylistType:    Involuntary,
-		},
-		{
-			TerminationDate: denyListDate,
-			CutoffDate:      denyListDate,
-			DenylistType:    Voluntary,
-		},
-		{
-			TerminationDate: denyListDate,
-			CutoffDate:      denyListDate,
-			DenylistType:    Limited,
-		},
-	}
+	pastCutoff := time.Now().Add(-24 * time.Hour)
+	futureCutoff := time.Now().Add(24 * time.Hour)
+
 	tests := []struct {
 		title          string
 		td             *Termination
 		expectedResult bool
 	}{
-		{"Details Involuntary", &denyListValues[0], true},
-		{"Details Voluntary", &denyListValues[1], true},
-		{"Details Limited", &denyListValues[2], false},
+		{"Past Cutoff Involuntary", &Termination{CutoffDate: pastCutoff, DenylistType: Involuntary}, true},
+		{"Past Cutoff Voluntary", &Termination{CutoffDate: pastCutoff, DenylistType: Voluntary}, true},
+		{"Past Cutoff Limited", &Termination{CutoffDate: pastCutoff, DenylistType: Limited}, true},
+		{"Future Cutoff Involuntary", &Termination{CutoffDate: futureCutoff, DenylistType: Involuntary}, false},
+		{"Future Cutoff Voluntary", &Termination{CutoffDate: futureCutoff, DenylistType: Voluntary}, false},
+		{"Future Cutoff Limited", &Termination{CutoffDate: futureCutoff, DenylistType: Limited}, false},
+		{"Zero Cutoff Involuntary", &Termination{DenylistType: Involuntary}, true},
+		{"Zero Cutoff Voluntary", &Termination{DenylistType: Voluntary}, true},
+		{"Zero Cutoff Limited", &Termination{DenylistType: Limited}, false},
 		{"Details Missing", &Termination{}, true},
 		{"Null", nil, false},
 	}
@@ -70,7 +61,7 @@ func (s *ModelsTestSuite) TestACODenylist() {
 				Name:               "Denylisted ACO",
 				TerminationDetails: tt.td,
 			}
-			assert.Equal(s.T(), aco.Denylisted(), tt.expectedResult)
+			assert.Equal(s.T(), tt.expectedResult, aco.Denylisted())
 		})
 	}
 }

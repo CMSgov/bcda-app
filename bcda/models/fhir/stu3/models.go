@@ -66,11 +66,12 @@ const (
 type IssueTypeCode string
 
 const (
-	IssueTypeCodeException  IssueTypeCode = "exception"
-	IssueTypeCodeNotFound   IssueTypeCode = "not-found"
-	IssueTypeCodeStructure  IssueTypeCode = "structure"
-	IssueTypeCodeProcessing IssueTypeCode = "processing"
-	IssueTypeCodeForbidden  IssueTypeCode = "forbidden"
+	IssueTypeCodeException     IssueTypeCode = "exception"
+	IssueTypeCodeNotFound      IssueTypeCode = "not-found"
+	IssueTypeCodeStructure     IssueTypeCode = "structure"
+	IssueTypeCodeProcessing    IssueTypeCode = "processing"
+	IssueTypeCodeForbidden     IssueTypeCode = "forbidden"
+	IssueTypeCodeInformational IssueTypeCode = "informational"
 )
 
 type IssueSeverityCode string

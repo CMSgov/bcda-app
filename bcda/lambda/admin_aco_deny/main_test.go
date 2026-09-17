@@ -20,7 +20,7 @@ func TestHandleACODenies(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
 
-	err = handleACODenies(ctx, mockConn, payload{testACODenies})
+	err = handleACODenies(ctx, mockConn, payload{DenyACOIDs: testACODenies})
 	assert.Nil(t, err)
 }
 
