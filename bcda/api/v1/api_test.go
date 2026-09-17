@@ -336,7 +336,7 @@ func (s *APITestSuite) TestDeleteJob() {
 		{models.JobStatusFailed, http.StatusGone},
 		{models.JobStatusExpired, http.StatusGone},
 		{models.JobStatusArchived, http.StatusGone},
-		{models.JobStatusCompleted, http.StatusGone},
+		{models.JobStatusCompleted, http.StatusAccepted},
 		{models.JobStatusCancelled, http.StatusGone},
 		{models.JobStatusFailedExpired, http.StatusGone},
 	}

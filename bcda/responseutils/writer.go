@@ -23,6 +23,11 @@ func NewFhirResponseWriter() FhirResponseWriter {
 	return FhirResponseWriter{}
 }
 
+func (r FhirResponseWriter) Success(ctx context.Context, w http.ResponseWriter, statusCode int, errType, msg string) {
+	oo := r.CreateOpOutcome(stu3.IssueSeverityInformation, stu3.IssueTypeCodeInformational, errType, msg)
+	r.WriteError(ctx, oo, w, statusCode)
+}
+
 func (r FhirResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
 	oo := r.CreateOpOutcome(stu3.IssueSeverityError, stu3.IssueTypeCodeException, errType, errMsg)
 	r.WriteError(ctx, oo, w, statusCode)

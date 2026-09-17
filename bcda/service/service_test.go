@@ -1084,7 +1084,7 @@ func (s *ServiceTestSuite) TestCancelJob_Integration() {
 		{models.JobStatusFailed, 123456, 0, nil, nil},
 		{models.JobStatusExpired, 123456, 0, nil, nil},
 		{models.JobStatusArchived, 123456, 0, nil, nil},
-		{models.JobStatusCompleted, 123456, 0, nil, nil},
+		{models.JobStatusCompleted, 123456, 123456, nil, nil},
 		{models.JobStatusCancelled, 123456, 0, nil, nil},
 		{models.JobStatusFailedExpired, 123456, 0, nil, nil},
 		{models.JobStatusInProgress, 123456, 123456, synthErr, nil}, // error occurred on GetJobByID
