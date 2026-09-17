@@ -1,4 +1,4 @@
-package typefilter
+package search
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ type StringParam struct {
 	Values   []string
 }
 
-func ParseString(subqueryParam SubqueryParam) (StringParam, error) {
+func ParseStringParam(subqueryParam TypeFilterSubqueryParam) (StringParam, error) {
 	s := StringParam{}
 	if len(subqueryParam.Name) == 0 {
 		return s, errors.New("keys must be present in typefilter parameter")

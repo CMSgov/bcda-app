@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir/typefilter"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir/search"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
@@ -28,7 +28,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    typefilter.Subquery
+	TypeFilter    search.TypeFilterSubquery
 }
 
 // requestkey is an unexported context key to avoid collisions
@@ -165,8 +165,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 }
 
 // validateTypeFilterParameter validates the contents of the typeFilter param.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (typefilter.Subquery, bool) {
-	var typeFilterParam typefilter.Subquery
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (search.TypeFilterSubquery, bool) {
+	var typeFilterParam search.TypeFilterSubquery
 	ctx := r.Context()
 
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -189,20 +189,20 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 // GetTypeFilterParams parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func GetTypeFilterParams(params []string) (typefilter.Subquery, error) {
-	var subquery typefilter.Subquery
+func GetTypeFilterParams(params []string) (search.TypeFilterSubquery, error) {
+	var subquery search.TypeFilterSubquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
 		return subquery, fmt.Errorf("failed to process request given more that one _typeFilter parameter")
 	}
 
-	subquery, err := typefilter.ParseTypeFilterSubquery(params[0])
+	subquery, err := search.ParseTypeFilterSubquery(params[0])
 	if err != nil {
 		return subquery, err
 	}
 
-	err = typefilter.ValidateSubquery(subquery)
+	err = search.ValidateTypeFilterSubquery(subquery)
 	if err != nil {
 		return subquery, err
 	}
@@ -210,7 +210,7 @@ func GetTypeFilterParams(params []string) (typefilter.Subquery, error) {
 	return subquery, nil
 }
 
-func HasSharedSystemTag(typeFilter typefilter.Subquery) bool {
+func HasSharedSystemTag(typeFilter search.TypeFilterSubquery) bool {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		if subqueryParam.Name == "_tag" {
 			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)

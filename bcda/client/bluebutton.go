@@ -19,7 +19,7 @@ import (
 	backoff "github.com/cenkalti/backoff/v4"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir/typefilter"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir/search"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -537,7 +537,7 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	}
 }
 
-func updateParamWithTypeFilter(params *url.Values, typeFilter typefilter.Subquery) {
+func updateParamWithTypeFilter(params *url.Values, typeFilter search.TypeFilterSubquery) {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		params.Add(subqueryParam.Name, subqueryParam.Value)
 	}

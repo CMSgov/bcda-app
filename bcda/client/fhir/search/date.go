@@ -1,4 +1,4 @@
-package typefilter
+package search
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ type DateParam struct {
 	Datetimes []string
 }
 
-func ParseDate(subqueryParam SubqueryParam) (DateParam, error) {
+func ParseDateParam(subqueryParam TypeFilterSubqueryParam) (DateParam, error) {
 	d := DateParam{}
 	if len(subqueryParam.Name) == 0 {
 		return d, errors.New("key must be present in date parameter")

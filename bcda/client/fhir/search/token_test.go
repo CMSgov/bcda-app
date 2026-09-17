@@ -1,4 +1,4 @@
-package typefilter
+package search
 
 import (
 	"testing"
@@ -7,51 +7,51 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseToken(t *testing.T) {
+func TestParseTokenParam(t *testing.T) {
 	tests := []struct {
 		name          string
-		subqueryParam SubqueryParam
+		subqueryParam TypeFilterSubqueryParam
 		expectedToken TokenParam
 		expectedErr   bool
 	}{
 		{
 			name:          "search for all the patients with an identifier with key = 2345 in the system http://acme.org/patient",
-			subqueryParam: SubqueryParam{Name: "identifier", Value: "http://acme.org/patient|2345"},
+			subqueryParam: TypeFilterSubqueryParam{Name: "identifier", Value: "http://acme.org/patient|2345"},
 			expectedToken: TokenParam{Name: "identifier", Modifier: "", Values: []TokenValue{{System: "http://acme.org/patient", Code: "2345"}}},
 			expectedErr:   false,
 		},
 		{
 			name:          "search for any patient with a gender that does not have the code male",
-			subqueryParam: SubqueryParam{Name: "gender:not", Value: "male"},
+			subqueryParam: TypeFilterSubqueryParam{Name: "gender:not", Value: "male"},
 			expectedToken: TokenParam{Name: "gender", Modifier: "not", Values: []TokenValue{{System: "", Code: "male"}}},
 			expectedErr:   false,
 		},
 		{
 			name:          "token with code that has no system property",
-			subqueryParam: SubqueryParam{Name: "testname", Value: "|testcode"},
+			subqueryParam: TypeFilterSubqueryParam{Name: "testname", Value: "|testcode"},
 			expectedToken: TokenParam{Name: "testname", Modifier: "", Values: []TokenValue{{System: "", Code: "testcode"}}},
 			expectedErr:   false,
 		},
 		{
 			name:          "token where any element of the system value matches system property of identifier or coding",
-			subqueryParam: SubqueryParam{Name: "testname", Value: "testsystem|"},
+			subqueryParam: TypeFilterSubqueryParam{Name: "testname", Value: "testsystem|"},
 			expectedToken: TokenParam{Name: "testname", Modifier: "", Values: []TokenValue{{System: "testsystem", Code: ""}}},
 			expectedErr:   false,
 		},
 		{
 			name:          "token with no key",
-			subqueryParam: SubqueryParam{Name: "", Value: "male"},
+			subqueryParam: TypeFilterSubqueryParam{Name: "", Value: "male"},
 			expectedErr:   true,
 		},
 		{
 			name:          "token with no value",
-			subqueryParam: SubqueryParam{Name: "testname", Value: ""},
+			subqueryParam: TypeFilterSubqueryParam{Name: "testname", Value: ""},
 			expectedErr:   true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := ParseToken(tt.subqueryParam)
+			token, err := ParseTokenParam(tt.subqueryParam)
 
 			if tt.expectedErr {
 				assert.NotNil(t, err)

@@ -24,7 +24,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir/typefilter"
+	"github.com/CMSgov/bcda-app/bcda/client/fhir/search"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
@@ -1395,7 +1395,7 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	tests := []struct {
 		name          string
 		cmsID         string
-		typeFilter    typefilter.Subquery
+		typeFilter    search.TypeFilterSubquery
 		acoConfig     *service.ACOConfig
 		shouldFail    bool
 		expectedError string
@@ -1584,7 +1584,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmsID        string
-		typeFilter   typefilter.Subquery
+		typeFilter   search.TypeFilterSubquery
 		acoConfig    *service.ACOConfig
 		expectedTags []string // Expected _tag values in the returned filter
 		description  string
@@ -1592,9 +1592,9 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "NonPACNoFilter",
 			cmsID: "NOPAC0000",
-			typeFilter: typefilter.Subquery{
+			typeFilter: search.TypeFilterSubquery{
 				ResourceType:    "",
-				QueryParameters: []typefilter.SubqueryParam{},
+				QueryParameters: []search.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithoutPAC,
 			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
@@ -1627,9 +1627,9 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "PACNoFilter",
 			cmsID: "PAC0000",
-			typeFilter: typefilter.Subquery{
+			typeFilter: search.TypeFilterSubquery{
 				ResourceType:    "",
-				QueryParameters: []typefilter.SubqueryParam{},
+				QueryParameters: []search.TypeFilterSubqueryParam{},
 			},
 			acoConfig:    acoWithPAC,
 			expectedTags: []string{constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"},
@@ -1675,13 +1675,13 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 			}
 
 			// Verify other parameters are preserved
-			var otherParams []typefilter.SubqueryParam
+			var otherParams []search.TypeFilterSubqueryParam
 			for _, subqueryParam := range result.QueryParameters {
 				if subqueryParam.Name != "_tag" {
 					otherParams = append(otherParams, subqueryParam)
 				}
 			}
-			var expectedOtherParams []typefilter.SubqueryParam
+			var expectedOtherParams []search.TypeFilterSubqueryParam
 			for _, subqueryParam := range test.typeFilter.QueryParameters {
 				if subqueryParam.Name != "_tag" {
 					expectedOtherParams = append(expectedOtherParams, subqueryParam)
@@ -1707,7 +1707,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
-	typeFilter := typefilter.Subquery{}
+	typeFilter := search.TypeFilterSubquery{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemByDefault(typeFilter)
@@ -1735,20 +1735,20 @@ func (e DatabaseError) Error() string {
 	return "error"
 }
 
-func makeTypeFilterParam(params [][]string) typefilter.Subquery {
-	var typeFilterParam typefilter.Subquery
+func makeTypeFilterParam(params [][]string) search.TypeFilterSubquery {
+	var typeFilterParam search.TypeFilterSubquery
 	if len(params) == 0 {
 		return typeFilterParam
 	}
 
-	var subQueryParams []typefilter.SubqueryParam
+	var subQueryParams []search.TypeFilterSubqueryParam
 	for _, param := range params {
-		subQueryParams = append(subQueryParams, typefilter.SubqueryParam{
+		subQueryParams = append(subQueryParams, search.TypeFilterSubqueryParam{
 			Name:  param[0],
 			Value: param[1],
 		})
 	}
-	typeFilterParam = typefilter.Subquery{
+	typeFilterParam = search.TypeFilterSubquery{
 		ResourceType:    "ExplanationOfBenefit",
 		QueryParameters: subQueryParams,
 	}
