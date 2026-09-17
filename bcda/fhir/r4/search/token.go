@@ -42,6 +42,9 @@ func ParseTokenParam(subqueryParam TypeFilterSubqueryParam) (TokenParam, error) 
 }
 
 func ValidateTag(t TokenParam) error {
+	if t.Name != string(TypeFilterParamTag) {
+		return ParameterValidationError{Details: fmt.Sprintf("invalid key for tag parameter: %s", t.Name)}
+	}
 	for _, value := range t.Values {
 		if len(value.System) == 0 || len(value.Code) == 0 {
 			return ParameterValidationError{Details: "invalid _tag parameter value. Searching by tag requires a token (system|code) to be specified"}

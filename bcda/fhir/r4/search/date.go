@@ -68,6 +68,9 @@ if len(subqueryParam.Value) >= 2 && slices.Contains(prefixes, subqueryParam.Valu
 func ValidateServiceDates(serviceDateParams []DateParam) error {
 	lowerBoundCount, upperBoundCount, equalCount := 0, 0, 0
 	for _, sd := range serviceDateParams {
+		if sd.Name != string(TypeFilterParamServiceDate) {
+			return ParameterValidationError{Details: fmt.Sprintf("invalid key for service-date parameter: %s", sd.Name)}
+		}
 		if len(sd.Datetimes) > 1 {
 			return ParameterValidationError{Details: "invalid service-date parameter value: comma-separated values are not supported"}
 		}

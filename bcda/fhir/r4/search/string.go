@@ -26,6 +26,9 @@ func ParseStringParam(subqueryParam TypeFilterSubqueryParam) (StringParam, error
 }
 
 func ValidateOutcome(s StringParam) error {
+	if s.Name != string(TypeFilterParamOutcome) {
+		return ParameterValidationError{Details: fmt.Sprintf("invalid key for outcome parameter: %s", s.Name)}
+	}
 	if len(s.Modifier) > 0 {
 		return ParameterValidationError{Details: fmt.Sprintf("invalid outcome parameter; modifier %s not supported", s.Modifier)}
 	}
