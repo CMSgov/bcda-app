@@ -842,14 +842,16 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
-	// Extract all _tag parameter values
+	// Extract all _tag parameter codes
 	var requestedTagCodes []string
-	for _, subqueryParam := range typeFilter.QueryParameters {
-		if subqueryParam.Name == "_tag" {
-			tagValue := subqueryParam.Value
-			// Extract tag code from either short format or URL format
-			tagCodes := middleware.ExtractTagCodeFromValue(tagValue)
-			requestedTagCodes = append(requestedTagCodes, tagCodes...)
+	tagParams, err := search.GetTagParams(typeFilter)
+	if err != nil {
+		return fmt.Errorf("unable to parse typefilter _tag codes: %w", err)
+	}
+
+	for _, tagParam := range tagParams {
+		for _, tagValue := range tagParam.Values {
+			requestedTagCodes = append(requestedTagCodes, tagValue.Code)
 		}
 	}
 

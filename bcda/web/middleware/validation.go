@@ -210,56 +210,16 @@ func GetTypeFilterParams(params []string) (search.TypeFilterSubquery, error) {
 	return subquery, nil
 }
 
-func HasSharedSystemTag(typeFilter search.TypeFilterSubquery) bool {
-	for _, subqueryParam := range typeFilter.QueryParameters {
-		if subqueryParam.Name == "_tag" {
-			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)
-			for _, tagSystem := range tagSystems {
-				if tagSystem == constants.BFDSystemTypeURL {
-					return true
-				}
+func HasSharedSystemTag(subquery search.TypeFilterSubquery) bool {
+	tagParams, _ := search.GetTagParams(subquery)
+	for _, tagParam := range tagParams {
+		for _, tagValue := range tagParam.Values {
+			if tagValue.System == constants.BFDSystemTypeURL {
+				return true
 			}
 		}
 	}
-
 	return false
-}
-
-// extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")
-// or a full URL format (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
-// It supports processing a comma-separated list of tags, returning a slice of all extracted codes.
-func ExtractTagCodeFromValue(tagValue string) []string {
-	var codes []string
-	tags := strings.Split(tagValue, ",")
-	for _, tag := range tags {
-		// Check if it's a URL format with pipe separator
-		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
-			codes = append(codes, tag[pipeIdx+1:])
-		} else {
-			// Otherwise, it's short format, return as-is
-			codes = append(codes, tag)
-		}
-	}
-	return codes
-}
-
-// extractTagSystemFromValue extracts tag system urls from a full URL format
-// token (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
-// It supports processing a comma-separated list of tag tokens, returning a slice of
-// all extracted systems.
-func ExtractTagSystemFromValue(tagValue string) []string {
-	var systems []string
-	tags := strings.Split(tagValue, ",")
-	for _, tag := range tags {
-		// Check if it's a URL format with pipe separator
-		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
-			systems = append(systems, tag[:pipeIdx])
-		} else {
-			// Otherwise, it's short format, return as-is
-			systems = append(systems, tag)
-		}
-	}
-	return systems
 }
 
 // ValidateRequestURL ensure that request matches certain expectations.

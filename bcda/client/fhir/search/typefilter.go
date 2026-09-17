@@ -24,6 +24,22 @@ const (
 	TypeFilterParamTag         TypeFilterParamName = "_tag"
 )
 
+type ParameterParsingError struct {
+	details string
+}
+
+func (e ParameterParsingError) Error() string {
+	return fmt.Sprintf("malformed parameter: %s", e.details)
+}
+
+type ParameterValidationError struct {
+	details string
+}
+
+func (e ParameterValidationError) Error() string {
+	return fmt.Sprintf("invalid parameter: %s", e.details)
+}
+
 func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
 	// The subquery is url-encoded. So we will first decode so we can parse it
 	decodedQuery, err := url.QueryUnescape(s)
@@ -91,18 +107,16 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 	return nil
 }
 
-type ParameterParsingError struct {
-	details string
-}
-
-func (e ParameterParsingError) Error() string {
-	return fmt.Sprintf("malformed parameter: %s", e.details)
-}
-
-type ParameterValidationError struct {
-	details string
-}
-
-func (e ParameterValidationError) Error() string {
-	return fmt.Sprintf("invalid parameter: %s", e.details)
+func GetTagParams(subquery TypeFilterSubquery) ([]TokenParam, error) {
+	tagParams := []TokenParam{}
+	for _, param := range subquery.QueryParameters {
+		if strings.HasPrefix(param.Name, string(TypeFilterParamTag)) {
+			tag, err := ParseTokenParam(param)
+			if err != nil {
+				return nil, err
+			}
+			tagParams = append(tagParams, tag)
+		}
+	}
+	return tagParams, nil
 }
