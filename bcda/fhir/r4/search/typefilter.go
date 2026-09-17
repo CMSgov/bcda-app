@@ -25,19 +25,19 @@ const (
 )
 
 type ParameterParsingError struct {
-	details string
+	Details string
 }
 
 func (e ParameterParsingError) Error() string {
-	return fmt.Sprintf("malformed parameter: %s", e.details)
+	return fmt.Sprintf("malformed parameter: %s", e.Details)
 }
 
 type ParameterValidationError struct {
-	details string
+	Details string
 }
 
 func (e ParameterValidationError) Error() string {
-	return fmt.Sprintf("invalid parameter: %s", e.details)
+	return fmt.Sprintf("invalid parameter: %s", e.Details)
 }
 
 func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
@@ -97,7 +97,7 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 				return err
 			}
 		} else {
-			return ParameterParsingError{details: fmt.Sprintf("invalid _typeFilter subquery parameter: %s", param.Name)}
+			return ParameterParsingError{Details: fmt.Sprintf("invalid _typeFilter subquery parameter: %s", param.Name)}
 		}
 	}
 	err := ValidateServiceDates(serviceDateParams)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -194,7 +193,7 @@ func GetTypeFilterParams(params []string) (search.TypeFilterSubquery, error) {
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
-		return subquery, fmt.Errorf("failed to process request given more that one _typeFilter parameter")
+		return subquery, search.ParameterValidationError{Details: "failed to process request given more that one _typeFilter parameter"}
 	}
 
 	subquery, err := search.ParseTypeFilterSubquery(params[0])
@@ -358,83 +357,6 @@ func parseHeaderValues(h http.Header, headerName string) []string {
 		}
 	}
 	return results
-}
-
-// validateSubqueryParameterList splits a comma-separated parameter value and validates each individual value
-// against the provided validation function. It returns the first error encountered, if any.
-func validateSubqueryParameterList(paramValue string, validateFunc func(string) error) error {
-	for _, val := range strings.Split(paramValue, ",") {
-		if err := validateFunc(val); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// validateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
-func validateTagSubqueryParameter(tag string) error {
-
-	if !strings.Contains(tag, "|") {
-		return fmt.Errorf("invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
-	}
-
-	// Validate that the _tag system and code are supported values
-	validTagTokens := map[string][]string{
-		constants.BFDSystemTypeURL:  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
-		constants.BFDFinalActionURL: {"FinalAction", "NotFinalAction"},
-	}
-
-	tagSystem := strings.Split(tag, "|")[0]
-	tagCode := strings.Split(tag, "|")[1]
-
-	validTagCodes, ok := validTagTokens[tagSystem]
-	if !ok || !slices.Contains(validTagCodes, tagCode) {
-		return fmt.Errorf("invalid _tag value: %s", tag)
-	}
-
-	return nil
-}
-
-// validateOutcomeSubqueryParameter ensure that outcome param is a valid value (complete or partial)
-func validateOutcomeSubqueryParameter(outcome string) error {
-	if outcome != "complete" && outcome != "partial" {
-		return fmt.Errorf("invalid outcome value: %s. Supported outcome values are 'complete' and 'partial'", outcome)
-	}
-	return nil
-}
-
-// validateServiceDateSubqueryParameter ensure that service-date param is a valid FHIR Date param
-func validateServiceDateSubqueryParameter(dateParam string) error {
-	fhirDateTime := ""
-
-	// Check for the optional 2-character prefix
-	// BFD only supports eq, ge, gt, lt, le as of 2026-08-17. See: https://cmsgov.slack.com/archives/CMT1YS2KY/p1786716165942379
-	var validPrefixes = []string{"eq", "lt", "gt", "le", "ge"} // "ne", "sa", "eb", "ap"}
-	if len(dateParam) > 2 && slices.Contains(validPrefixes, dateParam[:2]) {
-		fhirDateTime = dateParam[2:]
-	} else {
-		fhirDateTime = dateParam
-	}
-
-	var validDateTimeFormats = []string{
-		"2006",
-		"2006-01",
-		"2006-01-02",
-		"2006-01-02T15:04:05",
-		"2006-01-02T15:04:05+07:00",
-		"2006-01-02T15:04:05-07:00",
-		"2006-01-02T15:04:05Z",
-	}
-
-	// Check the FHIR dateTime against each valid format. If any check is valid, then it is good
-	for _, format := range validDateTimeFormats {
-		if _, err := time.Parse(format, fhirDateTime); err == nil {
-			return nil
-		}
-	}
-
-	// if the FHIR dateTime does not match any of the valid formats, return an error
-	return fmt.Errorf("invalid service-date value: %s. Pass a valid FHIR date parameter", dateParam)
 }
 
 func getKeys(kv map[string]struct{}) []string {

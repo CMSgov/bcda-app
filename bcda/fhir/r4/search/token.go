@@ -23,11 +23,11 @@ type TokenValue struct {
 func ParseTokenParam(subqueryParam TypeFilterSubqueryParam) (TokenParam, error) {
 	t := TokenParam{}
 	if len(subqueryParam.Name) == 0 {
-		return t, ParameterParsingError{details: "token parameter missing key"}
+		return t, ParameterParsingError{Details: "token parameter missing key"}
 	}
 	t.Name, t.Modifier, _ = strings.Cut(subqueryParam.Name, ":")
 	if len(subqueryParam.Value) == 0 {
-		return t, ParameterParsingError{details: fmt.Sprintf("token parameter missing value %s", t.Name)}
+		return t, ParameterParsingError{Details: fmt.Sprintf("token parameter missing value %s", t.Name)}
 	}
 	values := strings.SplitSeq(subqueryParam.Value, ",")
 	for value := range values {
@@ -44,7 +44,7 @@ func ParseTokenParam(subqueryParam TypeFilterSubqueryParam) (TokenParam, error) 
 func ValidateTag(t TokenParam) error {
 	for _, value := range t.Values {
 		if len(value.System) == 0 || len(value.Code) == 0 {
-			return ParameterValidationError{details: "invalid _tag parameter value. Searching by tag requires a token (system|code) to be specified"}
+			return ParameterValidationError{Details: "invalid _tag parameter value. Searching by tag requires a token (system|code) to be specified"}
 		}
 
 		validTagTokens := map[string][]string{
@@ -54,7 +54,7 @@ func ValidateTag(t TokenParam) error {
 
 		validTagCodes, ok := validTagTokens[value.System]
 		if !ok || !slices.Contains(validTagCodes, value.Code) {
-			return ParameterValidationError{details: "invalid _tag parameter. Searching by tag requires a token (system|code) to be specified"}
+			return ParameterValidationError{Details: "invalid _tag parameter. Searching by tag requires a token (system|code) to be specified"}
 		}
 	}
 	return nil

@@ -378,88 +378,6 @@ func TestInvalidRequestHeaders(t *testing.T) {
 	}
 }
 
-func TestValidateTagSubqueryParameter(t *testing.T) {
-	tests := []struct {
-		name     string
-		tagValue string
-		expected error
-	}{
-		{"codeOnly", "SharedSystem", fmt.Errorf("invalid _tag value: SharedSystem. Searching by tag requires a token (system|code) to be specified")},
-		{"invalidCode", constants.BFDSystemTypeURL + "|12345", fmt.Errorf("invalid _tag value: " + constants.BFDSystemTypeURL + "|12345")},
-		{"invalidSystem", "https://example.com/fhir/CodeSystem/12345|FinalAction", fmt.Errorf("invalid _tag value: " + "https://example.com/fhir/CodeSystem/12345|FinalAction")},
-		{"codeDoesNotMatchSystem", constants.BFDSystemTypeURL + "|NotFinalAction", fmt.Errorf("invalid _tag value: " + constants.BFDSystemTypeURL + "|NotFinalAction")},
-		{"validSystemAndCode", constants.BFDSystemTypeURL + "|NationalClaimsHistory", nil},
-		{"emptyString", "", fmt.Errorf("invalid _tag value: . Searching by tag requires a token (system|code) to be specified")},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateTagSubqueryParameter(tt.tagValue)
-			assert.Equal(t, tt.expected, err)
-		})
-	}
-}
-
-func TestValidateOutcomeSubqueryParameter(t *testing.T) {
-	tests := []struct {
-		name         string
-		outcomeValue string
-		expected     error
-	}{
-		{"validComplete", "complete", nil},
-		{"validPartial", "partial", nil},
-		{"invalidValue", "invalid", fmt.Errorf("invalid outcome value: invalid. Supported outcome values are 'complete' and 'partial'")},
-		{"emptyValue", "", fmt.Errorf("invalid outcome value: . Supported outcome values are 'complete' and 'partial'")},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateOutcomeSubqueryParameter(tt.outcomeValue)
-			assert.Equal(t, tt.expected, err)
-		})
-	}
-}
-
-func TestValidateServiceDateSubqueryParameter(t *testing.T) {
-	tests := []struct {
-		name     string
-		fhirDate string
-		expected error
-	}{
-		// Valid
-		{"yearOnly", "2024", nil},
-		{"yearMonth", "2024-01", nil},
-		{"fullDate", "2024-01-15", nil},
-		{"dateTimeNoTZ", "2024-01-15T10:30:00", nil},
-		{"dateTimeWithZ", "2024-01-15T10:30:00Z", nil},
-		{"dateTimeMinusOffset", "2024-01-15T10:30:00-05:00", nil},
-		{"dateTimePlusOffset", "2024-01-15T10:30:00+05:00", nil},
-
-		// Valid with prefix
-		{"gtFullDate", "gt2024-01-15", nil},
-		{"ltDateTime", "lt2024-01-15T10:30:00Z", nil},
-		{"eqYearOnly", "eq2024", nil},
-
-		// Invalid date
-		{"emptyString", "", fmt.Errorf("invalid service-date value: . Pass a valid FHIR date parameter")},
-		{"invalidMonth", "2024-13-01", fmt.Errorf("invalid service-date value: 2024-13-01. Pass a valid FHIR date parameter")},
-		{"invalidDay", "2024-01-32", fmt.Errorf("invalid service-date value: 2024-01-32. Pass a valid FHIR date parameter")},
-		{"badFormat", "01-15-2024", fmt.Errorf("invalid service-date value: 01-15-2024. Pass a valid FHIR date parameter")},
-		{"randomString", "randomstring", fmt.Errorf("invalid service-date value: randomstring. Pass a valid FHIR date parameter")},
-
-		// Invalid prefix
-		{"invalidPrefix", "xx2024-01-15", fmt.Errorf("invalid service-date value: xx2024-01-15. Pass a valid FHIR date parameter")},
-		{"prefixOnly", "gt", fmt.Errorf("invalid service-date value: gt. Pass a valid FHIR date parameter")},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateServiceDateSubqueryParameter(tt.fhirDate)
-			assert.Equal(t, tt.expected, err)
-		})
-	}
-}
-
 func TestValidateTypeFilterTagCodes(t *testing.T) {
 	baseV3 := constants.V3Path + "Patient/$export?"
 	ctx := context.Background()
@@ -469,7 +387,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 		name               string
 		url                string
 		shouldFail         bool
-		errMsg             string
+		expectedErr        error
 		description        string
 		expectedTypeFilter search.TypeFilterSubquery // when non-nil, we assert the parsed TypeFilter in context equals this making sure params are not dropped.
 	}{
@@ -537,7 +455,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "invalidOutcome",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Foutcome%%3Dinvalid_status", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid outcome value: invalid_status. Supported outcome values are 'complete' and 'partial'",
+			expectedErr: search.ParameterValidationError{},
 			description: "Outcome must be complete or partial",
 		},
 		{
@@ -589,21 +507,21 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "invalidTagPartiallyAdjudicated",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag parameter: _tag=PartiallyAdjudicated. Searching by tag requires a token (system|code) to be specified",
+			expectedErr: search.ParameterValidationError{},
 			description: "Old PartiallyAdjudicated tag should be rejected",
 		},
 		{
 			name:        "invalidTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag parameter: _tag=SharedSystem. Searching by tag requires a token (system|code) to be specified",
+			expectedErr: search.ParameterValidationError{},
 			description: "Only code, no system should be rejected. even with valid code",
 		},
 		{
 			name:        "invalidTagRandomValue",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DInvalidTag", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag parameter: _tag=InvalidTag. Searching by tag requires a token (system|code) to be specified",
+			expectedErr: search.ParameterValidationError{},
 			description: "Random invalid tag should be rejected",
 		},
 		{
@@ -667,7 +585,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "multipleTagsOneInvalid",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			errMsg:      "invalid _tag parameter: _tag=PartiallyAdjudicated",
+			expectedErr: search.ParameterValidationError{},
 			description: "Multiple tags with one invalid should fail",
 		},
 		{
@@ -687,7 +605,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "multipleTypeFilterSubqueries",
 			url:         fmt.Sprintf("%s_type=ExplanationOfBenefit&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction&_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  true,
-			errMsg:      "failed to process request given more that one _typeFilter parameter",
+			expectedErr: search.ParameterValidationError{},
 			description: "Multiple _typeFilter params. Bulk IG supports this but we do not",
 		},
 	}
@@ -711,7 +629,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 
 			if tt.shouldFail {
 				assert.Equal(t, http.StatusBadRequest, rr.Code, tt.description)
-				assert.Contains(t, rr.Body.String(), tt.errMsg, tt.description)
+				assert.Contains(t, rr.Body.String(), tt.expectedErr.Error(), tt.description)
 			} else {
 				assert.Equal(t, http.StatusOK, rr.Code, tt.description)
 				if tt.expectedTypeFilter.QueryParameters != nil {
