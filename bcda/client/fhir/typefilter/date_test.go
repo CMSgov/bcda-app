@@ -133,9 +133,52 @@ func TestValidateServiceDates(t *testing.T) {
 		expectedErr bool
 	}{
 		{
-			name:        "valid system and code",
-			dateParams:  []DateParam{},
+			name:        "valid service date less-than date time",
+			dateParams:  []DateParam{{Name: "service-date", Prefix: "lt", Datetimes: []string{"2024-01-15T10:30:00Z"}}},
 			expectedErr: false,
+		},
+		{
+			name: "valid upper and lower bounds",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
+				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2004"}},
+			},
+			expectedErr: false,
+		},
+		{
+			name:        "invalid multiple OR date times",
+			dateParams:  []DateParam{{Name: "service-date", Datetimes: []string{"2004", "2003"}}},
+			expectedErr: true,
+		},
+		{
+			name: "invalid multiple upper bounds",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2004"}},
+				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "invalid multiple lower bounds",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2004"}},
+				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2005"}},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "invalid multiple equals",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2004"}},
+				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2005"}},
+			},
+			expectedErr: true,
+		}, {
+			name: "invalid unsupported prefix",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "ne", Datetimes: []string{"2004"}},
+			},
+			expectedErr: true,
 		},
 	}
 	for _, tt := range tests {

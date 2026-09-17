@@ -69,5 +69,22 @@ func ParseDate(subqueryParam SubqueryParam) (DateParam, error) {
 const SERVICE_DATE = "service-date"
 
 func ValidateServiceDates(serviceDateParams []DateParam) error {
+	lowerBoundCount, upperBoundCount, equalCount := 0, 0, 0
+	for _, sd := range serviceDateParams {
+		if len(sd.Datetimes) > 1 {
+			return errors.New("invalid service date parameter value: comma-separated values are not supported")
+		}
+		switch sd.Prefix {
+		case "lt", "le":
+			upperBoundCount = upperBoundCount + 1
+		case "gt", "ge":
+			lowerBoundCount = lowerBoundCount + 1
+		case "eq":
+			equalCount = equalCount + 1
+		}
+	}
+	if lowerBoundCount > 1 || upperBoundCount > 1 || equalCount > 1 {
+		return errors.New("invalid service date parameter value: conflicting prefix conditions")
+	}
 	return nil
 }
