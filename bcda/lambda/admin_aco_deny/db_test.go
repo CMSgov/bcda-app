@@ -22,6 +22,18 @@ func (mt mockTermination) Match(v any) bool {
 	return ok
 }
 
+type mockTerminationWithCutoff struct {
+	expectedCutoff time.Time
+}
+
+func (m mockTerminationWithCutoff) Match(v any) bool {
+	td, ok := v.(*models.Termination)
+	if !ok {
+		return false
+	}
+	return td.CutoffDate.Equal(m.expectedCutoff) && td.TerminationDate.Equal(m.expectedCutoff)
+}
+
 var testACODenies = []string{"test001", "test002", "test005"}
 
 func TestDenyACOsSuccess(t *testing.T) {
@@ -34,7 +46,55 @@ func TestDenyACOsSuccess(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
 
-	err = denyACOs(ctx, mock, payload{testACODenies})
+	err = denyACOs(ctx, mock, payload{DenyACOIDs: testACODenies})
+	assert.Nil(t, err)
+}
+
+func TestDenyACOsWithCustomCutoffDate(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	futureCutoff := time.Now().Add(30 * 24 * time.Hour).Truncate(time.Second)
+	mock.ExpectExec("^UPDATE acos SET termination_details = (.+)").
+		WithArgs(mockTerminationWithCutoff{expectedCutoff: futureCutoff}, testACODenies).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
+
+	err = denyACOs(ctx, mock, payload{DenyACOIDs: testACODenies, CutoffDate: &futureCutoff})
+	assert.Nil(t, err)
+}
+
+type mockTerminationWithDates struct {
+	expectedCutoff      time.Time
+	expectedTermination time.Time
+}
+
+func (m mockTerminationWithDates) Match(v any) bool {
+	td, ok := v.(*models.Termination)
+	if !ok {
+		return false
+	}
+	return td.CutoffDate.Equal(m.expectedCutoff) && td.TerminationDate.Equal(m.expectedTermination)
+}
+
+func TestDenyACOsWithCustomTerminationDate(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	termDate := time.Now().Add(10 * 24 * time.Hour).Truncate(time.Second)
+	cutoffDate := time.Now().Add(30 * 24 * time.Hour).Truncate(time.Second)
+	mock.ExpectExec("^UPDATE acos SET termination_details = (.+)").
+		WithArgs(mockTerminationWithDates{expectedCutoff: cutoffDate, expectedTermination: termDate}, testACODenies).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
+
+	err = denyACOs(ctx, mock, payload{
+		DenyACOIDs:      testACODenies,
+		CutoffDate:      &cutoffDate,
+		TerminationDate: &termDate,
+	})
 	assert.Nil(t, err)
 }
 
@@ -48,8 +108,80 @@ func TestDenyACOsQueryFailure(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnError(errors.New("test error"))
 
-	err = denyACOs(ctx, mock, payload{testACODenies})
+	err = denyACOs(ctx, mock, payload{DenyACOIDs: testACODenies})
 	assert.ErrorContains(t, err, "test error")
+}
+
+func TestDenyACOsNoACOIDs(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	err = denyACOs(ctx, mock, payload{DenyACOIDs: []string{}})
+	assert.EqualError(t, err, "no ACO IDs provided to deny")
+}
+
+type mockTerminationWithPastTermDate struct {
+	expectedTermination time.Time
+}
+
+func (m mockTerminationWithPastTermDate) Match(v any) bool {
+	td, ok := v.(*models.Termination)
+	if !ok {
+		return false
+	}
+	return td.TerminationDate.Equal(m.expectedTermination) && td.CutoffDate.After(m.expectedTermination)
+}
+
+func TestDenyACOsTerminationDateAfterCutoffDate(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	cutoffDate := time.Now()
+	termDate := cutoffDate.Add(24 * time.Hour)
+
+	err = denyACOs(ctx, mock, payload{
+		DenyACOIDs:      testACODenies,
+		CutoffDate:      &cutoffDate,
+		TerminationDate: &termDate,
+	})
+	assert.EqualError(t, err, "termination_date cannot be after cutoff_date (a cutoff_date is required if termination_date is in the future)")
+}
+
+func TestDenyACOsFutureTerminationDateWithoutCutoffDate(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	futureTermDate := time.Now().Add(24 * time.Hour)
+
+	err = denyACOs(ctx, mock, payload{
+		DenyACOIDs:      testACODenies,
+		TerminationDate: &futureTermDate,
+	})
+	assert.EqualError(t, err, "termination_date cannot be after cutoff_date (a cutoff_date is required if termination_date is in the future)")
+}
+
+func TestDenyACOsPastTerminationDateWithoutCutoffDate(t *testing.T) {
+	ctx := context.Background()
+	mock, err := pgxmock.NewConn()
+	assert.Nil(t, err)
+	defer mock.Close(ctx)
+
+	pastTermDate := time.Now().Add(-24 * time.Hour).Truncate(time.Second)
+	mock.ExpectExec("^UPDATE acos SET termination_details = (.+)").
+		WithArgs(mockTerminationWithPastTermDate{expectedTermination: pastTermDate}, testACODenies).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
+
+	err = denyACOs(ctx, mock, payload{
+		DenyACOIDs:      testACODenies,
+		TerminationDate: &pastTermDate,
+	})
+	assert.Nil(t, err)
 }
 
 func TestDenyACOs_Integration(t *testing.T) {
@@ -74,7 +206,7 @@ func TestDenyACOs_Integration(t *testing.T) {
 	err = tx.QueryRow(ctx, `INSERT INTO acos (cms_id, uuid, name) VALUES('test005', $1, 'ACO5') RETURNING id;`, uuid.New()).Scan(&ACO5)
 	assert.Nil(t, err)
 
-	err = denyACOs(ctx, tx, payload{testACODenies})
+	err = denyACOs(ctx, tx, payload{DenyACOIDs: testACODenies})
 	assert.Nil(t, err)
 
 	rows, err := tx.Query(ctx, `SELECT id, cms_id, termination_details FROM acos WHERE id IN($1, $2, $3, $4, $5);`, ACO1, ACO2, ACO3, ACO4, ACO5)
