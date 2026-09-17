@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strconv"
 
-	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	models "github.com/CMSgov/bcda-app/bcda/fhir"
 )
 
 type Client interface {

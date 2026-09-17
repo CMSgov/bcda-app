@@ -16,9 +16,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
+	fhirmodels "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"

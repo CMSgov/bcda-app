@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"

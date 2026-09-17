@@ -21,7 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/client/fhir/search"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"

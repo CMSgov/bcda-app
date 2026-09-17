@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 
 	"github.com/stretchr/testify/mock"

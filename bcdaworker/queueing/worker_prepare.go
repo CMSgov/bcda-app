@@ -18,8 +18,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	fhirModels "github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"

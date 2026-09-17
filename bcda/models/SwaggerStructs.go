@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
+	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 )
 
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process
