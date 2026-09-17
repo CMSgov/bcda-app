@@ -28,7 +28,7 @@ func ParseDateParam(subqueryParam TypeFilterSubqueryParam) (DateParam, error) {
 	// BFD only supports eq, ge, gt, lt, le as of 2026-08-17. See: https://cmsgov.slack.com/archives/CMT1YS2KY/p1786716165942379
 	var prefixes = []string{"eq", "lt", "gt", "le", "ge"} // "ne", "sa", "eb", "ap"}
 	afterPrefix := ""
-	if slices.Contains(prefixes, subqueryParam.Value[:2]) {
+if len(subqueryParam.Value) >= 2 && slices.Contains(prefixes, subqueryParam.Value[:2]) {
 		d.Prefix = subqueryParam.Value[:2]
 		afterPrefix = subqueryParam.Value[2:]
 	} else {
