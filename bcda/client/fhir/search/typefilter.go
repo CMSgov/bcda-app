@@ -16,6 +16,14 @@ type TypeFilterSubqueryParam struct {
 	Value string
 }
 
+type TypeFilterParamName string
+
+const (
+	TypeFilterParamOutcome     TypeFilterParamName = "outcome"
+	TypeFilterParamServiceDate TypeFilterParamName = "service-date"
+	TypeFilterParamTag         TypeFilterParamName = "_tag"
+)
+
 func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
 	// The subquery is url-encoded. So we will first decode so we can parse it
 	decodedQuery, err := url.QueryUnescape(s)
@@ -48,8 +56,7 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 
 	var serviceDateParams []DateParam
 	for _, param := range subquery.QueryParameters {
-		switch param.Name {
-		case TAG:
+		if strings.HasPrefix(param.Name, string(TypeFilterParamTag)) {
 			tag, err := ParseTokenParam(param)
 			if err != nil {
 				return err
@@ -58,13 +65,13 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 			if err != nil {
 				return err
 			}
-		case SERVICE_DATE:
+		} else if strings.HasPrefix(param.Name, string(TypeFilterParamServiceDate)) {
 			date, err := ParseDateParam(param)
 			if err != nil {
 				return err
 			}
 			serviceDateParams = append(serviceDateParams, date)
-		case OUTCOME:
+		} else if strings.HasPrefix(param.Name, string(TypeFilterParamOutcome)) {
 			outcome, err := ParseStringParam(param)
 			if err != nil {
 				return err
@@ -73,8 +80,8 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 			if err != nil {
 				return err
 			}
-		default:
-			return fmt.Errorf("invalid _typeFilter subquery parameter: %s", param.Name)
+		} else {
+			return ParameterParsingError{details: fmt.Sprintf("invalid _typeFilter subquery parameter: %s", param.Name)}
 		}
 	}
 	err := ValidateServiceDates(serviceDateParams)
@@ -82,4 +89,20 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 		return err
 	}
 	return nil
+}
+
+type ParameterParsingError struct {
+	details string
+}
+
+func (e ParameterParsingError) Error() string {
+	return fmt.Sprintf("malformed parameter: %s", e.details)
+}
+
+type ParameterValidationError struct {
+	details string
+}
+
+func (e ParameterValidationError) Error() string {
+	return fmt.Sprintf("invalid parameter: %s", e.details)
 }

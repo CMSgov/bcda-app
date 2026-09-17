@@ -43,8 +43,6 @@ func ParseTokenParam(subqueryParam TypeFilterSubqueryParam) (TokenParam, error) 
 	return t, nil
 }
 
-const TAG = "_tag"
-
 func ValidateTag(t TokenParam) error {
 	for _, value := range t.Values {
 		if len(value.System) == 0 || len(value.Code) == 0 {

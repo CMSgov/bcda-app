@@ -26,8 +26,6 @@ func ParseStringParam(subqueryParam TypeFilterSubqueryParam) (StringParam, error
 	return s, nil
 }
 
-const OUTCOME = "outcome"
-
 func ValidateOutcome(s StringParam) error {
 	if len(s.Modifier) > 0 {
 		return fmt.Errorf("invalid outcome parameter; modifier %s not supported", s.Modifier)

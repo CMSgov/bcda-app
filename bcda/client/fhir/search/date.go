@@ -66,8 +66,6 @@ func ParseDateParam(subqueryParam TypeFilterSubqueryParam) (DateParam, error) {
 	return d, nil
 }
 
-const SERVICE_DATE = "service-date"
-
 func ValidateServiceDates(serviceDateParams []DateParam) error {
 	lowerBoundCount, upperBoundCount, equalCount := 0, 0, 0
 	for _, sd := range serviceDateParams {
