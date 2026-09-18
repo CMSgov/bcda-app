@@ -174,6 +174,14 @@ func TestValidateServiceDates(t *testing.T) {
 			},
 			expectedErr: ParameterValidationError{},
 		},
+		{
+			name: "invalid multiple equals (with blank)",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2004"}},
+				{Name: "service-date", Prefix: "", Datetimes: []string{"2005"}},
+			},
+			expectedErr: ParameterValidationError{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

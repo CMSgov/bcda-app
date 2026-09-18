@@ -81,7 +81,7 @@ func ValidateServiceDates(serviceDateParams []DateParam) error {
 			upperBoundCount = upperBoundCount + 1
 		case "gt", "ge":
 			lowerBoundCount = lowerBoundCount + 1
-		case "eq":
+		case "eq", "":
 			equalCount = equalCount + 1
 		}
 	}
