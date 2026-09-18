@@ -18,7 +18,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -196,7 +196,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
 func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
 	var (
-		b   *fhirModels.Bundle
+		b   *fhir.Bundle
 		err error
 	)
 

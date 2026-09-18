@@ -29,7 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
-	fhirmodels "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -1033,7 +1033,7 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON() {
 	defer f.Close()
 	w := bufio.NewWriter(f)
 	defer w.Flush()
-	entries := []fhirmodels.BundleEntry{
+	entries := []fhir.BundleEntry{
 		{
 			"resource": map[string]string{"test": "entry"},
 		}, {
@@ -1042,7 +1042,7 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON() {
 			"invalid": "entry",
 		},
 	}
-	b := fhirmodels.Bundle{Entries: entries}
+	b := fhir.Bundle{Entries: entries}
 	beneID := "MBITEST"
 	acoID := "A9994"
 
@@ -1064,12 +1064,12 @@ func (s *WorkerTestSuite) TestFhirBundleToResourceNDJSON_NoEntries() {
 	defer f.Close()
 	w := bufio.NewWriter(f)
 	defer w.Flush()
-	entries := []fhirmodels.BundleEntry{
+	entries := []fhir.BundleEntry{
 		{
 			"invalid": "entry",
 		},
 	}
-	b := fhirmodels.Bundle{Entries: entries}
+	b := fhir.Bundle{Entries: entries}
 	beneID := "MBITEST"
 	acoID := "A9994"
 

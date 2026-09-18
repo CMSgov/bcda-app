@@ -18,9 +18,9 @@ import (
 	"github.com/ccoveille/go-safecast"
 	backoff "github.com/cenkalti/backoff/v4"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
+	fhirClient "github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -68,16 +68,16 @@ type ClaimsWindow struct {
 }
 
 type APIClient interface {
-	GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
-	GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error)
-	GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error)
+	GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhir.Bundle, error)
+	GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhir.Bundle, error)
+	GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhir.Bundle, error)
 	GetPatientByMbi(jobData worker_types.JobEnqueueArgs, mbi string) (string, error)
-	GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
-	GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error)
+	GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error)
 }
 
 type BlueButtonClient struct {
-	client fhir.Client
+	client fhirClient.Client
 
 	maxTries      uint64
 	retryInterval time.Duration
@@ -136,7 +136,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 
 	hl := &httpLogger{transport, logger}
 	httpClient := &http.Client{Transport: hl, Timeout: time.Duration(timeout) * time.Millisecond}
-	client := fhir.NewClient(httpClient, pageSize)
+	client := fhirClient.NewClient(httpClient, pageSize)
 	maxTries, err := safecast.ToUint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	if err != nil {
 		logger.Warn(errors.Wrap(err, "Could not convert Blue Button max retries from environment variable"))
@@ -152,7 +152,7 @@ func SetLogger(log logrus.FieldLogger) {
 	logger = log
 }
 
-func (bbc *BlueButtonClient) GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhir.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeAddressFields", "true")
 	params := GetDefaultParams()
@@ -180,7 +180,7 @@ func (bbc *BlueButtonClient) GetPatientByMbi(jobData worker_types.JobEnqueueArgs
 	return bbc.getRawData("POST", jobData, u, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhir.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
@@ -193,7 +193,7 @@ func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, be
 	return bbc.makeBundleDataRequest("GET", u, jobData, nil, nil)
 }
 
-func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	updateParamsWithClaimsDefaults(&params, mbi)
@@ -208,7 +208,7 @@ func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi s
 	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	updateParamsWithClaimsDefaults(&params, mbi)
@@ -223,7 +223,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArg
 	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhir.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
@@ -258,8 +258,8 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	return bbc.getRawData("GET", jobData, u, nil, nil)
 }
 
-func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
-	var b *fhirModels.Bundle
+func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhir.Bundle, error) {
+	var b *fhir.Bundle
 	for ok := true; ok; {
 		result, nextURL, err := bbc.tryBundleRequest(method, u, jobData, headers, body)
 		if err != nil {
@@ -279,9 +279,9 @@ func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jo
 	return b, nil
 }
 
-func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, *url.URL, error) {
+func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhir.Bundle, *url.URL, error) {
 	var (
-		result  *fhirModels.Bundle
+		result  *fhir.Bundle
 		nextURL *url.URL
 		err     error
 	)
