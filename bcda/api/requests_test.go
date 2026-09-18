@@ -591,7 +591,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				assert.NoError(s.T(), err)
 
 				count := 0
-				for _, fileStatus := range resp.Data {
+				for _, fileStatus := range resp.IngestionDates {
 					if tt.fileNames[count] != "" {
 						assert.Equal(s.T(), tt.fileTypes[count], fileStatus.Type)
 						count += 1

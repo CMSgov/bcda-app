@@ -458,7 +458,7 @@ type AttributionFileStatus struct {
 }
 
 type AttributionFileStatusResponse struct {
-	Data []AttributionFileStatus `json:"ingestion_dates"`
+	IngestionDates []AttributionFileStatus `json:"ingestion_dates"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
@@ -493,7 +493,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if asd != nil {
-		resp.Data = append(resp.Data, *asd)
+		resp.IngestionDates = append(resp.IngestionDates, *asd)
 	}
 
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
@@ -508,10 +508,10 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if asr != nil {
-		resp.Data = append(resp.Data, *asr)
+		resp.IngestionDates = append(resp.IngestionDates, *asr)
 	}
 
-	if resp.Data == nil {
+	if resp.IngestionDates == nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
 			fmt.Sprintf("%s: Could not find any CCLF8 file", responseutils.NotFoundErr),
