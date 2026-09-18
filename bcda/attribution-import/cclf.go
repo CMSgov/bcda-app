@@ -315,7 +315,6 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 		}
 
 		zipReader, zipCloser, err := importer.openZipArchive(ctx, filepath.Join(bucket, *obj.Key))
-
 		if err != nil {
 			failed++
 			importer.logger.Errorf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)

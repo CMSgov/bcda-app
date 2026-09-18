@@ -5,11 +5,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
+	"io"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -55,37 +54,36 @@ func OpenFileAsScanner(ctx context.Context, client CustomS3Client, filePath stri
 func OpenFileAsBytes(ctx context.Context, client CustomS3Client, filePath string) ([]byte, error) {
 	bucket, file := ParseS3Uri(filePath)
 
-	input := &s3.HeadObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(file),
-	}
-
-	output, err := client.HeadObject(ctx, input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get head object for %s, err: %w", filePath, err)
-	}
-	if output == nil || output.ContentLength == nil || *output.ContentLength <= 0 {
-		return []byte{}, fmt.Errorf("file %s is empty", filePath)
-	}
-
-	buff := make([]byte, int(*output.ContentLength))
-	w := manager.NewWriteAtBuffer(buff)
-
-	downloader := manager.NewDownloader(client)
-	_, err = downloader.Download(ctx, w, &s3.GetObjectInput{
+	manager := transfermanager.New(client)
+	output, err := manager.GetObject(ctx, &transfermanager.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(file),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to download file %s, err: %w", filePath, err)
 	}
+	defer func() {
+		if closer, ok := output.Body.(io.Closer); ok {
+			err := closer.Close()
+			if err != nil {
+				fmt.Printf("failed to close S3 object body: %v\n", err)
+			}
+		}
+	}()
 
-	return w.Bytes(), nil
+	bytes, err := io.ReadAll(output.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s, err: %w", filePath, err)
+	}
+	if len(bytes) == 0 {
+		return nil, fmt.Errorf("file %s is empty", filePath)
+	}
+
+	return bytes, nil
 }
 
 func Delete(ctx context.Context, client CustomS3Client, filePath string) error {
 	bucket, path := ParseS3Uri(filePath)
-	timeoutDuration := time.Duration(utils.GetEnvInt("S3_DELETE_TIMEOUT", 60)) * time.Second
 
 	_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
@@ -93,18 +91,6 @@ func Delete(ctx context.Context, client CustomS3Client, filePath string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("file %s failed to clean up properly, error occurred while deleting object: %w", filePath, err)
-	} else {
-		err = s3.NewObjectNotExistsWaiter(client).Wait(
-			ctx,
-			&s3.HeadObjectInput{
-				Bucket: aws.String(bucket),
-				Key:    aws.String(path),
-			},
-			timeoutDuration,
-		)
-		if err != nil {
-			return fmt.Errorf("file %s failed to clean up properly, error occurred while waiting for object deletion: %w", filePath, err)
-		}
 	}
 
 	return nil
