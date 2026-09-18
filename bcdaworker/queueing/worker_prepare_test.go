@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"
@@ -163,9 +163,9 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 			}
 
 			if tt.bfdErr {
-				c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, errors.New("an error occurred"))
+				c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, errors.New("an error occurred"))
 			} else {
-				c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+				c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
 			}
 
 			exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
@@ -188,7 +188,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	svc := service.NewService(s.r, cfg, "/v1/fhir")
 
 	c := new(client.MockBlueButtonClient)
-	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+	c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
 
 	aco, err := s.r.GetACOByCMSID(context.Background(), "A0002")
 	if err != nil {
@@ -236,7 +236,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 
 func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork() {
 	c := new(client.MockBlueButtonClient)
-	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+	c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
 
 	r := &models.MockRepository{}
 	r.On("UpdateJob", mock.Anything, mock.Anything).Return(nil)
@@ -300,7 +300,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	svc := service.NewService(s.r, cfg, "/v3/fhir")
 
 	c := new(client.MockBlueButtonClient)
-	c.On("GetPatient", mock.Anything, "0").Return(&fhirModels.Bundle{}, nil)
+	c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
 
 	aco, err := s.r.GetACOByCMSID(context.Background(), "A0003")
 	if err != nil {
@@ -374,8 +374,8 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 	epochTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	txTime := time.Date(2026, 9, 1, 15, 0, 0, 0, time.UTC)
 
-	bundleWithTime := func(t time.Time) *fhirModels.Bundle {
-		var b fhirModels.Bundle
+	bundleWithTime := func(t time.Time) *fhir.Bundle {
+		var b fhir.Bundle
 		b.Meta.LastUpdated = t
 		return &b
 	}
@@ -383,7 +383,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 	tests := []struct {
 		name         string
 		basepath     string
-		bundle       *fhirModels.Bundle
+		bundle       *fhir.Bundle
 		clientErr    error
 		hasErr       bool
 		expectedErr  string
@@ -496,7 +496,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			svc := &service.MockService{}
 			c := new(client.MockBlueButtonClient)
 			if tt.clientErr != nil {
-				c.On("GetPatient", mock.Anything, "0").Return((*fhirModels.Bundle)(nil), tt.clientErr)
+				c.On("GetPatient", mock.Anything, "0").Return((*fhir.Bundle)(nil), tt.clientErr)
 			} else if tt.basepath != "/unknown/path" {
 				c.On("GetPatient", mock.Anything, "0").Return(tt.bundle, nil)
 			}

@@ -18,9 +18,10 @@ import (
 	"github.com/ccoveille/go-safecast"
 	backoff "github.com/cenkalti/backoff/v4"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
+	fhirClient "github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -67,16 +68,16 @@ type ClaimsWindow struct {
 }
 
 type APIClient interface {
-	GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
-	GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error)
-	GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error)
+	GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhir.Bundle, error)
+	GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhir.Bundle, error)
+	GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhir.Bundle, error)
 	GetPatientByMbi(jobData worker_types.JobEnqueueArgs, mbi string) (string, error)
-	GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
-	GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error)
+	GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error)
+	GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error)
 }
 
 type BlueButtonClient struct {
-	client fhir.Client
+	client fhirClient.Client
 
 	maxTries      uint64
 	retryInterval time.Duration
@@ -135,7 +136,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 
 	hl := &httpLogger{transport, logger}
 	httpClient := &http.Client{Transport: hl, Timeout: time.Duration(timeout) * time.Millisecond}
-	client := fhir.NewClient(httpClient, pageSize)
+	client := fhirClient.NewClient(httpClient, pageSize)
 	maxTries, err := safecast.ToUint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	if err != nil {
 		logger.Warn(errors.Wrap(err, "Could not convert Blue Button max retries from environment variable"))
@@ -151,7 +152,7 @@ func SetLogger(log logrus.FieldLogger) {
 	logger = log
 }
 
-func (bbc *BlueButtonClient) GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetPatient(jobData worker_types.JobEnqueueArgs, patientID string) (*fhir.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeAddressFields", "true")
 	params := GetDefaultParams()
@@ -179,7 +180,7 @@ func (bbc *BlueButtonClient) GetPatientByMbi(jobData worker_types.JobEnqueueArgs
 	return bbc.getRawData("POST", jobData, u, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, beneficiaryID string) (*fhir.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	updateParamWithLastUpdated(&params, jobData.Since, jobData.TransactionTime)
@@ -192,7 +193,7 @@ func (bbc *BlueButtonClient) GetCoverage(jobData worker_types.JobEnqueueArgs, be
 	return bbc.makeBundleDataRequest("GET", u, jobData, nil, nil)
 }
 
-func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	updateParamsWithClaimsDefaults(&params, mbi)
@@ -207,7 +208,7 @@ func (bbc *BlueButtonClient) GetClaim(jobData worker_types.JobEnqueueArgs, mbi s
 	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArgs, mbi string, claimsWindow ClaimsWindow) (*fhir.Bundle, error) {
 	headers := createURLEncodedHeader()
 	params := GetDefaultParams()
 	updateParamsWithClaimsDefaults(&params, mbi)
@@ -222,7 +223,7 @@ func (bbc *BlueButtonClient) GetClaimResponse(jobData worker_types.JobEnqueueArg
 	return bbc.makeBundleDataRequest("POST", u, jobData, headers, strings.NewReader(params.Encode()))
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhirModels.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(jobData worker_types.JobEnqueueArgs, patientID string, claimsWindow ClaimsWindow) (*fhir.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
@@ -257,8 +258,8 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	return bbc.getRawData("GET", jobData, u, nil, nil)
 }
 
-func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, error) {
-	var b *fhirModels.Bundle
+func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhir.Bundle, error) {
+	var b *fhir.Bundle
 	for ok := true; ok; {
 		result, nextURL, err := bbc.tryBundleRequest(method, u, jobData, headers, body)
 		if err != nil {
@@ -278,9 +279,9 @@ func (bbc *BlueButtonClient) makeBundleDataRequest(method string, u *url.URL, jo
 	return b, nil
 }
 
-func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhirModels.Bundle, *url.URL, error) {
+func (bbc *BlueButtonClient) tryBundleRequest(method string, u *url.URL, jobData worker_types.JobEnqueueArgs, headers http.Header, body io.Reader) (*fhir.Bundle, *url.URL, error) {
 	var (
-		result  *fhirModels.Bundle
+		result  *fhir.Bundle
 		nextURL *url.URL
 		err     error
 	)
@@ -422,9 +423,9 @@ type serviceDateVal struct {
 }
 
 // setRestrictiveServiceDateWindow sets the most restrictive window of time from which to pull data from BFD via service-date params.
-// BFD only allows for one earliest boundry and one latest boundry.
+// BFD only allows for one earliest boundary and one latest boundary.
 // We need to do some comparisons to make sure we apply the most restrictive option for each.
-// eg "gt2025" is a more restrictive earliest boundry than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
+// eg "gt2025" is a more restrictive earliest boundary than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
 // known edge cases that are currently not accounted for (low risk, low priority, time constraints):
 // - we dont allow for hours, mins, secs, tz, etc
 func setRestrictiveServiceDateWindow(params *url.Values) {
@@ -436,15 +437,27 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 	var earliestDates, latestDates []serviceDateVal
 	for _, date := range serviceDates {
 		if strings.HasPrefix(date, "ge") || strings.HasPrefix(date, "gt") {
-			earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+			parsed, err := search.ParseDateString(date[2:])
+			if err == nil {
+				earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parsed})
+			}
 		} else if strings.HasPrefix(date, "le") || strings.HasPrefix(date, "lt") {
-			latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+			parsed, err := search.ParseDateString(date[2:])
+			if err == nil {
+				latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parsed})
+			}
 		} else if strings.HasPrefix(date, "eq") {
-			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date[2:])})
-			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
+			parsed, err := search.ParseDateString(date[2:])
+			if err == nil {
+				earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parsed})
+				latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
+			}
 		} else if strings.HasPrefix(date, "20") {
-			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date)})
-			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
+			parsed, err := search.ParseDateString(date)
+			if err == nil {
+				earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parsed})
+				latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
+			}
 		}
 	}
 
@@ -492,21 +505,6 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 	}
 }
 
-func parseDate(date string) time.Time {
-	formats := []string{
-		"2006-01-02",
-		"2006-01",
-		"2006",
-	}
-	for _, format := range formats {
-		if parsedDate, err := time.Parse(format, date); err == nil {
-			return parsedDate
-		}
-	}
-
-	return time.Time{}
-}
-
 func parseLatestDateFromEqualPrefix(date string) time.Time {
 	parsedDate, err := time.Parse("2006-01-02", date)
 	if err == nil {
@@ -523,6 +521,12 @@ func parseLatestDateFromEqualPrefix(date string) time.Time {
 		return parsedDate.AddDate(1, 0, 0)
 	}
 
+	// if an "interval" date format is not specified, default to standard parsing
+	parsedDate, err = search.ParseDateString(date)
+	if err == nil {
+		return parsedDate
+	}
+
 	return time.Time{}
 }
 
@@ -536,7 +540,7 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	}
 }
 
-func updateParamWithTypeFilter(params *url.Values, typeFilter fhir.TypeFilterParameter) {
+func updateParamWithTypeFilter(params *url.Values, typeFilter search.TypeFilterSubquery) {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		params.Add(subqueryParam.Name, subqueryParam.Value)
 	}

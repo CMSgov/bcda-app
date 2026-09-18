@@ -16,9 +16,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -245,38 +245,38 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	logger := log.GetCtxLogger(ctx)
 
-	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
+	var bundleFunc func(bene models.CCLFBeneficiary) (*fhir.Bundle, error)
 	// NOTE: Currently all Coverage/EOB/Patient requests are for adjudicated data and
 	// Claim/ClaimResponse are partially-adjudicated, future work may require checking what
 	// kind of backing data to pull from if there is overlap (one or more FHIR resource
 	// used for representing both adjudicated and partially-adjudicated data)
 	switch jobArgs.ResourceType {
 	case "Coverage":
-		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			return bb.GetCoverage(jobArgs, bene.BlueButtonID)
 		}
 	case "ExplanationOfBenefit":
-		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
 			return bb.GetExplanationOfBenefit(jobArgs, bene.BlueButtonID, cw)
 		}
 	case "Patient":
-		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			return bb.GetPatient(jobArgs, bene.BlueButtonID)
 		}
 		//NOTE: The assumption is Claim/ClaimResponse is always partially-adjudicated, future work may require checking what
 		//kind of backing data to pull from
 	case "Claim":
-		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
 			return bb.GetClaim(jobArgs, bene.MBI, cw)
 		}
 	case "ClaimResponse":
-		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
@@ -459,7 +459,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	}
 }
 
-func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string) (hadData bool) {
+func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhir.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, tmpDir string) (hadData bool) {
 	defer w.Flush()
 	logger := log.GetCtxLogger(ctx)
 	hasAtLeastOneEntry := false
