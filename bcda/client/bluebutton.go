@@ -423,9 +423,9 @@ type serviceDateVal struct {
 }
 
 // setRestrictiveServiceDateWindow sets the most restrictive window of time from which to pull data from BFD via service-date params.
-// BFD only allows for one earliest boundry and one latest boundry.
+// BFD only allows for one earliest boundary and one latest boundary.
 // We need to do some comparisons to make sure we apply the most restrictive option for each.
-// eg "gt2025" is a more restrictive earliest boundry than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
+// eg "gt2025" is a more restrictive earliest boundary than "gt2024" as that will only get us data starting from 2025 and not all the way back to 2024.
 // known edge cases that are currently not accounted for (low risk, low priority, time constraints):
 // - we dont allow for hours, mins, secs, tz, etc
 func setRestrictiveServiceDateWindow(params *url.Values) {
@@ -437,15 +437,27 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 	var earliestDates, latestDates []serviceDateVal
 	for _, date := range serviceDates {
 		if strings.HasPrefix(date, "ge") || strings.HasPrefix(date, "gt") {
-			earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+			parsed, err := search.ParseDateString(date[2:])
+			if err == nil {
+				earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parsed})
+			}
 		} else if strings.HasPrefix(date, "le") || strings.HasPrefix(date, "lt") {
-			latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parseDate(date[2:])})
+			parsed, err := search.ParseDateString(date[2:])
+			if err == nil {
+				latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parsed})
+			}
 		} else if strings.HasPrefix(date, "eq") {
-			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date[2:])})
-			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
+			parsed, err := search.ParseDateString(date[2:])
+			if err == nil {
+				earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parsed})
+				latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
+			}
 		} else if strings.HasPrefix(date, "20") {
-			earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parseDate(date)})
-			latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
+			parsed, err := search.ParseDateString(date)
+			if err == nil {
+				earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parsed})
+				latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
+			}
 		}
 	}
 
@@ -493,21 +505,6 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 	}
 }
 
-func parseDate(date string) time.Time {
-	formats := []string{
-		"2006-01-02",
-		"2006-01",
-		"2006",
-	}
-	for _, format := range formats {
-		if parsedDate, err := time.Parse(format, date); err == nil {
-			return parsedDate
-		}
-	}
-
-	return time.Time{}
-}
-
 func parseLatestDateFromEqualPrefix(date string) time.Time {
 	parsedDate, err := time.Parse("2006-01-02", date)
 	if err == nil {
@@ -522,6 +519,12 @@ func parseLatestDateFromEqualPrefix(date string) time.Time {
 	parsedDate, err = time.Parse("2006", date)
 	if err == nil {
 		return parsedDate.AddDate(1, 0, 0)
+	}
+
+	// if an "interval" date format is not specified, default to standard parsing
+	parsedDate, err = search.ParseDateString(date)
+	if err == nil {
+		return parsedDate
 	}
 
 	return time.Time{}

@@ -28,7 +28,7 @@ func ParseDateParam(subqueryParam TypeFilterSubqueryParam) (DateParam, error) {
 	// BFD only supports eq, ge, gt, lt, le as of 2026-08-17. See: https://cmsgov.slack.com/archives/CMT1YS2KY/p1786716165942379
 	var prefixes = []string{"eq", "lt", "gt", "le", "ge"} // "ne", "sa", "eb", "ap"}
 	afterPrefix := ""
-if len(subqueryParam.Value) >= 2 && slices.Contains(prefixes, subqueryParam.Value[:2]) {
+	if len(subqueryParam.Value) >= 2 && slices.Contains(prefixes, subqueryParam.Value[:2]) {
 		d.Prefix = subqueryParam.Value[:2]
 		afterPrefix = subqueryParam.Value[2:]
 	} else {
@@ -40,6 +40,16 @@ if len(subqueryParam.Value) >= 2 && slices.Contains(prefixes, subqueryParam.Valu
 		return d, ParameterParsingError{Details: fmt.Sprintf("value must include a valid FHIR date for date parameter %s", d.Name)}
 	}
 
+	for _, datetime := range d.Datetimes {
+		_, err := ParseDateString(datetime)
+		if err != nil {
+			return d, ParameterParsingError{Details: fmt.Sprintf("invalid date parameter value: %s", datetime)}
+		}
+	}
+	return d, nil
+}
+
+func ParseDateString(datetime string) (time.Time, error) {
 	var datetimeFormats = []string{
 		"2006",
 		"2006-01",
@@ -49,20 +59,12 @@ if len(subqueryParam.Value) >= 2 && slices.Contains(prefixes, subqueryParam.Valu
 		"2006-01-02T15:04:05-07:00",
 		"2006-01-02T15:04:05Z",
 	}
-
-	for _, datetime := range d.Datetimes {
-		valid := false
-		for _, format := range datetimeFormats {
-			if _, err := time.Parse(format, datetime); err == nil {
-				valid = true
-				break
-			}
-		}
-		if !valid {
-			return d, ParameterParsingError{Details: fmt.Sprintf("invalid date parameter value: %s", datetime)}
+	for _, format := range datetimeFormats {
+		if parsed, err := time.Parse(format, datetime); err == nil {
+			return parsed, nil
 		}
 	}
-	return d, nil
+	return time.Time{}, ParameterParsingError{Details: fmt.Sprintf("invalid date parameter value: %s", datetime)}
 }
 
 func ValidateServiceDates(serviceDateParams []DateParam) error {

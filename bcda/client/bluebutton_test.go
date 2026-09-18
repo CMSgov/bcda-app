@@ -1259,7 +1259,7 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01T01:01:01Z",
 			}},
-			expectedVals: []string(nil),
+			expectedVals: []string{"gt2022-01-01"},
 		},
 	}
 
