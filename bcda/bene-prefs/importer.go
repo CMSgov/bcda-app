@@ -285,7 +285,6 @@ func (importer BenePrefsImporter) cleanupBenePrefsFiles(ctx context.Context, sup
 
 		importer.Logger.Infof("Cleaning up file %s", bpFile)
 		err := bcdaaws.Delete(ctx, importer.FileClient, bpFile.FilePath)
-
 		if err != nil {
 			errCount++
 			continue

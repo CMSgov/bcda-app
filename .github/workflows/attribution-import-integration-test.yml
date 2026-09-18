@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/attribution-import-integration-test.yml
       - .github/workflows/attribution-import-deploy.yml
+      - bcda/attribution-import/**
       - bcda/lambda/attribution-import/**
       - ops/services/30-attribution-import/**
   workflow_dispatch:

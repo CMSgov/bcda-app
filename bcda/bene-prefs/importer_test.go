@@ -41,7 +41,6 @@ func (s *BenePrefsTestSuite) SetupSuite() {
 	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(&s.Suite, dir)
-	s.T().Setenv("S3_DELETE_TIMEOUT", "1")
 }
 
 func (s *BenePrefsTestSuite) SetupTest() {
@@ -359,231 +358,99 @@ func (s *BenePrefsTestSuite) TestValidate() {
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.FilePath+"'. Expected record count: 5, Actual record count: 4")
 }
 
-// func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
-// 	repo := &models.MockRepository{}
-// 	client := &bcdaaws.ConfigurableMockS3Client{}
-// 	// client := &bcdaaws.ConfigurableMockS3Client{
-// 	// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-// 	// 		return &s3.HeadObjectOutput{
-// 	// 			ContentLength: aws.Int64(int64(len(content))),
-// 	// 		}, nil
-// 	// 	},
-// 	// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-// 	// 		return &s3.GetObjectOutput{
-// 	// 			Body:          io.NopCloser(strings.NewReader(string(content))),
-// 	// 			ContentLength: aws.Int64(int64(len(content))),
-// 	// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-// 	// 		}, nil
-// 	// 	},
-// 	// }
-// 	importer := s.createImporter(repo, client)
+func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles() {
+	assert := assert.New(s.T())
+	repo := &models.MockRepository{}
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
+	importer := s.createImporter(repo, client)
 
-// 	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-// 	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, filePath)
-// 	assert.Nil(err)
-// 	assert.Equal(2, len(*suppresslist))
-// 	assert.Equal(0, skipped)
+	filePath := filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), filePath)
+	defer cleanup()
+	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
+	assert.Nil(err)
+	assert.Equal(2, len(*suppresslist))
+	assert.Equal(0, skipped)
 
-// 	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
-// 	suppresslist, skipped, err = importer.loadBenePrefsFiles(ctx, filePath)
-// 	assert.Nil(err)
-// 	assert.Equal(0, len(*suppresslist))
-// 	assert.Equal(2, skipped)
+	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
+	bucketName, cleanup = testUtils.CopyToS3(s.T(), filePath)
+	defer cleanup()
+	suppresslist, skipped, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
+	assert.Nil(err)
+	assert.Equal(0, len(*suppresslist))
+	assert.Equal(2, skipped)
 
-// 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-// 	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filePath)
-// 	assert.Nil(err)
-// 	modtimeAfter := time.Now().Truncate(time.Second)
-// 	// check current value and change mod time
-// 	for _, f := range *suppresslist {
-// 		fInfo, _ := os.Stat(f.FilePath)
-// 		assert.Equal(fInfo.ModTime().Format("010203040506"), f.DeliveryDate.Format("010203040506"))
+	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
+	bucketName, cleanup = testUtils.CopyToS3(s.T(), filePath)
+	defer cleanup()
+	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
+	assert.Nil(err)
+	modtimeAfter := time.Now().Truncate(time.Second)
+	// check current value and change mod time
+	for _, f := range *suppresslist {
+		fInfo, _ := os.Stat(filePath)
+		assert.Equal(fInfo.ModTime().Format("010203"), f.DeliveryDate.Format("010203"))
+	}
 
-// 		err = os.Chtimes(f.FilePath, modtimeAfter, modtimeAfter)
-// 		if err != nil {
-// 			s.FailNow(constants.TestChangeTimeErr, err)
-// 		}
-// 	}
+	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
+	bucketName, cleanup = testUtils.CopyToS3(s.T(), filePath)
+	defer cleanup()
+	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filepath.Join(bucketName, filePath))
+	assert.Nil(err)
+	for _, f := range *suppresslist {
+		assert.Equal(modtimeAfter.Format("010203"), f.DeliveryDate.Format("010203"))
+	}
+}
 
-// 	filePath = filepath.Join(s.basePath, constants.TestSynthMedFilesPath)
-// 	suppresslist, _, err = importer.loadBenePrefsFiles(ctx, filePath)
-// 	assert.Nil(err)
-// 	for _, f := range *suppresslist {
-// 		assert.Equal(modtimeAfter.Format("010203040506"), f.DeliveryDate.Format("010203040506"))
-// 	}
-// }
+func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
+	assert := assert.New(s.T())
+	repo := &models.MockRepository{}
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
+	importer := s.createImporter(repo, client)
 
-// func (s *BenePrefsTestSuite) TestLoadBenePrefsFiles_TimeChange() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
-// 	repo := &models.MockRepository{}
-// 	client := &bcdaaws.ConfigurableMockS3Client{}
-// 	// client := &bcdaaws.ConfigurableMockS3Client{
-// 	// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-// 	// 		return &s3.HeadObjectOutput{
-// 	// 			ContentLength: aws.Int64(int64(len(content))),
-// 	// 		}, nil
-// 	// 	},
-// 	// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-// 	// 		return &s3.GetObjectOutput{
-// 	// 			Body:          io.NopCloser(strings.NewReader(string(content))),
-// 	// 			ContentLength: aws.Int64(int64(len(content))),
-// 	// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-// 	// 		}, nil
-// 	// 	},
-// 	// }
-// 	importer := s.createImporter(repo, client)
-// 	// importer.Repo = *postgres.NewRepository(database.Connect())
+	bucketName, cleanup := testUtils.CopyToS3(s.T(), s.basePath+"/suppressionfile_BadFileNames/")
+	defer cleanup()
 
-// 	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
-// 	filePath := filepath.Join(folderPath, constants.TestSuppressBadPath)
+	var suppresslist []*models.BenePrefsFilenameMetadata
+	metadata1 := &models.BenePrefsFilenameMetadata{
+		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
+		Timestamp:    time.Now(),
+		FilePath:     filepath.Join(bucketName, s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
+		Imported:     true,
+		DeliveryDate: time.Now(),
+	}
+	metadata2 := &models.BenePrefsFilenameMetadata{
+		Name:         constants.TestSuppressBadPath,
+		Timestamp:    time.Now(),
+		FilePath:     filepath.Join(bucketName, s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
+		Imported:     false,
+		DeliveryDate: time.Now(),
+	}
 
-// 	origTime := time.Now().Truncate(time.Second)
-// 	err := os.Chtimes(filePath, origTime, origTime)
-// 	if err != nil {
-// 		s.FailNow(constants.TestChangeTimeErr, err)
-// 	}
+	suppresslist = []*models.BenePrefsFilenameMetadata{metadata1, metadata2}
+	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
+	assert.Nil(err)
 
-// 	suppresslist, skipped, err := importer.loadBenePrefsFiles(ctx, folderPath)
-// 	assert.Nil(err)
-// 	assert.Equal(0, len(*suppresslist))
-// 	assert.Equal(2, skipped)
-
-// 	// assert that this file is still here.
-// 	_, err = os.Open(filePath)
-// 	assert.Nil(err)
-
-// 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
-// 	err = os.Chtimes(filePath, timeChange, timeChange)
-
-// 	if err != nil {
-// 		s.FailNow(constants.TestChangeTimeErr, err)
-// 	}
-
-// 	suppresslist, skipped, err = importer.loadBenePrefsFiles(ctx, folderPath)
-// 	assert.Nil(err)
-// 	assert.Equal(0, len(*suppresslist))
-// 	assert.Equal(2, skipped)
-
-// 	// assert that this file is not still here.
-// 	_, err = os.Open(filePath)
-// 	assert.EqualError(err, fmt.Sprintf("open %s: no such file or directory", filePath))
-
-// 	//Utilize the other bad file, but set an invalid pending deletion directory.
-// 	filePath = filepath.Join(folderPath, constants.TestSuppressBadDeletePath)
-// 	_, err = os.Open(filePath)
-// 	assert.Nil(err)
-
-// 	timeChange = origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
-// 	err = os.Chtimes(filePath, timeChange, timeChange)
-
-// 	if err != nil {
-// 		s.FailNow(constants.TestChangeTimeErr, err)
-// 	}
-
-// 	// importer.FileHelper.(*LocalFileHelper).PendingDeletionDir = "\n"
-// 	_, _, err = importer.loadBenePrefsFiles(ctx, folderPath)
-// 	assert.Equal(true, strings.Contains(err.Error(), "error moving unknown file"))
-// }
-
-// func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
-// 	repo := &models.MockRepository{}
-// 	client := &bcdaaws.ConfigurableMockS3Client{}
-// 	// client := &bcdaaws.ConfigurableMockS3Client{
-// 	// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-// 	// 		return &s3.HeadObjectOutput{
-// 	// 			ContentLength: aws.Int64(int64(len(content))),
-// 	// 		}, nil
-// 	// 	},
-// 	// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-// 	// 		return &s3.GetObjectOutput{
-// 	// 			Body:          io.NopCloser(strings.NewReader(string(content))),
-// 	// 			ContentLength: aws.Int64(int64(len(content))),
-// 	// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-// 	// 		}, nil
-// 	// 	},
-// 	// }
-// 	importer := s.createImporter(repo, client)
-
-// 	var suppresslist []*models.BenePrefsFilenameMetadata
-
-// 	// failed import: file that's within the threshold - stay put
-// 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-// 	metadata := &models.BenePrefsFilenameMetadata{
-// 		Name:         constants.TestSuppressMetaFileName,
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
-// 		Imported:     false,
-// 		DeliveryDate: time.Now(),
-// 	}
-
-// 	// failed import: file that's over the threshold - should move
-// 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-// 	metadata2 := &models.BenePrefsFilenameMetadata{
-// 		Name:         constants.TestSuppressBadPath,
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
-// 		Imported:     false,
-// 		DeliveryDate: fileTime,
-// 	}
-
-// 	// successful import: should move
-// 	metadata3 := &models.BenePrefsFilenameMetadata{
-// 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
-// 		Timestamp:    fileTime,
-// 		FilePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
-// 		Imported:     true,
-// 		DeliveryDate: time.Now(),
-// 	}
-
-// 	suppresslist = []*models.BenePrefsFilenameMetadata{metadata, metadata2, metadata3}
-// 	err := importer.cleanupBenePrefsFiles(ctx, suppresslist)
-// 	assert.Nil(err)
-
-// 	files, err := os.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
-// 	if err != nil {
-// 		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
-// 	}
-
-// 	for _, file := range files {
-// 		assert.NotEqual(constants.TestSuppressMetaFileName, file.Name())
-
-// 		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != constants.TestSuppressBadPath {
-// 			err = fmt.Errorf("unknown file moved %s", file.Name())
-// 			s.FailNow("test files did not correctly cleanup", err)
-// 		}
-// 	}
-// }
+	objs, err := bcdaaws.ListFiles(ctx, client, bucketName, strings.TrimPrefix(filepath.Join(s.basePath, "suppressionfile_BadFileNames"), "/"))
+	assert.NoError(err)
+	assert.Len(objs, 1)
+	for _, obj := range objs {
+		assert.NotContains(*obj.Key, "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420")
+	}
+}
 
 func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_Bad() {
 	assert := assert.New(s.T())
-	ctx := context.Background()
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
 	repo := &models.MockRepository{}
-	client := &bcdaaws.ConfigurableMockS3Client{}
-	// client := &bcdaaws.ConfigurableMockS3Client{
-	// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-	// 		return &s3.HeadObjectOutput{
-	// 			ContentLength: aws.Int64(int64(len(content))),
-	// 		}, nil
-	// 	},
-	// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-	// 		return &s3.GetObjectOutput{
-	// 			Body:          io.NopCloser(strings.NewReader(string(content))),
-	// 			ContentLength: aws.Int64(int64(len(content))),
-	// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-	// 		}, nil
-	// 	},
-	// }
 	importer := s.createImporter(repo, client)
-	// importer.FileHelper.(*LocalFileHelper).PendingDeletionDir = "\n"
 
 	var suppresslist []*models.BenePrefsFilenameMetadata
 
-	//new use cases
+	// new use cases
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata1 := &models.BenePrefsFilenameMetadata{
 		Name:         constants.TestSuppressBadPath,
@@ -593,7 +460,6 @@ func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_Bad() {
 		DeliveryDate: fileTime,
 	}
 
-	//
 	metadata2 := &models.BenePrefsFilenameMetadata{
 		Name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
 		Timestamp:    fileTime,
@@ -631,66 +497,50 @@ func (s *BenePrefsTestSuite) TestCleanupBenePrefsFiles_RenameFile() {
 	assert.NoError(err)
 }
 
-// func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
-// 	assert := assert.New(s.T())
-// 	ctx := context.Background()
+func (s *BenePrefsTestSuite) TestImportDirectoryTable() {
+	assert := assert.New(s.T())
+	cfg, ctx := testUtils.TestAWSConfig(s.T())
+	client := testUtils.TestS3Client(s.T(), cfg)
 
-// 	tests := []struct {
-// 		name           string
-// 		directory      string
-// 		success        int
-// 		failure        int
-// 		skipped        int
-// 		errorExpected  bool
-// 		errMessage     string
-// 		insertCarriage bool
-// 	}{
-// 		{name: "Valid test", directory: "../../shared_files/synthetic1800MedicareFiles/test2/", success: 2, failure: 0, skipped: 0, errorExpected: false, errMessage: ""},
-// 		{name: "Import failure", directory: "../../shared_files/suppressionfile_BadHeader/", success: 0, failure: 1, skipped: 0, errorExpected: true, errMessage: "one or more bene-prefs files failed to import correctly"},
-// 		{name: "Skipped import", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 2, errorExpected: false, errMessage: ""},
-// 		{name: "Carriage char in path", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 0, errorExpected: true, errMessage: "no such file or directory", insertCarriage: true},
-// 	}
+	tests := []struct {
+		name          string
+		directory     string
+		success       int
+		failure       int
+		skipped       int
+		errorExpected bool
+		errMessage    string
+	}{
+		{name: "Valid test", directory: "../../shared_files/synthetic1800MedicareFiles/test2/", success: 2, failure: 0, skipped: 0, errorExpected: false, errMessage: ""},
+		{name: "Import failure", directory: "../../shared_files/suppressionfile_BadHeader/", success: 0, failure: 1, skipped: 0, errorExpected: true, errMessage: "one or more bene-prefs files failed to import correctly"},
+		{name: "Skipped import", directory: "../../shared_files/suppressionfile_BadFileNames/", success: 0, failure: 0, skipped: 2, errorExpected: false, errMessage: ""},
+	}
 
-// 	for _, tt := range tests {
-// 		s.T().Run(tt.name, func(t *testing.T) {
-// 			path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tt.directory)
-// 			defer cleanup()
-// 			if tt.insertCarriage {
-// 				path += "\n"
-// 			}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), tt.directory)
+			defer cleanup()
 
-// 			repo := &models.MockRepository{}
-// 			if !tt.errorExpected {
-// 				repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), nil)
-// 				repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-// 				repo.On("CreateBenePrefsRecord", mock.Anything, mock.Anything).Return(nil)
-// 			}
+			bucketName, cleanup := testUtils.CopyToS3(s.T(), path)
+			defer cleanup()
 
-// 			client := &bcdaaws.ConfigurableMockS3Client{}
-// 			// client := &bcdaaws.ConfigurableMockS3Client{
-// 			// 	HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-// 			// 		return &s3.HeadObjectOutput{
-// 			// 			ContentLength: aws.Int64(int64(len(content))),
-// 			// 		}, nil
-// 			// 	},
-// 			// 	GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-// 			// 		return &s3.GetObjectOutput{
-// 			// 			Body:          io.NopCloser(strings.NewReader(string(content))),
-// 			// 			ContentLength: aws.Int64(int64(len(content))),
-// 			// 			ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-// 			// 		}, nil
-// 			// 	},
-// 			// }
-// 			importer := s.createImporter(repo, client)
-// 			success, failure, skipped, err := importer.ImportDirectory(ctx, path)
-// 			if tt.errorExpected {
-// 				assert.ErrorContains(err, tt.errMessage)
-// 			} else {
-// 				assert.Nil(err)
-// 			}
-// 			assert.Equal(tt.success, success)
-// 			assert.Equal(tt.failure, failure)
-// 			assert.Equal(tt.skipped, skipped)
-// 		})
-// 	}
-// }
+			repo := &models.MockRepository{}
+			if !tt.errorExpected {
+				repo.On("CreateBenePrefsFile", mock.Anything, mock.Anything).Return(uint(1), nil)
+				repo.On("UpdateBenePrefsImportStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				repo.On("CreateBenePrefsRecord", mock.Anything, mock.Anything).Return(nil)
+			}
+
+			importer := s.createImporter(repo, client)
+			success, failure, skipped, err := importer.ImportDirectory(ctx, filepath.Join(bucketName, path))
+			if tt.errorExpected {
+				assert.ErrorContains(err, tt.errMessage)
+			} else {
+				assert.Nil(err)
+			}
+			assert.Equal(tt.success, success)
+			assert.Equal(tt.failure, failure)
+			assert.Equal(tt.skipped, skipped)
+		})
+	}
+}

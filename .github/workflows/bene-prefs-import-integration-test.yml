@@ -9,6 +9,7 @@ on:
       - .github/workflows/bene-prefs-import-test-deploy.yml
       - bcda/bene-prefs/**
       - bcda/lambda/bene-prefs/**
+      - ops/services/30-bene-prefs/**
   workflow_dispatch:
 
 permissions:

@@ -47,11 +47,9 @@ type CSVImporter struct {
 }
 
 func (importer CSVImporter) ImportCSV(ctx context.Context, filepath string) error {
-
 	file := csvFile{filepath: filepath}
 
 	short := f.Base(filepath)
-
 	metadata, err := GetCSVMetadata(short)
 	if err != nil {
 		importer.Logger.Errorf("error parsing CSV metadata: %w", err)
