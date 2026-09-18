@@ -41,23 +41,25 @@ func ParseTokenParam(subqueryParam TypeFilterSubqueryParam) (TokenParam, error) 
 	return t, nil
 }
 
+var validTagTokens = map[string][]string{
+	constants.BFDSystemTypeURL:  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
+	constants.BFDFinalActionURL: {"FinalAction", "NotFinalAction"},
+}
+
 func ValidateTag(t TokenParam) error {
 	if t.Name != string(TypeFilterParamTag) {
 		return ParameterValidationError{Details: fmt.Sprintf("invalid key for tag parameter: %s", t.Name)}
+	}
+	if len(t.Modifier) > 0 {
+		return ParameterValidationError{Details: fmt.Sprintf("invalid _tag parameter; modifier %s not supported", t.Modifier)}
 	}
 	for _, value := range t.Values {
 		if len(value.System) == 0 || len(value.Code) == 0 {
 			return ParameterValidationError{Details: "invalid _tag parameter value. Searching by tag requires a token (system|code) to be specified"}
 		}
-
-		validTagTokens := map[string][]string{
-			constants.BFDSystemTypeURL:  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
-			constants.BFDFinalActionURL: {"FinalAction", "NotFinalAction"},
-		}
-
 		validTagCodes, ok := validTagTokens[value.System]
 		if !ok || !slices.Contains(validTagCodes, value.Code) {
-			return ParameterValidationError{Details: "invalid _tag parameter. Searching by tag requires a token (system|code) to be specified"}
+			return ParameterValidationError{Details: fmt.Sprintf("invalid _tag parameter, unsupported code %s for system %s", value.Code, value.System)}
 		}
 	}
 	return nil

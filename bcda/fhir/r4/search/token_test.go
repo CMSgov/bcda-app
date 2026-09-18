@@ -89,6 +89,11 @@ func TestValidateTag(t *testing.T) {
 			tokenParam:  TokenParam{Name: "_tag", Values: []TokenValue{{System: constants.BFDSystemTypeURL, Code: "NotFinalAction"}}},
 			expectedErr: ParameterValidationError{},
 		},
+		{
+			name:        "invalid modifier",
+			tokenParam:  TokenParam{Name: "_tag", Modifier: "not", Values: []TokenValue{{System: constants.BFDSystemTypeURL, Code: "NationalClaimsHistory"}}},
+			expectedErr: ParameterValidationError{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

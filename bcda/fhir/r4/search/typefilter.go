@@ -44,13 +44,13 @@ func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
 	// The subquery is url-encoded. So we will first decode so we can parse it
 	decodedQuery, err := url.QueryUnescape(s)
 	if err != nil {
-		return TypeFilterSubquery{}, fmt.Errorf("failed to unescape %s", s)
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("failed to unescape %s", s)}
 	}
 
 	// Expected format is: <resourceType>?<paramList>
 	resourceType, params, ok := strings.Cut(decodedQuery, "?")
 	if !ok {
-		return TypeFilterSubquery{}, fmt.Errorf("missing question mark %s", decodedQuery)
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("missing question mark %s", decodedQuery)}
 	}
 
 	var subqueryParams []TypeFilterSubqueryParam
@@ -58,7 +58,7 @@ func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
 	for paramPair := range paramAry {
 		name, value, ok := strings.Cut(paramPair, "=")
 		if !ok {
-			return TypeFilterSubquery{}, fmt.Errorf("invalid _typeFilter parameter/value: %s", paramPair)
+			return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("invalid _typeFilter parameter/value: %s", paramPair)}
 		}
 		subqueryParams = append(subqueryParams, TypeFilterSubqueryParam{Name: name, Value: value})
 	}
@@ -97,7 +97,7 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 				return err
 			}
 		} else {
-			return ParameterParsingError{Details: fmt.Sprintf("invalid _typeFilter subquery parameter: %s", param.Name)}
+			return ParameterValidationError{Details: fmt.Sprintf("invalid _typeFilter subquery parameter: %s", param.Name)}
 		}
 	}
 	err := ValidateServiceDates(serviceDateParams)

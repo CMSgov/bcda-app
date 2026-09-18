@@ -35,10 +35,11 @@ func ParseDateParam(subqueryParam TypeFilterSubqueryParam) (DateParam, error) {
 		afterPrefix = subqueryParam.Value
 	}
 
-	d.Datetimes = strings.Split(afterPrefix, ",")
-	if len(d.Datetimes) == 0 {
+	if len(afterPrefix) == 0 {
 		return d, ParameterParsingError{Details: fmt.Sprintf("value must include a valid FHIR date for date parameter %s", d.Name)}
 	}
+
+	d.Datetimes = strings.Split(afterPrefix, ",")
 
 	for _, datetime := range d.Datetimes {
 		_, err := ParseDateString(datetime)
@@ -86,7 +87,7 @@ func ValidateServiceDates(serviceDateParams []DateParam) error {
 		}
 	}
 	if lowerBoundCount > 1 || upperBoundCount > 1 || equalCount > 1 {
-		return ParameterParsingError{Details: "invalid service-date parameter value: conflicting prefix conditions"}
+		return ParameterValidationError{Details: "invalid service-date parameter value: conflicting prefix conditions"}
 	}
 	return nil
 }

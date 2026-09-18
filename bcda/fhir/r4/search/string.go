@@ -14,10 +14,10 @@ type StringParam struct {
 
 func ParseStringParam(subqueryParam TypeFilterSubqueryParam) (StringParam, error) {
 	s := StringParam{}
-	if len(subqueryParam.Name) == 0 {
-		return s, ParameterParsingError{Details: "string parameter missing key"}
-	}
 	s.Name, s.Modifier, _ = strings.Cut(subqueryParam.Name, ":")
+	if len(s.Name) == 0 {
+		return s, ParameterParsingError{Details: "string parameter missing name"}
+	}
 	if len(subqueryParam.Value) == 0 {
 		return s, ParameterParsingError{Details: fmt.Sprintf("string parameter missing value: %s", s.Name)}
 	}
