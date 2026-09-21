@@ -16,7 +16,7 @@ func TestParseTypeFilterSubquery(t *testing.T) {
 	}{
 		{
 			name:     "valid tag shared system",
-			subquery: "ExplanationOfBenefit%3F_tag%3Dhttps%3A%2F%2Fbluebutton.cms.gov%2Ffhir%2FCodeSystem%2FSystem-Type%7CSharedSystem",
+			subquery: "ExplanationOfBenefit?_tag=https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
 			expectedParsed: TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
 				QueryParameters: []TypeFilterSubqueryParam{
@@ -26,7 +26,7 @@ func TestParseTypeFilterSubquery(t *testing.T) {
 		},
 		{
 			name:     "valid serviceDate and tag",
-			subquery: "ExplanationOfBenefit%3Fservice-date%3Dlt2021-02-15%26_tag%3Dhttps%3A%2F%2Fbluebutton.cms.gov%2Ffhir%2FCodeSystem%2FFinal-Action%7CFinalAction",
+			subquery: "ExplanationOfBenefit?service-date=lt2021-02-15&_tag=https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction",
 			expectedParsed: TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
 				QueryParameters: []TypeFilterSubqueryParam{
@@ -37,22 +37,22 @@ func TestParseTypeFilterSubquery(t *testing.T) {
 		},
 		{
 			name:        "invalid missing resource",
-			subquery:    "%3Fservice-date%3Dlt2021-02-15",
+			subquery:    "?service-date=lt2021-02-15",
 			expectedErr: ParameterParsingError{},
 		},
 		{
 			name:        "invalid missing question mark",
-			subquery:    "ExplanationOfBenefitservice-date%3Dlt2021-02-15",
+			subquery:    "ExplanationOfBenefitservice-date=lt2021-02-15",
 			expectedErr: ParameterParsingError{},
 		},
 		{
 			name:        "invalid missing value",
-			subquery:    "ExplanationOfBenefit%3F",
+			subquery:    "ExplanationOfBenefit?",
 			expectedErr: ParameterParsingError{},
 		},
 		{
 			name:        "invalid value missing equals",
-			subquery:    "ExplanationOfBenefit%3Fservice-datelt2021-02-15",
+			subquery:    "ExplanationOfBenefit?service-datelt2021-02-15",
 			expectedErr: ParameterParsingError{},
 		},
 	}

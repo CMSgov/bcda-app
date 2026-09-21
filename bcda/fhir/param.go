@@ -2,7 +2,6 @@ package fhir
 
 import (
 	"fmt"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -45,20 +44,14 @@ func (e ParameterValidationError) Error() string {
 }
 
 func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
-	// The subquery is url-encoded. So we will first decode so we can parse it
-	decodedQuery, err := url.QueryUnescape(s)
-	if err != nil {
-		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("failed to unescape %s", s)}
-	}
-
 	// Expected format is: <resourceType>?<paramList>
-	resourceType, params, found := strings.Cut(decodedQuery, "?")
+	resourceType, params, found := strings.Cut(s, "?")
 	if !found {
-		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing question mark %s", decodedQuery)}
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing question mark %s", s)}
 	} else if len(resourceType) == 0 {
-		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing resource type %s", decodedQuery)}
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing resource type %s", s)}
 	} else if len(params) == 0 {
-		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing value %s", decodedQuery)}
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing value %s", s)}
 	}
 
 	var subqueryParams []TypeFilterSubqueryParam
