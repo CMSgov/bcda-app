@@ -132,24 +132,24 @@ func TestValidateServiceDates(t *testing.T) {
 		dateParams  []DateParam
 		expectedErr error
 	}{
-		// {
-		// 	name:        "valid service date less-than date time",
-		// 	dateParams:  []DateParam{{Name: "service-date", Prefix: "lt", Datetimes: []string{"2024-01-15T10:30:00Z"}}},
-		// 	expectedErr: nil,
-		// },
-		// {
-		// 	name: "valid upper and lower bounds",
-		// 	dateParams: []DateParam{
-		// 		{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
-		// 		{Name: "service-date", Prefix: "gt", Datetimes: []string{"2004"}},
-		// 	},
-		// 	expectedErr: nil,
-		// },
-		// {
-		// 	name:        "invalid multiple OR date times",
-		// 	dateParams:  []DateParam{{Name: "service-date", Datetimes: []string{"2004", "2003"}}},
-		// 	expectedErr: ParameterValidationError{},
-		// },
+		{
+			name:        "valid service date less-than date time",
+			dateParams:  []DateParam{{Name: "service-date", Prefix: "lt", Datetimes: []string{"2024-01-15T10:30:00Z"}}},
+			expectedErr: nil,
+		},
+		{
+			name: "valid upper and lower bounds",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
+				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2004"}},
+			},
+			expectedErr: nil,
+		},
+		{
+			name:        "invalid multiple OR date times",
+			dateParams:  []DateParam{{Name: "service-date", Datetimes: []string{"2004", "2003"}}},
+			expectedErr: ParameterValidationError{},
+		},
 		{
 			name: "invalid multiple upper bounds",
 			dateParams: []DateParam{
