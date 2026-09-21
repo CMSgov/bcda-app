@@ -46,14 +46,12 @@ func TestCheckHealth(t *testing.T) {
 		name            string
 		dbOk            bool
 		bbOk            bool
-		jqOK            bool
 		expectedHealthy bool
 	}{
-		{"Database and BlueButton healthy", true, true, true, true},
-		{"Database unhealthy", false, true, true, false},
-		{"BlueButton unhealthy", true, false, true, false},
-		{"JobQueue unhealthy", true, true, false, false},
-		{"Database and BlueButton unhealthy", false, false, false, false},
+		{"Database and BlueButton healthy", true, true, true},
+		{"Database unhealthy", false, true, false},
+		{"BlueButton unhealthy", true, false, false},
+		{"Database and BlueButton unhealthy", false, false, false},
 	}
 
 	for _, test := range tests {
@@ -61,7 +59,6 @@ func TestCheckHealth(t *testing.T) {
 			mockHealthChecker := &health.MockHealthChecker{}
 			mockHealthChecker.On("IsWorkerDatabaseOK").Return("", test.dbOk)
 			mockHealthChecker.On("IsBlueButtonOK").Return(test.bbOk)
-			mockHealthChecker.On("IsJobQueueOK").Return(test.jqOK)
 			actualHealthy := checkHealth(mockHealthChecker)
 			assert.Equal(t, test.expectedHealthy, actualHealthy)
 		})
