@@ -348,9 +348,9 @@ func (s *HealthCheckerTestSuite) TestJobQueueOK_Integration() {
 		testdata  string
 		expResult bool
 	}{
-		{"multiple pending jobs returned older than 24 hours", "testdata/pending_jobs_many.sql", true},
-		{"one pending job older than 24 hours", "testdata/pending_jobs_single.sql", true},
-		{"no pending jobs returned", "", false},
+		{"multiple pending jobs returned older than 24 hours", "testdata/pending_jobs_many.sql", false},
+		{"one pending job older than 24 hours", "testdata/pending_jobs_single.sql", false},
+		{"no pending jobs returned", "", true},
 	}
 
 	for _, tt := range tests {
