@@ -92,7 +92,7 @@ func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 			}
 			serviceDateParams = append(serviceDateParams, date)
 		} else if strings.HasPrefix(param.Name, string(TypeFilterParamOutcome)) {
-			outcome, err := ParseStringParam(param)
+			outcome, err := ParseTokenParam(param)
 			if err != nil {
 				return err
 			}
@@ -143,21 +143,6 @@ func ParseStringParam(subqueryParam TypeFilterSubqueryParam) (StringParam, error
 	}
 	s.Values = strings.Split(subqueryParam.Value, ",")
 	return s, nil
-}
-
-func ValidateOutcome(s StringParam) error {
-	if s.Name != string(TypeFilterParamOutcome) {
-		return ParameterValidationError{Details: fmt.Sprintf("invalid key for outcome parameter: %s", s.Name)}
-	}
-	if len(s.Modifier) > 0 {
-		return ParameterValidationError{Details: fmt.Sprintf("invalid outcome parameter; modifier %s not supported", s.Modifier)}
-	}
-	for _, value := range s.Values {
-		if value != "complete" && value != "partial" {
-			return ParameterValidationError{Details: fmt.Sprintf("invalid outcome value: %s. Supported outcome values are 'complete' and 'partial'", value)}
-		}
-	}
-	return nil
 }
 
 // https://hl7.org/fhir/R4/search.html#date
@@ -297,6 +282,21 @@ func ValidateTag(t TokenParam) error {
 		validTagCodes, ok := validTagTokens[value.System]
 		if !ok || !slices.Contains(validTagCodes, value.Code) {
 			return ParameterValidationError{Details: fmt.Sprintf("invalid _tag parameter, unsupported code %s for system %s", value.Code, value.System)}
+		}
+	}
+	return nil
+}
+
+func ValidateOutcome(t TokenParam) error {
+	if t.Name != string(TypeFilterParamOutcome) {
+		return ParameterValidationError{Details: fmt.Sprintf("invalid key for outcome parameter: %s", t.Name)}
+	}
+	if len(t.Modifier) > 0 {
+		return ParameterValidationError{Details: fmt.Sprintf("invalid outcome parameter; modifier %s not supported", t.Modifier)}
+	}
+	for _, value := range t.Values {
+		if value.Code != "complete" && value.Code != "partial" {
+			return ParameterValidationError{Details: fmt.Sprintf("invalid outcome code: %s. Supported outcome codes are 'complete' and 'partial'", value.Code)}
 		}
 	}
 	return nil

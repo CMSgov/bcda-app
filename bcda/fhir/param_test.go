@@ -52,41 +52,6 @@ func TestParseStringParam(t *testing.T) {
 	}
 }
 
-func TestValidateOutcome(t *testing.T) {
-	tests := []struct {
-		name        string
-		stringParam StringParam
-		expectedErr error
-	}{
-		{
-			name:        "valid complete",
-			stringParam: StringParam{Name: "outcome", Values: []string{"complete"}},
-			expectedErr: nil,
-		},
-		{
-			name:        "valid partial",
-			stringParam: StringParam{Name: "outcome", Values: []string{"partial"}},
-			expectedErr: nil,
-		},
-		{
-			name:        "invalid value",
-			stringParam: StringParam{Name: "outcome", Values: []string{"somethingelse"}},
-			expectedErr: ParameterValidationError{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateOutcome(tt.stringParam)
-
-			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
-			} else {
-				assert.Nil(t, err)
-			}
-		})
-	}
-}
-
 func TestParseDateParam(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -368,6 +333,41 @@ func TestValidateTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateTag(tt.tokenParam)
+
+			if tt.expectedErr != nil {
+				assert.ErrorAs(t, err, &tt.expectedErr)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateOutcome(t *testing.T) {
+	tests := []struct {
+		name        string
+		tokenParam  TokenParam
+		expectedErr error
+	}{
+		{
+			name:        "valid complete",
+			tokenParam:  TokenParam{Name: "outcome", Values: []TokenValue{{Code: "complete"}}},
+			expectedErr: nil,
+		},
+		{
+			name:        "valid partial",
+			tokenParam:  TokenParam{Name: "outcome", Values: []TokenValue{{Code: "partial"}}},
+			expectedErr: nil,
+		},
+		{
+			name:        "invalid value",
+			tokenParam:  TokenParam{Name: "outcome", Values: []TokenValue{{Code: "somethingelse"}}},
+			expectedErr: ParameterValidationError{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateOutcome(tt.tokenParam)
 
 			if tt.expectedErr != nil {
 				assert.ErrorAs(t, err, &tt.expectedErr)
