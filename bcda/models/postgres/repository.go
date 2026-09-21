@@ -435,18 +435,19 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...m
 
 }
 
-func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, olderTime, newerTime time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
+// earliest = older, latest = newer
+func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, earliest, latest time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
 	for i, v := range statuses {
 		s[i] = v
 	}
 
 	sb := sqlFlavor.NewSelectBuilder().Select(jobColumns...).From("jobs")
-	if !olderTime.IsZero() {
-		sb.Where(sb.GreaterEqualThan("updated_at", olderTime))
+	if !earliest.IsZero() {
+		sb.Where(sb.GreaterEqualThan("updated_at", earliest))
 	}
-	if !newerTime.IsZero() {
-		sb.Where(sb.LessEqualThan("updated_at", newerTime))
+	if !latest.IsZero() {
+		sb.Where(sb.LessEqualThan("updated_at", latest))
 	}
 
 	if len(s) > 0 {
