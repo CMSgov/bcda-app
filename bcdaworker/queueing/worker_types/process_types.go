@@ -3,7 +3,7 @@ package worker_types
 import (
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 )
 
 const QUE_PROCESS_JOB = "ProcessJob"
@@ -15,7 +15,7 @@ type JobEnqueueArgs struct {
 	BeneficiaryIDs  []string
 	ResourceType    string
 	Since           string
-	TypeFilter      search.TypeFilterSubquery
+	TypeFilter      fhir.TypeFilterSubquery
 	TransactionID   string
 	TransactionTime time.Time
 	BBBasePath      string

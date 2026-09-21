@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
+	search "github.com/CMSgov/bcda-app/bcda/fhir"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"

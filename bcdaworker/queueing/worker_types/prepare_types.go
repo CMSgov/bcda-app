@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/pborman/uuid"
 )
@@ -22,7 +22,7 @@ type PrepareJobArgs struct {
 	ComplexDataRequestType string
 	ResourceTypes          []string
 	Since                  time.Time
-	TypeFilter             search.TypeFilterSubquery
+	TypeFilter             fhir.TypeFilterSubquery
 	CreationTime           time.Time
 	ClaimsDate             time.Time
 	OptOutDate             time.Time

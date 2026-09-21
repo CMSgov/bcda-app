@@ -20,8 +20,8 @@ import (
 
 	fhirClient "github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+
 	"github.com/CMSgov/bcda-app/bcda/fhir"
-	"github.com/CMSgov/bcda-app/bcda/fhir/r4/search"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -437,23 +437,23 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 	var earliestDates, latestDates []serviceDateVal
 	for _, date := range serviceDates {
 		if strings.HasPrefix(date, "ge") || strings.HasPrefix(date, "gt") {
-			parsed, err := search.ParseDateString(date[2:])
+			parsed, err := fhir.ParseDateString(date[2:])
 			if err == nil {
 				earliestDates = append(earliestDates, serviceDateVal{prefix: date[:2], date: parsed})
 			}
 		} else if strings.HasPrefix(date, "le") || strings.HasPrefix(date, "lt") {
-			parsed, err := search.ParseDateString(date[2:])
+			parsed, err := fhir.ParseDateString(date[2:])
 			if err == nil {
 				latestDates = append(latestDates, serviceDateVal{prefix: date[:2], date: parsed})
 			}
 		} else if strings.HasPrefix(date, "eq") {
-			parsed, err := search.ParseDateString(date[2:])
+			parsed, err := fhir.ParseDateString(date[2:])
 			if err == nil {
 				earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parsed})
 				latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date[2:])})
 			}
 		} else if strings.HasPrefix(date, "20") {
-			parsed, err := search.ParseDateString(date)
+			parsed, err := fhir.ParseDateString(date)
 			if err == nil {
 				earliestDates = append(earliestDates, serviceDateVal{prefix: "ge", date: parsed})
 				latestDates = append(latestDates, serviceDateVal{prefix: "lt", date: parseLatestDateFromEqualPrefix(date)})
@@ -522,7 +522,7 @@ func parseLatestDateFromEqualPrefix(date string) time.Time {
 	}
 
 	// if an "interval" date format is not specified, default to standard parsing
-	parsedDate, err = search.ParseDateString(date)
+	parsedDate, err = fhir.ParseDateString(date)
 	if err == nil {
 		return parsedDate
 	}
@@ -540,7 +540,7 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	}
 }
 
-func updateParamWithTypeFilter(params *url.Values, typeFilter search.TypeFilterSubquery) {
+func updateParamWithTypeFilter(params *url.Values, typeFilter fhir.TypeFilterSubquery) {
 	for _, subqueryParam := range typeFilter.QueryParameters {
 		params.Add(subqueryParam.Name, subqueryParam.Value)
 	}
