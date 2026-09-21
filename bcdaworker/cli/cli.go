@@ -161,6 +161,13 @@ func checkHealth(healthChecker health.HealthChecker) bool {
 		logFields["bb"] = "error"
 	}
 
+	jobQueueOK := healthChecker.IsJobQueueOK()
+	if jobQueueOK {
+		logFields["jobqueue"] = "ok"
+	} else {
+		logFields["jobqueue"] = "error"
+	}
+
 	entry.WithFields(logFields).Info()
-	return dbOk && bbOk
+	return dbOk && bbOk && jobQueueOK
 }

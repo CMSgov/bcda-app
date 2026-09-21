@@ -11,6 +11,8 @@ import (
 	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/CMSgov/bcda-app/middleware"
@@ -27,6 +29,7 @@ type HealthChecker interface {
 	IsDatabaseOK() (string, bool)
 	IsWorkerDatabaseOK() (string, bool)
 	IsBlueButtonOK() bool
+	IsJobQueueOK() bool
 	IsSsasOK() (string, bool)
 	IsSsasIntrospectOK() (string, bool)
 }
@@ -34,6 +37,7 @@ type HealthChecker interface {
 type healthCheck struct {
 	db              *sql.DB
 	introspectCache *introspectCache
+	r               models.Repository
 }
 
 const (
@@ -43,15 +47,17 @@ const (
 )
 
 func NewHealthChecker(db *sql.DB) HealthChecker {
+	repository := postgres.NewRepository(db)
 	return healthCheck{
 		db:              db,
 		introspectCache: &introspectCache{},
+		r:               repository,
 	}
 }
 
 func (h healthCheck) IsDatabaseOK() (result string, ok bool) {
 	if err := h.db.Ping(); err != nil {
-		log.API.Error("Health check: database ping error: ", err.Error())
+		log.API.Error("health check: database ping error: ", err.Error())
 		return "database ping error", false
 	}
 
@@ -60,7 +66,7 @@ func (h healthCheck) IsDatabaseOK() (result string, ok bool) {
 
 func (h healthCheck) IsWorkerDatabaseOK() (result string, ok bool) {
 	if err := h.db.Ping(); err != nil {
-		log.Worker.Error("Health check: database ping error: ", err.Error())
+		log.Worker.Error("health check: database ping error: ", err.Error())
 		return "database ping error", false
 	}
 
@@ -70,13 +76,13 @@ func (h healthCheck) IsWorkerDatabaseOK() (result string, ok bool) {
 func (h healthCheck) IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
 	if err != nil {
-		log.Worker.Error("Health check: Blue Button client error: ", err.Error())
+		log.Worker.Error("health check: Blue Button client error: ", err.Error())
 		return false
 	}
 
 	_, err = bbc.GetMetadata()
 	if err != nil {
-		log.Worker.Error("Health check: Blue Button connection error: ", err.Error())
+		log.Worker.Error("health check: Blue Button connection error: ", err.Error())
 		return false
 	}
 
@@ -90,10 +96,24 @@ func (h healthCheck) IsSsasOK() (result string, ok bool) {
 		return "No client for SSAS. no provider set", false
 	}
 	if err := c.GetHealth(); err != nil {
-		log.API.Error("Health check: ssas health check error: ", err.Error())
+		log.API.Error("health check: ssas health check error: ", err.Error())
 		return "Cannot connect to SSAS", false
 	}
 	return "ok", true
+}
+
+// jobs in a pending state for more than 24hrs are an indication of a silent failure of job processing
+func (h healthCheck) IsJobQueueOK() (ok bool) {
+	jobs, err := h.r.GetJobsByCreateTimeAndStatus(context.Background(), time.Time{}, time.Now().Add(-24*time.Hour), models.JobStatusPending)
+	if err != nil {
+		log.API.Errorf("health check: pending jobs query returned errors. err: %s", err)
+		return false
+	}
+	if len(jobs) > 0 {
+		return false
+	}
+
+	return true
 }
 
 func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {
@@ -124,7 +144,7 @@ func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {
 		h.introspectCache.result = result
 		h.introspectCache.ok = false
 		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - missing BCDA admin credentials")
+		log.API.Error("health check: SSAS introspect - missing BCDA admin credentials")
 		return result, false
 	}
 
@@ -135,7 +155,7 @@ func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {
 		h.introspectCache.result = result
 		h.introspectCache.ok = false
 		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - failed to create client: ", err.Error())
+		log.API.Error("health check: SSAS introspect - failed to create client: ", err.Error())
 		return result, false
 	}
 
@@ -150,7 +170,7 @@ func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {
 		h.introspectCache.result = result
 		h.introspectCache.ok = false
 		h.introspectCache.timestamp = time.Now()
-		log.API.Error("Health check: SSAS introspect - introspect call failed after retries: ", err.Error())
+		log.API.Error("health check: SSAS introspect - introspect call failed after retries: ", err.Error())
 		return result, false
 	}
 
@@ -216,7 +236,7 @@ func (h healthCheck) introspectWithRetry(c *ssasClient.SSASClient, ctx context.C
 		}
 		return nil
 	}, b, func(err error, d time.Duration) {
-		log.API.Warnf("Health check: SSAS introspect - introspect request failed, retrying in %s: %s", d.String(), err.Error())
+		log.API.Warnf("health check: SSAS introspect - introspect request failed, retrying in %s: %s", d.String(), err.Error())
 	})
 
 	if err != nil {

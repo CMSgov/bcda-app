@@ -18,10 +18,19 @@ func NewMockRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockRepository {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockRepository{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -1186,6 +1195,95 @@ func (_c *MockRepository_GetJobs_Call) Return(jobs []*Job, err error) *MockRepos
 }
 
 func (_c *MockRepository_GetJobs_Call) RunAndReturn(run func(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]*Job, error)) *MockRepository_GetJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetJobsByCreateTimeAndStatus provides a mock function for the type MockRepository
+func (_mock *MockRepository) GetJobsByCreateTimeAndStatus(ctx context.Context, lowerBound time.Time, upperBound time.Time, statuses ...JobStatus) ([]*Job, error) {
+	var tmpRet mock.Arguments
+	if len(statuses) > 0 {
+		tmpRet = _mock.Called(ctx, lowerBound, upperBound, statuses)
+	} else {
+		tmpRet = _mock.Called(ctx, lowerBound, upperBound)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobsByCreateTimeAndStatus")
+	}
+
+	var r0 []*Job
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, ...JobStatus) ([]*Job, error)); ok {
+		return returnFunc(ctx, lowerBound, upperBound, statuses...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, ...JobStatus) []*Job); ok {
+		r0 = returnFunc(ctx, lowerBound, upperBound, statuses...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*Job)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, ...JobStatus) error); ok {
+		r1 = returnFunc(ctx, lowerBound, upperBound, statuses...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRepository_GetJobsByCreateTimeAndStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobsByCreateTimeAndStatus'
+type MockRepository_GetJobsByCreateTimeAndStatus_Call struct {
+	*mock.Call
+}
+
+// GetJobsByCreateTimeAndStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - lowerBound time.Time
+//   - upperBound time.Time
+//   - statuses ...JobStatus
+func (_e *MockRepository_Expecter) GetJobsByCreateTimeAndStatus(ctx any, lowerBound any, upperBound any, statuses ...any) *MockRepository_GetJobsByCreateTimeAndStatus_Call {
+	return &MockRepository_GetJobsByCreateTimeAndStatus_Call{Call: _e.mock.On("GetJobsByCreateTimeAndStatus",
+		append([]any{ctx, lowerBound, upperBound}, statuses...)...)}
+}
+
+func (_c *MockRepository_GetJobsByCreateTimeAndStatus_Call) Run(run func(ctx context.Context, lowerBound time.Time, upperBound time.Time, statuses ...JobStatus)) *MockRepository_GetJobsByCreateTimeAndStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		var arg3 []JobStatus
+		var variadicArgs []JobStatus
+		if len(args) > 3 {
+			variadicArgs = args[3].([]JobStatus)
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetJobsByCreateTimeAndStatus_Call) Return(jobs []*Job, err error) *MockRepository_GetJobsByCreateTimeAndStatus_Call {
+	_c.Call.Return(jobs, err)
+	return _c
+}
+
+func (_c *MockRepository_GetJobsByCreateTimeAndStatus_Call) RunAndReturn(run func(ctx context.Context, lowerBound time.Time, upperBound time.Time, statuses ...JobStatus) ([]*Job, error)) *MockRepository_GetJobsByCreateTimeAndStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
