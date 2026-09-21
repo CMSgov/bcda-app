@@ -102,9 +102,9 @@ func (h healthCheck) IsSsasOK() (result string, ok bool) {
 	return "ok", true
 }
 
-// jobs in a pending state for more than 24hrs are an indication of a silent failure of job processing
+// jobs in a pending state for more than 6hrs are an indication of a silent failure of job processing
 func (h healthCheck) IsJobQueueOK() bool {
-	jobs, err := h.r.GetJobsByCreateTimeAndStatus(context.Background(), time.Time{}, time.Now().Add(-24*time.Hour), models.JobStatusPending)
+	jobs, err := h.r.GetJobsByCreateTimeAndStatus(context.Background(), time.Time{}, time.Now().Add(-6*time.Hour), models.JobStatusPending)
 	if err != nil {
 		log.API.Errorf("health check: pending jobs query returned errors. err: %s", err)
 		return false
