@@ -69,7 +69,7 @@ func ParseDateString(datetime string) (time.Time, error) {
 }
 
 func ValidateServiceDates(serviceDateParams []DateParam) error {
-	lowerBoundCount, upperBoundCount, equalCount := 0, 0, 0
+	earlyBoundCount, lateBoundCount, equalCount := 0, 0, 0
 	for _, sd := range serviceDateParams {
 		if sd.Name != string(TypeFilterParamServiceDate) {
 			return ParameterValidationError{Details: fmt.Sprintf("invalid key for service-date parameter: %s", sd.Name)}
@@ -79,14 +79,14 @@ func ValidateServiceDates(serviceDateParams []DateParam) error {
 		}
 		switch sd.Prefix {
 		case "lt", "le":
-			upperBoundCount = upperBoundCount + 1
+			lateBoundCount = lateBoundCount + 1
 		case "gt", "ge":
-			lowerBoundCount = lowerBoundCount + 1
+			earlyBoundCount = earlyBoundCount + 1
 		case "eq", "":
 			equalCount = equalCount + 1
 		}
 	}
-	if lowerBoundCount > 1 || upperBoundCount > 1 || equalCount > 1 {
+	if earlyBoundCount > 1 || lateBoundCount > 1 || equalCount > 1 {
 		return ParameterValidationError{Details: "invalid service-date parameter value: conflicting prefix conditions"}
 	}
 	return nil
