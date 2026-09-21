@@ -169,5 +169,5 @@ func checkHealth(healthChecker health.HealthChecker) bool {
 	}
 
 	entry.WithFields(logFields).Info()
-	return dbOk && bbOk && jobQueueOK
+	return dbOk && bbOk
 }

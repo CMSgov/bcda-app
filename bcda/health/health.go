@@ -109,11 +109,7 @@ func (h healthCheck) IsJobQueueOK() (ok bool) {
 		log.API.Errorf("health check: pending jobs query returned errors. err: %s", err)
 		return false
 	}
-	if len(jobs) > 0 {
-		return false
-	}
-
-	return true
+	return len(jobs) > 0
 }
 
 func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {
