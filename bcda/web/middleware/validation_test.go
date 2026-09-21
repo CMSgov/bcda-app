@@ -10,7 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	search "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
@@ -389,16 +389,16 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 		shouldFail         bool
 		expectedErr        error
 		description        string
-		expectedTypeFilter search.TypeFilterSubquery // when non-nil, we assert the parsed TypeFilter in context equals this making sure params are not dropped.
+		expectedTypeFilter fhir.TypeFilterSubquery // when non-nil, we assert the parsed TypeFilter in context equals this making sure params are not dropped.
 	}{
 		{
 			name:        "validTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
 			shouldFail:  false,
 			description: "Valid tag in URL format should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDSystemTypeURL + "|SharedSystem",
@@ -411,9 +411,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
 			description: "Valid NCH tag should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDSystemTypeURL + "|NationalClaimsHistory",
@@ -426,9 +426,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem,https%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid comma-separated tags should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDSystemTypeURL + "|SharedSystem," + constants.BFDFinalActionURL + "|FinalAction",
@@ -441,9 +441,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Foutcome%%3Dpartial,complete", baseV3),
 			shouldFail:  false,
 			description: "Valid comma-separated outcome should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "outcome",
 						Value: "partial,complete",
@@ -455,7 +455,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "invalidOutcome",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Foutcome%%3Dinvalid_status", baseV3),
 			shouldFail:  true,
-			expectedErr: search.ParameterValidationError{},
+			expectedErr: fhir.ParameterValidationError{},
 			description: "Outcome must be complete or partial",
 		},
 		{
@@ -463,9 +463,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CDDPS", baseV3),
 			shouldFail:  false,
 			description: "Valid DDPS tag should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDSystemTypeURL + "|DDPS",
@@ -478,9 +478,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid FinalAction tag should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDFinalActionURL + "|FinalAction",
@@ -493,9 +493,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Valid NotFinalAction tag should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDFinalActionURL + "|NotFinalAction",
@@ -507,21 +507,21 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "invalidTagPartiallyAdjudicated",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			expectedErr: search.ParameterValidationError{},
+			expectedErr: fhir.ParameterValidationError{},
 			description: "Old PartiallyAdjudicated tag should be rejected",
 		},
 		{
 			name:        "invalidTagSharedSystem",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DSharedSystem", baseV3),
 			shouldFail:  true,
-			expectedErr: search.ParameterValidationError{},
+			expectedErr: fhir.ParameterValidationError{},
 			description: "Only code, no system should be rejected. even with valid code",
 		},
 		{
 			name:        "invalidTagRandomValue",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3DInvalidTag", baseV3),
 			shouldFail:  true,
-			expectedErr: search.ParameterValidationError{},
+			expectedErr: fhir.ParameterValidationError{},
 			description: "Random invalid tag should be rejected",
 		},
 		{
@@ -529,9 +529,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CSharedSystem", baseV3),
 			shouldFail:  false,
 			description: "Multiple valid tags should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "_tag",
 						Value: constants.BFDFinalActionURL + "|NotFinalAction",
@@ -548,9 +548,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction", baseV3),
 			shouldFail:  false,
 			description: "Subquery with service-date and _tag (FinalAction) should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "service-date",
 						Value: "lt2021-02-15",
@@ -567,9 +567,9 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dgt2001-04-01%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FSystem-Type%%7CNationalClaimsHistory", baseV3),
 			shouldFail:  false,
 			description: "Subquery with service-date and _tag (NationalClaimsHistory) should pass",
-			expectedTypeFilter: search.TypeFilterSubquery{
+			expectedTypeFilter: fhir.TypeFilterSubquery{
 				ResourceType: "ExplanationOfBenefit",
-				QueryParameters: []search.TypeFilterSubqueryParam{
+				QueryParameters: []fhir.TypeFilterSubqueryParam{
 					{
 						Name:  "service-date",
 						Value: "gt2001-04-01",
@@ -585,7 +585,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "multipleTagsOneInvalid",
 			url:         fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction%%26_tag%%3DPartiallyAdjudicated", baseV3),
 			shouldFail:  true,
-			expectedErr: search.ParameterValidationError{},
+			expectedErr: fhir.ParameterValidationError{},
 			description: "Multiple tags with one invalid should fail",
 		},
 		{
@@ -605,7 +605,7 @@ func TestValidateTypeFilterTagCodes(t *testing.T) {
 			name:        "multipleTypeFilterSubqueries",
 			url:         fmt.Sprintf("%s_type=ExplanationOfBenefit&_typeFilter=ExplanationOfBenefit%%3Fservice-date%%3Dlt2021-02-15%%26_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CFinalAction&_typeFilter=ExplanationOfBenefit%%3F_tag%%3Dhttps%%3A%%2F%%2Fbluebutton.cms.gov%%2Ffhir%%2FCodeSystem%%2FFinal-Action%%7CNotFinalAction", baseV3),
 			shouldFail:  true,
-			expectedErr: search.ParameterValidationError{},
+			expectedErr: fhir.ParameterValidationError{},
 			description: "Multiple _typeFilter params. Bulk IG supports this but we do not",
 		},
 	}

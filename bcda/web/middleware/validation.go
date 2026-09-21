@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	search "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
@@ -27,7 +27,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    search.TypeFilterSubquery
+	TypeFilter    fhir.TypeFilterSubquery
 }
 
 // requestkey is an unexported context key to avoid collisions
@@ -164,8 +164,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 }
 
 // validateTypeFilterParameter validates the contents of the typeFilter param.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (search.TypeFilterSubquery, bool) {
-	var typeFilterParam search.TypeFilterSubquery
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterSubquery, bool) {
+	var typeFilterParam fhir.TypeFilterSubquery
 	ctx := r.Context()
 
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -188,20 +188,20 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 // GetTypeFilterSubquery parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func GetTypeFilterSubquery(params []string) (search.TypeFilterSubquery, error) {
-	var subquery search.TypeFilterSubquery
+func GetTypeFilterSubquery(params []string) (fhir.TypeFilterSubquery, error) {
+	var subquery fhir.TypeFilterSubquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
-		return subquery, search.ParameterValidationError{Details: "failed to process request given more that one _typeFilter parameter"}
+		return subquery, fhir.ParameterValidationError{Details: "failed to process request given more that one _typeFilter parameter"}
 	}
 
-	subquery, err := search.ParseTypeFilterSubquery(params[0])
+	subquery, err := fhir.ParseTypeFilterSubquery(params[0])
 	if err != nil {
 		return subquery, err
 	}
 
-	err = search.ValidateTypeFilterSubquery(subquery)
+	err = fhir.ValidateTypeFilterSubquery(subquery)
 	if err != nil {
 		return subquery, err
 	}
@@ -209,8 +209,8 @@ func GetTypeFilterSubquery(params []string) (search.TypeFilterSubquery, error) {
 	return subquery, nil
 }
 
-func HasSharedSystemTag(subquery search.TypeFilterSubquery) bool {
-	tagParams, _ := search.GetTagParams(subquery)
+func HasSharedSystemTag(subquery fhir.TypeFilterSubquery) bool {
+	tagParams, _ := fhir.GetTagParams(subquery)
 	for _, tagParam := range tagParams {
 		for _, tagValue := range tagParam.Values {
 			if tagValue.System == constants.BFDSystemTypeURL {

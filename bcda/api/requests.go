@@ -22,7 +22,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	search "github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -839,13 +839,13 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter search.TypeFilterSubquery, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterSubquery, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
 	// Extract all _tag parameter codes
 	var requestedTagCodes []string
-	tagParams, err := search.GetTagParams(typeFilter)
+	tagParams, err := fhir.GetTagParams(typeFilter)
 	if err != nil {
 		return fmt.Errorf("unable to parse typefilter _tag codes: %w", err)
 	}
@@ -895,7 +895,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(typeFilter search.TypeFilterSubquery) search.TypeFilterSubquery {
+func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) fhir.TypeFilterSubquery {
 	// If relevant filter is already present, no need to add default
 	if middleware.HasSharedSystemTag(typeFilter) {
 		return typeFilter
@@ -906,16 +906,16 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter search.TypeFilterSubquery
 	// This tag filters response data by System-Type=NCH OR System-Type=DDPS
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
-	subqueryParam := search.TypeFilterSubqueryParam{
-		Name:  string(search.TypeFilterParamTag),
+	subqueryParam := fhir.TypeFilterSubqueryParam{
+		Name:  string(fhir.TypeFilterParamTag),
 		Value: tagValue,
 	}
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
 	if len(typeFilter.QueryParameters) == 0 {
-		return search.TypeFilterSubquery{
+		return fhir.TypeFilterSubquery{
 			ResourceType:    "ExplanationOfBenefit",
-			QueryParameters: []search.TypeFilterSubqueryParam{subqueryParam},
+			QueryParameters: []fhir.TypeFilterSubqueryParam{subqueryParam},
 		}
 	}
 
