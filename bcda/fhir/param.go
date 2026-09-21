@@ -52,17 +52,21 @@ func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
 	}
 
 	// Expected format is: <resourceType>?<paramList>
-	resourceType, params, ok := strings.Cut(decodedQuery, "?")
-	if !ok {
-		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("missing question mark %s", decodedQuery)}
+	resourceType, params, found := strings.Cut(decodedQuery, "?")
+	if !found {
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing question mark %s", decodedQuery)}
+	} else if len(resourceType) == 0 {
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing resource type %s", decodedQuery)}
+	} else if len(params) == 0 {
+		return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter parameter missing value %s", decodedQuery)}
 	}
 
 	var subqueryParams []TypeFilterSubqueryParam
 	paramAry := strings.SplitSeq(params, "&")
 	for paramPair := range paramAry {
-		name, value, ok := strings.Cut(paramPair, "=")
-		if !ok {
-			return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("invalid _typeFilter parameter/value: %s", paramPair)}
+		name, value, found := strings.Cut(paramPair, "=")
+		if !found {
+			return TypeFilterSubquery{}, ParameterParsingError{Details: fmt.Sprintf("_typeFilter value missing equals sign: %s", paramPair)}
 		}
 		subqueryParams = append(subqueryParams, TypeFilterSubqueryParam{Name: name, Value: value})
 	}

@@ -7,6 +7,118 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParseTypeFilterSubquery(t *testing.T) {
+	tests := []struct {
+		name           string
+		subquery       string
+		expectedParsed TypeFilterSubquery
+		expectedErr    error
+	}{
+		{
+			name:     "valid tag shared system",
+			subquery: "ExplanationOfBenefit%3F_tag%3Dhttps%3A%2F%2Fbluebutton.cms.gov%2Ffhir%2FCodeSystem%2FSystem-Type%7CSharedSystem",
+			expectedParsed: TypeFilterSubquery{
+				ResourceType: "ExplanationOfBenefit",
+				QueryParameters: []TypeFilterSubqueryParam{
+					{Name: "_tag", Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+				},
+			},
+		},
+		{
+			name:     "valid serviceDate and tag",
+			subquery: "ExplanationOfBenefit%3Fservice-date%3Dlt2021-02-15%26_tag%3Dhttps%3A%2F%2Fbluebutton.cms.gov%2Ffhir%2FCodeSystem%2FFinal-Action%7CFinalAction",
+			expectedParsed: TypeFilterSubquery{
+				ResourceType: "ExplanationOfBenefit",
+				QueryParameters: []TypeFilterSubqueryParam{
+					{Name: "service-date", Value: "lt2021-02-15"},
+					{Name: "_tag", Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+				},
+			},
+		},
+		{
+			name:        "invalid missing resource",
+			subquery:    "%3Fservice-date%3Dlt2021-02-15",
+			expectedErr: ParameterParsingError{},
+		},
+		{
+			name:        "invalid missing question mark",
+			subquery:    "ExplanationOfBenefitservice-date%3Dlt2021-02-15",
+			expectedErr: ParameterParsingError{},
+		},
+		{
+			name:        "invalid missing value",
+			subquery:    "ExplanationOfBenefit%3F",
+			expectedErr: ParameterParsingError{},
+		},
+		{
+			name:        "invalid value missing equals",
+			subquery:    "ExplanationOfBenefit%3Fservice-datelt2021-02-15",
+			expectedErr: ParameterParsingError{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := ParseTypeFilterSubquery(tt.subquery)
+
+			if tt.expectedErr != nil {
+				assert.ErrorAs(t, err, &tt.expectedErr)
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, tt.expectedParsed, parsed)
+			}
+		})
+	}
+}
+
+func TestValidateTypeFilterSubquery(t *testing.T) {
+	tests := []struct {
+		name        string
+		subquery    TypeFilterSubquery
+		expectedErr error
+	}{
+		{
+			name: "valid tag shared system",
+			subquery: TypeFilterSubquery{
+				ResourceType: "ExplanationOfBenefit",
+				QueryParameters: []TypeFilterSubqueryParam{
+					{Name: "_tag", Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+				},
+			},
+		},
+		{
+			name: "invalid resource type",
+			subquery: TypeFilterSubquery{
+				ResourceType: "Patient",
+				QueryParameters: []TypeFilterSubqueryParam{
+					{Name: "_tag", Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem"},
+				},
+			},
+			expectedErr: ParameterValidationError{},
+		},
+		{
+			name: "invalid subquery parameter",
+			subquery: TypeFilterSubquery{
+				ResourceType: "ExplanationOfBenefit",
+				QueryParameters: []TypeFilterSubqueryParam{
+					{Name: "_source", Value: "InternalSourceSystem"},
+				},
+			},
+			expectedErr: ParameterValidationError{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateTypeFilterSubquery(tt.subquery)
+
+			if tt.expectedErr != nil {
+				assert.ErrorAs(t, err, &tt.expectedErr)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
 func TestParseStringParam(t *testing.T) {
 	tests := []struct {
 		name           string
