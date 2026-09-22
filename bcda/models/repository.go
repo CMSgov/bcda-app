@@ -62,6 +62,7 @@ type jobRepository interface {
 	GetJobByID(ctx context.Context, jobID uint) (*Job, error)
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]*Job, error)
 	GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...JobStatus) ([]*Job, error)
+	GetJobsByCreateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...JobStatus) ([]*Job, error)
 	UpdateJob(ctx context.Context, j Job) error
 }
 

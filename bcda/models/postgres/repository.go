@@ -435,23 +435,48 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...m
 
 }
 
-func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
+// earliest = older, latest = newer
+func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, earliest, latest time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
 	for i, v := range statuses {
 		s[i] = v
 	}
 
 	sb := sqlFlavor.NewSelectBuilder().Select(jobColumns...).From("jobs")
-	if !lowerBound.IsZero() {
-		sb.Where(sb.GreaterEqualThan("updated_at", lowerBound))
+	if !earliest.IsZero() {
+		sb.Where(sb.GreaterEqualThan("updated_at", earliest))
 	}
-	if !upperBound.IsZero() {
-		sb.Where(sb.LessEqualThan("updated_at", upperBound))
+	if !latest.IsZero() {
+		sb.Where(sb.LessEqualThan("updated_at", latest))
 	}
 
 	if len(s) > 0 {
 		sb.Where(sb.In("status", s...))
 	}
+
+	query, args := sb.Build()
+	return r.getJobs(ctx, query, args...)
+}
+
+func (r *Repository) GetJobsByCreateTimeAndStatus(ctx context.Context, olderTime, newerTime time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
+	s := make([]interface{}, len(statuses))
+	for i, v := range statuses {
+		s[i] = v
+	}
+
+	sb := sqlFlavor.NewSelectBuilder().Select(jobColumns...).From("jobs")
+	if !olderTime.IsZero() {
+		sb.Where(sb.GreaterEqualThan("created_at", olderTime))
+	}
+	if !newerTime.IsZero() {
+		sb.Where(sb.LessEqualThan("created_at", newerTime))
+	}
+
+	if len(s) > 0 {
+		sb.Where(sb.In("status", s...))
+	}
+
+	sb.OrderBy("created_at ASC")
 
 	query, args := sb.Build()
 	return r.getJobs(ctx, query, args...)
