@@ -348,7 +348,7 @@ func (s *HealthCheckerTestSuite) TestJobQueueOK_Integration() {
 		testdata    string
 		expFailure  bool
 		expJobCount int
-		expID       int
+		expID       int64
 	}{
 		{"multiple pending jobs returned older than 6 hours", "testdata/pending_jobs_many.sql", false, 2, 3},
 		{"one pending job older than 6 hours", "testdata/pending_jobs_single.sql", false, 1, 1},

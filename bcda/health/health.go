@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"database/sql"
+	"math"
 	"sync"
 	"time"
 
@@ -29,7 +30,7 @@ type HealthChecker interface {
 	IsDatabaseOK() (string, bool)
 	IsWorkerDatabaseOK() (string, bool)
 	IsBlueButtonOK() bool
-	IsJobQueueOK() (bool, int, int)
+	IsJobQueueOK() (bool, int, int64)
 	IsSsasOK() (string, bool)
 	IsSsasIntrospectOK() (string, bool)
 }
@@ -105,7 +106,7 @@ func (h healthCheck) IsSsasOK() (result string, ok bool) {
 // jobs in a pending state for more than 6hrs could be an indication of a silent failure of job processing
 // we receive an alert but do not fail the health check if this condition is met; this prevents the service
 // from repeatedly refreshing the containers and allows the service time to continue to try and process the jobs
-func (h healthCheck) IsJobQueueOK() (bool, int, int) {
+func (h healthCheck) IsJobQueueOK() (bool, int, int64) {
 	jobs, err := h.r.GetJobsByCreateTimeAndStatus(context.Background(), time.Time{}, time.Now().Add(-6*time.Hour), models.JobStatusPending)
 	if err != nil {
 		log.Worker.Errorf("health check: pending jobs query returned errors. err: %s", err)
@@ -116,7 +117,13 @@ func (h healthCheck) IsJobQueueOK() (bool, int, int) {
 		return true, 0, 0
 	}
 
-	return false, len(jobs), int(jobs[0].ID)
+	// gosec
+	if jobs[0].ID > math.MaxInt64 {
+		log.Worker.Error("health check: job id exceeds int64 conversion")
+		return true, len(jobs), 0
+	}
+
+	return false, len(jobs), int64(jobs[0].ID) // #nosec G115
 }
 
 func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {

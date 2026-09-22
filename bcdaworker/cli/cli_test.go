@@ -61,7 +61,7 @@ func TestCheckHealth(t *testing.T) {
 			mockHealthChecker := &health.MockHealthChecker{}
 			mockHealthChecker.On("IsWorkerDatabaseOK").Return("", test.dbOk)
 			mockHealthChecker.On("IsBlueButtonOK").Return(test.bbOk)
-			mockHealthChecker.On("IsJobQueueOK").Return(test.jqOK, 0, 0)
+			mockHealthChecker.On("IsJobQueueOK").Return(test.jqOK, 0, int64(0))
 			actualHealthy := checkHealth(mockHealthChecker)
 			assert.Equal(t, test.expectedHealthy, actualHealthy)
 		})
