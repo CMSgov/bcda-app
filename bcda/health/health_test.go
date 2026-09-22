@@ -2,18 +2,24 @@ package health
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 
 	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	customErrors "github.com/CMSgov/bcda-app/bcda/errors"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/middleware"
 )
 
@@ -27,7 +33,9 @@ var (
 
 type HealthCheckerTestSuite struct {
 	suite.Suite
-	hc healthCheck
+	hc          healthCheck
+	dbContainer db.TestDatabaseContainer
+	db          *sql.DB
 }
 
 func (s *HealthCheckerTestSuite) SetupSuite() {
@@ -36,6 +44,18 @@ func (s *HealthCheckerTestSuite) SetupSuite() {
 	origSSASUseTLS = conf.GetEnv("SSAS_USE_TLS")
 	origSSASClientID = conf.GetEnv("BCDA_SSAS_CLIENT_ID")
 	origSSASSecret = conf.GetEnv("BCDA_SSAS_SECRET")
+
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+}
+
+func (s *HealthCheckerTestSuite) TearDownSuite() {
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func (s *HealthCheckerTestSuite) SetupTest() {
@@ -51,6 +71,19 @@ func (s *HealthCheckerTestSuite) TearDownTest() {
 	conf.SetEnv(s.T(), "SSAS_USE_TLS", origSSASUseTLS)
 	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", origSSASClientID)
 	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", origSSASSecret)
+}
+
+func (s *HealthCheckerTestSuite) SetupSubTest() {
+	var err error
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.hc.r = postgres.NewRepository(s.db)
+}
+
+func (s *HealthCheckerTestSuite) TearDownSubTest() {
+	s.db.Close()
+	err := s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func TestHealthCheckerTestSuite(t *testing.T) {
@@ -306,4 +339,35 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_CacheWithFailedResult() 
 
 	assert.False(s.T(), ok)
 	assert.Equal(s.T(), "SSAS introspect check failed", result)
+}
+
+func (s *HealthCheckerTestSuite) TestJobQueueOK_Integration() {
+
+	tests := []struct {
+		name        string
+		testdata    string
+		expFailure  bool
+		expJobCount int
+		expID       int64
+	}{
+		{"multiple pending jobs returned older than 6 hours", "testdata/pending_jobs_many.sql", false, 2, 3},
+		{"one pending job older than 6 hours", "testdata/pending_jobs_single.sql", false, 1, 1},
+		{"no pending jobs returned", "", true, 0, 0},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			if tt.testdata != "" {
+				rowsUpdated, err := s.dbContainer.ExecuteFile(tt.testdata)
+				require.NoError(s.T(), err)
+				assert.Greater(s.T(), rowsUpdated, int64(0))
+			}
+			failed, jobCount, jobID := s.hc.IsJobQueueOK()
+			assert.Equal(s.T(), tt.expFailure, failed)
+			assert.Equal(s.T(), tt.expJobCount, jobCount)
+			assert.Equal(s.T(), tt.expID, jobID)
+
+		})
+	}
+
 }
