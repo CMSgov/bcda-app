@@ -29,7 +29,7 @@ type HealthChecker interface {
 	IsDatabaseOK() (string, bool)
 	IsWorkerDatabaseOK() (string, bool)
 	IsBlueButtonOK() bool
-	IsJobQueueOK() bool
+	IsJobQueueOK() (bool, int, int)
 	IsSsasOK() (string, bool)
 	IsSsasIntrospectOK() (string, bool)
 }
@@ -102,14 +102,21 @@ func (h healthCheck) IsSsasOK() (result string, ok bool) {
 	return "ok", true
 }
 
-// jobs in a pending state for more than 6hrs are an indication of a silent failure of job processing
-func (h healthCheck) IsJobQueueOK() bool {
+// jobs in a pending state for more than 6hrs could be an indication of a silent failure of job processing
+// we receive an alert but do not fail the health check if this condition is met; this prevents the service
+// from repeatedly refreshing the containers and allows the service time to continue to try and process the jobs
+func (h healthCheck) IsJobQueueOK() (bool, int, int) {
 	jobs, err := h.r.GetJobsByCreateTimeAndStatus(context.Background(), time.Time{}, time.Now().Add(-6*time.Hour), models.JobStatusPending)
 	if err != nil {
-		log.API.Errorf("health check: pending jobs query returned errors. err: %s", err)
-		return false
+		log.Worker.Errorf("health check: pending jobs query returned errors. err: %s", err)
+		return false, 0, 0
 	}
-	return len(jobs) < 1
+
+	if len(jobs) < 1 {
+		return true, 0, 0
+	}
+
+	return false, len(jobs), int(jobs[0].ID)
 }
 
 func (h healthCheck) IsSsasIntrospectOK() (result string, ok bool) {

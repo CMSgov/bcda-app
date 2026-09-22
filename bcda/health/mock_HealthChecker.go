@@ -142,7 +142,7 @@ func (_c *MockHealthChecker_IsDatabaseOK_Call) RunAndReturn(run func() (string, 
 }
 
 // IsJobQueueOK provides a mock function for the type MockHealthChecker
-func (_mock *MockHealthChecker) IsJobQueueOK() bool {
+func (_mock *MockHealthChecker) IsJobQueueOK() (bool, int, int) {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
@@ -150,12 +150,27 @@ func (_mock *MockHealthChecker) IsJobQueueOK() bool {
 	}
 
 	var r0 bool
+	var r1 int
+	var r2 int
+	if returnFunc, ok := ret.Get(0).(func() (bool, int, int)); ok {
+		return returnFunc()
+	}
 	if returnFunc, ok := ret.Get(0).(func() bool); ok {
 		r0 = returnFunc()
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func() int); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+	if returnFunc, ok := ret.Get(2).(func() int); ok {
+		r2 = returnFunc()
+	} else {
+		r2 = ret.Get(2).(int)
+	}
+	return r0, r1, r2
 }
 
 // MockHealthChecker_IsJobQueueOK_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsJobQueueOK'
@@ -175,12 +190,12 @@ func (_c *MockHealthChecker_IsJobQueueOK_Call) Run(run func()) *MockHealthChecke
 	return _c
 }
 
-func (_c *MockHealthChecker_IsJobQueueOK_Call) Return(b bool) *MockHealthChecker_IsJobQueueOK_Call {
-	_c.Call.Return(b)
+func (_c *MockHealthChecker_IsJobQueueOK_Call) Return(b bool, n int, n1 int) *MockHealthChecker_IsJobQueueOK_Call {
+	_c.Call.Return(b, n, n1)
 	return _c
 }
 
-func (_c *MockHealthChecker_IsJobQueueOK_Call) RunAndReturn(run func() bool) *MockHealthChecker_IsJobQueueOK_Call {
+func (_c *MockHealthChecker_IsJobQueueOK_Call) RunAndReturn(run func() (bool, int, int)) *MockHealthChecker_IsJobQueueOK_Call {
 	_c.Call.Return(run)
 	return _c
 }

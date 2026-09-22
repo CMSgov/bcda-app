@@ -344,13 +344,15 @@ func (s *HealthCheckerTestSuite) TestIsSsasIntrospectOK_CacheWithFailedResult() 
 func (s *HealthCheckerTestSuite) TestJobQueueOK_Integration() {
 
 	tests := []struct {
-		name      string
-		testdata  string
-		expResult bool
+		name        string
+		testdata    string
+		expFailure  bool
+		expJobCount int
+		expID       int
 	}{
-		{"multiple pending jobs returned older than 24 hours", "testdata/pending_jobs_many.sql", false},
-		{"one pending job older than 24 hours", "testdata/pending_jobs_single.sql", false},
-		{"no pending jobs returned", "", true},
+		{"multiple pending jobs returned older than 6 hours", "testdata/pending_jobs_many.sql", false, 2, 3},
+		{"one pending job older than 6 hours", "testdata/pending_jobs_single.sql", false, 1, 1},
+		{"no pending jobs returned", "", true, 0, 0},
 	}
 
 	for _, tt := range tests {
@@ -360,8 +362,10 @@ func (s *HealthCheckerTestSuite) TestJobQueueOK_Integration() {
 				require.NoError(s.T(), err)
 				assert.Greater(s.T(), rowsUpdated, int64(0))
 			}
-			actualResult := s.hc.IsJobQueueOK()
-			assert.Equal(s.T(), tt.expResult, actualResult)
+			failed, jobCount, jobID := s.hc.IsJobQueueOK()
+			assert.Equal(s.T(), tt.expFailure, failed)
+			assert.Equal(s.T(), tt.expJobCount, jobCount)
+			assert.Equal(s.T(), tt.expID, jobID)
 
 		})
 	}

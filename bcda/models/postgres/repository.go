@@ -476,6 +476,8 @@ func (r *Repository) GetJobsByCreateTimeAndStatus(ctx context.Context, olderTime
 		sb.Where(sb.In("status", s...))
 	}
 
+	sb.OrderBy("created_at ASC")
+
 	query, args := sb.Build()
 	return r.getJobs(ctx, query, args...)
 }

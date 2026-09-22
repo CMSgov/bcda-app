@@ -161,13 +161,17 @@ func checkHealth(healthChecker health.HealthChecker) bool {
 		logFields["bb"] = "error"
 	}
 
-	jobQueueOK := healthChecker.IsJobQueueOK()
+	jobQueueOK, jobCount, oldestJob := healthChecker.IsJobQueueOK()
 	if jobQueueOK {
 		logFields["jobqueue"] = "ok"
 	} else {
 		logFields["jobqueue"] = "error"
+		logFields["pending_jobs_count"] = jobCount
+		logFields["oldest_pending_job"] = oldestJob
+
 	}
 
 	entry.WithFields(logFields).Info()
+	// jobQueueOK failure is not included in overall health check; see IsJobQueueOK() for more details
 	return dbOk && bbOk
 }
