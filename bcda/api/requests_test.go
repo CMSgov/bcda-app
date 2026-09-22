@@ -509,64 +509,103 @@ func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models
 
 func (s *RequestsTestSuite) TestAttributionStatus() {
 	tests := []struct {
-		name        string
-		respCode    int
-		fileNames   []string
-		fileTypes   []string
-		invalidAuth bool
+		name                  string
+		respCode              int
+		defaultTimestamp      time.Time
+		runoutTimestamp       time.Time
+		defaultError          error
+		runoutError           error
+		expirationDate        time.Time
+		runoutExpirationDate  time.Time
+		expirationError       error
+		runoutExpirationError error
+		invalidAuth           bool
 	}{
-		{"Successful with both files", http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}, false},
-		{"Successful with default file", http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}, false},
-		{"Successful with runout file", http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}, false},
-		{"No CCLF files found", http.StatusNotFound, []string{"", ""}, []string{"", ""}, false},
-		{"Invalid Auth, no CCLF Files found", http.StatusUnauthorized, []string{"", ""}, []string{"", ""}, true},
-		{"Simulate error pulling from repository - Default", http.StatusInternalServerError, []string{"InduceError_Default", ""}, []string{"", ""}, false},
-		{"Simulate error pulling from repository - Runout", http.StatusInternalServerError, []string{"", "InduceError_Runout"}, []string{"", ""}, false},
+		{
+			name:                 "Successful with both files",
+			respCode:             http.StatusOK,
+			defaultTimestamp:     time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			runoutTimestamp:      time.Date(2024, 01, 14, 0, 0, 0, 0, time.UTC),
+			expirationDate:       time.Date(2024, 04, 05, 0, 0, 0, 0, time.UTC),
+			runoutExpirationDate: time.Date(2024, 07, 12, 0, 0, 0, 0, time.UTC),
+			invalidAuth:          false,
+		},
+		{
+			name:             "Successful with default file",
+			respCode:         http.StatusOK,
+			defaultTimestamp: time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			invalidAuth:      false,
+		},
+		{
+			name:            "Successful with runout file",
+			respCode:        http.StatusOK,
+			runoutTimestamp: time.Date(2024, 01, 14, 0, 0, 0, 0, time.UTC),
+			invalidAuth:     false,
+		},
+		{
+			name:     "No CCLF files found",
+			respCode: http.StatusNotFound,
+			defaultError: &service.CCLFNotFoundError{
+				FileNumber: 8,
+				CMSID:      "",
+				FileType:   0,
+				CutoffTime: time.Time{}},
+			invalidAuth: false,
+		},
+		{
+			name:        "Invalid Auth, no CCLF Files found",
+			respCode:    http.StatusUnauthorized,
+			invalidAuth: true,
+		},
+		{
+			name:         "Simulate error pulling from repository - Default",
+			respCode:     http.StatusInternalServerError,
+			defaultError: errors.New("Database connection closed."),
+			invalidAuth:  false,
+		},
+		{
+			name:        "Simulate error pulling from repository - Runout",
+			respCode:    http.StatusInternalServerError,
+			runoutError: errors.New("Database connection closed."),
+			invalidAuth: false,
+		},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mockSvc := &service.MockService{}
 
-			for i, name := range tt.fileNames {
-				fileType := models.FileTypeDefault
-				if i == 1 {
-					fileType = models.FileTypeRunout
-				}
-				switch name {
-				case "":
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
-						nil,
-						service.CCLFNotFoundError{
-							FileNumber: 8,
-							CMSID:      "",
-							FileType:   0,
-							CutoffTime: time.Time{}},
-					)
-
-				case "InduceError_Default": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
-						nil,
-						errors.New("Database connection closed."),
-					)
-				case "InduceError_Runout": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
-						nil,
-						errors.New("Database connection closed."),
-					)
-				default:
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
-						&models.CCLFFile{
-							ID:        1,
-							Name:      tt.fileNames[i],
-							Timestamp: time.Time{},
-							CCLFNum:   8,
-						},
-						nil,
-					)
-				}
-
+			defaultFile := &models.CCLFFile{
+				ID:        1,
+				Name:      "defaultFile",
+				Timestamp: tt.defaultTimestamp,
+				CCLFNum:   8,
+				Type:      models.FileTypeDefault,
 			}
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
+				defaultFile,
+				tt.defaultError,
+			)
+
+			runoutFile := &models.CCLFFile{
+				ID:        2,
+				Name:      "runoutFile",
+				Timestamp: tt.runoutTimestamp,
+				CCLFNum:   8,
+				Type:      models.FileTypeRunout,
+			}
+			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
+				runoutFile,
+				tt.runoutError,
+			)
+
+			mockSvc.On("GetAttributionExpirationDate", testUtils.CtxMatcher, mock.Anything, models.FileTypeDefault).Return(
+				tt.expirationDate, tt.expirationError,
+			)
+			mockSvc.On("GetAttributionExpirationDate", testUtils.CtxMatcher, mock.Anything, models.FileTypeRunout).Return(
+				tt.runoutExpirationDate, tt.runoutExpirationError,
+			)
+
 			apiVersion := "v1"
 			fhirPath := "/" + apiVersion + "/fhir"
 
@@ -584,18 +623,19 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 
 			switch tt.respCode {
 			case http.StatusNotFound:
-				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+				assert.Equal(s.T(), http.StatusNotFound, rr.Code, tt.name)
 			case http.StatusOK:
-				var resp AttributionFileStatusResponse
-				err := json.Unmarshal(rr.Body.Bytes(), &resp)
-				assert.NoError(s.T(), err)
-
-				count := 0
-				for _, fileStatus := range resp.IngestionDates {
-					if tt.fileNames[count] != "" {
-						assert.Equal(s.T(), tt.fileTypes[count], fileStatus.Type)
-						count += 1
-					}
+				if !tt.defaultTimestamp.IsZero() {
+					assert.Contains(t, rr.Body.String(), tt.defaultTimestamp.Format("2006-01-02"), tt.name)
+				}
+				if !tt.runoutTimestamp.IsZero() {
+					assert.Contains(t, rr.Body.String(), tt.runoutTimestamp.Format("2006-01-02"), tt.name)
+				}
+				if !tt.expirationDate.IsZero() {
+					assert.Contains(t, rr.Body.String(), tt.expirationDate.Format("2006-01-02"), tt.name)
+				}
+				if !tt.runoutExpirationDate.IsZero() {
+					assert.Contains(t, rr.Body.String(), tt.runoutExpirationDate.Format("2006-01-02"), tt.name)
 				}
 			}
 		})

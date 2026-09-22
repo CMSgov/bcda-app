@@ -458,7 +458,8 @@ type AttributionFileStatus struct {
 }
 
 type AttributionFileStatusResponse struct {
-	IngestionDates []AttributionFileStatus `json:"ingestion_dates"`
+	IngestionDates  []AttributionFileStatus `json:"ingestion_dates"`
+	ExpirationDates []AttributionFileStatus `json:"expiration_dates"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
@@ -509,6 +510,42 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	if asr != nil {
 		resp.IngestionDates = append(resp.IngestionDates, *asr)
+	}
+
+	expirationDate, err := h.Svc.GetAttributionExpirationDate(ctx, ad.CMSID, models.FileTypeDefault)
+	if err != nil {
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: error fetching attribution expiration: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	}
+	if !expirationDate.IsZero() {
+		attributionExpiration := &AttributionFileStatus{
+			Timestamp: expirationDate,
+			Type:      "attribution_access_expiration",
+		}
+		resp.ExpirationDates = append(resp.ExpirationDates, *attributionExpiration)
+	}
+
+	runoutExpirationDate, err := h.Svc.GetAttributionExpirationDate(ctx, ad.CMSID, models.FileTypeRunout)
+	if err != nil {
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: error fetching runout expiration: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	}
+	if !runoutExpirationDate.IsZero() {
+		runoutExpiration := &AttributionFileStatus{
+			Timestamp: runoutExpirationDate,
+			Type:      "runout_access_expiration",
+		}
+		resp.ExpirationDates = append(resp.ExpirationDates, *runoutExpiration)
 	}
 
 	if resp.IngestionDates == nil {

@@ -1385,6 +1385,72 @@ func (s *ServiceTestSuite) TestGetCutoffTime() {
 	}
 }
 
+func (s *ServiceTestSuite) TestGetAttributionExpirationDate() {
+	tests := []struct {
+		name               string
+		fileType           models.CCLFFileType
+		terminationDate    time.Time
+		cclfFileDate       time.Time
+		expectedExpiration time.Time
+		expectedErr        bool
+	}{
+		{
+			name:               "default file with entity termination far in future",
+			fileType:           models.FileTypeDefault,
+			cclfFileDate:       time.Date(2024, 2, 26, 0, 0, 0, 0, time.UTC),
+			terminationDate:    time.Date(2025, 3, 27, 0, 0, 0, 0, time.UTC),
+			expectedExpiration: time.Date(2024, 2, 26, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 50),
+		},
+		{
+			name:               "default file with entity termination soon",
+			fileType:           models.FileTypeDefault,
+			cclfFileDate:       time.Date(2024, 2, 26, 0, 0, 0, 0, time.UTC),
+			terminationDate:    time.Date(2025, 3, 27, 0, 0, 0, 0, time.UTC),
+			expectedExpiration: time.Date(2025, 3, 27, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:               "runout file expiration date",
+			cclfFileDate:       time.Date(2024, 2, 26, 0, 0, 0, 0, time.UTC),
+			terminationDate:    time.Date(2025, 3, 27, 0, 0, 0, 0, time.UTC),
+			expectedExpiration: time.Date(2024, 2, 26, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 180),
+			fileType:           models.FileTypeRunout,
+		},
+	}
+
+	ctx := context.Background()
+	cutoffDurationDays := 50
+	runoutCutoffDurationDays := 180
+	cfg := Config{CutoffDurationDays: cutoffDurationDays, RunoutConfig: RunoutConfig{CutoffDurationDays: runoutCutoffDurationDays}}
+	_ = cfg.ComputeFields()
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			cmsID := "TESTCMSID"
+			aco := &models.ACO{CMSID: &cmsID}
+			repository := &models.MockRepository{}
+			if !tt.terminationDate.IsZero() {
+				aco.TerminationDetails = &models.Termination{TerminationDate: tt.terminationDate}
+			}
+			repository.On("GetACOByCMSID", testUtils.CtxMatcher, cmsID).Return(aco, nil)
+
+			cclfFile := &models.CCLFFile{Type: tt.fileType, Timestamp: tt.cclfFileDate}
+			repository.On("GetLatestCCLFFile", mock.Anything, cmsID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, tt.fileType).Return(cclfFile, nil)
+
+			service := NewService(repository, &cfg, "")
+
+			expirationDate, err := service.GetAttributionExpirationDate(ctx, cmsID, tt.fileType)
+			if tt.expectedErr {
+				assert.NotNil(t, err)
+			} else {
+				expectedExpiration := tt.cclfFileDate.AddDate(0, 0, cutoffDurationDays)
+				if tt.fileType == models.FileTypeRunout {
+					expectedExpiration = tt.cclfFileDate.AddDate(0, 0, runoutCutoffDurationDays)
+				}
+				assert.Equal(t, expectedExpiration, expirationDate)
+			}
+		})
+	}
+}
+
 func (s *ServiceTestSuite) TestFindOldCCLFFile() {
 	now := time.Now()
 	dayOld := now.Add(time.Hour * -24)

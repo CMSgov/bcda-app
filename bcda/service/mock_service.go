@@ -248,6 +248,78 @@ func (_c *MockService_GetACOConfigForID_Call) RunAndReturn(run func(cmsID string
 	return _c
 }
 
+// GetAttributionExpirationDate provides a mock function for the type MockService
+func (_mock *MockService) GetAttributionExpirationDate(ctx context.Context, cmsID string, fileType models.CCLFFileType) (time.Time, error) {
+	ret := _mock.Called(ctx, cmsID, fileType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAttributionExpirationDate")
+	}
+
+	var r0 time.Time
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, models.CCLFFileType) (time.Time, error)); ok {
+		return returnFunc(ctx, cmsID, fileType)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, models.CCLFFileType) time.Time); ok {
+		r0 = returnFunc(ctx, cmsID, fileType)
+	} else {
+		r0 = ret.Get(0).(time.Time)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, models.CCLFFileType) error); ok {
+		r1 = returnFunc(ctx, cmsID, fileType)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockService_GetAttributionExpirationDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAttributionExpirationDate'
+type MockService_GetAttributionExpirationDate_Call struct {
+	*mock.Call
+}
+
+// GetAttributionExpirationDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cmsID string
+//   - fileType models.CCLFFileType
+func (_e *MockService_Expecter) GetAttributionExpirationDate(ctx any, cmsID any, fileType any) *MockService_GetAttributionExpirationDate_Call {
+	return &MockService_GetAttributionExpirationDate_Call{Call: _e.mock.On("GetAttributionExpirationDate", ctx, cmsID, fileType)}
+}
+
+func (_c *MockService_GetAttributionExpirationDate_Call) Run(run func(ctx context.Context, cmsID string, fileType models.CCLFFileType)) *MockService_GetAttributionExpirationDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 models.CCLFFileType
+		if args[2] != nil {
+			arg2 = args[2].(models.CCLFFileType)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_GetAttributionExpirationDate_Call) Return(time1 time.Time, err error) *MockService_GetAttributionExpirationDate_Call {
+	_c.Call.Return(time1, err)
+	return _c
+}
+
+func (_c *MockService_GetAttributionExpirationDate_Call) RunAndReturn(run func(ctx context.Context, cmsID string, fileType models.CCLFFileType) (time.Time, error)) *MockService_GetAttributionExpirationDate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCutoffTime provides a mock function for the type MockService
 func (_mock *MockService) GetCutoffTime(ctx context.Context, reqType constants.DataRequestType, since time.Time, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, string) {
 	ret := _mock.Called(ctx, reqType, since, timeConstraints, fileType)
