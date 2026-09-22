@@ -484,13 +484,13 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	group := chi.URLParam(r, "groupId")
 	notFoundMsg := fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group)
 	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
-	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+	if _, match := goerrors.AsType[*service.CCLFNotFoundError](err); match {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
 			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
-			logrus.Fields{"resp_status": http.StatusInternalServerError},
+			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, notFoundMsg)
+		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, notFoundMsg)
 		return
 	}
 	if asd != nil {
@@ -499,13 +499,13 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
-	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+	if _, match := goerrors.AsType[*service.CCLFNotFoundError](err); match {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
 			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
-			logrus.Fields{"resp_status": http.StatusInternalServerError},
+			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, notFoundMsg)
+		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, notFoundMsg)
 		return
 	}
 	if asr != nil {
@@ -578,12 +578,7 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, time.Time{}, time.Time{}, fileType)
 	if err != nil {
 		logger.Error(err)
-
-		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-			return nil, nil
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	status := &AttributionFileStatus{
