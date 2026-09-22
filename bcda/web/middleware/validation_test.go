@@ -97,7 +97,7 @@ func TestInvalidRequestURL(t *testing.T) {
 		{
 			"invalidTypeFilterSubquery",
 			fmt.Sprintf("%s_typeFilter=ExplanationOfBenefit%%3Fservice-dateactive", baseV3),
-			"invalid _typeFilter parameter/value: service-dateactive",
+			"_typeFilter value missing equals sign",
 		},
 		{
 			"invalidTypeFilterSubqueryParam",
