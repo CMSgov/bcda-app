@@ -68,7 +68,7 @@ func ParseTypeFilterSubquery(s string) (TypeFilterSubquery, error) {
 
 func ValidateTypeFilterSubquery(subquery TypeFilterSubquery) error {
 	if subquery.ResourceType != "ExplanationOfBenefit" {
-		return fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", subquery.ResourceType)
+		return ParameterValidationError{Details: fmt.Sprintf("invalid _typeFilter Resource Type (Only EOBs valid): %s", subquery.ResourceType)}
 	}
 
 	var serviceDateParams []DateParam

@@ -61,7 +61,7 @@ func TestParseTypeFilterSubquery(t *testing.T) {
 			parsed, err := ParseTypeFilterSubquery(tt.subquery)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 				assert.Equal(t, tt.expectedParsed, parsed)
@@ -111,7 +111,7 @@ func TestValidateTypeFilterSubquery(t *testing.T) {
 			err := ValidateTypeFilterSubquery(tt.subquery)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 			}
@@ -155,7 +155,7 @@ func TestParseStringParam(t *testing.T) {
 			stringParam, err := ParseStringParam(tt.subqueryParam)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 				assert.Equal(t, tt.expectedString, stringParam)
@@ -275,7 +275,7 @@ func TestParseDateParam(t *testing.T) {
 			date, err := ParseDateParam(tt.subqueryParam)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 				assert.Equal(t, tt.expectedDate, date)
@@ -346,7 +346,7 @@ func TestValidateServiceDates(t *testing.T) {
 			err := ValidateServiceDates(tt.dateParams)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 			}
@@ -401,7 +401,7 @@ func TestParseTokenParam(t *testing.T) {
 			token, err := ParseTokenParam(tt.subqueryParam)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 				assert.Equal(t, tt.expectedToken, token)
@@ -447,7 +447,7 @@ func TestValidateTag(t *testing.T) {
 			err := ValidateTag(tt.tokenParam)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 			}
@@ -482,7 +482,7 @@ func TestValidateOutcome(t *testing.T) {
 			err := ValidateOutcome(tt.tokenParam)
 
 			if tt.expectedErr != nil {
-				assert.ErrorAs(t, err, &tt.expectedErr)
+				assert.IsType(t, tt.expectedErr, err)
 			} else {
 				assert.Nil(t, err)
 			}
