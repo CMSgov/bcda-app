@@ -506,25 +506,29 @@ func setRestrictiveServiceDateWindow(params *url.Values) {
 }
 
 func parseLatestDateFromEqualPrefix(date string) time.Time {
+	// date interval of a day; latest date is the beginning of the next day
 	parsedDate, err := time.Parse("2006-01-02", date)
 	if err == nil {
 		return parsedDate.AddDate(0, 0, 1)
 	}
 
+	// date interval of a month; latest date is the beginning of first day of the next month
 	parsedDate, err = time.Parse("2006-01", date)
 	if err == nil {
 		return parsedDate.AddDate(0, 1, 0)
 	}
 
+	// date interval of a year; latest date is the beginning of the first day of the next year
 	parsedDate, err = time.Parse("2006", date)
 	if err == nil {
 		return parsedDate.AddDate(1, 0, 0)
 	}
 
-	// if an "interval" date format is not specified, default to standard parsing
+	// if a time is specified, treat it like a day interval; latest date is the beginning of the next day
+	// ToDo: update this and upstream/downstream logic to properly handle times
 	parsedDate, err = fhir.ParseDateString(date)
 	if err == nil {
-		return parsedDate
+		return parsedDate.AddDate(0, 0, 1)
 	}
 
 	return time.Time{}

@@ -1260,6 +1260,20 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			}},
 			expectedVals: []string{"gt2022-01-01"},
 		},
+		{
+			name: "Equals with time passed in, should be limited to one day",
+			params: url.Values{"service-date": []string{
+				"eq2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "No prefix with time passed in, should be limited to one day",
+			params: url.Values{"service-date": []string{
+				"2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
 	}
 
 	for _, tt := range tests {
