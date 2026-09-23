@@ -543,6 +543,18 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 			invalidAuth:     false,
 		},
 		{
+			name:           "Successful with expiration date",
+			respCode:       http.StatusOK,
+			expirationDate: time.Date(2024, 04, 05, 0, 0, 0, 0, time.UTC),
+			invalidAuth:    false,
+		},
+		{
+			name:                 "Successful with runout expiration date",
+			respCode:             http.StatusOK,
+			runoutExpirationDate: time.Date(2024, 07, 12, 0, 0, 0, 0, time.UTC),
+			invalidAuth:          false,
+		},
+		{
 			name:     "No CCLF files found",
 			respCode: http.StatusNotFound,
 			defaultError: &service.CCLFNotFoundError{
@@ -558,16 +570,14 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 			invalidAuth: true,
 		},
 		{
-			name:         "Simulate error pulling from repository - Default",
-			respCode:     http.StatusInternalServerError,
-			defaultError: errors.New("Database connection closed."),
-			invalidAuth:  false,
-		},
-		{
-			name:        "Simulate error pulling from repository - Runout",
-			respCode:    http.StatusInternalServerError,
-			runoutError: errors.New("Database connection closed."),
-			invalidAuth: false,
+			name:                  "Simulate error with all",
+			respCode:              http.StatusInternalServerError,
+			defaultTimestamp:      time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			defaultError:          errors.New("Database connection closed."),
+			runoutError:           errors.New("Database connection closed."),
+			expirationError:       errors.New("Database connection closed."),
+			runoutExpirationError: errors.New("Database connection closed."),
+			invalidAuth:           false,
 		},
 	}
 
@@ -622,8 +632,8 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 			h.AttributionStatus(rr, req)
 
 			switch tt.respCode {
-			case http.StatusNotFound:
-				assert.Equal(s.T(), http.StatusNotFound, rr.Code, tt.name)
+			case http.StatusNotFound, http.StatusInternalServerError:
+				assert.Equal(s.T(), tt.respCode, rr.Code, tt.name)
 			case http.StatusOK:
 				if !tt.defaultTimestamp.IsZero() {
 					assert.Contains(t, rr.Body.String(), tt.defaultTimestamp.Format("2006-01-02"), tt.name)

@@ -513,16 +513,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expirationDate, err := h.Svc.GetAttributionExpirationDate(ctx, ad.CMSID, models.FileTypeDefault)
-	if err != nil {
-		ctx, _ = log.WriteErrorWithFields(
-			ctx,
-			fmt.Sprintf("%s: error fetching attribution expiration: %+v", responseutils.InternalErr, err),
-			logrus.Fields{"resp_status": http.StatusInternalServerError},
-		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
-		return
-	}
-	if !expirationDate.IsZero() {
+	if err == nil && !expirationDate.IsZero() {
 		attributionExpiration := &AttributionFileStatus{
 			Timestamp: expirationDate,
 			Type:      "attribution_access_expiration",
@@ -531,16 +522,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	runoutExpirationDate, err := h.Svc.GetAttributionExpirationDate(ctx, ad.CMSID, models.FileTypeRunout)
-	if err != nil {
-		ctx, _ = log.WriteErrorWithFields(
-			ctx,
-			fmt.Sprintf("%s: error fetching runout expiration: %+v", responseutils.InternalErr, err),
-			logrus.Fields{"resp_status": http.StatusInternalServerError},
-		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
-		return
-	}
-	if !runoutExpirationDate.IsZero() {
+	if err == nil && !runoutExpirationDate.IsZero() {
 		runoutExpiration := &AttributionFileStatus{
 			Timestamp: runoutExpirationDate,
 			Type:      "runout_access_expiration",
@@ -548,13 +530,13 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		resp.ExpirationDates = append(resp.ExpirationDates, *runoutExpiration)
 	}
 
-	if resp.IngestionDates == nil {
+	if resp.IngestionDates == nil && resp.ExpirationDates == nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
-			fmt.Sprintf("%s: Could not find any CCLF8 file", responseutils.NotFoundErr),
-			logrus.Fields{"resp_status": http.StatusNotFound},
+			fmt.Sprintf("%s: could not fetch attribution status", responseutils.InternalErr),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
 		)
-		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		h.RespWriter.NotFound(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
