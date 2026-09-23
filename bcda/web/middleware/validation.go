@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
@@ -29,7 +27,7 @@ type RequestParameters struct {
 	ResourceTypes []string
 	Version       string // e.g. v1, v2
 	RequestURL    string
-	TypeFilter    fhir.TypeFilterParameter
+	TypeFilter    fhir.TypeFilterSubquery
 }
 
 // requestkey is an unexported context key to avoid collisions
@@ -166,8 +164,8 @@ func validateResourceTypes(r *http.Request, rw fhirResponseWriter, w http.Respon
 }
 
 // validateTypeFilterParameter validates the contents of the typeFilter param.
-func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterParameter, bool) {
-	var typeFilterParam fhir.TypeFilterParameter
+func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.ResponseWriter, version string) (fhir.TypeFilterSubquery, bool) {
+	var typeFilterParam fhir.TypeFilterSubquery
 	ctx := r.Context()
 
 	params, ok := r.URL.Query()["_typeFilter"]
@@ -175,7 +173,7 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 		return typeFilterParam, true
 	}
 
-	typeFilterParams, err := GetTypeFilterParams(params)
+	typeFilterParams, err := GetTypeFilterSubquery(params)
 	if err != nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
@@ -188,117 +186,39 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 	return typeFilterParams, true
 }
 
-// GetTypeFilterParams parses the _typeFilter subquery
+// GetTypeFilterSubquery parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
-func GetTypeFilterParams(params []string) (fhir.TypeFilterParameter, error) {
-	var typeFilterParam fhir.TypeFilterParameter
+func GetTypeFilterSubquery(params []string) (fhir.TypeFilterSubquery, error) {
+	var subquery fhir.TypeFilterSubquery
 
 	// If more than one _typeFilter param (a logical "or"), return an error, we do not support that yet
 	if len(params) > 1 {
-		return typeFilterParam, fmt.Errorf("failed to process request given more that one _typeFilter parameter")
+		return subquery, fhir.ParameterValidationError{Details: "failed to process request given more that one _typeFilter parameter"}
 	}
 
-	// The subquery is url-encoded. So we will first decode so we can parse it
-	decodedQuery, err := url.QueryUnescape(params[0])
+	subquery, err := fhir.ParseTypeFilterSubquery(params[0])
 	if err != nil {
-		return typeFilterParam, fmt.Errorf("failed to unescape %s", params[0])
+		return subquery, err
 	}
 
-	// Expected format is: <resourceType>?<paramList>
-	resourceType, queryParams, ok := strings.Cut(decodedQuery, "?")
-	if !ok {
-		return typeFilterParam, fmt.Errorf("missing question mark %s", decodedQuery)
+	err = fhir.ValidateTypeFilterSubquery(subquery)
+	if err != nil {
+		return subquery, err
 	}
 
-	// Right now, we are only accepting ExplanationOfBenefit subqueries
-	if resourceType != "ExplanationOfBenefit" {
-		return typeFilterParam, fmt.Errorf("invalid _typeFilter Resource Type (Only EOBs valid): %s", resourceType)
-	}
-
-	var typeFilterSubqueryParams []fhir.TypeFilterSubqueryParam
-	// Loop through the param list from the subquery
-	paramAry := strings.Split(queryParams, "&")
-	for _, paramPair := range paramAry {
-		paramName, paramValue, ok := strings.Cut(paramPair, "=")
-		if !ok {
-			return typeFilterParam, fmt.Errorf("invalid _typeFilter parameter/value: %s", paramPair)
-		}
-
-		if slices.Contains([]string{"service-date", "_tag", "outcome"}, paramName) {
-			var validationErr error
-			switch paramName {
-			case "_tag":
-				validationErr = validateSubqueryParameterList(paramValue, validateTagSubqueryParameter)
-			case "outcome":
-				validationErr = validateSubqueryParameterList(paramValue, validateOutcomeSubqueryParameter)
-			case "service-date":
-				validationErr = validateSubqueryParameterList(paramValue, validateServiceDateSubqueryParameter)
-			}
-
-			if validationErr != nil {
-				return typeFilterParam, validationErr
-			}
-
-			typeFilterSubqueryParams = append(typeFilterSubqueryParams, fhir.TypeFilterSubqueryParam{Name: paramName, Value: paramValue})
-		} else {
-			return typeFilterParam, fmt.Errorf("invalid _typeFilter subquery parameter: %s", paramName)
-		}
-	}
-
-	typeFilterParam = fhir.TypeFilterParameter{ResourceType: resourceType, QueryParameters: typeFilterSubqueryParams}
-	return typeFilterParam, nil
+	return subquery, nil
 }
 
-func HasSharedSystemTag(typeFilter fhir.TypeFilterParameter) bool {
-	for _, subqueryParam := range typeFilter.QueryParameters {
-		if subqueryParam.Name == "_tag" {
-			tagSystems := ExtractTagSystemFromValue(subqueryParam.Value)
-			for _, tagSystem := range tagSystems {
-				if tagSystem == constants.BFDSystemTypeURL {
-					return true
-				}
+func HasSystemTypeTag(subquery fhir.TypeFilterSubquery) bool {
+	tagParams, _ := fhir.GetTagParams(subquery)
+	for _, tagParam := range tagParams {
+		for _, tagValue := range tagParam.Values {
+			if tagValue.System == constants.BFDSystemTypeURL {
+				return true
 			}
 		}
 	}
-
 	return false
-}
-
-// extractTagCodeFromValue extracts tag codes from either a short format (e.g., "SharedSystem")
-// or a full URL format (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
-// It supports processing a comma-separated list of tags, returning a slice of all extracted codes.
-func ExtractTagCodeFromValue(tagValue string) []string {
-	var codes []string
-	tags := strings.Split(tagValue, ",")
-	for _, tag := range tags {
-		// Check if it's a URL format with pipe separator
-		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
-			codes = append(codes, tag[pipeIdx+1:])
-		} else {
-			// Otherwise, it's short format, return as-is
-			codes = append(codes, tag)
-		}
-	}
-	return codes
-}
-
-// extractTagSystemFromValue extracts tag system urls from a full URL format
-// token (e.g., https://example.com/fhir/CodeSystem/System-Type|SharedSystem").
-// It supports processing a comma-separated list of tag tokens, returning a slice of
-// all extracted systems.
-func ExtractTagSystemFromValue(tagValue string) []string {
-	var systems []string
-	tags := strings.Split(tagValue, ",")
-	for _, tag := range tags {
-		// Check if it's a URL format with pipe separator
-		if pipeIdx := strings.LastIndex(tag, "|"); pipeIdx != -1 {
-			systems = append(systems, tag[:pipeIdx])
-		} else {
-			// Otherwise, it's short format, return as-is
-			systems = append(systems, tag)
-		}
-	}
-	return systems
 }
 
 // ValidateRequestURL ensure that request matches certain expectations.
@@ -437,83 +357,6 @@ func parseHeaderValues(h http.Header, headerName string) []string {
 		}
 	}
 	return results
-}
-
-// validateSubqueryParameterList splits a comma-separated parameter value and validates each individual value
-// against the provided validation function. It returns the first error encountered, if any.
-func validateSubqueryParameterList(paramValue string, validateFunc func(string) error) error {
-	for _, val := range strings.Split(paramValue, ",") {
-		if err := validateFunc(val); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// validateTagSubqueryParameter ensure that _tag param is a valid token (sysyem|code)
-func validateTagSubqueryParameter(tag string) error {
-
-	if !strings.Contains(tag, "|") {
-		return fmt.Errorf("invalid _tag value: %s. Searching by tag requires a token (system|code) to be specified", tag)
-	}
-
-	// Validate that the _tag system and code are supported values
-	validTagTokens := map[string][]string{
-		constants.BFDSystemTypeURL:  {"SharedSystem", "NationalClaimsHistory", "DDPS"},
-		constants.BFDFinalActionURL: {"FinalAction", "NotFinalAction"},
-	}
-
-	tagSystem := strings.Split(tag, "|")[0]
-	tagCode := strings.Split(tag, "|")[1]
-
-	validTagCodes, ok := validTagTokens[tagSystem]
-	if !ok || !slices.Contains(validTagCodes, tagCode) {
-		return fmt.Errorf("invalid _tag value: %s", tag)
-	}
-
-	return nil
-}
-
-// validateOutcomeSubqueryParameter ensure that outcome param is a valid value (complete or partial)
-func validateOutcomeSubqueryParameter(outcome string) error {
-	if outcome != "complete" && outcome != "partial" {
-		return fmt.Errorf("invalid outcome value: %s. Supported outcome values are 'complete' and 'partial'", outcome)
-	}
-	return nil
-}
-
-// validateServiceDateSubqueryParameter ensure that service-date param is a valid FHIR Date param
-func validateServiceDateSubqueryParameter(dateParam string) error {
-	fhirDateTime := ""
-
-	// Check for the optional 2-character prefix
-	// BFD only supports eq, ge, gt, lt, le as of 2026-08-17. See: https://cmsgov.slack.com/archives/CMT1YS2KY/p1786716165942379
-	var validPrefixes = []string{"eq", "lt", "gt", "le", "ge"} // "ne", "sa", "eb", "ap"}
-	if len(dateParam) > 2 && slices.Contains(validPrefixes, dateParam[:2]) {
-		fhirDateTime = dateParam[2:]
-	} else {
-		fhirDateTime = dateParam
-	}
-
-	var validDateTimeFormats = []string{
-		"2006",
-		"2006-01",
-		"2006-01-02",
-		"2006-01-02T15:04:05",
-		"2006-01-02T15:04:05+07:00",
-		"2006-01-02T15:04:05-07:00",
-		"2006-01-02T15:04:05Z",
-	}
-
-	// Check the FHIR dateTime against each valid format. If any check is valid, then it is good
-	for _, format := range validDateTimeFormats {
-		if _, err := time.Parse(format, fhirDateTime); err == nil {
-			return nil
-		}
-	}
-
-	// if the FHIR dateTime does not match any of the valid formats, return an error
-	return fmt.Errorf("invalid service-date value: %s. Pass a valid FHIR date parameter", dateParam)
 }
 
 func getKeys(kv map[string]struct{}) []string {

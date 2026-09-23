@@ -18,8 +18,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
@@ -196,7 +196,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 // GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
 func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
 	var (
-		b   *fhirModels.Bundle
+		b   *fhir.Bundle
 		err error
 	)
 
@@ -287,12 +287,12 @@ func defaultSystemTypeWarningNeeded(requestURL string, version string, resourceT
 		return true
 	}
 
-	typeFilterParams, err := middleware.GetTypeFilterParams(params)
+	typeFilterSubquery, err := middleware.GetTypeFilterSubquery(params)
 	if err != nil {
 		return true
 	}
 
-	if middleware.HasSharedSystemTag(typeFilterParams) {
+	if middleware.HasSystemTypeTag(typeFilterSubquery) {
 		return false
 	}
 
