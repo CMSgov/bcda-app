@@ -1,6 +1,9 @@
 scaling:
   min: 4
   max: 8
+  target_value: 20
+  scale_in_cooldown: 720
+  scale_out_cooldown: 60
 
 ecs:
   cpu: 1024
