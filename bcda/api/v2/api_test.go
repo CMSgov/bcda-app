@@ -30,7 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
