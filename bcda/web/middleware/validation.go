@@ -209,7 +209,7 @@ func GetTypeFilterSubquery(params []string) (fhir.TypeFilterSubquery, error) {
 	return subquery, nil
 }
 
-func HasSharedSystemTag(subquery fhir.TypeFilterSubquery) bool {
+func HasSystemTypeTag(subquery fhir.TypeFilterSubquery) bool {
 	tagParams, _ := fhir.GetTagParams(subquery)
 	for _, tagParam := range tagParams {
 		for _, tagValue := range tagParam.Values {

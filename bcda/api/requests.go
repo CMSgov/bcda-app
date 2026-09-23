@@ -897,7 +897,7 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 // by adding a System-Type tag filter if no explicit filter is provided
 func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) fhir.TypeFilterSubquery {
 	// If relevant filter is already present, no need to add default
-	if middleware.HasSharedSystemTag(typeFilter) {
+	if middleware.HasSystemTypeTag(typeFilter) {
 		return typeFilter
 	}
 

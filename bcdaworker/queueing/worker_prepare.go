@@ -292,7 +292,7 @@ func defaultSystemTypeWarningNeeded(requestURL string, version string, resourceT
 		return true
 	}
 
-	if middleware.HasSharedSystemTag(typeFilterSubquery) {
+	if middleware.HasSystemTypeTag(typeFilterSubquery) {
 		return false
 	}
 
