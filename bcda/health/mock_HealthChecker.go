@@ -14,10 +14,19 @@ func NewMockHealthChecker(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockHealthChecker {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockHealthChecker{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -128,6 +137,65 @@ func (_c *MockHealthChecker_IsDatabaseOK_Call) Return(s string, b bool) *MockHea
 }
 
 func (_c *MockHealthChecker_IsDatabaseOK_Call) RunAndReturn(run func() (string, bool)) *MockHealthChecker_IsDatabaseOK_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsJobQueueOK provides a mock function for the type MockHealthChecker
+func (_mock *MockHealthChecker) IsJobQueueOK() (bool, int, int64) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsJobQueueOK")
+	}
+
+	var r0 bool
+	var r1 int
+	var r2 int64
+	if returnFunc, ok := ret.Get(0).(func() (bool, int, int64)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() bool); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func() int); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+	if returnFunc, ok := ret.Get(2).(func() int64); ok {
+		r2 = returnFunc()
+	} else {
+		r2 = ret.Get(2).(int64)
+	}
+	return r0, r1, r2
+}
+
+// MockHealthChecker_IsJobQueueOK_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsJobQueueOK'
+type MockHealthChecker_IsJobQueueOK_Call struct {
+	*mock.Call
+}
+
+// IsJobQueueOK is a helper method to define mock.On call
+func (_e *MockHealthChecker_Expecter) IsJobQueueOK() *MockHealthChecker_IsJobQueueOK_Call {
+	return &MockHealthChecker_IsJobQueueOK_Call{Call: _e.mock.On("IsJobQueueOK")}
+}
+
+func (_c *MockHealthChecker_IsJobQueueOK_Call) Run(run func()) *MockHealthChecker_IsJobQueueOK_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockHealthChecker_IsJobQueueOK_Call) Return(b bool, n int, n1 int64) *MockHealthChecker_IsJobQueueOK_Call {
+	_c.Call.Return(b, n, n1)
+	return _c
+}
+
+func (_c *MockHealthChecker_IsJobQueueOK_Call) RunAndReturn(run func() (bool, int, int64)) *MockHealthChecker_IsJobQueueOK_Call {
 	_c.Call.Return(run)
 	return _c
 }
