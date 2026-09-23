@@ -45,7 +45,7 @@ resource "aws_kms_key" "app_config_kms_key" {
               "Sid": "Enable IAM User Permissions",
               "Effect": "Allow",
               "Principal": {
-                  "AWS": "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+                  "AWS": "arn:aws:iam::${module.platform.account_id}:root"
               },
               "Action": "kms:*",
               "Resource": "*"
@@ -54,7 +54,7 @@ resource "aws_kms_key" "app_config_kms_key" {
               "Sid": "Enable IAM User Permissions",
               "Effect": "Allow",
               "Principal": {
-                  "AWS": "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+                  "AWS": "arn:aws:iam::${module.platform.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
               },
               "Action": ["kms:GenerateDataKey*","kms:Decrypt"],
               "Resource": "*"

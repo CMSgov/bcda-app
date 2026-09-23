@@ -14,6 +14,6 @@ data "aws_security_group" "ssas_alb" {
   vpc_id = module.platform.vpc_id
   filter {
     name   = "group-name"
-    values = "ssas-alb"
+    values = ["ssas-alb"]
   }
 }

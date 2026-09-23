@@ -44,10 +44,6 @@ data "aws_ssm_parameter" "params_ssas" {
   with_decryption = true
 }
 
-data "aws_ssm_parameter" "config_bucket" {
-  name = "/bcda/${module.platform.env}/sensitive/ssas/CONFIG_BUCKET"
-}
-
 data "aws_ssm_parameter" "ssas_aco_ms_admin_cidr_blocks" {
   count = local.is_prod ? 1 : 0
   name  = "/bcda/${module.platform.parent_env}/infra/sensitive/ssas_aco_ms_admin_cidr_blocks"

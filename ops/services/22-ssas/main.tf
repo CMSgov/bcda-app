@@ -20,8 +20,12 @@ locals {
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
   is_prod      = contains(["prod", "sandbox"], local.parent_env)
 
-  # Network
-  ssas_domain = "ssas.${module.platform.env}.bcda.cms.gov"
+  # SSAS domain math. Leaving the possibility of ephemeral environments.
+  ssas_domain_map = {
+    for env in local.established_envs :
+    env => env == "prod" ? "ssas.bcda.cms.gov" : "ssas.${env}.bcda.cms.gov"
+  }
+  ssas_domain = lookup(local.ssas_domain_map, module.platform.env, "ssas.${module.platform.env}.bcda.cms.gov")
 
   # CIDR Blocks
   app_cidr_block        = data.aws_vpc.main.cidr_block
@@ -43,10 +47,13 @@ module "platform" {
 ##############
 
 resource "aws_lb" "ssas_alb" {
-  name               = "bcda-ssas-${module.platform.env}"
-  internal           = true
-  load_balancer_type = "application"
-  idle_timeout       = 60
+  name                             = "bcda-ssas-${module.platform.env}"
+  internal                         = true
+  load_balancer_type               = "application"
+  idle_timeout                     = 60
+  enable_deletion_protection       = true
+  enable_cross_zone_load_balancing = true
+  drop_invalid_header_fields       = true
 
   security_groups = [
     data.aws_security_group.ssas_alb.id,
@@ -64,10 +71,11 @@ resource "aws_lb" "ssas_alb" {
 }
 
 resource "aws_lb_target_group" "ecs_ssas_admin" {
-  name     = "bcda-${module.platform.env}-ssas-admin"
-  port     = local.config.ports.ssas_admin_port
-  protocol = "HTTPS"
-  vpc_id   = module.platform.vpc_id
+  name        = "bcda-${module.platform.env}-ssas-admin"
+  port        = local.config.ports.ssas_admin_port
+  protocol    = "HTTPS"
+  vpc_id      = module.platform.vpc_id
+  target_type = "ip"
 
   health_check {
     path                = local.config.health_check.path
@@ -79,10 +87,11 @@ resource "aws_lb_target_group" "ecs_ssas_admin" {
 }
 
 resource "aws_lb_target_group" "ecs_ssas_public" {
-  name     = "bcda-${module.platform.env}-ssas-public"
-  port     = local.config.ports.ssas_public_port
-  protocol = "HTTPS"
-  vpc_id   = module.platform.vpc_id
+  name        = "bcda-${module.platform.env}-ssas-public"
+  port        = local.config.ports.ssas_public_port
+  protocol    = "HTTPS"
+  vpc_id      = module.platform.vpc_id
+  target_type = "ip"
 
   health_check {
     path                = local.config.health_check.path

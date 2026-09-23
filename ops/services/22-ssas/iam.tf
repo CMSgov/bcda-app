@@ -3,7 +3,7 @@ data "aws_iam_policy_document" "ssas_task" {
     sid     = "AllowKMSAppConfig"
     actions = ["kms:Encrypt", "kms:GenerateDataKey", "kms:ListAliases"]
     resources = [
-      "arn:aws:kms:*:${module.platform.account_id}:key/${data.aws_kms_key.app_config_kms_key.id}"
+      data.aws_kms_key.app_config_kms_key.arn
     ]
   }
 
@@ -11,8 +11,8 @@ data "aws_iam_policy_document" "ssas_task" {
     sid     = "AllowConfigBucketRead"
     actions = ["s3:GetObject", "s3:ListBucket"]
     resources = [
-      "arn:aws:s3:::${data.aws_ssm_parameter.config_bucket.value}",
-      "arn:aws:s3:::${data.aws_ssm_parameter.config_bucket.value}/*"
+      "arn:aws:s3:::${data.aws_ssm_parameter.params_ssas["CONFIG_BUCKET"].value}",
+      "arn:aws:s3:::${data.aws_ssm_parameter.params_ssas["CONFIG_BUCKET"].value}/*"
     ]
   }
 
