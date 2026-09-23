@@ -340,6 +340,22 @@ func TestValidateServiceDates(t *testing.T) {
 			},
 			expectedErr: ParameterValidationError{},
 		},
+		{
+			name: "invalid equals and lower bound",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2004"}},
+				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2005"}},
+			},
+			expectedErr: ParameterValidationError{},
+		},
+		{
+			name: "invalid equals and upper bound",
+			dateParams: []DateParam{
+				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2004"}},
+				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
+			},
+			expectedErr: ParameterValidationError{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
