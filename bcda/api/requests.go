@@ -21,8 +21,8 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -853,18 +853,20 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterSubquery, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
-	// Extract all _tag parameter values
+	// Extract all _tag parameter codes
 	var requestedTagCodes []string
-	for _, subqueryParam := range typeFilter.QueryParameters {
-		if subqueryParam.Name == "_tag" {
-			tagValue := subqueryParam.Value
-			// Extract tag code from either short format or URL format
-			tagCodes := middleware.ExtractTagCodeFromValue(tagValue)
-			requestedTagCodes = append(requestedTagCodes, tagCodes...)
+	tagParams, err := fhir.GetTagParams(typeFilter)
+	if err != nil {
+		return fmt.Errorf("unable to parse typefilter _tag codes: %w", err)
+	}
+
+	for _, tagParam := range tagParams {
+		for _, tagValue := range tagParam.Values {
+			requestedTagCodes = append(requestedTagCodes, tagValue.Code)
 		}
 	}
 
@@ -907,9 +909,9 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter) fhir.TypeFilterParameter {
+func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) fhir.TypeFilterSubquery {
 	// If relevant filter is already present, no need to add default
-	if middleware.HasSharedSystemTag(typeFilter) {
+	if middleware.HasSystemTypeTag(typeFilter) {
 		return typeFilter
 	}
 
@@ -919,13 +921,13 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter)
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	subqueryParam := fhir.TypeFilterSubqueryParam{
-		Name:  "_tag",
+		Name:  string(fhir.TypeFilterParamTag),
 		Value: tagValue,
 	}
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
 	if len(typeFilter.QueryParameters) == 0 {
-		return fhir.TypeFilterParameter{
+		return fhir.TypeFilterSubquery{
 			ResourceType:    "ExplanationOfBenefit",
 			QueryParameters: []fhir.TypeFilterSubqueryParam{subqueryParam},
 		}

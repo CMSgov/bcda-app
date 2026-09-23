@@ -24,11 +24,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -1447,113 +1447,126 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		cmsID         string
-		typeFilter    fhir.TypeFilterParameter
-		acoConfig     *service.ACOConfig
-		shouldFail    bool
-		expectedError string
-		description   string
+		name             string
+		cmsID            string
+		typeFilter       fhir.TypeFilterSubquery
+		requiresPACCheck bool
+		acoConfig        *service.ACOConfig
+		shouldFail       bool
+		expectedError    string
+		description      string
 	}{
 		{
-			name:        "SharedSystemWithPAC",
-			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
-			acoConfig:   acoWithPAC,
-			shouldFail:  false,
-			description: "ACO with PAC access should be able to use SharedSystem tag",
+			name:             "SharedSystemWithPAC",
+			cmsID:            "PAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithPAC,
+			shouldFail:       false,
+			description:      "ACO with PAC access should be able to use SharedSystem tag",
 		},
 		{
-			name:          "SharedSystemWithoutPAC",
-			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
-			acoConfig:     acoWithoutPAC,
-			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
-			description:   "ACO without PAC access should be blocked from using SharedSystem tag",
+			name:             "SharedSystemWithoutPAC",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       true,
+			expectedError:    "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
+			description:      "ACO without PAC access should be blocked from using SharedSystem tag",
 		},
 		{
-			name:        "SharedSystemURLFormatWithPAC",
-			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
-			acoConfig:   acoWithPAC,
-			shouldFail:  false,
-			description: "ACO with PAC access should be able to use SharedSystem tag in URL format",
+			name:             "SharedSystemURLFormatWithPAC",
+			cmsID:            "PAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithPAC,
+			shouldFail:       false,
+			description:      "ACO with PAC access should be able to use SharedSystem tag in URL format",
 		},
 		{
-			name:          "SharedSystemURLFormatWithoutPAC",
-			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
-			acoConfig:     acoWithoutPAC,
-			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
-			description:   "ACO without PAC access should be blocked from SharedSystem tag in URL format",
+			name:             "SharedSystemURLFormatWithoutPAC",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       true,
+			expectedError:    "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
+			description:      "ACO without PAC access should be blocked from SharedSystem tag in URL format",
 		},
 		{
-			name:        "FinalActionNoPACRequired",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "FinalAction"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "FinalAction tag should not require PAC eligibility",
+			name:             "FinalActionNoPACRequired",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "FinalAction"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "FinalAction tag should not require PAC eligibility",
 		},
 		{
-			name:        "NotFinalActionNoPACRequired",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "NotFinalAction"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "NotFinalAction tag should not require PAC eligibility",
+			name:             "NotFinalActionNoPACRequired",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "NotFinalAction"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "NotFinalAction tag should not require PAC eligibility",
 		},
 		{
-			name:        "NationalClaimsHistoryNoPACRequired",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "NationalClaimsHistory"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "NationalClaimsHistory tag should not require PAC eligibility",
+			name:             "NationalClaimsHistoryNoPACRequired",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "NationalClaimsHistory"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "NationalClaimsHistory tag should not require PAC eligibility",
 		},
 		{
-			name:        "SharedSystemAndFinalActionWithPAC",
-			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
-			acoConfig:   acoWithPAC,
-			shouldFail:  false,
-			description: "ACO with PAC should be able to combine SharedSystem with other tags",
+			name:             "SharedSystemAndFinalActionWithPAC",
+			cmsID:            "PAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithPAC,
+			shouldFail:       false,
+			description:      "ACO with PAC should be able to combine SharedSystem with other tags",
 		},
 		{
-			name:          "SharedSystemAndFinalActionWithoutPAC",
-			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
-			acoConfig:     acoWithoutPAC,
-			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
-			description:   "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
+			name:             "SharedSystemAndFinalActionWithoutPAC",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       true,
+			expectedError:    "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
+			description:      "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
 		},
 		{
-			name:        "NoTypeFilter",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "No typeFilter should pass validation",
+			name:             "NoTypeFilter",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "No typeFilter should pass validation",
 		},
 		{
-			name:        "NonTagParameters",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"service-date", "ge2020-01-01"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "Non-tag parameters should not require PAC eligibility",
+			name:             "NonTagParameters",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"service-date", "ge2020-01-01"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "Non-tag parameters should not require PAC eligibility",
 		},
 		{
-			name:          "ACOConfigNotFound",
-			cmsID:         "UNKNOWN0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
-			acoConfig:     nil,
-			shouldFail:    true,
-			expectedError: "Unable to determine ACO configuration",
-			description:   "Should fail when ACO config is not found",
+			name:             "ACOConfigNotFound",
+			cmsID:            "UNKNOWN0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
+			requiresPACCheck: true,
+			acoConfig:        nil,
+			shouldFail:       true,
+			expectedError:    "Unable to determine ACO configuration",
+			description:      "Should fail when ACO config is not found",
 		},
 	}
 
@@ -1563,25 +1576,8 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			mockSvc := service.MockService{}
 			h.Svc = &mockSvc
 
-			// Check if SharedSystem tag is present (which requires PAC check)
-			requiresPACCheck := false
-			for _, subQueryParam := range test.typeFilter.QueryParameters {
-				if subQueryParam.Name == "_tag" {
-					tagCodes := middleware.ExtractTagCodeFromValue(subQueryParam.Value)
-					for _, code := range tagCodes {
-						if code == "SharedSystem" {
-							requiresPACCheck = true
-							break
-						}
-					}
-					if requiresPACCheck {
-						break
-					}
-				}
-			}
-
 			// Setup mock service only if PAC check is required
-			if requiresPACCheck {
+			if test.requiresPACCheck {
 				if test.acoConfig != nil {
 					mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
 					if test.shouldFail {
@@ -1638,7 +1634,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmsID        string
-		typeFilter   fhir.TypeFilterParameter
+		typeFilter   fhir.TypeFilterSubquery
 		acoConfig    *service.ACOConfig
 		expectedTags []string // Expected _tag values in the returned filter
 		description  string
@@ -1646,7 +1642,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "NonPACNoFilter",
 			cmsID: "NOPAC0000",
-			typeFilter: fhir.TypeFilterParameter{
+			typeFilter: fhir.TypeFilterSubquery{
 				ResourceType:    "",
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
@@ -1681,7 +1677,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "PACNoFilter",
 			cmsID: "PAC0000",
-			typeFilter: fhir.TypeFilterParameter{
+			typeFilter: fhir.TypeFilterSubquery{
 				ResourceType:    "",
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
@@ -1761,7 +1757,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
-	typeFilter := fhir.TypeFilterParameter{}
+	typeFilter := fhir.TypeFilterSubquery{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemByDefault(typeFilter)
@@ -1789,8 +1785,8 @@ func (e DatabaseError) Error() string {
 	return "error"
 }
 
-func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
-	var typeFilterParam fhir.TypeFilterParameter
+func makeTypeFilterParam(params [][]string) fhir.TypeFilterSubquery {
+	var typeFilterParam fhir.TypeFilterSubquery
 	if len(params) == 0 {
 		return typeFilterParam
 	}
@@ -1802,7 +1798,7 @@ func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
 			Value: param[1],
 		})
 	}
-	typeFilterParam = fhir.TypeFilterParameter{
+	typeFilterParam = fhir.TypeFilterSubquery{
 		ResourceType:    "ExplanationOfBenefit",
 		QueryParameters: subQueryParams,
 	}

@@ -14,9 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -374,7 +373,7 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
 	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
-	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: fhir.TypeFilterParameter{
+	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: fhir.TypeFilterSubquery{
 		ResourceType: "ExplanationOfBenefit",
 		QueryParameters: []fhir.TypeFilterSubqueryParam{
 			{
@@ -399,7 +398,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -421,7 +420,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataNoSince, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -443,7 +442,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -466,7 +465,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -489,7 +488,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -512,7 +511,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetPatient(jobData, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -533,7 +532,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetPatient(jobDataNoSince, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -554,7 +553,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetCoverage(jobData, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -575,7 +574,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetCoverage(jobDataNoSince, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -617,7 +616,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -633,7 +632,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobDataNoSince, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -649,7 +648,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -665,7 +664,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -681,7 +680,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -697,7 +696,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -713,7 +712,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobDataNoSince, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -729,7 +728,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -745,7 +744,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -761,7 +760,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -778,7 +777,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -799,7 +798,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -819,7 +818,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -1259,7 +1258,21 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01T01:01:01Z",
 			}},
-			expectedVals: []string(nil),
+			expectedVals: []string{"gt2022-01-01"},
+		},
+		{
+			name: "Equals with time passed in, should be limited to one day",
+			params: url.Values{"service-date": []string{
+				"eq2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "No prefix with time passed in, should be limited to one day",
+			params: url.Values{"service-date": []string{
+				"2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
 		},
 	}
 
