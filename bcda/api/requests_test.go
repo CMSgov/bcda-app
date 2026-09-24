@@ -627,8 +627,6 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				var resp AttributionFileStatusResponse
 				err := json.Unmarshal(rr.Body.Bytes(), &resp)
 				assert.NoError(s.T(), err)
-				// assert.ElementsMatch(t, tt.expected.ExpirationDates, resp.IngestionDates)
-				// assert.ElementsMatch(t, tt.expected.ExpirationDates, resp.ExpirationDates)
 				assert.Equal(t, tt.expected, resp)
 			}
 		})
