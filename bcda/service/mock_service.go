@@ -21,19 +21,10 @@ func NewMockService(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockService {
-	if helper, ok := t.(interface{ Helper() }); ok {
-		helper.Helper()
-	}
-
 	mock := &MockService{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() {
-		if helper, ok := t.(interface{ Helper() }); ok {
-			helper.Helper()
-		}
-		mock.AssertExpectations(t)
-	})
+	t.Cleanup(func() { mock.AssertExpectations(t) })
 
 	return mock
 }
@@ -253,6 +244,90 @@ func (_c *MockService_GetACOConfigForID_Call) Return(aCOConfig *ACOConfig, b boo
 }
 
 func (_c *MockService_GetACOConfigForID_Call) RunAndReturn(run func(cmsID string) (*ACOConfig, bool)) *MockService_GetACOConfigForID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAttributionStatusDates provides a mock function for the type MockService
+func (_mock *MockService) GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, time.Time, error) {
+	ret := _mock.Called(ctx, cmsID, timeConstraints, fileType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAttributionStatusDates")
+	}
+
+	var r0 time.Time
+	var r1 time.Time
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, TimeConstraints, models.CCLFFileType) (time.Time, time.Time, error)); ok {
+		return returnFunc(ctx, cmsID, timeConstraints, fileType)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, TimeConstraints, models.CCLFFileType) time.Time); ok {
+		r0 = returnFunc(ctx, cmsID, timeConstraints, fileType)
+	} else {
+		r0 = ret.Get(0).(time.Time)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, TimeConstraints, models.CCLFFileType) time.Time); ok {
+		r1 = returnFunc(ctx, cmsID, timeConstraints, fileType)
+	} else {
+		r1 = ret.Get(1).(time.Time)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string, TimeConstraints, models.CCLFFileType) error); ok {
+		r2 = returnFunc(ctx, cmsID, timeConstraints, fileType)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockService_GetAttributionStatusDates_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAttributionStatusDates'
+type MockService_GetAttributionStatusDates_Call struct {
+	*mock.Call
+}
+
+// GetAttributionStatusDates is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cmsID string
+//   - timeConstraints TimeConstraints
+//   - fileType models.CCLFFileType
+func (_e *MockService_Expecter) GetAttributionStatusDates(ctx any, cmsID any, timeConstraints any, fileType any) *MockService_GetAttributionStatusDates_Call {
+	return &MockService_GetAttributionStatusDates_Call{Call: _e.mock.On("GetAttributionStatusDates", ctx, cmsID, timeConstraints, fileType)}
+}
+
+func (_c *MockService_GetAttributionStatusDates_Call) Run(run func(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType)) *MockService_GetAttributionStatusDates_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 TimeConstraints
+		if args[2] != nil {
+			arg2 = args[2].(TimeConstraints)
+		}
+		var arg3 models.CCLFFileType
+		if args[3] != nil {
+			arg3 = args[3].(models.CCLFFileType)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_GetAttributionStatusDates_Call) Return(lastUpdated time.Time, expirationDate time.Time, err error) *MockService_GetAttributionStatusDates_Call {
+	_c.Call.Return(lastUpdated, expirationDate, err)
+	return _c
+}
+
+func (_c *MockService_GetAttributionStatusDates_Call) RunAndReturn(run func(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, time.Time, error)) *MockService_GetAttributionStatusDates_Call {
 	_c.Call.Return(run)
 	return _c
 }
