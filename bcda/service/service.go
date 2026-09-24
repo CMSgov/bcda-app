@@ -40,7 +40,7 @@ type Service interface {
 	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
-	GetAttributionExpirationDate(ctx context.Context, cmsID string, fileType models.CCLFFileType) (time.Time, error)
+	GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (lastUpdated time.Time, expirationDate time.Time, err error)
 	IsV3NoPartialClaimsModel(model string) bool
 }
 
@@ -124,31 +124,32 @@ func (s *service) GetCutoffTime(ctx context.Context, reqType constants.DataReque
 	return cutoffTime, complexDataRequestType
 }
 
-// GetAttributionExpirationDate provides the final date for which the most recent CCLF file for a CMS ID can be used to provide
-// attribution information for data requests. This date can be limited by the date of the most recent CCLF file or the termination
-// of the model entity in question.
-func (s service) GetAttributionExpirationDate(ctx context.Context, cmsID string, fileType models.CCLFFileType) (expirationDate time.Time, err error) {
-	timeConstraints, err := s.GetTimeConstraints(ctx, cmsID)
+// GetAttributionStatusDates provides the last updated date and the final date for which the most recent CCLF file for a CMS ID
+// can be used to provide attribution information for data requests of a given file type.
+//
+// The expiration date can be limited by the date of the most recent CCLF file or the termination of the model entity in question.
+func (s *service) GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (lastUpdated time.Time, expirationDate time.Time, err error) {
+	latestFile, err := s.GetLatestCCLFFile(ctx, cmsID, expirationDate, expirationDate, fileType)
 	if err != nil {
-		return time.Time{}, err
-	}
-	latestFile, err := s.GetLatestCCLFFile(ctx, cmsID, time.Time{}, time.Time{}, fileType)
-	if err != nil {
-		return time.Time{}, err
+		s.logger.Errorf("could not fetch latest CCLF file for attribution status: %w", err)
+		return lastUpdated, expirationDate, err
 	}
 
+	lastUpdated = latestFile.Timestamp
 	switch fileType {
 	case models.FileTypeDefault:
 		expirationDate = latestFile.Timestamp.Add(s.stdCutoffDuration)
 	case models.FileTypeRunout:
 		expirationDate = latestFile.Timestamp.Add(s.rp.CutoffDuration)
 	default:
-		return time.Time{}, fmt.Errorf("unsupported file type for fetching attribution expiration date")
+		s.logger.Errorf("unsupported file type for fetching attribution expiration date")
+		return lastUpdated, expirationDate, fmt.Errorf("unsupported file type for fetching attribution expiration date")
 	}
+
 	if !timeConstraints.AttributionDate.IsZero() && timeConstraints.AttributionDate.Before(expirationDate) {
-		return timeConstraints.AttributionDate, nil
+		return lastUpdated, timeConstraints.AttributionDate, nil
 	}
-	return expirationDate, nil
+	return lastUpdated, expirationDate, nil
 }
 
 // FindOldCCLFFile finds an older CCLF file depending on passed in timestamps

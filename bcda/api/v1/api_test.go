@@ -633,6 +633,7 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 
 	assert.Equal(s.T(), "last_attribution_update", resp.IngestionDates[0].Type)
 	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.IngestionDates[0].Timestamp.Format("2006-01-02 15:04:05"))
+	assert.Equal(s.T(), "attribution_access_expiration", resp.ExpirationDates[0].Type)
 }
 
 func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {

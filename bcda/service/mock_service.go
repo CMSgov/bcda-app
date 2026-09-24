@@ -21,19 +21,10 @@ func NewMockService(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockService {
-	if helper, ok := t.(interface{ Helper() }); ok {
-		helper.Helper()
-	}
-
 	mock := &MockService{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() {
-		if helper, ok := t.(interface{ Helper() }); ok {
-			helper.Helper()
-		}
-		mock.AssertExpectations(t)
-	})
+	t.Cleanup(func() { mock.AssertExpectations(t) })
 
 	return mock
 }
@@ -257,46 +248,53 @@ func (_c *MockService_GetACOConfigForID_Call) RunAndReturn(run func(cmsID string
 	return _c
 }
 
-// GetAttributionExpirationDate provides a mock function for the type MockService
-func (_mock *MockService) GetAttributionExpirationDate(ctx context.Context, cmsID string, fileType models.CCLFFileType) (time.Time, error) {
-	ret := _mock.Called(ctx, cmsID, fileType)
+// GetAttributionStatusDates provides a mock function for the type MockService
+func (_mock *MockService) GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, time.Time, error) {
+	ret := _mock.Called(ctx, cmsID, timeConstraints, fileType)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetAttributionExpirationDate")
+		panic("no return value specified for GetAttributionStatusDates")
 	}
 
 	var r0 time.Time
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, models.CCLFFileType) (time.Time, error)); ok {
-		return returnFunc(ctx, cmsID, fileType)
+	var r1 time.Time
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, TimeConstraints, models.CCLFFileType) (time.Time, time.Time, error)); ok {
+		return returnFunc(ctx, cmsID, timeConstraints, fileType)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, models.CCLFFileType) time.Time); ok {
-		r0 = returnFunc(ctx, cmsID, fileType)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, TimeConstraints, models.CCLFFileType) time.Time); ok {
+		r0 = returnFunc(ctx, cmsID, timeConstraints, fileType)
 	} else {
 		r0 = ret.Get(0).(time.Time)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, models.CCLFFileType) error); ok {
-		r1 = returnFunc(ctx, cmsID, fileType)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, TimeConstraints, models.CCLFFileType) time.Time); ok {
+		r1 = returnFunc(ctx, cmsID, timeConstraints, fileType)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(time.Time)
 	}
-	return r0, r1
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string, TimeConstraints, models.CCLFFileType) error); ok {
+		r2 = returnFunc(ctx, cmsID, timeConstraints, fileType)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
 }
 
-// MockService_GetAttributionExpirationDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAttributionExpirationDate'
-type MockService_GetAttributionExpirationDate_Call struct {
+// MockService_GetAttributionStatusDates_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAttributionStatusDates'
+type MockService_GetAttributionStatusDates_Call struct {
 	*mock.Call
 }
 
-// GetAttributionExpirationDate is a helper method to define mock.On call
+// GetAttributionStatusDates is a helper method to define mock.On call
 //   - ctx context.Context
 //   - cmsID string
+//   - timeConstraints TimeConstraints
 //   - fileType models.CCLFFileType
-func (_e *MockService_Expecter) GetAttributionExpirationDate(ctx any, cmsID any, fileType any) *MockService_GetAttributionExpirationDate_Call {
-	return &MockService_GetAttributionExpirationDate_Call{Call: _e.mock.On("GetAttributionExpirationDate", ctx, cmsID, fileType)}
+func (_e *MockService_Expecter) GetAttributionStatusDates(ctx any, cmsID any, timeConstraints any, fileType any) *MockService_GetAttributionStatusDates_Call {
+	return &MockService_GetAttributionStatusDates_Call{Call: _e.mock.On("GetAttributionStatusDates", ctx, cmsID, timeConstraints, fileType)}
 }
 
-func (_c *MockService_GetAttributionExpirationDate_Call) Run(run func(ctx context.Context, cmsID string, fileType models.CCLFFileType)) *MockService_GetAttributionExpirationDate_Call {
+func (_c *MockService_GetAttributionStatusDates_Call) Run(run func(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType)) *MockService_GetAttributionStatusDates_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -306,25 +304,30 @@ func (_c *MockService_GetAttributionExpirationDate_Call) Run(run func(ctx contex
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 models.CCLFFileType
+		var arg2 TimeConstraints
 		if args[2] != nil {
-			arg2 = args[2].(models.CCLFFileType)
+			arg2 = args[2].(TimeConstraints)
+		}
+		var arg3 models.CCLFFileType
+		if args[3] != nil {
+			arg3 = args[3].(models.CCLFFileType)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
 }
 
-func (_c *MockService_GetAttributionExpirationDate_Call) Return(time1 time.Time, err error) *MockService_GetAttributionExpirationDate_Call {
-	_c.Call.Return(time1, err)
+func (_c *MockService_GetAttributionStatusDates_Call) Return(lastUpdated time.Time, expirationDate time.Time, err error) *MockService_GetAttributionStatusDates_Call {
+	_c.Call.Return(lastUpdated, expirationDate, err)
 	return _c
 }
 
-func (_c *MockService_GetAttributionExpirationDate_Call) RunAndReturn(run func(ctx context.Context, cmsID string, fileType models.CCLFFileType) (time.Time, error)) *MockService_GetAttributionExpirationDate_Call {
+func (_c *MockService_GetAttributionStatusDates_Call) RunAndReturn(run func(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (time.Time, time.Time, error)) *MockService_GetAttributionStatusDates_Call {
 	_c.Call.Return(run)
 	return _c
 }

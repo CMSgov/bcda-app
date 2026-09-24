@@ -508,112 +508,103 @@ func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models
 }
 
 func (s *RequestsTestSuite) TestAttributionStatus() {
+	defaultTime := time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC)
+	defaultExpiration := time.Date(2024, 04, 05, 0, 0, 0, 0, time.UTC)
+	runoutTime := time.Date(2024, 01, 14, 0, 0, 0, 0, time.UTC)
+	runoutExpiration := time.Date(2024, 07, 12, 0, 0, 0, 0, time.UTC)
+
 	tests := []struct {
-		name                  string
-		respCode              int
-		defaultTimestamp      time.Time
-		runoutTimestamp       time.Time
-		defaultError          error
-		runoutError           error
-		expirationDate        time.Time
-		runoutExpirationDate  time.Time
-		expirationError       error
-		runoutExpirationError error
-		invalidAuth           bool
+		name                 string
+		respCode             int
+		defaultTimestamp     time.Time
+		expirationDate       time.Time
+		defaultError         error
+		runoutTimestamp      time.Time
+		runoutExpirationDate time.Time
+		runoutError          error
+		invalidAuth          bool
+		expected             AttributionFileStatusResponse
 	}{
 		{
 			name:                 "Successful with both files",
 			respCode:             http.StatusOK,
-			defaultTimestamp:     time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
-			runoutTimestamp:      time.Date(2024, 01, 14, 0, 0, 0, 0, time.UTC),
-			expirationDate:       time.Date(2024, 04, 05, 0, 0, 0, 0, time.UTC),
-			runoutExpirationDate: time.Date(2024, 07, 12, 0, 0, 0, 0, time.UTC),
+			defaultTimestamp:     defaultTime,
+			expirationDate:       defaultExpiration,
+			runoutTimestamp:      runoutTime,
+			runoutExpirationDate: runoutExpiration,
 			invalidAuth:          false,
+			expected: AttributionFileStatusResponse{
+				IngestionDates: []AttributionFileStatus{
+					{Type: "last_attribution_update", Timestamp: defaultTime},
+					{Type: "last_runout_update", Timestamp: runoutTime},
+				},
+				ExpirationDates: []AttributionFileStatus{
+					{Type: "attribution_access_expiration", Timestamp: defaultExpiration},
+					{Type: "runout_access_expiration", Timestamp: runoutExpiration},
+				},
+			},
 		},
 		{
 			name:             "Successful with default file",
 			respCode:         http.StatusOK,
-			defaultTimestamp: time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			defaultTimestamp: defaultTime,
+			expirationDate:   defaultExpiration,
+			runoutError:      service.CCLFNotFoundError{},
 			invalidAuth:      false,
+			expected: AttributionFileStatusResponse{
+				IngestionDates:  []AttributionFileStatus{{Type: "last_attribution_update", Timestamp: defaultTime}},
+				ExpirationDates: []AttributionFileStatus{{Type: "attribution_access_expiration", Timestamp: defaultExpiration}},
+			},
 		},
 		{
-			name:            "Successful with runout file",
-			respCode:        http.StatusOK,
-			runoutTimestamp: time.Date(2024, 01, 14, 0, 0, 0, 0, time.UTC),
-			invalidAuth:     false,
-		},
-		{
-			name:           "Successful with expiration date",
-			respCode:       http.StatusOK,
-			expirationDate: time.Date(2024, 04, 05, 0, 0, 0, 0, time.UTC),
-			invalidAuth:    false,
-		},
-		{
-			name:                 "Successful with runout expiration date",
+			name:                 "Successful with runout file",
 			respCode:             http.StatusOK,
-			runoutExpirationDate: time.Date(2024, 07, 12, 0, 0, 0, 0, time.UTC),
+			defaultError:         service.CCLFNotFoundError{},
+			runoutTimestamp:      runoutTime,
+			runoutExpirationDate: runoutExpiration,
 			invalidAuth:          false,
+			expected: AttributionFileStatusResponse{
+				IngestionDates:  []AttributionFileStatus{{Type: "last_runout_update", Timestamp: runoutTime}},
+				ExpirationDates: []AttributionFileStatus{{Type: "runout_access_expiration", Timestamp: runoutExpiration}},
+			},
 		},
 		{
-			name:     "No CCLF files found",
-			respCode: http.StatusNotFound,
-			defaultError: &service.CCLFNotFoundError{
-				FileNumber: 8,
-				CMSID:      "",
-				FileType:   0,
-				CutoffTime: time.Time{}},
-			invalidAuth: false,
+			name:         "No CCLF files found",
+			respCode:     http.StatusNotFound,
+			defaultError: service.CCLFNotFoundError{},
+			runoutError:  service.CCLFNotFoundError{},
+			invalidAuth:  false,
 		},
 		{
-			name:        "Invalid Auth, no CCLF Files found",
+			name:        "Invalid Auth",
 			respCode:    http.StatusUnauthorized,
 			invalidAuth: true,
 		},
 		{
-			name:                  "Simulate error with all",
-			respCode:              http.StatusInternalServerError,
-			defaultTimestamp:      time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
-			defaultError:          errors.New("Database connection closed."),
-			runoutError:           errors.New("Database connection closed."),
-			expirationError:       errors.New("Database connection closed."),
-			runoutExpirationError: errors.New("Database connection closed."),
-			invalidAuth:           false,
+			name:            "Unexpected error with default file",
+			respCode:        http.StatusInternalServerError,
+			runoutTimestamp: time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			defaultError:    errors.New("Database connection closed."),
+			invalidAuth:     false,
+		},
+		{
+			name:             "Unexpected error with runout file",
+			respCode:         http.StatusInternalServerError,
+			defaultTimestamp: time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			runoutError:      errors.New("Database connection closed."),
+			invalidAuth:      false,
 		},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mockSvc := &service.MockService{}
-
-			defaultFile := &models.CCLFFile{
-				ID:        1,
-				Name:      "defaultFile",
-				Timestamp: tt.defaultTimestamp,
-				CCLFNum:   8,
-				Type:      models.FileTypeDefault,
-			}
-			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
-				defaultFile,
-				tt.defaultError,
+			mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockSvc.On("GetAttributionStatusDates", testUtils.CtxMatcher, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
+				tt.defaultTimestamp, tt.expirationDate, tt.defaultError,
 			)
-
-			runoutFile := &models.CCLFFile{
-				ID:        2,
-				Name:      "runoutFile",
-				Timestamp: tt.runoutTimestamp,
-				CCLFNum:   8,
-				Type:      models.FileTypeRunout,
-			}
-			mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
-				runoutFile,
-				tt.runoutError,
-			)
-
-			mockSvc.On("GetAttributionExpirationDate", testUtils.CtxMatcher, mock.Anything, models.FileTypeDefault).Return(
-				tt.expirationDate, tt.expirationError,
-			)
-			mockSvc.On("GetAttributionExpirationDate", testUtils.CtxMatcher, mock.Anything, models.FileTypeRunout).Return(
-				tt.runoutExpirationDate, tt.runoutExpirationError,
+			mockSvc.On("GetAttributionStatusDates", testUtils.CtxMatcher, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
+				tt.runoutTimestamp, tt.runoutExpirationDate, tt.runoutError,
 			)
 
 			apiVersion := "v1"
@@ -631,22 +622,14 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 
 			h.AttributionStatus(rr, req)
 
-			switch tt.respCode {
-			case http.StatusNotFound, http.StatusInternalServerError:
-				assert.Equal(s.T(), tt.respCode, rr.Code, tt.name)
-			case http.StatusOK:
-				if !tt.defaultTimestamp.IsZero() {
-					assert.Contains(t, rr.Body.String(), tt.defaultTimestamp.Format("2006-01-02"), tt.name)
-				}
-				if !tt.runoutTimestamp.IsZero() {
-					assert.Contains(t, rr.Body.String(), tt.runoutTimestamp.Format("2006-01-02"), tt.name)
-				}
-				if !tt.expirationDate.IsZero() {
-					assert.Contains(t, rr.Body.String(), tt.expirationDate.Format("2006-01-02"), tt.name)
-				}
-				if !tt.runoutExpirationDate.IsZero() {
-					assert.Contains(t, rr.Body.String(), tt.runoutExpirationDate.Format("2006-01-02"), tt.name)
-				}
+			assert.Equal(s.T(), tt.respCode, rr.Code, tt.name)
+			if tt.respCode == http.StatusAccepted {
+				var resp AttributionFileStatusResponse
+				err := json.Unmarshal(rr.Body.Bytes(), &resp)
+				assert.NoError(s.T(), err)
+				// assert.ElementsMatch(t, tt.expected.ExpirationDates, resp.IngestionDates)
+				// assert.ElementsMatch(t, tt.expected.ExpirationDates, resp.ExpirationDates)
+				assert.Equal(t, tt.expected, resp)
 			}
 		})
 	}

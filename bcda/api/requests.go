@@ -466,10 +466,9 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var (
 		ad   auth.AuthData
-		err  error
 		resp AttributionFileStatusResponse
+		err  error
 	)
-
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
@@ -480,63 +479,57 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the most recent cclf 8 file we have successfully ingested
-	group := chi.URLParam(r, "groupId")
-	notFoundMsg := fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group)
-	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
-	if _, match := goerrors.AsType[*service.CCLFNotFoundError](err); match {
-		ctx, _ = log.WriteWarnWithFields(
+	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
+	if err != nil {
+		ctx, _ = log.WriteErrorWithFields(
 			ctx,
-			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
-			logrus.Fields{"resp_status": http.StatusNotFound},
-		)
-		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, notFoundMsg)
-		return
-	}
-	if asd != nil {
-		resp.IngestionDates = append(resp.IngestionDates, *asd)
-	}
-
-	// Retrieve the most recent cclf 8 runout file we have successfully ingested
-	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
-	if _, match := goerrors.AsType[*service.CCLFNotFoundError](err); match {
-		ctx, _ = log.WriteWarnWithFields(
-			ctx,
-			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
-			logrus.Fields{"resp_status": http.StatusNotFound},
-		)
-		h.RespWriter.Exception(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, notFoundMsg)
-		return
-	}
-	if asr != nil {
-		resp.IngestionDates = append(resp.IngestionDates, *asr)
-	}
-
-	expirationDate, err := h.Svc.GetAttributionExpirationDate(ctx, ad.CMSID, models.FileTypeDefault)
-	if err == nil && !expirationDate.IsZero() {
-		attributionExpiration := &AttributionFileStatus{
-			Timestamp: expirationDate,
-			Type:      "attribution_access_expiration",
-		}
-		resp.ExpirationDates = append(resp.ExpirationDates, *attributionExpiration)
-	}
-
-	runoutExpirationDate, err := h.Svc.GetAttributionExpirationDate(ctx, ad.CMSID, models.FileTypeRunout)
-	if err == nil && !runoutExpirationDate.IsZero() {
-		runoutExpiration := &AttributionFileStatus{
-			Timestamp: runoutExpirationDate,
-			Type:      "runout_access_expiration",
-		}
-		resp.ExpirationDates = append(resp.ExpirationDates, *runoutExpiration)
-	}
-
-	if resp.IngestionDates == nil && resp.ExpirationDates == nil {
-		ctx, _ = log.WriteWarnWithFields(
-			ctx,
-			fmt.Sprintf("%s: could not fetch attribution status", responseutils.InternalErr),
+			fmt.Sprintf("%s: could not fetch time constraints: %+v", responseutils.InternalErr, err),
 			logrus.Fields{"resp_status": http.StatusInternalServerError},
 		)
-		h.RespWriter.NotFound(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	}
+
+	group := chi.URLParam(r, "groupId")
+	notFoundMsg := fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group)
+
+	defaultLastUpdated, defaultExpirationDate, defaultErr := h.Svc.GetAttributionStatusDates(ctx, ad.CMSID, timeConstraints, models.FileTypeDefault)
+	runoutLastUpdated, runoutExpirationDate, runoutErr := h.Svc.GetAttributionStatusDates(ctx, ad.CMSID, timeConstraints, models.FileTypeRunout)
+
+	if defaultErr == nil {
+		resp.IngestionDates = append(resp.IngestionDates, AttributionFileStatus{Type: "last_attribution_update", Timestamp: defaultLastUpdated})
+		resp.ExpirationDates = append(resp.ExpirationDates, AttributionFileStatus{Type: "attribution_access_expiration", Timestamp: defaultExpirationDate})
+	}
+	if runoutErr == nil {
+		resp.IngestionDates = append(resp.IngestionDates, AttributionFileStatus{Type: "last_runout_update", Timestamp: runoutLastUpdated})
+		resp.ExpirationDates = append(resp.ExpirationDates, AttributionFileStatus{Type: "runout_access_expiration", Timestamp: runoutExpirationDate})
+	}
+	_, defaultNotFound := goerrors.AsType[service.CCLFNotFoundError](defaultErr)
+	_, runoutNotFound := goerrors.AsType[service.CCLFNotFoundError](runoutErr)
+
+	if defaultErr != nil && !defaultNotFound { // an unexpected error occurred with the default file status
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: could not fetch default attribution status dates: %+v", responseutils.InternalErr, defaultErr),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	} else if runoutErr != nil && !runoutNotFound { // an unexpected error occurred with the runout file status
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: could not fetch default attribution status dates: %+v", responseutils.InternalErr, runoutErr),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	} else if defaultNotFound && runoutNotFound { // neither CCLF was found -- return a 404
+		ctx, _ = log.WriteWarnWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, defaultErr),
+			logrus.Fields{"resp_status": http.StatusNotFound},
+		)
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, notFoundMsg)
 		return
 	}
 
@@ -553,28 +546,6 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
-	logger := log.GetCtxLogger(ctx)
-	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, time.Time{}, time.Time{}, fileType)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	status := &AttributionFileStatus{
-		Timestamp: cclfFile.Timestamp,
-	}
-
-	switch fileType {
-	case models.FileTypeDefault:
-		status.Type = "last_attribution_update"
-	case models.FileTypeRunout:
-		status.Type = "last_runout_update"
-	}
-
-	return status, nil
 }
 
 // bulkRequest generates a job ID for a bulk export request. It will not queue a job
