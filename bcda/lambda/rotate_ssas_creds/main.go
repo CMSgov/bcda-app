@@ -25,7 +25,7 @@ type rotationSystem struct {
 
 type shortCreds struct {
 	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"` // #nosec G117
+	ClientSecret string `json:"client_secret"`
 }
 
 type RotateSSASCredsHandler struct {
@@ -149,7 +149,7 @@ func (h RotateSSASCredsHandler) rotateCreds(ctx context.Context, rs rotationSyst
 		h.logger.Errorf("failed to unmarshal new creds for system %s", rs.CredsName)
 		return err
 	}
-	newValueBytes, err := json.Marshal(newCreds)
+	newValueBytes, err := json.Marshal(newCreds) // #nosec G117
 	if err != nil {
 		h.logger.Errorf("failed to re-marshal new creds for system %s", rs.CredsName)
 		return err
