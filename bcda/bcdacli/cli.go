@@ -9,12 +9,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -479,20 +477,4 @@ func cloneCCLFZip(src, dst string) error {
 	}
 
 	return nil
-}
-
-func ignoreSignals() chan os.Signal {
-	sigs := make(chan os.Signal, 1)
-
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		fmt.Println("Ignoring SIGTERM/SIGINT to allow work to finish.")
-
-		for range sigs {
-			fmt.Println("SIGTERM/SIGINT signal received; ignoring to finish work...")
-		}
-	}()
-
-	return sigs
 }
