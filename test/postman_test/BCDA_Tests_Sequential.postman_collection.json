@@ -1020,42 +1020,10 @@
                     {
                       "listen": "test",
                       "script": {
+                        "type": "text/javascript",
                         "exec": [
-                          "",
-                          "pm.test(\"Status code is 200\", function() {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test(\"Content-Type is application/json\", function() {",
-                          "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
-                          "});",
-                          "",
-                          "var respJson = pm.response.json();",
-                          "",
-                          "const schema = {",
-                          "    \"properties\": {",
-                          "        \"ingestion_dates\": {",
-                          "            \"type\": \"array\",",
-                          "            \"items\": [{",
-                          "                \"type\": \"object\",",
-                          "                \"properties\": {",
-                          "                    \"type\": {",
-                          "                        \"type\": \"string\"",
-                          "                    },",
-                          "                    \"timestamp\": {",
-                          "                        \"type\": \"string\"",
-                          "                    }",
-                          "                }",
-                          "            }]",
-                          "        }",
-                          "    }",
-                          "};",
-                          "",
-                          "pm.test(\"Schema is valid\", function() {",
-                          "    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-                          "});"
-                        ],
-                        "type": "text/javascript"
+                          "\npm.test(\"Status code is 200\", function() {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Content-Type is application/json\", function() {\n    pm.response.to.have.header(\"Content-Type\", \"application/json\");\n});\n\nvar respJson = pm.response.json();\n\nconst schema = {\n    \"properties\": {\n        \"ingestion_dates\": {\n            \"type\": \"array\",\n            \"items\": [{\n                \"type\": \"object\",\n                \"properties\": {\n                    \"type\": {\n                        \"type\": \"string\"\n                    },\n                    \"timestamp\": {\n                        \"type\": \"string\"\n                    }\n                }\n            }]\n        },\n        \"expiration_dates\": {\n            \"type\": \"array\",\n            \"items\": [{\n                \"type\": \"object\",\n                \"properties\": {\n                    \"type\": {\n                        \"type\": \"string\"\n                    },\n                    \"timestamp\": {\n                        \"type\": \"string\"\n                    }\n                }\n            }]\n        }\n    }\n};\n\npm.test(\"Schema is valid\", function() {\n    pm.expect(tv4.validate(respJson, schema)).to.be.true;\n});"
+                        ]
                       }
                     }
                   ],
@@ -1093,42 +1061,10 @@
                     {
                       "listen": "test",
                       "script": {
+                        "type": "text/javascript",
                         "exec": [
-                          "",
-                          "pm.test(\"Status code is 200\", function() {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test(\"Content-Type is application/json\", function() {",
-                          "    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
-                          "});",
-                          "",
-                          "var respJson = pm.response.json();",
-                          "",
-                          "const schema = {",
-                          "    \"properties\": {",
-                          "        \"ingestion_dates\": {",
-                          "            \"type\": \"array\",",
-                          "            \"items\": [{",
-                          "                \"type\": \"object\",",
-                          "                \"properties\": {",
-                          "                    \"type\": {",
-                          "                        \"type\": \"string\"",
-                          "                    },",
-                          "                    \"timestamp\": {",
-                          "                        \"type\": \"string\"",
-                          "                    }",
-                          "                }",
-                          "            }]",
-                          "        }",
-                          "    }",
-                          "};",
-                          "",
-                          "pm.test(\"Schema is valid\", function() {",
-                          "    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-                          "});"
-                        ],
-                        "type": "text/javascript"
+                          "\npm.test(\"Status code is 200\", function() {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"Content-Type is application/json\", function() {\n    pm.response.to.have.header(\"Content-Type\", \"application/json\");\n});\n\nvar respJson = pm.response.json();\n\nconst schema = {\n    \"properties\": {\n        \"ingestion_dates\": {\n            \"type\": \"array\",\n            \"items\": [{\n                \"type\": \"object\",\n                \"properties\": {\n                    \"type\": {\n                        \"type\": \"string\"\n                    },\n                    \"timestamp\": {\n                        \"type\": \"string\"\n                    }\n                }\n            }]\n        },\n        \"expiration_dates\": {\n            \"type\": \"array\",\n            \"items\": [{\n                \"type\": \"object\",\n                \"properties\": {\n                    \"type\": {\n                        \"type\": \"string\"\n                    },\n                    \"timestamp\": {\n                        \"type\": \"string\"\n                    }\n                }\n            }]\n        }\n    }\n};\n\npm.test(\"Schema is valid\", function() {\n    pm.expect(tv4.validate(respJson, schema)).to.be.true;\n});"
+                        ]
                       }
                     }
                   ],
