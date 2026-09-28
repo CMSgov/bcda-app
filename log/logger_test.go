@@ -32,7 +32,6 @@ func TestLoggers_ToSTDOut(t *testing.T) {
 		{"ssas", func() logrus.FieldLogger { return SSAS }},
 
 		{"worker", func() logrus.FieldLogger { return Worker }},
-		{"bfd", func() logrus.FieldLogger { return BFDWorker }},
 		{"health", func() logrus.FieldLogger { return Health }},
 	}
 	for _, tt := range tests {
