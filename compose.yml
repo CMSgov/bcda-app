@@ -49,6 +49,7 @@ services:
       - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
+      - "3001:3001"
     healthcheck:
       test: ["CMD", "curl", "-k", "-s", "-f", "-o", "/dev/null", "localhost:3000/_health"]
       interval: 40s
