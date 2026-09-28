@@ -1385,7 +1385,7 @@ func (s *ServiceTestSuite) TestGetCutoffTime() {
 	}
 }
 
-func (s *ServiceTestSuite) GetAttributionStatusDates() {
+func (s *ServiceTestSuite) TestGetAttributionStatusDates() {
 	tests := []struct {
 		name               string
 		fileType           models.CCLFFileType
@@ -1441,6 +1441,8 @@ func (s *ServiceTestSuite) GetAttributionStatusDates() {
 			if !tt.cclfFileDate.IsZero() {
 				cclfFile := &models.CCLFFile{Type: tt.fileType, Timestamp: tt.cclfFileDate}
 				repository.On("GetLatestCCLFFile", mock.Anything, cmsID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, tt.fileType).Return(cclfFile, nil)
+			} else {
+				repository.On("GetLatestCCLFFile", mock.Anything, cmsID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.CCLFFile{}, CCLFNotFoundError{})
 			}
 
 			service := NewService(repository, &cfg, "")
