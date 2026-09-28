@@ -122,16 +122,6 @@ func NewDataRouter(db *sql.DB, provider auth.Provider) http.Handler {
 	return r
 }
 
-func NewHTTPRouter() http.Handler {
-	r := chi.NewRouter()
-	r.Use(gcmw.RequestID, middleware.ConnectionClose, appMiddleware.NewTransactionID, logging.NewCtxLogger)
-	r.With(logging.NewStructuredLogger()).Get("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		url := "https://" + req.Host + req.URL.String()
-		http.Redirect(w, req, url, http.StatusMovedPermanently) // #nosec G710 -- HTTP is only enabled in local dev
-	}))
-	return r
-}
-
 // FileServer conveniently sets up a http.FileServer handler to serve
 // static files from a http.FileSystem.
 // stolen from https://github.com/go-chi/chi/blob/master/_examples/fileserver/main.go

@@ -21,7 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -290,38 +289,6 @@ func (s *RouterTestSuite) TestDeleteJobRoute() {
 func (s *RouterTestSuite) TestAttributionStatus() {
 	res := s.getAPIRoute("/api/v1/attribution_status")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestHTTPServerRedirect() {
-	router := NewHTTPRouter()
-
-	// Redirect GET http requests to https
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	res := w.Result()
-
-	assert.Nil(s.T(), err, "redirect GET http to https")
-	assert.Equal(s.T(), http.StatusMovedPermanently, res.StatusCode, "http to https redirect return correct status code")
-	assert.Equal(s.T(), "close", res.Header.Get("Connection"), "http to https redirect sets 'connection: close' header")
-	assert.Contains(s.T(), res.Header.Get("Location"), "https://", "location response header contains 'https://'")
-
-	// Only respond to GET requests
-	req, err = http.NewRequest("POST", "/", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	res = w.Result()
-
-	assert.Nil(s.T(), err, "redirect POST http to https")
-	assert.Equal(s.T(), http.StatusMethodNotAllowed, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
 func createACO(cmsID string, denyListValue *models.Termination) models.ACO {

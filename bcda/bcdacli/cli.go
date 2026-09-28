@@ -68,17 +68,12 @@ func setUpApp() *cli.App {
 		return nil
 	}
 	var acoName, acoCMSID, acoID, accessToken, filePath, groupID, groupName, ips string
-	var httpPort, httpsPort int
+	var httpsPort int
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
 			Usage: "Start the API",
 			Flags: []cli.Flag{
-				cli.IntFlag{
-					Name:        "http-port",
-					Usage:       "Port to use for http",
-					Destination: &httpPort,
-				},
 				cli.IntFlag{
 					Name:        "https-port",
 					Usage:       "Port to use for http",
@@ -99,28 +94,12 @@ func setUpApp() *cli.App {
 				}
 				defer profiler.Stop()
 
-				var httpAddr, httpsAddr string
-				if httpPort != 0 {
-					httpAddr = fmt.Sprintf(":%d", httpPort)
-				} else {
-					httpAddr = ":3001"
-				}
+				var httpsAddr string
 				if httpsPort != 0 {
 					httpsAddr = fmt.Sprintf(":%d", httpsPort)
 				} else {
 					httpsAddr = ":3000"
 				}
-
-				// Accepts and redirects HTTP requests to HTTPS
-				srv := &http.Server{
-					Handler:           web.NewHTTPRouter(),
-					Addr:              httpAddr,
-					ReadTimeout:       5 * time.Second,
-					WriteTimeout:      5 * time.Second,
-					ReadHeaderTimeout: 2 * time.Second,
-				}
-
-				go func() { log.API.Fatal(srv.ListenAndServe()) }()
 
 				auth := &http.Server{
 					Handler:           web.NewAuthRouter(provider),
