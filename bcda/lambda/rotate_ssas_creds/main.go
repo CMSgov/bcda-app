@@ -149,7 +149,7 @@ func (h RotateSSASCredsHandler) rotateCreds(ctx context.Context, rs rotationSyst
 		h.logger.Errorf("failed to unmarshal new creds for system %s", rs.CredsName)
 		return err
 	}
-	newValueBytes, err := json.Marshal(newCreds) // #nosec G117
+	newValueBytes, err := json.Marshal(newCreds) // #nosec G117 -- Secret is included intentionally
 	if err != nil {
 		h.logger.Errorf("failed to re-marshal new creds for system %s", rs.CredsName)
 		return err
