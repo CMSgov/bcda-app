@@ -518,7 +518,7 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	} else if runoutErr != nil && !runoutNotFound { // an unexpected error occurred with the runout file status
 		ctx, _ = log.WriteErrorWithFields(
 			ctx,
-			fmt.Sprintf("%s: could not fetch default attribution status dates: %+v", responseutils.InternalErr, runoutErr),
+			fmt.Sprintf("%s: could not fetch runout attribution status dates: %+v", responseutils.InternalErr, runoutErr),
 			logrus.Fields{"resp_status": http.StatusInternalServerError},
 		)
 		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")

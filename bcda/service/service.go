@@ -131,8 +131,8 @@ func (s *service) GetCutoffTime(ctx context.Context, reqType constants.DataReque
 func (s *service) GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (lastUpdated time.Time, expirationDate time.Time, err error) {
 	latestFile, err := s.GetLatestCCLFFile(ctx, cmsID, expirationDate, expirationDate, fileType)
 	if err != nil {
-		s.logger.Errorf("could not fetch latest CCLF file for attribution status: %w", err)
-		return lastUpdated, expirationDate, err
+		s.logger.Errorf("could not fetch latest CCLF file for attribution status: %s", err)
+		return time.Time{}, time.Time{}, err
 	}
 
 	lastUpdated = latestFile.Timestamp

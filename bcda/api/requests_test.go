@@ -623,7 +623,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 			h.AttributionStatus(rr, req)
 
 			assert.Equal(s.T(), tt.respCode, rr.Code, tt.name)
-			if tt.respCode == http.StatusAccepted {
+			if tt.respCode == http.StatusOK {
 				var resp AttributionFileStatusResponse
 				err := json.Unmarshal(rr.Body.Bytes(), &resp)
 				assert.NoError(s.T(), err)
