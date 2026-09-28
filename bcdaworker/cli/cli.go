@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"database/sql"
-	"io/fs"
 	"os"
 	"os/signal"
 	"syscall"
@@ -126,22 +125,22 @@ func clearTempDirectory(tempDir string) error {
 		return err
 	}
 	defer root.Close()
-	tempFS := root.FS()
-	err = fs.WalkDir(tempFS, ".", func(path string, dirEntry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == tempDir {
-			return nil
-		}
-		if dirEntry.IsDir() {
-			return root.RemoveAll(path)
-		}
-		return root.Remove(path)
-	})
 
+	rootFile, err := root.Open(".")
 	if err != nil {
 		return err
+	}
+
+	entries, err := rootFile.ReadDir(-1)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if err := root.RemoveAll(name); err != nil {
+			return err
+		}
 	}
 	return nil
 }
