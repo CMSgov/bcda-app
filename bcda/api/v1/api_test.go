@@ -379,7 +379,7 @@ func (s *APITestSuite) TestServeData() {
 	for _, name := range fixtures {
 		b, err := os.ReadFile(conf.GetEnv("FHIR_PAYLOAD_DIR") + "/" + name)
 		s.Require().NoError(err)
-		s.Require().NoError(os.WriteFile(jobDir+"/"+name, b, 0600))
+		s.Require().NoError(os.WriteFile(jobDir+"/"+name, b, 0600)) // #nosec G703
 	}
 
 	defer func() {
