@@ -138,7 +138,7 @@ resource "aws_lb_listener" "ssas_alb_public" {
 ###########
 
 module "ecs_ssas" {
-  source                        = "github.com/CMSgov/cdap/terraform/modules/service?ref=e8af7a286d7e7637e41de27adf00af2d0d58f4e7"
+  source                        = "github.com/CMSgov/cdap//terraform/modules/service?ref=e8af7a286d7e7637e41de27adf00af2d0d58f4e7"
   service_name_override         = local.service
   platform                      = module.platform
   cluster_arn                   = data.aws_ecs_cluster.this.arn
