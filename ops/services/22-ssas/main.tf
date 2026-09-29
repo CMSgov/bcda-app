@@ -55,7 +55,7 @@ resource "aws_lb" "ssas_alb" {
   name                             = "bcda-ssas-${module.platform.env}"
   internal                         = true
   load_balancer_type               = "application"
-  idle_timeout                     = 60
+  idle_timeout                     = local.config.health_check.idle_timeout
   enable_deletion_protection       = true
   enable_cross_zone_load_balancing = true
   drop_invalid_header_fields       = true
