@@ -130,6 +130,7 @@ func clearTempDirectory(tempDir string) error {
 	if err != nil {
 		return err
 	}
+	defer rootFile.Close()
 
 	entries, err := rootFile.ReadDir(-1)
 	if err != nil {
