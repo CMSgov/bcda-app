@@ -76,7 +76,7 @@ resource "aws_lb" "ssas_alb" {
 }
 
 resource "aws_lb_target_group" "ecs_ssas_admin" {
-  name        = "bcda-${module.platform.env}-ssas-admin"
+  name        = "bcda-${module.platform.env}-ecs-ssas-admin"
   port        = local.config.ports.ssas_admin_port
   protocol    = "HTTPS"
   vpc_id      = module.platform.vpc_id
@@ -92,7 +92,7 @@ resource "aws_lb_target_group" "ecs_ssas_admin" {
 }
 
 resource "aws_lb_target_group" "ecs_ssas_public" {
-  name        = "bcda-${module.platform.env}-ssas-public"
+  name        = "bcda-${module.platform.env}-ecs-ssas-public"
   port        = local.config.ports.ssas_public_port
   protocol    = "HTTPS"
   vpc_id      = module.platform.vpc_id
@@ -198,7 +198,7 @@ resource "aws_appautoscaling_target" "ecs_ssas_cpu_target" {
 }
 
 resource "aws_appautoscaling_policy" "ecs_ssas_cpu_policy" {
-  name               = "bcda-${module.platform.env}-ssas-cpu-scaling"
+  name               = "bcda-${module.platform.env}-ssas-cpu-auto-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_ssas_cpu_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_ssas_cpu_target.scalable_dimension

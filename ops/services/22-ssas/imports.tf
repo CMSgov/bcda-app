@@ -38,6 +38,18 @@ data "aws_cloudwatch_log_group" "ecs_ssas_datadog_import" {
   name = "/aws/ecs/fargate/${data.aws_ecs_cluster.this.cluster_name}/ssas/datadog-agent"
 }
 
+data "aws_ecs_task_definition" "ssas_import" {
+  task_definition = "bcda-${module.platform.env}-ssas"
+}
+
+data "aws_iam_role" "ssas_execution_import" {
+  name = "bcda-${module.platform.env}-ssas-execution"
+}
+
+data "aws_iam_role" "ssas_task_role_import" {
+  name = "bcda-${module.platform.env}-ssas-task-role"
+}
+
 ###########
 # Imports #
 ###########
@@ -74,6 +86,11 @@ import {
 import {
   to = module.ecs_ssas.aws_ecs_service.this
   id = "${data.aws_ecs_cluster.this.cluster_name}/bcda-${module.platform.env}-ssas"
+}
+
+import {
+  to = module.ecs_ssas.aws_ecs_task_definition.this
+  id = data.aws_ecs_task_definition.ssas_import.arn
 }
 
 # --- Autoscaling --- #
@@ -120,4 +137,26 @@ import {
 import {
   to = module.ssas_ecs_alarms.aws_cloudwatch_metric_alarm.ecs_alarms["bcda-${module.platform.env}-ssas-memory-warn"]
   id = "bcda-${module.platform.env}-ssas-memory-warn"
+}
+
+# --- IAM --- #
+
+import {
+  to = module.ecs_ssas.aws_iam_role.execution[0]
+  id = "bcda-${module.platform.env}-ssas-execution"
+}
+
+import {
+  to = module.ecs_ssas.aws_iam_role.task
+  id = "bcda-${module.platform.env}-ssas-task-role"
+}
+
+import {
+  to = module.ecs_ssas.aws_iam_role_policy.execution[0]
+  id = "bcda-${module.platform.env}-ssas-execution:bcda-${module.platform.env}-ssas-execution"
+}
+
+import {
+  to = module.ecs_ssas.aws_iam_role_policy.task
+  id = "bcda-${module.platform.env}-ssas-task-role:bcda-${module.platform.env}-ssas-task-policy"
 }
