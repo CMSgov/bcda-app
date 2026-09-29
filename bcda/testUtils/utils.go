@@ -197,7 +197,7 @@ func CopyToS3(t *testing.T, src string) (string, func()) {
 			return nil
 		}
 
-		f, err := os.Open(filepath.Clean(path))
+		f, err := os.Open(filepath.Clean(path)) // #nosec G122 This is only used for tests
 		if err != nil {
 			return err
 		}

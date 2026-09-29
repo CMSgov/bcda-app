@@ -2,7 +2,6 @@ package servicemux
 
 import (
 	"bufio"
-	"crypto/rand"
 	"crypto/tls"
 	"io"
 	"net"
@@ -117,9 +116,7 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 	}
 
 	sm.TLSConfig = tls.Config{
-		Certificates:             []tls.Certificate{certificate},
-		Rand:                     rand.Reader,
-		PreferServerCipherSuites: true,
+		Certificates: []tls.Certificate{certificate},
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP256,
 			tls.X25519,
