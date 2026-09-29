@@ -147,6 +147,8 @@
 /bcda/${env}/infra/sensitive/ssas_4i_public_cidr_blocks: ENC[AES256_GCM,data:UAU0ILs/YMBHTh1qoeFaKfzh6PEQ+rdIApLrG+8PTyg=,iv:6Hx0aiLSgFrkAQlh89HFpiWlSg5qk4cfLvioDV7Qw7A=,tag:xRFSbEHFGpDL+j0p9gy+hA==,type:str]
 /bcda/${env}/infra/sensitive/ssas_4i_admin_cidr_blocks: ENC[AES256_GCM,data:EyB/qE46r7pcbsKgaIVmJxP3XAMVnHZ/dnQ80HYZG7U=,iv:+ziXwUijuS4bXicfhQcZcrtAWFm3dvSCi9xaA2uIX/g=,tag:G9FwqmBdlLRxwKsx+P3cRQ==,type:str]
 /bcda/${env}/infra/sensitive/ssas_gha_runners_cidr_blocks: ENC[AES256_GCM,data:oiJKqHvWdvsAy5mcN8k2gkc3OlV83/RuQKDdOoWWQ9djdXAVULccmPq5DDoudQ==,iv:bK8ovyIBuovFHbNqH5z4mg22p0ukAArarCGE1VS8LkY=,tag:4kHaIVgoetQC3QC0pC+OVg==,type:str]
+/bcda/${env}/infra/sensitive/ssas_aco_ms_admin_cidr_blocks: ""
+/bcda/${env}/infra/sensitive/ssas_ihp_cidr_blocks: ""
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-sandbox

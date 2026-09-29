@@ -30,6 +30,11 @@ locals {
   # CIDR Blocks
   app_cidr_block        = data.aws_vpc.main.cidr_block
   management_cidr_block = module.platform.platform_cidr
+  gha_runner_cidrs      = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_gha_runners_cidr_blocks.value))))
+  aco_ms_admin_cidrs    = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_aco_ms_admin_cidr_blocks.value))))
+  cidrs_4i_admin        = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_4i_admin_cidr_blocks.value))))
+  cidrs_4i_public       = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_4i_public_cidr_blocks.value))))
+  ihp_cidrs             = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_ihp_cidr_blocks.value))))
 }
 
 module "platform" {
