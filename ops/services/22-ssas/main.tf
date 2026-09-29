@@ -76,11 +76,12 @@ resource "aws_lb" "ssas_alb" {
 }
 
 resource "aws_lb_target_group" "ecs_ssas_admin" {
-  name        = "bcda-${module.platform.env}-ecs-ssas-admin"
-  port        = local.config.ports.ssas_admin_port
-  protocol    = "HTTPS"
-  vpc_id      = module.platform.vpc_id
-  target_type = "ip"
+  name                 = "bcda-${module.platform.env}-ecs-ssas-admin"
+  port                 = local.config.ports.ssas_admin_port
+  protocol             = local.config.health_check.protocol
+  vpc_id               = module.platform.vpc_id
+  deregistration_delay = local.config.alb_deregistration_delay
+  target_type          = "ip"
 
   health_check {
     path                = local.config.health_check.path
@@ -88,15 +89,18 @@ resource "aws_lb_target_group" "ecs_ssas_admin" {
     timeout             = local.config.health_check.timeout
     healthy_threshold   = local.config.health_check.healthy_threshold
     unhealthy_threshold = local.config.health_check.unhealthy_threshold
+    port                = local.config.ports.ssas_admin_port
+    protocol            = local.config.health_check.protocol
   }
 }
 
 resource "aws_lb_target_group" "ecs_ssas_public" {
-  name        = "bcda-${module.platform.env}-ecs-ssas-public"
-  port        = local.config.ports.ssas_public_port
-  protocol    = "HTTPS"
-  vpc_id      = module.platform.vpc_id
-  target_type = "ip"
+  name                 = "bcda-${module.platform.env}-ecs-ssas-public"
+  port                 = local.config.ports.ssas_public_port
+  protocol             = "HTTPS"
+  vpc_id               = module.platform.vpc_id
+  deregistration_delay = local.config.alb_deregistration_delay
+  target_type          = "ip"
 
   health_check {
     path                = local.config.health_check.path
@@ -104,6 +108,8 @@ resource "aws_lb_target_group" "ecs_ssas_public" {
     timeout             = local.config.health_check.timeout
     healthy_threshold   = local.config.health_check.healthy_threshold
     unhealthy_threshold = local.config.health_check.unhealthy_threshold
+    port                = local.config.ports.ssas_public_port
+    protocol            = local.config.health_check.protocol
   }
 }
 
@@ -115,8 +121,12 @@ resource "aws_lb_listener" "ssas_alb_admin" {
   certificate_arn   = data.aws_acm_certificate.ssas.arn
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ecs_ssas_admin.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.ecs_ssas_admin.arn
+      }
+    }
   }
 }
 
@@ -128,8 +138,12 @@ resource "aws_lb_listener" "ssas_alb_public" {
   certificate_arn   = data.aws_acm_certificate.ssas.arn
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ecs_ssas_public.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.ecs_ssas_public.arn
+      }
+    }
   }
 }
 

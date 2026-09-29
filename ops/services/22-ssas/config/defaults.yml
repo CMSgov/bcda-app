@@ -23,7 +23,9 @@ health_check:
   unhealthy_threshold: 5
   timeout: 5
   start_period: 10
+  protocol: "HTTPS"
 
+alb_deregistration_delay: 120
 ssl_policy: "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
 
 parameter_names: [
