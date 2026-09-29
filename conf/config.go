@@ -267,7 +267,7 @@ func Checkout(v interface{}) error {
 		// Get the concrete value from the interface
 		check := reflect.ValueOf(v)
 		// Is it a pointer?
-		if check.Kind() == reflect.Ptr {
+		if check.Kind() == reflect.Pointer {
 			// Dereference the pointer
 			el := check.Elem()
 
@@ -288,7 +288,7 @@ func Checkout(v interface{}) error {
 // bindenv: workaround to make the unmarshal work with environment variables
 // Inspired from solution found here : https://github.com/spf13/viper/issues/188#issuecomment-399884438
 func bindenvs(field reflect.Value, parts ...string) error {
-	if field.Kind() == reflect.Ptr {
+	if field.Kind() == reflect.Pointer {
 		return nil
 	}
 	for i := 0; i < field.NumField(); i++ {
