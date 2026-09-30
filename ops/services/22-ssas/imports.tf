@@ -56,7 +56,7 @@ data "aws_iam_role" "ssas_task_role_import" {
 
 import {
   to = module.ecs_ssas.aws_ssm_parameter.image_tag
-  id = "/bcda/test/nonsensitive/ssas/image-tag"
+  id = "/bcda/${module.platform.env}/nonsensitive/ssas/image-tag"
 }
 
 # --- ALB --- #
