@@ -47,8 +47,8 @@ var (
 	now          = time.Now()
 	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 	since        = "gt2020-02-14"
-	claimsDate   = ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
-		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
+	claimsDate   = ClaimsWindow{Earliest: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
+		Latest: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
 	jobData = worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionID: uuid.New(), TransactionTime: now}
 )
 
@@ -439,7 +439,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitWithUpperBoundServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhir.Bundle)
@@ -462,7 +462,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitWithLowerBoundServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhir.Bundle)
@@ -645,7 +645,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetClaimNoServiceDateUpperBound",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhir.Bundle)
@@ -661,7 +661,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetClaimNoServiceDateLowerBound",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhir.Bundle)
@@ -725,7 +725,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetClaimResponseNoServiceDateUpperBound",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhir.Bundle)
@@ -741,7 +741,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetClaimResponseNoServiceDateLowerBound",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*fhir.Bundle)
@@ -956,27 +956,27 @@ func noServiceDateChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.URL.Query()[constants.TestSvcDate])
 }
 func serviceDateChecker(t *testing.T, req *http.Request) {
-	// verify there is max two service-date params set, one upper and one lower
+	// verify there is max two service-date params set: one latest and one earliest
 	dates := req.URL.Query()[constants.TestSvcDate]
 	assert.True(t, len(dates) <= 2)
 
 	assert.Contains(t, req.URL.String(), "service-date=gt2022-06-26")
 }
 func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.UpperBound.Format(constants.TestSvcDateResult)))
+	// We expect that service date only contains YYYY-MM-DD for latest ("le")
+	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.Latest.Format(constants.TestSvcDateResult)))
 }
 func noServiceDateUpperBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.UpperBound.Format(constants.TestSvcDateResult)))
+	// We expect that service date only contains YYYY-MM-DD for latest ("le")
+	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.Latest.Format(constants.TestSvcDateResult)))
 }
 func serviceDateLowerBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(constants.TestSvcDateResult)))
+	// We expect that service date only contains YYYY-MM-DD for earliest ("ge")
+	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.Earliest.Format(constants.TestSvcDateResult)))
 }
 func noServiceDateLowerBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(constants.TestSvcDateResult)))
+	// We expect that service date only contains YYYY-MM-DD for earliest ("ge")
+	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.Earliest.Format(constants.TestSvcDateResult)))
 }
 func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.Header.Get("IncludeAddressFields"))
