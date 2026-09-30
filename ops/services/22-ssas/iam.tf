@@ -1,7 +1,7 @@
 data "aws_iam_policy_document" "ssas_task" {
   statement {
     sid     = "AllowKMSAppConfig"
-    actions = ["kms:Encrypt", "kms:GenerateDataKey", "kms:ListAliases"]
+    actions = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey", "kms:ListAliases"]
     resources = [
       data.aws_kms_key.app_config_kms_key.arn
     ]
