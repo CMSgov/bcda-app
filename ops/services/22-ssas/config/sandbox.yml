@@ -1,14 +1,3 @@
-scaling:
-  min: 4
-  max: 8
-  target_value: 20
-  scale_in_cooldown: 720
-  scale_out_cooldown: 60
-
-ecs:
-  cpu: 1024
-  mem: 2048
-
 parameter_names: [
     "BCDA_TLS_CERT",
     "BCDA_TLS_KEY",
@@ -18,6 +7,7 @@ parameter_names: [
     "DEPLOYMENT_TARGET",
     "GOPATH",
     "SSAS_ADMIN_SIGNING_KEY_PATH",
+    "SSAS_CRED_EXPIRATION_DAYS",
     "SSAS_DEFAULT_SYSTEM_SCOPE",
     "SSAS_HASH_ITERATIONS",
     "SSAS_HASH_KEY_LENGTH",
