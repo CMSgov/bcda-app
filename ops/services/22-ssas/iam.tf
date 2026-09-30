@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "ssas_task" {
     sid     = "AllowSSMParamsByPath"
     actions = ["ssm:GetParametersByPath"]
     resources = [
-      "arn:aws:ssm:${module.platform.primary_region.name}:${module.platform.account_id}:parameter/bcda/${module.platform.env}/*"
+      "arn:aws:ssm:${module.platform.primary_region.name}:${module.platform.aws_caller_identity.account_id}:parameter/bcda/${module.platform.env}/*"
     ]
   }
 
@@ -28,7 +28,7 @@ data "aws_iam_policy_document" "ssas_task" {
     sid     = "AllowSlackToken"
     actions = ["ssm:GetParameter"]
     resources = [
-      "arn:aws:ssm:${module.platform.primary_region.name}:${module.platform.account_id}:parameter/slack/token/workflow-alerts"
+      "arn:aws:ssm:${module.platform.primary_region.name}:${module.platform.aws_caller_identity.account_id}:parameter/slack/token/workflow-alerts"
     ]
   }
 }

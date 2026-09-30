@@ -18,7 +18,6 @@ locals {
 
   default_tags = module.platform.default_tags
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
-  is_prod      = contains(["prod", "sandbox"], local.parent_env)
 
   # SSAS domain math. Leaving the possibility of ephemeral environments.
   ssas_domain_map = {
@@ -28,13 +27,25 @@ locals {
   ssas_domain = lookup(local.ssas_domain_map, module.platform.env, "ssas.${module.platform.env}.bcda.cms.gov")
 
   # CIDR Blocks
-  app_cidr_block        = data.aws_vpc.main.cidr_block
-  management_cidr_block = module.platform.platform_cidr
-  gha_runner_cidrs      = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_gha_runners_cidr_blocks.value))))
-  aco_ms_admin_cidrs    = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_aco_ms_admin_cidr_blocks.value))))
-  cidrs_4i_admin        = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_4i_admin_cidr_blocks.value))))
-  cidrs_4i_public       = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_4i_public_cidr_blocks.value))))
-  ihp_cidrs             = toset(compact(split(",", nonsensitive(data.aws_ssm_parameter.ssas_ihp_cidr_blocks.value))))
+  app_cidr_block = data.aws_vpc.main.cidr_block
+  ssas_cidr_params = {
+    gha_runners     = data.aws_ssm_parameter.ssas_gha_runners_cidr_blocks.value
+    aco_ms_admin    = data.aws_ssm_parameter.ssas_aco_ms_admin_cidr_blocks.value
+    cidrs_4i_admin  = data.aws_ssm_parameter.ssas_4i_admin_cidr_blocks.value
+    cidrs_4i_public = data.aws_ssm_parameter.ssas_4i_public_cidr_blocks.value
+    ihp             = data.aws_ssm_parameter.ssas_ihp_cidr_blocks.value
+  }
+
+  parsed_cidrs = {
+    for k, v in local.ssas_cidr_params :
+    k => toset(compact([for c in split(",", nonsensitive(v)) : trimspace(c)]))
+  }
+
+  gha_runner_cidrs   = local.parsed_cidrs["gha_runners"]
+  aco_ms_admin_cidrs = local.parsed_cidrs["aco_ms_admin"]
+  cidrs_4i_admin     = local.parsed_cidrs["cidrs_4i_admin"]
+  cidrs_4i_public    = local.parsed_cidrs["cidrs_4i_public"]
+  ihp_cidrs          = local.parsed_cidrs["ihp"]
 }
 
 module "platform" {
@@ -70,7 +81,7 @@ resource "aws_lb" "ssas_alb" {
   subnets = toset(keys(module.platform.private_subnets))
 
   access_logs {
-    bucket  = "cms-cloud-${module.platform.account_id}-${module.platform.primary_region.name}"
+    bucket  = "cms-cloud-${module.platform.aws_caller_identity.account_id}-${module.platform.primary_region.name}"
     enabled = true
   }
 }
