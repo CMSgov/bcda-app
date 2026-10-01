@@ -20,9 +20,8 @@ var (
 	Request logrus.FieldLogger = defaultFieldLogger("request")
 	SSAS    logrus.FieldLogger = defaultFieldLogger("ssas")
 
-	Worker    logrus.FieldLogger = defaultFieldLogger("worker")
-	BFDWorker logrus.FieldLogger = defaultFieldLogger("bfd")
-	Health    logrus.FieldLogger = defaultFieldLogger("health")
+	Worker logrus.FieldLogger = defaultFieldLogger("worker")
+	Health logrus.FieldLogger = defaultFieldLogger("health")
 )
 
 // setup global access to loggers, overwrite default logger
@@ -34,7 +33,6 @@ func SetupLoggers() {
 	SSAS = newFieldLogger("api", "ssas")
 
 	Worker = newFieldLogger("worker", "worker")
-	BFDWorker = newFieldLogger("worker", "bfd")
 	Health = newFieldLogger("worker", "health")
 }
 

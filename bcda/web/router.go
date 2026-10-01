@@ -127,7 +127,7 @@ func NewHTTPRouter() http.Handler {
 	r.Use(gcmw.RequestID, middleware.ConnectionClose, appMiddleware.NewTransactionID, logging.NewCtxLogger)
 	r.With(logging.NewStructuredLogger()).Get("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		url := "https://" + req.Host + req.URL.String()
-		http.Redirect(w, req, url, http.StatusMovedPermanently)
+		http.Redirect(w, req, url, http.StatusMovedPermanently) // #nosec G710 -- HTTP is only enabled in local dev
 	}))
 	return r
 }

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -40,7 +39,7 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Before = func(c *cli.Context) error {
 		log.SetupLoggers()
-		client.SetLogger(log.BFDWorker)
+		client.SetLogger(log.Worker)
 		db = database.Connect()
 		return nil
 	}
@@ -121,21 +120,28 @@ func createWorkerDirs() {
 }
 
 func clearTempDirectory(tempDir string) error {
-	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == tempDir {
-			return nil
-		}
-		if info.IsDir() {
-			return os.RemoveAll(path)
-		}
-		return os.Remove(path)
-	})
-
+	root, err := os.OpenRoot(tempDir)
 	if err != nil {
 		return err
+	}
+	defer root.Close()
+
+	rootFile, err := root.Open(".")
+	if err != nil {
+		return err
+	}
+	defer rootFile.Close()
+
+	entries, err := rootFile.ReadDir(-1)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if err := root.RemoveAll(name); err != nil {
+			return err
+		}
 	}
 	return nil
 }

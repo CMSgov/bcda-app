@@ -47,7 +47,7 @@ func TestConfigureLogger(t *testing.T) {
 
 func TestRotateCreds(t *testing.T) {
 	newCreds := shortCreds{ClientID: "98", ClientSecret: "abc123"}
-	marshalledCreds, _ := json.Marshal(newCreds)
+	marshalledCreds, _ := json.Marshal(newCreds) // #nosec G117
 
 	logger := configureLogger("test", "testapp")
 	ssmClient := bcdaaws.MockSSMClient{}

@@ -379,7 +379,7 @@ func (s *APITestSuite) TestServeData() {
 	for _, name := range fixtures {
 		b, err := os.ReadFile(conf.GetEnv("FHIR_PAYLOAD_DIR") + "/" + name)
 		s.Require().NoError(err)
-		s.Require().NoError(os.WriteFile(jobDir+"/"+name, b, 0600))
+		s.Require().NoError(os.WriteFile(jobDir+"/"+name, b, 0600)) // #nosec G703
 	}
 
 	defer func() {
@@ -631,8 +631,9 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoUnderTest)
 	cclfFile := postgrestest.GetLatestCCLFFileByCMSIDAndType(s.T(), s.db, *aco.CMSID, models.FileTypeDefault)
 
-	assert.Equal(s.T(), "last_attribution_update", resp.Data[0].Type)
-	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.Data[0].Timestamp.Format("2006-01-02 15:04:05"))
+	assert.Equal(s.T(), "last_attribution_update", resp.IngestionDates[0].Type)
+	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.IngestionDates[0].Timestamp.Format("2006-01-02 15:04:05"))
+	assert.Equal(s.T(), "attribution_access_expiration", resp.ExpirationDates[0].Type)
 }
 
 func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {
