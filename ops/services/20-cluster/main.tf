@@ -4,7 +4,7 @@ locals {
   env                                   = terraform.workspace
   cdap_env                              = local.parent_env == "prod" || local.env == "sandbox" ? "prod" : "test"
   is_prod                               = contains(["prod", "sandbox"], local.parent_env)
-  service                               = "cluster"
+  service                               = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
   local_zone_name                       = "bcda-${local.env}.local"
   cloudwatch_alarms_topic_name          = "bcda-${local.env}-cloudwatch-alarms"
   cloudwatch_critical_alarms_topic_name = "bcda-${local.env}-cloudwatch-critical-alarms"
