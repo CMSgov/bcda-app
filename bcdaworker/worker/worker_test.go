@@ -253,8 +253,8 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Context, worker_types.JobEnqueueArgs, *client.MockBlueButtonClient) {
 	bbc := client.MockBlueButtonClient{}
 	since, transactionTime := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now()
-	claimsWindow := client.ClaimsWindow{LowerBound: time.Now().Add(-365 * 24 * time.Hour), UpperBound: time.Now().Add(-180 * 24 * time.Hour)}
-	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: resource, Since: since, TransactionTime: transactionTime, ClaimsWindow: claimsWindow}
+	claimsWindow := client.ClaimsWindow{Earliest: time.Now().Add(-365 * 24 * time.Hour), Latest: time.Now().Add(-180 * 24 * time.Hour)}
+	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: resource, Since: since, TransactionTime: transactionTime, ClaimsWindow: worker_types.ClaimsWindow(claimsWindow)}
 	var cclfBeneficiaryIDs []string
 	beneID := "a1000050699"
 	bbc.MBI = &beneID
@@ -268,7 +268,7 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 	switch resource {
 	case "ExplanationOfBenefit":
 		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetExplanationOfBenefit", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		bbc.On("GetExplanationOfBenefit", jobArgs, beneID, claimsWindowMatcher(claimsWindow.Earliest, claimsWindow.Latest)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 	case "Coverage":
 		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetCoverage", jobArgs, beneID).Return(bbc.GetBundleData("Coverage", beneID))
@@ -277,10 +277,10 @@ func SetupWriteResourceToFile(s *WorkerTestSuite, resource string) (context.Cont
 		bbc.On("GetPatient", jobArgs, beneID).Return(bbc.GetBundleData("Patient", beneID))
 	case "Claim":
 		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetClaim", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("Claim", beneID))
+		bbc.On("GetClaim", jobArgs, beneID, claimsWindowMatcher(claimsWindow.Earliest, claimsWindow.Latest)).Return(bbc.GetBundleData("Claim", beneID))
 	case "ClaimResponse":
 		bbc.On("GetPatientByMbi", cclfBeneficiary.MBI).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetClaimResponse", jobArgs, beneID, claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ClaimResponse", beneID))
+		bbc.On("GetClaimResponse", jobArgs, beneID, claimsWindowMatcher(claimsWindow.Earliest, claimsWindow.Latest)).Return(bbc.GetBundleData("ClaimResponse", beneID))
 
 	}
 	return ctx, jobArgs, &bbc
@@ -1093,20 +1093,20 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 	return id
 }
 
-// first argument is lowerBound, second argument is upperBound
+// first argument is earliest, second argument is latest
 func claimsWindowMatcher(times ...time.Time) (matcher interface{}) {
 	expected := client.ClaimsWindow{}
 	switch len(times) {
 	case 2:
-		expected.UpperBound = times[1]
+		expected.Latest = times[1]
 		fallthrough
 	case 1:
-		expected.LowerBound = times[0]
+		expected.Earliest = times[0]
 	}
 
 	return mock.MatchedBy(func(actual client.ClaimsWindow) bool {
-		return expected.LowerBound.Equal(actual.LowerBound) &&
-			expected.UpperBound.Equal(actual.UpperBound)
+		return expected.Earliest.Equal(actual.Earliest) &&
+			expected.Latest.Equal(actual.Latest)
 	})
 }
 
