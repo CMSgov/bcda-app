@@ -404,9 +404,8 @@ func GetDefaultParams() (params url.Values) {
 	return params
 }
 
-// updateParamWithServiceDate adds service-date parameters based on the ClaimsWindow:
-// earliest = Earliest, represented by "ge" (claims on or after this date)
-// latest   = Latest, represented by "le" (claims on or before this date)
+// updateParamWithServiceDate adds service-date query parameters for the ClaimsWindow,
+// requesting claims on or after Earliest ("ge") and on or before Latest ("le").
 func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {
 	// ServiceDate only uses yyyy-mm-dd
 	const isoDate = "2006-01-02"
