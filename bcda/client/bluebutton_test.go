@@ -437,7 +437,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithUpperBoundServiceDate",
+			"GetExplanationOfBenefitWithLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
@@ -451,8 +451,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				serviceDateUpperBoundChecker,
-				noServiceDateLowerBoundChecker,
+				serviceDateLatestChecker,
+				noServiceDateEarliestChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -460,7 +460,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithLowerBoundServiceDate",
+			"GetExplanationOfBenefitWithEarliestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
@@ -474,8 +474,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				serviceDateLowerBoundChecker,
-				noServiceDateUpperBoundChecker,
+				serviceDateEarliestChecker,
+				noServiceDateLatestChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -483,7 +483,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithLowerAndUpperBoundServiceDate",
+			"GetExplanationOfBenefitWithEarliestAndLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", claimsDate)
 			},
@@ -497,8 +497,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				serviceDateLowerBoundChecker,
-				serviceDateUpperBoundChecker,
+				serviceDateEarliestChecker,
+				serviceDateLatestChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -643,7 +643,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimNoServiceDateUpperBound",
+			"GetClaimNoServiceDateLatest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
@@ -659,7 +659,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimNoServiceDateLowerBound",
+			"GetClaimNoServiceDateEarliest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
@@ -675,7 +675,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimWithUpperAndLowerBoundServiceDate",
+			"GetClaimWithEarliestAndLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaim(jobData, "beneID1", claimsDate)
 			},
@@ -723,7 +723,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimResponseNoServiceDateUpperBound",
+			"GetClaimResponseNoServiceDateLatest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
@@ -739,7 +739,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimResponseNoServiceDateLowerBound",
+			"GetClaimResponseNoServiceDateEarliest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
@@ -755,7 +755,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimResponseWithUpperAndLowerBoundServiceDate",
+			"GetClaimResponseWithEarliestAndLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaimResponse(jobData, "beneID1", claimsDate)
 			},
@@ -962,19 +962,19 @@ func serviceDateChecker(t *testing.T, req *http.Request) {
 
 	assert.Contains(t, req.URL.String(), "service-date=gt2022-06-26")
 }
-func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
+func serviceDateLatestChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD for latest ("le")
 	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.Latest.Format(constants.TestSvcDateResult)))
 }
-func noServiceDateUpperBoundChecker(t *testing.T, req *http.Request) {
+func noServiceDateLatestChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD for latest ("le")
 	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.Latest.Format(constants.TestSvcDateResult)))
 }
-func serviceDateLowerBoundChecker(t *testing.T, req *http.Request) {
+func serviceDateEarliestChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD for earliest ("ge")
 	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.Earliest.Format(constants.TestSvcDateResult)))
 }
-func noServiceDateLowerBoundChecker(t *testing.T, req *http.Request) {
+func noServiceDateEarliestChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD for earliest ("ge")
 	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.Earliest.Format(constants.TestSvcDateResult)))
 }
