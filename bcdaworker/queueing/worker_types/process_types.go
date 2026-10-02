@@ -14,7 +14,25 @@ type ClaimsWindow struct {
 	Latest   time.Time `json:"Latest,omitempty"`
 }
 
+// MarshalJSON dual-writes Earliest/Latest and legacy LowerBound/UpperBound keys
+// to maintain forward compatibility (if an older worker node processes a newly enqueued job).
+// Remove once this release is fully deployed.
+func (cw ClaimsWindow) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Earliest   time.Time `json:"Earliest,omitempty"`
+		Latest     time.Time `json:"Latest,omitempty"`
+		LowerBound time.Time `json:"LowerBound,omitempty"`
+		UpperBound time.Time `json:"UpperBound,omitempty"`
+	}{
+		Earliest:   cw.Earliest,
+		Latest:     cw.Latest,
+		LowerBound: cw.Earliest,
+		UpperBound: cw.Latest,
+	})
+}
+
 // UnmarshalJSON ensures backward compatibility for jobs enqueued with legacy LowerBound/UpperBound keys.
+// Remove once this release is fully deployed.
 func (cw *ClaimsWindow) UnmarshalJSON(data []byte) error {
 	type Alias ClaimsWindow
 	aux := struct {
