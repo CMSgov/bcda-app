@@ -33,11 +33,8 @@ locals {
   # - SANDBOX: GHA, 4i admin, 4i public
   # - PROD: All
 
-  cidr_envs = ["prod", "sandbox", "test"]
-  has_cidrs = contains(local.cidr_envs, module.platform.parent_env)
-
-  full_cidrs_envs = ["prod", "test"]
-  has_full_cidrs  = contains(local.full_cidrs_envs, module.platform.parent_env)
+  has_cidrs      = local.config.has_cidrs
+  has_full_cidrs = local.config.has_full_cidrs
 
   app_cidr_block = data.aws_vpc.main.cidr_block
   ssas_cidr_params = {
