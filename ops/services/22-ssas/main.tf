@@ -27,18 +27,27 @@ locals {
   ssas_domain = lookup(local.ssas_domain_map, module.platform.env, "ssas.${module.platform.env}.bcda.cms.gov")
 
   # CIDR Blocks
+  # Have to do some conditional math to keep parity with the differences in each environment.
+  # - DEV: N/a
+  # - TEST: All
+  # - SANDBOX: GHA, 4i admin, 4i public
+  # - PROD: All
+
+  has_cidrs      = local.config.has_cidrs
+  has_full_cidrs = local.config.has_full_cidrs
+
   app_cidr_block = data.aws_vpc.main.cidr_block
   ssas_cidr_params = {
-    gha_runners     = data.aws_ssm_parameter.ssas_gha_runners_cidr_blocks.value
-    aco_ms_admin    = data.aws_ssm_parameter.ssas_aco_ms_admin_cidr_blocks.value
-    cidrs_4i_admin  = data.aws_ssm_parameter.ssas_4i_admin_cidr_blocks.value
-    cidrs_4i_public = data.aws_ssm_parameter.ssas_4i_public_cidr_blocks.value
-    ihp             = data.aws_ssm_parameter.ssas_ihp_cidr_blocks.value
+    gha_runners     = one(data.aws_ssm_parameter.ssas_gha_runners_cidr_blocks[*].value)
+    cidrs_4i_admin  = one(data.aws_ssm_parameter.ssas_4i_admin_cidr_blocks[*].value)
+    cidrs_4i_public = one(data.aws_ssm_parameter.ssas_4i_public_cidr_blocks[*].value)
+    aco_ms_admin    = one(data.aws_ssm_parameter.ssas_aco_ms_admin_cidr_blocks[*].value)
+    ihp             = one(data.aws_ssm_parameter.ssas_ihp_cidr_blocks[*].value)
   }
 
   parsed_cidrs = {
     for k, v in local.ssas_cidr_params :
-    k => toset(compact([for c in split(",", nonsensitive(v)) : trimspace(c)]))
+    k => v != null ? toset(compact([for c in split(",", nonsensitive(v)) : trimspace(c)])) : toset([])
   }
 
   gha_runner_cidrs   = local.parsed_cidrs["gha_runners"]
