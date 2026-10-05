@@ -1,3 +1,5 @@
+has_cidrs: true
+
 parameter_names: [
     "BCDA_TLS_CERT",
     "BCDA_TLS_KEY",

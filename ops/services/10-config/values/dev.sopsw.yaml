@@ -56,11 +56,6 @@
 /bcda/${env}/sensitive/api/V3_BB_SERVER_LOCATION: ENC[AES256_GCM,data:bvgm4sJH6LI2hiWm0E8rC/vmoG8s++msfCj38eWfi4Er+RCzH8A=,iv:51kg7k4gnsUyhNlJyfD/UZ9xN+Or76+DWE5GuSIpnHQ=,tag:s5B/ZX7kSk6IqS/lHmxmZw==,type:str]
 /bcda/${env}/sensitive/api/VERSION_2_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:zvG/3Q==,iv:JsvQRnBhOQsQ0A+7tkWaY/Z4uuaIoTMBKXmZ2G3fYJQ=,tag:2bCx20+yU9Nwlz3bTAQZaQ==,type:str]
 /bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:y5Sqcg==,iv:WqVmUFzQqRxQv1a7TOqHvayf1rR/dwWRka8rGvrTVT0=,tag:VEHF4npN6NcElH8T4r/vbQ==,type:str]
-/bcda/${env}/infra/sensitive/ssas_gha_runners_cidr_blocks: ""
-/bcda/${env}/infra/sensitive/ssas_aco_ms_admin_cidr_blocks: ""
-/bcda/${env}/infra/sensitive/ssas_4i_admin_cidr_blocks: ""
-/bcda/${env}/infra/sensitive/ssas_4i_public_cidr_blocks: ""
-/bcda/${env}/infra/sensitive/ssas_ihp_cidr_blocks: ""
 #ENC[AES256_GCM,data:eEWdUHIq/1tcMOb6uHewAsUBtNpmgbOqvw==,iv:4Upq+pwOoEFABZeQtySKBvUcR1Fa1h+0RP59vUhuv24=,tag:mSS775R0iXDLFylXDK4E3Q==,type:comment]
 /bcda/${env}/sensitive/db_admin_password: ENC[AES256_GCM,data:r2Gcds9w41AVjUoRT7wkfSTDOplJs8f7HpQteO6s3j0=,iv:VSFRoBdEcg9uUGUpSW3i1Y5ffbSby/Rogu6wUrOkbI4=,tag:UkQgq2stcMXsllRWuz9ejA==,type:str]
 #ENC[AES256_GCM,data:WbpcVs1f8pzD1KWo3PV8a4W+jQ==,iv:N/PwyoTFnU10ij4OHHC/Ccf8Um3v3m1zvi3J0qdRhhA=,tag:MoGgR/lbSBRO3c/lLLKT6g==,type:comment]
