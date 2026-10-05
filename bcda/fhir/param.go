@@ -203,8 +203,11 @@ func ParseDateString(datetime string) (time.Time, error) {
 	return time.Time{}, ParameterParsingError{Details: fmt.Sprintf("invalid date parameter value: %s", datetime)}
 }
 
+// ValidateServiceDates ensures that service-date parameters have valid keys, non-delimited values,
+// and at most one earliest ("gt"/"ge") and one latest ("lt"/"le") condition.
+// Exact date conditions ("eq" or "") establish both an earliest and a latest boundary.
 func ValidateServiceDates(serviceDateParams []DateParam) error {
-	earlyBoundCount, lateBoundCount := 0, 0
+	earliestBoundCount, latestBoundCount := 0, 0
 	for _, sd := range serviceDateParams {
 		if sd.Name != string(TypeFilterParamServiceDate) {
 			return ParameterValidationError{Details: fmt.Sprintf("invalid key for service-date parameter: %s", sd.Name)}
@@ -214,15 +217,15 @@ func ValidateServiceDates(serviceDateParams []DateParam) error {
 		}
 		switch sd.Prefix {
 		case "lt", "le":
-			lateBoundCount = lateBoundCount + 1
+			latestBoundCount = latestBoundCount + 1
 		case "gt", "ge":
-			earlyBoundCount = earlyBoundCount + 1
+			earliestBoundCount = earliestBoundCount + 1
 		case "eq", "":
-			lateBoundCount = lateBoundCount + 1
-			earlyBoundCount = earlyBoundCount + 1
+			latestBoundCount = latestBoundCount + 1
+			earliestBoundCount = earliestBoundCount + 1
 		}
 	}
-	if earlyBoundCount > 1 || lateBoundCount > 1 {
+	if earliestBoundCount > 1 || latestBoundCount > 1 {
 		return ParameterValidationError{Details: "invalid service-date parameter value: conflicting prefix conditions"}
 	}
 	return nil

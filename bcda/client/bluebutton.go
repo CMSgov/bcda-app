@@ -63,8 +63,8 @@ func NewConfig(basePath string) BlueButtonConfig {
 }
 
 type ClaimsWindow struct {
-	LowerBound time.Time
-	UpperBound time.Time
+	Earliest time.Time
+	Latest   time.Time
 }
 
 type APIClient interface {
@@ -404,16 +404,18 @@ func GetDefaultParams() (params url.Values) {
 	return params
 }
 
+// updateParamWithServiceDate adds service-date query parameters for the ClaimsWindow,
+// requesting claims on or after Earliest ("ge") and on or before Latest ("le").
 func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {
 	// ServiceDate only uses yyyy-mm-dd
 	const isoDate = "2006-01-02"
 
-	if !claimsWindow.LowerBound.IsZero() {
-		params.Add("service-date", fmt.Sprintf("ge%s", claimsWindow.LowerBound.Format(isoDate)))
+	if !claimsWindow.Earliest.IsZero() {
+		params.Add("service-date", fmt.Sprintf("ge%s", claimsWindow.Earliest.Format(isoDate)))
 	}
 
-	if !claimsWindow.UpperBound.IsZero() {
-		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.UpperBound.Format(isoDate)))
+	if !claimsWindow.Latest.IsZero() {
+		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.Latest.Format(isoDate)))
 	}
 }
 
