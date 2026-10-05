@@ -27,6 +27,8 @@ health_check:
 
 alb_deregistration_delay: 120
 ssl_policy: "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
+has_cidrs: false
+has_full_cidrs: false
 
 parameter_names: [
     "BCDA_TLS_CERT",

@@ -9,6 +9,9 @@ ecs:
   cpu: 1024
   mem: 2048
 
+has_cidrs: true
+has_full_cidrs: true
+
 parameter_names: [
     "BCDA_TLS_CERT",
     "BCDA_TLS_KEY",
