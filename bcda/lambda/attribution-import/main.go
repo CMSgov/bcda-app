@@ -171,7 +171,7 @@ func (h *AttributionImportHandler) handleCclfImport(ctx context.Context, s3Impor
 	}
 
 	if failure > 0 || skipped > 0 {
-		result := fmt.Sprintf("Successfully imported Attribution %v files.  Failed to import Attribution %v files.  Skipped %v Attribution files.  See logs for more details.", success, failure, skipped)
+		result := fmt.Sprintf("Completed Attribution import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 		logger.Error(result)
 
 		return result, errors.New("files skipped or failed import. See logs for more details")

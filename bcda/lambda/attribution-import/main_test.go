@@ -162,21 +162,21 @@ func TestHandleCclfImport(t *testing.T) {
 			name:    "some files fail",
 			success: 3, failure: 2, skipped: 0,
 			wantResultParts: []string{
-				"Successfully imported Attribution 3 files",
-				"Failed to import Attribution 2 files",
+				"Successfully imported 3 files",
+				"Failed to import 2 files",
 			},
 		},
 		{
 			name:    "some files skipped",
 			success: 4, failure: 0, skipped: 1,
-			wantResultParts: []string{"Skipped 1 Attribution files"},
+			wantResultParts: []string{"Skipped 1 files"},
 		},
 		{
 			name:    "failures and skips combined",
 			success: 2, failure: 1, skipped: 3,
 			wantResultParts: []string{
-				"Failed to import Attribution 1 files",
-				"Skipped 3 Attribution files",
+				"Failed to import 1 files",
+				"Skipped 3 files",
 			},
 		},
 	}
