@@ -149,11 +149,18 @@ jobs:
           docker build -t postman_test -f ./docker/Dockerfile.postman_test .
       - name: Run SSAS tests
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
-        run: |
-          docker system prune -af
-          CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
-          CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
-          docker compose -f compose.integration-test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            ASSERTION_AUD=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_assertion_aud
+            HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_elb
+          run: |
+            docker system prune -af
+            CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
+            CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
+            docker compose -f compose.integration-test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/aws.postman_environment.json  --global-var adminClientId=$CLIENT_ID --global-var adminClientSecret=$CLIENT_SECRET --global-var ssas_client_assertion_aud=$ASSERTION_AUD --global-var host=$HOST --insecure
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
@@ -220,16 +227,16 @@ jobs:
                 text: "SUCCESS: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
                 mrkdown_in:
                   - text
-      - name: Failure Alert
-        if: ${{ failure() }}
-        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: "${{ secrets.SLACK_CHANNEL_ID }}"
-            attachments:
-              - color: danger
-                text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
-                mrkdown_in:
-                  - text
+      # - name: Failure Alert
+      #   if: ${{ failure() }}
+      #   uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
+      #   with:
+      #     method: chat.postMessage
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     payload: |
+      #       channel: "${{ secrets.SLACK_CHANNEL_ID }}"
+      #       attachments:
+      #         - color: danger
+      #           text: "FAILURE: Smoketests in ${{ env.RELEASE_ENV }} for ${{ env.REF }}.  Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>"
+      #           mrkdown_in:
+      #             - text
