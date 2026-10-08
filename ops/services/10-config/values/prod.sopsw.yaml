@@ -88,6 +88,8 @@
 /bcda/sensitive/workflows/gold_image_ami: ENC[AES256_GCM,data:MjuB8BAAncb8QLTz/oAciwcIOpVU,iv:vOeR0/K5FQXkM1okBe01X/eJpS2SlVZuiIjY+WHxr6k=,tag:wa0gzkoY3BW7DgzGz52Ltg==,type:str]
 /bcda/sensitive/workflows/packer_subnet_id: ENC[AES256_GCM,data:3HTkSP+08YrRJwsKry3Uw+Tl5I3UIN8j,iv:TqrTT5uFp4+s8GInjV05+iG2yXOULoTed3CgZa+1eG0=,tag:hJdKxmD7FheZ/ZtG8T251Q==,type:str]
 /bcda/${env}/sensitive/workflows/ssas_admin_credentials: ENC[AES256_GCM,data:ktBTVmcm2Q4amJsy1apIMuJqzl/AF0ZMEGaNRffzTtAs3D1EfhjGy/Ng3HR9fWTbqdUQDNveP5wtLceRzdVx/sirsmb2G7MwqPaVRq5HPe0YjT4gTQ/qeC+vEEv5mBm/kx60U9ps3HeEV36BMcuv8zh0W9hV2FyKu3Deeh6M3XzYId6vs/6iiNewPAD7QetBaWR/vsMbbg==,iv:kag3tTBE1eFDXMV3sv0Hqq4wO/RRY42daxCEi/UYHwA=,tag:gjKCEPHE4B/zwg9VQvMTPA==,type:str]
+/bcda/${env}/sensitive/workflows/ssas_assertion_aud: ENC[AES256_GCM,data:R3/tE/61iMmBYkTRQjMLuXZkP5qHDV0AGLGAf+atVjSXcKmuVl2ZBmqeQa+LdQ==,iv:IDdQiuRN3uQz+BXEoL/OtlxL0SkXSKfpI9YKIR7AT20=,tag:ynhCrOooFK8xGkL1r6LsGQ==,type:str]
+/bcda/${env}/sensitive/workflows/ssas_elb: ENC[AES256_GCM,data:VcMHfT00tMcnXa+Ants1u/pN0GRGTljFAmlHCDamujhyEOdwfMFXcxgsz/npC17Oo5G/5NsPALNUGYX52Q==,iv:jHsletGnibOV4z0Gih6LVrgsFTGdpP/cuIMOYG1rvaI=,tag:dIlsky5OwoWzA9/0tjKkDQ==,type:str]
 #ENC[AES256_GCM,data:J3Vz4JmJaxQFdFllu4db73m2RnC6AxdGpA==,iv:lBcbehhocJBJqTZMSUdVDc7LAjxB3jF7QbOKgIdTbPs=,tag:AxbRmaxY2vfHCxwauVCMIA==,type:comment]
 /bcda/${env}/sensitive/smoke/SSAS_CLIENT_ID_BLACKLISTED: ENC[AES256_GCM,data:peQlfrQjKlEPFkxOPiR132U6rkZFWAmf6zXWgG8KVdxJ0BnK,iv:nOBuAQgpxQhCzAnN9Syb7V2uiz0lE7hPr7F1v+5jUTQ=,tag:E8Gc1g12TaWAPUjfA3jxyw==,type:str]
 /bcda/${env}/sensitive/smoke/SSAS_CLIENT_ID_DEV: ENC[AES256_GCM,data:N57mKIeU/G1Jb0VtectsACAT6VHTMYhtNTRDkeBr6Ypqr10L,iv:HVhm5uoopuxUJ2I0r4w9tmhZ+Z36ZHxysuNvJeezKCE=,tag:85PgeV2qQryQfZZlmSVJVw==,type:str]
