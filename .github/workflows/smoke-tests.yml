@@ -129,7 +129,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_elb
+            SSAS_CREDENTIALS=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_admin_credentials
             CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/${{ env.creds }}_client_credentials
             DENYLIST_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/denylisted_client_credentials
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/paca_client_credentials
