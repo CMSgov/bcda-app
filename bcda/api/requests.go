@@ -293,7 +293,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch job.Status {
-
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		logger.Error(job.Status)
 		ctx, _ = log.WriteErrorWithFields(
@@ -356,8 +355,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 
-			// Check if "error" is not in the filename
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") && jobKey.FileName != constants.WarningsAndInfoFileName {
+			// Filter out unwanted files by name, (error files, warning and info file, and empty/blank files)
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") &&
+				jobKey.FileName != constants.WarningsAndInfoFileName &&
+				jobKey.FileName != models.BlankFileName {
 				rb.Files = append(rb.Files, fi)
 			}
 

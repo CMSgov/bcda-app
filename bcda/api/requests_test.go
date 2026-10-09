@@ -439,6 +439,10 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 		},
 		{
 			JobID:    1,
+			FileName: models.BlankFileName, // should not show up in output nor error arrays
+		},
+		{
+			JobID:    1,
 			FileName: "success3-error.ndjson", // due to how the code is written this one should not show up in the response
 		},
 	}
