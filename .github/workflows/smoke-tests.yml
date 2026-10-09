@@ -145,7 +145,16 @@ jobs:
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         run: |
           docker build -t postman_test -f ./docker/Dockerfile.postman_test .
-      - name: Run SSAS tests
+      - name: Get SSAS Smoke test params
+        if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
+        uses: cmsgov/cdap/actions/aws-params-env-action@main
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          params: |
+            ASSERTION_AUD=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_assertion_aud
+            HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_elb
+      - name: Run SSAS Smoke tests
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         uses: cmsgov/cdap/actions/aws-params-env-action@main
         env:
