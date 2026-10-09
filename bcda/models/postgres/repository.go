@@ -586,6 +586,7 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 		"resource_type",
 		"benes_with_data",
 		"benes_retrieved_percent",
+		"que_job_id",
 	).From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
 
@@ -605,6 +606,7 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 			&jk.ResourceType,
 			&jk.BenesWithData,
 			&jk.BenesRetrievedPercent,
+			&jk.QueJobID,
 		); err != nil {
 			return nil, err
 		}
@@ -626,6 +628,7 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 		"resource_type",
 		"benes_with_data",
 		"benes_retrieved_percent",
+		"que_job_id",
 	).From("job_keys")
 	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("file_name", fileName)))
 
@@ -639,6 +642,7 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 		&jk.ResourceType,
 		&jk.BenesWithData,
 		&jk.BenesRetrievedPercent,
+		&jk.QueJobID,
 	); err != nil {
 		return nil, err
 	}

@@ -127,7 +127,7 @@ func TestGetJobAndKeys(t *testing.T) {
 		expectedKeys []*models.JobKey
 	}{
 		{"In Progress job with 1 key returns job and key", ipJob, []*models.JobKey{&key}, []*models.JobKey{&key}},
-		{"In Progress job with 1 empty key returns job and no keys", ipJobEmptyKey, []*models.JobKey{&emptyKey}, nil},
+		{"In Progress job with 1 empty key returns job and key", ipJobEmptyKey, []*models.JobKey{&emptyKey}, []*models.JobKey{&emptyKey}},
 		{"Complete job with 1 key returns job and key", completeJob, []*models.JobKey{&key}, []*models.JobKey{&key}},
 	}
 

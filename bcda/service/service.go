@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/ccoveille/go-safecast"
@@ -243,15 +242,7 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 		return nil, nil, err
 	}
 
-	nonEmptyKeys := make([]*models.JobKey, 0, len(keys))
-	for i, key := range keys {
-		if strings.TrimSpace(key.FileName) == models.BlankFileName {
-			continue
-		}
-		nonEmptyKeys = append(nonEmptyKeys, keys[i])
-	}
-
-	return j, nonEmptyKeys, nil
+	return j, keys, nil
 }
 
 func (s *service) GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error) {

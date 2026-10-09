@@ -7,6 +7,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -293,7 +294,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch job.Status {
-
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		logger.Error(job.Status)
 		ctx, _ = log.WriteErrorWithFields(
@@ -303,13 +303,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		)
 		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
-		completedJobKeyCount := utils.CountUniq(jobKeys, func(jobKey *models.JobKey) int64 {
-			if jobKey.QueJobID == nil {
-				return -1
-			}
-			return *jobKey.QueJobID
+		uniqJobKeys := slices.CompactFunc(jobKeys, func(jobKeyA, jobKeyB *models.JobKey) bool {
+			return jobKeyA.QueJobID != nil && jobKeyA.QueJobID == jobKeyB.QueJobID // remove duplicates and job keys with nil QueJobID
 		})
-		w.Header().Set("X-Progress", job.StatusMessage(completedJobKeyCount))
+		w.Header().Set("X-Progress", job.StatusMessage(len(uniqJobKeys)))
 		w.WriteHeader(http.StatusAccepted)
 		return
 	case models.JobStatusCompleted:
@@ -356,8 +353,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 
-			// Check if "error" is not in the filename
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") && jobKey.FileName != constants.WarningsAndInfoFileName {
+			// Filter out unwanted files by name, (error files, warning and info file, and empty/blank files)
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") &&
+				jobKey.FileName != constants.WarningsAndInfoFileName &&
+				jobKey.FileName != models.BlankFileName {
 				rb.Files = append(rb.Files, fi)
 			}
 

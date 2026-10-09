@@ -953,9 +953,12 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	jk, _ := safecast.ToUint(testUtils.CryptoRandInt31())
 	jk1Filename := uuid.New()
 	jobID, _ := safecast.ToUint(testUtils.CryptoRandInt31())
-	jk1 := models.JobKey{JobID: jobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100}
-	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
-	jk3 := models.JobKey{JobID: jk, FileName: uuid.New()}
+	riverJobID1 := int64(1)
+	riverJobID2 := int64(2)
+	riverJobID3 := int64(3)
+	jk1 := models.JobKey{JobID: jobID, FileName: jk1Filename, ResourceType: "ExplanationOfBenefit", BenesWithData: 10, BenesRetrievedPercent: 100, QueJobID: &riverJobID1}
+	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New(), ResourceType: "ExplanationOfBenefit", BenesWithData: 1000, BenesRetrievedPercent: 100, QueJobID: &riverJobID2}
+	jk3 := models.JobKey{JobID: jk, FileName: uuid.New(), QueJobID: &riverJobID3}
 
 	bcdaworkerRepo := bcdaworkerpostgres.NewRepository(r.db)
 	err := bcdaworkerRepo.CreateJobKeys(ctx, []models.JobKey{jk1, jk2, jk3})
@@ -967,6 +970,13 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	assertContainsFile(assert, keys, jk1.FileName)
 	assertContainsFile(assert, keys, jk2.FileName)
 	assertDoesNotContainsFile(assert, keys, jk3.FileName)
+	require.Len(r.T(), keys, 2)
+	// validate all fields are set/retrieved properly
+	assert.NotNil(keys[0].FileName)
+	assert.NotNil(keys[0].ResourceType)
+	assert.NotNil(keys[0].BenesWithData)
+	assert.NotNil(keys[0].BenesRetrievedPercent)
+	assert.NotNil(keys[0].QueJobID)
 
 	otherKeys, err := r.repository.GetJobKeys(ctx, jk3.JobID)
 	assert.NoError(err)
@@ -982,6 +992,7 @@ func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	assert.Equal("ExplanationOfBenefit", jobKey.ResourceType)
 	assert.Equal(10, jobKey.BenesWithData)
 	assert.Equal(100, jobKey.BenesRetrievedPercent)
+	assert.Equal(int64(1), *jobKey.QueJobID)
 }
 
 // TestCMSID verifies that we can store and retrieve the CMS_ID as expected

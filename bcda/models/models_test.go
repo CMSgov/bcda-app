@@ -20,8 +20,11 @@ func TestModelsTestSuite(t *testing.T) {
 }
 
 func (s *ModelsTestSuite) TestJobStatusMessage() {
-	j := Job{Status: constants.InProgress, JobCount: 25}
-	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage(6))
+	j := Job{Status: constants.InProgress, JobCount: 100}
+	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage(24))
+
+	j = Job{Status: constants.InProgress, JobCount: 1000}
+	assert.Equal(s.T(), "In Progress (2%)", j.StatusMessage(22))
 
 	j = Job{Status: constants.InProgress, JobCount: 0}
 	assert.Equal(s.T(), constants.InProgress, j.StatusMessage(0))

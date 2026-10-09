@@ -439,6 +439,10 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 		},
 		{
 			JobID:    1,
+			FileName: models.BlankFileName, // should not show up in output nor error arrays
+		},
+		{
+			JobID:    1,
 			FileName: "success3-error.ndjson", // due to how the code is written this one should not show up in the response
 		},
 	}
@@ -977,7 +981,7 @@ func (s *RequestsTestSuite) TestJobStatusProgress() {
 		status           models.JobStatus
 		expectedProgress string
 	}{
-		{testName: "In-Progress job displays partial progress", status: models.JobStatusInProgress, expectedProgress: "50%"},
+		{testName: "In-Progress job displays partial progress", status: models.JobStatusInProgress, expectedProgress: "In Progress (3%)"},
 		{testName: "Completed job doesn't display progress", status: models.JobStatusCompleted, expectedProgress: ""},
 		{testName: "Archived job doesn't display progress", status: models.JobStatusArchived, expectedProgress: ""},
 	}
@@ -998,11 +1002,18 @@ func (s *RequestsTestSuite) TestJobStatusProgress() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.testName, func(t *testing.T) {
-			job := models.Job{ID: 101, Status: tt.status, JobCount: 2}
-			jobKey := models.JobKey{ID: 1001, FileName: "goodFile.ndjson"}
+			job := models.Job{ID: 101, Status: tt.status, JobCount: 100}
+			riverJobID1 := int64(1)
+			riverJobID2 := int64(2)
+			jobKey1 := models.JobKey{ID: 1001, FileName: "goodFile.ndjson", QueJobID: &riverJobID1}
+			jobKey2 := models.JobKey{ID: 1002, FileName: models.BlankFileName, QueJobID: &riverJobID1}
+			jobKey3 := models.JobKey{ID: 1003, FileName: "goodFile-error.ndjson", QueJobID: &riverJobID1} // not counted due to duplicate QueJobID
+			jobKey4 := models.JobKey{ID: 1004, FileName: "goodFile.ndjson", QueJobID: &riverJobID2}
+			jobKey5 := models.JobKey{ID: 1005, FileName: "goodFile-error.ndjson", QueJobID: &riverJobID2} // not counted due to duplicate QueJobID
+			jobKey6 := models.JobKey{ID: 1006, FileName: "goodFile.ndjson"}                               // not counted due to nil QueJobID
 			mockSrv := service.MockService{}
 			h.Svc = &mockSrv
-			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, job.ID).Return(&job, []*models.JobKey{&jobKey}, nil)
+			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, job.ID).Return(&job, []*models.JobKey{&jobKey1, &jobKey2, &jobKey3, &jobKey4, &jobKey5, &jobKey6}, nil)
 			w := httptest.NewRecorder()
 
 			h.JobStatus(w, req)
