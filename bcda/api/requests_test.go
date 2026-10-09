@@ -1006,7 +1006,7 @@ func (s *RequestsTestSuite) TestJobStatusProgress() {
 			riverJobID1 := int64(1)
 			riverJobID2 := int64(2)
 			jobKey1 := models.JobKey{ID: 1001, FileName: "goodFile.ndjson", QueJobID: &riverJobID1}
-			jobKey2 := models.JobKey{ID: 1002, FileName: "blank.ndjson", QueJobID: &riverJobID1}
+			jobKey2 := models.JobKey{ID: 1002, FileName: models.BlankFileName, QueJobID: &riverJobID1}
 			jobKey3 := models.JobKey{ID: 1003, FileName: "goodFile-error.ndjson", QueJobID: &riverJobID1} // not counted due to duplicate QueJobID
 			jobKey4 := models.JobKey{ID: 1004, FileName: "goodFile.ndjson", QueJobID: &riverJobID2}
 			jobKey5 := models.JobKey{ID: 1005, FileName: "goodFile-error.ndjson", QueJobID: &riverJobID2} // not counted due to duplicate QueJobID

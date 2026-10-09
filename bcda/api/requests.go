@@ -7,6 +7,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -302,13 +303,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		)
 		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
-		completedJobKeyCount := utils.CountUniq(jobKeys, func(jobKey *models.JobKey) int64 {
-			if jobKey.QueJobID == nil {
-				return -1
-			}
-			return *jobKey.QueJobID
+		uniqJobKeys := slices.CompactFunc(jobKeys, func(jobKeyA, jobKeyB *models.JobKey) bool {
+			return jobKeyA.QueJobID != nil && jobKeyA.QueJobID == jobKeyB.QueJobID // remove duplicates and job keys with nil QueJobID
 		})
-		w.Header().Set("X-Progress", job.StatusMessage(completedJobKeyCount))
+		w.Header().Set("X-Progress", job.StatusMessage(len(uniqJobKeys)))
 		w.WriteHeader(http.StatusAccepted)
 		return
 	case models.JobStatusCompleted:
