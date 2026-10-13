@@ -26,6 +26,9 @@ func (s *ModelsTestSuite) TestJobStatusMessage() {
 	j = Job{Status: constants.InProgress, JobCount: 1000}
 	assert.Equal(s.T(), "In Progress (2%)", j.StatusMessage(22))
 
+	j = Job{Status: constants.InProgress, JobCount: 500}
+	assert.Equal(s.T(), "In Progress (200%)", j.StatusMessage(1000))
+
 	j = Job{Status: constants.InProgress, JobCount: 0}
 	assert.Equal(s.T(), constants.InProgress, j.StatusMessage(0))
 
