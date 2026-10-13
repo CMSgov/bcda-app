@@ -156,14 +156,7 @@ jobs:
             HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_elb
       - name: Run SSAS Smoke tests
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
-        uses: cmsgov/cdap/actions/aws-params-env-action@main
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        with:
-          params: |
-            ASSERTION_AUD=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_assertion_aud
-            HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/workflows/ssas_elb
-          run: |
+        run: |
             docker system prune -af
             CLIENT_ID=$(echo $SSAS_CREDENTIALS | jq -r .client_id)
             CLIENT_SECRET=$(echo $SSAS_CREDENTIALS | jq -r .client_secret)
