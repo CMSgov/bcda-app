@@ -8,7 +8,7 @@ resource "aws_vpc_security_group_ingress_rule" "worker_sg_ingress_01" {
 
 resource "aws_vpc_security_group_ingress_rule" "peering_worker_sg_ingress" {
   security_group_id = data.aws_security_group.worker_sg.id
-  cidr_ipv4         = data.terraform_remote_state.config.outputs.platform.platform_cidr
+  cidr_ipv4         = module.platform.platform_cidr
   from_port         = local.config.ports.ssh
   to_port           = local.config.ports.ssh
   ip_protocol       = "tcp"

@@ -20,6 +20,7 @@ locals {
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
 
   efs_access_point_id = data.aws_efs_access_points.main.access_point_ids[0]
+  alb_sg_name         = "${local.config.alb_sg_name_prefix}-${module.platform.env}"
 
   # Autoscaling lookups for dynamic policy
   worker_steps = [

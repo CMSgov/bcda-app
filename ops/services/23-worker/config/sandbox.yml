@@ -13,3 +13,5 @@ scaling:
       metric_interval_upper_bound: 250
     - scaling_adjustment_offset: max
       metric_interval_lower_bound: 250
+
+alb_sg_name_prefix: "bcda-app-lb"

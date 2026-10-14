@@ -18,6 +18,14 @@ data "aws_security_group" "worker_sg" {
   }
 }
 
+data "aws_security_group" "sg_alb_01" {
+  vpc_id = module.platform.vpc_id
+  filter {
+    name   = "group-name"
+    values = [local.alb_sg_name]
+  }
+}
+
 data "aws_security_group" "db" {
   vpc_id = module.platform.vpc_id
   filter {
