@@ -349,6 +349,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, jobKey := range jobKeys {
+			if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
+				continue
+			}
+
 			// data files
 			fi := FileItem{
 				Type: jobKey.ResourceType,
