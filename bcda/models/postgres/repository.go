@@ -132,7 +132,7 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	return true, nil
 }
 
-// earliertime: closest to now and latertime: older in time.
+// earlierTime: older in time (lower threshold); laterTime: closer to now (upper threshold).
 func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
@@ -151,7 +151,7 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 		Type:         fileType,
 	}
 
-	// earlier = closest to now(), later = older
+	// earlier = older in time (lower threshold), later = closer to now (upper threshold)
 	if !earlierTime.IsZero() && laterTime.IsZero() {
 		sb.Where(sb.GreaterEqualThan("timestamp", earlierTime))
 	} else if earlierTime.IsZero() && !laterTime.IsZero() {
