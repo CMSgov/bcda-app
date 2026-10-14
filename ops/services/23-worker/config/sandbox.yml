@@ -1,0 +1,15 @@
+scaling:
+  min: 1
+  max: 8
+  cooldown: 300
+  scaling_steps:
+    - scaling_adjustment_offset: 0
+      metric_interval_upper_bound: 25
+    - scaling_adjustment_offset: 2
+      metric_interval_lower_bound: 25
+      metric_interval_upper_bound: 100
+    - scaling_adjustment_offset: 4
+      metric_interval_lower_bound: 100
+      metric_interval_upper_bound: 250
+    - scaling_adjustment_offset: max
+      metric_interval_lower_bound: 250

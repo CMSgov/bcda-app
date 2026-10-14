@@ -1,0 +1,84 @@
+scaling:
+  min: 1
+  max: 4
+  cooldown: 300
+  scaling_steps:
+    - scaling_adjustment_offset: 0
+      metric_interval_upper_bound: 50
+    - scaling_adjustment_offset: 1
+      metric_interval_lower_bound: 50
+      metric_interval_upper_bound: 250
+    - scaling_adjustment_offset: max
+      metric_interval_lower_bound: 250
+
+ecs:
+  cpu: 1024
+  mem: 2048
+
+ports:
+  app: 3000
+  ssh: 22
+  postgres: 5432
+
+health_check:
+  path: "/_health"
+  idle_timeout: 60
+  interval: 15
+  healthy_threshold: 2
+  unhealthy_threshold: 5
+  timeout: 5
+  start_period: 10
+  protocol: "HTTPS"
+
+log_retention_days: 30
+
+parameter_names: [
+    "BB_CHECK_CERT",
+    "BB_CLIENT_CA_FILE",
+    "BB_CLIENT_CERT_FILE",
+    "BB_CLIENT_KEY_FILE",
+    "BB_SERVER_LOCATION",
+    "BB_TIMEOUT_MS",
+    "BCDA_BB_LOG",
+    "BCDA_WORKER_CONFIG_PATH",
+    "BCDA_WORKER_ERROR_LOG",
+    "COMPRESSION_LEVEL",
+    "CONFIG_BUCKET",
+    "DATABASE_URL",
+    "DEPLOYMENT_TARGET",
+    "EXPORT_FAIL_PCT",
+    "FHIR_ARCHIVE_DIR",
+    "FHIR_PAYLOAD_DIR",
+    "FHIR_STAGING_DIR",
+    "SLACK_TOKEN",
+    "V3_BB_SERVER_LOCATION",
+    "WORKER_HEALTH_INT_SEC",
+    "WORKER_HEALTH_LOG",
+    "WORKER_POOL_SIZE"
+  ]
+
+alarms:
+  - alarm_name_suffix: cpu-critical
+    alarm_description: "CRITICAL - CPU is too high for service"
+    metric_name: CPUUtilization
+    period: 60
+    eval_periods: 5
+    threshold: 90
+  - alarm_name_suffix: cpu-warn
+    alarm_description: "WARN - CPU is too high for service"
+    metric_name: CPUUtilization
+    period: 60
+    eval_periods: 5
+    threshold: 75
+  - alarm_name_suffix: memory-critical
+    alarm_description: "CRITICAL - memory is too high for service"
+    metric_name: MemoryUtilization
+    period: 60
+    eval_periods: 5
+    threshold: 90
+  - alarm_name_suffix: memory-warn
+    alarm_description: "WARN - memory is too high for service"
+    metric_name: MemoryUtilization
+    period: 60
+    eval_periods: 5
+    threshold: 75
