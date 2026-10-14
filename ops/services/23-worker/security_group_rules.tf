@@ -26,4 +26,5 @@ resource "aws_vpc_security_group_ingress_rule" "db_ingress_from_worker" {
   from_port                    = local.config.ports.postgres
   to_port                      = local.config.ports.postgres
   ip_protocol                  = "tcp"
+  description                  = "Worker SG access"
 }

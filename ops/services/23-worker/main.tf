@@ -19,12 +19,11 @@ locals {
   default_tags = module.platform.default_tags
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
 
-  efs_access_point_id = data.aws_efs_access_points.main.access_point_ids[0]
-  alb_sg_name         = "${local.config.alb_sg_name_prefix}-${module.platform.env}"
+  alb_sg_name = "${local.config.alb_sg_name_prefix}-${module.platform.env}"
 
   # Autoscaling lookups for dynamic policy
   worker_steps = [
-    for step in local.config.worker.scaling_steps : {
+    for step in local.config.scaling.scaling_steps : {
       scaling_adjustment          = step.scaling_adjustment_offset == "max" ? local.config.scaling.max : local.config.scaling.min + step.scaling_adjustment_offset
       metric_interval_lower_bound = lookup(step, "metric_interval_lower_bound", null)
       metric_interval_upper_bound = lookup(step, "metric_interval_upper_bound", null)
@@ -63,7 +62,7 @@ module "ecs_worker" {
   memory                        = local.config.ecs.mem
   desired_count                 = local.config.scaling.min
   security_groups               = [data.aws_security_group.worker_sg.id]
-  additional_task_role_policies = { bootstrap_policy = tostring(aws_iam_policy.instance.arn) }
+  additional_task_role_policies = { bootstrap_policy = tostring(aws_iam_policy.worker_task.arn) }
   cpu_architecture              = "ARM64"
 
   container_environment = [
@@ -108,7 +107,7 @@ module "ecs_worker" {
         root_directory     = "/"
         transit_encryption = "ENABLED"
         authorization_config = {
-          access_point_id = local.efs_access_point_id
+          access_point_id = data.aws_ssm_parameter.efs_access_point_worker.value
         }
       }
     },
@@ -124,7 +123,7 @@ module "ecs_worker" {
 resource "aws_appautoscaling_target" "ecs_worker_target" {
   min_capacity       = local.config.scaling.min
   max_capacity       = local.config.scaling.max
-  resource_id        = "service/${data.ecs_cluster.this.name}/${module.ecs_worker.service.name}"
+  resource_id        = "service/${data.aws_ecs_cluster.this.cluster_name}/${module.ecs_worker.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }

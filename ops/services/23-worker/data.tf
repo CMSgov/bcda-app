@@ -55,6 +55,6 @@ data "aws_efs_file_system" "main" {
   }
 }
 
-data "aws_efs_access_points" "main" {
-  file_system_id = data.aws_efs_file_system.main.id
+data "aws_ssm_parameter" "efs_access_point_worker" {
+  name = "/bcda/${module.platform.env}/sensitive/efs_access_point_worker"
 }
