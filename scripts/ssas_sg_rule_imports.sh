@@ -1,9 +1,9 @@
 #!/bin/bash
-# scripts/ssas_sg_imports.sh
+# scripts/ssas_sg_rule_imports.sh
 
 set -e
 
-ENV=${1:?Usage: ./ssas_sg_imports.sh <env>}
+ENV=${1:?Usage: ./ssas_sg_rule_imports.sh <env>}
 
 # --- Lookups --- #
 
