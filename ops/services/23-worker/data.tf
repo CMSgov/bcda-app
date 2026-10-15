@@ -56,5 +56,5 @@ data "aws_efs_file_system" "main" {
 }
 
 data "aws_ssm_parameter" "efs_access_point_worker" {
-  name = "/bcda/${module.platform.env}/sensitive/efs_access_point_worker"
+  name = "/bcda/${module.platform.env}/infra/sensitive/efs_access_point_worker"
 }
