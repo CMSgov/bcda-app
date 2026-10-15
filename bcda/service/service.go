@@ -37,7 +37,7 @@ type Service interface {
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
-	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
+	GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
 	GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (lastUpdated time.Time, expirationDate time.Time, err error)
@@ -580,15 +580,15 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 	// it takes precedence over any other claims date
 	// that may be applied
 	if prepareArgs.RequestType == constants.Runout {
-		args.ClaimsWindow.UpperBound = s.rp.claimThruDate
+		args.ClaimsWindow.Latest = s.rp.claimThruDate
 	} else if !prepareArgs.ClaimsDate.IsZero() {
-		args.ClaimsWindow.UpperBound = prepareArgs.ClaimsDate
+		args.ClaimsWindow.Latest = prepareArgs.ClaimsDate
 	}
 
-	// Applies the lower bound from the first matching ACOConfig
+	// Applies the earliest boundary (lower bound) from the first matching ACOConfig
 	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
 	if ok {
-		args.ClaimsWindow.LowerBound = cfg.LookbackTime(prepareArgs.CMSID)
+		args.ClaimsWindow.Earliest = cfg.LookbackTime(prepareArgs.CMSID)
 	}
 
 	return ok

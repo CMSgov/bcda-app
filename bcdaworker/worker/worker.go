@@ -258,8 +258,8 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	case "ExplanationOfBenefit":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			cw := client.ClaimsWindow{
-				LowerBound: jobArgs.ClaimsWindow.LowerBound,
-				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+				Earliest: jobArgs.ClaimsWindow.Earliest,
+				Latest:   jobArgs.ClaimsWindow.Latest}
 			return bb.GetExplanationOfBenefit(jobArgs, bene.BlueButtonID, cw)
 		}
 	case "Patient":
@@ -271,15 +271,15 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	case "Claim":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			cw := client.ClaimsWindow{
-				LowerBound: jobArgs.ClaimsWindow.LowerBound,
-				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+				Earliest: jobArgs.ClaimsWindow.Earliest,
+				Latest:   jobArgs.ClaimsWindow.Latest}
 			return bb.GetClaim(jobArgs, bene.MBI, cw)
 		}
 	case "ClaimResponse":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhir.Bundle, error) {
 			cw := client.ClaimsWindow{
-				LowerBound: jobArgs.ClaimsWindow.LowerBound,
-				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+				Earliest: jobArgs.ClaimsWindow.Earliest,
+				Latest:   jobArgs.ClaimsWindow.Latest}
 			return bb.GetClaimResponse(jobArgs, bene.MBI, cw)
 		}
 	default:

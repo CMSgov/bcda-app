@@ -8,6 +8,11 @@ import (
 
 const QUE_PROCESS_JOB = "ProcessJob"
 
+type ClaimsWindow struct {
+	Earliest time.Time `json:"Earliest,omitempty"`
+	Latest   time.Time `json:"Latest,omitempty"`
+}
+
 type JobEnqueueArgs struct {
 	ID              int // parent Job ID
 	ACOID           string
@@ -19,11 +24,8 @@ type JobEnqueueArgs struct {
 	TransactionID   string
 	TransactionTime time.Time
 	BBBasePath      string
-	ClaimsWindow    struct {
-		LowerBound time.Time
-		UpperBound time.Time
-	}
-	DataType string
+	ClaimsWindow    ClaimsWindow
+	DataType        string
 }
 
 // Needed by River (queue library)

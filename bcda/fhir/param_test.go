@@ -296,7 +296,7 @@ func TestValidateServiceDates(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name: "valid upper and lower bounds",
+			name: "valid latest and earliest bounds",
 			dateParams: []DateParam{
 				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
 				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2004"}},
@@ -309,7 +309,7 @@ func TestValidateServiceDates(t *testing.T) {
 			expectedErr: ParameterValidationError{},
 		},
 		{
-			name: "invalid multiple upper bounds",
+			name: "invalid multiple latest bounds",
 			dateParams: []DateParam{
 				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2004"}},
 				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},
@@ -317,7 +317,7 @@ func TestValidateServiceDates(t *testing.T) {
 			expectedErr: ParameterValidationError{},
 		},
 		{
-			name: "invalid multiple lower bounds",
+			name: "invalid multiple earliest bounds",
 			dateParams: []DateParam{
 				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2004"}},
 				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2005"}},
@@ -341,7 +341,7 @@ func TestValidateServiceDates(t *testing.T) {
 			expectedErr: ParameterValidationError{},
 		},
 		{
-			name: "invalid equals and lower bound",
+			name: "invalid equals and earliest bound",
 			dateParams: []DateParam{
 				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2004"}},
 				{Name: "service-date", Prefix: "gt", Datetimes: []string{"2005"}},
@@ -349,7 +349,7 @@ func TestValidateServiceDates(t *testing.T) {
 			expectedErr: ParameterValidationError{},
 		},
 		{
-			name: "invalid equals and upper bound",
+			name: "invalid equals and latest bound",
 			dateParams: []DateParam{
 				{Name: "service-date", Prefix: "eq", Datetimes: []string{"2004"}},
 				{Name: "service-date", Prefix: "lt", Datetimes: []string{"2005"}},

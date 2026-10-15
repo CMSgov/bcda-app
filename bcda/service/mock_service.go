@@ -713,8 +713,8 @@ func (_c *MockService_GetJobs_Call) RunAndReturn(run func(ctx context.Context, a
 }
 
 // GetLatestCCLFFile provides a mock function for the type MockService
-func (_mock *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-	ret := _mock.Called(ctx, cmsID, lowerBound, upperBound, fileType)
+func (_mock *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+	ret := _mock.Called(ctx, cmsID, earlierTime, laterTime, fileType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetLatestCCLFFile")
@@ -723,17 +723,17 @@ func (_mock *MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, l
 	var r0 *models.CCLFFile
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time, models.CCLFFileType) (*models.CCLFFile, error)); ok {
-		return returnFunc(ctx, cmsID, lowerBound, upperBound, fileType)
+		return returnFunc(ctx, cmsID, earlierTime, laterTime, fileType)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, time.Time, time.Time, models.CCLFFileType) *models.CCLFFile); ok {
-		r0 = returnFunc(ctx, cmsID, lowerBound, upperBound, fileType)
+		r0 = returnFunc(ctx, cmsID, earlierTime, laterTime, fileType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.CCLFFile)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, time.Time, time.Time, models.CCLFFileType) error); ok {
-		r1 = returnFunc(ctx, cmsID, lowerBound, upperBound, fileType)
+		r1 = returnFunc(ctx, cmsID, earlierTime, laterTime, fileType)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -748,14 +748,14 @@ type MockService_GetLatestCCLFFile_Call struct {
 // GetLatestCCLFFile is a helper method to define mock.On call
 //   - ctx context.Context
 //   - cmsID string
-//   - lowerBound time.Time
-//   - upperBound time.Time
+//   - earlierTime time.Time
+//   - laterTime time.Time
 //   - fileType models.CCLFFileType
-func (_e *MockService_Expecter) GetLatestCCLFFile(ctx any, cmsID any, lowerBound any, upperBound any, fileType any) *MockService_GetLatestCCLFFile_Call {
-	return &MockService_GetLatestCCLFFile_Call{Call: _e.mock.On("GetLatestCCLFFile", ctx, cmsID, lowerBound, upperBound, fileType)}
+func (_e *MockService_Expecter) GetLatestCCLFFile(ctx any, cmsID any, earlierTime any, laterTime any, fileType any) *MockService_GetLatestCCLFFile_Call {
+	return &MockService_GetLatestCCLFFile_Call{Call: _e.mock.On("GetLatestCCLFFile", ctx, cmsID, earlierTime, laterTime, fileType)}
 }
 
-func (_c *MockService_GetLatestCCLFFile_Call) Run(run func(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType)) *MockService_GetLatestCCLFFile_Call {
+func (_c *MockService_GetLatestCCLFFile_Call) Run(run func(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType)) *MockService_GetLatestCCLFFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -793,7 +793,7 @@ func (_c *MockService_GetLatestCCLFFile_Call) Return(cCLFFile *models.CCLFFile, 
 	return _c
 }
 
-func (_c *MockService_GetLatestCCLFFile_Call) RunAndReturn(run func(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)) *MockService_GetLatestCCLFFile_Call {
+func (_c *MockService_GetLatestCCLFFile_Call) RunAndReturn(run func(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)) *MockService_GetLatestCCLFFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

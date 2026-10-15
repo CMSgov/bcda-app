@@ -680,8 +680,8 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 	sinceBeforeTermination := terminationHistorical.TerminationDate.Add(-10 * 24 * time.Hour)
 
 	type claimsWindow struct {
-		LowerBound time.Time
-		UpperBound time.Time
+		Earliest time.Time
+		Latest   time.Time
 	}
 
 	type test struct {
@@ -700,16 +700,16 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 		{"BasicRequest (non-Group)", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{}, benes1, nil, nil},
 		{"BasicRequest with Since (non-Group) ", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, since, claimsWindow{}, benes1, nil, nil},
 		{"GroupAll", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, since, claimsWindow{}, append(benes1, benes2...), nil, nil},
-		{"RunoutRequest", defaultACOID, constants.Runout, constants.GetExistingBenes, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
-		{"RunoutRequest with Since", defaultACOID, constants.Runout, constants.GetExistingBenes, since, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
+		{"RunoutRequest", defaultACOID, constants.Runout, constants.GetExistingBenes, time.Time{}, claimsWindow{Latest: defaultRunoutClaimThru}, benes1, nil, nil},
+		{"RunoutRequest with Since", defaultACOID, constants.Runout, constants.GetExistingBenes, since, claimsWindow{Latest: defaultRunoutClaimThru}, benes1, nil, nil},
 
 		// Terminated ACOs: historical
-		{"Since After Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-		{"Since Before Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-		{"New Benes With Since After Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
-		{"New Benes With Since Before Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, append(benes1, benes2...), nil, terminationHistorical},
+		{"Since After Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceAfterTermination, claimsWindow{Latest: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"Since Before Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceBeforeTermination, claimsWindow{Latest: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"New Benes With Since After Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceAfterTermination, claimsWindow{Latest: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"New Benes With Since Before Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceBeforeTermination, claimsWindow{Latest: terminationHistorical.ClaimsDate()}, append(benes1, benes2...), nil, terminationHistorical},
 		// Runout cutoff takes precedence over termination cutoff
-		{"TerminatedACORunout", defaultACOID, constants.Runout, constants.GetExistingBenes, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, terminationHistorical},
+		{"TerminatedACORunout", defaultACOID, constants.Runout, constants.GetExistingBenes, time.Time{}, claimsWindow{Latest: defaultRunoutClaimThru}, benes1, nil, terminationHistorical},
 
 		// Terminated ACOs: latest
 		{"Since After Termination", defaultACOID, constants.DefaultRequest, constants.GetExistingBenes, sinceAfterTermination, claimsWindow{}, benes1, nil, terminationLatest},
@@ -719,8 +719,8 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 		{"New Benes With Since Before Termination", defaultACOID, constants.RetrieveNewBeneHistData, constants.GetNewAndExistingBenes, sinceBeforeTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
 
 		// ACO with lookback period
-		{"ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(lookbackACOID)}, benes1, nil, nil},
-		{"Terminated ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(lookbackACOID), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{Earliest: lookbackACO.LookbackTime(lookbackACOID)}, benes1, nil, nil},
+		{"Terminated ACO with lookback", lookbackACOID, constants.DefaultRequest, constants.GetExistingBenes, time.Time{}, claimsWindow{Earliest: lookbackACO.LookbackTime(lookbackACOID), Latest: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 	}
 
 	// Add all combinations of resource types
@@ -746,7 +746,7 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 				RequestType:            tt.RequestType,
 				ComplexDataRequestType: tt.ComplexRequestType,
 				BFDPath:                basePath,
-				ClaimsDate:             tt.expClaimsWindow.UpperBound,
+				ClaimsDate:             tt.expClaimsWindow.Latest,
 			}
 
 			repository := &models.MockRepository{}
@@ -781,10 +781,10 @@ func (s *ServiceTestSuite) TestGetQueJobs_Integration() {
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
 			for _, qj := range queJobs {
-				assert.True(t, tt.expClaimsWindow.LowerBound.Equal(qj.ClaimsWindow.LowerBound),
-					"Lower bounds should equal. Have %s. Want %s", qj.ClaimsWindow.LowerBound, tt.expClaimsWindow.LowerBound)
-				assert.True(t, tt.expClaimsWindow.UpperBound.Equal(qj.ClaimsWindow.UpperBound),
-					"Upper bounds should equal. Have %s. Want %s", qj.ClaimsWindow.UpperBound, tt.expClaimsWindow.UpperBound)
+				assert.True(t, tt.expClaimsWindow.Earliest.Equal(qj.ClaimsWindow.Earliest),
+					"Earliest dates should equal. Have %s. Want %s", qj.ClaimsWindow.Earliest, tt.expClaimsWindow.Earliest)
+				assert.True(t, tt.expClaimsWindow.Latest.Equal(qj.ClaimsWindow.Latest),
+					"Latest dates should equal. Have %s. Want %s", qj.ClaimsWindow.Latest, tt.expClaimsWindow.Latest)
 
 				subMap := benesInJob[qj.ResourceType]
 				if subMap == nil {
@@ -950,8 +950,8 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 	}
 
 	type claimsWindow struct {
-		LowerBound time.Time
-		UpperBound time.Time
+		Earliest time.Time
+		Latest   time.Time
 	}
 
 	timeA := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -1017,10 +1017,10 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType_Integration() {
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
 			for _, qj := range queJobs {
-				assert.True(t, tt.expClaimsWindow.LowerBound.Equal(qj.ClaimsWindow.LowerBound),
-					"Lower bounds should equal. Have %s. Want %s", qj.ClaimsWindow.LowerBound, tt.expClaimsWindow.LowerBound)
-				assert.True(t, tt.expClaimsWindow.UpperBound.Equal(qj.ClaimsWindow.UpperBound),
-					"Upper bounds should equal. Have %s. Want %s", qj.ClaimsWindow.UpperBound, tt.expClaimsWindow.UpperBound)
+				assert.True(t, tt.expClaimsWindow.Earliest.Equal(qj.ClaimsWindow.Earliest),
+					"Earliest dates should equal. Have %s. Want %s", qj.ClaimsWindow.Earliest, tt.expClaimsWindow.Earliest)
+				assert.True(t, tt.expClaimsWindow.Latest.Equal(qj.ClaimsWindow.Latest),
+					"Latest dates should equal. Have %s. Want %s", qj.ClaimsWindow.Latest, tt.expClaimsWindow.Latest)
 
 				assert.Equal(t, tt.expTxTime, qj.TransactionTime)
 
@@ -1975,11 +1975,11 @@ func TestBuildQueueJobArgs(t *testing.T) {
 	assert.Equal(t, "gt2026-03-16T10:30:00Z", enqueueArgs.Since)
 	assert.Equal(t, "test-txn", enqueueArgs.TransactionID)
 	assert.Equal(t, args.Job.TransactionTime, enqueueArgs.TransactionTime)
-	assert.Equal(t, args.ClaimsDate, enqueueArgs.ClaimsWindow.UpperBound)
+	assert.Equal(t, args.ClaimsDate, enqueueArgs.ClaimsWindow.Latest)
 
 	acoCfg, ok := svc.GetACOConfigForID("A1234")
 	assert.True(t, ok)
-	assert.Equal(t, acoCfg.LookbackTime(enqueueArgs.ACOID), enqueueArgs.ClaimsWindow.LowerBound)
+	assert.Equal(t, acoCfg.LookbackTime(enqueueArgs.ACOID), enqueueArgs.ClaimsWindow.Earliest)
 }
 
 func TestGetQueueJobTransactionTime(t *testing.T) {
@@ -2071,8 +2071,8 @@ func TestSetClaimsDate(t *testing.T) {
 
 		acoCfg, ok := svc.GetACOConfigForID("A0000")
 		assert.True(t, ok)
-		assert.Equal(t, svc.rp.claimThruDate, jArgs.ClaimsWindow.UpperBound)
-		assert.Equal(t, acoCfg.LookbackTime(pArgs.CMSID), jArgs.ClaimsWindow.LowerBound)
+		assert.Equal(t, svc.rp.claimThruDate, jArgs.ClaimsWindow.Latest)
+		assert.Equal(t, acoCfg.LookbackTime(pArgs.CMSID), jArgs.ClaimsWindow.Earliest)
 	})
 
 	t.Run("uses explicit claims date for default requests", func(t *testing.T) {
@@ -2092,8 +2092,8 @@ func TestSetClaimsDate(t *testing.T) {
 
 		acoCfg, ok := svc.GetACOConfigForID("A0000")
 		assert.True(t, ok)
-		assert.Equal(t, now, jArgs.ClaimsWindow.UpperBound)
-		assert.Equal(t, acoCfg.LookbackTime("A0000"), jArgs.ClaimsWindow.LowerBound)
+		assert.Equal(t, now, jArgs.ClaimsWindow.Latest)
+		assert.Equal(t, acoCfg.LookbackTime("A0000"), jArgs.ClaimsWindow.Earliest)
 	})
 
 	t.Run("fails when no ACO config matches", func(t *testing.T) {
@@ -2130,8 +2130,8 @@ func TestSetClaimsDate(t *testing.T) {
 
 		acoCfg, ok := svc.GetACOConfigForID("GUIDE-0001")
 		assert.True(t, ok)
-		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.UpperBound)
-		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0001"), jArgs.ClaimsWindow.LowerBound)
+		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.Latest)
+		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0001"), jArgs.ClaimsWindow.Earliest)
 	})
 
 	t.Run("test GUIDE NPT", func(t *testing.T) {
@@ -2150,8 +2150,8 @@ func TestSetClaimsDate(t *testing.T) {
 
 		acoCfg, ok := svc.GetACOConfigForID("GUIDE-0000")
 		assert.True(t, ok)
-		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.UpperBound)
-		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0000"), jArgs.ClaimsWindow.LowerBound)
+		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.Latest)
+		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0000"), jArgs.ClaimsWindow.Earliest)
 	})
 }
 

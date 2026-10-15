@@ -44,27 +44,36 @@ data "aws_ssm_parameter" "params_ssas" {
   with_decryption = true
 }
 
-data "aws_ssm_parameter" "ssas_aco_ms_admin_cidr_blocks" {
-  name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_aco_ms_admin_cidr_blocks"
-  with_decryption = true
-}
+# Available in test, sandbox, and prod
 
 data "aws_ssm_parameter" "ssas_4i_admin_cidr_blocks" {
+  count           = local.has_cidrs ? 1 : 0
   name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_4i_admin_cidr_blocks"
   with_decryption = true
 }
 
 data "aws_ssm_parameter" "ssas_4i_public_cidr_blocks" {
+  count           = local.has_cidrs ? 1 : 0
   name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_4i_public_cidr_blocks"
   with_decryption = true
 }
 
-data "aws_ssm_parameter" "ssas_ihp_cidr_blocks" {
-  name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_ihp_cidr_blocks"
+data "aws_ssm_parameter" "ssas_gha_runners_cidr_blocks" {
+  count           = local.has_cidrs ? 1 : 0
+  name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_gha_runners_cidr_blocks"
   with_decryption = true
 }
 
-data "aws_ssm_parameter" "ssas_gha_runners_cidr_blocks" {
-  name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_gha_runners_cidr_blocks"
+# Only available in test and prod
+
+data "aws_ssm_parameter" "ssas_aco_ms_admin_cidr_blocks" {
+  count           = local.has_full_cidrs ? 1 : 0
+  name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_aco_ms_admin_cidr_blocks"
+  with_decryption = true
+}
+
+data "aws_ssm_parameter" "ssas_ihp_cidr_blocks" {
+  count           = local.has_full_cidrs ? 1 : 0
+  name            = "/bcda/${module.platform.env}/infra/sensitive/ssas_ihp_cidr_blocks"
   with_decryption = true
 }
