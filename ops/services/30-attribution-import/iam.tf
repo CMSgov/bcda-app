@@ -143,3 +143,12 @@ data "aws_iam_policy_document" "bucket_sqs" {
     resources = [module.attribution_import_queue.arn]
   }
 }
+
+data "aws_iam_policy_document" "s3files_access" {
+  statement {
+    sid       = "AllowS3FilesMount"
+    effect    = "Allow"
+    actions   = ["s3files:ClientMount"]
+    resources = [module.attribution_import_s3_files.access_point_arn]
+  }
+}
