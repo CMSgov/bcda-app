@@ -39,8 +39,17 @@ resource "aws_kms_alias" "attribution-import_bucket" {
   target_key_id = aws_kms_key.attribution-import_bucket.key_id
 }
 
+module "attribution_import_s3_files" {
+  source = "github.com/CMSgov/cdap//terraform/modules/s3_files?ref=e5d184d11f56338f7328871f5179b63403f20810"
+
+  platform   = module.platform
+  name       = "${local.service}-files"
+  bucket_arn = module.attribution-import_file_bucket.arn
+  read_only  = true
+}
+
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=8a6527c0689bb46ae0e74bd47e4087ab59cff1b0"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=e5d184d11f56338f7328871f5179b63403f20810"
 
   architecture = "arm64"
 
@@ -65,14 +74,21 @@ module "attribution_import_function" {
   github_actions_repos = ["bcda-app:*"]
 
   environment_variables = {
-    ENV      = local.env
-    APP_NAME = "${local.full_name}"
+    ENV        = local.env
+    APP_NAME   = "${local.full_name}"
+    MOUNT_PATH = "/mnt/attribution"
+  }
+
+  file_system_config = {
+    arn              = module.attribution_import_s3_files.access_point_arn
+    local_mount_path = "/mnt/attribution"
   }
 
   function_role_inline_policies = {
     manage-attribution-import-bucket     = data.aws_iam_policy_document.bucket_manage.json,
     decrypt-attribution-import-bucket    = data.aws_iam_policy_document.bucket_decrypt.json,
-    sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json
+    sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json,
+    s3files-access                       = data.aws_iam_policy_document.s3files_access.json
   }
 
   ssm_parameter_paths = [
