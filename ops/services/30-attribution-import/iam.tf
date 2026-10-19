@@ -149,6 +149,12 @@ data "aws_iam_policy_document" "s3files_access" {
     sid       = "AllowS3FilesMount"
     effect    = "Allow"
     actions   = ["s3files:ClientMount"]
-    resources = [module.attribution_import_s3_files.access_point_arn]
+    resources = [module.attribution_import_s3_files.file_system_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3files:AccessPointArn"
+      values   = [module.attribution_import_s3_files.access_point_arn]
+    }
   }
 }
