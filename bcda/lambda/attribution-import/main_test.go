@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -291,5 +293,52 @@ func TestLoadBCDAParams(t *testing.T) {
 		t.Setenv("ENV", "staging")
 		require.NoError(t, loadBCDAParams())
 		assert.Equal(t, "staging", os.Getenv("ENV"))
+	})
+}
+
+func TestProbeMountPath(t *testing.T) {
+	logger := configureLogger("test", testapp)
+
+	t.Run("returns 0 when mountPath is empty", func(t *testing.T) {
+		count, err := probeMountPath(logger, "")
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("returns error when directory does not exist", func(t *testing.T) {
+		count, err := probeMountPath(logger, "/nonexistent/path/for/test")
+		require.Error(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("succeeds with empty directory", func(t *testing.T) {
+		dir := t.TempDir()
+		count, err := probeMountPath(logger, dir)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("reads up to 10 entries when directory has more than 10 items", func(t *testing.T) {
+		dir := t.TempDir()
+		for i := 0; i < 15; i++ {
+			err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("file_%d.txt", i)), []byte("test"), 0600)
+			require.NoError(t, err)
+		}
+
+		count, err := probeMountPath(logger, dir)
+		require.NoError(t, err)
+		assert.Equal(t, 10, count)
+	})
+
+	t.Run("reads exact count when directory has fewer than 10 items", func(t *testing.T) {
+		dir := t.TempDir()
+		for i := 0; i < 3; i++ {
+			err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("file_%d.txt", i)), []byte("test"), 0600)
+			require.NoError(t, err)
+		}
+
+		count, err := probeMountPath(logger, dir)
+		require.NoError(t, err)
+		assert.Equal(t, 3, count)
 	})
 }
