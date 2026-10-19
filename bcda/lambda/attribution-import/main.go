@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -84,7 +83,11 @@ func initHandler(ctx context.Context) (*AttributionImportHandler, error) {
 
 	mountPath := conf.GetEnv("MOUNT_PATH")
 	if mountPath != "" {
-		_, _ = probeMountPath(logger, mountPath)
+		if count, err := bcdaaws.ProbeMountPath(mountPath); err != nil {
+			logger.Warnf("S3 Files mount probe at %s failed: %v", mountPath, err)
+		} else {
+			logger.Infof("S3 Files mount probe at %s succeeded: found %d items", mountPath, count)
+		}
 	}
 
 	handler := &AttributionImportHandler{
@@ -208,26 +211,4 @@ func configureLogger(env, appName string) *logrus.Entry {
 		"application": appName,
 		"environment": env,
 	})
-}
-
-func probeMountPath(logger *logrus.Entry, mountPath string) (int, error) {
-	if mountPath == "" {
-		return 0, nil
-	}
-
-	f, err := os.Open(mountPath)
-	if err != nil {
-		logger.Warnf("S3 Files mount probe at %s failed: %v", mountPath, err)
-		return 0, err
-	}
-	defer f.Close()
-
-	entries, err := f.ReadDir(10)
-	if err != nil && !errors.Is(err, io.EOF) {
-		logger.Warnf("S3 Files mount probe at %s failed: %v", mountPath, err)
-		return 0, err
-	}
-
-	logger.Infof("S3 Files mount probe at %s succeeded: found %d items", mountPath, len(entries))
-	return len(entries), nil
 }
