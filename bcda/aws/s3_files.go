@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 // ProbeMountPath checks if mountPath exists and returns directory content (currently limited to 10)
@@ -13,7 +14,8 @@ func ProbeMountPath(mountPath string) (int, error) {
 		return 0, nil
 	}
 
-	f, err := os.Open(mountPath)
+	cleanPath := filepath.Clean(mountPath)
+	f, err := os.Open(cleanPath) // #nosec G304 -- mountPath is an supplied env var, not user input
 	if err != nil {
 		return 0, err
 	}
