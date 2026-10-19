@@ -294,7 +294,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch job.Status {
-
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		logger.Error(job.Status)
 		ctx, _ = log.WriteErrorWithFields(
@@ -304,13 +303,13 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		)
 		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
-		completedJobKeyCount := utils.CountUniq(jobKeys, func(jobKey *models.JobKey) int64 {
-			if jobKey.QueJobID == nil {
-				return -1
+		completedSubJobs := make(map[int64]struct{})
+		for _, key := range jobKeys {
+			if key != nil && key.QueJobID != nil {
+				completedSubJobs[*key.QueJobID] = struct{}{}
 			}
-			return *jobKey.QueJobID
-		})
-		w.Header().Set("X-Progress", job.StatusMessage(completedJobKeyCount))
+		}
+		w.Header().Set("X-Progress", job.StatusMessage(len(completedSubJobs)))
 		w.WriteHeader(http.StatusAccepted)
 		return
 	case models.JobStatusCompleted:
@@ -351,14 +350,20 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, jobKey := range jobKeys {
+			if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
+				continue
+			}
+
 			// data files
 			fi := FileItem{
 				Type: jobKey.ResourceType,
 				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 
-			// Check if "error" is not in the filename
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") && jobKey.FileName != constants.WarningsAndInfoFileName {
+			// Filter out unwanted files by name, (error files, warning and info file, and empty/blank files)
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") &&
+				jobKey.FileName != constants.WarningsAndInfoFileName &&
+				jobKey.FileName != models.BlankFileName {
 				rb.Files = append(rb.Files, fi)
 			}
 
