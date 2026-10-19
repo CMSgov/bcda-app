@@ -42,10 +42,11 @@ resource "aws_kms_alias" "attribution-import_bucket" {
 module "attribution_import_s3_files" {
   source = "github.com/CMSgov/cdap//terraform/modules/s3_files?ref=3c0fbe2f4e3d5aa27af0271eaea8410fbb024c1b"
 
-  platform   = module.platform
-  name       = "${local.service}-files"
-  bucket_arn = module.attribution-import_file_bucket.arn
-  read_only  = true
+  platform    = module.platform
+  name        = "${local.service}-files"
+  bucket_arn  = module.attribution-import_file_bucket.arn
+  kms_key_arn = aws_kms_key.attribution-import_bucket.arn
+  read_only   = true
 }
 
 module "attribution_import_function" {
