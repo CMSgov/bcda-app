@@ -83,7 +83,10 @@ data "aws_iam_policy_document" "bucket_decrypt" {
       "kms:Encrypt",
       "kms:Decrypt",
     ]
-    resources = [aws_kms_key.attribution-import_bucket.arn]
+    resources = [
+      module.platform.kms_alias_primary.target_key_arn,
+      aws_kms_key.attribution-import_bucket.arn,
+    ]
   }
 }
 
