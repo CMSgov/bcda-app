@@ -40,7 +40,7 @@ resource "aws_kms_alias" "attribution-import_bucket" {
 }
 
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=8a6527c0689bb46ae0e74bd47e4087ab59cff1b0"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
 
   architecture = "arm64"
 
@@ -90,7 +90,7 @@ module "attribution_import_function" {
 
 # Set up queue for receiving messages when a file is added to the bucket
 module "attribution_import_queue" {
-  source = "github.com/CMSgov/cdap//terraform/modules/queue?ref=f4c14d47cc20e7f6de9112d7155af1213c9bca5a"
+  source = "github.com/CMSgov/cdap//terraform/modules/queue?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
 
   app = local.app
   env = local.env
@@ -122,7 +122,7 @@ data "aws_iam_policy_document" "sns_send_message" {
 }
 
 module "attribution-import_file_bucket" {
-  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=6ded520857376f46bb317dca898e5df6a9ecc93b"
+  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
 
   app           = local.app
   env           = local.env
