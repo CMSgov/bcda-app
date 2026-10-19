@@ -7,7 +7,7 @@ locals {
 }
 
 module "platform" {
-  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=e5d184d11f56338f7328871f5179b63403f20810"
+  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=3c0fbe2f4e3d5aa27af0271eaea8410fbb024c1b"
 
   providers = { aws = aws, aws.secondary = aws.secondary }
 
@@ -40,7 +40,7 @@ resource "aws_kms_alias" "attribution-import_bucket" {
 }
 
 module "attribution_import_s3_files" {
-  source = "github.com/CMSgov/cdap//terraform/modules/s3_files?ref=e5d184d11f56338f7328871f5179b63403f20810"
+  source = "github.com/CMSgov/cdap//terraform/modules/s3_files?ref=3c0fbe2f4e3d5aa27af0271eaea8410fbb024c1b"
 
   platform   = module.platform
   name       = "${local.service}-files"
@@ -49,7 +49,7 @@ module "attribution_import_s3_files" {
 }
 
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=e5d184d11f56338f7328871f5179b63403f20810"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=3c0fbe2f4e3d5aa27af0271eaea8410fbb024c1b"
 
   architecture = "arm64"
 
