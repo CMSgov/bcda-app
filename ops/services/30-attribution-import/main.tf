@@ -7,7 +7,7 @@ locals {
 }
 
 module "platform" {
-  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=ff2ef539fb06f2c98f0e3ce0c8f922bdacb96d66"
+  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=e5d184d11f56338f7328871f5179b63403f20810"
 
   providers = { aws = aws, aws.secondary = aws.secondary }
 
