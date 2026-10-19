@@ -127,7 +127,6 @@ module "attribution-import_file_bucket" {
   app           = local.app
   env           = local.env
   name          = "${local.full_name}-file"
-  kms_key_arn   = join("", ["", aws_kms_key.attribution-import_bucket.arn])
   ssm_parameter = "/${local.app}/${local.env}/${local.service}/nonsensitive/file_bucket_name"
 }
 
