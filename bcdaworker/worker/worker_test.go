@@ -420,6 +420,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	err := CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	assert.NoError(s.T(), err)
 	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesWithData)
