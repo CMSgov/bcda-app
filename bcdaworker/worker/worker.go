@@ -304,9 +304,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
-		// if the parent job was cancelled, stop processing beneIDs and fail the job
+		// if the parent job was cancelled, stop processing and return
 		if ctx.Err() == context.Canceled {
-			break
+			return jobKeys, goerrors.New("job was cancelled")
 		}
 
 		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
