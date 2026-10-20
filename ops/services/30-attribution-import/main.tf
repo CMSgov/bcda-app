@@ -45,7 +45,7 @@ module "attribution_import_s3_files" {
   platform   = module.platform
   name       = "${local.service}-files"
   bucket_arn = module.attribution-import_file_bucket.arn
-  read_only  = true
+  read_only  = false
 }
 
 module "attribution_import_function" {
