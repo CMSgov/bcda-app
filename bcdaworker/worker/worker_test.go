@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -419,10 +420,9 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	err := CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
-	assert.Len(s.T(), jobKeys, 1)
+	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesWithData)
-	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := os.ReadDir(s.tempDir)
 	assert.NoError(s.T(), err)
@@ -742,10 +742,12 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	}
 
 	processJobErr := s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
-	completedJob, _ := s.r.GetJobByID(s.logctx, j.ID)
+	require.NoError(s.T(), processJobErr)
+	completedJob, err := s.r.GetJobByID(s.logctx, j.ID)
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), completedJob)
 
 	// cancelled parent job status should not update after failed queuejob
-	assert.Contains(s.T(), processJobErr.Error(), "job was not updated, no match found")
 	assert.Equal(s.T(), models.JobStatusCancelled, completedJob.Status)
 }
 

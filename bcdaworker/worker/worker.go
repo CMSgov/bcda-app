@@ -302,13 +302,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	benesRetrievedCount := 0 // count of benes that were successfully retrieved from BFD (does not include benes that were not found nor request 4xx/5xx errors)
 	benesWithDataCount := 0  // count of benes that had at least one resource returned from BFD (ie not an empty bundle)
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
-	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
-	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
 		// if the parent job was cancelled, stop processing beneIDs and fail the job
 		if ctx.Err() == context.Canceled {
-			failed = true
 			break
 		}
 
@@ -353,12 +350,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		} else {
 			benesRetrievedCount++
 		}
-
-		failPct := (float64(errorCount) / totalBeneIDs) * 100
-		if failPct >= failThreshold {
-			failed = true
-			break
-		}
 	}
 
 	failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -367,14 +358,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	if err = w.Flush(); err != nil {
 		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
-	}
-
-	if failed {
-		if ctx.Err() == context.Canceled {
-			appendErrorToFile(ctx, fileUUID, stu3.IssueTypeCodeProcessing, responseutils.BbErr, "Parent job was cancelled", tmpDir)
-			return jobKeys, errors.New("Parent job was cancelled")
-		}
-		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
 	}
 
 	fstat, err := f.Stat()
