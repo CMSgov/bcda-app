@@ -43,7 +43,7 @@ aco_config:
         - 'adjudicated'
         - 'partially-adjudicated'
     # Maryland Total Cost of Care (MD TCoC) Model
-    - model: 'TCOCMD' # Active, managed by BCDA Admin
+    - model: 'TCOCMD' # Ended, managed by BCDA Admin
       name_pattern: '^CT\d{4,6}$'
       data:
         - 'adjudicated'
@@ -57,7 +57,7 @@ aco_config:
         metadata_matches: 7
       ignore_suppressions: true
     # CMS Data Aggregation Contract
-    - model: 'CDAC' # Active, managed by IHP
+    - model: 'CDAC' # Ended, managed by IHP
       name_pattern: '^DA\d{4}$'
       data:
         - 'adjudicated'
@@ -70,7 +70,7 @@ aco_config:
         file_date: 6
         metadata_matches: 7
     # GUIDE (Guiding an Improved Dementia Experience) Model
-    - model: 'GUIDE' # Pending, managed by IHP
+    - model: 'GUIDE' # Active, managed by IHP
       name_pattern: '^GUIDE-\d{4}$'
       data:
         - 'adjudicated'
@@ -82,7 +82,7 @@ aco_config:
         file_date: 7
         metadata_matches: 8
     # ACCESS (Advancing Chronic Care with Effective, Scalable Solutions) Model
-    - model: 'ACCESS'
+    - model: 'ACCESS' # Active, managed by IHP
       name_pattern: '^ACCES\d{5}$' # only one 's' due to character limits
       lookback_period: 3
       data:
@@ -95,7 +95,7 @@ aco_config:
         file_date: 6
         metadata_matches: 7
     # Increasing Organ Transplant Access (IOTA) Model
-    - model: 'IOTA' # Pending, managed via 4i
+    - model: 'IOTA' # Active, managed via 4i
       name_pattern: '^IOTA\d{3}$'
       data:
         - 'adjudicated'
