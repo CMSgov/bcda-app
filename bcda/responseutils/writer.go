@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
@@ -21,6 +21,11 @@ type FhirResponseWriter struct{}
 
 func NewFhirResponseWriter() FhirResponseWriter {
 	return FhirResponseWriter{}
+}
+
+func (r FhirResponseWriter) Success(ctx context.Context, w http.ResponseWriter, statusCode int, errType, msg string) {
+	oo := r.CreateOpOutcome(stu3.IssueSeverityInformation, stu3.IssueTypeCodeInformational, errType, msg)
+	r.WriteError(ctx, oo, w, statusCode)
 }
 
 func (r FhirResponseWriter) Exception(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {

@@ -3,10 +3,15 @@ package worker_types
 import (
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 )
 
 const QUE_PROCESS_JOB = "ProcessJob"
+
+type ClaimsWindow struct {
+	Earliest time.Time `json:"Earliest,omitempty"`
+	Latest   time.Time `json:"Latest,omitempty"`
+}
 
 type JobEnqueueArgs struct {
 	ID              int // parent Job ID
@@ -15,15 +20,12 @@ type JobEnqueueArgs struct {
 	BeneficiaryIDs  []string
 	ResourceType    string
 	Since           string
-	TypeFilter      fhir.TypeFilterParameter
+	TypeFilter      fhir.TypeFilterSubquery
 	TransactionID   string
 	TransactionTime time.Time
 	BBBasePath      string
-	ClaimsWindow    struct {
-		LowerBound time.Time
-		UpperBound time.Time
-	}
-	DataType string
+	ClaimsWindow    ClaimsWindow
+	DataType        string
 }
 
 // Needed by River (queue library)

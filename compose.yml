@@ -27,6 +27,11 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       SKIP_BOOTSTRAP: "true"
+      # ministack
+      AWS_ACCESS_KEY_ID: foobar
+      AWS_SECRET_ACCESS_KEY: foobar
+      AWS_ENDPOINT_URL: http://ministack:4566
+      CONFIG_BUCKET: bcda-local-config
       # config files
       BCDA_API_CONFIG_PATH: /etc/sv/api/env/api.yml
       BB_CLIENT_CERT_FILE: /etc/sv/api/env/bfd-dev-test-cert.pem
@@ -41,6 +46,7 @@ services:
       DD_RUNTIME_METRICS_ENABLED: false
     volumes:
       - fhir:/var/efs
+      - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -54,6 +60,8 @@ services:
       ssas:
         condition: service_healthy
       db:
+        condition: service_healthy
+      ministack:
         condition: service_healthy
     develop:
       watch:
@@ -76,6 +84,11 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       SKIP_BOOTSTRAP: "true"
+      # ministack
+      AWS_ACCESS_KEY_ID: foobar
+      AWS_SECRET_ACCESS_KEY: foobar
+      AWS_ENDPOINT_URL: http://ministack:4566
+      CONFIG_BUCKET: bcda-local-config
       # config files
       BCDA_API_CONFIG_PATH: /etc/sv/worker/env/api.yml
       BB_CLIENT_CERT_FILE: /etc/sv/worker/env/bfd-dev-test-cert.pem
@@ -92,6 +105,7 @@ services:
     volumes:
       - fhir:/var/efs
       - fhir_temp:/home/bcda/FHIR_TEMP_DIR
+      - worker_config:/etc/sv/worker/env
     healthcheck:
       test: ["CMD-SHELL", "bcdaworker health >> /proc/1/fd/1 2>&1  || exit 1"]
       interval: 40s
@@ -100,6 +114,8 @@ services:
       timeout: 10s
     depends_on:
       db:
+        condition: service_healthy
+      ministack:
         condition: service_healthy
     develop:
       watch:
@@ -159,10 +175,31 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  ministack:
+    image: ministackorg/ministack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - SERVICES=s3,ssm,cloudwatch,sts,iam
+      - LOG_LEVEL=DEBUG
+      - DOCKER_NETWORK=bcda-app-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "./shared_files/decrypted:/etc/config"
+      - "./scripts/ministack_init.sh:/docker-entrypoint-initaws.d/ministack_init.sh"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4566/_ministack/health')"]
+      interval: 1m30s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
 volumes:
   fhir:
   fhir_temp:
+  api_config:
+  worker_config:
 
 networks:
   default:

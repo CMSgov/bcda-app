@@ -82,10 +82,10 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
 		apiV3 := v3.NewApiV3(db, pool)
 		var v3RequestValidators = []func(http.Handler) http.Handler{
-			middleware.ACOEnabled(cfg), middleware.V3AccessControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
+			middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, rlm.CheckConcurrentJobs,
 		}
 		var v3NonExportRequestValidators = []func(http.Handler) http.Handler{
-			middleware.ACOEnabled(cfg), middleware.V3AccessControl(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+			middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 		}
 		r.Route("/api/v3", func(r chi.Router) {
 			r.With(append(commonAuth, v3RequestValidators...)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
@@ -133,7 +133,7 @@ func NewHTTPRouter() http.Handler {
 	r.Use(gcmw.RequestID, middleware.ConnectionClose, appMiddleware.NewTransactionID, logging.NewCtxLogger)
 	r.With(logging.NewStructuredLogger()).Get("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		url := "https://" + req.Host + req.URL.String()
-		http.Redirect(w, req, url, http.StatusMovedPermanently)
+		http.Redirect(w, req, url, http.StatusMovedPermanently) // #nosec G710 -- HTTP is only enabled in local dev
 	}))
 	return r
 }

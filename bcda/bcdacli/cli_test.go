@@ -9,12 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -112,27 +110,6 @@ func (s *CLITestSuite) TestSetup() {
 	app := setUpApp()
 	assert.Equal(s.T(), app.Name, Name)
 	assert.Equal(s.T(), app.Usage, Usage)
-}
-
-func (s *CLITestSuite) TestIgnoreSignals() {
-	// 1. Start the signal handler and retrieve the signal channel.
-	// 2. Retrieve the process which allows access to Signal handling.
-	// 3. Sending both SIGINT and SIGTERM signals to verify the signals are being handled (ignored).
-	// 4. Assert that the signal channel is empty, meaning both signals have been handled.
-	sigs := ignoreSignals()
-	defer signal.Stop(sigs)
-
-	process, err := os.FindProcess(os.Getpid())
-	assert.NoError(s.T(), err)
-
-	err = process.Signal(syscall.SIGINT)
-	assert.NoError(s.T(), err)
-	err = process.Signal(syscall.SIGTERM)
-	assert.NoError(s.T(), err)
-
-	time.Sleep(100 * time.Millisecond) // Assure both signal requests have a chance to be handled
-
-	assert.Equal(s.T(), 0, len(sigs), "ignoreSignals has not pulled the signal from sigs channel")
 }
 
 func (s *CLITestSuite) TestGenerateClientCredentials() {
@@ -377,41 +354,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	assert.Equal("ACO CMS ID (--cms-id) is invalid", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
-}
-
-func (s *CLITestSuite) TestDenylistACO() {
-	denylistedCMSID := testUtils.RandomHexID()[0:4]
-	notDenylistedCMSID := testUtils.RandomHexID()[0:4]
-	notFoundCMSID := testUtils.RandomHexID()[0:4]
-
-	denylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &denylistedCMSID,
-		TerminationDetails: &models.Termination{
-			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			DenylistType:    models.Involuntary,
-		}}
-	notDenylistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notDenylistedCMSID,
-		TerminationDetails: nil}
-
-	defer func() {
-		postgrestest.DeleteACO(s.T(), s.db, denylistedACO.UUID)
-		postgrestest.DeleteACO(s.T(), s.db, notDenylistedACO.UUID)
-	}()
-
-	postgrestest.CreateACO(s.T(), s.db, denylistedACO)
-	postgrestest.CreateACO(s.T(), s.db, notDenylistedACO)
-
-	s.NoError(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, denylistedCMSID}))
-	s.NoError(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notDenylistedCMSID}))
-
-	s.Error(s.testApp.Run([]string{"bcda", "undenylist-aco", constants.CMSIDArg, notFoundCMSID}))
-	s.Error(s.testApp.Run([]string{"bcda", "denylist-aco", constants.CMSIDArg, notFoundCMSID}))
-
-	newlyUndenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, denylistedACO.UUID)
-	s.False(newlyUndenylistedACO.Denylisted())
-
-	newlyDenylistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notDenylistedACO.UUID)
-	s.True(newlyDenylistedACO.Denylisted())
 }
 
 func getRandomPort(t *testing.T) int {

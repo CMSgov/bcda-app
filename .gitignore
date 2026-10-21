@@ -21,9 +21,6 @@ shared_files/decrypted/*
 log/*
 fhir_testing/data/
 
-# Localstack volume
-.localstack_volume/
-
 # Terraform/OpenTofu
 terraform.tfstate*
 terraform.tfvars
@@ -31,3 +28,6 @@ terraform.tfvars
 !.terraform-docs.yml
 ops/services/10-config/bin/
 /ops/services/10-config/values/sopsw
+
+# terrascan report
+terrascan_report.json

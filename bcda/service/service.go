@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/ccoveille/go-safecast"
@@ -37,9 +36,10 @@ type Service interface {
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
-	GetLatestCCLFFile(ctx context.Context, cmsID string, lowerBound time.Time, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
+	GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
+	GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (lastUpdated time.Time, expirationDate time.Time, err error)
 	IsV3NoPartialClaimsModel(model string) bool
 }
 
@@ -121,6 +121,34 @@ func (s *service) GetCutoffTime(ctx context.Context, reqType constants.DataReque
 	}
 
 	return cutoffTime, complexDataRequestType
+}
+
+// GetAttributionStatusDates provides the last updated date and the final date for which the most recent CCLF file for a CMS ID
+// can be used to provide attribution information for data requests of a given file type.
+//
+// The expiration date can be limited by the date of the most recent CCLF file or the termination of the model entity in question.
+func (s *service) GetAttributionStatusDates(ctx context.Context, cmsID string, timeConstraints TimeConstraints, fileType models.CCLFFileType) (lastUpdated time.Time, expirationDate time.Time, err error) {
+	latestFile, err := s.GetLatestCCLFFile(ctx, cmsID, expirationDate, expirationDate, fileType)
+	if err != nil {
+		s.logger.Errorf("could not fetch latest CCLF file for attribution status: %s", err)
+		return time.Time{}, time.Time{}, err
+	}
+
+	lastUpdated = latestFile.Timestamp
+	switch fileType {
+	case models.FileTypeDefault:
+		expirationDate = latestFile.Timestamp.Add(s.stdCutoffDuration)
+	case models.FileTypeRunout:
+		expirationDate = latestFile.Timestamp.Add(s.rp.CutoffDuration)
+	default:
+		s.logger.Errorf("unsupported file type for fetching attribution expiration date")
+		return lastUpdated, expirationDate, fmt.Errorf("unsupported file type for fetching attribution expiration date")
+	}
+
+	if !timeConstraints.AttributionDate.IsZero() && timeConstraints.AttributionDate.Before(expirationDate) {
+		return lastUpdated, timeConstraints.AttributionDate, nil
+	}
+	return lastUpdated, expirationDate, nil
 }
 
 // FindOldCCLFFile finds an older CCLF file depending on passed in timestamps
@@ -214,15 +242,7 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 		return nil, nil, err
 	}
 
-	nonEmptyKeys := make([]*models.JobKey, 0, len(keys))
-	for i, key := range keys {
-		if strings.TrimSpace(key.FileName) == models.BlankFileName {
-			continue
-		}
-		nonEmptyKeys = append(nonEmptyKeys, keys[i])
-	}
-
-	return j, nonEmptyKeys, nil
+	return j, keys, nil
 }
 
 func (s *service) GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error) {
@@ -258,8 +278,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 		return 0, err
 	}
 
-	// Check if the job is pending or in progress.
-	if job.Status == models.JobStatusPending || job.Status == models.JobStatusInProgress {
+	if job.Status == models.JobStatusPending || job.Status == models.JobStatusInProgress || job.Status == models.JobStatusCompleted {
 		job.Status = models.JobStatusCancelled
 		err = s.repository.UpdateJob(ctx, *job)
 		if err != nil {
@@ -552,15 +571,15 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 	// it takes precedence over any other claims date
 	// that may be applied
 	if prepareArgs.RequestType == constants.Runout {
-		args.ClaimsWindow.UpperBound = s.rp.claimThruDate
+		args.ClaimsWindow.Latest = s.rp.claimThruDate
 	} else if !prepareArgs.ClaimsDate.IsZero() {
-		args.ClaimsWindow.UpperBound = prepareArgs.ClaimsDate
+		args.ClaimsWindow.Latest = prepareArgs.ClaimsDate
 	}
 
-	// Applies the lower bound from the first matching ACOConfig
+	// Applies the earliest boundary (lower bound) from the first matching ACOConfig
 	cfg, ok := s.GetACOConfigForID(prepareArgs.CMSID)
 	if ok {
-		args.ClaimsWindow.LowerBound = cfg.LookbackTime(prepareArgs.CMSID)
+		args.ClaimsWindow.Earliest = cfg.LookbackTime(prepareArgs.CMSID)
 	}
 
 	return ok

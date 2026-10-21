@@ -27,13 +27,6 @@ func (s *CommonTestSuite) TestDedup() {
 	assert.Len(s.T(), result, 3)
 }
 
-func (s *CommonTestSuite) TestCountUniq() {
-	firstLetter := func(s string) string { return string(s[0]) }
-	assert.Equal(s.T(), 0, CountUniq([]string{}, firstLetter))
-	assert.Equal(s.T(), 1, CountUniq([]string{"abc", "ab"}, firstLetter))
-	assert.Equal(s.T(), 2, CountUniq([]string{"abc", "bcd", "ab"}, firstLetter))
-}
-
 func (s *CommonTestSuite) TestMinutesToSeconds() {
 	tests := []struct {
 		name       string

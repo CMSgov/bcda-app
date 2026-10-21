@@ -132,7 +132,7 @@ func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (
 	return true, nil
 }
 
-// earliertime: closest to now and latertime: older in time.
+// earlierTime: older in time (lower threshold); laterTime: closer to now (upper threshold).
 func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("id", "name", "timestamp", "performance_year", "created_at")
@@ -151,7 +151,7 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 		Type:         fileType,
 	}
 
-	// earlier = closest to now(), later = older
+	// earlier = older in time (lower threshold), later = closer to now (upper threshold)
 	if !earlierTime.IsZero() && laterTime.IsZero() {
 		sb.Where(sb.GreaterEqualThan("timestamp", earlierTime))
 	} else if earlierTime.IsZero() && !laterTime.IsZero() {
@@ -435,23 +435,48 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...m
 
 }
 
-func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
+// earliest = older, latest = newer
+func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, earliest, latest time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statuses))
 	for i, v := range statuses {
 		s[i] = v
 	}
 
 	sb := sqlFlavor.NewSelectBuilder().Select(jobColumns...).From("jobs")
-	if !lowerBound.IsZero() {
-		sb.Where(sb.GreaterEqualThan("updated_at", lowerBound))
+	if !earliest.IsZero() {
+		sb.Where(sb.GreaterEqualThan("updated_at", earliest))
 	}
-	if !upperBound.IsZero() {
-		sb.Where(sb.LessEqualThan("updated_at", upperBound))
+	if !latest.IsZero() {
+		sb.Where(sb.LessEqualThan("updated_at", latest))
 	}
 
 	if len(s) > 0 {
 		sb.Where(sb.In("status", s...))
 	}
+
+	query, args := sb.Build()
+	return r.getJobs(ctx, query, args...)
+}
+
+func (r *Repository) GetJobsByCreateTimeAndStatus(ctx context.Context, olderTime, newerTime time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
+	s := make([]interface{}, len(statuses))
+	for i, v := range statuses {
+		s[i] = v
+	}
+
+	sb := sqlFlavor.NewSelectBuilder().Select(jobColumns...).From("jobs")
+	if !olderTime.IsZero() {
+		sb.Where(sb.GreaterEqualThan("created_at", olderTime))
+	}
+	if !newerTime.IsZero() {
+		sb.Where(sb.LessEqualThan("created_at", newerTime))
+	}
+
+	if len(s) > 0 {
+		sb.Where(sb.In("status", s...))
+	}
+
+	sb.OrderBy("created_at ASC")
 
 	query, args := sb.Build()
 	return r.getJobs(ctx, query, args...)
@@ -561,6 +586,7 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 		"resource_type",
 		"benes_with_data",
 		"benes_retrieved_percent",
+		"que_job_id",
 	).From("job_keys")
 	sb.Where(sb.Equal("job_id", jobID))
 
@@ -580,6 +606,7 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 			&jk.ResourceType,
 			&jk.BenesWithData,
 			&jk.BenesRetrievedPercent,
+			&jk.QueJobID,
 		); err != nil {
 			return nil, err
 		}
@@ -601,6 +628,7 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 		"resource_type",
 		"benes_with_data",
 		"benes_retrieved_percent",
+		"que_job_id",
 	).From("job_keys")
 	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("file_name", fileName)))
 
@@ -614,6 +642,7 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 		&jk.ResourceType,
 		&jk.BenesWithData,
 		&jk.BenesRetrievedPercent,
+		&jk.QueJobID,
 	); err != nil {
 		return nil, err
 	}

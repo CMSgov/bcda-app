@@ -24,11 +24,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -439,6 +439,10 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 		},
 		{
 			JobID:    1,
+			FileName: models.BlankFileName, // should not show up in output nor error arrays
+		},
+		{
+			JobID:    1,
 			FileName: "success3-error.ndjson", // due to how the code is written this one should not show up in the response
 		},
 	}
@@ -508,65 +512,105 @@ func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models
 }
 
 func (s *RequestsTestSuite) TestAttributionStatus() {
+	defaultTime := time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC)
+	defaultExpiration := time.Date(2024, 04, 05, 0, 0, 0, 0, time.UTC)
+	runoutTime := time.Date(2024, 01, 14, 0, 0, 0, 0, time.UTC)
+	runoutExpiration := time.Date(2024, 07, 12, 0, 0, 0, 0, time.UTC)
+
 	tests := []struct {
-		name        string
-		respCode    int
-		fileNames   []string
-		fileTypes   []string
-		invalidAuth bool
+		name                 string
+		respCode             int
+		defaultTimestamp     time.Time
+		expirationDate       time.Time
+		defaultError         error
+		runoutTimestamp      time.Time
+		runoutExpirationDate time.Time
+		runoutError          error
+		invalidAuth          bool
+		expected             AttributionFileStatusResponse
 	}{
-		{"Successful with both files", http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}, false},
-		{"Successful with default file", http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}, false},
-		{"Successful with runout file", http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}, false},
-		{"No CCLF files found", http.StatusNotFound, []string{"", ""}, []string{"", ""}, false},
-		{"Invalid Auth, no CCLF Files found", http.StatusUnauthorized, []string{"", ""}, []string{"", ""}, true},
-		{"Simulate error pulling from repository - Default", http.StatusInternalServerError, []string{"InduceError_Default", ""}, []string{"", ""}, false},
-		{"Simulate error pulling from repository - Runout", http.StatusInternalServerError, []string{"", "InduceError_Runout"}, []string{"", ""}, false},
+		{
+			name:                 "Successful with both files",
+			respCode:             http.StatusOK,
+			defaultTimestamp:     defaultTime,
+			expirationDate:       defaultExpiration,
+			runoutTimestamp:      runoutTime,
+			runoutExpirationDate: runoutExpiration,
+			invalidAuth:          false,
+			expected: AttributionFileStatusResponse{
+				IngestionDates: []AttributionFileStatus{
+					{Type: "last_attribution_update", Timestamp: defaultTime},
+					{Type: "last_runout_update", Timestamp: runoutTime},
+				},
+				ExpirationDates: []AttributionFileStatus{
+					{Type: "attribution_access_expiration", Timestamp: defaultExpiration},
+					{Type: "runout_access_expiration", Timestamp: runoutExpiration},
+				},
+			},
+		},
+		{
+			name:             "Successful with default file",
+			respCode:         http.StatusOK,
+			defaultTimestamp: defaultTime,
+			expirationDate:   defaultExpiration,
+			runoutError:      service.CCLFNotFoundError{},
+			invalidAuth:      false,
+			expected: AttributionFileStatusResponse{
+				IngestionDates:  []AttributionFileStatus{{Type: "last_attribution_update", Timestamp: defaultTime}},
+				ExpirationDates: []AttributionFileStatus{{Type: "attribution_access_expiration", Timestamp: defaultExpiration}},
+			},
+		},
+		{
+			name:                 "Successful with runout file",
+			respCode:             http.StatusOK,
+			defaultError:         service.CCLFNotFoundError{},
+			runoutTimestamp:      runoutTime,
+			runoutExpirationDate: runoutExpiration,
+			invalidAuth:          false,
+			expected: AttributionFileStatusResponse{
+				IngestionDates:  []AttributionFileStatus{{Type: "last_runout_update", Timestamp: runoutTime}},
+				ExpirationDates: []AttributionFileStatus{{Type: "runout_access_expiration", Timestamp: runoutExpiration}},
+			},
+		},
+		{
+			name:         "No CCLF files found",
+			respCode:     http.StatusNotFound,
+			defaultError: service.CCLFNotFoundError{},
+			runoutError:  service.CCLFNotFoundError{},
+			invalidAuth:  false,
+		},
+		{
+			name:        "Invalid Auth",
+			respCode:    http.StatusUnauthorized,
+			invalidAuth: true,
+		},
+		{
+			name:            "Unexpected error with default file",
+			respCode:        http.StatusInternalServerError,
+			runoutTimestamp: time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			defaultError:    errors.New("Database connection closed."),
+			invalidAuth:     false,
+		},
+		{
+			name:             "Unexpected error with runout file",
+			respCode:         http.StatusInternalServerError,
+			defaultTimestamp: time.Date(2024, 02, 15, 0, 0, 0, 0, time.UTC),
+			runoutError:      errors.New("Database connection closed."),
+			invalidAuth:      false,
+		},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mockSvc := &service.MockService{}
+			mockSvc.On("GetTimeConstraints", testUtils.CtxMatcher, mock.Anything).Return(service.TimeConstraints{}, nil)
+			mockSvc.On("GetAttributionStatusDates", testUtils.CtxMatcher, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
+				tt.defaultTimestamp, tt.expirationDate, tt.defaultError,
+			)
+			mockSvc.On("GetAttributionStatusDates", testUtils.CtxMatcher, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
+				tt.runoutTimestamp, tt.runoutExpirationDate, tt.runoutError,
+			)
 
-			for i, name := range tt.fileNames {
-				fileType := models.FileTypeDefault
-				if i == 1 {
-					fileType = models.FileTypeRunout
-				}
-				switch name {
-				case "":
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
-						nil,
-						service.CCLFNotFoundError{
-							FileNumber: 8,
-							CMSID:      "",
-							FileType:   0,
-							CutoffTime: time.Time{}},
-					)
-
-				case "InduceError_Default": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeDefault).Return(
-						nil,
-						errors.New("Database connection closed."),
-					)
-				case "InduceError_Runout": //for this use case, we're going to pretend that the db connection is closed.
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, models.FileTypeRunout).Return(
-						nil,
-						errors.New("Database connection closed."),
-					)
-				default:
-					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, fileType).Return(
-						&models.CCLFFile{
-							ID:        1,
-							Name:      tt.fileNames[i],
-							Timestamp: time.Time{},
-							CCLFNum:   8,
-						},
-						nil,
-					)
-				}
-
-			}
 			apiVersion := "v1"
 			fhirPath := "/" + apiVersion + "/fhir"
 
@@ -582,21 +626,12 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 
 			h.AttributionStatus(rr, req)
 
-			switch tt.respCode {
-			case http.StatusNotFound:
-				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
-			case http.StatusOK:
+			assert.Equal(s.T(), tt.respCode, rr.Code, tt.name)
+			if tt.respCode == http.StatusOK {
 				var resp AttributionFileStatusResponse
 				err := json.Unmarshal(rr.Body.Bytes(), &resp)
 				assert.NoError(s.T(), err)
-
-				count := 0
-				for _, fileStatus := range resp.Data {
-					if tt.fileNames[count] != "" {
-						assert.Equal(s.T(), tt.fileTypes[count], fileStatus.Type)
-						count += 1
-					}
-				}
+				assert.Equal(t, tt.expected, resp)
 			}
 		})
 	}
@@ -946,7 +981,7 @@ func (s *RequestsTestSuite) TestJobStatusProgress() {
 		status           models.JobStatus
 		expectedProgress string
 	}{
-		{testName: "In-Progress job displays partial progress", status: models.JobStatusInProgress, expectedProgress: "50%"},
+		{testName: "In-Progress job displays partial progress", status: models.JobStatusInProgress, expectedProgress: "In Progress (2%)"},
 		{testName: "Completed job doesn't display progress", status: models.JobStatusCompleted, expectedProgress: ""},
 		{testName: "Archived job doesn't display progress", status: models.JobStatusArchived, expectedProgress: ""},
 	}
@@ -967,11 +1002,20 @@ func (s *RequestsTestSuite) TestJobStatusProgress() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.testName, func(t *testing.T) {
-			job := models.Job{ID: 101, Status: tt.status, JobCount: 2}
-			jobKey := models.JobKey{ID: 1001, FileName: "goodFile.ndjson"}
+			job := models.Job{ID: 101, Status: tt.status, JobCount: 100}
+			subJobID1 := int64(1)
+			subJobID1DifferentVar := int64(1)
+			subJobID2 := int64(2)
+			subJobID2DifferentVar := int64(2)
+			jobKey1 := models.JobKey{ID: 1001, FileName: "goodFile.ndjson", QueJobID: &subJobID1}
+			jobKey2 := models.JobKey{ID: 1002, FileName: models.BlankFileName, QueJobID: &subJobID1DifferentVar}    // not counted due to duplicate QueJobID
+			jobKey3 := models.JobKey{ID: 1003, FileName: "goodFile-error.ndjson", QueJobID: &subJobID1DifferentVar} // not counted due to duplicate QueJobID
+			jobKey4 := models.JobKey{ID: 1004, FileName: "goodFile.ndjson", QueJobID: &subJobID2}
+			jobKey5 := models.JobKey{ID: 1005, FileName: "goodFile-error.ndjson", QueJobID: &subJobID2DifferentVar} // not counted due to duplicate QueJobID
+			jobKey6 := models.JobKey{ID: 1006, FileName: "goodFile.ndjson"}                                         // not counted due to nil QueJobID
 			mockSrv := service.MockService{}
 			h.Svc = &mockSrv
-			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, job.ID).Return(&job, []*models.JobKey{&jobKey}, nil)
+			mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, job.ID).Return(&job, []*models.JobKey{&jobKey1, &jobKey2, &jobKey3, &jobKey4, &jobKey5, &jobKey6}, nil)
 			w := httptest.NewRecorder()
 
 			h.JobStatus(w, req)
@@ -994,9 +1038,10 @@ func (s *RequestsTestSuite) TestDeleteJob() {
 		name           string
 		jobId          string
 		responseHeader int
+		msg            string
 		useMockService bool
 	}{
-		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, useMockService: true},
+		{name: "Successful Delete", jobId: "1", responseHeader: http.StatusAccepted, msg: "Job files will be designated for deletion", useMockService: true},
 		{name: "Invalid Job ID (Overflow)", jobId: "112341234123412341234123412341234123", responseHeader: http.StatusBadRequest, useMockService: false},
 		{name: "Unable to cancel job", jobId: "1", responseHeader: http.StatusGone, useMockService: true},
 		{name: "Internal Server Error Deleting Job", jobId: "1", responseHeader: http.StatusInternalServerError, useMockService: true},
@@ -1039,6 +1084,9 @@ func (s *RequestsTestSuite) TestDeleteJob() {
 			handler.DeleteJob(w, r)
 
 			assert.Equal(t, tt.responseHeader, w.Code)
+			if tt.msg != "" {
+				assert.Contains(t, w.Body.String(), tt.msg, tt.name)
+			}
 		})
 	}
 
@@ -1393,113 +1441,126 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		cmsID         string
-		typeFilter    fhir.TypeFilterParameter
-		acoConfig     *service.ACOConfig
-		shouldFail    bool
-		expectedError string
-		description   string
+		name             string
+		cmsID            string
+		typeFilter       fhir.TypeFilterSubquery
+		requiresPACCheck bool
+		acoConfig        *service.ACOConfig
+		shouldFail       bool
+		expectedError    string
+		description      string
 	}{
 		{
-			name:        "SharedSystemWithPAC",
-			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
-			acoConfig:   acoWithPAC,
-			shouldFail:  false,
-			description: "ACO with PAC access should be able to use SharedSystem tag",
+			name:             "SharedSystemWithPAC",
+			cmsID:            "PAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithPAC,
+			shouldFail:       false,
+			description:      "ACO with PAC access should be able to use SharedSystem tag",
 		},
 		{
-			name:          "SharedSystemWithoutPAC",
-			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
-			acoConfig:     acoWithoutPAC,
-			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
-			description:   "ACO without PAC access should be blocked from using SharedSystem tag",
+			name:             "SharedSystemWithoutPAC",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       true,
+			expectedError:    "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
+			description:      "ACO without PAC access should be blocked from using SharedSystem tag",
 		},
 		{
-			name:        "SharedSystemURLFormatWithPAC",
-			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
-			acoConfig:   acoWithPAC,
-			shouldFail:  false,
-			description: "ACO with PAC access should be able to use SharedSystem tag in URL format",
+			name:             "SharedSystemURLFormatWithPAC",
+			cmsID:            "PAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithPAC,
+			shouldFail:       false,
+			description:      "ACO with PAC access should be able to use SharedSystem tag in URL format",
 		},
 		{
-			name:          "SharedSystemURLFormatWithoutPAC",
-			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
-			acoConfig:     acoWithoutPAC,
-			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
-			description:   "ACO without PAC access should be blocked from SharedSystem tag in URL format",
+			name:             "SharedSystemURLFormatWithoutPAC",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", (constants.BFDSystemTypeURL + "|SharedSystem")}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       true,
+			expectedError:    "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
+			description:      "ACO without PAC access should be blocked from SharedSystem tag in URL format",
 		},
 		{
-			name:        "FinalActionNoPACRequired",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "FinalAction"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "FinalAction tag should not require PAC eligibility",
+			name:             "FinalActionNoPACRequired",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "FinalAction"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "FinalAction tag should not require PAC eligibility",
 		},
 		{
-			name:        "NotFinalActionNoPACRequired",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "NotFinalAction"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "NotFinalAction tag should not require PAC eligibility",
+			name:             "NotFinalActionNoPACRequired",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "NotFinalAction"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "NotFinalAction tag should not require PAC eligibility",
 		},
 		{
-			name:        "NationalClaimsHistoryNoPACRequired",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "NationalClaimsHistory"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "NationalClaimsHistory tag should not require PAC eligibility",
+			name:             "NationalClaimsHistoryNoPACRequired",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "NationalClaimsHistory"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "NationalClaimsHistory tag should not require PAC eligibility",
 		},
 		{
-			name:        "SharedSystemAndFinalActionWithPAC",
-			cmsID:       "PAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
-			acoConfig:   acoWithPAC,
-			shouldFail:  false,
-			description: "ACO with PAC should be able to combine SharedSystem with other tags",
+			name:             "SharedSystemAndFinalActionWithPAC",
+			cmsID:            "PAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithPAC,
+			shouldFail:       false,
+			description:      "ACO with PAC should be able to combine SharedSystem with other tags",
 		},
 		{
-			name:          "SharedSystemAndFinalActionWithoutPAC",
-			cmsID:         "NOPAC0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
-			acoConfig:     acoWithoutPAC,
-			shouldFail:    true,
-			expectedError: "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
-			description:   "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
+			name:             "SharedSystemAndFinalActionWithoutPAC",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}, {"_tag", "FinalAction"}}),
+			requiresPACCheck: true,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       true,
+			expectedError:    "Model entities in Model Without PAC are not eligible to access SharedSystem data. Requests using the following tags require access to SharedSystem data: [SharedSystem]",
+			description:      "ACO without PAC should be blocked even when SharedSystem is combined with other tags",
 		},
 		{
-			name:        "NoTypeFilter",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "No typeFilter should pass validation",
+			name:             "NoTypeFilter",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "No typeFilter should pass validation",
 		},
 		{
-			name:        "NonTagParameters",
-			cmsID:       "NOPAC0000",
-			typeFilter:  makeTypeFilterParam([][]string{{"service-date", "ge2020-01-01"}}),
-			acoConfig:   acoWithoutPAC,
-			shouldFail:  false,
-			description: "Non-tag parameters should not require PAC eligibility",
+			name:             "NonTagParameters",
+			cmsID:            "NOPAC0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"service-date", "ge2020-01-01"}}),
+			requiresPACCheck: false,
+			acoConfig:        acoWithoutPAC,
+			shouldFail:       false,
+			description:      "Non-tag parameters should not require PAC eligibility",
 		},
 		{
-			name:          "ACOConfigNotFound",
-			cmsID:         "UNKNOWN0000",
-			typeFilter:    makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
-			acoConfig:     nil,
-			shouldFail:    true,
-			expectedError: "Unable to determine ACO configuration",
-			description:   "Should fail when ACO config is not found",
+			name:             "ACOConfigNotFound",
+			cmsID:            "UNKNOWN0000",
+			typeFilter:       makeTypeFilterParam([][]string{{"_tag", "SharedSystem"}}),
+			requiresPACCheck: true,
+			acoConfig:        nil,
+			shouldFail:       true,
+			expectedError:    "Unable to determine ACO configuration",
+			description:      "Should fail when ACO config is not found",
 		},
 	}
 
@@ -1509,25 +1570,8 @@ func TestValidateTypeFilterPACEligibility(t *testing.T) {
 			mockSvc := service.MockService{}
 			h.Svc = &mockSvc
 
-			// Check if SharedSystem tag is present (which requires PAC check)
-			requiresPACCheck := false
-			for _, subQueryParam := range test.typeFilter.QueryParameters {
-				if subQueryParam.Name == "_tag" {
-					tagCodes := middleware.ExtractTagCodeFromValue(subQueryParam.Value)
-					for _, code := range tagCodes {
-						if code == "SharedSystem" {
-							requiresPACCheck = true
-							break
-						}
-					}
-					if requiresPACCheck {
-						break
-					}
-				}
-			}
-
 			// Setup mock service only if PAC check is required
-			if requiresPACCheck {
+			if test.requiresPACCheck {
 				if test.acoConfig != nil {
 					mockSvc.On("GetACOConfigForID", test.cmsID).Return(test.acoConfig, true)
 					if test.shouldFail {
@@ -1584,7 +1628,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 	tests := []struct {
 		name         string
 		cmsID        string
-		typeFilter   fhir.TypeFilterParameter
+		typeFilter   fhir.TypeFilterSubquery
 		acoConfig    *service.ACOConfig
 		expectedTags []string // Expected _tag values in the returned filter
 		description  string
@@ -1592,7 +1636,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "NonPACNoFilter",
 			cmsID: "NOPAC0000",
-			typeFilter: fhir.TypeFilterParameter{
+			typeFilter: fhir.TypeFilterSubquery{
 				ResourceType:    "",
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
@@ -1627,7 +1671,7 @@ func TestOmitSharedSystemByDefault_Integration(t *testing.T) {
 		{
 			name:  "PACNoFilter",
 			cmsID: "PAC0000",
-			typeFilter: fhir.TypeFilterParameter{
+			typeFilter: fhir.TypeFilterSubquery{
 				ResourceType:    "",
 				QueryParameters: []fhir.TypeFilterSubqueryParam{},
 			},
@@ -1707,7 +1751,7 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	resourceTypes := []string{"Patient", "ExplanationOfBenefit", "Coverage"}
 
 	// No typeFilter provided (empty)
-	typeFilter := fhir.TypeFilterParameter{}
+	typeFilter := fhir.TypeFilterSubquery{}
 
 	// Call omitSharedSystemByDefault (this is what gets called when EOB is in resourceTypes)
 	result := h.omitSharedSystemByDefault(typeFilter)
@@ -1735,8 +1779,8 @@ func (e DatabaseError) Error() string {
 	return "error"
 }
 
-func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
-	var typeFilterParam fhir.TypeFilterParameter
+func makeTypeFilterParam(params [][]string) fhir.TypeFilterSubquery {
+	var typeFilterParam fhir.TypeFilterSubquery
 	if len(params) == 0 {
 		return typeFilterParam
 	}
@@ -1748,7 +1792,7 @@ func makeTypeFilterParam(params [][]string) fhir.TypeFilterParameter {
 			Value: param[1],
 		})
 	}
-	typeFilterParam = fhir.TypeFilterParameter{
+	typeFilterParam = fhir.TypeFilterSubquery{
 		ResourceType:    "ExplanationOfBenefit",
 		QueryParameters: subQueryParams,
 	}

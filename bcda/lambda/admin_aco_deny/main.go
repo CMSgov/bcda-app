@@ -21,7 +21,9 @@ import (
 )
 
 type payload struct {
-	DenyACOIDs []string `json:"deny_aco_ids"`
+	DenyACOIDs      []string   `json:"deny_aco_ids"`
+	CutoffDate      *time.Time `json:"cutoff_date,omitempty"`
+	TerminationDate *time.Time `json:"termination_date,omitempty"`
 }
 
 type awsParams struct {

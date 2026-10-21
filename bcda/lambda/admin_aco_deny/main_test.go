@@ -20,13 +20,20 @@ func TestHandleACODenies(t *testing.T) {
 		WithArgs(mockTermination{}, testACODenies).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 3))
 
-	err = handleACODenies(ctx, mockConn, payload{testACODenies})
+	err = handleACODenies(ctx, mockConn, payload{DenyACOIDs: testACODenies})
 	assert.Nil(t, err)
 }
 
 func TestGetAWSParams(t *testing.T) {
-	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{})
+	dbURLName := "/bcda/local/sensitive/api/DATABASE_URL"
+	slackParamName := "/slack/token/workflow-alerts"
+	storedParams := map[string]string{
+		dbURLName:      "db://url",
+		slackParamName: "test-slack-token",
+	}
+	params, err := getAWSParams(context.Background(), &bcdaaws.MockSSMClient{Params: storedParams})
 	assert.Nil(t, err)
-	assert.Equal(t, "value1", params.SlackToken)
-	assert.Equal(t, "value2", params.DBURL)
+	assert.Equal(t, "test-slack-token", params.SlackToken)
+	assert.Equal(t, "db://url", params.DBURL)
+	print(dbURLName)
 }

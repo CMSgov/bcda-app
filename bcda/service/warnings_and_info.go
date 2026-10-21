@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"

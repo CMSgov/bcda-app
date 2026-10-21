@@ -14,9 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	fhirModels "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -48,8 +47,8 @@ var (
 	now          = time.Now()
 	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 	since        = "gt2020-02-14"
-	claimsDate   = ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
-		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
+	claimsDate   = ClaimsWindow{Earliest: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
+		Latest: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
 	jobData = worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: since, TransactionID: uuid.New(), TransactionTime: now}
 )
 
@@ -374,7 +373,7 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 func (s *BBRequestTestSuite) TestValidateRequest() {
 	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
 	jobDataNoSince := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "", TransactionTime: now}
-	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: fhir.TypeFilterParameter{
+	jobDataWithTypeFilter := worker_types.JobEnqueueArgs{ID: 1, CMSID: "A0000", Since: "gt2020-02-14", TypeFilter: fhir.TypeFilterSubquery{
 		ResourceType: "ExplanationOfBenefit",
 		QueryParameters: []fhir.TypeFilterSubqueryParam{
 			{
@@ -399,7 +398,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -421,7 +420,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataNoSince, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -438,12 +437,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithUpperBoundServiceDate",
+			"GetExplanationOfBenefitWithLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -452,8 +451,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				serviceDateUpperBoundChecker,
-				noServiceDateLowerBoundChecker,
+				serviceDateLatestChecker,
+				noServiceDateEarliestChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -461,12 +460,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithLowerBoundServiceDate",
+			"GetExplanationOfBenefitWithEarliestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetExplanationOfBenefit(jobData, "patient1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -475,8 +474,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				serviceDateLowerBoundChecker,
-				noServiceDateUpperBoundChecker,
+				serviceDateEarliestChecker,
+				noServiceDateLatestChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -484,12 +483,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithLowerAndUpperBoundServiceDate",
+			"GetExplanationOfBenefitWithEarliestAndLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetExplanationOfBenefit(jobData, "patient1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -498,8 +497,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				excludeSAMHSAChecker,
 				noSecurityFilterChecker,
-				serviceDateLowerBoundChecker,
-				serviceDateUpperBoundChecker,
+				serviceDateEarliestChecker,
+				serviceDateLatestChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 				hasDefaultRequestHeaders,
@@ -512,7 +511,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetPatient(jobData, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -533,7 +532,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetPatient(jobDataNoSince, "patient2")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -554,7 +553,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetCoverage(jobData, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -575,7 +574,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetCoverage(jobDataNoSince, "beneID1")
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -617,7 +616,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -633,7 +632,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaim(jobDataNoSince, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -644,12 +643,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimNoServiceDateUpperBound",
+			"GetClaimNoServiceDateLatest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -660,12 +659,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimNoServiceDateLowerBound",
+			"GetClaimNoServiceDateEarliest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetClaim(jobData, "beneID1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -676,12 +675,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimWithUpperAndLowerBoundServiceDate",
+			"GetClaimWithEarliestAndLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaim(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -697,7 +696,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -713,7 +712,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetClaimResponse(jobDataNoSince, "beneID1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -724,12 +723,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimResponseNoServiceDateUpperBound",
+			"GetClaimResponseNoServiceDateLatest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{Earliest: claimsDate.Earliest})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -740,12 +739,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimResponseNoServiceDateLowerBound",
+			"GetClaimResponseNoServiceDateEarliest",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
-				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetClaimResponse(jobData, "beneID1", ClaimsWindow{Latest: claimsDate.Latest})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -756,12 +755,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetClaimResponseWithUpperAndLowerBoundServiceDate",
+			"GetClaimResponseWithEarliestAndLatestServiceDate",
 			func(bbClient *BlueButtonClient) (interface{}, error) {
 				return bbClient.GetClaimResponse(jobData, "beneID1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -778,7 +777,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -799,7 +798,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", claimsDate)
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -819,7 +818,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				return bbClient.GetExplanationOfBenefit(jobDataWithTypeFilter, "patient1", ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
-				result, ok := payload.(*fhirModels.Bundle)
+				result, ok := payload.(*fhir.Bundle)
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
@@ -957,27 +956,27 @@ func noServiceDateChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.URL.Query()[constants.TestSvcDate])
 }
 func serviceDateChecker(t *testing.T, req *http.Request) {
-	// verify there is max two service-date params set, one upper and one lower
+	// verify there is max two service-date params set: one latest and one earliest
 	dates := req.URL.Query()[constants.TestSvcDate]
 	assert.True(t, len(dates) <= 2)
 
 	assert.Contains(t, req.URL.String(), "service-date=gt2022-06-26")
 }
-func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.UpperBound.Format(constants.TestSvcDateResult)))
+func serviceDateLatestChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD for latest ("le")
+	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.Latest.Format(constants.TestSvcDateResult)))
 }
-func noServiceDateUpperBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.UpperBound.Format(constants.TestSvcDateResult)))
+func noServiceDateLatestChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD for latest ("le")
+	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("le%s", claimsDate.Latest.Format(constants.TestSvcDateResult)))
 }
-func serviceDateLowerBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(constants.TestSvcDateResult)))
+func serviceDateEarliestChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD for earliest ("ge")
+	assert.Contains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.Earliest.Format(constants.TestSvcDateResult)))
 }
-func noServiceDateLowerBoundChecker(t *testing.T, req *http.Request) {
-	// We expect that service date only contains YYYY-MM-DD
-	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(constants.TestSvcDateResult)))
+func noServiceDateEarliestChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD for earliest ("ge")
+	assert.NotContains(t, req.URL.Query()[constants.TestSvcDate], fmt.Sprintf("ge%s", claimsDate.Earliest.Format(constants.TestSvcDateResult)))
 }
 func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.Header.Get("IncludeAddressFields"))
@@ -1259,7 +1258,21 @@ func TestSetRestrictiveServiceDateWindow(t *testing.T) {
 			params: url.Values{"service-date": []string{
 				"gt2022-01-01T01:01:01Z",
 			}},
-			expectedVals: []string(nil),
+			expectedVals: []string{"gt2022-01-01"},
+		},
+		{
+			name: "Equals with time passed in, should be limited to one day",
+			params: url.Values{"service-date": []string{
+				"eq2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
+		},
+		{
+			name: "No prefix with time passed in, should be limited to one day",
+			params: url.Values{"service-date": []string{
+				"2022-01-01T01:01:01Z",
+			}},
+			expectedVals: []string{"ge2022-01-01", "lt2022-01-02"},
 		},
 	}
 

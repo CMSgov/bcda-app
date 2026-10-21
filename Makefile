@@ -178,7 +178,7 @@ fhir_testing:
 	fhir_testing
 
 generate-mocks:
-	docker run -v "$PWD":/src -w /src vektra/mockery:v3.6.1
+	docker run -v ${PWD}:/src -w /src vektra/mockery:latest
 
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build generate-mocks lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 
@@ -190,18 +190,6 @@ credentials:
 
 dbdocs:
 	docker run --rm -v $PWD:/work -w /work --network bcda-app-net ghcr.io/k1low/tbls doc --rm-dist "postgres://postgres:toor@db:5432/bcda?sslmode=disable" dbdocs/bcda
-
-# ==== Lambda ====
-
-package-opt-out: export GOOS=linux
-package-opt-out: export GOARCH=amd64
-package-opt-out:
-	cd bcda && go build -o bin/opt-out-import ./lambda/optout/main.go
-
-package-cclf-import: export GOOS=linux
-package-cclf-import: export GOARCH=amd64
-package-cclf-import:
-	cd bcda && go build -o bin/cclf-import ./lambda/cclf/main.go
 
 # Build and publish images to ECR
 # make build-api ACCOUNT_ID={AWS account ID} RELEASE_VERSION={release tag eg r270 (or main)}

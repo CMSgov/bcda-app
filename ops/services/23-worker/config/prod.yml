@@ -1,0 +1,25 @@
+scaling:
+  min: 2
+  max: 16
+  cooldown: 300
+  scaling_steps:
+    - scaling_adjustment_offset: 0
+      metric_interval_upper_bound: 25
+    - scaling_adjustment_offset: 2
+      metric_interval_lower_bound: 25
+      metric_interval_upper_bound: 250
+    - scaling_adjustment_offset: 6
+      metric_interval_lower_bound: 250
+      metric_interval_upper_bound: 1000
+    - scaling_adjustment_offset: 8
+      metric_interval_lower_bound: 1000
+      metric_interval_upper_bound: 2500
+    - scaling_adjustment_offset: 10
+      metric_interval_lower_bound: 2500
+      metric_interval_upper_bound: 5000
+    - scaling_adjustment_offset: max
+      metric_interval_lower_bound: 5000
+
+ecs:
+  cpu: 2048
+  mem: 12288

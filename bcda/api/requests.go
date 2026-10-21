@@ -21,8 +21,8 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -60,6 +60,7 @@ type Handler struct {
 }
 
 type fhirResponseWriter interface {
+	Success(context.Context, http.ResponseWriter, int, string, string)
 	Exception(context.Context, http.ResponseWriter, int, string, string)
 	NotFound(context.Context, http.ResponseWriter, int, string, string)
 	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
@@ -292,7 +293,6 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch job.Status {
-
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		logger.Error(job.Status)
 		ctx, _ = log.WriteErrorWithFields(
@@ -302,13 +302,13 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		)
 		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.JobFailed, responseutils.DetailJobFailed)
 	case models.JobStatusPending, models.JobStatusInProgress:
-		completedJobKeyCount := utils.CountUniq(jobKeys, func(jobKey *models.JobKey) int64 {
-			if jobKey.QueJobID == nil {
-				return -1
+		completedSubJobs := make(map[int64]struct{})
+		for _, key := range jobKeys {
+			if key != nil && key.QueJobID != nil {
+				completedSubJobs[*key.QueJobID] = struct{}{}
 			}
-			return *jobKey.QueJobID
-		})
-		w.Header().Set("X-Progress", job.StatusMessage(completedJobKeyCount))
+		}
+		w.Header().Set("X-Progress", job.StatusMessage(len(completedSubJobs)))
 		w.WriteHeader(http.StatusAccepted)
 		return
 	case models.JobStatusCompleted:
@@ -349,14 +349,20 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, jobKey := range jobKeys {
+			if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
+				continue
+			}
+
 			// data files
 			fi := FileItem{
 				Type: jobKey.ResourceType,
 				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 
-			// Check if "error" is not in the filename
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") && jobKey.FileName != constants.WarningsAndInfoFileName {
+			// Filter out unwanted files by name, (error files, warning and info file, and empty/blank files)
+			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") &&
+				jobKey.FileName != constants.WarningsAndInfoFileName &&
+				jobKey.FileName != models.BlankFileName {
 				rb.Files = append(rb.Files, fi)
 			}
 
@@ -448,7 +454,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	w.WriteHeader(http.StatusAccepted)
+	h.RespWriter.Success(ctx, w, http.StatusAccepted, "", "Job files will be designated for deletion")
 }
 
 type AttributionFileStatus struct {
@@ -457,17 +463,17 @@ type AttributionFileStatus struct {
 }
 
 type AttributionFileStatusResponse struct {
-	Data []AttributionFileStatus `json:"ingestion_dates"`
+	IngestionDates  []AttributionFileStatus `json:"ingestion_dates"`
+	ExpirationDates []AttributionFileStatus `json:"expiration_dates"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var (
 		ad   auth.AuthData
-		err  error
 		resp AttributionFileStatusResponse
+		err  error
 	)
-
 	if ad, err = GetAuthDataFromCtx(r); err != nil {
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
@@ -478,45 +484,57 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the most recent cclf 8 file we have successfully ingested
+	timeConstraints, err := h.Svc.GetTimeConstraints(ctx, ad.CMSID)
+	if err != nil {
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: could not fetch time constraints: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		return
+	}
+
 	group := chi.URLParam(r, "groupId")
 	notFoundMsg := fmt.Sprintf("Unable to perform export operations for this Group. No up-to-date attribution information is available for Group '%s'. Usually this is due to awaiting new attribution information at the beginning of a Performance Year.", group)
-	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
-	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-		ctx, _ = log.WriteWarnWithFields(
+
+	defaultLastUpdated, defaultExpirationDate, defaultErr := h.Svc.GetAttributionStatusDates(ctx, ad.CMSID, timeConstraints, models.FileTypeDefault)
+	runoutLastUpdated, runoutExpirationDate, runoutErr := h.Svc.GetAttributionStatusDates(ctx, ad.CMSID, timeConstraints, models.FileTypeRunout)
+
+	if defaultErr == nil {
+		resp.IngestionDates = append(resp.IngestionDates, AttributionFileStatus{Type: "last_attribution_update", Timestamp: defaultLastUpdated})
+		resp.ExpirationDates = append(resp.ExpirationDates, AttributionFileStatus{Type: "attribution_access_expiration", Timestamp: defaultExpirationDate})
+	}
+	if runoutErr == nil {
+		resp.IngestionDates = append(resp.IngestionDates, AttributionFileStatus{Type: "last_runout_update", Timestamp: runoutLastUpdated})
+		resp.ExpirationDates = append(resp.ExpirationDates, AttributionFileStatus{Type: "runout_access_expiration", Timestamp: runoutExpirationDate})
+	}
+	_, defaultNotFound := goerrors.AsType[service.CCLFNotFoundError](defaultErr)
+	_, runoutNotFound := goerrors.AsType[service.CCLFNotFoundError](runoutErr)
+
+	if defaultErr != nil && !defaultNotFound { // an unexpected error occurred with the default file status
+		ctx, _ = log.WriteErrorWithFields(
 			ctx,
-			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
+			fmt.Sprintf("%s: could not fetch default attribution status dates: %+v", responseutils.InternalErr, defaultErr),
 			logrus.Fields{"resp_status": http.StatusInternalServerError},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, notFoundMsg)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
-	}
-	if asd != nil {
-		resp.Data = append(resp.Data, *asd)
-	}
-
-	// Retrieve the most recent cclf 8 runout file we have successfully ingested
-	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
-	if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-		ctx, _ = log.WriteWarnWithFields(
+	} else if runoutErr != nil && !runoutNotFound { // an unexpected error occurred with the runout file status
+		ctx, _ = log.WriteErrorWithFields(
 			ctx,
-			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, err),
+			fmt.Sprintf("%s: could not fetch runout attribution status dates: %+v", responseutils.InternalErr, runoutErr),
 			logrus.Fields{"resp_status": http.StatusInternalServerError},
 		)
-		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.NotFoundErr, notFoundMsg)
+		h.RespWriter.Exception(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
-	}
-	if asr != nil {
-		resp.Data = append(resp.Data, *asr)
-	}
-
-	if resp.Data == nil {
+	} else if defaultNotFound && runoutNotFound { // neither CCLF was found -- return a 404
 		ctx, _ = log.WriteWarnWithFields(
 			ctx,
-			fmt.Sprintf("%s: Could not find any CCLF8 file", responseutils.NotFoundErr),
+			fmt.Sprintf("%s: %+v Error: %+v", responseutils.NotFoundErr, notFoundMsg, defaultErr),
 			logrus.Fields{"resp_status": http.StatusNotFound},
 		)
-		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		h.RespWriter.NotFound(ctx, w, http.StatusNotFound, responseutils.NotFoundErr, notFoundMsg)
 		return
 	}
 
@@ -533,33 +551,6 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
-	logger := log.GetCtxLogger(ctx)
-	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, time.Time{}, time.Time{}, fileType)
-	if err != nil {
-		logger.Error(err)
-
-		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
-			return nil, nil
-		} else {
-			return nil, err
-		}
-	}
-
-	status := &AttributionFileStatus{
-		Timestamp: cclfFile.Timestamp,
-	}
-
-	switch fileType {
-	case models.FileTypeDefault:
-		status.Type = "last_attribution_update"
-	case models.FileTypeRunout:
-		status.Type = "last_runout_update"
-	}
-
-	return status, nil
 }
 
 // bulkRequest generates a job ID for a bulk export request. It will not queue a job
@@ -838,18 +829,20 @@ func (h *Handler) authorizedResourceAccess(dataType service.ClaimType, cmsID str
 // validateTypeFilterPACEligibility validates that ACOs requesting SharedSystem
 // tags in _typeFilter have PAC data access. Handles parsing of multiple comma-separated tag codes.
 // Returns error if validation fails (and writes response).
-func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterParameter, cmsID string, w http.ResponseWriter) error {
+func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilter fhir.TypeFilterSubquery, cmsID string, w http.ResponseWriter) error {
 	// Tags that require PAC eligibility
 	tagsRequiringPAC := []string{"SharedSystem"}
 
-	// Extract all _tag parameter values
+	// Extract all _tag parameter codes
 	var requestedTagCodes []string
-	for _, subqueryParam := range typeFilter.QueryParameters {
-		if subqueryParam.Name == "_tag" {
-			tagValue := subqueryParam.Value
-			// Extract tag code from either short format or URL format
-			tagCodes := middleware.ExtractTagCodeFromValue(tagValue)
-			requestedTagCodes = append(requestedTagCodes, tagCodes...)
+	tagParams, err := fhir.GetTagParams(typeFilter)
+	if err != nil {
+		return fmt.Errorf("unable to parse typefilter _tag codes: %w", err)
+	}
+
+	for _, tagParam := range tagParams {
+		for _, tagValue := range tagParam.Values {
+			requestedTagCodes = append(requestedTagCodes, tagValue.Code)
 		}
 	}
 
@@ -892,9 +885,9 @@ func (h *Handler) validateTypeFilterPACEligibility(ctx context.Context, typeFilt
 
 // omitSharedSystemByDefault ensures that all ACOs in v3 do not receive SharedSystem data by default
 // by adding a System-Type tag filter if no explicit filter is provided
-func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter) fhir.TypeFilterParameter {
+func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) fhir.TypeFilterSubquery {
 	// If relevant filter is already present, no need to add default
-	if middleware.HasSharedSystemTag(typeFilter) {
+	if middleware.HasSystemTypeTag(typeFilter) {
 		return typeFilter
 	}
 
@@ -904,13 +897,13 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterParameter)
 	// This function is only called when ExplanationOfBenefit is in the resource types
 	tagValue := constants.BFDSystemTypeURL + "|NationalClaimsHistory," + constants.BFDSystemTypeURL + "|DDPS"
 	subqueryParam := fhir.TypeFilterSubqueryParam{
-		Name:  "_tag",
+		Name:  string(fhir.TypeFilterParamTag),
 		Value: tagValue,
 	}
 
 	// if there is no _typeFilter param passed, create a new one and add this _tag filter
 	if len(typeFilter.QueryParameters) == 0 {
-		return fhir.TypeFilterParameter{
+		return fhir.TypeFilterSubquery{
 			ResourceType:    "ExplanationOfBenefit",
 			QueryParameters: []fhir.TypeFilterSubqueryParam{subqueryParam},
 		}

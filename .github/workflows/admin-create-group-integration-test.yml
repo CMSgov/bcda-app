@@ -17,8 +17,8 @@ concurrency:
   group: create-group-integration-test
 
 env:
-  ACO: A5555
-  GROUP: A5555-group
+  ACO: TEST889
+  GROUP: TEST889-group
 
 jobs:
   # Deploy first if triggered by pull_request

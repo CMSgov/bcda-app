@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -21,9 +22,27 @@ type PgxConnection interface {
 }
 
 func denyACOs(ctx context.Context, conn PgxConnection, data payload) error {
+	if len(data.DenyACOIDs) == 0 {
+		return errors.New("no ACO IDs provided to deny")
+	}
+
+	cutoffDate := time.Now()
+	if data.CutoffDate != nil && !data.CutoffDate.IsZero() {
+		cutoffDate = *data.CutoffDate
+	}
+
+	termDate := cutoffDate
+	if data.TerminationDate != nil && !data.TerminationDate.IsZero() {
+		termDate = *data.TerminationDate
+	}
+
+	if termDate.After(cutoffDate) {
+		return errors.New("termination_date cannot be after cutoff_date (a cutoff_date is required if termination_date is in the future)")
+	}
+
 	td := &models.Termination{
-		TerminationDate: time.Now(),
-		CutoffDate:      time.Now(),
+		TerminationDate: termDate,
+		CutoffDate:      cutoffDate,
 		DenylistType:    models.Involuntary,
 	}
 

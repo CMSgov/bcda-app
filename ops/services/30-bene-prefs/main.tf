@@ -36,7 +36,7 @@ module "bene_prefs_function" {
   architecture = "arm64"
 
   name        = local.service
-  description = "Ingests the most recent beneficiary opt-out list from BFD"
+  description = "Ingests the most recent beneficiary bene-prefs list from BFD"
 
   handler = "bootstrap"
   runtime = "provided.al2023"

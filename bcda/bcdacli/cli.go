@@ -9,18 +9,15 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 
-	cclfUtils "github.com/CMSgov/bcda-app/bcda/attribution-import/utils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -68,7 +65,7 @@ func setUpApp() *cli.App {
 		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, provider))
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, environment, groupID, groupName, ips, fileType string
+	var acoName, acoCMSID, acoID, accessToken, filePath, groupID, groupName, ips string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -305,76 +302,6 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
-		{
-			Name:     "import-synthetic-cclf-package",
-			Category: constants.CliDataImpCategory,
-			Usage:    "Import a package of synthetic CCLF files",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "acoSize",
-					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'dev-auth', 'dev-cec', 'dev-cec-auth', 'dev-ng', 'dev-ng-auth', 'small', 'medium', 'large', or 'extra-large'",
-					Destination: &acoSize,
-				},
-				cli.StringFlag{
-					Name:        "environment",
-					Usage:       "Which set of files to use.",
-					Destination: &environment,
-				},
-				cli.StringFlag{
-					Name:        "fileType",
-					Usage:       "Type of CCLF File to generate. Must be one of 'default', 'runout'. Defaults to 'default'",
-					Destination: &fileType,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				ft := models.FileTypeDefault
-				if fileType != "" {
-					switch fileType {
-					case "runout":
-						ft = models.FileTypeRunout
-					default:
-						return errors.New("Unsupported file type.")
-					}
-				}
-				err := cclfUtils.ImportCCLFPackage(db, pool, acoSize, environment, ft)
-				return err
-			},
-		},
-		{
-			Name:     "denylist-aco",
-			Category: constants.CliAuthToolsCategory,
-			Usage:    "Denylists an ACO by their CMS ID",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        constants.CliCMSIDArg,
-					Usage:       constants.CliCMSIDDesc,
-					Destination: &acoCMSID,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				td := &models.Termination{
-					TerminationDate: time.Now(),
-					CutoffDate:      time.Now(),
-					DenylistType:    models.Involuntary,
-				}
-				return setDenylistState(repository, acoCMSID, td)
-			},
-		},
-		{
-			Name:     "undenylist-aco",
-			Category: constants.CliAuthToolsCategory,
-			Usage:    "Undenylists an ACO by their CMS ID",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        constants.CliCMSIDArg,
-					Usage:       constants.CliCMSIDDesc,
-					Destination: &acoCMSID,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				return setDenylistState(repository, acoCMSID, nil)
-			},
-		},
 	}
 	return app
 }
@@ -500,15 +427,6 @@ func revokeAccessToken(p auth.Provider, accessToken string) error {
 	return p.RevokeAccessToken(accessToken)
 }
 
-func setDenylistState(r models.Repository, cmsID string, td *models.Termination) error {
-	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
-	if err != nil {
-		return err
-	}
-	return r.UpdateACO(context.Background(), aco.UUID,
-		map[string]interface{}{"termination_details": td})
-}
-
 // CCLF file name pattern and regex
 const cclfPattern = `((?:T|P).*\.ZC[A-B0-9]*)Y(\d{2}\.D\d{6}\.T\d{7})`
 
@@ -580,20 +498,4 @@ func cloneCCLFZip(src, dst string) error {
 	}
 
 	return nil
-}
-
-func ignoreSignals() chan os.Signal {
-	sigs := make(chan os.Signal, 1)
-
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		fmt.Println("Ignoring SIGTERM/SIGINT to allow work to finish.")
-
-		for range sigs {
-			fmt.Println("SIGTERM/SIGINT signal received; ignoring to finish work...")
-		}
-	}()
-
-	return sigs
 }

@@ -30,7 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	appMiddleware "github.com/CMSgov/bcda-app/middleware"
 
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/r4"
+	"github.com/CMSgov/bcda-app/bcda/fhir/r4"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -493,7 +493,7 @@ func (s *APITestSuite) TestDeleteJob() {
 		{models.JobStatusFailed, http.StatusGone},
 		{models.JobStatusExpired, http.StatusGone},
 		{models.JobStatusArchived, http.StatusGone},
-		{models.JobStatusCompleted, http.StatusGone},
+		{models.JobStatusCompleted, http.StatusAccepted},
 		{models.JobStatusCancelled, http.StatusGone},
 		{models.JobStatusFailedExpired, http.StatusGone},
 	}
@@ -682,8 +682,9 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoUnderTest)
 	cclfFile := postgrestest.GetLatestCCLFFileByCMSIDAndType(s.T(), s.db, *aco.CMSID, models.FileTypeDefault)
 
-	assert.Equal(s.T(), "last_attribution_update", resp.Data[0].Type)
-	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.Data[0].Timestamp.Format("2006-01-02 15:04:05"))
+	assert.Equal(s.T(), "last_attribution_update", resp.IngestionDates[0].Type)
+	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.IngestionDates[0].Timestamp.Format("2006-01-02 15:04:05"))
+	assert.Equal(s.T(), "attribution_access_expiration", resp.ExpirationDates[0].Type)
 }
 
 func (s *APITestSuite) getAuthData() (data auth.AuthData) {

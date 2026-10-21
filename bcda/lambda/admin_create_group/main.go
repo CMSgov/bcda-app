@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -12,7 +13,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -101,7 +101,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 		return errors.New("failed to load config")
 	}
 
-	if match := cfg.IsSupportedACO(data.ACO_ID); match {
+	if cfg.IsSupportedACO(data.ACO_ID) || cfg.IsTestACO(data.ACO_ID) {
 		aco, err = r.GetACOByCMSID(context.Background(), data.ACO_ID)
 		if err != nil {
 			return err
@@ -134,7 +134,7 @@ func handleCreateGroup(c client.SSASHTTPClient, r *postgres.Repository, data pay
 			err := r.UpdateACO(context.Background(), aco.UUID,
 				map[string]interface{}{"group_id": ssasID})
 			if err != nil {
-				return errors.Wrapf(err, "group %s was created, but ACO could not be updated", ssasID)
+				return fmt.Errorf("group %s was created, but ACO could not be updated, err: %w", ssasID, err)
 			}
 		}
 	} else {

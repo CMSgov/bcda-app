@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"testing"
 
-	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	models "github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/stretchr/testify/assert"
 )
 
