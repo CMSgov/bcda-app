@@ -396,6 +396,7 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	}
 }
 
+// TODO
 func getResponseWriterFromRequestPath(w http.ResponseWriter, r *http.Request) (fhirResponseWriter, string) {
 	version, err := getVersion(r.URL.Path)
 	if err != nil {
@@ -413,4 +414,16 @@ func getResponseWriterFromRequestPath(w http.ResponseWriter, r *http.Request) (f
 	}
 
 	return rw, version
+}
+
+func GetRespWriter(path string) fhirResponseWriter {
+	if strings.Contains(path, "/v1/") {
+		return responseutils.NewFhirResponseWriter()
+	} else if strings.Contains(path, "/v2/") {
+		return responseutilsv2.NewFhirResponseWriter()
+	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
+		return responseutilsv3.NewFhirResponseWriter()
+	} else {
+		return responseutils.NewFhirResponseWriter()
+	}
 }

@@ -35,6 +35,7 @@ func (r FhirResponseWriter) NotFound(ctx context.Context, w http.ResponseWriter,
 	r.WriteError(ctx, oo, w, statusCode)
 }
 
+// TODO remove errType from all of these; it is an unused parameter
 func (r FhirResponseWriter) OpOutcome(ctx context.Context, w http.ResponseWriter, statusCode int, errType, errMsg string) {
 	respStatusToFHIRStatusMap := map[int]r4.IssueTypeCode{
 		400: r4.IssueTypeCodeStructure,

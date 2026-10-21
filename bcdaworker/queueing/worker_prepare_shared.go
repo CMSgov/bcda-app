@@ -39,8 +39,7 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 			ctx = context.WithValue(ctx, mw.CtxTransactionKey, rjob.Args.TransactionID)
 			logger := log.GetCtxLogger(ctx)
 
-			// exports, since, err := w.prepareExportJobs(ctx, rjob.Args)
-			exports, err := w.prepareExportJobs(ctx, rjob.Args)
+			exports, err := w.prepareSharedExportJobs(ctx, rjob.Args)
 			if err != nil {
 				logger.Errorf("failed to add jobs to the main queue: %s", err)
 				return err
@@ -52,8 +51,8 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 			}
 			defer func() {
 				if err != nil {
-					if err1 := tx.Rollback(ctx); err1 != nil {
-						logger.Errorf("Failed to rollback pgx transaction: %s", err1.Error())
+					if rollBackErr := tx.Rollback(ctx); rollBackErr != nil {
+						logger.Errorf("Failed to rollback pgx transaction: %s", rollBackErr.Error())
 					}
 				}
 			}()
@@ -74,7 +73,7 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 }
 
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
-func (p *PrepareSharedJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
+func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var err error
 	var exports []*worker_types.JobEnqueueArgs
 	// logger := log.GetCtxLogger(ctx)

@@ -37,6 +37,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
+	mw "github.com/CMSgov/bcda-app/middleware"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -908,6 +909,73 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) 
 	typeFilter.QueryParameters = append(typeFilter.QueryParameters, subqueryParam)
 
 	return typeFilter
+}
+
+func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := log.GetCtxLogger(ctx)
+	var (
+		err error
+		ad  auth.AuthData
+	)
+
+	if ad, err = GetAuthDataFromCtx(r); err != nil {
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
+			logrus.Fields{"resp_status": http.StatusUnauthorized},
+		)
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		return
+	}
+
+	acoID := uuid.Parse(ad.ACOID)
+
+	newJob := models.Job{
+		ACOID:      acoID,
+		RequestURL: fmt.Sprintf("https://%s%s", r.Host, r.URL),
+		Status:     models.JobStatusPending,
+	}
+
+	newJob.ID, err = h.r.CreateJob(ctx, newJob)
+	if err != nil {
+		logger.Errorf("failed to create job: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte("failed to create job"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	payload, ok := middleware.FromContextSharedExportPayload(ctx)
+	if ok == false {
+		return
+	}
+
+	prepJob := worker_types.PrepareSharedJobArgs{
+		Job: newJob,
+		// ACOID:                  acoID,
+		// CMSID:                  ad.CMSID,
+		PartnerID:     payload.PartnerID,
+		BFDPath:       constants.V3Path,
+		ResourceTypes: payload.ResourceTypes,
+		Since:         payload.SinceDecoded,
+		CreationTime:  time.Now(),
+		TransactionID: ctx.Value(mw.CtxTransactionKey).(string),
+		MBIs:          payload.MBIs, // TODO: we save internal Ids for the cclf_beneficiaries into our river_job record for our normal job process, is it problematic to save mbis? if so we will need to save into the DB?  or pull from file later on?
+		DataTypes:     payload.DataTypes,
+	}
+
+	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "failed to add job to the queue: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, payload.Version, newJob.ID))
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {

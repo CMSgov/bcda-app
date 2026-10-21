@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -244,6 +246,25 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
 		V1V2DenyRegexes: []string{"?!.*"}, // invalid regex (invalid target for quantifier)
 	}
 	assert.Panics(s.T(), func() { isACOV1V2DeniedAccess(cfg, "A1234") })
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared() {
+	resp := httptest.NewRecorder()
+
+	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
+
+	// create a new handler
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		payload, ok := FromContextSharedExportPayload(r.Context())
+		require.True(s.T(), ok)
+		require.NotNil(s.T(), payload)
+	})
+
+	handlerToTest := ValidateSharedExport(nextHandler)
+	req := httptest.NewRequest("GET", "http://testing", body)
+	handlerToTest.ServeHTTP(resp, req)
+	require.Equal(s.T(), resp.Code, 200)
+
 }
 
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
