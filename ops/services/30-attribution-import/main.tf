@@ -7,7 +7,7 @@ locals {
 }
 
 module "platform" {
-  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
+  source = "github.com/CMSgov/cdap//terraform/modules/platform?ref=7eaa3954d6a336994fbee14f72ab242b19ab91e3"
 
   providers = { aws = aws, aws.secondary = aws.secondary }
 
@@ -39,8 +39,16 @@ resource "aws_kms_alias" "attribution-import_bucket" {
   target_key_id = aws_kms_key.attribution-import_bucket.key_id
 }
 
+module "attribution_import_s3_files" {
+  source = "github.com/CMSgov/cdap//terraform/modules/s3_files?ref=7eaa3954d6a336994fbee14f72ab242b19ab91e3"
+
+  platform   = module.platform
+  name       = "${local.service}-files"
+  bucket_arn = module.attribution-import_file_bucket.arn
+}
+
 module "attribution_import_function" {
-  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
+  source = "github.com/CMSgov/cdap//terraform/modules/function?ref=7eaa3954d6a336994fbee14f72ab242b19ab91e3"
 
   architecture = "arm64"
 
@@ -65,14 +73,21 @@ module "attribution_import_function" {
   github_actions_repos = ["bcda-app:*"]
 
   environment_variables = {
-    ENV      = local.env
-    APP_NAME = "${local.full_name}"
+    ENV        = local.env
+    APP_NAME   = "${local.full_name}"
+    MOUNT_PATH = "/mnt/attribution"
+  }
+
+  file_system_config = {
+    arn              = module.attribution_import_s3_files.access_point_arn
+    local_mount_path = "/mnt/attribution"
   }
 
   function_role_inline_policies = {
     manage-attribution-import-bucket     = data.aws_iam_policy_document.bucket_manage.json,
     decrypt-attribution-import-bucket    = data.aws_iam_policy_document.bucket_decrypt.json,
-    sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json
+    sqs-attribution-import-bucket-events = data.aws_iam_policy_document.bucket_sqs.json,
+    s3files-access                       = data.aws_iam_policy_document.s3files_access.json
   }
 
   ssm_parameter_paths = [
@@ -90,7 +105,7 @@ module "attribution_import_function" {
 
 # Set up queue for receiving messages when a file is added to the bucket
 module "attribution_import_queue" {
-  source = "github.com/CMSgov/cdap//terraform/modules/queue?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
+  source = "github.com/CMSgov/cdap//terraform/modules/queue?ref=7eaa3954d6a336994fbee14f72ab242b19ab91e3"
 
   app = local.app
   env = local.env
@@ -122,7 +137,7 @@ data "aws_iam_policy_document" "sns_send_message" {
 }
 
 module "attribution-import_file_bucket" {
-  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=fa53aa0f83d052b011e796cbfedc8d438ac5fab0"
+  source = "github.com/CMSgov/cdap//terraform/modules/bucket?ref=7eaa3954d6a336994fbee14f72ab242b19ab91e3"
 
   app           = local.app
   env           = local.env
