@@ -134,8 +134,8 @@ load-fixtures-ssas:
 COMPOSE_BAKE ?= true
 
 docker-build:
-	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose build --force-rm --no-cache
-	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose -f compose.test.yml build --force-rm --no-cache
+	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose build --force-rm
+	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose -f compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
 
