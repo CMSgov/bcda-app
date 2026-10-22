@@ -126,7 +126,7 @@ load-fixtures: reset-db
 	docker compose exec db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 load-fixtures-ssas:
-	docker compose up -d db ssas --no-cache
+	docker compose up -d db ssas
 	./docker/await_service_healthy.sh db
 	docker compose exec ssas main --add-fixture-data
 
