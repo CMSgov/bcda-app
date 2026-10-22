@@ -10,10 +10,17 @@ RUN apk update upgrade --no-cache && \
         build-base \
         curl
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | \
-    sh -s -- -b $(go env GOPATH)/bin v2.15.0
+# this is not the preferred way to install golangci-lint, see the commented curl command below
+# see: https://golangci-lint.run/docs/welcome/install/local/#docker for preferred installation
+# the reason we are installing this as there seems to have been major breaking changes in how
+# golang is compiled between versions 1.27 and 1.27.3.  golang 1.27.3 is required for security issues
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@25c5369a93aacb8cccea0d46e1569ca4a194564d
+# RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | \
+#     sh -s -- -b $(go env GOPATH)/bin v2.15.0
 
-RUN go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0 && \
+# RUN go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0 && \
+# see above notes about issues with golang 1.27.3.  this gosec ref is not an official release and may not be stable
+RUN go install github.com/securego/gosec/v2/cmd/gosec@14ef84f6feccf40be7f5092fd2db119bf3f5f836 && \
     go install gotest.tools/gotestsum@v1.13.0
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
