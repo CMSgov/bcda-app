@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 type cclfZipMetadata struct {
@@ -57,6 +59,7 @@ type CCLFImporter struct {
 	fileClient bcdaaws.CustomS3Client
 	pgxPool    *pgxv5Pool.Pool
 	pgxRepo    *postgres.PgxRepository
+	mountPath  string
 }
 
 func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
@@ -65,6 +68,7 @@ func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Clien
 		fileClient: fileClient,
 		pgxPool:    pgxPool,
 		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
+		mountPath:  conf.GetEnv("MOUNT_PATH"),
 	}
 }
 
@@ -415,13 +419,43 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 }
 
 func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
-	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.fileClient, filePath)
+	mountPath := importer.mountPath
+	if mountPath == "" {
+		mountPath = conf.GetEnv("MOUNT_PATH")
+	}
 
-	if err != nil {
-		importer.logger.Errorf("Failed to download %s", filePath)
+	if mountPath == "" {
+		err := errors.New("MOUNT_PATH environment variable is required")
+		importer.logger.Error(err)
 		return nil, nil, err
 	}
 
-	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
-	return reader, func() {}, err
+	_, key := bcdaaws.ParseS3Uri(filePath)
+	if key == "" {
+		key = filePath
+	}
+	targetPath := filepath.Join(mountPath, key)
+
+	if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
+		if _, err2 := os.Stat(filepath.Join(mountPath, filePath)); err2 == nil {
+			targetPath = filepath.Join(mountPath, filePath)
+		} else if _, err3 := os.Stat(filePath); err3 == nil {
+			targetPath = filePath
+		}
+	}
+
+	cleanPath := filepath.Clean(targetPath)
+	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
+	if err != nil {
+		importer.logger.Errorf("Failed to open mounted zip archive %s: %v", targetPath, err)
+		return nil, nil, fmt.Errorf("failed to open zip archive %s: %w", targetPath, err)
+	}
+
+	cleanup := func() {
+		if err := zipReadCloser.Close(); err != nil {
+			importer.logger.Warnf("Failed to close zip archive %s: %v", targetPath, err)
+		}
+	}
+
+	return &zipReadCloser.Reader, cleanup, nil
 }
