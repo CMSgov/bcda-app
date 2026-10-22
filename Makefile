@@ -126,7 +126,7 @@ load-fixtures: reset-db
 	docker compose exec db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/bootstrap.sql
 
 load-fixtures-ssas:
-	docker compose up -d db ssas
+	docker compose up -d db ssas --no-cache
 	./docker/await_service_healthy.sh db
 	docker compose exec ssas main --add-fixture-data
 
@@ -134,7 +134,7 @@ COMPOSE_BAKE ?= true
 
 docker-build:
 	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose build --force-rm --no-cache
-	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose -f compose.test.yml build --force-rm
+	COMPOSE_BAKE=$(COMPOSE_BAKE) docker compose -f compose.test.yml build --force-rm --no-cache
 
 docker-bootstrap: docker-build load-fixtures
 
