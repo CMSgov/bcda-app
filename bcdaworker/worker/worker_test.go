@@ -341,9 +341,6 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "70")
 	transactionTime := time.Now()
 	bbc := client.MockBlueButtonClient{}
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
@@ -385,10 +382,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.AssertExpectations(s.T())
 }
 
-func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
+func (s *WorkerTestSuite) TestWriteEOBDataToFileAllBeneficiaryErrorsWriteToErrorFile() {
 	transactionTime := time.Now()
 
 	var cclfBeneficiaryIDs []string
@@ -448,10 +442,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
-
 	mbis := []string{"a1000000001", "a1000000002", "a1000000008", "a1000000009"}
 	var cclfBeneficiaryIDs []string
 	for i := 0; i < len(mbis); i++ {
