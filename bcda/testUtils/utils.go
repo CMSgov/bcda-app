@@ -260,12 +260,20 @@ func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
 	cfg, ctx := TestAWSConfig(t)
 	client := TestS3Client(t, cfg)
 
+	origMountPath := conf.GetEnv("MOUNT_PATH")
+	mountPath := origMountPath
+	if mountPath == "" {
+		mountPath = t.TempDir()
+		_ = conf.SetEnv(t, "MOUNT_PATH", mountPath)
+	}
+
 	bucketInput := &s3.CreateBucketInput{
 		Bucket: aws.String(tempBucket),
 	}
 	_, err := client.CreateBucket(ctx, bucketInput)
 	require.Nil(t, err)
 
+	var localFiles []string
 	for _, input := range zipInputs {
 		var b bytes.Buffer
 		f := bufio.NewWriter(&b)
@@ -279,6 +287,13 @@ func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
 		assert.NoError(t, w.Close())
 		assert.NoError(t, f.Flush())
 
+		localPath := filepath.Join(mountPath, input.ZipName)
+		err = os.MkdirAll(filepath.Dir(localPath), 0750)
+		require.NoError(t, err)
+		err = os.WriteFile(localPath, b.Bytes(), 0600)
+		require.NoError(t, err)
+		localFiles = append(localFiles, localPath)
+
 		manager := transfermanager.New(client)
 
 		_, s3Err := manager.UploadObject(ctx, &transfermanager.UploadObjectInput{
@@ -291,6 +306,12 @@ func CreateZipsInS3(t *testing.T, zipInputs ...ZipInput) (string, func()) {
 	}
 
 	cleanup := func() {
+		for _, lf := range localFiles {
+			_ = os.Remove(lf)
+		}
+
+		_ = conf.SetEnv(t, "MOUNT_PATH", origMountPath)
+
 		output, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 			Bucket: aws.String(tempBucket),
 		})

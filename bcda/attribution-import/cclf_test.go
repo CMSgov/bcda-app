@@ -64,6 +64,7 @@ func (s *CCLFTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
+	conf.SetEnv(s.T(), "MOUNT_PATH", s.basePath)
 
 	s.logger = testUtils.GetLogger(log.API)
 	client := &bcdaaws.ConfigurableMockS3Client{}
@@ -393,29 +394,7 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 }
 
 func buildZipMetadata(t *testing.T, importer CCLFImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
-	content, err := os.ReadFile(zipName)
-	assert.NoError(t, err)
-
-	client := &bcdaaws.ConfigurableMockS3Client{
-		HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-			return &s3.HeadObjectOutput{
-				ContentLength: aws.Int64(int64(len(content))),
-			}, nil
-		},
-		GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-			return &s3.GetObjectOutput{
-				Body:          io.NopCloser(strings.NewReader(string(content))),
-				ContentLength: aws.Int64(int64(len(content))),
-				ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-			}, nil
-		},
-	}
-	customImporter := CCLFImporter{
-		logger:     importer.logger,
-		fileClient: client,
-	}
-
-	zipReader, zipCloser, err := customImporter.openZipArchive(context.Background(), zipName)
+	zipReader, zipCloser, err := importer.openZipArchive(context.Background(), zipName)
 	assert.NoError(t, err)
 
 	metadata := cclfZipMetadata{
@@ -583,6 +562,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_SingleFile() {
 			importer := CCLFImporter{
 				logger:     s.importer.logger,
 				fileClient: client,
+				mountPath:  filepath.Join(s.basePath, tt.path),
 			}
 
 			cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, fullFilePath)
@@ -726,4 +706,54 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	deletedCount, err = importer.cleanUpCCLF(ctx, cclfmap)
 	assert.Equal(1, deletedCount)
 	assert.Nil(err)
+}
+
+func TestOpenZipArchive_MissingMountPath(t *testing.T) {
+	logger := logrus.New()
+	importer := CCLFImporter{
+		logger:    logger,
+		mountPath: "",
+	}
+	origMount := conf.GetEnv("MOUNT_PATH")
+	_ = conf.SetEnv(t, "MOUNT_PATH", "")
+	t.Cleanup(func() {
+		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
+	})
+
+	_, _, err := importer.openZipArchive(context.Background(), "some/bucket/file.zip")
+	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
+}
+
+func TestOpenZipArchive_FileNotFound(t *testing.T) {
+	logger := logrus.New()
+	mountDir := t.TempDir()
+	importer := CCLFImporter{
+		logger:    logger,
+		mountPath: mountDir,
+	}
+
+	_, _, err := importer.openZipArchive(context.Background(), "bucket/nonexistent/file.zip")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to open zip archive")
+}
+
+func TestOpenZipArchive_ValidZip(t *testing.T) {
+	logger := logrus.New()
+	basePath, cleanup := testUtils.CopyToTemporaryDirectory(t, "../../shared_files/")
+	defer cleanup()
+
+	importer := CCLFImporter{
+		logger:    logger,
+		mountPath: basePath,
+	}
+
+	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
+	reader, closer, err := importer.openZipArchive(context.Background(), relZipPath)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.NotNil(t, closer)
+	assert.NotEmpty(t, reader.File)
+
+	// Ensure closer runs cleanly
+	closer()
 }
