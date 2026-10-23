@@ -17,6 +17,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' \
     | awk -F '"' '{print $2}' | xargs -tI % go get %
+
+# orchestrion v1.14.0
 RUN --mount=type=cache,target=/go/pkg/mod \
     go install github.com/DataDog/orchestrion@e487e3a9d7f1e32fccd6f34b291d39e9183b0200
 
