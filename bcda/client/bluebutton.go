@@ -117,7 +117,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 
 		tlsConfig.RootCAs = caCertPool
 	} else {
-		tlsConfig.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = true // #nosec G402 this is only used in localdev/ci testing
 		logger.Warn("Blue Button certificate check disabled")
 	}
 
