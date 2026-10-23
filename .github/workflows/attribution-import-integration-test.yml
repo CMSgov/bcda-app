@@ -217,11 +217,3 @@ jobs:
               exit 1
             fi
           fi
-
-      # NOTE: Remove diagnostic Lambda logs printing when PR is ready
-      - name: Print Lambda Logs on Failure
-        if: failure()
-        run: |
-          echo "=== Fetching Lambda logs for /aws/lambda/bcda-test-attribution-import ==="
-          aws logs tail /aws/lambda/bcda-test-attribution-import --since 15m --format short || \
-          aws logs filter-log-events --log-group-name "/aws/lambda/bcda-test-attribution-import" --start-time $(( ($(date +%s) - 900) * 1000 )) --query 'events[*].message' --output text || true
