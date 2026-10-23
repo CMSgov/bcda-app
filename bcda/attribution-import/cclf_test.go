@@ -779,3 +779,32 @@ func TestOpenZipArchive_BucketAndFullPathKey(t *testing.T) {
 
 	closer()
 }
+
+func TestOpenZipArchive_SyncWait(t *testing.T) {
+	logger := logrus.New()
+	basePath, cleanup := testUtils.CopyToTemporaryDirectory(t, "../../shared_files/")
+	defer cleanup()
+
+	mountDir := t.TempDir()
+	importer := CCLFImporter{
+		logger:      logger,
+		mountPath:   mountDir,
+		syncTimeout: 3 * time.Second,
+	}
+
+	srcZip := filepath.Join(basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
+	zipBytes, err := os.ReadFile(srcZip)
+	assert.NoError(t, err)
+
+	destZip := filepath.Clean(filepath.Join(mountDir, "test.zip"))
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		_ = os.WriteFile(destZip, zipBytes, 0600) // #nosec G703 -- Test file written to temp directory
+	}()
+
+	reader, closer, err := importer.openZipArchive(context.Background(), "test.zip")
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.NotNil(t, closer)
+	closer()
+}

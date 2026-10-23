@@ -56,20 +56,29 @@ type cclfFileValidator struct {
 
 // Manages the import process for CCLF files from a given source
 type CCLFImporter struct {
-	logger     logrus.FieldLogger
-	fileClient bcdaaws.CustomS3Client
-	pgxPool    *pgxv5Pool.Pool
-	pgxRepo    *postgres.PgxRepository
-	mountPath  string
+	logger      logrus.FieldLogger
+	fileClient  bcdaaws.CustomS3Client
+	pgxPool     *pgxv5Pool.Pool
+	pgxRepo     *postgres.PgxRepository
+	mountPath   string
+	syncTimeout time.Duration
 }
 
 func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
+	timeout := 30 * time.Second
+	if timeoutStr := conf.GetEnv("MOUNT_SYNC_TIMEOUT_SECONDS"); timeoutStr != "" {
+		if t, err := strconv.Atoi(timeoutStr); err == nil && t >= 0 {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+
 	return CCLFImporter{
-		logger:     logger,
-		fileClient: fileClient,
-		pgxPool:    pgxPool,
-		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
-		mountPath:  conf.GetEnv("MOUNT_PATH"),
+		logger:      logger,
+		fileClient:  fileClient,
+		pgxPool:     pgxPool,
+		pgxRepo:     postgres.NewPgxRepositoryWithPool(pgxPool),
+		mountPath:   conf.GetEnv("MOUNT_PATH"),
+		syncTimeout: timeout,
 	}
 }
 
@@ -435,29 +444,52 @@ func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string
 	if key == "" {
 		key = filePath
 	}
-	targetPath := filepath.Join(mountPath, key)
 
-	if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
-		trimmedMount := strings.Trim(mountPath, "/")
-		trimmedKey := strings.Trim(key, "/")
+	resolvePath := func() (string, bool) {
+		target := filepath.Join(mountPath, key)
+		if _, err := os.Stat(target); err == nil {
+			return target, true
+		}
 
-		if strings.HasPrefix(trimmedKey, trimmedMount) {
-			rel := strings.TrimPrefix(trimmedKey, trimmedMount)
-			candidate := filepath.Join(mountPath, rel)
-			if _, errRel := os.Stat(candidate); errRel == nil {
-				targetPath = candidate
+		// Fallbacks for unit tests where filePath or key is a local filesystem path
+		absKey := "/" + strings.TrimPrefix(key, "/")
+		if _, err := os.Stat(filepath.Join(mountPath, filePath)); err == nil {
+			return filepath.Join(mountPath, filePath), true
+		} else if _, err := os.Stat(absKey); err == nil {
+			return absKey, true
+		} else if _, err := os.Stat(filePath); err == nil {
+			return filePath, true
+		}
+
+		return target, false
+	}
+
+	targetPath, found := resolvePath()
+	if !found {
+		timeout := importer.syncTimeout
+		if timeout == 0 {
+			if timeoutStr := conf.GetEnv("MOUNT_SYNC_TIMEOUT_SECONDS"); timeoutStr != "" {
+				if t, err := strconv.Atoi(timeoutStr); err == nil && t >= 0 {
+					timeout = time.Duration(t) * time.Second
+				}
 			}
 		}
 
-		if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
-			if _, err2 := os.Stat(filepath.Join(mountPath, filePath)); err2 == nil {
-				targetPath = filepath.Join(mountPath, filePath)
-			} else if _, err3 := os.Stat(filePath); err3 == nil {
-				targetPath = filePath
-			} else if _, err4 := os.Stat("/" + trimmedKey); err4 == nil {
-				targetPath = "/" + trimmedKey
-			} else if _, err5 := os.Stat(key); err5 == nil {
-				targetPath = key
+		if timeout > 0 {
+			importer.logger.Infof("Waiting up to %v for file %s to sync to mount path...", timeout, targetPath)
+			deadline := time.Now().Add(timeout)
+			for time.Now().Before(deadline) {
+				select {
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				case <-time.After(1 * time.Second):
+				}
+
+				if p, ok := resolvePath(); ok {
+					targetPath = p
+					importer.logger.Infof("File %s appeared on mount path after sync wait", targetPath)
+					break
+				}
 			}
 		}
 	}
@@ -465,29 +497,6 @@ func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string
 	cleanPath := filepath.Clean(targetPath)
 	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
 	if err != nil {
-		// NOTE: Remove diagnostic inspection when PR is ready
-		importer.logger.Infof("Diagnostic: running as UID=%d GID=%d, checking mountPath=%s targetPath=%s", os.Getuid(), os.Getgid(), mountPath, targetPath)
-		if statInfo, statErr := os.Stat(targetPath); statErr != nil {
-			importer.logger.Infof("Diagnostic: os.Stat(%s) error: %v", targetPath, statErr)
-		} else {
-			importer.logger.Infof("Diagnostic: os.Stat(%s) succeeded: size=%d mode=%s", targetPath, statInfo.Size(), statInfo.Mode().String())
-		}
-
-		if entries, readErr := os.ReadDir(mountPath); readErr != nil {
-			importer.logger.Errorf("Diagnostic: failed to read mountPath %s: %v", mountPath, readErr)
-		} else {
-			importer.logger.Infof("Diagnostic: found %d entries in mountPath %s", len(entries), mountPath)
-			for _, e := range entries {
-				info, infoErr := e.Info()
-				if infoErr != nil {
-					importer.logger.Infof("Diagnostic mount entry: name=%s isDir=%v", e.Name(), e.IsDir())
-				} else {
-					importer.logger.Infof("Diagnostic mount entry: name=%s isDir=%v size=%d mode=%s",
-						e.Name(), e.IsDir(), info.Size(), info.Mode().String())
-				}
-			}
-		}
-
 		importer.logger.Errorf("Failed to open mounted zip archive %s: %v", targetPath, err)
 		return nil, nil, fmt.Errorf("failed to open zip archive %s: %w", targetPath, err)
 	}
