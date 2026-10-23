@@ -465,6 +465,29 @@ func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string
 	cleanPath := filepath.Clean(targetPath)
 	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
 	if err != nil {
+		// NOTE: Remove diagnostic inspection when PR is ready
+		importer.logger.Infof("Diagnostic: running as UID=%d GID=%d, checking mountPath=%s targetPath=%s", os.Getuid(), os.Getgid(), mountPath, targetPath)
+		if statInfo, statErr := os.Stat(targetPath); statErr != nil {
+			importer.logger.Infof("Diagnostic: os.Stat(%s) error: %v", targetPath, statErr)
+		} else {
+			importer.logger.Infof("Diagnostic: os.Stat(%s) succeeded: size=%d mode=%s", targetPath, statInfo.Size(), statInfo.Mode().String())
+		}
+
+		if entries, readErr := os.ReadDir(mountPath); readErr != nil {
+			importer.logger.Errorf("Diagnostic: failed to read mountPath %s: %v", mountPath, readErr)
+		} else {
+			importer.logger.Infof("Diagnostic: found %d entries in mountPath %s", len(entries), mountPath)
+			for _, e := range entries {
+				info, infoErr := e.Info()
+				if infoErr != nil {
+					importer.logger.Infof("Diagnostic mount entry: name=%s isDir=%v", e.Name(), e.IsDir())
+				} else {
+					importer.logger.Infof("Diagnostic mount entry: name=%s isDir=%v size=%d mode=%s",
+						e.Name(), e.IsDir(), info.Size(), info.Mode().String())
+				}
+			}
+		}
+
 		importer.logger.Errorf("Failed to open mounted zip archive %s: %v", targetPath, err)
 		return nil, nil, fmt.Errorf("failed to open zip archive %s: %w", targetPath, err)
 	}
