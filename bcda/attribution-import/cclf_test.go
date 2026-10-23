@@ -757,3 +757,25 @@ func TestOpenZipArchive_ValidZip(t *testing.T) {
 	// Ensure closer runs cleanly
 	closer()
 }
+
+func TestOpenZipArchive_BucketAndFullPathKey(t *testing.T) {
+	logger := logrus.New()
+	basePath, cleanup := testUtils.CopyToTemporaryDirectory(t, "../../shared_files/")
+	defer cleanup()
+
+	importer := CCLFImporter{
+		logger:    logger,
+		mountPath: basePath,
+	}
+
+	// Simulates an S3 key formatted with the full basePath, e.g. "my-bucket/tmp/12345/cclf/archives/valid/..."
+	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
+	s3Uri := "some-bucket" + filepath.Join(basePath, relZipPath)
+	reader, closer, err := importer.openZipArchive(context.Background(), s3Uri)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.NotNil(t, closer)
+	assert.NotEmpty(t, reader.File)
+
+	closer()
+}

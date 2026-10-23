@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
@@ -437,10 +438,27 @@ func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string
 	targetPath := filepath.Join(mountPath, key)
 
 	if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
-		if _, err2 := os.Stat(filepath.Join(mountPath, filePath)); err2 == nil {
-			targetPath = filepath.Join(mountPath, filePath)
-		} else if _, err3 := os.Stat(filePath); err3 == nil {
-			targetPath = filePath
+		trimmedMount := strings.Trim(mountPath, "/")
+		trimmedKey := strings.Trim(key, "/")
+
+		if strings.HasPrefix(trimmedKey, trimmedMount) {
+			rel := strings.TrimPrefix(trimmedKey, trimmedMount)
+			candidate := filepath.Join(mountPath, rel)
+			if _, errRel := os.Stat(candidate); errRel == nil {
+				targetPath = candidate
+			}
+		}
+
+		if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
+			if _, err2 := os.Stat(filepath.Join(mountPath, filePath)); err2 == nil {
+				targetPath = filepath.Join(mountPath, filePath)
+			} else if _, err3 := os.Stat(filePath); err3 == nil {
+				targetPath = filePath
+			} else if _, err4 := os.Stat("/" + trimmedKey); err4 == nil {
+				targetPath = "/" + trimmedKey
+			} else if _, err5 := os.Stat(key); err5 == nil {
+				targetPath = key
+			}
 		}
 	}
 
