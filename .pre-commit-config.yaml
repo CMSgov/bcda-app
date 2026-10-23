@@ -4,10 +4,10 @@ repos:
     hooks:
       - id: gitleaks
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.13.2
+    rev: v2.15.0
     hooks:
       - id: golangci-lint
-        language_version: 1.27.1
+        language_version: 1.27.3
         args: ['-v']
   - repo: https://github.com/tofuutils/pre-commit-opentofu
     rev: v2.2.2
