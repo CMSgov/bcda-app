@@ -81,15 +81,6 @@ func initHandler(ctx context.Context) (*AttributionImportHandler, error) {
 		return nil, err
 	}
 
-	mountPath := conf.GetEnv("MOUNT_PATH")
-	if mountPath != "" {
-		if count, err := bcdaaws.ProbeMountPath(mountPath); err != nil {
-			logger.Warnf("S3 Files mount probe at %s failed: %v", mountPath, err)
-		} else {
-			logger.Infof("S3 Files mount probe at %s succeeded: found %d items", mountPath, count)
-		}
-	}
-
 	handler := &AttributionImportHandler{
 		logger:     logger,
 		pool:       pool,

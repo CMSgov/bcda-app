@@ -7,8 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
@@ -20,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 type cclfZipMetadata struct {
@@ -53,18 +56,29 @@ type cclfFileValidator struct {
 
 // Manages the import process for CCLF files from a given source
 type CCLFImporter struct {
-	logger     logrus.FieldLogger
-	fileClient bcdaaws.CustomS3Client
-	pgxPool    *pgxv5Pool.Pool
-	pgxRepo    *postgres.PgxRepository
+	logger      logrus.FieldLogger
+	fileClient  bcdaaws.CustomS3Client
+	pgxPool     *pgxv5Pool.Pool
+	pgxRepo     *postgres.PgxRepository
+	mountPath   string
+	syncTimeout time.Duration
 }
 
 func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
+	timeout := 30 * time.Second
+	if timeoutStr := conf.GetEnv("MOUNT_SYNC_TIMEOUT_SECONDS"); timeoutStr != "" {
+		if t, err := strconv.Atoi(timeoutStr); err == nil && t >= 0 {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+
 	return CCLFImporter{
-		logger:     logger,
-		fileClient: fileClient,
-		pgxPool:    pgxPool,
-		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
+		logger:      logger,
+		fileClient:  fileClient,
+		pgxPool:     pgxPool,
+		pgxRepo:     postgres.NewPgxRepositoryWithPool(pgxPool),
+		mountPath:   conf.GetEnv("MOUNT_PATH"),
+		syncTimeout: timeout,
 	}
 }
 
@@ -415,13 +429,83 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 }
 
 func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
-	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.fileClient, filePath)
+	mountPath := importer.mountPath
+	if mountPath == "" {
+		mountPath = conf.GetEnv("MOUNT_PATH")
+	}
 
-	if err != nil {
-		importer.logger.Errorf("Failed to download %s", filePath)
+	if mountPath == "" {
+		err := errors.New("MOUNT_PATH environment variable is required")
+		importer.logger.Error(err)
 		return nil, nil, err
 	}
 
-	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
-	return reader, func() {}, err
+	_, key := bcdaaws.ParseS3Uri(filePath)
+	if key == "" {
+		key = filePath
+	}
+
+	resolvePath := func() (string, bool) {
+		target := filepath.Join(mountPath, key)
+		if _, err := os.Stat(target); err == nil {
+			return target, true
+		}
+
+		// Fallbacks for unit tests where filePath or key is a local filesystem path
+		absKey := "/" + strings.TrimPrefix(key, "/")
+		if _, err := os.Stat(filepath.Join(mountPath, filePath)); err == nil {
+			return filepath.Join(mountPath, filePath), true
+		} else if _, err := os.Stat(absKey); err == nil {
+			return absKey, true
+		} else if _, err := os.Stat(filePath); err == nil {
+			return filePath, true
+		}
+
+		return target, false
+	}
+
+	targetPath, found := resolvePath()
+	if !found {
+		timeout := importer.syncTimeout
+		if timeout == 0 {
+			if timeoutStr := conf.GetEnv("MOUNT_SYNC_TIMEOUT_SECONDS"); timeoutStr != "" {
+				if t, err := strconv.Atoi(timeoutStr); err == nil && t >= 0 {
+					timeout = time.Duration(t) * time.Second
+				}
+			}
+		}
+
+		if timeout > 0 {
+			importer.logger.Infof("Waiting up to %v for file %s to sync to mount path...", timeout, targetPath)
+			deadline := time.Now().Add(timeout)
+			for time.Now().Before(deadline) {
+				select {
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				case <-time.After(1 * time.Second):
+				}
+
+				if p, ok := resolvePath(); ok {
+					targetPath = p
+					importer.logger.Infof("File %s appeared on mount path after sync wait", targetPath)
+					break
+				}
+			}
+		}
+	}
+
+	cleanPath := filepath.Clean(targetPath)
+	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
+	if err != nil {
+		importer.logger.Errorf("Failed to open mounted zip archive %s: %v", targetPath, err)
+		return nil, nil, fmt.Errorf("failed to open zip archive %s: %w", targetPath, err)
+	}
+
+	cleanup := func() {
+		if err := zipReadCloser.Close(); err != nil {
+			importer.logger.Warnf("Failed to close zip archive %s: %v", targetPath, err)
+		}
+	}
+
+	return &zipReadCloser.Reader, cleanup, nil
 }
