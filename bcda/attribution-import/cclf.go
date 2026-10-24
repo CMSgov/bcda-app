@@ -56,29 +56,20 @@ type cclfFileValidator struct {
 
 // Manages the import process for CCLF files from a given source
 type CCLFImporter struct {
-	logger      logrus.FieldLogger
-	fileClient  bcdaaws.CustomS3Client
-	pgxPool     *pgxv5Pool.Pool
-	pgxRepo     *postgres.PgxRepository
-	mountPath   string
-	syncTimeout time.Duration
+	logger     logrus.FieldLogger
+	fileClient bcdaaws.CustomS3Client
+	pgxPool    *pgxv5Pool.Pool
+	pgxRepo    *postgres.PgxRepository
+	mountPath  string
 }
 
 func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
-	timeout := 30 * time.Second
-	if timeoutStr := conf.GetEnv("MOUNT_SYNC_TIMEOUT_SECONDS"); timeoutStr != "" {
-		if t, err := strconv.Atoi(timeoutStr); err == nil && t >= 0 {
-			timeout = time.Duration(t) * time.Second
-		}
-	}
-
 	return CCLFImporter{
-		logger:      logger,
-		fileClient:  fileClient,
-		pgxPool:     pgxPool,
-		pgxRepo:     postgres.NewPgxRepositoryWithPool(pgxPool),
-		mountPath:   conf.GetEnv("MOUNT_PATH"),
-		syncTimeout: timeout,
+		logger:     logger,
+		fileClient: fileClient,
+		pgxPool:    pgxPool,
+		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
+		mountPath:  conf.GetEnv("MOUNT_PATH"),
 	}
 }
 
@@ -445,54 +436,26 @@ func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string
 		key = filePath
 	}
 
-	resolvePath := func() (string, bool) {
+	resolvePath := func() string {
 		target := filepath.Join(mountPath, key)
 		if _, err := os.Stat(target); err == nil {
-			return target, true
+			return target
 		}
 
 		// Fallbacks for unit tests where filePath or key is a local filesystem path
 		absKey := "/" + strings.TrimPrefix(key, "/")
 		if _, err := os.Stat(filepath.Join(mountPath, filePath)); err == nil {
-			return filepath.Join(mountPath, filePath), true
+			return filepath.Join(mountPath, filePath)
 		} else if _, err := os.Stat(absKey); err == nil {
-			return absKey, true
+			return absKey
 		} else if _, err := os.Stat(filePath); err == nil {
-			return filePath, true
+			return filePath
 		}
 
-		return target, false
+		return target
 	}
 
-	targetPath, found := resolvePath()
-	if !found {
-		timeout := importer.syncTimeout
-		if timeout == 0 {
-			if timeoutStr := conf.GetEnv("MOUNT_SYNC_TIMEOUT_SECONDS"); timeoutStr != "" {
-				if t, err := strconv.Atoi(timeoutStr); err == nil && t >= 0 {
-					timeout = time.Duration(t) * time.Second
-				}
-			}
-		}
-
-		if timeout > 0 {
-			importer.logger.Infof("Waiting up to %v for file %s to sync to mount path...", timeout, targetPath)
-			deadline := time.Now().Add(timeout)
-			for time.Now().Before(deadline) {
-				select {
-				case <-ctx.Done():
-					return nil, nil, ctx.Err()
-				case <-time.After(1 * time.Second):
-				}
-
-				if p, ok := resolvePath(); ok {
-					targetPath = p
-					importer.logger.Infof("File %s appeared on mount path after sync wait", targetPath)
-					break
-				}
-			}
-		}
-	}
+	targetPath := resolvePath()
 
 	cleanPath := filepath.Clean(targetPath)
 	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
