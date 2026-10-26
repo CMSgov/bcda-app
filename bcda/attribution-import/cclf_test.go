@@ -394,7 +394,7 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 }
 
 func buildZipMetadata(t *testing.T, importer CCLFImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
-	zipReader, zipCloser, err := importer.openZipArchive(context.Background(), zipName)
+	zipReader, zipCloser, err := importer.openZipArchive(zipName)
 	assert.NoError(t, err)
 
 	metadata := cclfZipMetadata{
@@ -720,7 +720,7 @@ func TestOpenZipArchive_MissingMountPath(t *testing.T) {
 		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
 	})
 
-	_, _, err := importer.openZipArchive(context.Background(), "some/bucket/file.zip")
+	_, _, err := importer.openZipArchive("some/bucket/file.zip")
 	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
 }
 
@@ -732,7 +732,7 @@ func TestOpenZipArchive_FileNotFound(t *testing.T) {
 		mountPath: mountDir,
 	}
 
-	_, _, err := importer.openZipArchive(context.Background(), "bucket/nonexistent/file.zip")
+	_, _, err := importer.openZipArchive("bucket/nonexistent/file.zip")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to open zip archive")
 }
@@ -748,7 +748,7 @@ func TestOpenZipArchive_ValidZip(t *testing.T) {
 	}
 
 	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
-	reader, closer, err := importer.openZipArchive(context.Background(), relZipPath)
+	reader, closer, err := importer.openZipArchive(relZipPath)
 	assert.NoError(t, err)
 	assert.NotNil(t, reader)
 	assert.NotNil(t, closer)
@@ -771,7 +771,7 @@ func TestOpenZipArchive_BucketAndFullPathKey(t *testing.T) {
 	// Simulates an S3 key formatted with the full basePath, e.g. "my-bucket/tmp/12345/cclf/archives/valid/..."
 	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
 	s3Uri := "some-bucket" + filepath.Join(basePath, relZipPath)
-	reader, closer, err := importer.openZipArchive(context.Background(), s3Uri)
+	reader, closer, err := importer.openZipArchive(s3Uri)
 	assert.NoError(t, err)
 	assert.NotNil(t, reader)
 	assert.NotNil(t, closer)

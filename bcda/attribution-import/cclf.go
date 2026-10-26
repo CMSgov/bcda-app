@@ -319,7 +319,7 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 			continue
 		}
 
-		zipReader, zipCloser, err := importer.openZipArchive(ctx, filepath.Join(bucket, *obj.Key))
+		zipReader, zipCloser, err := importer.openZipArchive(filepath.Join(bucket, *obj.Key))
 		if err != nil {
 			failed++
 			importer.logger.Errorf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
@@ -419,7 +419,7 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 	return deletedCount, nil
 }
 
-func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
+func (importer CCLFImporter) openZipArchive(filePath string) (*zip.Reader, func(), error) {
 	mountPath := importer.mountPath
 	if mountPath == "" {
 		mountPath = conf.GetEnv("MOUNT_PATH")
@@ -460,7 +460,6 @@ func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string
 	cleanPath := filepath.Clean(targetPath)
 	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
 	if err != nil {
-		importer.logger.Errorf("Failed to open mounted zip archive %s: %v", targetPath, err)
 		return nil, nil, fmt.Errorf("failed to open zip archive %s: %w", targetPath, err)
 	}
 
