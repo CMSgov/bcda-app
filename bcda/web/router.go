@@ -86,23 +86,26 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 			middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, // rlm.CheckConcurrentJobs,
 		}
 		var JobRateLimit = []func(http.Handler) http.Handler{
-			rlm.CheckConcurrentJobs, middleware.ValidateSharedExport,
+			rlm.CheckConcurrentJobs,
 		}
+		var SharedExport = []func(http.Handler) http.Handler{
+			middleware.ValidateSharedExport, middleware.HasSharedExportAccess(cfg),
+		}
+
+		dt := conf.GetEnv("DEPLOYMENT_TARGET")
 		r.Route("/api/v3", func(r chi.Router) {
-			r.With(append(commonAuth, v3RequestValidators...)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
-			r.With(append(commonAuth, v3RequestValidators...)...).Get("/Group/{groupId}/$export", apiV3.BulkGroupRequest)
+			r.With(slices.Concat(commonAuth, JobRateLimit, v3RequestValidators)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
+			r.With(slices.Concat(commonAuth, JobRateLimit, v3RequestValidators)...).Get("/Group/{groupId}/$export", apiV3.BulkGroupRequest)
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Get(constants.JOBIDPath, apiV3.JobStatus)
 			r.With(append(commonAuth, v3RequestValidators...)...).Get("/jobs", apiV3.JobsStatus)
-			// TODO limit shared export models to deletejob and shared export
+			// TODO: (BCDA-10498) limit shared export models to deletejob and shared export
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Delete(constants.JOBIDPath, apiV3.DeleteJob)
 			r.With(commonAuth...).Get("/attribution_status", apiV3.AttributionStatus)
-			r.With(slices.Concat(commonAuth, v3RequestValidators, JobRateLimit)...).Post("/shared_export", apiV3.SharedExport)
+			if (dt != "prod") && (dt != "sandbox") {
+				r.With(slices.Concat(commonAuth, v3RequestValidators, SharedExport, JobRateLimit)...).Post("/shared_export", apiV3.SharedExport)
+			}
 			r.Get("/metadata", apiV3.Metadata)
 		})
-		// TODO: feature flag, middleware, auth needed here
-		// if conf.GetEnv("ENV") != "prod" && conf.GetEnv("ENV") != "sandbox" {
-		// 	r.With().Post("/shared_export", apiV3.SharedExport)
-		// }
 	}
 
 	r.Get("/_version", apiV1.GetVersion)

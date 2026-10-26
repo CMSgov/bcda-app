@@ -14,6 +14,7 @@ import (
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -227,8 +228,14 @@ func HasSystemTypeTag(subquery fhir.TypeFilterSubquery) bool {
 // These paramters can be retrieved by calling RequestParametersFromContext.
 func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw, version := getResponseWriterFromRequestPath(w, r)
-		if rw == nil {
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+			return
+		}
+
+		v, err := getVersion(r.URL.Path)
+		if err != nil {
 			return
 		}
 
@@ -252,14 +259,14 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		}
 
 		// Validate type filter for v3
-		typeFilter, valid := validateTypeFilterParameter(r, rw, w, version)
+		typeFilter, valid := validateTypeFilterParameter(r, rw, w, v)
 		if !valid {
 			return
 		}
 
 		// Build request parameters
 		rp := RequestParameters{
-			Version:       version,
+			Version:       v,
 			RequestURL:    r.URL.String(),
 			Since:         sinceDate,
 			ResourceTypes: resourceTypes,
@@ -276,8 +283,9 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 		ctx := r.Context()
 		h := r.Header
 
-		rw, _ := getResponseWriterFromRequestPath(w, r)
-		if rw == nil {
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
 			return
 		}
 
@@ -396,34 +404,15 @@ func getRespWriter(version string) (fhirResponseWriter, error) {
 	}
 }
 
-// TODO
-func getResponseWriterFromRequestPath(w http.ResponseWriter, r *http.Request) (fhirResponseWriter, string) {
-	version, err := getVersion(r.URL.Path)
-	if err != nil {
-		logger := log.GetCtxLogger(r.Context())
-		logger.WithField("resp_status", http.StatusBadRequest).Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, ""
-	}
-	rw, err := getRespWriter(version)
-	if err != nil {
-		logger := log.GetCtxLogger(r.Context())
-		logger.WithField("resp_status", http.StatusBadRequest).Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, ""
-	}
-
-	return rw, version
-}
-
-func GetRespWriter(path string) fhirResponseWriter {
+// non auth resp writers should return an error on an invalid version
+func GetRespWriter(path string) (fhirResponseWriter, error) {
 	if strings.Contains(path, "/v1/") {
-		return responseutils.NewFhirResponseWriter()
+		return responseutils.NewFhirResponseWriter(), nil
 	} else if strings.Contains(path, "/v2/") {
-		return responseutilsv2.NewFhirResponseWriter()
+		return responseutilsv2.NewFhirResponseWriter(), nil
 	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
-		return responseutilsv3.NewFhirResponseWriter()
+		return responseutilsv3.NewFhirResponseWriter(), nil
 	} else {
-		return responseutils.NewFhirResponseWriter()
+		return responseutils.NewFhirResponseWriter(), errors.New("invalid or missing version")
 	}
 }

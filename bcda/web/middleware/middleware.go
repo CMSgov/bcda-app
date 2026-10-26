@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -61,11 +60,44 @@ func SecurityHeader(next http.Handler) http.Handler {
 	})
 }
 
+func HasSharedExportAccess(cfg *service.Config) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ad, ok := handleAuthData(r)
+			if !ok {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			rw, err := GetRespWriter(r.URL.Path)
+			if err != nil {
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+				return
+			}
+			if cfg.IsSharedExportModel(ad.ACOID) {
+				ctx, _ := log.WriteWarnWithFields(
+					r.Context(),
+					fmt.Sprintf("%s: Failed to complete request, CMSID %s is not enabled", responseutils.UnauthorizedErr, ad.CMSID),
+					logrus.Fields{"resp_status": http.StatusUnauthorized},
+				)
+				rw.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.InternalErr, "")
+			}
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
 func ValidateSharedExport(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := GetRespWriter(r.URL.Path)
+
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+			return
+		}
 		var payload SharedExportBody
-		err := json.NewDecoder(r.Body).Decode(&payload)
+		err = json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			http.Error(w, "invalid JSON payload", http.StatusBadRequest)
@@ -105,8 +137,9 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			rw, _ := getResponseWriterFromRequestPath(w, r)
-			if rw == nil {
+			rw, err := GetRespWriter(r.URL.Path)
+			if err != nil {
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
 				return
 			}
 
@@ -135,12 +168,13 @@ func V1V2DenyControl(cfg *service.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			rw, _ := getResponseWriterFromRequestPath(w, r)
-			if rw == nil {
+			rw, err := GetRespWriter(r.URL.Path)
+			if err != nil {
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
 				return
 			}
 
-			if isACOV1V2DeniedAccess(cfg, ad.CMSID) {
+			if cfg.IsACOV1V2DeniedAccess(ad.CMSID) {
 				ctx, _ := log.WriteWarnWithFields(
 					r.Context(),
 					fmt.Sprintf("%s: Failed to begin v1/v2 request, CMSID %s does not have v1/v2 access", responseutils.UnauthorizedErr, ad.CMSID),
@@ -170,15 +204,4 @@ func handleAuthData(r *http.Request) (auth.AuthData, bool) {
 	}
 
 	return ad, true
-}
-
-func isACOV1V2DeniedAccess(cfg *service.Config, ACOID string) bool {
-	for _, str := range cfg.V1V2DenyRegexes {
-		regex := regexp.MustCompile(str)
-		if regex.MatchString(ACOID) {
-			return true
-		}
-	}
-
-	return false
 }
