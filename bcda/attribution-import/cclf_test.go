@@ -708,6 +708,35 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	assert.Nil(err)
 }
 
+func (s *CCLFTestSuite) TestOpenZipArchive_ValidZip() {
+	assert := assert.New(s.T())
+
+	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
+	reader, closer, err := s.importer.openZipArchive(relZipPath)
+	assert.NoError(err)
+	assert.NotNil(reader)
+	assert.NotNil(closer)
+	assert.NotEmpty(reader.File)
+
+	// Ensure closer runs cleanly
+	closer()
+}
+
+func (s *CCLFTestSuite) TestOpenZipArchive_BucketAndFullPathKey() {
+	assert := assert.New(s.T())
+
+	// Simulates an S3 key formatted with the full basePath, e.g. "my-bucket/tmp/12345/cclf/archives/valid/..."
+	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
+	s3Uri := "some-bucket" + filepath.Join(s.basePath, relZipPath)
+	reader, closer, err := s.importer.openZipArchive(s3Uri)
+	assert.NoError(err)
+	assert.NotNil(reader)
+	assert.NotNil(closer)
+	assert.NotEmpty(reader.File)
+
+	closer()
+}
+
 func TestOpenZipArchive_MissingMountPath(t *testing.T) {
 	logger := logrus.New()
 	importer := CCLFImporter{
@@ -754,47 +783,4 @@ func TestOpenZipArchive_FileNotFound(t *testing.T) {
 	_, _, err := importer.openZipArchive("bucket/nonexistent/file.zip")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to open zip archive")
-}
-
-func TestOpenZipArchive_ValidZip(t *testing.T) {
-	logger := logrus.New()
-	basePath, cleanup := testUtils.CopyToTemporaryDirectory(t, "../../shared_files/")
-	defer cleanup()
-
-	importer := CCLFImporter{
-		logger:    logger,
-		mountPath: basePath,
-	}
-
-	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
-	reader, closer, err := importer.openZipArchive(relZipPath)
-	assert.NoError(t, err)
-	assert.NotNil(t, reader)
-	assert.NotNil(t, closer)
-	assert.NotEmpty(t, reader.File)
-
-	// Ensure closer runs cleanly
-	closer()
-}
-
-func TestOpenZipArchive_BucketAndFullPathKey(t *testing.T) {
-	logger := logrus.New()
-	basePath, cleanup := testUtils.CopyToTemporaryDirectory(t, "../../shared_files/")
-	defer cleanup()
-
-	importer := CCLFImporter{
-		logger:    logger,
-		mountPath: basePath,
-	}
-
-	// Simulates an S3 key formatted with the full basePath, e.g. "my-bucket/tmp/12345/cclf/archives/valid/..."
-	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
-	s3Uri := "some-bucket" + filepath.Join(basePath, relZipPath)
-	reader, closer, err := importer.openZipArchive(s3Uri)
-	assert.NoError(t, err)
-	assert.NotNil(t, reader)
-	assert.NotNil(t, closer)
-	assert.NotEmpty(t, reader.File)
-
-	closer()
 }
