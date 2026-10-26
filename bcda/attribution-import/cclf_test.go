@@ -724,6 +724,25 @@ func TestOpenZipArchive_MissingMountPath(t *testing.T) {
 	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
 }
 
+func TestLoadCclfFiles_MissingMountPath(t *testing.T) {
+	logger := logrus.New()
+	importer := CCLFImporter{
+		logger:    logger,
+		mountPath: "",
+	}
+	origMount := conf.GetEnv("MOUNT_PATH")
+	_ = conf.SetEnv(t, "MOUNT_PATH", "")
+	t.Cleanup(func() {
+		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
+	})
+
+	cclfMap, skipped, failure, err := importer.loadCclfFiles(context.Background(), "some/bucket")
+	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
+	assert.Equal(t, 0, skipped)
+	assert.Equal(t, 0, failure)
+	assert.Empty(t, cclfMap)
+}
+
 func TestOpenZipArchive_FileNotFound(t *testing.T) {
 	logger := logrus.New()
 	mountDir := t.TempDir()
