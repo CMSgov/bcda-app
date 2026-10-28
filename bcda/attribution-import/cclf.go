@@ -438,30 +438,30 @@ func (importer CCLFImporter) getMountPath() (string, error) {
 	return mountPath, nil
 }
 
+func resolveArchivePath(mountPath, key string) string {
+	target := filepath.Join(mountPath, key)
+	if _, err := os.Stat(target); err == nil {
+		return target
+	}
+
+	// Fallbacks for unit tests where key is a local filesystem path
+	absKey := "/" + strings.TrimPrefix(key, "/")
+	if _, err := os.Stat(absKey); err == nil {
+		return absKey
+	} else if _, err := os.Stat(key); err == nil {
+		return key
+	}
+
+	return target
+}
+
 func (importer CCLFImporter) openZipArchive(key string) (*zip.Reader, func(), error) {
 	mountPath, err := importer.getMountPath()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resolvePath := func() string {
-		target := filepath.Join(mountPath, key)
-		if _, err := os.Stat(target); err == nil {
-			return target
-		}
-
-		// Fallbacks for unit tests where key is a local filesystem path
-		absKey := "/" + strings.TrimPrefix(key, "/")
-		if _, err := os.Stat(absKey); err == nil {
-			return absKey
-		} else if _, err := os.Stat(key); err == nil {
-			return key
-		}
-
-		return target
-	}
-
-	targetPath := resolvePath()
+	targetPath := resolveArchivePath(mountPath, key)
 
 	cleanPath := filepath.Clean(targetPath)
 	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input

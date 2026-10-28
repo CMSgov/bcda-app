@@ -769,3 +769,32 @@ func TestOpenZipArchive_FileNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to open zip archive")
 }
+
+func TestResolveArchivePath(t *testing.T) {
+	mountDir := t.TempDir()
+
+	t.Run("resolves key within mount path", func(t *testing.T) {
+		subDir := filepath.Join(mountDir, "sub")
+		assert.NoError(t, os.MkdirAll(subDir, 0750))
+		filePath := filepath.Join(subDir, "test.zip")
+		assert.NoError(t, os.WriteFile(filePath, []byte("data"), 0600))
+
+		resolved := resolveArchivePath(mountDir, "sub/test.zip")
+		assert.Equal(t, filePath, resolved)
+	})
+
+	t.Run("resolves absolute path when outside mount path", func(t *testing.T) {
+		otherDir := t.TempDir()
+		filePath := filepath.Join(otherDir, "test.zip")
+		assert.NoError(t, os.WriteFile(filePath, []byte("data"), 0600))
+
+		resolved := resolveArchivePath(mountDir, filePath)
+		assert.Equal(t, filePath, resolved)
+	})
+
+	t.Run("returns target path when file does not exist", func(t *testing.T) {
+		expectedTarget := filepath.Join(mountDir, "missing/test.zip")
+		resolved := resolveArchivePath(mountDir, "missing/test.zip")
+		assert.Equal(t, expectedTarget, resolved)
+	})
+}
