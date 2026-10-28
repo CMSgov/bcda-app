@@ -971,7 +971,7 @@ func (s *WorkerTestSuite) TestValidateJob() {
 
 	j, err = w.ValidateJob(ctx, 2, validJob)
 	assert.Nil(s.T(), j)
-	assert.Contains(s.T(), err.Error(), "could not retrieve job key from database: some db error")
+	assert.Contains(s.T(), err.Error(), "could not retrieve job key from database, err: some db error")
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {
@@ -998,7 +998,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
 
 	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(fmt.Errorf("some db error"))
 	err := createJobKeys(s.logctx, r, keys, 1234)
-	assert.ErrorContains(s.T(), err, "Error creating job key records for filenames")
+	assert.ErrorContains(s.T(), err, "error creating job key records for filenames")
 	assert.ErrorContains(s.T(), err, keys[0].FileName)
 	assert.ErrorContains(s.T(), err, keys[1].FileName)
 	assert.ErrorContains(s.T(), err, "some db error")
@@ -1014,7 +1014,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys_JobCompleteError() {
 	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
 	r.On("GetJobByID", testUtils.CtxMatcher, uint(1)).Return(nil, fmt.Errorf("some db error"))
 	err := createJobKeys(s.logctx, r, keys, 1)
-	assert.ErrorContains(s.T(), err, "Failed retrieve job by id (Job 1)")
+	assert.ErrorContains(s.T(), err, "failed retrieve job by id (Job 1)")
 	assert.ErrorContains(s.T(), err, "some db error")
 }
 

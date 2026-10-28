@@ -92,7 +92,7 @@ func TestWork_Integration(t *testing.T) {
 	}()
 
 	id, _ := safecast.ToInt(job.ID)
-	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New()}
+	jobArgs := worker_types.JobEnqueueArgs{ID: id, ACOID: cmsID, BBBasePath: uuid.New(), ResourceType: "Patient"}
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {

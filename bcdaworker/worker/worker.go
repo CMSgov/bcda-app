@@ -133,25 +133,11 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 	}
 
 	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath)
-
-	// This is only run AFTER completion of all the collection
 	if err != nil {
 		logger.Error(fmt.Errorf("processJob: Error occurred when writing BFD Data to file, err: %w", err))
-
-		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
-		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
-		if errors.Is(err, repository.ErrJobNotUpdated) {
-			jobUpdateFailMessage := fmt.Errorf("processJob: Failed to update job (job cancelled): %w", err)
-			logger.Warn(jobUpdateFailMessage)
-			return jobUpdateFailMessage
-		} else if err != nil {
-			err = fmt.Errorf("Error updating the job status to %s, err: %w", models.JobStatusFailed, err)
-			logger.Error(err)
-			return err
-		} else {
-			logger.Error("Job failed. Job ID: ", job.ID)
-		}
+		return err
 	}
+
 	//move the files over
 	err = compressFiles(ctx, tempJobPath, stagingPath)
 	if err != nil {
