@@ -61,14 +61,18 @@ type CCLFImporter struct {
 	mountPath  string
 }
 
-func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
+func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) (CCLFImporter, error) {
+	mountPath := conf.GetEnv("MOUNT_PATH")
+	if mountPath == "" {
+		return CCLFImporter{}, errors.New("mount path is empty, either MOUNT_PATH env var is missing or improperly set")
+	}
 	return CCLFImporter{
 		logger:     logger,
 		fileClient: fileClient,
 		pgxPool:    pgxPool,
 		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
-		mountPath:  conf.GetEnv("MOUNT_PATH"),
-	}
+		mountPath:  mountPath,
+	}, nil
 }
 
 func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
@@ -293,10 +297,6 @@ func (m cclfFileMetadata) String() string {
 func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
 
-	if importer.mountPath == "" {
-		return cclfMap, skipped, failed, errors.New("MOUNT_PATH environment variable is required")
-	}
-
 	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := bcdaaws.ListFiles(ctx, importer.fileClient, bucket, prefix)
 	if err != nil {
@@ -423,10 +423,6 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 }
 
 func (importer CCLFImporter) openZipArchive(key string) (*zip.Reader, func(), error) {
-	if importer.mountPath == "" {
-		return nil, nil, errors.New("MOUNT_PATH environment variable is required")
-	}
-
 	targetPath := filepath.Join(importer.mountPath, key)
 
 	cleanPath := filepath.Clean(targetPath)

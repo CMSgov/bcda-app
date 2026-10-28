@@ -68,7 +68,9 @@ func (s *CCLFTestSuite) SetupTest() {
 
 	s.logger = testUtils.GetLogger(log.API)
 	client := &bcdaaws.ConfigurableMockS3Client{}
-	s.importer = NewCCLFImporter(s.logger, client, s.pool)
+	var err error
+	s.importer, err = NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -133,7 +135,8 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	assert := assert.New(s.T())
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer, err := NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
 	importer.mountPath = "/"
 
 	fpath := filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid")
@@ -151,7 +154,8 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	assert := assert.New(s.T())
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer, err := NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
 	importer.mountPath = "/"
 
 	s.T().Run("Directory with mixed file types + at least one bad file", func(t *testing.T) {
@@ -664,7 +668,8 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	acoID := "A0001"
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer, err := NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
 	importer.mountPath = "/"
 
 	fpath := filepath.Join(s.basePath, constants.CCLF8CompPath)
