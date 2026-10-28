@@ -134,6 +134,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
 	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer.mountPath = "/"
 
 	fpath := filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid")
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
@@ -151,6 +152,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
 	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer.mountPath = "/"
 
 	s.T().Run("Directory with mixed file types + at least one bad file", func(t *testing.T) {
 		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
@@ -458,6 +460,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles() {
 			importer := CCLFImporter{
 				logger:     s.importer.logger,
 				fileClient: client,
+				mountPath:  "/",
 			}
 
 			cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, bucketName+fpath)
@@ -511,6 +514,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_DuplicateCCLFs() {
 	importer := CCLFImporter{
 		logger:     s.importer.logger,
 		fileClient: client,
+		mountPath:  conf.GetEnv("MOUNT_PATH"),
 	}
 
 	cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, bucketName)
@@ -593,6 +597,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_InvalidPath() {
 	importer := CCLFImporter{
 		logger:     s.importer.logger,
 		fileClient: client,
+		mountPath:  s.basePath,
 	}
 
 	cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, "foo")
@@ -638,6 +643,7 @@ func (s *CCLFTestSuite) TestMultipleFileTypes() {
 	importer := CCLFImporter{
 		logger:     s.importer.logger,
 		fileClient: client,
+		mountPath:  conf.GetEnv("MOUNT_PATH"),
 	}
 
 	m, skipped, f, err := importer.loadCclfFiles(ctx, bucketName)
@@ -659,6 +665,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
 	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer.mountPath = "/"
 
 	fpath := filepath.Join(s.basePath, constants.CCLF8CompPath)
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
