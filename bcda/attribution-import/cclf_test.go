@@ -722,21 +722,6 @@ func (s *CCLFTestSuite) TestOpenZipArchive_ValidZip() {
 	closer()
 }
 
-func (s *CCLFTestSuite) TestOpenZipArchive_BucketAndFullPathKey() {
-	assert := assert.New(s.T())
-
-	// Simulates an S3 key formatted with the full basePath, e.g. "my-bucket/tmp/12345/cclf/archives/valid/..."
-	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
-	s3Uri := "some-bucket" + filepath.Join(s.basePath, relZipPath)
-	reader, closer, err := s.importer.openZipArchive(s3Uri)
-	assert.NoError(err)
-	assert.NotNil(reader)
-	assert.NotNil(closer)
-	assert.NotEmpty(reader.File)
-
-	closer()
-}
-
 func TestOpenZipArchive_MissingMountPath(t *testing.T) {
 	logger := logrus.New()
 	importer := CCLFImporter{

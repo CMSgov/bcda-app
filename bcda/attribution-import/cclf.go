@@ -325,7 +325,7 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 			continue
 		}
 
-		zipReader, zipCloser, err := importer.openZipArchive(filepath.Join(bucket, *obj.Key))
+		zipReader, zipCloser, err := importer.openZipArchive(*obj.Key)
 		if err != nil {
 			failed++
 			importer.logger.Errorf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
@@ -438,15 +438,10 @@ func (importer CCLFImporter) getMountPath() (string, error) {
 	return mountPath, nil
 }
 
-func (importer CCLFImporter) openZipArchive(filePath string) (*zip.Reader, func(), error) {
+func (importer CCLFImporter) openZipArchive(key string) (*zip.Reader, func(), error) {
 	mountPath, err := importer.getMountPath()
 	if err != nil {
 		return nil, nil, err
-	}
-
-	_, key := bcdaaws.ParseS3Uri(filePath)
-	if key == "" {
-		key = filePath
 	}
 
 	resolvePath := func() string {
@@ -455,14 +450,12 @@ func (importer CCLFImporter) openZipArchive(filePath string) (*zip.Reader, func(
 			return target
 		}
 
-		// Fallbacks for unit tests where filePath or key is a local filesystem path
+		// Fallbacks for unit tests where key is a local filesystem path
 		absKey := "/" + strings.TrimPrefix(key, "/")
-		if _, err := os.Stat(filepath.Join(mountPath, filePath)); err == nil {
-			return filepath.Join(mountPath, filePath)
-		} else if _, err := os.Stat(absKey); err == nil {
+		if _, err := os.Stat(absKey); err == nil {
 			return absKey
-		} else if _, err := os.Stat(filePath); err == nil {
-			return filePath
+		} else if _, err := os.Stat(key); err == nil {
+			return key
 		}
 
 		return target
