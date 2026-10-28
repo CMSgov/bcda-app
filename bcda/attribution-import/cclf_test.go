@@ -734,29 +734,17 @@ func (s *CCLFTestSuite) TestOpenZipArchive_ValidZip() {
 	closer()
 }
 
-func TestOpenZipArchive_MissingMountPath(t *testing.T) {
+func TestNewCCLFImporter_MissingMountPath(t *testing.T) {
+	origMount := conf.GetEnv("MOUNT_PATH")
+	_ = conf.SetEnv(t, "MOUNT_PATH", "")
+	t.Cleanup(func() {
+		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
+	})
+
 	logger := logrus.New()
-	importer := CCLFImporter{
-		logger:    logger,
-		mountPath: "",
-	}
-
-	_, _, err := importer.openZipArchive("some/file.zip")
-	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
-}
-
-func TestLoadCclfFiles_MissingMountPath(t *testing.T) {
-	logger := logrus.New()
-	importer := CCLFImporter{
-		logger:    logger,
-		mountPath: "",
-	}
-
-	cclfMap, skipped, failure, err := importer.loadCclfFiles(context.Background(), "some/bucket")
-	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
-	assert.Equal(t, 0, skipped)
-	assert.Equal(t, 0, failure)
-	assert.Empty(t, cclfMap)
+	client := &bcdaaws.ConfigurableMockS3Client{}
+	_, err := NewCCLFImporter(logger, client, nil)
+	assert.EqualError(t, err, "mount path is empty, either MOUNT_PATH env var is missing or improperly set")
 }
 
 func TestOpenZipArchive_FileNotFound(t *testing.T) {
