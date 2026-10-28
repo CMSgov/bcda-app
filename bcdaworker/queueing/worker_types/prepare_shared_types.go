@@ -4,14 +4,15 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/pborman/uuid"
 )
 
 const PrepareSharedJobKind = "PrepareSharedJob"
 
 type PrepareSharedJobArgs struct {
-	Job models.Job
-	// ACOID                  uuid.UUID
-	// CMSID                  string
+	Job       models.Job
+	ACOID     uuid.UUID
+	CMSID     string
 	PartnerID string
 	// CCLFFileNewID          uint
 	// CCLFFileOldID          uint

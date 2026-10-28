@@ -118,7 +118,7 @@ func (cfg *Config) ComputeFields() (err error) {
 	return nil
 }
 
-// TODO: this is a dupe of IsSupportedACO
+// TODO: (BCDA-10498) this could be moved under IsSupportedACO
 func (cfg *Config) IsACODisabled(CMSID string) bool {
 	for _, ACOcfg := range cfg.ACOConfigs {
 		if ACOcfg.patternExp.MatchString(CMSID) {

@@ -391,19 +391,6 @@ type fhirResponseWriter interface {
 	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
-func getRespWriter(version string) (fhirResponseWriter, error) {
-	switch version {
-	case "v1":
-		return responseutils.NewFhirResponseWriter(), nil
-	case "v2":
-		return responseutilsv2.NewFhirResponseWriter(), nil
-	case constants.V3Version:
-		return responseutilsv3.NewFhirResponseWriter(), nil
-	default:
-		return nil, fmt.Errorf("unexpected API version: %s", version)
-	}
-}
-
 // non auth resp writers should return an error on an invalid version
 func GetRespWriter(path string) (fhirResponseWriter, error) {
 	if strings.Contains(path, "/v1/") {

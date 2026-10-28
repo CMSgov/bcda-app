@@ -73,10 +73,11 @@ func HasSharedExportAccess(cfg *service.Config) func(next http.Handler) http.Han
 				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
 				return
 			}
-			if cfg.IsSharedExportModel(ad.ACOID) {
+
+			if !cfg.IsSharedExportModel(ad.CMSID) {
 				ctx, _ := log.WriteWarnWithFields(
 					r.Context(),
-					fmt.Sprintf("%s: Failed to complete request, CMSID %s is not enabled", responseutils.UnauthorizedErr, ad.CMSID),
+					fmt.Sprintf("failed to start shared job; CMSID %s does not have shared export access", ad.CMSID),
 					logrus.Fields{"resp_status": http.StatusUnauthorized},
 				)
 				rw.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.InternalErr, "")
@@ -96,25 +97,25 @@ func ValidateSharedExport(next http.Handler) http.Handler {
 			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
 			return
 		}
+
 		var payload SharedExportBody
 		err = json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			http.Error(w, "invalid JSON payload", http.StatusBadRequest)
+			log.API.Error("invalid JSON payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
 			return
 		}
 		defer r.Body.Close()
 
-		if payload.Since == "" || payload.Version == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			http.Error(w, "missing required fields in payload", http.StatusBadRequest)
+		if payload.Since == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
+			log.API.Error("missing required fields in payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "missing required fields in payload")
 			return
 		}
 
 		sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			http.Error(w, "invalid _since parameter", http.StatusBadRequest)
+			log.API.Error("invalid _since parameter")
 			rw.OpOutcome(r.Context(), w, http.StatusUnauthorized, responseutils.RequestErr, "")
 			return
 		}

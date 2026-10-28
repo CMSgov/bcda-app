@@ -300,29 +300,28 @@ func (s *RouterTestSuite) TestAttributionStatus() {
 }
 
 func (s *RouterTestSuite) TestSharedExportFlag() {
-	d := conf.GetEnv("DEPLOYMENT_TARGET")
+	d := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
 	r := s.apiRouter
 
 	// router setup with env var in suiteconfig; set it up with test deployment_targ and revert
 	defer func() {
-		conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", d)
+		conf.SetEnv(s.T(), "SHARED_ENDPOINT_ENABLED", d)
 		s.apiRouter = r
 	}()
 
 	tests := []struct {
 		name     string
-		env      string
+		enabled  string
 		respCode int
 	}{
-		{"test feature flag for shared_export non-prod", "sandbox", http.StatusNotFound},
-		{"test feature flag for shared_export non-prod", "prod", http.StatusNotFound},
-		{"test feature flag for shared_export prod", "test", http.StatusUnauthorized},
-		{"test feature flag for shared_export prod", "dev", http.StatusUnauthorized},
+
+		{"shared export endpoint enabled", "true", http.StatusUnauthorized},
+		{"shared export endpoint disabled", "foo", http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", tt.env)
+			conf.SetEnv(s.T(), "SHARED_ENDPOINT_ENABLED", tt.enabled)
 			s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
 			res := s.postAPIRoute("/api/v3/shared_export")
 			assert.Equal(s.T(), tt.respCode, res.StatusCode)

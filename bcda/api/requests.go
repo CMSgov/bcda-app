@@ -37,7 +37,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
-	mw "github.com/CMSgov/bcda-app/middleware"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -783,9 +782,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// TODO: (BCDA-10498) this is request validation, should be in middleware (move)
 func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
 	resourceTypes := parameters.ResourceTypes
-
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
 		if acoConfig, found := h.Svc.GetACOConfigForID(cmsID); found {
@@ -802,6 +801,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 	return resourceTypes
 }
 
+// TODO: (BCDA-10498) this is request validation, should be in middleware (move)
 func (h *Handler) validateResources(resourceTypes []string, cmsID string) error {
 	for _, resourceType := range resourceTypes {
 		dataType, ok := h.supportedDataTypes[resourceType]
@@ -934,6 +934,15 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	payload, ok := middleware.FromContextSharedExportPayload(ctx)
+	if !ok {
+		return
+	}
+
+	// TODO: (BCDA-10498) add validation for resource types, similar to bulk request
+	// (validateResources, getResourceTypes) should be moved to middleware,
+	// since they are handlers and part of request validation
+
 	acoID := uuid.Parse(ad.ACOID)
 
 	newJob := models.Job{
@@ -953,22 +962,18 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, ok := middleware.FromContextSharedExportPayload(ctx)
-	if ok == false {
-		return
-	}
-
+	// TODO: (BCDA-10498) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
-		Job: newJob,
-		// ACOID:                  acoID,
-		// CMSID:                  ad.CMSID,
+		Job:           newJob,
+		ACOID:         acoID,
+		CMSID:         ad.CMSID,
 		PartnerID:     payload.PartnerID,
 		BFDPath:       constants.V3Path,
 		ResourceTypes: payload.ResourceTypes,
 		Since:         payload.SinceDecoded,
 		CreationTime:  time.Now(),
-		TransactionID: ctx.Value(mw.CtxTransactionKey).(string),
-		MBIs:          payload.MBIs, // TODO: we save internal Ids for the cclf_beneficiaries into our river_job record for our normal job process, is it problematic to save mbis? if so we will need to save into the DB?  or pull from file later on?
+		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
+		MBIs:          payload.MBIs,
 		DataTypes:     payload.DataTypes,
 	}
 

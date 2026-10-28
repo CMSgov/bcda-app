@@ -81,7 +81,8 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 
 	if utils.GetEnvBool("VERSION_3_ENDPOINT_ACTIVE", true) {
 		apiV3 := v3.NewApiV3(db, pool)
-		// TODO: middleware can be consolidated, handlers listed as duplicates
+		// TODO: (BCDA-10498)  middleware can be consolidated, handlers listed as duplicates
+		// most of these could be declared outside the sub router one time
 		var v3RequestValidators = []func(http.Handler) http.Handler{
 			middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, // rlm.CheckConcurrentJobs,
 		}
@@ -92,16 +93,16 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 			middleware.ValidateSharedExport, middleware.HasSharedExportAccess(cfg),
 		}
 
-		dt := conf.GetEnv("DEPLOYMENT_TARGET")
+		se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
 		r.Route("/api/v3", func(r chi.Router) {
 			r.With(slices.Concat(commonAuth, JobRateLimit, v3RequestValidators)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
 			r.With(slices.Concat(commonAuth, JobRateLimit, v3RequestValidators)...).Get("/Group/{groupId}/$export", apiV3.BulkGroupRequest)
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Get(constants.JOBIDPath, apiV3.JobStatus)
 			r.With(append(commonAuth, v3RequestValidators...)...).Get("/jobs", apiV3.JobsStatus)
-			// TODO: (BCDA-10498) limit shared export models to deletejob and shared export
+			// TODO: (BCDA-10498) limit shared export models to deletejob and shared export (all middleware needs updating)
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Delete(constants.JOBIDPath, apiV3.DeleteJob)
 			r.With(commonAuth...).Get("/attribution_status", apiV3.AttributionStatus)
-			if (dt != "prod") && (dt != "sandbox") {
+			if se == "true" {
 				r.With(slices.Concat(commonAuth, v3RequestValidators, SharedExport, JobRateLimit)...).Post("/shared_export", apiV3.SharedExport)
 			}
 			r.Get("/metadata", apiV3.Metadata)
