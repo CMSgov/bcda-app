@@ -769,4 +769,3 @@ func TestOpenZipArchive_FileNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to open zip archive")
 }
-
