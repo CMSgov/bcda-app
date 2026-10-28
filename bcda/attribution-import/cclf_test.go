@@ -728,13 +728,8 @@ func TestOpenZipArchive_MissingMountPath(t *testing.T) {
 		logger:    logger,
 		mountPath: "",
 	}
-	origMount := conf.GetEnv("MOUNT_PATH")
-	_ = conf.SetEnv(t, "MOUNT_PATH", "")
-	t.Cleanup(func() {
-		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
-	})
 
-	_, _, err := importer.openZipArchive("some/bucket/file.zip")
+	_, _, err := importer.openZipArchive("some/file.zip")
 	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")
 }
 
@@ -744,11 +739,6 @@ func TestLoadCclfFiles_MissingMountPath(t *testing.T) {
 		logger:    logger,
 		mountPath: "",
 	}
-	origMount := conf.GetEnv("MOUNT_PATH")
-	_ = conf.SetEnv(t, "MOUNT_PATH", "")
-	t.Cleanup(func() {
-		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
-	})
 
 	cclfMap, skipped, failure, err := importer.loadCclfFiles(context.Background(), "some/bucket")
 	assert.EqualError(t, err, "MOUNT_PATH environment variable is required")

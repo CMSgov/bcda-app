@@ -293,9 +293,8 @@ func (m cclfFileMetadata) String() string {
 func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
 
-	if _, err = importer.getMountPath(); err != nil {
-		importer.logger.Error(err)
-		return cclfMap, skipped, failed, err
+	if importer.mountPath == "" {
+		return cclfMap, skipped, failed, errors.New("MOUNT_PATH environment variable is required")
 	}
 
 	bucket, prefix := bcdaaws.ParseS3Uri(path)
@@ -423,26 +422,12 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 	return deletedCount, nil
 }
 
-func (importer CCLFImporter) getMountPath() (string, error) {
-	mountPath := importer.mountPath
-	if mountPath == "" {
-		mountPath = conf.GetEnv("MOUNT_PATH")
-	}
-
-	if mountPath == "" {
-		return "", errors.New("MOUNT_PATH environment variable is required")
-	}
-
-	return mountPath, nil
-}
-
 func (importer CCLFImporter) openZipArchive(key string) (*zip.Reader, func(), error) {
-	mountPath, err := importer.getMountPath()
-	if err != nil {
-		return nil, nil, err
+	if importer.mountPath == "" {
+		return nil, nil, errors.New("MOUNT_PATH environment variable is required")
 	}
 
-	targetPath := filepath.Join(mountPath, key)
+	targetPath := filepath.Join(importer.mountPath, key)
 
 	cleanPath := filepath.Clean(targetPath)
 	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
