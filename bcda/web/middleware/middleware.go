@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,32 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: add body validation
-type SharedExportBody struct {
-	Since         string   `json:"since"`
-	Version       string   `json:"version"`
-	ResourceTypes []string `json:"resource_types"`
-	PartnerID     string   `json:"partner_id"`
-	DataTypes     []string `json:"data_types"`
-	MBIs          []string `json:"mbis"`
-	SinceDecoded  time.Time
-}
-
-// type to create context.Context key for the decoded SharedExportBody
-type CtxSharedExportPayloadType struct{}
-
-// context.Context key to get the SharedExportPayload from the request context
-
-type ctxSharedExportKey struct{}
-
-func WithSharedExportPayload(parent context.Context, body SharedExportBody) context.Context {
-	return context.WithValue(parent, ctxSharedExportKey{}, body)
-}
-
-func FromContextSharedExportPayload(ctx context.Context) (SharedExportBody, bool) {
-	u, ok := ctx.Value(ctxSharedExportKey{}).(SharedExportBody) // Type assertion
-	return u, ok
-}
 func ConnectionClose(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "close")
@@ -70,7 +43,7 @@ func HasSharedExportAccess(cfg *service.Config) func(next http.Handler) http.Han
 			}
 			rw, err := GetRespWriter(r.URL.Path)
 			if err != nil {
-				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 				return
 			}
 
@@ -94,7 +67,7 @@ func ValidateSharedExport(next http.Handler) http.Handler {
 
 		rw, err := GetRespWriter(r.URL.Path)
 		if err != nil {
-			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 			return
 		}
 
@@ -140,7 +113,7 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 
 			rw, err := GetRespWriter(r.URL.Path)
 			if err != nil {
-				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 				return
 			}
 
@@ -171,7 +144,7 @@ func V1V2DenyControl(cfg *service.Config) func(next http.Handler) http.Handler {
 
 			rw, err := GetRespWriter(r.URL.Path)
 			if err != nil {
-				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 				return
 			}
 

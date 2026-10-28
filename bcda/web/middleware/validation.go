@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -31,10 +32,37 @@ type RequestParameters struct {
 	TypeFilter    fhir.TypeFilterSubquery
 }
 
+// TODO: add body validation
+type SharedExportBody struct {
+	Since         string   `json:"since"`
+	Version       string   `json:"version"`
+	ResourceTypes []string `json:"resource_types"`
+	PartnerID     string   `json:"partner_id"`
+	DataTypes     []string `json:"data_types"`
+	MBIs          []string `json:"mbis"`
+	SinceDecoded  time.Time
+}
+
 // requestkey is an unexported context key to avoid collisions
 type requestkey int
 
 const rk requestkey = 0
+
+// type to create context.Context key for the decoded SharedExportBody
+type CtxSharedExportPayloadType struct{}
+
+// context.Context key to get the SharedExportPayload from the request context
+
+type ctxSharedExportKey struct{}
+
+func WithSharedExportPayload(parent context.Context, body SharedExportBody) context.Context {
+	return context.WithValue(parent, ctxSharedExportKey{}, body)
+}
+
+func FromContextSharedExportPayload(ctx context.Context) (SharedExportBody, bool) {
+	u, ok := ctx.Value(ctxSharedExportKey{}).(SharedExportBody) // Type assertion
+	return u, ok
+}
 
 // TODO: replace this function else where with line 35
 func SetRequestParamsCtx(ctx context.Context, rp RequestParameters) context.Context {
@@ -230,7 +258,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw, err := GetRespWriter(r.URL.Path)
 		if err != nil {
-			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 			return
 		}
 
@@ -285,7 +313,7 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		rw, err := GetRespWriter(r.URL.Path)
 		if err != nil {
-			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 			return
 		}
 
@@ -333,6 +361,46 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func ValidateSharedExportBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
+			return
+		}
+
+		var payload SharedExportBody
+		err = json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			log.API.Error("invalid JSON payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
+			return
+		}
+		defer r.Body.Close()
+
+		if payload.Since == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
+			log.API.Error("missing required fields in payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "missing required fields in payload")
+			return
+		}
+
+		sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
+		if err != nil {
+			log.API.Error("invalid _since parameter")
+			rw.OpOutcome(r.Context(), w, http.StatusUnauthorized, responseutils.RequestErr, "")
+			return
+		}
+
+		payload.SinceDecoded = sinceDate
+
+		ctx := WithSharedExportPayload(r.Context(), payload)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+
 }
 
 // hasHeaderToken checks if targetToken exists within the parsed header values,

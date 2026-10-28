@@ -51,7 +51,7 @@ func (m RateLimitMiddleware) CheckConcurrentJobs(next http.Handler) http.Handler
 
 		rw, err := GetRespWriter(r.URL.Path)
 		if err != nil {
-			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "unexpected API version")
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 			return
 		}
 

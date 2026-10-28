@@ -113,7 +113,7 @@ func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 	case constants.V3Version:
 		h.RespWriter = responseutilsv3.NewFhirResponseWriter()
 	default:
-		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
+		log.API.Fatalf("invalid version in request URL: %s", h.apiVersion)
 	}
 
 	return h

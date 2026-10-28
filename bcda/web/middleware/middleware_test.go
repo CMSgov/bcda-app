@@ -182,8 +182,8 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 		path         string
 		expected_err string
 	}{
-		{"Missing version (non-auth)", "/Patient", "unexpected API version"},
-		{"Invalid Version", "/api/v9/Patient", "unexpected API version"},
+		{"Missing version (non-auth)", "/Patient", "invalid version in request URL"},
+		{"Invalid Version", "/api/v9/Patient", "invalid version in request URL"},
 	}
 
 	for _, tt := range tests {
