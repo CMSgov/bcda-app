@@ -87,7 +87,7 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
-	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
+	cclfZipfilePath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
 	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser1()
 
@@ -97,7 +97,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.Equal(&cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator)
 
 	// missing cclf8 from cclf0
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
+	cclfZipfilePath = "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000"
 	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser2()
 
@@ -105,7 +105,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
 	// duplicate file types from cclf0
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
+	cclfZipfilePath = "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000"
 	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
 	defer zipCloser3()
 
@@ -113,7 +113,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
 
 	//invalid record count
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
+	cclfZipfilePath = "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000"
 	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
 	defer zipCloser4()
 
@@ -121,7 +121,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "failed to parse CCLF8 record count from CCLF0 file, err: strconv.Atoi: parsing \"N\": invalid syntax")
 
 	//invalid record length
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
+	cclfZipfilePath = "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000"
 	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
 	defer zipCloser5()
 
@@ -201,7 +201,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, acoID, constants.CCLF8CompPath, "", constants.CCLF8Name, models.FileTypeDefault)
 	metadata.cclf8Metadata.timestamp = fileTime
 	defer zipCloser()
 
@@ -265,7 +265,7 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0002")
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", constants.CCLF8CompPath, "", constants.CCLF8Name, models.FileTypeDefault)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -293,7 +293,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: constants.CCLF8Name}
 	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", constants.CCLF8CompPath, "", cclfFile.Name, cclfFile.Type)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -320,8 +320,8 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
 	// since we do not have the correct number of characters, the import should fail.
-	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
-	defer os.Remove(fileName)
+	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), s.basePath, "A 1")
+	defer os.Remove(filepath.Join(s.basePath, fileName))
 
 	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "1234", fileName, "", cclfName, models.FileTypeDefault)
 	defer zipCloser()
@@ -356,8 +356,8 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mbi := "123456789AB" // We expect 11 characters for the MBI
 
-			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), mbi)
-			defer os.Remove(fileName)
+			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), s.basePath, mbi)
+			defer os.Remove(filepath.Join(s.basePath, fileName))
 
 			metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "1234", fileName, "", cclfName, tt.fileType)
 			defer zipCloser()
@@ -375,10 +375,10 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 	}
 }
 
-func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {
+func createTemporaryCCLF8ZipFile(t *testing.T, dir, data string) (fileName, cclfName string) {
 	cclfName = uuid.New()
 
-	f, err := os.CreateTemp("", "*")
+	f, err := os.CreateTemp(dir, "*.zip")
 	assert.NoError(t, err)
 
 	w := zip.NewWriter(f)
@@ -390,7 +390,7 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 
 	assert.NoError(t, w.Close())
 
-	return f.Name(), cclfName
+	return filepath.Base(f.Name()), cclfName
 }
 
 func buildZipMetadata(t *testing.T, importer CCLFImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
@@ -770,31 +770,3 @@ func TestOpenZipArchive_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to open zip archive")
 }
 
-func TestResolveArchivePath(t *testing.T) {
-	mountDir := t.TempDir()
-
-	t.Run("resolves key within mount path", func(t *testing.T) {
-		subDir := filepath.Join(mountDir, "sub")
-		assert.NoError(t, os.MkdirAll(subDir, 0750))
-		filePath := filepath.Join(subDir, "test.zip")
-		assert.NoError(t, os.WriteFile(filePath, []byte("data"), 0600))
-
-		resolved := resolveArchivePath(mountDir, "sub/test.zip")
-		assert.Equal(t, filePath, resolved)
-	})
-
-	t.Run("resolves absolute path when outside mount path", func(t *testing.T) {
-		otherDir := t.TempDir()
-		filePath := filepath.Join(otherDir, "test.zip")
-		assert.NoError(t, os.WriteFile(filePath, []byte("data"), 0600))
-
-		resolved := resolveArchivePath(mountDir, filePath)
-		assert.Equal(t, filePath, resolved)
-	})
-
-	t.Run("returns target path when file does not exist", func(t *testing.T) {
-		expectedTarget := filepath.Join(mountDir, "missing/test.zip")
-		resolved := resolveArchivePath(mountDir, "missing/test.zip")
-		assert.Equal(t, expectedTarget, resolved)
-	})
-}
