@@ -340,7 +340,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	assert.NoError(s.T(), err)
 }
 
-func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
+func (s *WorkerTestSuite) TestWriteEOBDataToFilePartialBeneficiaryErrors() {
 	transactionTime := time.Now()
 	bbc := client.MockBlueButtonClient{}
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
@@ -738,7 +738,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), completedJob)
 
-	// cancelled parent job status should not update after failed queuejob
+	// cancelled parent job status should not update
 	assert.Equal(s.T(), models.JobStatusCancelled, completedJob.Status)
 }
 
@@ -984,7 +984,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys() {
 		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
 	}
 
-	err := createJobKeys(s.logctx, repo, keys, uint(1))
+	err := createJobKeys(s.logctx, repo, keys)
 	assert.NoError(s.T(), err)
 }
 
@@ -997,24 +997,10 @@ func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
 	}
 
 	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(fmt.Errorf("some db error"))
-	err := createJobKeys(s.logctx, r, keys, 1234)
+	err := createJobKeys(s.logctx, r, keys)
 	assert.ErrorContains(s.T(), err, "error creating job key records for filenames")
 	assert.ErrorContains(s.T(), err, keys[0].FileName)
 	assert.ErrorContains(s.T(), err, keys[1].FileName)
-	assert.ErrorContains(s.T(), err, "some db error")
-}
-
-func (s *WorkerTestSuite) TestCreateJobKeys_JobCompleteError() {
-	r := &repository.MockRepository{}
-
-	keys := []models.JobKey{
-		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
-		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
-	}
-	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(1)).Return(nil, fmt.Errorf("some db error"))
-	err := createJobKeys(s.logctx, r, keys, 1)
-	assert.ErrorContains(s.T(), err, "failed retrieve job by id (Job 1)")
 	assert.ErrorContains(s.T(), err, "some db error")
 }
 

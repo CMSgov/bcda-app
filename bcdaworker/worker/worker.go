@@ -85,23 +85,18 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_t
 func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs) error {
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
-		err = fmt.Errorf("ProcessJob: could not retrieve ACO from database by UUID %s, err: %w", job.ACOID, err)
-		return err
+		return fmt.Errorf("processJob: could not retrieve ACO from database by UUID %s, err: %w", job.ACOID, err)
 	}
 
-	ctx, logger := log.SetLoggerFields(ctx, logrus.Fields{"cms_id": aco.CMSID})
+	ctx, _ = log.SetLoggerFields(ctx, logrus.Fields{"cms_id": aco.CMSID})
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if err != nil && !errors.Is(err, repository.ErrJobNotUpdated) {
-		err = fmt.Errorf("processJob: could not update job status in database, err: %w", err)
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not update job status in database, err: %w", err)
 	}
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
 	if err != nil {
-		err = fmt.Errorf("processJob: could not create Blue Button client, err: %w", err)
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create Blue Button client, err: %w", err)
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
@@ -112,43 +107,39 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 
 	// Create a temporary path for the job files before they go into the staging directory
 	if err = CreateDir(tempJobPath); err != nil {
-		err = fmt.Errorf("processJob: could not create temporary directory on worker for jobID %s, err: %w", jobID, err)
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create temporary directory on worker for jobID %s, err: %w", jobID, err)
 	}
 	defer os.RemoveAll(tempJobPath)
 
 	if err = CreateDir(stagingPath); err != nil {
-		err = fmt.Errorf("processJob: could not create FHIR staging path directory for jobID %s, err: %w", jobID, err)
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create FHIR staging path directory for jobID %s, err: %w", jobID, err)
 	}
 
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
 	if err = CreateDir(payloadPath); err != nil {
-		err = fmt.Errorf("processJob: could not create FHIR payload path directory, err: %w", err)
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create FHIR payload path directory, err: %w", err)
 	}
 
 	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath)
 	if err != nil {
-		logger.Error(fmt.Errorf("processJob: Error occurred when writing BFD Data to file, err: %w", err))
-		return err
+		return fmt.Errorf("processJob: Error occurred when writing BFD Data to file, err: %w", err)
 	}
 
 	//move the files over
 	err = compressFiles(ctx, tempJobPath, stagingPath)
 	if err != nil {
-		logger.Error(err)
 		return err
 	}
 
-	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
+	err = createJobKeys(ctx, w.r, jobKeys)
 	if err != nil {
-		logger.Error(err)
 		return err
+	}
+
+	_, err = CheckJobCompleteAndCleanup(ctx, w.r, job.ID)
+	if err != nil {
+		return fmt.Errorf("error checking job completion & cleanup for job id %d, err: %w", job.ID, err)
 	}
 
 	return nil
@@ -265,7 +256,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			return bb.GetClaimResponse(jobArgs, bene.MBI, cw)
 		}
 	default:
-		return jobKeys, fmt.Errorf("unsupported resource type requested: %s, err: %w", jobArgs.ResourceType, err)
+		return jobKeys, fmt.Errorf("unsupported resource type requested: %s", jobArgs.ResourceType)
 	}
 
 	fileUUID := uuid.New()
@@ -287,7 +278,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	for _, beneID := range jobArgs.BeneficiaryIDs {
 		// if the parent job was cancelled, stop processing beneIDs and fail the job
 		if ctx.Err() == context.Canceled {
-			return jobKeys, fmt.Errorf("job cancelled")
+			return jobKeys, fmt.Errorf("job cancelled, err: %w", ctx.Err())
 		}
 
 		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
@@ -509,18 +500,13 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	return false, nil
 }
 
-func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []models.JobKey, id uint) error {
+func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []models.JobKey) error {
 	if err := r.CreateJobKeys(ctx, jobKeys); err != nil {
 		filenames := ""
 		for _, jobKey := range jobKeys {
 			filenames += " " + jobKey.FileName
 		}
-		return fmt.Errorf("error creating job key records for filenames %s, err: %w", filenames, err)
-	}
-
-	_, err := CheckJobCompleteAndCleanup(ctx, r, id)
-	if err != nil {
-		return fmt.Errorf("error checking job completion & cleanup for job id %d, err: %w", id, err)
+		return fmt.Errorf("error creating job key records for filenames%s, err: %w", filenames, err)
 	}
 
 	return nil
