@@ -64,10 +64,13 @@ func (s *CCLFTestSuite) SetupTest() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
+	conf.SetEnv(s.T(), "MOUNT_PATH", s.basePath)
 
 	s.logger = testUtils.GetLogger(log.API)
 	client := &bcdaaws.ConfigurableMockS3Client{}
-	s.importer = NewCCLFImporter(s.logger, client, s.pool)
+	var err error
+	s.importer, err = NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -86,7 +89,7 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
-	cclfZipfilePath := filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000")
+	cclfZipfilePath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
 	metadata, zipCloser1 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser1()
 
@@ -96,7 +99,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.Equal(&cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator)
 
 	// missing cclf8 from cclf0
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000")
+	cclfZipfilePath = "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000"
 	metadata, zipCloser2 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000011", "", models.FileTypeDefault)
 	defer zipCloser2()
 
@@ -104,7 +107,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
 	// duplicate file types from cclf0
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000")
+	cclfZipfilePath = "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000"
 	metadata, zipCloser3 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.BCD.A0001.ZC0Y18.D181120.T1000013", "", models.FileTypeDefault)
 	defer zipCloser3()
 
@@ -112,7 +115,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
 
 	//invalid record count
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000")
+	cclfZipfilePath = "cclf/archives/0/invalid/T.A0001.ACO.ZC0Y18.D181120.Z1000000"
 	metadata, zipCloser4 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.Z1000011", "", models.FileTypeDefault)
 	defer zipCloser4()
 
@@ -120,7 +123,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "failed to parse CCLF8 record count from CCLF0 file, err: strconv.Atoi: parsing \"N\": invalid syntax")
 
 	//invalid record length
-	cclfZipfilePath = filepath.Join(s.basePath, "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000")
+	cclfZipfilePath = "cclf/archives/0/invalid/T.BCD.ACOB.ZC0Y18.D181120.E0001000"
 	metadata, zipCloser5 := buildZipMetadata(s.T(), s.importer, "A0001", cclfZipfilePath, "T.A0001.ACO.ZC0Y18.D181120.E1000011", "", models.FileTypeDefault)
 	defer zipCloser5()
 
@@ -132,7 +135,9 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryValid() {
 	assert := assert.New(s.T())
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer, err := NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
+	importer.mountPath = "/"
 
 	fpath := filepath.Join(s.basePath, constants.CCLFDIR, "archives", "valid")
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
@@ -149,7 +154,9 @@ func (s *CCLFTestSuite) TestImportCCLFDirectoryInvalid() {
 	assert := assert.New(s.T())
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer, err := NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
+	importer.mountPath = "/"
 
 	s.T().Run("Directory with mixed file types + at least one bad file", func(t *testing.T) {
 		cclfDirectory := filepath.Join(s.basePath, constants.CCLFDIR)
@@ -200,7 +207,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, constants.TestFileTime)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, acoID, filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, acoID, constants.CCLF8CompPath, "", constants.CCLF8Name, models.FileTypeDefault)
 	metadata.cclf8Metadata.timestamp = fileTime
 	defer zipCloser()
 
@@ -264,7 +271,7 @@ func (s *CCLFTestSuite) TestImportCCLF8DBErrors() {
 
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0002")
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", constants.CCLF8Name, models.FileTypeDefault)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", constants.CCLF8CompPath, "", constants.CCLF8Name, models.FileTypeDefault)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -292,7 +299,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: constants.CCLF8Name}
 	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
 
-	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", filepath.Join(s.basePath, constants.CCLF8CompPath), "", cclfFile.Name, cclfFile.Type)
+	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "A0001", constants.CCLF8CompPath, "", cclfFile.Name, cclfFile.Type)
 	defer zipCloser()
 
 	validator := cclfFileValidator{
@@ -319,8 +326,8 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
 	// since we do not have the correct number of characters, the import should fail.
-	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
-	defer os.Remove(fileName)
+	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), s.basePath, "A 1")
+	defer os.Remove(filepath.Join(s.basePath, fileName))
 
 	metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "1234", fileName, "", cclfName, models.FileTypeDefault)
 	defer zipCloser()
@@ -355,8 +362,8 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mbi := "123456789AB" // We expect 11 characters for the MBI
 
-			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), mbi)
-			defer os.Remove(fileName)
+			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), s.basePath, mbi)
+			defer os.Remove(filepath.Join(s.basePath, fileName))
 
 			metadata, zipCloser := buildZipMetadata(s.T(), s.importer, "1234", fileName, "", cclfName, tt.fileType)
 			defer zipCloser()
@@ -374,10 +381,10 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 	}
 }
 
-func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {
+func createTemporaryCCLF8ZipFile(t *testing.T, dir, data string) (fileName, cclfName string) {
 	cclfName = uuid.New()
 
-	f, err := os.CreateTemp("", "*")
+	f, err := os.CreateTemp(dir, "*.zip")
 	assert.NoError(t, err)
 
 	w := zip.NewWriter(f)
@@ -389,33 +396,11 @@ func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName 
 
 	assert.NoError(t, w.Close())
 
-	return f.Name(), cclfName
+	return filepath.Base(f.Name()), cclfName
 }
 
 func buildZipMetadata(t *testing.T, importer CCLFImporter, cmsID, zipName, cclf0Name, cclf8Name string, fileType models.CCLFFileType) (*cclfZipMetadata, func()) {
-	content, err := os.ReadFile(zipName)
-	assert.NoError(t, err)
-
-	client := &bcdaaws.ConfigurableMockS3Client{
-		HeadObjectFn: func(_ context.Context, _ *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-			return &s3.HeadObjectOutput{
-				ContentLength: aws.Int64(int64(len(content))),
-			}, nil
-		},
-		GetObjectFn: func(_ context.Context, input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-			return &s3.GetObjectOutput{
-				Body:          io.NopCloser(strings.NewReader(string(content))),
-				ContentLength: aws.Int64(int64(len(content))),
-				ContentRange:  aws.String(fmt.Sprintf("bytes 0-%d/%d", len(content)-1, len(content))),
-			}, nil
-		},
-	}
-	customImporter := CCLFImporter{
-		logger:     importer.logger,
-		fileClient: client,
-	}
-
-	zipReader, zipCloser, err := customImporter.openZipArchive(context.Background(), zipName)
+	zipReader, zipCloser, err := importer.openZipArchive(zipName)
 	assert.NoError(t, err)
 
 	metadata := cclfZipMetadata{
@@ -479,6 +464,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles() {
 			importer := CCLFImporter{
 				logger:     s.importer.logger,
 				fileClient: client,
+				mountPath:  "/",
 			}
 
 			cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, bucketName+fpath)
@@ -532,6 +518,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_DuplicateCCLFs() {
 	importer := CCLFImporter{
 		logger:     s.importer.logger,
 		fileClient: client,
+		mountPath:  conf.GetEnv("MOUNT_PATH"),
 	}
 
 	cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, bucketName)
@@ -583,6 +570,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_SingleFile() {
 			importer := CCLFImporter{
 				logger:     s.importer.logger,
 				fileClient: client,
+				mountPath:  filepath.Join(s.basePath, tt.path),
 			}
 
 			cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, fullFilePath)
@@ -613,6 +601,7 @@ func (s *CCLFTestSuite) TestLoadCclfFiles_InvalidPath() {
 	importer := CCLFImporter{
 		logger:     s.importer.logger,
 		fileClient: client,
+		mountPath:  s.basePath,
 	}
 
 	cclfMap, skipped, failure, err := importer.loadCclfFiles(ctx, "foo")
@@ -658,6 +647,7 @@ func (s *CCLFTestSuite) TestMultipleFileTypes() {
 	importer := CCLFImporter{
 		logger:     s.importer.logger,
 		fileClient: client,
+		mountPath:  conf.GetEnv("MOUNT_PATH"),
 	}
 
 	m, skipped, f, err := importer.loadCclfFiles(ctx, bucketName)
@@ -678,7 +668,9 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	acoID := "A0001"
 	cfg, ctx := testUtils.TestAWSConfig(s.T())
 	client := testUtils.TestS3Client(s.T(), cfg)
-	importer := NewCCLFImporter(s.logger, client, s.pool)
+	importer, err := NewCCLFImporter(s.logger, client, s.pool)
+	s.Require().NoError(err)
+	importer.mountPath = "/"
 
 	fpath := filepath.Join(s.basePath, constants.CCLF8CompPath)
 	bucketName, cleanup := testUtils.CopyToS3(s.T(), fpath)
@@ -726,4 +718,44 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	deletedCount, err = importer.cleanUpCCLF(ctx, cclfmap)
 	assert.Equal(1, deletedCount)
 	assert.Nil(err)
+}
+
+func (s *CCLFTestSuite) TestOpenZipArchive_ValidZip() {
+	assert := assert.New(s.T())
+
+	relZipPath := "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
+	reader, closer, err := s.importer.openZipArchive(relZipPath)
+	assert.NoError(err)
+	assert.NotNil(reader)
+	assert.NotNil(closer)
+	assert.NotEmpty(reader.File)
+
+	// Ensure closer runs cleanly
+	closer()
+}
+
+func TestNewCCLFImporter_MissingMountPath(t *testing.T) {
+	origMount := conf.GetEnv("MOUNT_PATH")
+	_ = conf.SetEnv(t, "MOUNT_PATH", "")
+	t.Cleanup(func() {
+		_ = conf.SetEnv(t, "MOUNT_PATH", origMount)
+	})
+
+	logger := logrus.New()
+	client := &bcdaaws.ConfigurableMockS3Client{}
+	_, err := NewCCLFImporter(logger, client, nil)
+	assert.EqualError(t, err, "mount path is empty, either MOUNT_PATH env var is missing or improperly set")
+}
+
+func TestOpenZipArchive_FileNotFound(t *testing.T) {
+	logger := logrus.New()
+	mountDir := t.TempDir()
+	importer := CCLFImporter{
+		logger:    logger,
+		mountPath: mountDir,
+	}
+
+	_, _, err := importer.openZipArchive("bucket/nonexistent/file.zip")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to open zip archive")
 }

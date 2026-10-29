@@ -210,7 +210,8 @@ resource "aws_sns_topic_subscription" "this" {
 }
 
 resource "aws_s3_bucket_notification" "this" {
-  bucket = module.attribution-import_file_bucket.id
+  bucket      = module.attribution-import_file_bucket.id
+  eventbridge = true
 
   topic {
     topic_arn = aws_sns_topic.this.arn
