@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 type cclfZipMetadata struct {
@@ -57,15 +58,21 @@ type CCLFImporter struct {
 	fileClient bcdaaws.CustomS3Client
 	pgxPool    *pgxv5Pool.Pool
 	pgxRepo    *postgres.PgxRepository
+	mountPath  string
 }
 
-func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) CCLFImporter {
+func NewCCLFImporter(logger logrus.FieldLogger, fileClient bcdaaws.CustomS3Client, pgxPool *pgxv5Pool.Pool) (CCLFImporter, error) {
+	mountPath := conf.GetEnv("MOUNT_PATH")
+	if mountPath == "" {
+		return CCLFImporter{}, errors.New("mount path is empty, either MOUNT_PATH env var is missing or improperly set")
+	}
 	return CCLFImporter{
 		logger:     logger,
 		fileClient: fileClient,
 		pgxPool:    pgxPool,
 		pgxRepo:    postgres.NewPgxRepositoryWithPool(pgxPool),
-	}
+		mountPath:  mountPath,
+	}, nil
 }
 
 func (importer CCLFImporter) ImportCCLFDirectory(ctx context.Context, filePath string) (success, failure, skipped int, err error) {
@@ -289,6 +296,7 @@ func (m cclfFileMetadata) String() string {
 
 func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cclfMap map[string][]*cclfZipMetadata, skipped int, failed int, err error) {
 	cclfMap = make(map[string][]*cclfZipMetadata)
+
 	bucket, prefix := bcdaaws.ParseS3Uri(path)
 	s3Objects, err := bcdaaws.ListFiles(ctx, importer.fileClient, bucket, prefix)
 	if err != nil {
@@ -314,7 +322,7 @@ func (importer CCLFImporter) loadCclfFiles(ctx context.Context, path string) (cc
 			continue
 		}
 
-		zipReader, zipCloser, err := importer.openZipArchive(ctx, filepath.Join(bucket, *obj.Key))
+		zipReader, zipCloser, err := importer.openZipArchive(*obj.Key)
 		if err != nil {
 			failed++
 			importer.logger.Errorf("Failed to open CCLF archive (%s/%s): %s.", bucket, *obj.Key, err)
@@ -414,14 +422,20 @@ func (importer CCLFImporter) cleanUpCCLF(ctx context.Context, cclfMap map[string
 	return deletedCount, nil
 }
 
-func (importer CCLFImporter) openZipArchive(ctx context.Context, filePath string) (*zip.Reader, func(), error) {
-	byte_arr, err := bcdaaws.OpenFileAsBytes(ctx, importer.fileClient, filePath)
+func (importer CCLFImporter) openZipArchive(key string) (*zip.Reader, func(), error) {
+	targetPath := filepath.Join(importer.mountPath, key)
 
+	cleanPath := filepath.Clean(targetPath)
+	zipReadCloser, err := zip.OpenReader(cleanPath) // #nosec G304 -- targetPath is constructed from MOUNT_PATH and S3 key, not user input
 	if err != nil {
-		importer.logger.Errorf("Failed to download %s", filePath)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to open zip archive %s: %w", targetPath, err)
 	}
 
-	reader, err := zip.NewReader(bytes.NewReader(byte_arr), int64(len(byte_arr)))
-	return reader, func() {}, err
+	cleanup := func() {
+		if err := zipReadCloser.Close(); err != nil {
+			importer.logger.Warnf("Failed to close zip archive %s: %v", targetPath, err)
+		}
+	}
+
+	return &zipReadCloser.Reader, cleanup, nil
 }
