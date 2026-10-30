@@ -385,12 +385,14 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFilePartialBeneficiaryErrors() {
 func (s *WorkerTestSuite) TestWriteEOBDataToFileAllBeneficiaryErrorsWriteToErrorFile() {
 	transactionTime := time.Now()
 
+	repo := &repository.MockRepository{}
 	var cclfBeneficiaryIDs []string
 	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
-		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
+		cclfBeneficiary := models.CCLFBeneficiary{ID: uint(i + 1), FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+		// postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
+		repo.On("GetCCLFBeneficiaryByID", mock.Anything, uint(i+1)).Return(&cclfBeneficiary, nil)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 

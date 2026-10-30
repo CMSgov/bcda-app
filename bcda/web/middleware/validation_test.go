@@ -87,7 +87,7 @@ func TestInvalidRequestURL(t *testing.T) {
 		{
 			"noVersion",
 			"/api/Patient$export",
-			"cannot retrieve version",
+			"invalid version in request URL",
 		},
 		{
 			"invalidTypeFilterResourceType",

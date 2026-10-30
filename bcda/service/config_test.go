@@ -21,7 +21,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Len(t, cfg.ACOConfigs, 15)
+	assert.Len(t, cfg.ACOConfigs, 16)
 	for _, acoCfg := range cfg.ACOConfigs {
 		assert.NotNil(t, acoCfg.patternExp)
 		if acoCfg.PerfYearTransition != "" {
@@ -214,6 +214,28 @@ func TestIsTestACO(t *testing.T) {
 			conf.SetEnv(sub, "PRIORITY_ACO_REG_EX", tt.priorityEnv)
 			conf.SetEnv(sub, "PRIORITY_ACO_IDS", tt.priorityIDs)
 			assert.Equal(sub, tt.isTestACO, cfg.IsTestACO(tt.cmsID))
+		})
+	}
+}
+
+func TestIsSharedExportModel(t *testing.T) {
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		cmsID     string
+		isSEModel bool
+	}{
+		{"Empty CMSID", "", false},
+		{"Non shared backend ACO", "TEST001", false},
+		{"Shared Backend - DPC", "DPC-1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			y := cfg.IsSharedExportModel(tt.cmsID)
+			assert.Equal(sub, tt.isSEModel, y)
 		})
 	}
 }

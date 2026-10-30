@@ -3,7 +3,6 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -32,6 +31,36 @@ func SecurityHeader(next http.Handler) http.Handler {
 	})
 }
 
+func HasSharedExportAccess(cfg *service.Config) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ad, ok := handleAuthData(r)
+			if !ok {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			rw, err := GetRespWriter(r.URL.Path)
+			if err != nil {
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
+				return
+			}
+
+			if !cfg.IsSharedExportModel(ad.CMSID) {
+				ctx, _ := log.WriteWarnWithFields(
+					r.Context(),
+					fmt.Sprintf("failed to start shared job; CMSID %s does not have shared export access", ad.CMSID),
+					logrus.Fields{"resp_status": http.StatusUnauthorized},
+				)
+				rw.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.InternalErr, "")
+				return
+			}
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
 func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -41,8 +70,9 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			rw, _ := getResponseWriterFromRequestPath(w, r)
-			if rw == nil {
+			rw, err := GetRespWriter(r.URL.Path)
+			if err != nil {
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 				return
 			}
 
@@ -71,12 +101,13 @@ func V1V2DenyControl(cfg *service.Config) func(next http.Handler) http.Handler {
 				return
 			}
 
-			rw, _ := getResponseWriterFromRequestPath(w, r)
-			if rw == nil {
+			rw, err := GetRespWriter(r.URL.Path)
+			if err != nil {
+				rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 				return
 			}
 
-			if isACOV1V2DeniedAccess(cfg, ad.CMSID) {
+			if cfg.IsACOV1V2DeniedAccess(ad.CMSID) {
 				ctx, _ := log.WriteWarnWithFields(
 					r.Context(),
 					fmt.Sprintf("%s: Failed to begin v1/v2 request, CMSID %s does not have v1/v2 access", responseutils.UnauthorizedErr, ad.CMSID),
@@ -106,15 +137,4 @@ func handleAuthData(r *http.Request) (auth.AuthData, bool) {
 	}
 
 	return ad, true
-}
-
-func isACOV1V2DeniedAccess(cfg *service.Config, ACOID string) bool {
-	for _, str := range cfg.V1V2DenyRegexes {
-		regex := regexp.MustCompile(str)
-		if regex.MatchString(ACOID) {
-			return true
-		}
-	}
-
-	return false
 }

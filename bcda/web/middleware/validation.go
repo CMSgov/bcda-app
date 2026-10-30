@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -14,6 +15,7 @@ import (
 	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	responseutilsv3 "github.com/CMSgov/bcda-app/bcda/responseutils/v3"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,10 +32,37 @@ type RequestParameters struct {
 	TypeFilter    fhir.TypeFilterSubquery
 }
 
+// TODO: add body validation
+type SharedExportBody struct {
+	Since         string   `json:"since"`
+	Version       string   `json:"version"`
+	ResourceTypes []string `json:"resource_types"`
+	PartnerID     string   `json:"partner_id"`
+	DataTypes     []string `json:"data_types"`
+	MBIs          []string `json:"mbis"`
+	SinceDecoded  time.Time
+}
+
 // requestkey is an unexported context key to avoid collisions
 type requestkey int
 
 const rk requestkey = 0
+
+// type to create context.Context key for the decoded SharedExportBody
+type CtxSharedExportPayloadType struct{}
+
+// context.Context key to get the SharedExportPayload from the request context
+
+type ctxSharedExportKey struct{}
+
+func WithSharedExportPayload(parent context.Context, body SharedExportBody) context.Context {
+	return context.WithValue(parent, ctxSharedExportKey{}, body)
+}
+
+func FromContextSharedExportPayload(ctx context.Context) (SharedExportBody, bool) {
+	u, ok := ctx.Value(ctxSharedExportKey{}).(SharedExportBody) // Type assertion
+	return u, ok
+}
 
 // TODO: replace this function else where with line 35
 func SetRequestParamsCtx(ctx context.Context, rp RequestParameters) context.Context {
@@ -186,6 +215,45 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 	return typeFilterParams, true
 }
 
+func ValidateSharedExport(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
+			return
+		}
+
+		var payload SharedExportBody
+		err = json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			log.API.Error("invalid JSON payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
+			return
+		}
+		defer r.Body.Close()
+
+		if payload.Since == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
+			log.API.Error("missing required fields in payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "missing required fields in payload")
+			return
+		}
+
+		sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
+		if err != nil {
+			log.API.Error("invalid _since parameter")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "")
+			return
+		}
+
+		payload.SinceDecoded = sinceDate
+
+		ctx := WithSharedExportPayload(r.Context(), payload)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 // GetTypeFilterSubquery parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
 func GetTypeFilterSubquery(params []string) (fhir.TypeFilterSubquery, error) {
@@ -227,8 +295,14 @@ func HasSystemTypeTag(subquery fhir.TypeFilterSubquery) bool {
 // These paramters can be retrieved by calling RequestParametersFromContext.
 func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw, version := getResponseWriterFromRequestPath(w, r)
-		if rw == nil {
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
+			return
+		}
+
+		v, err := getVersion(r.URL.Path)
+		if err != nil {
 			return
 		}
 
@@ -252,14 +326,14 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		}
 
 		// Validate type filter for v3
-		typeFilter, valid := validateTypeFilterParameter(r, rw, w, version)
+		typeFilter, valid := validateTypeFilterParameter(r, rw, w, v)
 		if !valid {
 			return
 		}
 
 		// Build request parameters
 		rp := RequestParameters{
-			Version:       version,
+			Version:       v,
 			RequestURL:    r.URL.String(),
 			Since:         sinceDate,
 			ResourceTypes: resourceTypes,
@@ -276,8 +350,9 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 		ctx := r.Context()
 		h := r.Header
 
-		rw, _ := getResponseWriterFromRequestPath(w, r)
-		if rw == nil {
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
 			return
 		}
 
@@ -325,6 +400,46 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func ValidateSharedExportBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
+			return
+		}
+
+		var payload SharedExportBody
+		err = json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			log.API.Error("invalid JSON payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
+			return
+		}
+		defer r.Body.Close()
+
+		if payload.Since == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
+			log.API.Error("missing required fields in payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "missing required fields in payload")
+			return
+		}
+
+		sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
+		if err != nil {
+			log.API.Error("invalid _since parameter")
+			rw.OpOutcome(r.Context(), w, http.StatusUnauthorized, responseutils.RequestErr, "")
+			return
+		}
+
+		payload.SinceDecoded = sinceDate
+
+		ctx := WithSharedExportPayload(r.Context(), payload)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+
 }
 
 // hasHeaderToken checks if targetToken exists within the parsed header values,
@@ -383,34 +498,15 @@ type fhirResponseWriter interface {
 	OpOutcome(context.Context, http.ResponseWriter, int, string, string)
 }
 
-func getRespWriter(version string) (fhirResponseWriter, error) {
-	switch version {
-	case "v1":
+// non auth resp writers should return an error on an invalid version
+func GetRespWriter(path string) (fhirResponseWriter, error) {
+	if strings.Contains(path, "/v1/") {
 		return responseutils.NewFhirResponseWriter(), nil
-	case "v2":
+	} else if strings.Contains(path, "/v2/") {
 		return responseutilsv2.NewFhirResponseWriter(), nil
-	case constants.V3Version:
+	} else if strings.Contains(path, fmt.Sprintf("/%s/", constants.V3Version)) {
 		return responseutilsv3.NewFhirResponseWriter(), nil
-	default:
-		return nil, fmt.Errorf("unexpected API version: %s", version)
+	} else {
+		return responseutils.NewFhirResponseWriter(), errors.New("invalid or missing version")
 	}
-}
-
-func getResponseWriterFromRequestPath(w http.ResponseWriter, r *http.Request) (fhirResponseWriter, string) {
-	version, err := getVersion(r.URL.Path)
-	if err != nil {
-		logger := log.GetCtxLogger(r.Context())
-		logger.WithField("resp_status", http.StatusBadRequest).Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, ""
-	}
-	rw, err := getRespWriter(version)
-	if err != nil {
-		logger := log.GetCtxLogger(r.Context())
-		logger.WithField("resp_status", http.StatusBadRequest).Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, ""
-	}
-
-	return rw, version
 }

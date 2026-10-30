@@ -113,7 +113,7 @@ func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 	case constants.V3Version:
 		h.RespWriter = responseutilsv3.NewFhirResponseWriter()
 	default:
-		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
+		log.API.Fatalf("invalid version in request URL: %s", h.apiVersion)
 	}
 
 	return h
@@ -782,9 +782,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// TODO: (BCDA-10498) this is request validation, should be in middleware (move)
 func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
 	resourceTypes := parameters.ResourceTypes
-
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
 		if acoConfig, found := h.Svc.GetACOConfigForID(cmsID); found {
@@ -801,6 +801,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 	return resourceTypes
 }
 
+// TODO: (BCDA-10498) this is request validation, should be in middleware (move)
 func (h *Handler) validateResources(resourceTypes []string, cmsID string) error {
 	for _, resourceType := range resourceTypes {
 		dataType, ok := h.supportedDataTypes[resourceType]
@@ -913,6 +914,78 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) 
 	typeFilter.QueryParameters = append(typeFilter.QueryParameters, subqueryParam)
 
 	return typeFilter
+}
+
+func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := log.GetCtxLogger(ctx)
+	var (
+		err error
+		ad  auth.AuthData
+	)
+
+	if ad, err = GetAuthDataFromCtx(r); err != nil {
+		ctx, _ = log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
+			logrus.Fields{"resp_status": http.StatusUnauthorized},
+		)
+		h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		return
+	}
+
+	payload, ok := middleware.FromContextSharedExportPayload(ctx)
+	if !ok {
+		return
+	}
+
+	// TODO: (BCDA-10498) add validation for resource types, similar to bulk request
+	// (validateResources, getResourceTypes) should be moved to middleware,
+	// since they are handlers and part of request validation
+
+	acoID := uuid.Parse(ad.ACOID)
+
+	newJob := models.Job{
+		ACOID:      acoID,
+		RequestURL: fmt.Sprintf("https://%s%s", r.Host, r.URL),
+		Status:     models.JobStatusPending,
+	}
+
+	newJob.ID, err = h.r.CreateJob(ctx, newJob)
+	if err != nil {
+		logger.Errorf("failed to create job: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte("failed to create job"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// TODO: (BCDA-10567) confirm MBI payload strategy - hashing, etc?
+	prepJob := worker_types.PrepareSharedJobArgs{
+		Job:           newJob,
+		ACOID:         acoID, // BCDA-10569
+		CMSID:         ad.CMSID,
+		PartnerID:     payload.PartnerID,
+		BFDPath:       constants.V3Path,
+		ResourceTypes: payload.ResourceTypes,
+		Since:         payload.SinceDecoded,
+		CreationTime:  time.Now(),
+		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
+		MBIs:          payload.MBIs,
+		DataTypes:     payload.DataTypes,
+	}
+
+	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "failed to add job to the queue: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, payload.Version, newJob.ID))
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func GetAuthDataFromCtx(r *http.Request) (data auth.AuthData, err error) {

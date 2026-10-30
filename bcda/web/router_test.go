@@ -54,6 +54,13 @@ func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
 	return rr.Result()
 }
 
+func (s *RouterTestSuite) postAPIRoute(route string) *http.Response {
+	req := httptest.NewRequest("POST", route, nil)
+	rr := httptest.NewRecorder()
+	s.apiRouter.ServeHTTP(rr, req)
+	return rr.Result()
+}
+
 func (s *RouterTestSuite) deleteAPIRoute(route string) *http.Response {
 	req := httptest.NewRequest("DELETE", route, nil)
 	rr := httptest.NewRecorder()
@@ -290,6 +297,37 @@ func (s *RouterTestSuite) TestDeleteJobRoute() {
 func (s *RouterTestSuite) TestAttributionStatus() {
 	res := s.getAPIRoute("/api/v1/attribution_status")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestSharedExportFlag() {
+	d := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
+	r := s.apiRouter
+
+	// router setup with env var in suiteconfig; set it up with test deployment_targ and revert
+	defer func() {
+		conf.SetEnv(s.T(), "SHARED_ENDPOINT_ENABLED", d)
+		s.apiRouter = r
+	}()
+
+	tests := []struct {
+		name     string
+		enabled  string
+		respCode int
+	}{
+
+		{"shared export endpoint enabled", "true", http.StatusUnauthorized},
+		{"shared export endpoint disabled", "foo", http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			conf.SetEnv(s.T(), "SHARED_ENDPOINT_ENABLED", tt.enabled)
+			s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
+			res := s.postAPIRoute("/api/v3/shared_export")
+			assert.Equal(s.T(), tt.respCode, res.StatusCode)
+		})
+	}
+
 }
 
 func (s *RouterTestSuite) TestHTTPServerRedirect() {
