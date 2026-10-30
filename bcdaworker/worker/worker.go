@@ -6,7 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	goerrors "errors"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -30,7 +30,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 )
 
 type Worker interface {
@@ -57,10 +56,10 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_t
 	}
 
 	exportJob, err := w.r.GetJobByID(ctx, jobID)
-	if goerrors.Is(err, repository.ErrJobNotFound) {
+	if errors.Is(err, repository.ErrJobNotFound) {
 		return nil, ErrParentJobNotFound
 	} else if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve job from database")
+		return nil, fmt.Errorf("could not retrieve job from database, err: %w", err)
 	}
 
 	if exportJob.Status == models.JobStatusCancelled {
@@ -72,11 +71,11 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_t
 	}
 
 	_, err = w.r.GetJobKey(ctx, jobID, qjobID)
-	if goerrors.Is(err, repository.ErrJobKeyNotFound) {
+	if errors.Is(err, repository.ErrJobKeyNotFound) {
 		// No job key exists, which means this queue job needs to be processed.
 		return exportJob, nil
 	} else if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve job key from database")
+		return nil, fmt.Errorf("could not retrieve job key from database, err: %w", err)
 	} else {
 		// If there was no error, we found a job key and can avoid re-processing the job.
 		return nil, ErrQueJobProcessed
@@ -86,26 +85,18 @@ func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_t
 func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job, jobArgs worker_types.JobEnqueueArgs) error {
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not retrieve ACO from database by UUID %s", job.ACOID))
-		return err
+		return fmt.Errorf("processJob: could not retrieve ACO from database by UUID %s, err: %w", job.ACOID, err)
 	}
 
-	ctx, logger := log.SetLoggerFields(ctx, logrus.Fields{"cms_id": aco.CMSID})
+	ctx, _ = log.SetLoggerFields(ctx, logrus.Fields{"cms_id": aco.CMSID})
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
-	if goerrors.Is(err, repository.ErrJobNotUpdated) {
-		// could also occur if job was marked as cancelled
-		logger.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
-	} else if err != nil {
-		err = errors.Wrap(err, "ProcessJob: could not update job status in database")
-		logger.Error(err)
-		return err
+	if err != nil && !errors.Is(err, repository.ErrJobNotUpdated) {
+		return fmt.Errorf("processJob: could not update job status in database, err: %w", err)
 	}
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
 	if err != nil {
-		err = errors.Wrap(err, "ProcessJob: could not create Blue Button client")
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create Blue Button client, err: %w", err)
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
@@ -116,57 +107,39 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 
 	// Create a temporary path for the job files before they go into the staging directory
 	if err = CreateDir(tempJobPath); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create temporary directory on worker for jobID %s", jobID))
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create temporary directory on worker for jobID %s, err: %w", jobID, err)
 	}
 	defer os.RemoveAll(tempJobPath)
 
 	if err = CreateDir(stagingPath); err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("ProcessJob: could not create FHIR staging path directory for jobID %s", jobID))
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create FHIR staging path directory for jobID %s, err: %w", jobID, err)
 	}
 
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
 	if err = CreateDir(payloadPath); err != nil {
-		err = errors.Wrap(err, "ProcessJob: could not create FHIR payload path directory")
-		logger.Error(err)
-		return err
+		return fmt.Errorf("processJob: could not create FHIR payload path directory, err: %w", err)
 	}
 
 	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath)
-
-	// This is only run AFTER completion of all the collection
 	if err != nil {
-		logger.Error(errors.Wrap(err, "ProcessJob: Error occurred when writing BFD Data to file"))
-
-		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
-		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
-		if goerrors.Is(err, repository.ErrJobNotUpdated) {
-			jobUpdateFailMessage := fmt.Sprintf("ProcessJob: Failed to update job (job cancelled): %s", err)
-			logger.Warn(jobUpdateFailMessage)
-			return errors.Wrap(err, jobUpdateFailMessage)
-		} else if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s", models.JobStatusFailed))
-			logger.Error(err)
-			return err
-		} else {
-			logger.Error("Job failed. Job ID: ", job.ID)
-		}
+		return fmt.Errorf("processJob: Error occurred when writing BFD Data to file, err: %w", err)
 	}
+
 	//move the files over
 	err = compressFiles(ctx, tempJobPath, stagingPath)
 	if err != nil {
-		logger.Error(err)
 		return err
 	}
 
-	err = createJobKeys(ctx, w.r, jobKeys, job.ID)
+	err = createJobKeys(ctx, w.r, jobKeys)
 	if err != nil {
-		logger.Error(err)
 		return err
+	}
+
+	_, err = CheckJobCompleteAndCleanup(ctx, w.r, job.ID)
+	if err != nil {
+		return fmt.Errorf("error checking job completion & cleanup for job id %d, err: %w", job.ID, err)
 	}
 
 	return nil
@@ -177,7 +150,7 @@ func compressFiles(ctx context.Context, tempDir string, stagingDir string) error
 	// Open the input file
 	files, err := os.ReadDir(tempDir)
 	if err != nil {
-		err = errors.Wrap(err, "Error reading from the staging directory for files for Job")
+		err = fmt.Errorf("error reading from the staging directory for files for Job, err: %w", err)
 		return err
 	}
 	gzipLevel, err := strconv.Atoi(os.Getenv("COMPRESSION_LEVEL"))
@@ -289,8 +262,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	fileUUID := uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", tmpDir, fileUUID))
 	if err != nil {
-		err = errors.Wrap(err, "Error creating ndjson file")
-		return jobKeys, err
+		return jobKeys, fmt.Errorf("error creating ndjson file, err: %w", err)
 	}
 
 	defer utils.CloseFileAndLogError(f)
@@ -302,14 +274,11 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	benesRetrievedCount := 0 // count of benes that were successfully retrieved from BFD (does not include benes that were not found nor request 4xx/5xx errors)
 	benesWithDataCount := 0  // count of benes that had at least one resource returned from BFD (ie not an empty bundle)
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
-	failThreshold := utils.GetEnvFloat("EXPORT_FAIL_PCT", 100)
-	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
 		// if the parent job was cancelled, stop processing beneIDs and fail the job
 		if ctx.Err() == context.Canceled {
-			failed = true
-			break
+			return jobKeys, fmt.Errorf("job cancelled, err: %w", ctx.Err())
 		}
 
 		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
@@ -367,7 +336,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}()
 
 		if err != nil {
-			if reqErr, ok := goerrors.AsType[*bcdaErrs.RequestedBeneficiaryNotFoundError](err); ok {
+			if reqErr, ok := errors.AsType[*bcdaErrs.RequestedBeneficiaryNotFoundError](err); ok {
 				logger.Warn(reqErr)
 			} else {
 				errorCount++
@@ -377,12 +346,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		} else {
 			benesRetrievedCount++
 		}
-
-		failPct := (float64(errorCount) / totalBeneIDs) * 100
-		if failPct >= failThreshold {
-			failed = true
-			break
-		}
 	}
 
 	failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -390,21 +353,12 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	logger.Infof("Job Failure: %.2f%%, benesRetrieved %%: %v, benesWithData: %v", failPct, benesRetrievedPercent, benesWithDataCount)
 
 	if err = w.Flush(); err != nil {
-		return jobKeys, errors.Wrap(err, "Error in writing the buffered data to the writer")
-	}
-
-	if failed {
-		if ctx.Err() == context.Canceled {
-			appendErrorToFile(ctx, fileUUID, stu3.IssueTypeCodeProcessing, responseutils.BbErr, "Parent job was cancelled", tmpDir)
-			return jobKeys, errors.New("Parent job was cancelled")
-		}
-		return jobKeys, errors.New(fmt.Sprintf("Number of failed requests has exceeded threshold of %f ", failThreshold))
+		return jobKeys, fmt.Errorf("error in writing the buffered data to the writer, err: %w", err)
 	}
 
 	fstat, err := f.Stat()
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error in obtaining FileInfo structure describing the file for ndjson fileUUID %s jobId %d for cmsID %s", fileUUID, jobArgs.ID, cmsID))
-		return jobKeys, err
+		return jobKeys, fmt.Errorf("error in obtaining FileInfo structure describing the file for ndjson fileUUID %s jobId %d for cmsID %s, err: %w", fileUUID, jobArgs.ID, cmsID, err)
 	}
 
 	pr := &jobKeys[0]
@@ -442,8 +396,7 @@ func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobDa
 func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
 	bene, err := r.GetCCLFBeneficiaryByID(ctx, beneID)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error retrieving cclfBeneficiary record by cclfBeneficiaryId %d", beneID))
-		return models.CCLFBeneficiary{}, err
+		return models.CCLFBeneficiary{}, fmt.Errorf("error retrieving cclfBeneficiary record by cclfBeneficiaryId %d, err: %w", beneID, err)
 	}
 
 	cclfBeneficiary := *bene
@@ -479,20 +432,20 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
-		err = errors.Wrap(err, "Unable to append error to file: OS error encountered while opening the file")
+		err = fmt.Errorf("unable to append error to file: OS error encountered while opening the file, err: %w", err)
 		logger.Error(err)
 		return
 	}
 
 	defer utils.CloseFileAndLogError(f)
 	if _, err := rw.WriteOperationOutcome(f, oo); err != nil {
-		err = errors.Wrap(err, "Issue during append error to file: Error encountered during WriteOperationalOutcome")
+		err = fmt.Errorf("issue during append error to file: Error encountered during WriteOperationalOutcome, err: %w", err)
 		logger.Error(err)
 	}
 
 	// Separate any subsequent error entries
 	if _, err := f.WriteString("\n"); err != nil {
-		err = errors.Wrap(err, "Issue during append error to file: Unable to write new line separator ")
+		err = fmt.Errorf("issue during append error to file: Unable to write new line separator, err: %w", err)
 		logger.Error(err)
 	}
 }
@@ -532,8 +485,7 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	logger := log.GetCtxLogger(ctx)
 	j, err := r.GetJobByID(ctx, jobID)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Failed retrieve job by id (Job %d)", jobID))
-		return false, err
+		return false, fmt.Errorf("failed retrieve job by id (Job %d), err: %w", jobID, err)
 	}
 
 	switch j.Status {
@@ -547,8 +499,7 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 
 	completedCount, err := r.GetJobKeyCount(ctx, jobID)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Failed get job key count (Job %d)", jobID))
-		return false, err
+		return false, fmt.Errorf("failed get job key count (Job %d), err: %w", jobID, err)
 	}
 
 	logger.Debugf("completedCount: %d jobCount: %d", completedCount, j.JobCount)
@@ -559,8 +510,7 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 
 		files, err := os.ReadDir(staging)
 		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error reading from the staging directory for files for Job %d", jobID))
-			return false, err
+			return false, fmt.Errorf("error reading from the staging directory for files for Job %d, err: %w", jobID, err)
 		}
 
 		for _, f := range files {
@@ -568,20 +518,17 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 			newPath := fmt.Sprintf("%s/%s", payload, f.Name())
 			err := os.Rename(oldPath, newPath)
 			if err != nil {
-				err = errors.Wrap(err, fmt.Sprintf("Error moving the file %s from staging to payload directory", f.Name()))
-				return false, err
+				return false, fmt.Errorf("error moving the file %s from staging to payload directory, err: %w", f.Name(), err)
 			}
 		}
 
 		if err = os.Remove(staging); err != nil {
-			err = errors.Wrap(err, "Error removing the staging directory")
-			return false, err
+			return false, fmt.Errorf("error removing the staging directory, err: %w", err)
 		}
 
 		err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
 		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error updating the job status to %s for job id %d", models.JobStatusCompleted, j.ID))
-			return false, err
+			return false, fmt.Errorf("error updating the job status to %s for job id %d, err: %w", models.JobStatusCompleted, j.ID, err)
 		}
 		// Able to mark job as completed
 		return true, nil
@@ -591,20 +538,13 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	return false, nil
 }
 
-func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []models.JobKey, id uint) error {
+func createJobKeys(ctx context.Context, r repository.Repository, jobKeys []models.JobKey) error {
 	if err := r.CreateJobKeys(ctx, jobKeys); err != nil {
 		filenames := ""
 		for _, jobKey := range jobKeys {
 			filenames += " " + jobKey.FileName
 		}
-		err = errors.Wrap(err, fmt.Sprintf("Error creating job key records for filenames%s", filenames))
-		return err
-	}
-
-	_, err := CheckJobCompleteAndCleanup(ctx, r, id)
-	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for job id %d", id))
-		return err
+		return fmt.Errorf("error creating job key records for filenames%s, err: %w", filenames, err)
 	}
 
 	return nil
