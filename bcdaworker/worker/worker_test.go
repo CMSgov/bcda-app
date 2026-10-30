@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -339,10 +340,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	assert.NoError(s.T(), err)
 }
 
-func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "70")
+func (s *WorkerTestSuite) TestWriteEOBDataToFilePartialBeneficiaryErrors() {
 	transactionTime := time.Now()
 	bbc := client.MockBlueButtonClient{}
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
@@ -384,10 +382,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.AssertExpectations(s.T())
 }
 
-func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
+func (s *WorkerTestSuite) TestWriteEOBDataToFileAllBeneficiaryErrorsWriteToErrorFile() {
 	transactionTime := time.Now()
 
 	var cclfBeneficiaryIDs []string
@@ -419,10 +414,10 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	err := CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
-	assert.Len(s.T(), jobKeys, 1)
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesWithData)
-	assert.Contains(s.T(), err.Error(), "Number of failed requests has exceeded threshold")
 
 	files, err := os.ReadDir(s.tempDir)
 	assert.NoError(s.T(), err)
@@ -447,10 +442,6 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
-	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
-	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
-	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "100")
-
 	mbis := []string{"a1000000001", "a1000000002", "a1000000008", "a1000000009"}
 	var cclfBeneficiaryIDs []string
 	for i := 0; i < len(mbis); i++ {
@@ -742,10 +733,12 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	}
 
 	processJobErr := s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
-	completedJob, _ := s.r.GetJobByID(s.logctx, j.ID)
+	require.NoError(s.T(), processJobErr)
+	completedJob, err := s.r.GetJobByID(s.logctx, j.ID)
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), completedJob)
 
-	// cancelled parent job status should not update after failed queuejob
-	assert.Contains(s.T(), processJobErr.Error(), "job was not updated, no match found")
+	// cancelled parent job status should not update
 	assert.Equal(s.T(), models.JobStatusCancelled, completedJob.Status)
 }
 
@@ -978,7 +971,7 @@ func (s *WorkerTestSuite) TestValidateJob() {
 
 	j, err = w.ValidateJob(ctx, 2, validJob)
 	assert.Nil(s.T(), j)
-	assert.Contains(s.T(), err.Error(), "could not retrieve job key from database: some db error")
+	assert.Contains(s.T(), err.Error(), "could not retrieve job key from database, err: some db error")
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {
@@ -991,7 +984,7 @@ func (s *WorkerTestSuite) TestCreateJobKeys() {
 		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
 	}
 
-	err := createJobKeys(s.logctx, repo, keys, uint(1))
+	err := createJobKeys(s.logctx, repo, keys)
 	assert.NoError(s.T(), err)
 }
 
@@ -1004,24 +997,10 @@ func (s *WorkerTestSuite) TestCreateJobKeys_CreateJobKeysError() {
 	}
 
 	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(fmt.Errorf("some db error"))
-	err := createJobKeys(s.logctx, r, keys, 1234)
-	assert.ErrorContains(s.T(), err, "Error creating job key records for filenames")
+	err := createJobKeys(s.logctx, r, keys)
+	assert.ErrorContains(s.T(), err, "error creating job key records for filenames")
 	assert.ErrorContains(s.T(), err, keys[0].FileName)
 	assert.ErrorContains(s.T(), err, keys[1].FileName)
-	assert.ErrorContains(s.T(), err, "some db error")
-}
-
-func (s *WorkerTestSuite) TestCreateJobKeys_JobCompleteError() {
-	r := &repository.MockRepository{}
-
-	keys := []models.JobKey{
-		{JobID: 1, FileName: models.BlankFileName, ResourceType: "Patient"},
-		{JobID: 1, FileName: uuid.New() + ".ndjson", ResourceType: "Coverage"},
-	}
-	r.On("CreateJobKeys", testUtils.CtxMatcher, mock.Anything).Return(nil)
-	r.On("GetJobByID", testUtils.CtxMatcher, uint(1)).Return(nil, fmt.Errorf("some db error"))
-	err := createJobKeys(s.logctx, r, keys, 1)
-	assert.ErrorContains(s.T(), err, "Failed retrieve job by id (Job 1)")
 	assert.ErrorContains(s.T(), err, "some db error")
 }
 

@@ -3,6 +3,7 @@ package queueing
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -11,7 +12,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
-	"github.com/pkg/errors"
 	"github.com/riverqueue/river"
 	"github.com/sirupsen/logrus"
 )
@@ -49,6 +49,10 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 				"subjob_id":      rjob.ID,
 			})
 
+			if rjob.Attempt > 5 {
+				logger.Warnf("subjob has been attempted more than 5 times. Attempt: %d", rjob.Attempt)
+			}
+
 			// TODO: use pgxv5 when available
 			mainDB := w.db
 			workerInstance := worker.NewWorker(mainDB)
@@ -78,7 +82,7 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 			go checkIfCancelled(ctx, repo, cancel, jobID, 15)
 
 			if err := workerInstance.ProcessJob(ctx, rjob.ID, *exportJob, rjob.Args); err != nil {
-				err := errors.Wrap(err, "failed to process job")
+				err := fmt.Errorf("failed to process job, err: %w", err)
 				logger.Error(err)
 				return err
 			}
