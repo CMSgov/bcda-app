@@ -68,7 +68,7 @@ func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.C
 		},
 		JobTimeout:      10 * time.Minute,
 		Logger:          logger,
-		MaxAttempts:     2, // This is roughly an hour of retries // TODO set back
+		MaxAttempts:     8, // This is roughly an hour of retries
 		Workers:         workers,
 		PeriodicJobs:    periodicJobs,
 		SoftStopTimeout: 29 * time.Second, // Client stops fetching new jobs and waits for in-progress jobs to complete before canceling them; ECS cancels after 30s

@@ -240,13 +240,13 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl() {
 	}
 }
 
-// func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
-// 	cfg := &service.Config{
-// 		RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
-// 		V1V2DenyRegexes: []string{"?!.*"}, // invalid regex (invalid target for quantifier)
-// 	}
-// 	assert.Panics(s.T(), func() { isACOV1V2DeniedAccess(cfg, "A1234") })
-// }
+func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
+	cfg := &service.Config{
+		RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+		V1V2DenyRegexes: []string{"?!.*"}, // invalid regex (invalid target for quantifier)
+	}
+	assert.Panics(s.T(), func() { cfg.IsACOV1V2DeniedAccess("A1234") })
+}
 
 func (s *MiddlewareTestSuite) TestValidateShared() {
 	resp := httptest.NewRecorder()

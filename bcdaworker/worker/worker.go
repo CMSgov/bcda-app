@@ -319,27 +319,39 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
 
-			var bene models.CCLFBeneficiary
-			// TODO: need seem getBeneficiary via MBI not cclf_beneficiary.ID
-			// TODO: feature flag, temporarily just hardcoding on ACO UUID
-			if jobArgs.ACOID == "test-shared-export" { // TODO (this is passed in via partnerID as part of the request)
-				bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
-				if err != nil {
-					//MBI is appended inside file, not printed out to system logs
-					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
-				}
-			} else {
-				id, err := strconv.ParseUint(beneID, 10, 64)
-				if err != nil {
-					return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
-				}
-
-				bene, err = getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
-				if err != nil {
-					//MBI is appended inside file, not printed out to system logs
-					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
-				}
+			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
+			if err != nil {
+				//MBI is appended inside file, not printed out to system logs
+				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
 			}
+
+			// SHARED EXPORT ONLY
+			// se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
+			// if se == "true" {
+
+			// 		var bene models.CCLFBeneficiary
+			// 		// TODO: need seem getBeneficiary via MBI not cclf_beneficiary.ID
+			// 		// TODO: feature flag, temporarily just hardcoding on ACO UUID
+			// 		if jobArgs.ACOID == "test-shared-export" { // TODO (this is passed in via partnerID as part of the request)
+			// 			bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
+			// 			if err != nil {
+			// 				//MBI is appended inside file, not printed out to system logs
+			// 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
+			// 			}
+			// 		} else {
+			// 			id, err := strconv.ParseUint(beneID, 10, 64)
+			// 			if err != nil {
+			// 				return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
+			// 			}
+
+			// 			bene, err = getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
+			// 			if err != nil {
+			// 				//MBI is appended inside file, not printed out to system logs
+			// 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
+			// 			}
+			// 		}
+
+			// }
 
 			b, err := bundleFunc(bene)
 			if err != nil {

@@ -215,6 +215,45 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 	return typeFilterParams, true
 }
 
+func ValidateSharedExport(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		rw, err := GetRespWriter(r.URL.Path)
+		if err != nil {
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid version in request URL")
+			return
+		}
+
+		var payload SharedExportBody
+		err = json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			log.API.Error("invalid JSON payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
+			return
+		}
+		defer r.Body.Close()
+
+		if payload.Since == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
+			log.API.Error("missing required fields in payload")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "missing required fields in payload")
+			return
+		}
+
+		sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
+		if err != nil {
+			log.API.Error("invalid _since parameter")
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "")
+			return
+		}
+
+		payload.SinceDecoded = sinceDate
+
+		ctx := WithSharedExportPayload(r.Context(), payload)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 // GetTypeFilterSubquery parses the _typeFilter subquery
 // For _tag, it validates each comma-separated token to correctly resolve compound query filters.
 func GetTypeFilterSubquery(params []string) (fhir.TypeFilterSubquery, error) {

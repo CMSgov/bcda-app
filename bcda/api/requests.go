@@ -962,10 +962,10 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: (BCDA-10498) confirm MBI payload strategy - hashing, etc?
+	// TODO: (BCDA-10567) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
 		Job:           newJob,
-		ACOID:         acoID,
+		ACOID:         acoID, // BCDA-10569
 		CMSID:         ad.CMSID,
 		PartnerID:     payload.PartnerID,
 		BFDPath:       constants.V3Path,
