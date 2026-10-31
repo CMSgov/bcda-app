@@ -26,7 +26,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.0
 	github.com/ccoveille/go-safecast v1.6.1
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/render v1.0.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
