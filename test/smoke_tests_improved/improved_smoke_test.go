@@ -37,6 +37,7 @@ type SharedBackendSmokeTests struct {
 }
 
 func TestSmokeTestsSuite(t *testing.T) {
+	t.Skip()
 	suite.Run(t, new(SharedBackendSmokeTests))
 }
 
@@ -61,7 +62,6 @@ func (s *SharedBackendSmokeTests) SetupTest() {}
 func (s *SharedBackendSmokeTests) TearDownTest() {}
 
 func (s *SharedBackendSmokeTests) TestPostToken() {
-	s.T().Skip()
 	t, err := s.postToken(s.dpcClientID, s.dpcClientSecret)
 	require.NoError(s.T(), err)
 	require.Contains(s.T(), t.Token_type, "bearer")
@@ -72,7 +72,6 @@ func (s *SharedBackendSmokeTests) TestPostToken() {
 
 // TODO: (BCDA-10498) remove version checks and add validation for data and resources types
 func (s *SharedBackendSmokeTests) TestPostSharedExport_SharedPartner() {
-	s.T().Skip()
 	tests := []struct {
 		name       string
 		body       *strings.Reader
@@ -108,7 +107,6 @@ func (s *SharedBackendSmokeTests) TestPostSharedExport_SharedPartner() {
 }
 
 func (s *SharedBackendSmokeTests) TestPostSharedExport_NotSharedPartner() {
-	s.T().Skip()
 	t, err := s.postToken(s.nonSharedClientID, s.nonSharedClientSecret)
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), t)
