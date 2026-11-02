@@ -282,18 +282,23 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}
 
 		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
+			id, err := strconv.ParseUint(beneID, 10, 64)
+			if err != nil {
+				return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
+			}
+
 			// NOTE: with adjudicated data sets, we first need to lookup the Patient ID
 			// before gathering EOB/Coverage results; however with partially-adjudicated data
 			// that is not yet possible because their are no Patient FHIR resources. This
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
-
 			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
 			}
 
+			// TODO: BCDA-10574
 			// SHARED EXPORT ONLY
 			// se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
 			// if se == "true" {

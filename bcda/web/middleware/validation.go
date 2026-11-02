@@ -48,10 +48,7 @@ type requestkey int
 
 const rk requestkey = 0
 
-// type to create context.Context key for the decoded SharedExportBody
 type CtxSharedExportPayloadType struct{}
-
-// context.Context key to get the SharedExportPayload from the request context
 
 type ctxSharedExportKey struct{}
 
@@ -215,6 +212,8 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 	return typeFilterParams, true
 }
 
+// TODO: BCDA-10505 validate the request body, headers, etc
+// separate ticket: bcda api checks the aco config several times, we should add this to request context so we don't need to regex+loop each time
 func ValidateSharedExport(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

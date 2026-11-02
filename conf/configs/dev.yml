@@ -89,6 +89,7 @@ aco_config:
         - 'partially-adjudicated'
       lookback_period: 3
     - model: 'DPC' 
+      shared_export: true
       name_pattern: '^DPC-\d+$'
       data:
         - 'adjudicated'
@@ -102,6 +103,5 @@ v1_v2_deny_regexes:
   - '^DPC-\d+$'
 v3_no_partial_claims_models:
   - 'GUIDE'
-shared_export_models:
-  - '^DPC-\d+$'
+
 

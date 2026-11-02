@@ -15,6 +15,7 @@ import (
 	"github.com/riverqueue/river"
 )
 
+// TODO: (BCDA-10498)
 type PrepareSharedJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareSharedJobArgs]
 	// db   *sql.DB
@@ -72,6 +73,7 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 	}
 }
 
+// TODO: BCDA-10498
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
 func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var err error
@@ -120,6 +122,7 @@ func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, ar
 	return exports, err
 }
 
+// TODO: BCDA-10498
 func (p *PrepareSharedJobWorker) chunkIntoJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var jobs []*worker_types.JobEnqueueArgs
 

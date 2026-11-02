@@ -35,7 +35,6 @@ type Config struct {
 	RateLimitConfig         RateLimitConfig `conf:"rate_limit_config"`
 	V1V2DenyRegexes         []string        `conf:"v1_v2_deny_regexes"`
 	V3NoPartialClaimsModels []string        `conf:"v3_no_partial_claims_models"`
-	SharedExportModels      []string        `conf:"shared_export_models"`
 	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
 	// to be defined as a child of RunoutConfig.
 	// Ex: Without the ,squash, we would have to have RunoutConfig.RUNOUT_CUTOFF_DATE_DAYS
@@ -60,6 +59,7 @@ type ACOConfig struct {
 	Data               []string        `conf:"data"`
 	IgnoreSuppressions bool            `conf:"ignore_suppressions" conf_default:"false"`
 	AttributionFile    AttributionFile `conf:"attribution_file"`
+	SharedExport       bool            `conf:"shared_export" conf_default:"false"`
 
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
@@ -152,9 +152,8 @@ func (cfg *Config) IsACOV1V2DeniedAccess(ACOID string) bool {
 }
 
 func (cfg *Config) IsSharedExportModel(ACOID string) bool {
-	for _, str := range cfg.SharedExportModels {
-		regex := regexp.MustCompile(str)
-		if regex.MatchString(ACOID) {
+	for _, aco := range cfg.ACOConfigs {
+		if aco.patternExp.MatchString(ACOID) && aco.SharedExport {
 			return true
 		}
 	}

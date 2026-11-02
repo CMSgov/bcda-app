@@ -45,6 +45,7 @@
 /bcda/${env}/sensitive/api/PRIORITY_ACO_REG_EX: ENC[AES256_GCM,data:/tgxkrm8BF8loiZNnhFVicdw/X6wPusEZA==,iv:WVnNN5TQE55ggg3wVAZYciYXjbl+nOUoFJfMbeyYv1M=,tag:s8Hef/COVbO89L8x6HJ6Qw==,type:str]
 /bcda/${env}/sensitive/api/RUNOUT_CLAIM_THRU_DATE: ENC[AES256_GCM,data:TIwF+e6O6FW3Ug==,iv:AxL4VH4zSIR2iqM8GWIna+MFky0ak6XTnI04WPdHMCE=,tag:XBhyCg7jyWQDoEeuzfMo9w==,type:str]
 /bcda/${env}/sensitive/api/RUNOUT_CUTOFF_DATE_DAYS: ENC[AES256_GCM,data:5r3a,iv:OPgtS1ErXA8WU3nSP9oookkbkQtGwQqyvgTrcqw8rvQ=,tag:9cIFk1zwSra8594K1SKVwg==,type:str]
+/bcda/${env}/sensitive/api/SHARED_ENDPOINT_ENABLED: ENC[AES256_GCM,data:aBCWqQ==,iv:4rDFcGYrU14L07v8KKzkTRYnOuFViZPygxFkOJzWkXo=,tag:iw1wV+oH8X8oElEtJGY8zw==,type:str]
 /bcda/${env}/sensitive/api/SSAS_PUBLIC_URL: ENC[AES256_GCM,data:yHINt1ffNyv+r88SFdKWrCfuEPQ/BckK/LqyZaefdY5liqXrtodrSMCN0zLxqvXUzOh0C/FJvwR0Dkr7QVfLNdcVg82Jh6gk,iv:C6sfOw7uAllVI2ai6myBxMzND3nhIIrnF5BqorpAPO0=,tag:ccM7dtitRR90skUaGlUvuQ==,type:str]
 /bcda/${env}/sensitive/api/SSAS_RATE_LIMIT_DURATION_MINUTES: ENC[AES256_GCM,data:1g==,iv:oC0u9Y4X55rXQmh8M3MXpxPDWMK8W1OBa5mGicRXozI=,tag:ynqAOj6HCSjuoyDMPh8TGw==,type:str]
 /bcda/${env}/sensitive/api/SSAS_RATE_LIMIT_THRESHOLD: ENC[AES256_GCM,data:950h6Q==,iv:1igqXonh1lV68EGEc3MGbzpf+ixzj3eN9Wf3vr3BN+M=,tag:2fc9tJgxJy7EKg5kdOg+VA==,type:str]
