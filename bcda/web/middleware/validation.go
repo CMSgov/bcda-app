@@ -32,7 +32,7 @@ type RequestParameters struct {
 	TypeFilter    fhir.TypeFilterSubquery
 }
 
-// TODO: add body validation
+// TODO: (BCDA-10505) add body validation
 type SharedExportBody struct {
 	Since         string   `json:"since"`
 	Version       string   `json:"version"`

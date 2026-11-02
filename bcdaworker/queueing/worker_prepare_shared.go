@@ -15,13 +15,14 @@ import (
 	"github.com/riverqueue/river"
 )
 
-// TODO: // TODO: BCDA-10574
+// TODO: BCDA-10574
 type PrepareSharedJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareSharedJobArgs]
 	// db   *sql.DB
 	pool *pgxv5Pool.Pool
 }
 
+// TODO: BCDA-10574
 // func (w *PrepareSharedJobWorker) Timeout(*river.Job[worker_types.JobEnqueueArgs]) time.Duration {
 // 	minutes := utils.GetEnvInt("PROCESS_JOB_TIMEOUT_MINUTES", 30)
 // 	return time.Duration(minutes) * time.Minute

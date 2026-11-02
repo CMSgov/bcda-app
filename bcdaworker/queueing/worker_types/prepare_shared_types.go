@@ -9,6 +9,7 @@ import (
 
 const PrepareSharedJobKind = "PrepareSharedJob"
 
+// TODO: (BCDA-10574)
 type PrepareSharedJobArgs struct {
 	Job       models.Job
 	ACOID     uuid.UUID

@@ -95,8 +95,8 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 
 		se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
 		r.Route("/api/v3", func(r chi.Router) {
-			r.With(slices.Concat(commonAuth, JobRateLimit, v3RequestValidators)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
-			r.With(slices.Concat(commonAuth, JobRateLimit, v3RequestValidators)...).Get("/Group/{groupId}/$export", apiV3.BulkGroupRequest)
+			r.With(slices.Concat(commonAuth, v3RequestValidators, JobRateLimit)...).Get("/Patient/$export", apiV3.BulkPatientRequest)
+			r.With(slices.Concat(commonAuth, v3RequestValidators, JobRateLimit)...).Get("/Group/{groupId}/$export", apiV3.BulkGroupRequest)
 			r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Get(constants.JOBIDPath, apiV3.JobStatus)
 			r.With(append(commonAuth, v3RequestValidators...)...).Get("/jobs", apiV3.JobsStatus)
 			// TODO: (BCDA-10498) limit shared export models to deletejob and shared export (all middleware needs updating)

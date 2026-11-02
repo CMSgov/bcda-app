@@ -317,6 +317,7 @@ func (s *RouterTestSuite) TestSharedExportFlag() {
 
 		{"shared export endpoint enabled", "true", http.StatusUnauthorized},
 		{"shared export endpoint disabled", "foo", http.StatusNotFound},
+		{"shared export endpoint disabled", "", http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
