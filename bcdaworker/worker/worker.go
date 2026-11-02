@@ -383,19 +383,20 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	return jobKeys, nil
 }
 
-func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
-	cclfBeneficiary := models.CCLFBeneficiary{MBI: mbi}
+// TODO: BCDA-10574
+// func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
+// 	cclfBeneficiary := models.CCLFBeneficiary{MBI: mbi}
 
-	if fetchBBId {
-		bbID, err := getBlueButtonID(bb, mbi, jobData)
-		if err != nil {
-			return cclfBeneficiary, err
-		}
-		cclfBeneficiary.BlueButtonID = bbID
-	}
+// 	if fetchBBId {
+// 		bbID, err := getBlueButtonID(bb, mbi, jobData)
+// 		if err != nil {
+// 			return cclfBeneficiary, err
+// 		}
+// 		cclfBeneficiary.BlueButtonID = bbID
+// 	}
 
-	return cclfBeneficiary, nil
-}
+// 	return cclfBeneficiary, nil
+// }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
 func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
