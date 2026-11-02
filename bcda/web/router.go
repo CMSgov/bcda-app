@@ -90,7 +90,7 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 			rlm.CheckConcurrentJobs,
 		}
 		var SharedExport = []func(http.Handler) http.Handler{
-			middleware.ValidateSharedExport, middleware.HasSharedExportAccess(cfg),
+			middleware.ValidateSharedExportBody, middleware.HasSharedExportAccess(cfg),
 		}
 
 		se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")

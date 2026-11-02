@@ -916,6 +916,7 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) 
 	return typeFilter
 }
 
+// TODO: BCDA-10507
 func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := log.GetCtxLogger(ctx)
