@@ -15,14 +15,20 @@ import (
 	"github.com/riverqueue/river"
 )
 
-// TODO: BCDA-10574
+/*
+
+TODO: BCDA-10574
+
+This whole file needs review per BCDA-10574
+
+*/
+
 type PrepareSharedJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareSharedJobArgs]
 	// db   *sql.DB
 	pool *pgxv5Pool.Pool
 }
 
-// TODO: BCDA-10574
 // func (w *PrepareSharedJobWorker) Timeout(*river.Job[worker_types.JobEnqueueArgs]) time.Duration {
 // 	minutes := utils.GetEnvInt("PROCESS_JOB_TIMEOUT_MINUTES", 30)
 // 	return time.Duration(minutes) * time.Minute
@@ -74,7 +80,6 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 	}
 }
 
-// TODO: BCDA-10574
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
 func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var err error
@@ -123,7 +128,6 @@ func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, ar
 	return exports, err
 }
 
-// TODO: BCDA-10574
 func (p *PrepareSharedJobWorker) chunkIntoJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var jobs []*worker_types.JobEnqueueArgs
 

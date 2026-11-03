@@ -170,12 +170,12 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 		nil)
 
 	// execute positive scenario
-	msg, err := ResetClientCredentials(repository, mock, *s.testACO.CMSID)
+	msg, err := resetClientCredentials(repository, mock, *s.testACO.CMSID)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, msg)
 
 	// Execute with invalid ACO CMS ID
-	msg, err = ResetClientCredentials(repository, mock, "BLAH")
+	msg, err = resetClientCredentials(repository, mock, "BLAH")
 	assert.Equal("no ACO record found for BLAH", err.Error())
 	assert.Equal(0, len(msg))
 

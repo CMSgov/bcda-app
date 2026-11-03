@@ -937,6 +937,7 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 
 	payload, ok := middleware.FromContextSharedExportPayload(ctx)
 	if !ok {
+		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "")
 		return
 	}
 
@@ -985,6 +986,7 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, payload.Version, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
 }

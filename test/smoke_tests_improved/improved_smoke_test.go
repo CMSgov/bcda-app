@@ -94,8 +94,6 @@ func (s *SharedBackendSmokeTests) TestPostSharedExport_SharedPartner() {
 			require.NoError(s.T(), err)
 			require.NotEmpty(s.T(), t)
 			j, err := s.postSharedExport(t.AccessToken, tt.body)
-
-			require.NoError(s.T(), err)
 			require.NoError(s.T(), err)
 			require.Equal(s.T(), tt.respStatus, j.StatusCode)
 			if tt.respStatus == 202 {

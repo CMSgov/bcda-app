@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/conf"
 	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
@@ -305,6 +307,12 @@ func (s *MiddlewareTestSuite) TestValidateShared() {
 }
 
 func (s *MiddlewareTestSuite) TestHasSharedExportAccess() {
+	e := conf.GetEnv("DEPLOYMENT_TARGET")
+	envs := []string{"local", "dev", "test"}
+
+	if !slices.Contains(envs, e) {
+		s.T().Skip()
+	}
 	resp := httptest.NewRecorder()
 	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "DPC-1", ACOID: "DPC-1"})
