@@ -298,6 +298,35 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
 			}
 
+			// TODO: BCDA-10574
+			// SHARED EXPORT ONLY
+			// se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
+			// if se == "true" {
+
+			// 		var bene models.CCLFBeneficiary
+			// 		// TODO: need seem getBeneficiary via MBI not cclf_beneficiary.ID
+			// 		// TODO: feature flag, temporarily just hardcoding on ACO UUID
+			// 		if jobArgs.ACOID == "test-shared-export" { // TODO (this is passed in via partnerID as part of the request)
+			// 			bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
+			// 			if err != nil {
+			// 				//MBI is appended inside file, not printed out to system logs
+			// 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
+			// 			}
+			// 		} else {
+			// 			id, err := strconv.ParseUint(beneID, 10, 64)
+			// 			if err != nil {
+			// 				return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
+			// 			}
+
+			// 			bene, err = getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
+			// 			if err != nil {
+			// 				//MBI is appended inside file, not printed out to system logs
+			// 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
+			// 			}
+			// 		}
+
+			// }
+
 			b, err := bundleFunc(bene)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
@@ -353,6 +382,21 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 	return jobKeys, nil
 }
+
+// TODO: BCDA-10574
+// func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
+// 	cclfBeneficiary := models.CCLFBeneficiary{MBI: mbi}
+
+// 	if fetchBBId {
+// 		bbID, err := getBlueButtonID(bb, mbi, jobData)
+// 		if err != nil {
+// 			return cclfBeneficiary, err
+// 		}
+// 		cclfBeneficiary.BlueButtonID = bbID
+// 	}
+
+// 	return cclfBeneficiary, nil
+// }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
 func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {

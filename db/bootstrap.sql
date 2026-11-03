@@ -40,7 +40,8 @@ INSERT INTO public.acos (uuid, name, created_at, updated_at, id, client_id, cms_
 	('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'ACO Dev', NOW(), NOW(), 2, '0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'A9994', '2', NULL),
 	('3461c774-b48f-11e8-96f8-529269fb1459', 'ACO Small', NOW(), NOW(), 7, '3461C774-B48F-11E8-96F8-529269fb1459', 'A9990', 'A9990', '4', NULL),
 	('dfcb6432-0678-4590-a28b-6573e8a681ce', 'ACO Partially-Adjudicated Dev', NOW(), NOW(), 3, 'dfcb6432-0678-4590-a28b-6573e8a681ce', 'TEST001', 'TEST001', '5', NULL),
-	('f9da2493-1793-4f3f-af8b-4f5578e73667', 'ACO Outdated Attribution', NOW(), NOW(), 3, 'f9da2493-1793-4f3f-af8b-4f5578e73667', 'TEST995', 'TEST995-Group', '6', NULL);
+	('f9da2493-1793-4f3f-af8b-4f5578e73667', 'ACO Outdated Attribution', NOW(), NOW(), 3, 'f9da2493-1793-4f3f-af8b-4f5578e73667', 'TEST995', 'TEST995-Group', '6', NULL),
+	('1db778aa-45eb-428e-99e4-d32c519f9d69', 'Data at the Point of Care - DPC', NOW(), NOW(), 17, '1db778aa-45eb-428e-99e4-d32c519f9d69', 'DPC-1', 'DPC-1-Group', '7', NULL);
 
 
 --
@@ -212453,7 +212454,8 @@ insert into public.groups(deleted_at, group_id, x_data, data)
     values (null, 'A9997', '{"cms_ids":["A9997"]}', '{"name": "", "xdata": "", "group_id": "A9997"}'),
            (null, 'A9990', '{"cms_ids":["A9990"]}', '{"name": "", "xdata": "", "group_id": "A9990"}'),
            (null, 'TEST001', '{"cms_ids":["TEST001"]}', '{"name": "", "xdata": "", "group_id": "TEST001"}'),
-           (null, 'TEST995-Group', '{"cms_ids":["TEST995"]}', '{"name": "", "xdata": "", "group_id": "TEST995-Group"}');
+           (null, 'TEST995-Group', '{"cms_ids":["TEST995"]}', '{"name": "", "xdata": "", "group_id": "TEST995-Group"}'),
+		   (null, 'DPC-1-Group', '{"cms_ids":["DPC-1"]}', '{"name": "", "xdata": "", "group_id": "DPC-1-Group"}');
 
 
 
@@ -212461,7 +212463,8 @@ insert into public.systems(deleted_at, group_id, client_id, client_name, api_sco
     values (null, 'A9997', 'b8abdf3c-5965-4ae5-a661-f19a8129fda5', 'ACO Blacklisted', 'bcda-api', 3),
            (null, 'A9990', '3461c774-b48f-11e8-96f8-529269fb1459', 'ACO Test', 'bcda-api', 4),
            (null, 'TEST001', 'dfcb6432-0678-4590-a28b-6573e8a681ce', 'ACO Partially-Adjudicated Test', 'bcda-api', 5),
-           (null, 'TEST995-Group', 'f9da2493-1793-4f3f-af8b-4f5578e73667', 'ACO Outdated Attribution', 'bcda-api', 6);
+           (null, 'TEST995-Group', 'f9da2493-1793-4f3f-af8b-4f5578e73667', 'ACO Outdated Attribution', 'bcda-api', 6),
+		   (null, 'DPC-1-Group', '1db778aa-45eb-428e-99e4-d32c519f9d69', 'DPC smoke test', 'bcda-api', 7);
 
 insert into public.secrets(created_at, Updated_at, deleted_at, hash, system_id)
     values (NOW(), NOW(), null, 'tySpsJT3iVFoNqRjuMIO2AWt/2OJt76DnHmFq9weDcw=:Azj+aDD7vKQhrflhXPOdFk1yu+zECSdUbxc7zZCwhG6i0j/eRE8dAjNgr1s99MAG0LtIYTK7pHsBDo3UYea39A==:130000', 3);

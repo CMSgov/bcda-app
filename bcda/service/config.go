@@ -59,6 +59,7 @@ type ACOConfig struct {
 	Data               []string        `conf:"data"`
 	IgnoreSuppressions bool            `conf:"ignore_suppressions" conf_default:"false"`
 	AttributionFile    AttributionFile `conf:"attribution_file"`
+	SharedExport       bool            `conf:"shared_export" conf_default:"false"`
 
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
@@ -117,6 +118,7 @@ func (cfg *Config) ComputeFields() (err error) {
 	return nil
 }
 
+// TODO: (BCDA-10498) this could be moved under IsSupportedACO
 func (cfg *Config) IsACODisabled(CMSID string) bool {
 	for _, ACOcfg := range cfg.ACOConfigs {
 		if ACOcfg.patternExp.MatchString(CMSID) {
@@ -132,6 +134,26 @@ func (cfg *Config) IsACODisabled(CMSID string) bool {
 func (cfg *Config) IsSupportedACO(cmsID string) bool {
 	for _, aco := range cfg.ACOConfigs {
 		if aco.patternExp.MatchString(cmsID) {
+			return true
+		}
+	}
+	return false
+}
+
+func (cfg *Config) IsACOV1V2DeniedAccess(ACOID string) bool {
+	for _, str := range cfg.V1V2DenyRegexes {
+		regex := regexp.MustCompile(str)
+		if regex.MatchString(ACOID) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (cfg *Config) IsSharedExportModel(ACOID string) bool {
+	for _, aco := range cfg.ACOConfigs {
+		if aco.patternExp.MatchString(ACOID) && aco.SharedExport {
 			return true
 		}
 	}

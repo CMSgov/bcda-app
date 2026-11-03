@@ -17,6 +17,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/DataDog/dd-trace-go/v2/profiler"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -32,8 +33,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-
-	"github.com/DataDog/dd-trace-go/v2/profiler"
 )
 
 // App Name and usage.  Edit them here to prevent breaking tests

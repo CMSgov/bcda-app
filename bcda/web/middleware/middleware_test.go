@@ -6,16 +6,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/conf"
 	logAPI "github.com/CMSgov/bcda-app/log"
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -180,8 +184,8 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 		path         string
 		expected_err string
 	}{
-		{"Not Enough Parts", "/Patient", "not enough parts"},
-		{"Invalid Version", "/api/v9/Patient", "unexpected API version"},
+		{"Missing version (non-auth)", "/Patient", "invalid version in request URL"},
+		{"Invalid Version", "/api/v9/Patient", "invalid version in request URL"},
 	}
 
 	for _, tt := range tests {
@@ -238,12 +242,120 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl() {
 	}
 }
 
+func (s *MiddlewareTestSuite) TestV1V2DenyControl_NoAuth() {
+
+	cfg := &service.Config{
+		RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+		V1V2DenyRegexes: []string{},
+	}
+
+	rr := httptest.NewRecorder()
+	ctx := SetRequestParamsCtx(context.Background(), RequestParameters{})
+	req := httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
+	V1V2DenyControl(cfg)(http.HandlerFunc(
+		func(rw http.ResponseWriter, r *http.Request) {}),
+	).ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusInternalServerError, rr.Result().StatusCode)
+
+}
+
+func (s *MiddlewareTestSuite) TestV1V2DenyControl_InvalidVersion() {
+
+	cfg := &service.Config{
+		RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
+		V1V2DenyRegexes: []string{},
+	}
+
+	rr := httptest.NewRecorder()
+	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "A1234", ACOID: "A1234"})
+	ctx = SetRequestParamsCtx(ctx, RequestParameters{})
+	req := httptest.NewRequest("GET", "/api/v8/Patient", nil).WithContext(ctx)
+	V1V2DenyControl(cfg)(http.HandlerFunc(
+		func(rw http.ResponseWriter, r *http.Request) {}),
+	).ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
+
+}
+
 func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
 	cfg := &service.Config{
 		RunoutConfig:    service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"},
 		V1V2DenyRegexes: []string{"?!.*"}, // invalid regex (invalid target for quantifier)
 	}
-	assert.Panics(s.T(), func() { isACOV1V2DeniedAccess(cfg, "A1234") })
+	assert.Panics(s.T(), func() { cfg.IsACOV1V2DeniedAccess("A1234") })
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared() {
+	resp := httptest.NewRecorder()
+
+	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
+
+	// create a new handler
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		payload, ok := FromContextSharedExportPayload(r.Context())
+		require.True(s.T(), ok)
+		require.NotNil(s.T(), payload)
+	})
+
+	handlerToTest := ValidateSharedExportBody(nextHandler)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	handlerToTest.ServeHTTP(resp, req)
+	require.Equal(s.T(), resp.Code, 200)
+
+}
+
+func (s *MiddlewareTestSuite) TestHasSharedExportAccess() {
+	e := conf.GetEnv("DEPLOYMENT_TARGET")
+	envs := []string{"local", "dev", "test"}
+
+	if !slices.Contains(envs, e) {
+		s.T().Skip()
+	}
+	resp := httptest.NewRecorder()
+	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
+	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "DPC-1", ACOID: "DPC-1"})
+
+	cfg, err := service.LoadConfig()
+	require.NoError(s.T(), err)
+
+	handlerToTest := HasSharedExportAccess(cfg)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	req = req.WithContext(ctx)
+	handlerToTest(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {})).ServeHTTP(resp, req)
+	require.Equal(s.T(), resp.Code, http.StatusOK)
+
+}
+
+func (s *MiddlewareTestSuite) TestHasSharedExportAccess_NoAuth() {
+	resp := httptest.NewRecorder()
+	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
+
+	cfg, err := service.LoadConfig()
+	require.NoError(s.T(), err)
+
+	handlerToTest := HasSharedExportAccess(cfg)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	handlerToTest(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {})).ServeHTTP(resp, req)
+	require.Equal(s.T(), http.StatusInternalServerError, resp.Code)
+
+}
+
+func (s *MiddlewareTestSuite) TestHasSharedExportAccess_InvalidVersion() {
+	resp := httptest.NewRecorder()
+	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
+	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "DPC-1", ACOID: "DPC-1"})
+
+	cfg, err := service.LoadConfig()
+	require.NoError(s.T(), err)
+
+	handlerToTest := HasSharedExportAccess(cfg)
+	req := httptest.NewRequest("GET", "http:///v8/testing", body)
+	req = req.WithContext(ctx)
+	handlerToTest(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {})).ServeHTTP(resp, req)
+	require.Equal(s.T(), http.StatusBadRequest, resp.Code)
+
 }
 
 func testRequest(rp RequestParameters, cmsid string) *http.Request {

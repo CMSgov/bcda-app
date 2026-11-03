@@ -365,6 +365,10 @@ func (a ApiV3) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a ApiV3) SharedExport(w http.ResponseWriter, r *http.Request) {
+	a.handler.SharedExport(w, r)
+}
+
 func restResourceSearchParam(n string, t r4.SearchParamType, d string) r4.SearchParam {
 	p := r4.SearchParam{
 		Name:          n,
