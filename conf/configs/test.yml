@@ -88,6 +88,12 @@ aco_config:
         - 'adjudicated'
         - 'partially-adjudicated'
       lookback_period: 3
+    - model: 'DPC' 
+      shared_export: true
+      name_pattern: '^DPC-\d+$'
+      data:
+        - 'adjudicated'
+        - 'partially-adjudicated'
 rate_limit_config:
   all: true
   acos: []
