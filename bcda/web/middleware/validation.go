@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/fhir"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -24,50 +25,25 @@ var supportedOutputFormats = map[string]struct{}{
 	"application/fhir+ndjson": {},
 	"application/ndjson":      {}}
 
-type RequestParameters struct {
-	Since         time.Time
-	ResourceTypes []string
-	Version       string // e.g. v1, v2
-	RequestURL    string
-	TypeFilter    fhir.TypeFilterSubquery
-}
-
-// TODO: (BCDA-10505) add body validation
-type SharedExportBody struct {
-	Since         string   `json:"since"`
-	Version       string   `json:"version"`
-	ResourceTypes []string `json:"resource_types"`
-	PartnerID     string   `json:"partner_id"`
-	DataTypes     []string `json:"data_types"`
-	MBIs          []string `json:"mbis"`
-	SinceDecoded  time.Time
-}
-
 // requestkey is an unexported context key to avoid collisions
 type requestkey int
 
 const rk requestkey = 0
 
-type CtxSharedExportPayloadType struct{}
+type ctxSharedExportQueriesKey struct{}
 
-type ctxSharedExportKey struct{}
-
-func WithSharedExportPayload(parent context.Context, body SharedExportBody) context.Context {
-	return context.WithValue(parent, ctxSharedExportKey{}, body)
-}
-
-func FromContextSharedExportPayload(ctx context.Context) (SharedExportBody, bool) {
-	u, ok := ctx.Value(ctxSharedExportKey{}).(SharedExportBody) // Type assertion
-	return u, ok
+func GetSharedExportQueriesFromCtx(ctx context.Context) ([]rt.SharedExportQuery, bool) {
+	queries, ok := ctx.Value(ctxSharedExportQueriesKey{}).([]rt.SharedExportQuery) // Type assertion
+	return queries, ok
 }
 
 // TODO: replace this function else where with line 35
-func SetRequestParamsCtx(ctx context.Context, rp RequestParameters) context.Context {
+func SetRequestParamsCtx(ctx context.Context, rp rt.RequestParameters) context.Context {
 	return context.WithValue(ctx, rk, rp)
 }
 
-func GetRequestParamsFromCtx(ctx context.Context) (RequestParameters, bool) {
-	rp, ok := ctx.Value(rk).(RequestParameters)
+func GetRequestParamsFromCtx(ctx context.Context) (rt.RequestParameters, bool) {
+	rp, ok := ctx.Value(rk).(rt.RequestParameters)
 	return rp, ok
 }
 
@@ -214,7 +190,8 @@ func validateTypeFilterParameter(r *http.Request, rw fhirResponseWriter, w http.
 
 // TODO: BCDA-10505 validate the request body, headers, etc
 // separate ticket: bcda api checks the aco config several times, we should add this to request context so we don't need to regex+loop each time
-func ValidateSharedExportBody(next http.Handler) http.Handler {
+// ValidateSharedExportPayload validates the payload, converts to queries, and sets them into context
+func ValidateSharedExportPayload(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		rw, err := GetRespWriter(r.URL.Path)
@@ -223,7 +200,7 @@ func ValidateSharedExportBody(next http.Handler) http.Handler {
 			return
 		}
 
-		var payload SharedExportBody
+		var payload rt.SharedExportPayload
 		err = json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
 			log.API.Error("invalid JSON payload")
@@ -232,25 +209,62 @@ func ValidateSharedExportBody(next http.Handler) http.Handler {
 		}
 		defer r.Body.Close()
 
-		if payload.Since == "" || len(payload.ResourceTypes) == 0 || payload.PartnerID == "" || len(payload.DataTypes) == 0 || len(payload.MBIs) == 0 {
-			log.API.Error("missing required fields in payload")
-			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "missing required fields in payload")
+		queries, invalidResults := validateSharedExportPayload(payload)
+		if invalidResults != "" {
+			log.API.Warn(invalidResults)
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, invalidResults)
 			return
 		}
 
-		sinceDate, err := time.Parse(time.RFC3339Nano, payload.Since)
-		if err != nil {
-			log.API.Error("invalid _since parameter")
-			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.RequestErr, "")
-			return
-		}
-
-		payload.SinceDecoded = sinceDate
-
-		ctx := WithSharedExportPayload(r.Context(), payload)
+		ctx := context.WithValue(r.Context(), ctxSharedExportQueriesKey{}, queries)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQuery, string) {
+	if len(payload.Queries) == 0 {
+		return []rt.SharedExportQuery{}, "no queries"
+	}
+
+	issues := []string{}
+	queries := []rt.SharedExportQuery{}
+	for _, query := range payload.Queries {
+		if len(query.DataTypes) == 0 {
+			issues = append(issues, "missing data_types in query")
+		}
+		if len(query.MBIs) == 0 {
+			issues = append(issues, "missing mbis in query")
+		}
+		if len(query.ResourceTypes) == 0 {
+			issues = append(issues, "missing resource_types in query")
+		}
+		if query.SourceQuery == "" {
+			issues = append(issues, "missing source_query in query")
+		}
+		if len(query.ParsedQuery.Headers) == 0 {
+			issues = append(issues, "missing parsed_query.headers in query")
+		}
+		// TODO these might not be required, and TypeFilter is being modified in the data contract
+		// if query.ParsedQuery.Parameters.Since == "" {
+		// 	issues = append(issues, "missing parsed_query.parameters._since in query")
+		// }
+		// if query.ParsedQuery.Parameters.TypeFilter == "" {
+		// 	issues = append(issues, "missing parsed_query.parameters._since in query")
+		// }
+		if query.Version == "" {
+			issues = append(issues, "missing version in query")
+		}
+
+		_, err := time.Parse(time.RFC3339Nano, query.ParsedQuery.Parameters.Since)
+		if err != nil {
+			issues = append(issues, "_since must be in RFC3339")
+		}
+
+		queries = append(queries, query)
+	}
+
+	return queries, strings.Join(issues, "; ")
 }
 
 // GetTypeFilterSubquery parses the _typeFilter subquery
@@ -290,8 +304,8 @@ func HasSystemTypeTag(subquery fhir.TypeFilterSubquery) bool {
 
 // ValidateRequestURL ensure that request matches certain expectations.
 // Any error that it finds will result in a http.StatusBadRequest response.
-// If successful, it populates the request context with RequestParameters that can be used downstream.
-// These paramters can be retrieved by calling RequestParametersFromContext.
+// If successful, it populates the request context with rt.RequestParameters that can be used downstream.
+// These paramters can be retrieved by calling rt.RequestParametersFromContext.
 func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw, err := GetRespWriter(r.URL.Path)
@@ -331,7 +345,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		}
 
 		// Build request parameters
-		rp := RequestParameters{
+		rp := rt.RequestParameters{
 			Version:       v,
 			RequestURL:    r.URL.String(),
 			Since:         sinceDate,

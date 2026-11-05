@@ -18,7 +18,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -27,7 +26,6 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	m "github.com/CMSgov/bcda-app/middleware"
-	"github.com/ccoveille/go-safecast"
 	pgxv5 "github.com/jackc/pgx/v5"
 	pgxv5Pool "github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -95,7 +93,7 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 			ctx = context.WithValue(ctx, m.CtxTransactionKey, rjob.Args.TransactionID)
 			logger := log.GetCtxLogger(ctx)
 
-			exports, since, err := w.prepareExportJobs(ctx, rjob.Args)
+			exports, err := w.prepareExportJobs(ctx, rjob.Args)
 			if err != nil {
 				logger.Errorf("failed to add jobs to the main queue: %s", err)
 				return err
@@ -115,7 +113,7 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 
 			client := river.ClientFromContext[pgxv5.Tx](ctx)
 			q := riverEnqueuer{pool: w.pool, Client: client}
-			err = w.queueExportJobs(ctx, tx, q, rjob.Args, exports, since)
+			err = w.queueExportJobs(ctx, tx, q, rjob.Args, exports)
 			if err != nil {
 				// TODO update job in jobs table as failed
 				logger.Errorf("failed to add jobs to the main queue: %s", err)
@@ -142,7 +140,7 @@ func (w *PrepareJobWorker) Work(ctx context.Context, rjob *river.Job[worker_type
 }
 
 // prepareExportJobs builds a list of jobs to be processed based on the parent job.
-func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, time.Time, error) {
+func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_types.PrepareJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var err error
 	exports := []*worker_types.JobEnqueueArgs{}
 	logger := log.GetCtxLogger(ctx)
@@ -157,14 +155,32 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		}
 	}()
 
-	id, err := safecast.ToInt(args.Job.ID)
+	args.Job.TransactionTime, err = p.GetBundleLastUpdated(args)
 	if err != nil {
-		logger.Error(err)
-		return exports, args.Since, err
+		return exports, err
 	}
 
+	exports, benesAttributed, err := p.svc.GetQueJobs(ctx, args)
+	if err != nil {
+		logger.Error(err)
+		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok {
+			return exports, err
+		} else {
+			return exports, err
+		}
+	}
+
+	args.Job.JobCount = len(exports)
+	args.Job.BenesAttributedToACO = benesAttributed
+
+	return exports, err
+}
+
+// GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
+func (p *PrepareJobWorker) GetBundleLastUpdated(args worker_types.PrepareJobArgs) (time.Time, error) {
 	jobData := worker_types.JobEnqueueArgs{
-		ID:              id,
+		BBBasePath:      args.BFDPath,
+		ID:              0,
 		ACOID:           args.Job.ACOID.String(),
 		Since:           args.Since.String(),
 		TypeFilter:      args.TypeFilter,
@@ -172,64 +188,22 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		CMSID:           args.CMSID,
 	}
 
-	args.Job.TransactionTime, err = p.GetBundleLastUpdated(args.BFDPath, jobData)
-	if err != nil {
-		return exports, args.Since, err
-	}
-
-	exports, benesAttributed, err := p.svc.GetQueJobs(ctx, args)
-	if err != nil {
-		logger.Error(err)
-		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok {
-			return exports, args.Since, err
-		} else {
-			return exports, args.Since, err
-		}
-	}
-
-	args.Job.JobCount = len(exports)
-	args.Job.BenesAttributedToACO = benesAttributed
-
-	return exports, args.Since, err
-}
-
-// GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
-func (p *PrepareJobWorker) GetBundleLastUpdated(basepath string, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
-	var (
-		b   *fhir.Bundle
-		err error
-	)
-
-	switch basepath {
+	switch args.BFDPath {
 	case constants.BFDV1Path:
-		b, err = p.v1Client.GetPatient(jobData, "0")
+		return service.GetBundleLastUpdated(p.v1Client, jobData)
 	case constants.BFDV2Path:
-		b, err = p.v2Client.GetPatient(jobData, "0")
+		return service.GetBundleLastUpdated(p.v2Client, jobData)
 	case constants.BFDV3Path:
-		b, err = p.v3Client.GetPatient(jobData, "0")
+		return service.GetBundleLastUpdated(p.v3Client, jobData)
 	default:
-		return time.Time{}, fmt.Errorf("unsupported BFD base path: %s", basepath)
+		return time.Time{}, fmt.Errorf("unsupported BFD base path: %s", args.BFDPath)
 	}
-
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	// Safeguard: If BFD lower environments return 1970/epoch or an unpopulated timestamp, fallback to request transaction time. minValidYear guards against epoch (1970) or bogus default dates from mock/lower-environment BFD servers.
-	const minValidYear = 2000
-	if b == nil || b.Meta.LastUpdated.IsZero() || b.Meta.LastUpdated.Year() < minValidYear {
-		log.Worker.Warnf("Bundle LastUpdated unavailable or invalid for %s; falling back to transaction time %s", basepath, jobData.TransactionTime)
-		return jobData.TransactionTime, nil
-	}
-
-	return b.Meta.LastUpdated, nil
 }
 
-func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs, since time.Time) error {
-	for _, j := range exports {
-		sinceParam := !since.IsZero() || args.RequestType == constants.RetrieveNewBeneHistData
-		jobPriority := p.svc.GetJobPriority(args.CMSID, j.ResourceType, sinceParam)
+func (p *PrepareJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q Enqueuer, args worker_types.PrepareJobArgs, exports []*worker_types.JobEnqueueArgs) error {
+	jobPriority := service.GetJobPriority(args.CMSID)
 
+	for _, j := range exports {
 		if err := q.AddJob(ctx, tx, *j, int(jobPriority)); err != nil {
 			return err
 		}

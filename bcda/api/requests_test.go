@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -178,7 +179,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
 			}
 
-			req := s.genGroupRequest("runout", middleware.RequestParameters{})
+			req := s.genGroupRequest("runout", rt.RequestParameters{})
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
@@ -641,7 +642,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "false")
 	assert.Empty(s.T(), err)
 
-	req := s.genGroupRequest("runout", middleware.RequestParameters{})
+	req := s.genGroupRequest("runout", rt.RequestParameters{})
 	w := httptest.NewRecorder()
 	h := &Handler{}
 	h.RespWriter = responseutils.NewFhirResponseWriter()
@@ -762,7 +763,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
-			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), rt.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
@@ -799,7 +800,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	for _, resource := range resources {
 		for _, since := range sinces {
 			for _, groupID := range groupIDs {
-				rp := middleware.RequestParameters{
+				rp := rt.RequestParameters{
 					Version:       apiVersionOne,
 					ResourceTypes: []string{resource},
 					Since:         since,
@@ -836,7 +837,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	// Validate patient requests
 	for _, resource := range resources {
 		for _, since := range sinces {
-			rp := middleware.RequestParameters{
+			rp := rt.RequestParameters{
 				Version:       apiVersionOne,
 				ResourceTypes: []string{resource},
 				Since:         since,
@@ -1171,7 +1172,7 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 	}
 	for _, test := range testCases {
 		h := newHandler(s.resourceType, "/"+test.apiVersion+"/fhir", test.apiVersion, s.db, s.pool)
-		rp := middleware.RequestParameters{
+		rp := rt.RequestParameters{
 			Version:       test.apiVersion,
 			ResourceTypes: []string{},
 			Since:         time.Time{},
@@ -1290,7 +1291,7 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
-			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), rt.RequestParameters{
 				Since:         test.since,
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
@@ -1310,7 +1311,7 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 	}
 }
 
-func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {
+func (s *RequestsTestSuite) genGroupRequest(groupID string, rp rt.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 
 	rctx := chi.NewRouteContext()
@@ -1329,7 +1330,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 	return req
 }
 
-func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *http.Request {
+func (s *RequestsTestSuite) genPatientRequest(rp rt.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}

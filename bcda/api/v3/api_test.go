@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
+	"github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -587,7 +588,7 @@ func (s *APITestSuite) TestResourceTypes() {
 				u, err := url.Parse(fmt.Sprintf("%s%s/$export", constants.V3Path, ep))
 				assert.NoError(t, err)
 
-				rp := middleware.RequestParameters{
+				rp := request_types.RequestParameters{
 					Version:       constants.V3Version,
 					ResourceTypes: tt.resourceTypes,
 				}

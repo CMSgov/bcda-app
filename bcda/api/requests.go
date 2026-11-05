@@ -20,6 +20,7 @@ import (
 
 	"github.com/pborman/uuid"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/fhir"
@@ -783,7 +784,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 }
 
 // TODO: (BCDA-10498) this is request validation, should be in middleware (move)
-func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
+func (h *Handler) getResourceTypes(parameters rt.RequestParameters, cmsID string) []string {
 	resourceTypes := parameters.ResourceTypes
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
@@ -916,17 +917,14 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) 
 	return typeFilter
 }
 
-// TODO: BCDA-10507
+// TODO: BCDA-10507 add tests
 func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := log.GetCtxLogger(ctx)
-	var (
-		err error
-		ad  auth.AuthData
-	)
 
-	if ad, err = GetAuthDataFromCtx(r); err != nil {
-		ctx, _ = log.WriteErrorWithFields(
+	ad, err := GetAuthDataFromCtx(r)
+	if err != nil {
+		ctx, _ := log.WriteErrorWithFields(
 			ctx,
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -935,7 +933,7 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, ok := middleware.FromContextSharedExportPayload(ctx)
+	queries, ok := middleware.GetSharedExportQueriesFromCtx(ctx)
 	if !ok {
 		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "")
 		return
@@ -967,16 +965,12 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
 		Job:           newJob,
-		ACOID:         acoID, // BCDA-10569
+		ACOID:         acoID,
 		CMSID:         ad.CMSID,
-		PartnerID:     payload.PartnerID,
 		BFDPath:       constants.V3Path,
-		ResourceTypes: payload.ResourceTypes,
-		Since:         payload.SinceDecoded,
 		CreationTime:  time.Now(),
 		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
-		MBIs:          payload.MBIs,
-		DataTypes:     payload.DataTypes,
+		Queries:       queries,
 	}
 
 	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)
@@ -987,7 +981,7 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
-	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, payload.Version, newJob.ID))
+	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, queries[0].Version, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
 }
 

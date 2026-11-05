@@ -93,14 +93,14 @@ func TestGetMaxBeneCount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(sub *testing.T) {
 			tt.setup(tt.resource, tt.expVal)
-			max, err := getMaxBeneCount(tt.resource)
+			max, err := GetMaxBeneCount(tt.resource)
 			assert.NoError(sub, err)
 			assert.Equal(sub, tt.expVal, max)
 		})
 	}
 
 	// Invalid type
-	max, err := getMaxBeneCount("Coverages")
+	max, err := GetMaxBeneCount("Coverages")
 	assert.Equal(t, -1, max)
 	assert.EqualError(t, err, "invalid request type")
 }
@@ -1134,7 +1134,6 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 		{"EOB with Historic Benes", defaultACOID, "ExplanationOfBenefit", "", constants.RetrieveNewBeneHistData},
 	}
 
-	svc := &service{}
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	for _, tt := range tests {
@@ -1145,8 +1144,7 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 				expectedPriority = 1
 			}
 
-			sinceParam := (len(tt.expSince) > 0) || tt.RequestType == constants.RetrieveNewBeneHistData
-			jobPriority := svc.GetJobPriority(tt.acoID, tt.resourceType, sinceParam)
+			jobPriority := GetJobPriority(tt.acoID)
 
 			assert.Equal(t, expectedPriority, jobPriority)
 		})
@@ -1912,20 +1910,14 @@ func TestGetEffectiveQueueJobConfig(t *testing.T) {
 }
 
 func TestChunkBeneficiaryIDs(t *testing.T) {
-	beneficiaries := []*models.CCLFBeneficiary{
-		getCCLFBeneficiary(1, "MBI1"),
-		getCCLFBeneficiary(2, "MBI2"),
-		getCCLFBeneficiary(3, "MBI3"),
-		getCCLFBeneficiary(4, "MBI4"),
-		getCCLFBeneficiary(5, "MBI5"),
-	}
+	beneIDs := []string{"1", "2", "3", "4", "5"}
 
-	assert.Nil(t, chunkBeneficiaryIDs(nil, 2))
+	assert.Nil(t, ChunkByIDs(nil, 2))
 	assert.Equal(t, [][]string{
 		{"1", "2"},
 		{"3", "4"},
 		{"5"},
-	}, chunkBeneficiaryIDs(beneficiaries, 2))
+	}, ChunkByIDs(beneIDs, 2))
 }
 
 func TestCreateJobsForResourceChunk(t *testing.T) {
@@ -1980,13 +1972,6 @@ func TestBuildQueueJobArgs(t *testing.T) {
 	acoCfg, ok := svc.GetACOConfigForID("A1234")
 	assert.True(t, ok)
 	assert.Equal(t, acoCfg.LookbackTime(enqueueArgs.ACOID), enqueueArgs.ClaimsWindow.Earliest)
-}
-
-func TestGetQueueJobTransactionTime(t *testing.T) {
-	args := newQueueJobTestArgs("A1234", []string{"Patient"})
-
-	assert.Equal(t, args.Job.TransactionTime, getQueueJobTransactionTime(args, constants.Adjudicated))
-	assert.Equal(t, args.CreationTime, getQueueJobTransactionTime(args, constants.PartiallyAdjudicated))
 }
 
 func TestIsV3NoPartialClaimsModel(t *testing.T) {

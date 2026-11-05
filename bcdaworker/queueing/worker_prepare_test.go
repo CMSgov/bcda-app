@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -79,7 +80,7 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	var lggr logrus.Logger
 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
-	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{})
+	ctx = middleware.SetRequestParamsCtx(ctx, request_types.RequestParameters{})
 	s.ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
 
 }
@@ -168,7 +169,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 				c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
 			}
 
-			exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
+			exports, err := worker.prepareExportJobs(s.ctx, jobArgs)
 			if tt.expectedErr {
 				assert.NotNil(s.T(), err)
 			} else {
@@ -211,7 +212,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	}
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
-	exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
+	exports, err := worker.prepareExportJobs(s.ctx, jobArgs)
 
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), exports)
@@ -501,7 +502,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 				c.On("GetPatient", mock.Anything, "0").Return(tt.bundle, nil)
 			}
 			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, v3Client: c, r: s.r, pool: s.pool}
-			result, err := worker.GetBundleLastUpdated(tt.basepath, worker_types.JobEnqueueArgs{TransactionTime: txTime})
+			result, err := worker.GetBundleLastUpdated(worker_types.PrepareJobArgs{CreationTime: txTime})
 			if tt.hasErr {
 				assert.NotNil(s.T(), err)
 				if tt.expectedErr != "" {
@@ -540,7 +541,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 		}
 	}()
 
-	err = worker.queueExportJobs(s.ctx, tx, q, prepArgs, []*worker_types.JobEnqueueArgs{a}, time.Time{})
+	err = worker.queueExportJobs(s.ctx, tx, q, prepArgs, []*worker_types.JobEnqueueArgs{a})
 	assert.Nil(s.T(), err)
 
 	err = tx.Commit(s.ctx)
