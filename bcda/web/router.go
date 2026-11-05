@@ -112,8 +112,8 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 		// TODO: (BCDA-10498) limit shared export models to deletejob and shared export (all middleware needs updating)
 		r.With(append(commonAuth, am.RequireTokenJobMatch(db))...).Delete(constants.JOBIDPath, apiV3.DeleteJob)
 		r.With(commonAuth...).Get("/attribution_status", apiV3.AttributionStatus)
-		if utils.GetEnvBool("SHARED_ENDPOINT_ENABLED", true) {
-			r.With(slices.Concat(commonAuth, SharedExportHandlers)...).Post("/shared_export", apiV3.SharedExport)
+		if utils.GetEnvBool("SHARED_ENDPOINT_ENABLED", false) {
+			r.With(slices.Concat(commonAuth, SharedExportHandlers)...).Post("/$shared-export", apiV3.SharedExport)
 		}
 		r.Get("/metadata", apiV3.Metadata)
 	})

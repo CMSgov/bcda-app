@@ -152,7 +152,7 @@ func (s *SharedBackendSmokeTests) postToken(client string, secret string) (token
 func (s *SharedBackendSmokeTests) postSharedExport(token string, body *strings.Reader) (*http.Response, error) {
 	client := &http.Client{}
 
-	req, _ := http.NewRequest("POST", "http://localhost:3000/api/v3/shared_export", body)
+	req, _ := http.NewRequest("POST", "http://localhost:3000/api/v3/$shared-export", body)
 
 	req.Header.Add("Accept", "application/fhir+json")
 	req.Header.Add("Prefer", "respond-async")

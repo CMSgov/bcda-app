@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var noop http.HandlerFunc = func(rw http.ResponseWriter, r *http.Request) { rw.WriteHeader(http.StatusOK) }
@@ -666,6 +668,326 @@ func TestGetRespWriter(t *testing.T) {
 			case "v3":
 				assert.NotContains(t, resp, "coding")
 			}
+		})
+	}
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared() {
+	resp := httptest.NewRecorder()
+
+	body := strings.NewReader(`
+		{
+			"system": "test-system",
+			"queries": [
+				{
+					"data_types": ["adjudicated"],
+					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+					"resource_types": ["Patient"],
+					"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+					"parsed_query": {
+						"headers": {},
+						"parameters": {
+							"_since": "2026-08-01T08:00:00-05:00",
+							"typeFilter": []
+						}
+					},
+					"version": "v3"
+				},
+				{
+					"data_types": ["partially-adjudicated"],
+					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+					"resource_types": ["Claim", "ClaimResponse"],
+					"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+					"parsed_query": {
+						"headers": {},
+						"parameters": {
+							"_since": "2023-08-01T08:00:00-05:00",
+							"typeFilter": []
+						}
+					},
+					"version": "v3"
+				}
+			]
+		}
+	`)
+
+	// create a new handler
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		payload, ok := GetSharedExportQueriesFromCtx(r.Context())
+		require.True(s.T(), ok)
+		require.NotNil(s.T(), payload)
+	})
+
+	handlerToTest := ValidateSharedExportPayload(nextHandler)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	handlerToTest.ServeHTTP(resp, req)
+	require.Equal(s.T(), 200, resp.Code)
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	tests := []struct {
+		name string
+		body string // to note Ive removed the relevant field from the second query in each of the below cases
+	}{
+		{
+			"missing queries",
+			`{
+				"system": "test-system",
+				"queries": []
+			}`,
+		}, {
+			"missing data_types",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2023-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					}
+				]
+			}`,
+		}, {
+			"missing mbis",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"data_types": ["partially-adjudicated"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2023-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					}
+				]
+			}`,
+		}, {
+			"missing resource_types",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"data_types": ["partially-adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2023-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					}
+				]
+			}`,
+		}, {
+			"missing source_query",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"data_types": ["partially-adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2023-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					}
+				]
+			}`,
+		}, {
+			"missing _since",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"data_types": ["partially-adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					}
+				]
+			}`,
+		}, {
+			"invalid _since",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"data_types": ["partially-adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2023-08",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					}
+				]
+			}`,
+		}, {
+			"missing version",
+			`{
+				"system": "test-system",
+				"queries": [
+					{
+						"data_types": ["adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2026-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						},
+						"version": "v3"
+					},
+					{
+						"data_types": ["partially-adjudicated"],
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"parsed_query": {
+							"headers": {},
+							"parameters": {
+								"_since": "2023-08-01T08:00:00-05:00",
+								"typeFilter": []
+							}
+						}
+					}
+				]
+			}`,
+		},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			resp := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "http:///v1/testing", strings.NewReader(tt.body))
+
+			ValidateSharedExportPayload(nextHandler).ServeHTTP(resp, req)
+			assert.Equal(s.T(), http.StatusBadRequest, resp.Code)
+			assert.Contains(s.T(), resp.Body.String(), "invalid params")
 		})
 	}
 }

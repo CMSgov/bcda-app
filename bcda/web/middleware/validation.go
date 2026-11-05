@@ -203,7 +203,7 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 		var payload rt.SharedExportPayload
 		err = json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
-			log.API.Error("invalid JSON payload")
+			log.API.Error("invalid JSON payload, err: %s", err.Error())
 			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
 			return
 		}
@@ -211,8 +211,8 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 
 		queries, invalidResults := validateSharedExportPayload(payload)
 		if invalidResults != "" {
-			log.API.Warn(invalidResults)
-			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, invalidResults)
+			log.API.Warn("invalid params: " + invalidResults)
+			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid params: "+invalidResults)
 			return
 		}
 
@@ -223,6 +223,7 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 }
 
 func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQuery, string) {
+	fmt.Printf("----- payload: %+v\n", payload)
 	if len(payload.Queries) == 0 {
 		return []rt.SharedExportQuery{}, "no queries"
 	}
@@ -242,23 +243,22 @@ func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExp
 		if query.SourceQuery == "" {
 			issues = append(issues, "missing source_query in query")
 		}
-		if len(query.ParsedQuery.Headers) == 0 {
-			issues = append(issues, "missing parsed_query.headers in query")
+		if query.ParsedQuery.Parameters.Since == "" {
+			issues = append(issues, "missing parsed_query.parameters._since in query")
+		}
+		_, err := time.Parse(time.RFC3339Nano, query.ParsedQuery.Parameters.Since)
+		if err != nil {
+			issues = append(issues, "_since must be in RFC3339")
 		}
 		// TODO these might not be required, and TypeFilter is being modified in the data contract
-		// if query.ParsedQuery.Parameters.Since == "" {
-		// 	issues = append(issues, "missing parsed_query.parameters._since in query")
+		// if len(query.ParsedQuery.Headers) == 0 {
+		// 	issues = append(issues, "missing parsed_query.headers in query")
 		// }
 		// if query.ParsedQuery.Parameters.TypeFilter == "" {
 		// 	issues = append(issues, "missing parsed_query.parameters._since in query")
 		// }
 		if query.Version == "" {
 			issues = append(issues, "missing version in query")
-		}
-
-		_, err := time.Parse(time.RFC3339Nano, query.ParsedQuery.Parameters.Since)
-		if err != nil {
-			issues = append(issues, "_since must be in RFC3339")
 		}
 
 		queries = append(queries, query)

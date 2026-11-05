@@ -288,25 +288,6 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
 	assert.Panics(s.T(), func() { cfg.IsACOV1V2DeniedAccess("A1234") })
 }
 
-func (s *MiddlewareTestSuite) TestValidateShared() {
-	resp := httptest.NewRecorder()
-
-	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
-
-	// create a new handler
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		payload, ok := GetSharedExportQueriesFromCtx(r.Context())
-		require.True(s.T(), ok)
-		require.NotNil(s.T(), payload)
-	})
-
-	handlerToTest := ValidateSharedExportPayload(nextHandler)
-	req := httptest.NewRequest("GET", "http:///v1/testing", body)
-	handlerToTest.ServeHTTP(resp, req)
-	require.Equal(s.T(), resp.Code, 200)
-
-}
-
 func (s *MiddlewareTestSuite) TestHasSharedExportAccess() {
 	e := conf.GetEnv("DEPLOYMENT_TARGET")
 	envs := []string{"local", "dev", "test"}
