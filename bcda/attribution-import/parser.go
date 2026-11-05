@@ -185,6 +185,8 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		kcf = `K\d{4}`
 		// CCLF file name convention for DC: P.D****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
 		dc = `D\d{4}`
+		// CCLF file name convention for LEAD: P.L****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
+		lead = `L\d{4}`
 		// CCLF file name convention for TEST: P.TEST***.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
 		test = `TEST\d{3}`
 		// CCLF file name convention for SBX: P.SBX*****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
@@ -198,6 +200,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 			ckcc + aco + `|` +
 			kcf + aco + `|` +
 			dc + aco + `|` +
+			lead + aco + `|` +
 			test + aco + `|` +
 			sandbox + aco +
 			`)` + suffix
