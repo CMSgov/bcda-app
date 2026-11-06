@@ -364,7 +364,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
 }
 
-func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
+func (s *PrepareWorkerIntegrationTestSuite) TestNewPrepareJobWorker() {
 	w, err := NewPrepareJobWorker(s.db, s.pool)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)

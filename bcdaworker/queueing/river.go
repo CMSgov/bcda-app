@@ -41,10 +41,14 @@ func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.C
 	if err != nil {
 		panic(err)
 	}
+	prepareSharedWorker, err := NewPrepareSharedJobWorker(db, pool)
+	if err != nil {
+		panic(err)
+	}
 	river.AddWorker(workers, &JobWorker{db: db})
 	river.AddWorker(workers, NewCleanupJobWorker(db))
 	river.AddWorker(workers, prepareWorker)
-	river.AddWorker(workers, &PrepareSharedJobWorker{db: db, pool: pool})
+	river.AddWorker(workers, prepareSharedWorker)
 
 	schedule, err := cron.ParseStandard("0 11,23 * * *")
 

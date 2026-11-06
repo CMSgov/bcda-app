@@ -31,8 +31,8 @@ import (
 	"github.com/riverqueue/river"
 )
 
-// PrepareJobWorker has two BFD clients because it depends on a configuration variable that is not available until Work() is called.
-// There were other discussed methods of injecting the client and overwriting the the basepath but ruled out due to the risk and time constraints.
+// PrepareJobWorker has multiple BFD clients because it depends on a configuration variable that is not available until Work() is called.
+// There were other discussed methods of injecting the client and overwriting the basepath but ruled out due to the risk and time constraints.
 // Many of the Service's functionality is used solely in this PrepareJob functionality and should eventually be migrated when time allows.
 type PrepareJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareJobArgs]

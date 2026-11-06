@@ -2140,6 +2140,21 @@ func TestSetClaimsDate(t *testing.T) {
 	})
 }
 
+func TestGetBundleLastUpdated(t *testing.T) {
+	// TODO
+	t.FailNow()
+	// t.Run("returns current time for bundle last updated", func(t *testing.T) {
+	// 	jobArgs := worker_types.PrepareSharedJobArgs{
+	// 		BFDPath: constants.BFDV3Path,
+	// 		Queries: []request_types.SharedExportQuery{adjQuery, partAdjQuery},
+	// 	}
+
+	// 	resultTime, err := getBundleLastUpdated(jobArgs)
+	// 	assert.NoError(t, err)
+	// 	assert.WithinDuration(t, resultTime, time.Now(), time.Second*5)
+	// })
+}
+
 func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
 	performanceYear := time.Now().Year() % 100
 	if isRunout {

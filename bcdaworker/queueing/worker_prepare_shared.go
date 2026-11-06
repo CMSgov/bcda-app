@@ -23,8 +23,24 @@ import (
 
 type PrepareSharedJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareSharedJobArgs]
-	db   *sql.DB
-	pool *pgxv5Pool.Pool
+	appRepo    models.Repository
+	workerRepo workerRepo.Repository
+	fhirClient client.APIClient
+	pool       *pgxv5Pool.Pool
+}
+
+func NewPrepareSharedJobWorker(db *sql.DB, pool *pgxv5Pool.Pool) (*PrepareSharedJobWorker, error) {
+	fhirClient, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV3Path))
+	if err != nil {
+		return &PrepareSharedJobWorker{}, err
+	}
+
+	return &PrepareSharedJobWorker{
+		appRepo:    postgres.NewRepository(db),
+		workerRepo: *workerRepo.NewRepository(db),
+		fhirClient: fhirClient,
+		pool:       pool,
+	}, nil
 }
 
 func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.PrepareSharedJobArgs]) error {
@@ -55,12 +71,11 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 
 	client := river.ClientFromContext[pgxv5.Tx](ctx)
 	q := riverEnqueuer{pool: w.pool, Client: client}
-	err = w.queueExportJobs(ctx, tx, q, rjob.Args, exports)
+	err = queueExportJobs(ctx, tx, q, rjob.Args, exports)
 	if err != nil {
 		logger.Errorf("failed to add jobs to the main queue: %s", err)
 
-		repo := workerRepo.NewRepository(w.db)
-		dbErr := repo.UpdateJobStatus(ctx, rjob.Args.Job.ID, models.JobStatusFailed)
+		dbErr := w.workerRepo.UpdateJobStatus(ctx, rjob.Args.Job.ID, models.JobStatusFailed)
 		if dbErr != nil {
 			logger.Errorf("failed to update job status: %s", dbErr)
 		}
@@ -74,24 +89,26 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 }
 
 // prepareExportJobs builds a list of subjobs to be processed based on the requested queries
-func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
+func (w *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var err error
 	var exports []*worker_types.JobEnqueueArgs
-	repo := postgres.NewRepository(p.db)
 
 	defer func() {
 		if err != nil {
 			args.Job.Status = models.JobStatusFailed
 		}
-		dberr := repo.UpdateJob(ctx, args.Job)
+		dberr := w.appRepo.UpdateJob(ctx, args.Job)
 		if dberr != nil {
 			err = fmt.Errorf("%w: %w", err, dberr)
 		}
 	}()
 
-	args.Job.TransactionTime, err = getBundleLastUpdated(args)
+	args.Job.TransactionTime, err = w.getBundleLastUpdated(args)
+	if err != nil {
+		return exports, err
+	}
 
-	exports, err = p.chunkIntoSubJobs(ctx, args)
+	exports, err = chunkIntoSubJobs(args)
 	if err != nil {
 		return exports, err
 	}
@@ -107,7 +124,7 @@ func (p *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, ar
 	return exports, err
 }
 
-func (p *PrepareSharedJobWorker) chunkIntoSubJobs(ctx context.Context, args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
+func chunkIntoSubJobs(args worker_types.PrepareSharedJobArgs) ([]*worker_types.JobEnqueueArgs, error) {
 	var jobs []*worker_types.JobEnqueueArgs
 
 	for _, query := range args.Queries {
@@ -136,7 +153,7 @@ func (p *PrepareSharedJobWorker) chunkIntoSubJobs(ctx context.Context, args work
 					ResourceType:    resourceType,
 					Since:           query.ParsedQuery.Parameters.Since,
 					TypeFilter:      query.ParsedQuery.Parameters.TypeFilter,
-					TransactionID:   ctx.Value(mw.CtxTransactionKey).(string),
+					TransactionID:   args.TransactionID,
 					TransactionTime: args.CreationTime,
 					BBBasePath:      args.BFDPath,
 					DataType:        dataType,
@@ -156,19 +173,15 @@ func (p *PrepareSharedJobWorker) chunkIntoSubJobs(ctx context.Context, args work
 	return jobs, nil
 }
 
-func getBundleLastUpdated(args worker_types.PrepareSharedJobArgs) (time.Time, error) {
-	client, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV3Path))
-	if err != nil {
-		return time.Time{}, err
-	}
-
+func (w *PrepareSharedJobWorker) getBundleLastUpdated(args worker_types.PrepareSharedJobArgs) (time.Time, error) {
 	jobData := worker_types.JobEnqueueArgs{
 		BBBasePath:      args.BFDPath,
 		Since:           args.Queries[0].ParsedQuery.Parameters.Since,
 		TransactionTime: time.Now(),
 	}
 
-	args.Job.TransactionTime, err = service.GetBundleLastUpdated(client, jobData)
+	var err error
+	args.Job.TransactionTime, err = service.GetBundleLastUpdated(w.fhirClient, jobData)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -176,7 +189,7 @@ func getBundleLastUpdated(args worker_types.PrepareSharedJobArgs) (time.Time, er
 	return args.Job.TransactionTime, nil
 }
 
-func (p *PrepareSharedJobWorker) queueExportJobs(ctx context.Context, tx pgxv5.Tx, q Enqueuer, args worker_types.PrepareSharedJobArgs, exports []*worker_types.JobEnqueueArgs) error {
+func queueExportJobs(ctx context.Context, tx pgxv5.Tx, q Enqueuer, args worker_types.PrepareSharedJobArgs, exports []*worker_types.JobEnqueueArgs) error {
 	jobPriority := service.GetJobPriority(args.CMSID)
 
 	for _, j := range exports {
