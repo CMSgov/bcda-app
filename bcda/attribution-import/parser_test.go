@@ -28,6 +28,7 @@ func TestGetCMSID(t *testing.T) {
 		{"not ZCY or ZCR", "path/T.BCD.A0001.ZC18.D181120.T1000000", true, ""},
 		{"missing ZCY and ZCR", "path/T.BCD.A0001.ZCA18.D181120.T1000000", true, ""},
 		{"validIotaPath", "path/T.BCD.IOTA123.ZCY18.D181120.T2000000", false, "IOTA123"},
+		{"validLEADPath", "path/T.BCD.L1234.ZCY18.D181120.T2000000", false, "L1234"},
 		{"empty", "", true, ""},
 	}
 	for _, tt := range tests {
@@ -217,16 +218,17 @@ func TestValidateCSVFileName(t *testing.T) {
 
 func TestGetCCLFMetadata(t *testing.T) {
 	const (
-		sspID, iotaID, cecID, ngacoID, ckccID, kcfID, dcID, testID, sbxID = "A9999", "IOTA965", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999", "SBXBD001"
-		sspProd, sspTest                                                  = "P.BCD." + sspID, "T.BCD." + sspID
-		iotaProd, iotaTest                                                = "P." + iotaID + ".PRT", "T." + iotaID + ".PRT"
-		cecProd, cecTest                                                  = "P.CEC", "T.CEC"
-		ngacoProd, ngacoTest                                              = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
-		ckccProd, ckccTest                                                = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
-		kcfProd, kcfTest                                                  = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
-		dcProd, dcTest                                                    = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
-		testProd, testTest                                                = "P." + testID + ".ACO", "T." + testID + ".ACO"
-		sbxProd, sbxTest                                                  = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
+		sspID, iotaID, cecID, ngacoID, ckccID, kcfID, dcID, leadID, testID, sbxID = "A9999", "IOTA965", "E9999", "V999", "C9999", "K9999", "D9999", "L9999", "TEST999", "SBXBD001"
+		sspProd, sspTest                                                          = "P.BCD." + sspID, "T.BCD." + sspID
+		iotaProd, iotaTest                                                        = "P." + iotaID + ".PRT", "T." + iotaID + ".PRT"
+		cecProd, cecTest                                                          = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest                                                      = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		ckccProd, ckccTest                                                        = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
+		kcfProd, kcfTest                                                          = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
+		dcProd, dcTest                                                            = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
+		leadProd, leadTest                                                        = "P." + leadID + ".ACO", "T." + leadID + ".ACO"
+		testProd, testTest                                                        = "P." + testID + ".ACO", "T." + testID + ".ACO"
+		sbxProd, sbxTest                                                          = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
 	)
 
 	start := time.Now()
@@ -255,6 +257,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	ckccProdFile, ckccTestFile := gen(ckccProd, validTime), gen(ckccTest, validTime)
 	kcfProdFile, kcfTestFile := gen(kcfProd, validTime), gen(kcfTest, validTime)
 	dcProdFile, dcTestFile := gen(dcProd, validTime), gen(dcTest, validTime)
+	leadProdFile, leadTestFile, leadRunoutFile := gen(leadProd, validTime), gen(leadTest, validTime), strings.Replace(gen(leadProd, validTime), "ZC8Y", "ZC8R", 1)
 	testProdFile, testTestFile := gen(testProd, validTime), gen(testTest, validTime)
 	sbxProdFile, sbxTestFile := gen(sbxProd, validTime), gen(sbxTest, validTime)
 
@@ -268,6 +271,9 @@ func TestGetCCLFMetadata(t *testing.T) {
 		{"Non CCLF0 or CCLF8 file", sspID, "P.A0001.ACO.ZC9Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Unsupported CCLF file type", "Z9999", "P.Z0001.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Unsupported CSV file type", sspID, "P.PCPB.M2014.D00302.T2420001", "invalid filename", cclfFileMetadata{}},
+		{"LEAD file too few digits", leadID, "P.L123.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"LEAD file too many digits", leadID, "P.L12345.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"LEAD file invalid characters", leadID, "P.L123A.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Invalid date (no 13th month)", sspID, "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
 		{"CCLF file too old", sspID, gen(sspProd, startUTC.Add(-365*24*time.Hour)), "out of range", cclfFileMetadata{}},
 		{"CCLF file too new", sspID, gen(sspProd, startUTC.Add(365*24*time.Hour)), "out of range", cclfFileMetadata{}},
@@ -461,6 +467,42 @@ func TestGetCCLFMetadata(t *testing.T) {
 				timestamp: validTime,
 				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Production LEAD file", leadID, leadProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      leadProdFile,
+				cclfNum:   8,
+				acoID:     leadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Test LEAD file", leadID, leadTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      leadTestFile,
+				cclfNum:   8,
+				acoID:     leadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Runout LEAD file", leadID, leadRunoutFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      leadRunoutFile,
+				cclfNum:   8,
+				acoID:     leadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeRunout,
 			},
 		},
 		{
