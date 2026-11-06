@@ -1774,6 +1774,97 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
+func (s *RequestsTestSuite) TestSharedExport() {
+	handler := newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: s.acoID.String(), TokenID: uuid.NewRandom().String()}
+
+	payload := rt.SharedExportPayload{
+		System: "test-system",
+		Queries: []rt.SharedExportQuery{
+			{
+				DataTypes:     []string{"adjudicated"},
+				MBIs:          []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"},
+				ResourceTypes: []string{"Patient"},
+				SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
+				ParsedQuery: rt.SharedExportParams{
+					Headers: map[string]string{},
+					Parameters: rt.SharedExportParameters{
+						Since:      "2026-08-01T08:00:00-05:00",
+						TypeFilter: fhir.TypeFilterSubquery{},
+					},
+				},
+				Version: "v3",
+			},
+		},
+	}
+
+	s.T().Run("Successful request", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, payload.Queries))
+		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+		assert.Contains(t, resp.Header.Get("Content-Location"), "/api/v3/jobs/")
+	})
+
+	s.T().Run("No auth data in ctx", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	s.T().Run("No payload data in ctx", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	s.T().Run("Failed to create job", func(t *testing.T) {
+		handler = newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
+		r := models.NewMockRepository(s.T())
+		r.On("CreateJob", mock.Anything, mock.Anything).Return(uint(4), errors.New("db error"))
+		handler.r = r
+
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, payload.Queries))
+		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+
+	s.T().Run("Failed to add prepare shared job", func(t *testing.T) {
+		handler = newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
+		mockEnqueuer := queueing.NewMockEnqueuer(s.T())
+		mockEnqueuer.On("AddPrepareSharedJob", mock.Anything, mock.Anything).Return(errors.New("add job error"))
+		handler.Enq = mockEnqueuer
+
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, payload.Queries))
+		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+}
+
 type DatabaseError struct{}
 
 func (e DatabaseError) Error() string {

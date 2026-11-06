@@ -10,6 +10,7 @@ import (
 	"time"
 
 	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/fhir"
 	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -30,10 +31,8 @@ type requestkey int
 
 const rk requestkey = 0
 
-type ctxSharedExportQueriesKey struct{}
-
 func GetSharedExportQueriesFromCtx(ctx context.Context) ([]rt.SharedExportQuery, bool) {
-	queries, ok := ctx.Value(ctxSharedExportQueriesKey{}).([]rt.SharedExportQuery) // Type assertion
+	queries, ok := ctx.Value(auth.SharedExportQueriesKey).([]rt.SharedExportQuery) // Type assertion
 	return queries, ok
 }
 
@@ -216,7 +215,7 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), ctxSharedExportQueriesKey{}, queries)
+		ctx := context.WithValue(r.Context(), auth.SharedExportQueriesKey, queries)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

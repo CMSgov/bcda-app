@@ -30,8 +30,9 @@ type contextKey struct {
 }
 
 var (
-	TokenContextKey    = &contextKey{"token"}
-	AuthDataContextKey = &contextKey{"ad"}
+	TokenContextKey        = &contextKey{"token"}
+	AuthDataContextKey     = &contextKey{"ad"}
+	SharedExportQueriesKey = &contextKey{"shared_export_queries"}
 )
 
 type AuthMiddleware struct {

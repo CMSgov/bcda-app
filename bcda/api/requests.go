@@ -917,12 +917,10 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) 
 	return typeFilter
 }
 
-// TODO: BCDA-10507 add tests
 func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := log.GetCtxLogger(ctx)
 
-	ad, err := GetAuthDataFromCtx(r)
+	ad, err := GetAuthDataFromCtx(r.WithContext(ctx))
 	if err != nil {
 		ctx, _ := log.WriteErrorWithFields(
 			ctx,
@@ -935,6 +933,11 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 
 	queries, ok := middleware.GetSharedExportQueriesFromCtx(ctx)
 	if !ok {
+		ctx, _ := log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
 		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "")
 		return
 	}
@@ -953,34 +956,37 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 
 	newJob.ID, err = h.r.CreateJob(ctx, newJob)
 	if err != nil {
-		logger.Errorf("failed to create job: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("failed to create job"))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		ctx, _ := log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.OpOutcome(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
 	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
-		Job:           newJob,
 		ACOID:         acoID,
-		CMSID:         ad.CMSID,
 		BFDPath:       constants.V3Path,
+		CMSID:         ad.CMSID,
 		CreationTime:  time.Now(),
-		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
+		Job:           newJob,
 		Queries:       queries,
+		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
 	}
 
 	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to add job to the queue: %v", err)
+		ctx, _ := log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.OpOutcome(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
-	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, queries[0].Version, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
 }
