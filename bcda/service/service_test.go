@@ -12,8 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -1909,7 +1911,7 @@ func TestGetEffectiveQueueJobConfig(t *testing.T) {
 	})
 }
 
-func TestChunkBeneficiaryIDs(t *testing.T) {
+func TestChunkByIDs(t *testing.T) {
 	beneIDs := []string{"1", "2", "3", "4", "5"}
 
 	assert.Nil(t, ChunkByIDs(nil, 2))
@@ -2141,18 +2143,57 @@ func TestSetClaimsDate(t *testing.T) {
 }
 
 func TestGetBundleLastUpdated(t *testing.T) {
-	// TODO
-	t.FailNow()
-	// t.Run("returns current time for bundle last updated", func(t *testing.T) {
-	// 	jobArgs := worker_types.PrepareSharedJobArgs{
-	// 		BFDPath: constants.BFDV3Path,
-	// 		Queries: []request_types.SharedExportQuery{adjQuery, partAdjQuery},
-	// 	}
+	now := time.Now()
+	txTime := now.Add(-1 * time.Hour)
+	jobData := worker_types.JobEnqueueArgs{TransactionTime: txTime}
 
-	// 	resultTime, err := getBundleLastUpdated(jobArgs)
-	// 	assert.NoError(t, err)
-	// 	assert.WithinDuration(t, resultTime, time.Now(), time.Second*5)
-	// })
+	t.Run("happy path returns the LastUpdated timestamp from the found resource", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{Meta: struct {
+			LastUpdated time.Time `json:"lastUpdated"`
+		}{
+			LastUpdated: now,
+		}}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, now, result)
+	})
+
+	t.Run("when LastUpdated timestamp is unset, returns jobs tx time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, txTime, result)
+	})
+
+	t.Run("when LastUpdated timestamp is nil, returns jobs tx time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{Meta: struct {
+			LastUpdated time.Time `json:"lastUpdated"`
+		}{
+			LastUpdated: time.Time{},
+		}}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, txTime, result)
+	})
+
+	t.Run("when LastUpdated timestamp is below min threshold, returns jobs tx time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{Meta: struct {
+			LastUpdated time.Time `json:"lastUpdated"`
+		}{
+			LastUpdated: time.Date(1999, time.January, 1, 0, 0, 0, 0, time.UTC),
+		}}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, txTime, result)
+	})
 }
 
 func getCCLFFile(id uint, isRunout bool, forceIncorrect bool) *models.CCLFFile {
