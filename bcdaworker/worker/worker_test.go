@@ -72,19 +72,6 @@ func (s *WorkerTestSuite) SetupSuite() {
 	var err error
 	s.dbContainer, err = db.NewTestDatabaseContainer()
 	require.NoError(s.T(), err)
-	// s.db = database.Connect()
-	// s.r = postgres.NewRepository(s.db)
-	// s.w = NewWorker(s.db)
-
-	// cmsID := "A1B2C" // Some unique ID that should be unique to this test
-
-	// s.testACO = &models.ACO{
-	// 	UUID:  uuid.NewUUID(),
-	// 	CMSID: &cmsID,
-	// 	Name:  "ACO_FOR_WORKER_TEST",
-	// }
-
-	// postgrestest.CreateACO(s.T(), s.db, *s.testACO)
 
 	tempDir, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -107,32 +94,12 @@ func (s *WorkerTestSuite) SetupSuite() {
 	s.logctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 }
 
-// func (s *WorkerTestSuite) SetupTest() {
-// 	var err error
-// 	err = s.dbContainer.ExecuteDir("testdata/")
-// 	require.NoError(s.T(), err)
-// 	s.db, err = s.dbContainer.NewSqlDbConnection()
-// 	require.NoError(s.T(), err)
-// 	s.pool, err = s.dbContainer.NewPgxPoolConnection()
-// 	require.NoError(s.T(), err)
-// 	s.r = postgres.NewRepository(s.db)
-// 	require.NoError(s.T(), err)
-
-// 	var lggr logrus.Logger
-// 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
-// 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
-// 	ctx = middleware.SetRequestParamsCtx(ctx, request_types.RequestParameters{})
-// 	s.ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
-// }
-
 func (s *WorkerTestSuite) SetupTest() {
 	var err error
 	err = s.dbContainer.ExecuteDir("testdata/")
 	require.NoError(s.T(), err)
 	s.db, err = s.dbContainer.NewSqlDbConnection()
 	require.NoError(s.T(), err)
-	// s.pool, err = s.dbContainer.NewPgxPoolConnection()
-	// require.NoError(s.T(), err)
 	s.r = postgres.NewRepository(s.db)
 	require.NoError(s.T(), err)
 	s.w = NewWorker(s.db)
@@ -159,14 +126,6 @@ func (s *WorkerTestSuite) SetupTest() {
 	if err := os.MkdirAll(s.tempDir, os.ModePerm); err != nil {
 		s.FailNow(err.Error())
 	}
-
-	// Due to test not being able to handle a FieldLogger and our log package not storing the logger,
-	// we have to recreate the logger so we have access to both
-	// logger := logrus.New()
-	// log.Worker = logger.WithFields(logrus.Fields{
-	// 	"unitTest": true,
-	// })
-	// logHook = test.NewLocal(logger)
 }
 
 func (s *WorkerTestSuite) SetupSubTest() {
@@ -178,8 +137,6 @@ func (s *WorkerTestSuite) SetupSubTest() {
 	require.NoError(s.T(), err)
 	s.db, err = s.dbContainer.NewSqlDbConnection()
 	require.NoError(s.T(), err)
-	// s.pool, err = s.dbContainer.NewPgxPoolConnection()
-	// require.NoError(s.T(), err)
 	s.r = postgres.NewRepository(s.db)
 	require.NoError(s.T(), err)
 	s.w = NewWorker(s.db)
@@ -200,12 +157,10 @@ func (s *WorkerTestSuite) TearDownTest() {
 	err = s.dbContainer.RestoreSnapshot("Base")
 	require.NoError(s.T(), err)
 
-	// postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, *s.testACO.CMSID)
 	os.RemoveAll(s.stagingDir)
 }
 
 func (s *WorkerTestSuite) TearDownSuite() {
-	// postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_TEMP_DIR"))

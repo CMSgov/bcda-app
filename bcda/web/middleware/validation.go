@@ -222,7 +222,6 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 }
 
 func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQuery, string) {
-	fmt.Printf("----- payload: %+v\n", payload)
 	if len(payload.Queries) == 0 {
 		return []rt.SharedExportQuery{}, "no queries"
 	}
@@ -249,7 +248,7 @@ func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExp
 		if err != nil {
 			issues = append(issues, "_since must be in RFC3339")
 		}
-		// TODO these might not be required, and TypeFilter is being modified in the data contract
+		// TODO 10590 these might not be required, and TypeFilter is being modified in the data contract
 		// if len(query.ParsedQuery.Headers) == 0 {
 		// 	issues = append(issues, "missing parsed_query.headers in query")
 		// }
@@ -303,8 +302,8 @@ func HasSystemTypeTag(subquery fhir.TypeFilterSubquery) bool {
 
 // ValidateRequestURL ensure that request matches certain expectations.
 // Any error that it finds will result in a http.StatusBadRequest response.
-// If successful, it populates the request context with rt.RequestParameters that can be used downstream.
-// These paramters can be retrieved by calling rt.RequestParametersFromContext.
+// If successful, it populates the request context with RequestParameters that can be used downstream.
+// These paramters can be retrieved by calling RequestParametersFromContext.
 func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw, err := GetRespWriter(r.URL.Path)
