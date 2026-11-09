@@ -29,6 +29,8 @@ func TestGetCMSID(t *testing.T) {
 		{"missing ZCY and ZCR", "path/T.BCD.A0001.ZCA18.D181120.T1000000", true, ""},
 		{"validIotaPath", "path/T.BCD.IOTA123.ZCY18.D181120.T2000000", false, "IOTA123"},
 		{"validLEADPath", "path/T.BCD.L1234.ZCY18.D181120.T2000000", false, "L1234"},
+		{"validAHEADPath", "path/T.BCD.HMDS0001.ZCY18.D181120.T2000000", false, "HMDS0001"},
+		{"validAHEADLegacyPath", "path/T.BCD.MD1234.ZCY18.D181120.T2000000", false, "MD1234"},
 		{"empty", "", true, ""},
 	}
 	for _, tt := range tests {
@@ -218,17 +220,19 @@ func TestValidateCSVFileName(t *testing.T) {
 
 func TestGetCCLFMetadata(t *testing.T) {
 	const (
-		sspID, iotaID, cecID, ngacoID, ckccID, kcfID, dcID, leadID, testID, sbxID = "A9999", "IOTA965", "E9999", "V999", "C9999", "K9999", "D9999", "L9999", "TEST999", "SBXBD001"
-		sspProd, sspTest                                                          = "P.BCD." + sspID, "T.BCD." + sspID
-		iotaProd, iotaTest                                                        = "P." + iotaID + ".PRT", "T." + iotaID + ".PRT"
-		cecProd, cecTest                                                          = "P.CEC", "T.CEC"
-		ngacoProd, ngacoTest                                                      = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
-		ckccProd, ckccTest                                                        = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
-		kcfProd, kcfTest                                                          = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
-		dcProd, dcTest                                                            = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
-		leadProd, leadTest                                                        = "P." + leadID + ".ACO", "T." + leadID + ".ACO"
-		testProd, testTest                                                        = "P." + testID + ".ACO", "T." + testID + ".ACO"
-		sbxProd, sbxTest                                                          = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
+		sspID, iotaID, cecID, ngacoID, ckccID, kcfID, dcID, leadID, aheadID, aheadLegacyID, testID, sbxID = "A9999", "IOTA965", "E9999", "V999", "C9999", "K9999", "D9999", "L9999", "HMDS0001", "MD1234", "TEST999", "SBXBD001"
+		sspProd, sspTest                                                                                  = "P.BCD." + sspID, "T.BCD." + sspID
+		iotaProd, iotaTest                                                                                = "P." + iotaID + ".PRT", "T." + iotaID + ".PRT"
+		cecProd, cecTest                                                                                  = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest                                                                              = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		ckccProd, ckccTest                                                                                = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
+		kcfProd, kcfTest                                                                                  = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
+		dcProd, dcTest                                                                                    = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
+		leadProd, leadTest                                                                                = "P." + leadID + ".ACO", "T." + leadID + ".ACO"
+		aheadProd, aheadTest                                                                              = "P." + aheadID + ".ACO", "T." + aheadID + ".ACO"
+		aheadLegacyProd, aheadLegacyTest                                                                  = "P." + aheadLegacyID + ".ACO", "T." + aheadLegacyID + ".ACO"
+		testProd, testTest                                                                                = "P." + testID + ".ACO", "T." + testID + ".ACO"
+		sbxProd, sbxTest                                                                                  = "P." + sbxID + ".ACO", "T." + sbxID + ".ACO"
 	)
 
 	start := time.Now()
@@ -258,6 +262,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 	kcfProdFile, kcfTestFile := gen(kcfProd, validTime), gen(kcfTest, validTime)
 	dcProdFile, dcTestFile := gen(dcProd, validTime), gen(dcTest, validTime)
 	leadProdFile, leadTestFile, leadRunoutFile := gen(leadProd, validTime), gen(leadTest, validTime), strings.Replace(gen(leadProd, validTime), "ZC8Y", "ZC8R", 1)
+	aheadProdFile, aheadTestFile, aheadRunoutFile := gen(aheadProd, validTime), gen(aheadTest, validTime), strings.Replace(gen(aheadProd, validTime), "ZC8Y", "ZC8R", 1)
+	aheadLegacyProdFile, aheadLegacyTestFile, aheadLegacyRunoutFile := gen(aheadLegacyProd, validTime), gen(aheadLegacyTest, validTime), strings.Replace(gen(aheadLegacyProd, validTime), "ZC8Y", "ZC8R", 1)
 	testProdFile, testTestFile := gen(testProd, validTime), gen(testTest, validTime)
 	sbxProdFile, sbxTestFile := gen(sbxProd, validTime), gen(sbxTest, validTime)
 
@@ -274,6 +280,10 @@ func TestGetCCLFMetadata(t *testing.T) {
 		{"LEAD file too few digits", leadID, "P.L123.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"LEAD file too many digits", leadID, "P.L12345.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"LEAD file invalid characters", leadID, "P.L123A.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"AHEAD file too few digits", aheadID, "P.HMDS123.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"AHEAD file too many digits", aheadID, "P.HMDS12345.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"AHEAD file invalid indicator", aheadID, "P.HMDX1234.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"AHEAD legacy file too few digits", aheadLegacyID, "P.MD123.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Invalid date (no 13th month)", sspID, "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
 		{"CCLF file too old", sspID, gen(sspProd, startUTC.Add(-365*24*time.Hour)), "out of range", cclfFileMetadata{}},
 		{"CCLF file too new", sspID, gen(sspProd, startUTC.Add(365*24*time.Hour)), "out of range", cclfFileMetadata{}},
@@ -500,6 +510,78 @@ func TestGetCCLFMetadata(t *testing.T) {
 				name:      leadRunoutFile,
 				cclfNum:   8,
 				acoID:     leadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeRunout,
+			},
+		},
+		{
+			"Production AHEAD file", aheadID, aheadProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      aheadProdFile,
+				cclfNum:   8,
+				acoID:     aheadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Test AHEAD file", aheadID, aheadTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      aheadTestFile,
+				cclfNum:   8,
+				acoID:     aheadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Runout AHEAD file", aheadID, aheadRunoutFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      aheadRunoutFile,
+				cclfNum:   8,
+				acoID:     aheadID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeRunout,
+			},
+		},
+		{
+			"Production AHEAD Legacy file", aheadLegacyID, aheadLegacyProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      aheadLegacyProdFile,
+				cclfNum:   8,
+				acoID:     aheadLegacyID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Test AHEAD Legacy file", aheadLegacyID, aheadLegacyTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      aheadLegacyTestFile,
+				cclfNum:   8,
+				acoID:     aheadLegacyID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Runout AHEAD Legacy file", aheadLegacyID, aheadLegacyRunoutFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      aheadLegacyRunoutFile,
+				cclfNum:   8,
+				acoID:     aheadLegacyID,
 				timestamp: validTime,
 				perfYear:  perfYear,
 				fileType:  models.FileTypeRunout,
