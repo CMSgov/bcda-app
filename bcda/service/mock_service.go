@@ -21,10 +21,19 @@ func NewMockService(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockService {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockService{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -562,69 +571,6 @@ func (_c *MockService_GetJobKey_Call) Return(jobKey *models.JobKey, err error) *
 }
 
 func (_c *MockService_GetJobKey_Call) RunAndReturn(run func(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)) *MockService_GetJobKey_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetJobPriority provides a mock function for the type MockService
-func (_mock *MockService) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
-	ret := _mock.Called(acoID, resourceType, sinceParam)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetJobPriority")
-	}
-
-	var r0 int16
-	if returnFunc, ok := ret.Get(0).(func(string, string, bool) int16); ok {
-		r0 = returnFunc(acoID, resourceType, sinceParam)
-	} else {
-		r0 = ret.Get(0).(int16)
-	}
-	return r0
-}
-
-// MockService_GetJobPriority_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobPriority'
-type MockService_GetJobPriority_Call struct {
-	*mock.Call
-}
-
-// GetJobPriority is a helper method to define mock.On call
-//   - acoID string
-//   - resourceType string
-//   - sinceParam bool
-func (_e *MockService_Expecter) GetJobPriority(acoID any, resourceType any, sinceParam any) *MockService_GetJobPriority_Call {
-	return &MockService_GetJobPriority_Call{Call: _e.mock.On("GetJobPriority", acoID, resourceType, sinceParam)}
-}
-
-func (_c *MockService_GetJobPriority_Call) Run(run func(acoID string, resourceType string, sinceParam bool)) *MockService_GetJobPriority_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 string
-		if args[0] != nil {
-			arg0 = args[0].(string)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 bool
-		if args[2] != nil {
-			arg2 = args[2].(bool)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockService_GetJobPriority_Call) Return(n int16) *MockService_GetJobPriority_Call {
-	_c.Call.Return(n)
-	return _c
-}
-
-func (_c *MockService_GetJobPriority_Call) RunAndReturn(run func(acoID string, resourceType string, sinceParam bool) int16) *MockService_GetJobPriority_Call {
 	_c.Call.Return(run)
 	return _c
 }

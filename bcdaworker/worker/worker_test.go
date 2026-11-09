@@ -34,6 +34,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
@@ -582,6 +583,49 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.AssertExpectations(s.T())
 }
 
+func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
+	s.T().Run("happy path", func(t *testing.T) {
+		s.T().Setenv("SHARED_ENDPOINT_ENABLED", "true")
+		cfg := &service.MockAppConfig{}
+		cfg.On("IsSharedExportModel", mock.Anything).Return(true)
+		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "ExplanationOfBenefit")
+
+		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+
+		assert.NoError(s.T(), err)
+		files, err := os.ReadDir(s.tempDir)
+		assert.NoError(s.T(), err)
+		assert.Len(s.T(), jobKeys, 1)
+		assert.Len(s.T(), files, 1)
+		assert.Equal(s.T(), 100, jobKeys[0].BenesRetrievedPercent)
+		assert.Equal(s.T(), 1, jobKeys[0].BenesWithData)
+		VerifyFileContent(s.T(), files, "ExplanationOfBenefit", 33, s.tempDir)
+	})
+
+	s.T().Run("fails to get bene ID should return empty and error files", func(t *testing.T) {
+		s.T().Setenv("SHARED_ENDPOINT_ENABLED", "true")
+		cfg := &service.MockAppConfig{}
+		cfg.On("IsSharedExportModel", mock.Anything).Return(true)
+		bbc := &client.MockBlueButtonClient{}
+		bbc.On("GetExplanationOfBenefit", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("fhir client error"))
+		jobArgs := worker_types.JobEnqueueArgs{
+			BeneficiaryIDs: []string{"1234"},
+			ResourceType:   "ExplanationOfBenefit",
+		}
+
+		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+
+		assert.NoError(s.T(), err)
+		assert.Len(s.T(), jobKeys, 2)
+		assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
+		assert.Equal(s.T(), 0, jobKeys[0].BenesWithData)
+		assert.Equal(s.T(), "blank.ndjson", jobKeys[0].FileName)
+		assert.Equal(s.T(), 0, jobKeys[1].BenesRetrievedPercent)
+		assert.Equal(s.T(), 0, jobKeys[1].BenesWithData)
+		assert.Contains(s.T(), jobKeys[1].FileName, "-error.ndjson")
+	})
+}
+
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(s.logctx, s.testACO.UUID.String(),
 		stu3.IssueTypeCodeException,
@@ -629,15 +673,12 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		TransactionID:  uuid.New(),
 	}
 
-	fmt.Printf("---------- Starting ProcessJob test ---------- %+v\n", s.w)
-	fmt.Printf("---------- s.logctx %+v, rando: %+v, job: %+v, args: %+v\n", s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	err = s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.Nil(s.T(), err)
 
 	_, err = CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
-	fmt.Printf("%+v", completedJob)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), j.BenesAttributedToACO, completedJob.BenesAttributedToACO)
 	// As this test actually connects to BB, we can't be sure it will succeed

@@ -27,6 +27,16 @@ func LoadConfig() (cfg *Config, err error) {
 	return cfg, nil
 }
 
+var _ AppConfig = &Config{}
+
+type AppConfig interface {
+	ComputeFields() (err error)
+	IsACODisabled(CMSID string) bool
+	IsSupportedACO(cmsID string) bool
+	IsACOV1V2DeniedAccess(ACOID string) bool
+	IsSharedExportModel(ACOID string) bool
+}
+
 type Config struct {
 	SuppressionLookbackDays int         `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int         `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"50"`

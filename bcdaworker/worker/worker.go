@@ -292,7 +292,6 @@ func writeBBDataToFile(
 	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
-		fmt.Printf("---------- Processing beneID: %s ----------\n", beneID)
 		// if the parent job was cancelled, stop processing beneIDs and fail the job
 		if ctx.Err() == context.Canceled {
 			return jobKeys, fmt.Errorf("job cancelled, err: %w", ctx.Err())
@@ -300,6 +299,8 @@ func writeBBDataToFile(
 
 		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
 			// TODO 10590 does this logic apply to shared exports/v3 as well?
+			// if v3 does not do Claim/ClaimResponse lookups, then we can get rid of getSharedBeneficiary()
+
 			// NOTE: with adjudicated data sets, we first need to lookup the Patient ID
 			// before gathering EOB/Coverage results; however with partially-adjudicated data
 			// that is not yet possible because their are no Patient FHIR resources. This
@@ -307,16 +308,16 @@ func writeBBDataToFile(
 			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
 
 			bene := models.CCLFBeneficiary{}
-			// shared endpoint job handling.  beneID in this context is an actual MBI
+			// This logic fork is between shared endpoint and normal job processing.  The only difference
+			// is how we set/retrieve/update the beneficiary that we then use to send a request to BFD for.
 			if utils.GetEnvBool("SHARED_ENDPOINT_ENABLED", false) && cfg.IsSharedExportModel(jobArgs.CMSID) {
-				fmt.Print("---------- in SHARED ENDPOINT LOGIC\n")
+				// beneID in the shared endpoint context is an MBI
 				bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs)
 				if err != nil {
 					//MBI is appended inside file, not printed out to system logs
 					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", beneID), stu3.IssueTypeCodeNotFound, err
 				}
 			} else { // normal job handling
-				fmt.Print("---------- in normal job logic ----------\n")
 				id, err := strconv.ParseUint(beneID, 10, 64)
 				if err != nil {
 					return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
@@ -329,7 +330,6 @@ func writeBBDataToFile(
 				}
 			}
 
-			fmt.Printf("---------- calling bundleFunc for resource type: %s, bene: %+v ----------\n", jobArgs.ResourceType, bene)
 			b, err := bundleFunc(bene)
 			if err != nil {
 				//MBI is appended inside file, not printed out to system logs
@@ -402,12 +402,10 @@ func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobDa
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
 func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
-	fmt.Printf("---------- getBeneficiary() with ID: %d ----------\n", beneID)
 	bene, err := r.GetCCLFBeneficiaryByID(ctx, beneID)
 	if err != nil {
 		return models.CCLFBeneficiary{}, fmt.Errorf("error retrieving cclfBeneficiary record by cclfBeneficiaryId %d, err: %w", beneID, err)
 	}
-	fmt.Printf("---------- bene retrieved: %+v ----------\n", bene)
 
 	cclfBeneficiary := *bene
 
