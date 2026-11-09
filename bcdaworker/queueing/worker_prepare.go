@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -151,7 +150,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		}
 		dberr := p.r.UpdateJob(ctx, args.Job)
 		if dberr != nil {
-			err = fmt.Errorf("%w: %w", err, dberr)
+			logger.Errorf("failed to update job, err: %w, dberr: %w", err, dberr)
 		}
 	}()
 
@@ -163,11 +162,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 	exports, benesAttributed, err := p.svc.GetQueJobs(ctx, args)
 	if err != nil {
 		logger.Error(err)
-		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok {
-			return exports, err
-		} else {
-			return exports, err
-		}
+		return exports, err
 	}
 
 	args.Job.JobCount = len(exports)

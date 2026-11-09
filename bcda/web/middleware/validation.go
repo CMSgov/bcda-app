@@ -238,6 +238,9 @@ func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExp
 		if len(query.ResourceTypes) == 0 {
 			issues = append(issues, "missing resource_types in query")
 		}
+		// TODO 10590 how do we want to handle Claim and ClaimResponse resource types?
+		// they are built into EoB as per v3.  Do we want to silently filter them out or explicitly return an error?
+		// if we do nothing we are trusting our users but could be problematic as currently we dont pass in ClaimsWindow (service-date) to our BFD requests
 		if query.SourceQuery == "" {
 			issues = append(issues, "missing source_query in query")
 		}

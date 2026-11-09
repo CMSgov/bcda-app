@@ -540,12 +540,22 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 	s.T().Run("happy path", func(t *testing.T) {
-		s.T().Setenv("SHARED_ENDPOINT_ENABLED", "true")
-		cfg := &service.MockAppConfig{}
-		cfg.On("IsSharedExportModel", mock.Anything).Return(true)
-		ctx, jobArgs, bbc := SetupWriteResourceToFile(s, "ExplanationOfBenefit")
+		testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("def1d24d-cd96-4d7d-a691-b0e8c88e67a5"))
+		require.NoError(s.T(), err)
+		s.testACO = testACO
+		// following the setup from SetupWriteResourceToFile()
+		bbc := &client.MockBlueButtonClient{}
+		beneID := "a1000050699"
+		bbc.MBI = &beneID
+		bbc.On("GetPatientByMbi", beneID).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetExplanationOfBenefit", mock.Anything, beneID, mock.Anything).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		jobArgs := worker_types.JobEnqueueArgs{
+			CMSID:          "DPC-999",
+			BeneficiaryIDs: []string{beneID},
+			ResourceType:   "ExplanationOfBenefit",
+		}
 
-		jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 
 		assert.NoError(s.T(), err)
 		files, err := os.ReadDir(s.tempDir)
@@ -558,11 +568,10 @@ func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 	})
 
 	s.T().Run("fails to get bene ID should return empty and error files", func(t *testing.T) {
-		s.T().Setenv("SHARED_ENDPOINT_ENABLED", "true")
 		cfg := &service.MockAppConfig{}
 		cfg.On("IsSharedExportModel", mock.Anything).Return(true)
 		bbc := &client.MockBlueButtonClient{}
-		bbc.On("GetExplanationOfBenefit", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("fhir client error"))
+		bbc.On("GetPatientByMbi", "1234").Return(nil, errors.New("get-patient-error"))
 		jobArgs := worker_types.JobEnqueueArgs{
 			BeneficiaryIDs: []string{"1234"},
 			ResourceType:   "ExplanationOfBenefit",

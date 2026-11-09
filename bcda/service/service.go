@@ -296,7 +296,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 // - splitting beneficiaries into batches sized for the target resource type
 // - emitting one queue job per (resourceType × dataType × beneficiaryBatch)
 func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
-	sinceArg := formatSinceArg(since)
+	sinceArg := FormatSinceArg(since)
 	resourceTypes, effectiveDataTypes, err := s.getEffectiveQueueJobConfig(args)
 	if err != nil {
 		return nil, err
@@ -325,9 +325,9 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 	return jobs, nil
 }
 
-// formatSinceArg converts a time into the "_lastUpdated" query parameter format expected by Blue Button.
+// FormatSinceArg converts a time into the "_lastUpdated" query parameter format expected by Blue Button.
 // A zero time means "no since filter", which is represented as the empty string.
-func formatSinceArg(since time.Time) string {
+func FormatSinceArg(since time.Time) string {
 	if since.IsZero() {
 		return ""
 	}

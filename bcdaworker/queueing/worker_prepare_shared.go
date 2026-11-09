@@ -63,8 +63,8 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 	}
 	defer func() {
 		if err != nil {
-			if rollBackErr := tx.Rollback(ctx); rollBackErr != nil {
-				logger.Errorf("Failed to rollback pgx transaction: %s", rollBackErr.Error())
+			if err1 := tx.Rollback(ctx); err1 != nil {
+				logger.Errorf("Failed to rollback pgx transaction: %s", err1.Error())
 			}
 		}
 	}()
@@ -93,13 +93,15 @@ func (w *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, ar
 	var err error
 	var exports []*worker_types.JobEnqueueArgs
 
+	logger := log.GetCtxLogger(ctx)
+
 	defer func() {
 		if err != nil {
 			args.Job.Status = models.JobStatusFailed
 		}
 		dberr := w.appRepo.UpdateJob(ctx, args.Job)
 		if dberr != nil {
-			err = fmt.Errorf("%w: %w", err, dberr)
+			logger.Errorf("failed to update job, err: %w, dberr: %w", err, dberr)
 		}
 	}()
 
@@ -145,13 +147,19 @@ func chunkIntoSubJobs(args worker_types.PrepareSharedJobArgs) ([]*worker_types.J
 					return jobs, err
 				}
 
+				parsedSince, err := time.Parse(time.RFC3339Nano, query.ParsedQuery.Parameters.Since)
+				formattedSince := service.FormatSinceArg(parsedSince)
+				if err != nil {
+					return jobs, err
+				}
+
 				enqueueArgs := worker_types.JobEnqueueArgs{
 					ID:              id,
 					CMSID:           args.CMSID,
 					ACOID:           args.Job.ACOID.String(),
 					BeneficiaryIDs:  beneIDs, // in the case of shared export these are MBIs
 					ResourceType:    resourceType,
-					Since:           query.ParsedQuery.Parameters.Since,
+					Since:           formattedSince,
 					TypeFilter:      query.ParsedQuery.Parameters.TypeFilter,
 					TransactionID:   args.TransactionID,
 					TransactionTime: args.CreationTime,

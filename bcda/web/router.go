@@ -99,7 +99,8 @@ func NewAPIRouter(db *sql.DB, pool *pgxv5Pool.Pool, provider auth.Provider) http
 	var SharedExportHandlers = []func(http.Handler) http.Handler{
 		middleware.ACOEnabled(cfg),
 		middleware.ValidateRequestHeaders,
-		rlm.CheckConcurrentJobs,
+		// TODO 10590 how can we check for duplicate jobs?  do we need to?
+		// rlm.CheckConcurrentJobs,
 		middleware.HasSharedExportAccess(cfg),
 		middleware.ValidateSharedExportPayload,
 	}

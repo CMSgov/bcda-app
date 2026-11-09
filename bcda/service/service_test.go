@@ -1854,10 +1854,10 @@ func TestCreateQueueJobs(t *testing.T) {
 }
 
 func TestFormatSinceArg(t *testing.T) {
-	assert.Equal(t, "", formatSinceArg(time.Time{}))
+	assert.Equal(t, "", FormatSinceArg(time.Time{}))
 
 	since := time.Date(2026, time.March, 16, 10, 30, 0, 0, time.UTC)
-	assert.Equal(t, "gt"+since.Format(time.RFC3339Nano), formatSinceArg(since))
+	assert.Equal(t, "gt"+since.Format(time.RFC3339Nano), FormatSinceArg(since))
 }
 
 func TestGetEffectiveQueueJobConfig(t *testing.T) {

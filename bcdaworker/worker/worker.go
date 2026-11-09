@@ -310,7 +310,7 @@ func writeBBDataToFile(
 			bene := models.CCLFBeneficiary{}
 			// This logic fork is between shared endpoint and normal job processing.  The only difference
 			// is how we set/retrieve/update the beneficiary that we then use to send a request to BFD for.
-			if utils.GetEnvBool("SHARED_ENDPOINT_ENABLED", false) && cfg.IsSharedExportModel(jobArgs.CMSID) {
+			if cfg.IsSharedExportModel(jobArgs.CMSID) {
 				// beneID in the shared endpoint context is an MBI
 				bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs)
 				if err != nil {
