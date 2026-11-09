@@ -25,20 +25,22 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	log "github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 )
@@ -57,27 +59,31 @@ type WorkerTestSuite struct {
 	tempDir    string
 	cclfFile   *models.CCLFFile
 
-	db *sql.DB
-	r  repository.Repository
-	w  Worker
+	dbContainer db.TestDatabaseContainer
+	db          *sql.DB
+	r           repository.Repository
+	w           Worker
 
 	logctx context.Context
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
-	s.db = database.Connect()
-	s.r = postgres.NewRepository(s.db)
-	s.w = NewWorker(s.db)
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
+	// s.db = database.Connect()
+	// s.r = postgres.NewRepository(s.db)
+	// s.w = NewWorker(s.db)
 
-	cmsID := "A1B2C" // Some unique ID that should be unique to this test
+	// cmsID := "A1B2C" // Some unique ID that should be unique to this test
 
-	s.testACO = &models.ACO{
-		UUID:  uuid.NewUUID(),
-		CMSID: &cmsID,
-		Name:  "ACO_FOR_WORKER_TEST",
-	}
+	// s.testACO = &models.ACO{
+	// 	UUID:  uuid.NewUUID(),
+	// 	CMSID: &cmsID,
+	// 	Name:  "ACO_FOR_WORKER_TEST",
+	// }
 
-	postgrestest.CreateACO(s.T(), s.db, *s.testACO)
+	// postgrestest.CreateACO(s.T(), s.db, *s.testACO)
 
 	tempDir, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -100,7 +106,40 @@ func (s *WorkerTestSuite) SetupSuite() {
 	s.logctx = context.WithValue(ctx, log.CtxLoggerKey, newLogEntry)
 }
 
+// func (s *WorkerTestSuite) SetupTest() {
+// 	var err error
+// 	err = s.dbContainer.ExecuteDir("testdata/")
+// 	require.NoError(s.T(), err)
+// 	s.db, err = s.dbContainer.NewSqlDbConnection()
+// 	require.NoError(s.T(), err)
+// 	s.pool, err = s.dbContainer.NewPgxPoolConnection()
+// 	require.NoError(s.T(), err)
+// 	s.r = postgres.NewRepository(s.db)
+// 	require.NoError(s.T(), err)
+
+// 	var lggr logrus.Logger
+// 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
+// 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
+// 	ctx = middleware.SetRequestParamsCtx(ctx, request_types.RequestParameters{})
+// 	s.ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
+// }
+
 func (s *WorkerTestSuite) SetupTest() {
+	var err error
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	// s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	// require.NoError(s.T(), err)
+	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
+	s.w = NewWorker(s.db)
+
+	testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("abc1d24d-cd96-4d7d-a691-b0e8c88e67a5"))
+	require.NoError(s.T(), err)
+	s.testACO = testACO
+
 	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
@@ -129,19 +168,55 @@ func (s *WorkerTestSuite) SetupTest() {
 	// logHook = test.NewLocal(logger)
 }
 
+func (s *WorkerTestSuite) SetupSubTest() {
+	var err error
+	s.db.Close() // restore the database state for subtests, since SetupTest also sets up db container
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	// s.pool, err = s.dbContainer.NewPgxPoolConnection()
+	// require.NoError(s.T(), err)
+	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
+	s.w = NewWorker(s.db)
+}
+
+func (s *WorkerTestSuite) TearDownSubTest() {
+	var err error
+	err = s.db.Close()
+	require.NoError(s.T(), err)
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+}
+
 func (s *WorkerTestSuite) TearDownTest() {
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, *s.testACO.CMSID)
+	var err error
+	err = s.db.Close()
+	require.NoError(s.T(), err)
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+
+	// postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, *s.testACO.CMSID)
 	os.RemoveAll(s.stagingDir)
 }
 
 func (s *WorkerTestSuite) TearDownSuite() {
-	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
+	// postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_TEMP_DIR"))
 
 	// Reset worker logger to original logger
 	log.Worker = oldLogger
+
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func TestWorkerTestSuite(t *testing.T) {
@@ -411,7 +486,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileAllBeneficiaryErrorsWriteToError
 	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
-	err := CreateDir(s.tempDir)
+	err := utils.CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
 	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
 	assert.NoError(s.T(), err)
@@ -554,6 +629,8 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		TransactionID:  uuid.New(),
 	}
 
+	fmt.Printf("---------- Starting ProcessJob test ---------- %+v\n", s.w)
+	fmt.Printf("---------- s.logctx %+v, rando: %+v, job: %+v, args: %+v\n", s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	err = s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.Nil(s.T(), err)
 
@@ -624,9 +701,9 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 }
 
 func (s *WorkerTestSuite) TestCreateDir() {
-	err := CreateDir("/proc/invalid_path") //non-existant dir
+	err := utils.CreateDir("/proc/invalid_path") //non-existant dir
 	assert.Error(s.T(), err)
-	err = CreateDir("2") //fine
+	err = utils.CreateDir("2") //fine
 	assert.NoError(s.T(), err)
 }
 

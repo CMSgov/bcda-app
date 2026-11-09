@@ -2160,6 +2160,15 @@ func TestGetBundleLastUpdated(t *testing.T) {
 		assert.Equal(t, now, result)
 	})
 
+	t.Run("fhir client error returns nil time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, errors.New("client error"))
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.Error(t, err)
+		assert.Equal(t, time.Time{}, result)
+	})
+
 	t.Run("when LastUpdated timestamp is unset, returns jobs tx time", func(t *testing.T) {
 		c := new(client.MockBlueButtonClient)
 		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)

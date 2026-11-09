@@ -40,7 +40,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
@@ -470,7 +469,7 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 	}()
 
 	for _, jobKey := range jobKeys {
-		err := worker.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
+		err := utils.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
 		assert.NoError(s.T(), err)
 		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID, jobKey.FileName)
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
