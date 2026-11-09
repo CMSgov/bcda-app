@@ -21,7 +21,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Len(t, cfg.ACOConfigs, 16)
+	assert.Len(t, cfg.ACOConfigs, 17)
 	for _, acoCfg := range cfg.ACOConfigs {
 		assert.NotNil(t, acoCfg.patternExp)
 		if acoCfg.PerfYearTransition != "" {
@@ -171,6 +171,11 @@ func TestSupportedACOs(t *testing.T) {
 		{"ACCESS too long", "ACCES9999999", false},
 		{"ACCESS invalid characters", "ACCES-99999", false},
 		{"valid ACCESS", "ACCES99999", true},
+
+		{"LEAD too short", "L999", false},
+		{"LEAD too long", "L99999", false},
+		{"LEAD invalid characters", "L999V", false},
+		{"valid LEAD", "L9999", true},
 	}
 
 	for _, tt := range tests {
