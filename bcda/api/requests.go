@@ -970,7 +970,7 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		ACOID:         acoID, // BCDA-10569
 		CMSID:         ad.CMSID,
 		PartnerID:     payload.PartnerID,
-		BFDPath:       constants.V3Path,
+		BFDPath:       constants.BFDV3Path,
 		ResourceTypes: payload.ResourceTypes,
 		Since:         payload.SinceDecoded,
 		CreationTime:  time.Now(),
