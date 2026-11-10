@@ -158,7 +158,15 @@ fhir_testing:
 	docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git#5bd61db090c5911792f33e12dca6981d7e22f9a0
 	docker compose -f fhir_testing/compose.inferno.yml run inferno bundle exec inferno migrate
 	docker compose -f fhir_testing/compose.inferno.yml up -d
-	sleep 10
+	@echo "Waiting for Inferno and Nginx to be ready..."
+	@for i in $$(seq 1 30); do \
+		if curl -sf http://localhost/ > /dev/null; then \
+			echo "Inferno is ready!"; \
+			break; \
+		fi; \
+		echo "Waiting for Inferno... [$$i/30]"; \
+		sleep 2; \
+	done
 	docker stop fhir_testing-hl7_validator_service-1
 
 	# Get config

@@ -33,7 +33,26 @@ jobs:
           docker build -t inferno:1 https://github.com/inferno-framework/bulk-data-test-kit.git#5bd61db090c5911792f33e12dca6981d7e22f9a0
           docker compose -f fhir_testing/compose.inferno.yml run inferno bundle exec inferno migrate
           docker compose -f fhir_testing/compose.inferno.yml up -d
-          sleep 20
+
+          echo "Waiting for Inferno and Nginx to be ready..."
+          READY=0
+          for i in {1..30}; do
+            if curl -sf http://localhost/ > /dev/null; then
+              echo "Inferno is ready!"
+              READY=1
+              break
+            fi
+            echo "Waiting for Inferno... [$i/30]"
+            sleep 2
+          done
+
+          if [ $READY -ne 1 ]; then
+            echo "Inferno failed to become ready in time. Container status:"
+            docker compose -f fhir_testing/compose.inferno.yml ps
+            docker compose -f fhir_testing/compose.inferno.yml logs nginx inferno
+            exit 1
+          fi
+
           docker stop fhir_testing-hl7_validator_service-1
 
           docker build --no-cache -t fhir_testing -f docker/Dockerfile.fhir_testing .
