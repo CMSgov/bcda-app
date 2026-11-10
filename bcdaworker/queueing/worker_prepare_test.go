@@ -365,7 +365,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 }
 
 func (s *PrepareWorkerIntegrationTestSuite) TestNewPrepareJobWorker() {
-	w, err := NewPrepareJobWorker(s.db, s.pool)
+	w, err := NewPrepareJobWorker(s.db, s.pool, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "test"}}})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)
 }
@@ -523,7 +523,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r, pool: s.pool}
-	q := NewEnqueuer(s.db, s.pool)
+	q := NewEnqueuer(s.db, s.pool, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "test"}}})
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}

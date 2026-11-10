@@ -26,7 +26,6 @@ packages:
   github.com/CMSgov/bcda-app/bcda/service:
     interfaces:
       Service:
-      AppConfig:
   github.com/CMSgov/bcda-app/bcdaworker/queueing:
     interfaces:
       Enqueuer:

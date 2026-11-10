@@ -70,22 +70,22 @@ func (s *SharedBackendSmokeTests) TestPostToken() {
 
 }
 
-// TODO: (BCDA-10498) remove version checks and add validation for data and resources types
+// TODO: (BCDA-10508) update these for latest body structure, validation, etc
 func (s *SharedBackendSmokeTests) TestPostSharedExport_SharedPartner() {
 	tests := []struct {
 		name       string
 		body       *strings.Reader
 		respStatus int
 	}{
-		{"DPC start shared export - valid body", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "DPC-1", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusAccepted},
+		{"DPC start shared export - valid body", strings.NewReader(`{"system":"DPC","queries":[{"mbis":["123"],"version":"v3","resource_types":["Patient","ExplanationOfBenefit","Coverage"],"data_types":["adjudicated","partially-adjudicated"],"source_query":"https://dpc.cms.gov/api/v3/Group/XYZ-ABC/$export","parsed_query":{"headers":{},"parameters":{"_typeFilter":{"_tag":"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory","outcome":"partial","service-date":"gt2026-02-10"},"_since":"1999-01-01T00:00:00.000+00:00"}}}]}`), http.StatusAccepted},
 		// DPC will only have access to v3 and it's validated in the request url
 		// {"DPC start shared export - invalid version", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "153", "resource_types": ["Patient"], "partner_id": "DPC-1", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusBadRequest},
 		// {"DPC start shared export - empty version", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "", "resource_types": ["Patient"], "partner_id": "DPC-1", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusBadRequest},
 		// {"DPC start shared export - invalid resource type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["foo"], "partner_id": "DPC-1", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusBadRequest},
-		{"DPC start shared export - empty resource type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": [], "partner_id": "DPC-1", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusBadRequest},
+		{"DPC start shared export - empty resource type", strings.NewReader(`{"system":"DPC","queries":[{"mbis":["123"],"version":"v3","resource_types":["Patient","ExplanationOfBenefit","Coverage"],"data_types":["adjudicated","partially-adjudicated"],"source_query":"https://dpc.cms.gov/api/v3/Group/XYZ-ABC/$export","parsed_query":{"headers":{},"parameters":{"_typeFilter":{"_tag":"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory","outcome":"partial","service-date":"gt2026-02-10"},"_since":"1999-01-01T00:00:00.000+00:00"}}}]}`), http.StatusBadRequest},
 		// {"DPC start shared export - invalid data type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "DPC-1", "data_types": ["foo"], "mbis": ["1234"]}`), http.StatusBadRequest},
-		{"DPC start shared export - empty data type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "DPC-1", "data_types": [], "mbis": ["1234"]}`), http.StatusBadRequest},
-		{"DPC start shared export - empty mbi list", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "DPC-1", "data_types": ["adjudicated"], "mbis": []}`), http.StatusBadRequest},
+		{"DPC start shared export - empty data type", strings.NewReader(`{"system":"DPC","queries":[{"mbis":["123"],"version":"v3","resource_types":["Patient","ExplanationOfBenefit","Coverage"],"data_types":["adjudicated","partially-adjudicated"],"source_query":"https://dpc.cms.gov/api/v3/Group/XYZ-ABC/$export","parsed_query":{"headers":{},"parameters":{"_typeFilter":{"_tag":"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory","outcome":"partial","service-date":"gt2026-02-10"},"_since":"1999-01-01T00:00:00.000+00:00"}}}]}`), http.StatusBadRequest},
+		{"DPC start shared export - empty mbi list", strings.NewReader(`{"system":"DPC","queries":[{"mbis":["123"],"version":"v3","resource_types":["Patient","ExplanationOfBenefit","Coverage"],"data_types":["adjudicated","partially-adjudicated"],"source_query":"https://dpc.cms.gov/api/v3/Group/XYZ-ABC/$export","parsed_query":{"headers":{},"parameters":{"_typeFilter":{"_tag":"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory","outcome":"partial","service-date":"gt2026-02-10"},"_since":"1999-01-01T00:00:00.000+00:00"}}}]}`), http.StatusBadRequest},
 	}
 	t, err := s.postToken(s.dpcClientID, s.dpcClientSecret)
 	for _, tt := range tests {
@@ -109,7 +109,7 @@ func (s *SharedBackendSmokeTests) TestPostSharedExport_NotSharedPartner() {
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), t)
 
-	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "foo", "data_types": ["adjudicated"], "mbis": ["1234"]}`)
+	body := strings.NewReader(`{"system":"DPC","queries":[{"mbis":["123"],"version":"v3","resource_types":["Patient","ExplanationOfBenefit","Coverage"],"data_types":["adjudicated","partially-adjudicated"],"source_query":"https://dpc.cms.gov/api/v3/Group/XYZ-ABC/$export","parsed_query":{"headers":{},"parameters":{"_typeFilter":{"_tag":"https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory","outcome":"partial","service-date":"gt2026-02-10"},"_since":"1999-01-01T00:00:00.000+00:00"}}}]}`)
 	j, err := s.postSharedExport(t.AccessToken, body)
 
 	require.NoError(s.T(), err)

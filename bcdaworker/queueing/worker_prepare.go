@@ -43,21 +43,16 @@ type PrepareJobWorker struct {
 	pool     *pgxv5Pool.Pool
 }
 
-func NewPrepareJobWorker(db *sql.DB, pool *pgxv5Pool.Pool) (*PrepareJobWorker, error) {
-
+func NewPrepareJobWorker(db *sql.DB, pool *pgxv5Pool.Pool, cfg service.Config) (*PrepareJobWorker, error) {
 	logger := log.Worker
 	client.SetLogger(logger)
 
-	cfg, err := service.LoadConfig()
-	if err != nil {
-		logger.Fatalf("failed to load service config. Err: %v", err)
-	}
 	if len(cfg.ACOConfigs) == 0 {
 		logger.Fatalf("no ACO configs found, these are required for downstream processing")
 	}
 
 	repository := postgres.NewRepository(db)
-	svc := service.NewService(repository, cfg, "")
+	svc := service.NewService(repository, &cfg, "")
 
 	v1, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV1Path))
 	if err != nil {

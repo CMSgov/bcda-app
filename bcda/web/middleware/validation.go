@@ -255,6 +255,8 @@ func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExp
 		// if len(query.ParsedQuery.Headers) == 0 {
 		// 	issues = append(issues, "missing parsed_query.headers in query")
 		// }
+		// TODO 10590 how aggressive do we want to be verifying TypeFilter input?
+		// We can use fhir.ValidateTypeFilterSubquery() with some adjustments but should we be trusting co-API compliance in the first place?
 		// if query.ParsedQuery.Parameters.TypeFilter == "" {
 		// 	issues = append(issues, "missing parsed_query.parameters._since in query")
 		// }

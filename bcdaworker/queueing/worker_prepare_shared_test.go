@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
@@ -143,7 +144,7 @@ func (s *PrepareSharedWorkerTestSuite) TearDownTest() {
 }
 
 func (s *PrepareSharedWorkerTestSuite) TestNewPrepareSharedJobWorker() {
-	w, err := NewPrepareSharedJobWorker(s.db, s.pool)
+	w, err := NewPrepareSharedJobWorker(s.db, s.pool, service.Config{})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)
 }
@@ -177,7 +178,13 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedWorkerWork_Integration()
 		},
 	}
 
-	worker := &PrepareSharedJobWorker{appRepo: s.r, workerRepo: *workerRepo.NewRepository(s.db), fhirClient: c, pool: s.pool}
+	cfg := service.Config{
+		ACOConfigs: []service.ACOConfig{
+			{SharedExport: true, Pattern: "A0003"},
+		},
+	}
+
+	worker := &PrepareSharedJobWorker{appRepo: s.r, workerRepo: *workerRepo.NewRepository(s.db), fhirClient: c, pool: s.pool, cfg: cfg}
 	driver := riverpgxv5.New(s.pool)
 	err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
@@ -378,7 +385,7 @@ func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated() {
 func (s *PrepareSharedWorkerTestSuite) TestQueueExportJobs() {
 	prepArgs := worker_types.PrepareSharedJobArgs{}
 
-	q := NewEnqueuer(s.db, s.pool)
+	q := NewEnqueuer(s.db, s.pool, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "test"}}})
 	subjob1 := &worker_types.JobEnqueueArgs{ID: 33}
 	subjob2 := &worker_types.JobEnqueueArgs{ID: 34}
 

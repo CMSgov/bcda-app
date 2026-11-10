@@ -27,9 +27,10 @@ type PrepareSharedJobWorker struct {
 	workerRepo workerRepo.Repository
 	fhirClient client.APIClient
 	pool       *pgxv5Pool.Pool
+	cfg        service.Config
 }
 
-func NewPrepareSharedJobWorker(db *sql.DB, pool *pgxv5Pool.Pool) (*PrepareSharedJobWorker, error) {
+func NewPrepareSharedJobWorker(db *sql.DB, pool *pgxv5Pool.Pool, cfg service.Config) (*PrepareSharedJobWorker, error) {
 	fhirClient, err := client.NewBlueButtonClient(client.NewConfig(constants.BFDV3Path))
 	if err != nil {
 		return &PrepareSharedJobWorker{}, err
@@ -40,12 +41,17 @@ func NewPrepareSharedJobWorker(db *sql.DB, pool *pgxv5Pool.Pool) (*PrepareShared
 		workerRepo: *workerRepo.NewRepository(db),
 		fhirClient: fhirClient,
 		pool:       pool,
+		cfg:        cfg,
 	}, nil
 }
 
 func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.PrepareSharedJobArgs]) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if len(w.cfg.ACOConfigs) == 0 {
+		return fmt.Errorf("invalid app config: no config found or no ACO configs found")
+	}
 
 	ctx = log.NewStructuredLoggerEntry(log.Worker, ctx)
 	ctx = context.WithValue(ctx, mw.CtxTransactionKey, rjob.Args.TransactionID)

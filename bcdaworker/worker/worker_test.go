@@ -63,7 +63,7 @@ type WorkerTestSuite struct {
 	dbContainer db.TestDatabaseContainer
 	db          *sql.DB
 	r           repository.Repository
-	w           Worker
+	w           worker
 
 	logctx context.Context
 }
@@ -102,9 +102,15 @@ func (s *WorkerTestSuite) SetupTest() {
 	require.NoError(s.T(), err)
 	s.r = postgres.NewRepository(s.db)
 	require.NoError(s.T(), err)
-	s.w = NewWorker(s.db)
+	cfg := service.Config{
+		ACOConfigs:   []service.ACOConfig{{Pattern: "A1B2C"}}, // match ACO ID from testdata
+		RunoutConfig: service.RunoutConfig{ClaimThruDate: "2025-12-31"},
+	}
+	err = cfg.ComputeFields()
+	require.NoError(s.T(), err)
+	s.w = *NewWorker(s.db, cfg)
 
-	testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("abc1d24d-cd96-4d7d-a691-b0e8c88e67a5"))
+	testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("abc1d24d-cd96-4d7d-a691-b0e8c88e67a5")) // match ACOs uuid from testdata
 	require.NoError(s.T(), err)
 	s.testACO = testACO
 
@@ -139,7 +145,13 @@ func (s *WorkerTestSuite) SetupSubTest() {
 	require.NoError(s.T(), err)
 	s.r = postgres.NewRepository(s.db)
 	require.NoError(s.T(), err)
-	s.w = NewWorker(s.db)
+	cfg := service.Config{
+		ACOConfigs:   []service.ACOConfig{{Pattern: "A1B2C"}}, // match ACO ID from testdata
+		RunoutConfig: service.RunoutConfig{ClaimThruDate: "2025-12-31"},
+	}
+	err = cfg.ComputeFields()
+	require.NoError(s.T(), err)
+	s.w = *NewWorker(s.db, cfg)
 }
 
 func (s *WorkerTestSuite) TearDownSubTest() {
@@ -261,7 +273,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-			jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+			jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 			if tt.err == nil {
 				assert.NoError(s.T(), err)
 			} else {
@@ -366,7 +378,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
@@ -391,7 +403,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFilePartialBeneficiaryErrors() {
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Equal(s.T(), 33, jobKeys[0].BenesRetrievedPercent)
@@ -444,7 +456,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileAllBeneficiaryErrorsWriteToError
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
 	err := utils.CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
@@ -491,7 +503,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.On("GetPatientByMbi", "a1000000009").Return("", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"})
 
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 
 	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
@@ -539,6 +551,13 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 }
 
 func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
+	cfg := service.Config{
+		ACOConfigs:   []service.ACOConfig{{Pattern: "DPC-1", SharedExport: true}}, // match Shared Export ACO ID from testdata
+		RunoutConfig: service.RunoutConfig{ClaimThruDate: "2025-12-31"},
+	}
+	err := cfg.ComputeFields()
+	require.NoError(s.T(), err)
+
 	s.T().Run("happy path", func(t *testing.T) {
 		testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("def1d24d-cd96-4d7d-a691-b0e8c88e67a5"))
 		require.NoError(s.T(), err)
@@ -550,12 +569,12 @@ func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 		bbc.On("GetPatientByMbi", beneID).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", mock.Anything, beneID, mock.Anything).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		jobArgs := worker_types.JobEnqueueArgs{
-			CMSID:          "DPC-999",
+			CMSID:          "DPC-1",
 			BeneficiaryIDs: []string{beneID},
 			ResourceType:   "ExplanationOfBenefit",
 		}
 
-		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, cfg)
 
 		assert.NoError(s.T(), err)
 		files, err := os.ReadDir(s.tempDir)
@@ -568,8 +587,6 @@ func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 	})
 
 	s.T().Run("fails to get bene ID should return empty and error files", func(t *testing.T) {
-		cfg := &service.MockAppConfig{}
-		cfg.On("IsSharedExportModel", mock.Anything).Return(true)
 		bbc := &client.MockBlueButtonClient{}
 		bbc.On("GetPatientByMbi", "1234").Return(nil, errors.New("get-patient-error"))
 		jobArgs := worker_types.JobEnqueueArgs{
@@ -577,7 +594,7 @@ func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 			ResourceType:   "ExplanationOfBenefit",
 		}
 
-		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, cfg)
 
 		assert.NoError(s.T(), err)
 		assert.Len(s.T(), jobKeys, 2)
@@ -672,7 +689,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	rid, _ := safecast.ToUint(j.ID)
 
 	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, rid, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
-	w := &worker{r}
+	w := &worker{r: r, cfg: s.w.cfg}
 	err := w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
@@ -699,7 +716,7 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	r := &repository.MockRepository{}
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
-	w := &worker{r}
+	w := &worker{r: r, cfg: s.w.cfg}
 	err := w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
@@ -979,7 +996,7 @@ func isTerminalStatus(status models.JobStatus) bool {
 func (s *WorkerTestSuite) TestValidateJob() {
 	ctx := context.Background()
 	r := &repository.MockRepository{}
-	w := &worker{r}
+	w := &worker{r: r, cfg: s.w.cfg}
 
 	noBasePath := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31())}
 	jobNotFound := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
@@ -1054,6 +1071,11 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	j, err = w.ValidateJob(ctx, 2, validJob)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), "could not retrieve job key from database, err: some db error")
+
+	w.cfg = service.Config{ACOConfigs: []service.ACOConfig{}}
+	j, err = w.ValidateJob(ctx, 2, validJob)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrNoACOConfigs.Error())
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {

@@ -75,8 +75,6 @@ func NewHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewEnqueuer(db, pool)
-
 	cfg, err := service.LoadConfig()
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
@@ -84,6 +82,8 @@ func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 	if len(cfg.ACOConfigs) == 0 {
 		log.API.Fatalf("no ACO configs found, these are required for processing logic")
 	}
+
+	h.Enq = queueing.NewEnqueuer(db, pool, *cfg)
 
 	repository := postgres.NewRepository(db)
 	h.r = repository

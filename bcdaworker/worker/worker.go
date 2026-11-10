@@ -39,14 +39,19 @@ type Worker interface {
 }
 
 type worker struct {
-	r repository.Repository
+	r   repository.Repository
+	cfg service.Config
 }
 
-func NewWorker(db *sql.DB) Worker {
-	return &worker{postgres.NewRepository(db)}
+func NewWorker(db *sql.DB, cfg service.Config) *worker {
+	return &worker{r: postgres.NewRepository(db), cfg: cfg}
 }
 
 func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_types.JobEnqueueArgs) (*models.Job, error) {
+	if len(w.cfg.ACOConfigs) == 0 {
+		return nil, ErrNoACOConfigs
+	}
+
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
@@ -122,7 +127,7 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 		return fmt.Errorf("processJob: could not create FHIR payload path directory, err: %w", err)
 	}
 
-	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath)
+	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath, w.cfg)
 	if err != nil {
 		return fmt.Errorf("processJob: Error occurred when writing BFD Data to file, err: %w", err)
 	}
@@ -216,15 +221,8 @@ func writeBBDataToFile(
 	queJobID int64,
 	jobArgs worker_types.JobEnqueueArgs,
 	tmpDir string,
+	cfg service.Config,
 ) (jobKeys []models.JobKey, err error) {
-
-	cfg, err := service.LoadConfig()
-	if err != nil {
-		return nil, errors.New("failed to load service config")
-	}
-	if len(cfg.ACOConfigs) == 0 {
-		return nil, errors.New("no ACO configs found, these are required for downstream processing")
-	}
 
 	id, err := safecast.ToUint(jobArgs.ID)
 	if err != nil {
@@ -572,4 +570,5 @@ var (
 	ErrParentJobCancelled = JobError{"parent job cancelled"}
 	ErrParentJobFailed    = JobError{"parent job failed"}
 	ErrQueJobProcessed    = JobError{"que job already processed"}
+	ErrNoACOConfigs       = JobError{"no ACO configs found"}
 )

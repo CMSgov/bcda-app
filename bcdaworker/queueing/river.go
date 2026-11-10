@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
@@ -34,18 +35,18 @@ type Notifier interface {
 	PostMessageContext(context.Context, string, ...slack.MsgOption) (string, string, error)
 }
 
-func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int) *river.Client[pgx.Tx] {
+func CreateRiverClient(logger *slog.Logger, db *sql.DB, numWorkers int, cfg service.Config) *river.Client[pgx.Tx] {
 	pool := database.ConnectPool()
 	workers := river.NewWorkers()
-	prepareWorker, err := NewPrepareJobWorker(db, pool)
+	prepareWorker, err := NewPrepareJobWorker(db, pool, cfg)
 	if err != nil {
 		panic(err)
 	}
-	prepareSharedWorker, err := NewPrepareSharedJobWorker(db, pool)
+	prepareSharedWorker, err := NewPrepareSharedJobWorker(db, pool, cfg)
 	if err != nil {
 		panic(err)
 	}
-	river.AddWorker(workers, &JobWorker{db: db})
+	river.AddWorker(workers, &JobWorker{db: db, cfg: cfg})
 	river.AddWorker(workers, NewCleanupJobWorker(db))
 	river.AddWorker(workers, prepareWorker)
 	river.AddWorker(workers, prepareSharedWorker)
