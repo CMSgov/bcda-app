@@ -21,7 +21,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Len(t, cfg.ACOConfigs, 17)
+	assert.Len(t, cfg.ACOConfigs, 18)
 	for _, acoCfg := range cfg.ACOConfigs {
 		assert.NotNil(t, acoCfg.patternExp)
 		if acoCfg.PerfYearTransition != "" {
@@ -176,6 +176,15 @@ func TestSupportedACOs(t *testing.T) {
 		{"LEAD too long", "L99999", false},
 		{"LEAD invalid characters", "L999V", false},
 		{"valid LEAD", "L9999", true},
+
+		{"AHEAD too short", "HMD999", false},
+		{"AHEAD too long", "HMDS99999", false},
+		{"AHEAD invalid indicator", "HMDX9999", false},
+		{"valid AHEAD State Entity", "HMDS0001", true},
+		{"valid AHEAD Hospital", "HMDH1234", true},
+		{"valid AHEAD PCA Practice", "HMDP5678", true},
+		{"valid AHEAD Geo ACO", "HMDG9999", true},
+		{"valid AHEAD Legacy MDPCP", "MD1234", true},
 	}
 
 	for _, tt := range tests {
@@ -241,6 +250,34 @@ func TestIsSharedExportModel(t *testing.T) {
 		t.Run(tt.name, func(sub *testing.T) {
 			y := cfg.IsSharedExportModel(tt.cmsID)
 			assert.Equal(sub, tt.isSEModel, y)
+		})
+	}
+}
+
+func TestIsACOV1V2DeniedAccess(t *testing.T) {
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		cmsID    string
+		isDenied bool
+	}{
+		{"Allowed SSP", "A9994", false},
+		{"Denied ACCESS", "ACCES00001", true},
+		{"Denied GUIDE", "GUIDE-00001", true},
+		{"Denied LEAD", "L1234", true},
+		{"Denied AHEAD State Entity", "HMDS0001", true},
+		{"Denied AHEAD Hospital", "HMDH1234", true},
+		{"Denied AHEAD PCA Practice", "HMDP5678", true},
+		{"Denied AHEAD Geo ACO", "HMDG9999", true},
+		{"Denied AHEAD Legacy MDPCP", "MD1234", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			denied := cfg.IsACOV1V2DeniedAccess(tt.cmsID)
+			assert.Equal(sub, tt.isDenied, denied)
 		})
 	}
 }
