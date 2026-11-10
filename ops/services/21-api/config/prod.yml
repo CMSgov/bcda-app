@@ -1,0 +1,11 @@
+scaling:
+  min: 2
+  max: 12
+  target_value: 30
+  scale_in_cooldown: 180
+  scale_out_cooldown: 180
+
+alarms:
+  backend_4xx: true
+  backend_5xx: true
+  elb_5xx: true
