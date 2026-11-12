@@ -20,6 +20,7 @@ ports:
   https: 443
   http: 80
   app: 3000
+  app_http: 3001
   ssh: 22
   postgres: 5432
   ssas_public: 3003

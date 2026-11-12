@@ -19,8 +19,11 @@ locals {
   default_tags = module.platform.default_tags
   service      = replace(basename(abspath(path.module)), "/^[0-9]+-/", "")
 
-  is_prod         = contains(["prod", "sandbox"], local.parent_env)
-  alarm_topic_arn = local.is_prod ? data.aws_sns_topic.cloudwatch_critical_alarms_topic : data.aws_sns_topic.cloudwatch_alarms_topic
+  is_prod = contains(["prod", "sandbox"], local.parent_env)
+  alarm_topic_arn = coalesce(
+    one(data.aws_sns_topic.cloudwatch_critical_alarms_topic[*].arn),
+    data.aws_sns_topic.cloudwatch_alarms_topic.arn
+  )
 
   app_sg_name = "bcda-api-${module.platform.env}"
   alb_sg_name = "${local.config.alb_sg_name_prefix}-${module.platform.env}"
@@ -58,7 +61,6 @@ resource "aws_lb" "alb_01" {
 
   security_groups = [
     data.aws_security_group.sg_alb_01.id,
-    data.aws_security_group.zscaler_public.id,
   ]
 
   subnets = toset(keys(module.platform.public_subnets))
@@ -127,7 +129,10 @@ module "ecs_api" {
   cpu_architecture                  = "ARM64"
   enable_datadog_synthetics_ingress = true
   additional_task_role_policies     = { bootstrap_policy = tostring(aws_iam_policy.api_task.arn) }
-  port_mappings                     = [{ containerPort = local.config.ports.app }]
+  port_mappings = concat(
+    [{ containerPort = local.config.ports.app }],
+    contains(["prod"], local.parent_env) ? [] : [{ containerPort = local.config.ports.app_http }]
+  )
 
   container_environment = [
     { name = "LOG_TO_STD_OUT", value = "true" }
@@ -185,7 +190,7 @@ resource "aws_appautoscaling_target" "ecs_api_cpu_target" {
   service_namespace  = "ecs"
 }
 
-resource "aws_appautoscaling_policy" "ecs_ssas_cpu_policy" {
+resource "aws_appautoscaling_policy" "ecs_api_cpu_policy" {
   name               = "bcda-${module.platform.env}-api-cpu-auto-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_api_cpu_target.resource_id
@@ -207,7 +212,7 @@ resource "aws_appautoscaling_policy" "ecs_ssas_cpu_policy" {
 ##########
 
 module "api-ecs-alarms" {
-  source = "../modules/ecs_alarms"
+  source = "../../modules/ecs_alarms"
 
   service_name           = module.ecs_api.service.name
   cluster_name           = data.aws_ecs_cluster.this.cluster_name
@@ -250,7 +255,7 @@ module "api-ecs-alarms" {
 }
 
 module "cloudwatch_alarms_elb_http" {
-  source = "../modules/elb_http_alarms"
+  source = "../../modules/elb_http_alarms"
 
   app                         = "bcda"
   env                         = module.platform.env
