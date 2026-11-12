@@ -1,6 +1,7 @@
 package request_types
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/fhir"
@@ -18,25 +19,32 @@ type RequestParameters struct {
 // used by Shared Export POST requests
 // TODO: (BCDA-10505) add body validation
 type SharedExportPayload struct {
-	Queries []SharedExportQuery `json:"queries"`
-	System  string              `json:"system"`
+	Queries     []SharedExportQuery `json:"queries"`
+	SourceQuery string              `json:"source_query,omitempty"`
+	System      string              `json:"system"`
+	TrackingID  string              `json:"tracking_id,omitempty"`
+	Version     string              `json:"version,omitempty"`
 }
 
 type SharedExportQuery struct {
-	DataTypes     []string           `json:"data_types"`
-	MBIs          []string           `json:"mbis"`
-	ResourceTypes []string           `json:"resource_types"`
-	SourceQuery   string             `json:"source_query"`
-	ParsedQuery   SharedExportParams `json:"parsed_query"`
-	Version       string             `json:"version"`
+	FormData      []SharedExportFormData `json:"form_data,omitempty"`
+	Headers       map[string]string      `json:"headers,omitempty"`
+	MBIs          []string               `json:"mbis"`
+	ResourceTypes []string               `json:"resource_types"`
 }
 
-type SharedExportParams struct {
-	Headers    map[string]string      `json:"headers,omitempty"`
-	Parameters SharedExportParameters `json:"parameters,omitempty"`
+type SharedExportFormData struct {
+	Name  string          `json:"name"`
+	Value json.RawMessage `json:"value"`
 }
 
-type SharedExportParameters struct {
-	Since      string                  `json:"_since,omitempty"`
-	TypeFilter fhir.TypeFilterSubquery `json:"_typeFilter,omitempty"`
+// derived struct for internal use
+type SharedExportQueryData struct {
+	SharedExportQuery
+	Since       time.Time
+	SourceQuery string
+	System      string
+	TrackingID  string
+	TypeFilter  fhir.TypeFilterSubquery
+	Version     string
 }

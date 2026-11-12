@@ -153,20 +153,14 @@ func chunkIntoSubJobs(args worker_types.PrepareSharedJobArgs) ([]*worker_types.J
 					return jobs, err
 				}
 
-				parsedSince, err := time.Parse(time.RFC3339Nano, query.ParsedQuery.Parameters.Since)
-				formattedSince := service.FormatSinceArg(parsedSince)
-				if err != nil {
-					return jobs, err
-				}
-
 				enqueueArgs := worker_types.JobEnqueueArgs{
 					ID:              id,
 					CMSID:           args.CMSID,
 					ACOID:           args.Job.ACOID.String(),
 					BeneficiaryIDs:  beneIDs, // in the case of shared export these are MBIs
 					ResourceType:    resourceType,
-					Since:           formattedSince,
-					TypeFilter:      query.ParsedQuery.Parameters.TypeFilter,
+					Since:           service.FormatSinceArg(query.Since),
+					TypeFilter:      query.TypeFilter,
 					TransactionID:   args.TransactionID,
 					TransactionTime: args.CreationTime,
 					BBBasePath:      args.BFDPath,
@@ -190,7 +184,7 @@ func chunkIntoSubJobs(args worker_types.PrepareSharedJobArgs) ([]*worker_types.J
 func (w *PrepareSharedJobWorker) getBundleLastUpdated(args worker_types.PrepareSharedJobArgs) (time.Time, error) {
 	jobData := worker_types.JobEnqueueArgs{
 		BBBasePath:      args.BFDPath,
-		Since:           args.Queries[0].ParsedQuery.Parameters.Since,
+		Since:           args.Queries[0].Since.String(),
 		TransactionTime: time.Now(),
 	}
 

@@ -1777,30 +1777,33 @@ func (s *RequestsTestSuite) TestSharedExport() {
 	handler := newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: s.acoID.String(), TokenID: uuid.NewRandom().String()}
 
-	payload := rt.SharedExportPayload{
-		System: "test-system",
-		Queries: []rt.SharedExportQuery{
-			{
-				DataTypes:     []string{"adjudicated"},
-				MBIs:          []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"},
-				ResourceTypes: []string{"Patient"},
-				SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
-				ParsedQuery: rt.SharedExportParams{
-					Headers: map[string]string{},
-					Parameters: rt.SharedExportParameters{
-						Since:      "2026-08-01T08:00:00-05:00",
-						TypeFilter: fhir.TypeFilterSubquery{},
-					},
-				},
-				Version: "v3",
-			},
+	typeFilter := fhir.TypeFilterSubquery{
+		ResourceType: "ExplanationOfBenefit",
+		QueryParameters: []fhir.TypeFilterSubqueryParam{
+			{Name: "service-date", Value: "lt2021-02-15"},
+			{Name: "_tag", Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
 		},
 	}
+
+	queries := []rt.SharedExportQueryData{{
+		MBIs:          []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"},
+		ResourceTypes: []string{"Patient"},
+		SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
+		System:        "test-system",
+		FormData:      []rt.SharedExportFormData{},
+		Version:       "v3",
+		Since:         time.Date(2026, 8, 1, 8, 0, 0, 0, time.UTC),
+		TypeFilter:    typeFilter,
+	}, {
+		MBIs:          []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"},
+		ResourceTypes: []string{"Patient"},
+		Since:         time.Date(2023, 8, 1, 8, 0, 0, 0, time.UTC),
+	}}
 
 	s.T().Run("Successful request", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
 		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, payload.Queries))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, queries))
 		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 
 		rr := httptest.NewRecorder()
@@ -1837,7 +1840,7 @@ func (s *RequestsTestSuite) TestSharedExport() {
 
 		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
 		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, payload.Queries))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, queries))
 		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 
 		rr := httptest.NewRecorder()
@@ -1854,7 +1857,7 @@ func (s *RequestsTestSuite) TestSharedExport() {
 
 		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
 		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, payload.Queries))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, queries))
 		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
 
 		rr := httptest.NewRecorder()

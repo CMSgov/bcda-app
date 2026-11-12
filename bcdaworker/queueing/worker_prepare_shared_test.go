@@ -37,57 +37,47 @@ import (
 )
 
 var mbis = []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}
-var adjQuery = request_types.SharedExportQuery{
-	DataTypes:     []string{"adjudicated"},
+var adjQuery = request_types.SharedExportQueryData{
 	MBIs:          mbis,
 	ResourceTypes: []string{"Patient"},
 	SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
-	ParsedQuery: request_types.SharedExportParams{
-		Headers: map[string]string{},
-		Parameters: request_types.SharedExportParameters{
-			Since: "2026-08-01T08:00:00-05:00",
-			TypeFilter: fhir.TypeFilterSubquery{
-				ResourceType: "Patient",
-				QueryParameters: []fhir.TypeFilterSubqueryParam{
-					{
-						Name:  "service-date",
-						Value: "gt2026-08-01",
-					},
-					{
-						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
-					},
-				},
+	FormData:      []request_types.SharedExportFormData{},
+	Version:       "v3",
+	Since:         time.Date(2026, 8, 1, 8, 0, 0, 0, time.FixedZone("EST", -5*60*60)),
+	TypeFilter: fhir.TypeFilterSubquery{
+		ResourceType: "Patient",
+		QueryParameters: []fhir.TypeFilterSubqueryParam{
+			{
+				Name:  "service-date",
+				Value: "gt2026-08-01",
+			},
+			{
+				Name:  "_tag",
+				Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|SharedSystem",
 			},
 		},
 	},
-	Version: "v3",
 }
-var partAdjQuery = request_types.SharedExportQuery{
-	DataTypes:     []string{"partially-adjudicated"},
+var partAdjQuery = request_types.SharedExportQueryData{
 	MBIs:          mbis,
 	ResourceTypes: []string{"Claim"},
 	SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
-	ParsedQuery: request_types.SharedExportParams{
-		Headers: map[string]string{},
-		Parameters: request_types.SharedExportParameters{
-			Since: "2023-08-01T08:00:00-05:00",
-			TypeFilter: fhir.TypeFilterSubquery{
-				ResourceType: "Claim",
-				QueryParameters: []fhir.TypeFilterSubqueryParam{
-					{
-						Name:  "service-date",
-						Value: "gt2023-08-01",
-					},
-					{
-						Name:  "_tag",
-						Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
-					},
-				},
+	FormData:      []request_types.SharedExportFormData{},
+	Version:       "v3",
+	Since:         time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("EST", -5*60*60)),
+	TypeFilter: fhir.TypeFilterSubquery{
+		ResourceType: "Claim",
+		QueryParameters: []fhir.TypeFilterSubqueryParam{
+			{
+				Name:  "service-date",
+				Value: "gt2023-08-01",
+			},
+			{
+				Name:  "_tag",
+				Value: "https://bluebutton.cms.gov/fhir/CodeSystem/System-Type|NationalClaimsHistory",
 			},
 		},
 	},
-	Version: "v3",
 }
 
 type PrepareSharedWorkerTestSuite struct {
@@ -173,7 +163,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedWorkerWork_Integration()
 			CMSID:         "A0003",
 			CreationTime:  time.Now(),
 			Job:           j,
-			Queries:       []request_types.SharedExportQuery{adjQuery, partAdjQuery},
+			Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
 			TransactionID: "txn_123",
 		},
 	}
@@ -244,7 +234,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedExportJobs() {
 		CMSID:         "A0003",
 		CreationTime:  now,
 		Job:           j,
-		Queries:       []request_types.SharedExportQuery{adjQuery, partAdjQuery},
+		Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
 		TransactionID: transactionUUID,
 	}
 
@@ -318,7 +308,7 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 			ACOID:           acoUUID,
 			TransactionTime: txTime,
 		},
-		Queries:       []request_types.SharedExportQuery{adjQuery, partAdjQuery},
+		Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
 		TransactionID: transactionUUID,
 	}
 
@@ -374,7 +364,7 @@ func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated() {
 
 	jobArgs := worker_types.PrepareSharedJobArgs{
 		BFDPath: constants.BFDV3Path,
-		Queries: []request_types.SharedExportQuery{adjQuery, partAdjQuery},
+		Queries: []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
 	}
 
 	resultTime, err := worker.getBundleLastUpdated(jobArgs)

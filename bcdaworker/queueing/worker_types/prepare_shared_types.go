@@ -17,7 +17,7 @@ type PrepareSharedJobArgs struct {
 	CMSID         string
 	CreationTime  time.Time
 	Job           models.Job
-	Queries       []request_types.SharedExportQuery
+	Queries       []request_types.SharedExportQueryData
 	TransactionID string
 }
 

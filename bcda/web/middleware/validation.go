@@ -31,8 +31,8 @@ type requestkey int
 
 const rk requestkey = 0
 
-func GetSharedExportQueriesFromCtx(ctx context.Context) ([]rt.SharedExportQuery, bool) {
-	queries, ok := ctx.Value(auth.SharedExportQueriesKey).([]rt.SharedExportQuery) // Type assertion
+func GetSharedExportQueriesFromCtx(ctx context.Context) ([]rt.SharedExportQueryData, bool) {
+	queries, ok := ctx.Value(auth.SharedExportQueriesKey).([]rt.SharedExportQueryData) // Type assertion
 	return queries, ok
 }
 
@@ -221,53 +221,92 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 	})
 }
 
-func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQuery, string) {
+// validateSharedExportPayload checks the shared export payload for required fields
+// and returns derived query data along with any validation issues.
+func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQueryData, string) {
 	if len(payload.Queries) == 0 {
-		return []rt.SharedExportQuery{}, "no queries"
+		return []rt.SharedExportQueryData{}, "no queries"
 	}
 
 	issues := []string{}
-	queries := []rt.SharedExportQuery{}
+	queries := []rt.SharedExportQueryData{}
 	for _, query := range payload.Queries {
-		if len(query.DataTypes) == 0 {
-			issues = append(issues, "missing data_types in query")
-		}
 		if len(query.MBIs) == 0 {
 			issues = append(issues, "missing mbis in query")
 		}
 		if len(query.ResourceTypes) == 0 {
 			issues = append(issues, "missing resource_types in query")
 		}
+
 		// TODO 10590 how do we want to handle Claim and ClaimResponse resource types?
 		// they are built into EoB as per v3.  Do we want to silently filter them out or explicitly return an error?
 		// if we do nothing we are trusting our users but could be problematic as currently we dont pass in ClaimsWindow (service-date) to our BFD requests
-		if query.SourceQuery == "" {
-			issues = append(issues, "missing source_query in query")
-		}
-		if query.ParsedQuery.Parameters.Since == "" {
-			issues = append(issues, "missing parsed_query.parameters._since in query")
-		}
-		_, err := time.Parse(time.RFC3339Nano, query.ParsedQuery.Parameters.Since)
+
+		derivedData, err := deriveAndValidateSharedFormData(query)
 		if err != nil {
-			issues = append(issues, "_since must be in RFC3339")
-		}
-		// TODO 10590 these might not be required, and TypeFilter is being modified in the data contract
-		// if len(query.ParsedQuery.Headers) == 0 {
-		// 	issues = append(issues, "missing parsed_query.headers in query")
-		// }
-		// TODO 10590 how aggressive do we want to be verifying TypeFilter input?
-		// We can use fhir.ValidateTypeFilterSubquery() with some adjustments but should we be trusting co-API compliance in the first place?
-		// if query.ParsedQuery.Parameters.TypeFilter == "" {
-		// 	issues = append(issues, "missing parsed_query.parameters._since in query")
-		// }
-		if query.Version == "" {
-			issues = append(issues, "missing version in query")
+			issues = append(issues, err.Error())
 		}
 
-		queries = append(queries, query)
+		derivedData.SourceQuery = payload.SourceQuery
+		derivedData.System = payload.System
+		derivedData.TrackingID = payload.TrackingID
+		derivedData.Version = payload.Version
+
+		queries = append(queries, derivedData)
 	}
 
 	return queries, strings.Join(issues, "; ")
+}
+
+// deriveAndValidateSharedFormData processes the form data in a shared export query,
+// extracting and validating the _since and _typeFilter fields, and returns the full derived query data obj.
+func deriveAndValidateSharedFormData(query rt.SharedExportQuery) (rt.SharedExportQueryData, error) {
+	derivedData := rt.SharedExportQueryData{
+		SharedExportQuery: query,
+	}
+
+	for _, data := range query.FormData {
+		switch data.Name {
+		case "_since":
+			var sinceString string
+			err := json.Unmarshal(data.Value, &sinceString)
+			if err != nil {
+				return derivedData, fmt.Errorf("invalid _since JSON: %v", err)
+			}
+
+			parsedSince, err := time.Parse(time.RFC3339, sinceString)
+			if err != nil {
+				return derivedData, fmt.Errorf("invalid _since date format: %v", err)
+			}
+
+			derivedData.Since = parsedSince
+		case "_typeFilter":
+			var typeFilter fhir.TypeFilterSubquery
+			err := json.Unmarshal(data.Value, &typeFilter)
+			if err != nil {
+				return derivedData, fmt.Errorf("invalid _typeFilter JSON: %v", err)
+			}
+
+			if typeFilter.ResourceType == "" && len(typeFilter.QueryParameters) == 0 {
+				continue
+			}
+
+			err = fhir.ValidateTypeFilterSubquery(typeFilter)
+			if err != nil {
+				return derivedData, fmt.Errorf("invalid _typeFilter subquery: %v", err)
+			}
+
+			derivedData.TypeFilter = typeFilter
+		default:
+			return derivedData, fmt.Errorf("unexpected form data field: %s", data.Name)
+		}
+	}
+
+	if derivedData.Since.IsZero() {
+		return derivedData, fmt.Errorf("missing required _since parameter")
+	}
+
+	return derivedData, nil
 }
 
 // GetTypeFilterSubquery parses the _typeFilter subquery
