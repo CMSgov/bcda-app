@@ -677,10 +677,10 @@ func (s *MiddlewareTestSuite) TestValidateShared() {
 
 	body := strings.NewReader(`
 		{
+			"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 			"system": "test-system",
 			"version": "v3",
 			"tracking_id": "test-tracking-id",
-			"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 			"queries": [
 				{
 					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
@@ -764,7 +764,9 @@ func (s *MiddlewareTestSuite) TestValidateShared_OnlyRequiredFields() {
 
 	body := strings.NewReader(`
 		{
+			"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 			"system": "test-system",
+			"tracking_id": "test-tracking-id",
 			"queries": [
 				{
 					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
@@ -785,6 +787,15 @@ func (s *MiddlewareTestSuite) TestValidateShared_OnlyRequiredFields() {
 		require.True(s.T(), ok)
 		require.NotNil(s.T(), queries)
 		require.Len(s.T(), queries, 1)
+
+		// validate the contents of the queries
+		assert.Equal(s.T(), "https://test.test.cms.gov/v3/Patient&params=test", queries[0].SourceQuery)
+		assert.Equal(s.T(), "test-system", queries[0].System)
+		assert.Equal(s.T(), "test-tracking-id", queries[0].TrackingID)
+		assert.Equal(s.T(), "v3", queries[0].Version)
+		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[0].MBIs)
+		assert.Equal(s.T(), []string{"Claim", "ClaimResponse"}, queries[0].ResourceTypes)
+		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[0].Since)
 	})
 
 	handlerToTest := ValidateSharedExportPayload(nextHandler)
@@ -824,13 +835,14 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 		{
 			"missing queries",
 			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"system": "test-system",
 				"tracking_id": "test-tracking-id",
 				"version": "v3",
 				"queries": []
 			}`,
 		}, {
-			"missing mbis",
+			"missing source_query",
 			`{
 				"system": "test-system",
 				"tracking_id": "test-tracking-id",
@@ -839,7 +851,6 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 						"form_data": [
 							{
 								"name": "_since",
@@ -864,7 +875,93 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					},
 					{
 						"resource_types": ["Claim", "ClaimResponse"],
-						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"missing tracking_id",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"missing mbis",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"resource_types": ["Claim", "ClaimResponse"],
 						"form_data": [
 							{
 								"name": "_since",
@@ -922,6 +1019,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 		}, {
 			"missing _since",
 			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"system": "test-system",
 				"tracking_id": "test-tracking-id",
 				"version": "v3",
@@ -929,7 +1027,6 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 						"form_data": [
 							{
 								"name": "_since",
@@ -955,7 +1052,6 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 						"form_data": []
 					}
 				]
@@ -963,6 +1059,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 		}, {
 			"invalid _since",
 			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"system": "test-system",
 				"tracking_id": "test-tracking-id",
 				"version": "v3",
@@ -970,7 +1067,6 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 						"form_data": [
 							{
 								"name": "_since",
@@ -996,7 +1092,6 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 						"form_data": [
 							{
 								"name": "_since",
@@ -1009,10 +1104,10 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 		}, {
 			"invalid _typeFilter value",
 			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"system": "test-system",
 				"version": "v3",
 				"tracking_id": "test-tracking-id",
-				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"queries": [
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
@@ -1058,10 +1153,10 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 		}, {
 			"invalid _typeFilter sub query params",
 			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"system": "test-system",
 				"version": "v3",
 				"tracking_id": "test-tracking-id",
-				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"queries": [
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
@@ -1119,10 +1214,10 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 		}, {
 			"invalid _typeFilter resource type",
 			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"system": "test-system",
 				"version": "v3",
 				"tracking_id": "test-tracking-id",
-				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
 				"queries": [
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],

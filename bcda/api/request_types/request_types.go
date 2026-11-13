@@ -20,20 +20,20 @@ type RequestParameters struct {
 // TODO: (BCDA-10505) add body validation
 type SharedExportPayload struct {
 	Queries     []SharedExportQuery `json:"queries"`
-	SourceQuery string              `json:"source_query,omitempty"`
+	SourceQuery string              `json:"source_query"`
 	System      string              `json:"system"`
-	TrackingID  string              `json:"tracking_id,omitempty"`
+	TrackingID  string              `json:"tracking_id"`
 	Version     string              `json:"version,omitempty"`
 }
 
 type SharedExportQuery struct {
-	FormData      []SharedExportFormData `json:"form_data,omitempty"`
-	Headers       map[string]string      `json:"headers,omitempty"`
-	MBIs          []string               `json:"mbis"`
-	ResourceTypes []string               `json:"resource_types"`
+	Filters       []SharedExportFilters `json:"form_data,omitempty"`
+	Headers       map[string]string     `json:"headers,omitempty"`
+	MBIs          []string              `json:"mbis"`
+	ResourceTypes []string              `json:"resource_types"`
 }
 
-type SharedExportFormData struct {
+type SharedExportFilters struct {
 	Name  string          `json:"name"`
 	Value json.RawMessage `json:"value"`
 }

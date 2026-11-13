@@ -1790,7 +1790,7 @@ func (s *RequestsTestSuite) TestSharedExport() {
 		ResourceTypes: []string{"Patient"},
 		SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
 		System:        "test-system",
-		FormData:      []rt.SharedExportFormData{},
+		Filters:       []rt.SharedExportFilters{},
 		Version:       "v3",
 		Since:         time.Date(2026, 8, 1, 8, 0, 0, 0, time.UTC),
 		TypeFilter:    typeFilter,

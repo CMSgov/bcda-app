@@ -224,11 +224,20 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 // validateSharedExportPayload checks the shared export payload for required fields
 // and returns derived query data along with any validation issues.
 func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQueryData, string) {
+	issues := []string{}
+
 	if len(payload.Queries) == 0 {
 		return []rt.SharedExportQueryData{}, "no queries"
 	}
 
-	issues := []string{}
+	if payload.SourceQuery == "" {
+		issues = append(issues, "missing source_query")
+	}
+
+	if payload.TrackingID == "" {
+		issues = append(issues, "missing tracking_id")
+	}
+
 	queries := []rt.SharedExportQueryData{}
 	for _, query := range payload.Queries {
 		if len(query.MBIs) == 0 {
@@ -252,6 +261,10 @@ func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExp
 		derivedData.TrackingID = payload.TrackingID
 		derivedData.Version = payload.Version
 
+		if derivedData.Version == "" {
+			derivedData.Version = "v3"
+		}
+
 		queries = append(queries, derivedData)
 	}
 
@@ -265,7 +278,7 @@ func deriveAndValidateSharedFormData(query rt.SharedExportQuery) (rt.SharedExpor
 		SharedExportQuery: query,
 	}
 
-	for _, data := range query.FormData {
+	for _, data := range query.Filters {
 		switch data.Name {
 		case "_since":
 			var sinceString string
