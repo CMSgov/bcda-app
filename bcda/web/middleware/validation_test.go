@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var noop http.HandlerFunc = func(rw http.ResponseWriter, r *http.Request) { rw.WriteHeader(http.StatusOK) }
@@ -666,6 +668,621 @@ func TestGetRespWriter(t *testing.T) {
 			case "v3":
 				assert.NotContains(t, resp, "coding")
 			}
+		})
+	}
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared() {
+	resp := httptest.NewRecorder()
+
+	body := strings.NewReader(`
+		{
+			"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+			"system": "test-system",
+			"version": "v3",
+			"tracking_id": "test-tracking-id",
+			"queries": [
+				{
+					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+					"resource_types": ["Patient"],
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"form_data": [
+						{
+							"name": "_since",
+							"value": "2026-08-01T08:00:00-05:00"
+						},
+						{
+							"name": "_typeFilter",
+							"value": {
+								"resource_type": "ExplanationOfBenefit",
+								"query_parameters": [
+									{
+										"name": "service-date",
+										"value": "lt2021-02-15"
+									},
+									{
+										"name": "_tag",
+										"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+									}
+								]
+							}
+						}
+					]
+				},
+				{
+					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+					"resource_types": ["Claim", "ClaimResponse"],
+					"form_data": [
+						{
+							"name": "_since",
+							"value": "2023-08-01T08:00:00-05:00"
+						}
+					]
+				}
+			]
+		}
+	`)
+
+	// create a handler to verify data set into context
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queries, ok := GetSharedExportQueriesFromCtx(r.Context())
+		require.True(s.T(), ok)
+		require.NotNil(s.T(), queries)
+		require.Len(s.T(), queries, 2)
+
+		// validate the contents of the queries
+		assert.Equal(s.T(), "https://test.test.cms.gov/v3/Patient&params=test", queries[0].SourceQuery)
+		assert.Equal(s.T(), "test-system", queries[0].System)
+		assert.Equal(s.T(), "test-tracking-id", queries[0].TrackingID)
+		assert.Equal(s.T(), "v3", queries[0].Version)
+		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[0].MBIs)
+		assert.Equal(s.T(), []string{"Patient"}, queries[0].ResourceTypes)
+		assert.Equal(s.T(), map[string]string{"Content-Type": "application/json"}, queries[0].Headers)
+		assert.Equal(s.T(), time.Date(2026, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[0].Since)
+		assert.Equal(s.T(), "ExplanationOfBenefit", queries[0].TypeFilter.ResourceType)
+		require.Equal(s.T(), 2, len(queries[0].TypeFilter.QueryParameters))
+		assert.Equal(s.T(), "service-date", queries[0].TypeFilter.QueryParameters[0].Name)
+		assert.Equal(s.T(), "lt2021-02-15", queries[0].TypeFilter.QueryParameters[0].Value)
+		assert.Equal(s.T(), "_tag", queries[0].TypeFilter.QueryParameters[1].Name)
+		assert.Equal(s.T(), "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction", queries[0].TypeFilter.QueryParameters[1].Value)
+
+		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[1].MBIs)
+		assert.Equal(s.T(), []string{"Claim", "ClaimResponse"}, queries[1].ResourceTypes)
+		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[1].Since)
+	})
+
+	handlerToTest := ValidateSharedExportPayload(nextHandler)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	handlerToTest.ServeHTTP(resp, req)
+	require.Equal(s.T(), 200, resp.Code)
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared_OnlyRequiredFields() {
+	resp := httptest.NewRecorder()
+
+	body := strings.NewReader(`
+		{
+			"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+			"system": "test-system",
+			"tracking_id": "test-tracking-id",
+			"queries": [
+				{
+					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+					"resource_types": ["Claim", "ClaimResponse"],
+					"form_data": [
+						{
+							"name": "_since",
+							"value": "2023-08-01T08:00:00-05:00"
+						}
+					]
+				}
+			]
+		}
+	`)
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queries, ok := GetSharedExportQueriesFromCtx(r.Context())
+		require.True(s.T(), ok)
+		require.NotNil(s.T(), queries)
+		require.Len(s.T(), queries, 1)
+
+		// validate the contents of the queries
+		assert.Equal(s.T(), "https://test.test.cms.gov/v3/Patient&params=test", queries[0].SourceQuery)
+		assert.Equal(s.T(), "test-system", queries[0].System)
+		assert.Equal(s.T(), "test-tracking-id", queries[0].TrackingID)
+		assert.Equal(s.T(), "v3", queries[0].Version)
+		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[0].MBIs)
+		assert.Equal(s.T(), []string{"Claim", "ClaimResponse"}, queries[0].ResourceTypes)
+		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[0].Since)
+	})
+
+	handlerToTest := ValidateSharedExportPayload(nextHandler)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	handlerToTest.ServeHTTP(resp, req)
+	require.Equal(s.T(), 200, resp.Code)
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared_InvalidJSON() {
+	resp := httptest.NewRecorder()
+
+	body := strings.NewReader(`
+		{
+			"system": "test-system",
+			"bad"
+		}
+	`)
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	})
+
+	handlerToTest := ValidateSharedExportPayload(nextHandler)
+	req := httptest.NewRequest("GET", "http:///v1/testing", body)
+	handlerToTest.ServeHTTP(resp, req)
+	require.Equal(s.T(), 400, resp.Code)
+}
+
+func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	tests := []struct {
+		name string
+		body string // to note Ive removed the relevant field from the second query in each of the below cases
+	}{
+		{
+			"missing queries",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": []
+			}`,
+		}, {
+			"missing source_query",
+			`{
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"missing tracking_id",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"missing mbis",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"missing resource_types",
+			`{
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"missing _since",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": []
+					}
+				]
+			}`,
+		}, {
+			"invalid _since",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "bad-date-time"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"invalid _typeFilter value",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"version": "v3",
+				"tracking_id": "test-tracking-id",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							},
+							{
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": "bad-type-filter"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"invalid _typeFilter sub query params",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"version": "v3",
+				"tracking_id": "test-tracking-id",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							},
+							{
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "bad-service-date"
+										},
+										{
+											"name": "_tag",
+											"value": "bad-tag"
+										}
+									]
+								}
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"invalid _typeFilter resource type",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"version": "v3",
+				"tracking_id": "test-tracking-id",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							},
+							{
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "Patient",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					}
+				]
+			}`,
+		},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			resp := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "http:///v1/testing", strings.NewReader(tt.body))
+
+			ValidateSharedExportPayload(nextHandler).ServeHTTP(resp, req)
+			assert.Equal(s.T(), http.StatusBadRequest, resp.Code)
+			assert.Contains(s.T(), resp.Body.String(), "invalid params")
 		})
 	}
 }

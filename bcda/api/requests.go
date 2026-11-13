@@ -20,6 +20,7 @@ import (
 
 	"github.com/pborman/uuid"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/fhir"
@@ -74,8 +75,6 @@ func NewHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVersion string, db *sql.DB, pool *pgxv5Pool.Pool) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	h.Enq = queueing.NewEnqueuer(db, pool)
-
 	cfg, err := service.LoadConfig()
 	if err != nil {
 		log.API.Fatalf("Failed to load service config. Err: %v", err)
@@ -83,6 +82,8 @@ func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 	if len(cfg.ACOConfigs) == 0 {
 		log.API.Fatalf("no ACO configs found, these are required for processing logic")
 	}
+
+	h.Enq = queueing.NewEnqueuer(db, pool, *cfg)
 
 	repository := postgres.NewRepository(db)
 	h.r = repository
@@ -783,7 +784,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType co
 }
 
 // TODO: (BCDA-10498) this is request validation, should be in middleware (move)
-func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
+func (h *Handler) getResourceTypes(parameters rt.RequestParameters, cmsID string) []string {
 	resourceTypes := parameters.ResourceTypes
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
@@ -916,17 +917,12 @@ func (h *Handler) omitSharedSystemByDefault(typeFilter fhir.TypeFilterSubquery) 
 	return typeFilter
 }
 
-// TODO: BCDA-10507
 func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := log.GetCtxLogger(ctx)
-	var (
-		err error
-		ad  auth.AuthData
-	)
 
-	if ad, err = GetAuthDataFromCtx(r); err != nil {
-		ctx, _ = log.WriteErrorWithFields(
+	ad, err := GetAuthDataFromCtx(r.WithContext(ctx))
+	if err != nil {
+		ctx, _ := log.WriteErrorWithFields(
 			ctx,
 			fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
 			logrus.Fields{"resp_status": http.StatusUnauthorized},
@@ -935,8 +931,13 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, ok := middleware.FromContextSharedExportPayload(ctx)
+	queries, ok := middleware.GetSharedExportQueriesFromCtx(ctx)
 	if !ok {
+		ctx, _ := log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
+			logrus.Fields{"resp_status": http.StatusBadRequest},
+		)
 		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "")
 		return
 	}
@@ -955,39 +956,38 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 
 	newJob.ID, err = h.r.CreateJob(ctx, newJob)
 	if err != nil {
-		logger.Errorf("failed to create job: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("failed to create job"))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		ctx, _ := log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.OpOutcome(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
 	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
-		Job:           newJob,
-		ACOID:         acoID, // BCDA-10569
+		ACOID:         acoID,
+		BFDPath:       constants.BFDV3Path,
 		CMSID:         ad.CMSID,
-		PartnerID:     payload.PartnerID,
-		BFDPath:       constants.V3Path,
-		ResourceTypes: payload.ResourceTypes,
-		Since:         payload.SinceDecoded,
 		CreationTime:  time.Now(),
+		Job:           newJob,
+		Queries:       queries,
 		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
-		MBIs:          payload.MBIs,
-		DataTypes:     payload.DataTypes,
 	}
 
 	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "failed to add job to the queue: %v", err)
+		ctx, _ := log.WriteErrorWithFields(
+			ctx,
+			fmt.Sprintf("%s: %+v", responseutils.InternalErr, err),
+			logrus.Fields{"resp_status": http.StatusInternalServerError},
+		)
+		h.RespWriter.OpOutcome(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
-	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
-	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, payload.Version, newJob.ID))
+	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, queries[0].Version, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
 }
 

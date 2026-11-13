@@ -10,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
@@ -19,6 +20,7 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestWork acts as an end-to-end verification of the entire process:
@@ -82,7 +84,9 @@ func TestWork_Integration(t *testing.T) {
 	})
 
 	riverLogger := log.NewSlogLogger("worker")
-	riverClient := CreateRiverClient(riverLogger, db, 1)
+	cfg, err := service.LoadConfig()
+	require.NoError(t, err)
+	riverClient := CreateRiverClient(riverLogger, db, 1, *cfg)
 
 	err = riverClient.Start(ctx)
 	assert.Nil(t, err)
@@ -106,7 +110,7 @@ func TestWork_Integration(t *testing.T) {
 		}
 	}()
 
-	enqueuer := NewEnqueuer(db, pool)
+	enqueuer := NewEnqueuer(db, pool, *cfg)
 	err = enqueuer.AddJob(ctx, tx, jobArgs, 1)
 	assert.NoError(t, err)
 

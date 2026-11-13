@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
@@ -19,7 +20,7 @@ import (
 
 func TestEnqueuerImplementation(t *testing.T) {
 	// Test river implementation
-	enq := NewEnqueuer(nil, nil)
+	enq := NewEnqueuer(nil, nil, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "A/d*"}}})
 	var expectedRiverEnq riverEnqueuer
 	assert.IsType(t, expectedRiverEnq, enq)
 }
@@ -37,7 +38,7 @@ func TestRiverEnqueuer_Integration(t *testing.T) {
 	pool := database.ConnectPool()
 	defer pool.Close()
 
-	enqueuer := NewEnqueuer(db, pool)
+	enqueuer := NewEnqueuer(db, pool, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "A/d*"}}})
 	jobID, e := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
 	if e != nil {
 		t.Fatalf("failed to generate job ID: %v\n", e)

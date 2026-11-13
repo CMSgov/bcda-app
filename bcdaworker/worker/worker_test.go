@@ -25,20 +25,23 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	bcdaErrs "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/db"
 	log "github.com/CMSgov/bcda-app/log"
 	"github.com/ccoveille/go-safecast"
 )
@@ -57,27 +60,18 @@ type WorkerTestSuite struct {
 	tempDir    string
 	cclfFile   *models.CCLFFile
 
-	db *sql.DB
-	r  repository.Repository
-	w  Worker
+	dbContainer db.TestDatabaseContainer
+	db          *sql.DB
+	r           repository.Repository
+	w           worker
 
 	logctx context.Context
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
-	s.db = database.Connect()
-	s.r = postgres.NewRepository(s.db)
-	s.w = NewWorker(s.db)
-
-	cmsID := "A1B2C" // Some unique ID that should be unique to this test
-
-	s.testACO = &models.ACO{
-		UUID:  uuid.NewUUID(),
-		CMSID: &cmsID,
-		Name:  "ACO_FOR_WORKER_TEST",
-	}
-
-	postgrestest.CreateACO(s.T(), s.db, *s.testACO)
+	var err error
+	s.dbContainer, err = db.NewTestDatabaseContainer()
+	require.NoError(s.T(), err)
 
 	tempDir, err := os.MkdirTemp("", "*")
 	if err != nil {
@@ -101,6 +95,25 @@ func (s *WorkerTestSuite) SetupSuite() {
 }
 
 func (s *WorkerTestSuite) SetupTest() {
+	var err error
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
+	cfg := service.Config{
+		ACOConfigs:   []service.ACOConfig{{Pattern: "A1B2C"}}, // match ACO ID from testdata
+		RunoutConfig: service.RunoutConfig{ClaimThruDate: "2025-12-31"},
+	}
+	err = cfg.ComputeFields()
+	require.NoError(s.T(), err)
+	s.w = *NewWorker(s.db, cfg)
+
+	testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("abc1d24d-cd96-4d7d-a691-b0e8c88e67a5")) // match ACOs uuid from testdata
+	require.NoError(s.T(), err)
+	s.testACO = testACO
+
 	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
@@ -119,29 +132,59 @@ func (s *WorkerTestSuite) SetupTest() {
 	if err := os.MkdirAll(s.tempDir, os.ModePerm); err != nil {
 		s.FailNow(err.Error())
 	}
+}
 
-	// Due to test not being able to handle a FieldLogger and our log package not storing the logger,
-	// we have to recreate the logger so we have access to both
-	// logger := logrus.New()
-	// log.Worker = logger.WithFields(logrus.Fields{
-	// 	"unitTest": true,
-	// })
-	// logHook = test.NewLocal(logger)
+func (s *WorkerTestSuite) SetupSubTest() {
+	var err error
+	s.db.Close() // restore the database state for subtests, since SetupTest also sets up db container
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+	err = s.dbContainer.ExecuteDir("testdata/")
+	require.NoError(s.T(), err)
+	s.db, err = s.dbContainer.NewSqlDbConnection()
+	require.NoError(s.T(), err)
+	s.r = postgres.NewRepository(s.db)
+	require.NoError(s.T(), err)
+	cfg := service.Config{
+		ACOConfigs:   []service.ACOConfig{{Pattern: "A1B2C"}}, // match ACO ID from testdata
+		RunoutConfig: service.RunoutConfig{ClaimThruDate: "2025-12-31"},
+	}
+	err = cfg.ComputeFields()
+	require.NoError(s.T(), err)
+	s.w = *NewWorker(s.db, cfg)
+}
+
+func (s *WorkerTestSuite) TearDownSubTest() {
+	var err error
+	err = s.db.Close()
+	require.NoError(s.T(), err)
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
 }
 
 func (s *WorkerTestSuite) TearDownTest() {
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, *s.testACO.CMSID)
+	var err error
+	err = s.db.Close()
+	require.NoError(s.T(), err)
+	err = s.dbContainer.RestoreSnapshot("Base")
+	require.NoError(s.T(), err)
+
 	os.RemoveAll(s.stagingDir)
 }
 
 func (s *WorkerTestSuite) TearDownSuite() {
-	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_TEMP_DIR"))
 
 	// Reset worker logger to original logger
 	log.Worker = oldLogger
+
+	defer func() {
+		if err := testcontainers.TerminateContainer(s.dbContainer.Container); err != nil {
+			s.T().Log(fmt.Errorf("failed to terminate container: %w", err))
+		}
+	}()
 }
 
 func TestWorkerTestSuite(t *testing.T) {
@@ -230,7 +273,7 @@ func (s *WorkerTestSuite) TestWriteResourcesToFile() {
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			ctx, jobArgs, bbc := SetupWriteResourceToFile(s, tt.resource)
-			jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+			jobKeys, err := writeBBDataToFile(ctx, s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 			if tt.err == nil {
 				assert.NoError(s.T(), err)
 			} else {
@@ -335,7 +378,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", client.ClaimsWindow{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 	assert.EqualValues(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.NoError(s.T(), err)
 }
@@ -360,7 +403,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFilePartialBeneficiaryErrors() {
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef10000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef11000", claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", jobArgs, "abcdef12000", claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 	assert.NotEqual(s.T(), "blank.ndjson", jobKeys[0].FileName)
 	assert.Contains(s.T(), jobKeys[1].FileName, "error.ndjson")
 	assert.Equal(s.T(), 33, jobKeys[0].BenesRetrievedPercent)
@@ -411,9 +454,9 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileAllBeneficiaryErrorsWriteToError
 	bbc.On("GetPatientByMbi", beneficiaryIDs[2]).Return(bbc.GetData("Patient", beneficiaryIDs[2]))
 
 	jobArgs.BeneficiaryIDs = cclfBeneficiaryIDs
-	err := CreateDir(s.tempDir)
+	err := utils.CreateDir(s.tempDir)
 	assert.NoError(s.T(), err)
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
@@ -460,7 +503,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.On("GetPatientByMbi", "a1000000009").Return("", &bcdaErrs.RequestedBeneficiaryNotFoundError{Msg: "patient identifier not found for MBI"})
 
 	jobArgs := worker_types.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir)
+	jobKeys, err := writeBBDataToFile(s.logctx, s.r, &bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, s.w.cfg)
 
 	assert.Len(s.T(), jobKeys, 2)
 	assert.Equal(s.T(), jobKeys[0].FileName, "blank.ndjson")
@@ -505,6 +548,63 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.False(s.T(), errorFileScanner.Scan(), "There should be only 2 entries in the file.")
 
 	bbc.AssertExpectations(s.T())
+}
+
+func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
+	cfg := service.Config{
+		ACOConfigs:   []service.ACOConfig{{Pattern: "DPC-1", SharedExport: true}}, // match Shared Export ACO ID from testdata
+		RunoutConfig: service.RunoutConfig{ClaimThruDate: "2025-12-31"},
+	}
+	err := cfg.ComputeFields()
+	require.NoError(s.T(), err)
+
+	s.T().Run("happy path", func(t *testing.T) {
+		testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("def1d24d-cd96-4d7d-a691-b0e8c88e67a5"))
+		require.NoError(s.T(), err)
+		s.testACO = testACO
+		// following the setup from SetupWriteResourceToFile()
+		bbc := &client.MockBlueButtonClient{}
+		beneID := "a1000050699"
+		bbc.MBI = &beneID
+		bbc.On("GetPatientByMbi", beneID).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetExplanationOfBenefit", mock.Anything, beneID, mock.Anything).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		jobArgs := worker_types.JobEnqueueArgs{
+			CMSID:          "DPC-1",
+			BeneficiaryIDs: []string{beneID},
+			ResourceType:   "ExplanationOfBenefit",
+		}
+
+		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, cfg)
+
+		assert.NoError(s.T(), err)
+		files, err := os.ReadDir(s.tempDir)
+		assert.NoError(s.T(), err)
+		assert.Len(s.T(), jobKeys, 1)
+		assert.Len(s.T(), files, 1)
+		assert.Equal(s.T(), 100, jobKeys[0].BenesRetrievedPercent)
+		assert.Equal(s.T(), 1, jobKeys[0].BenesWithData)
+		VerifyFileContent(s.T(), files, "ExplanationOfBenefit", 33, s.tempDir)
+	})
+
+	s.T().Run("fails to get bene ID should return empty and error files", func(t *testing.T) {
+		bbc := &client.MockBlueButtonClient{}
+		bbc.On("GetPatientByMbi", "1234").Return(nil, errors.New("get-patient-error"))
+		jobArgs := worker_types.JobEnqueueArgs{
+			BeneficiaryIDs: []string{"1234"},
+			ResourceType:   "ExplanationOfBenefit",
+		}
+
+		jobKeys, err := writeBBDataToFile(s.T().Context(), s.r, bbc, *s.testACO.CMSID, testUtils.CryptoRandInt63(), jobArgs, s.tempDir, cfg)
+
+		assert.NoError(s.T(), err)
+		assert.Len(s.T(), jobKeys, 2)
+		assert.Equal(s.T(), 0, jobKeys[0].BenesRetrievedPercent)
+		assert.Equal(s.T(), 0, jobKeys[0].BenesWithData)
+		assert.Equal(s.T(), "blank.ndjson", jobKeys[0].FileName)
+		assert.Equal(s.T(), 0, jobKeys[1].BenesRetrievedPercent)
+		assert.Equal(s.T(), 0, jobKeys[1].BenesWithData)
+		assert.Contains(s.T(), jobKeys[1].FileName, "-error.ndjson")
+	})
 }
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
@@ -560,7 +660,6 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	_, err = CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
-	fmt.Printf("%+v", completedJob)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), j.BenesAttributedToACO, completedJob.BenesAttributedToACO)
 	// As this test actually connects to BB, we can't be sure it will succeed
@@ -590,7 +689,7 @@ func (s *WorkerTestSuite) TestProcessJobUpdateJobCheckStatus() {
 	rid, _ := safecast.ToUint(j.ID)
 
 	r.On("UpdateJobStatusCheckStatus", testUtils.CtxMatcher, rid, models.JobStatusPending, models.JobStatusInProgress).Return(errors.New("failure"))
-	w := &worker{r}
+	w := &worker{r: r, cfg: s.w.cfg}
 	err := w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
@@ -617,16 +716,16 @@ func (s *WorkerTestSuite) TestProcessJobACOUUID() {
 	r := &repository.MockRepository{}
 	defer r.AssertExpectations(s.T())
 	r.On("GetACOByUUID", testUtils.CtxMatcher, j.ACOID).Return(nil, repository.ErrJobNotFound)
-	w := &worker{r}
+	w := &worker{r: r, cfg: s.w.cfg}
 	err := w.ProcessJob(ctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.NotNil(s.T(), err)
 
 }
 
 func (s *WorkerTestSuite) TestCreateDir() {
-	err := CreateDir("/proc/invalid_path") //non-existant dir
+	err := utils.CreateDir("/proc/invalid_path") //non-existant dir
 	assert.Error(s.T(), err)
-	err = CreateDir("2") //fine
+	err = utils.CreateDir("2") //fine
 	assert.NoError(s.T(), err)
 }
 
@@ -897,7 +996,7 @@ func isTerminalStatus(status models.JobStatus) bool {
 func (s *WorkerTestSuite) TestValidateJob() {
 	ctx := context.Background()
 	r := &repository.MockRepository{}
-	w := &worker{r}
+	w := &worker{r: r, cfg: s.w.cfg}
 
 	noBasePath := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31())}
 	jobNotFound := worker_types.JobEnqueueArgs{ID: int(testUtils.CryptoRandInt31()), BBBasePath: uuid.New()}
@@ -972,6 +1071,11 @@ func (s *WorkerTestSuite) TestValidateJob() {
 	j, err = w.ValidateJob(ctx, 2, validJob)
 	assert.Nil(s.T(), j)
 	assert.Contains(s.T(), err.Error(), "could not retrieve job key from database, err: some db error")
+
+	w.cfg = service.Config{ACOConfigs: []service.ACOConfig{}}
+	j, err = w.ValidateJob(ctx, 2, validJob)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrNoACOConfigs.Error())
 }
 
 func (s *WorkerTestSuite) TestCreateJobKeys() {

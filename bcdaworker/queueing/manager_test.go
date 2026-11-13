@@ -28,6 +28,7 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 		expectedErr error
 		expLogMsg   string
 	}{
+		{"NoACOConfigs", worker.ErrNoACOConfigs, nil, `QJob \d+ has no ACO configs set parent job id \d+. Removing job from queue.`},
 		{"ParentJobCancelled", worker.ErrParentJobCancelled, nil, `QJob \d+ associated with a cancelled parent Job \d+. Removing job from queue.`},
 		{"ParentJobFailed", worker.ErrParentJobFailed, nil, `QJob \d+ associated with a failed parent Job \d+. Removing job from queue.`},
 		{"NoBasePath", worker.ErrNoBasePathSet, nil, `QJob \d+ does not contain valid base path. Removing job from queue.`},

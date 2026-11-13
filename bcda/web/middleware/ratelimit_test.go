@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -38,15 +39,15 @@ func (s *RateLimitMiddlewareTestSuite) TestNoConcurrentJobs() {
 	middleware := NewRateLimitMiddleware(cfg, s.db)
 	tests := []struct {
 		name string
-		rp   RequestParameters
+		rp   rt.RequestParameters
 		jobs []*models.Job
 	}{
-		{"NoJobs", RequestParameters{}, nil},
-		{"DifferentVersion", RequestParameters{Version: "v2"},
+		{"NoJobs", rt.RequestParameters{}, nil},
+		{"DifferentVersion", rt.RequestParameters{Version: "v2"},
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath}}},
-		{"DifferentType", RequestParameters{Version: "v1", ResourceTypes: []string{"Coverage"}},
+		{"DifferentType", rt.RequestParameters{Version: "v1", ResourceTypes: []string{"Coverage"}},
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath}}},
-		{"JobGroupExportJustPatient", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v2", RequestURL: "/v2/Group/all/$export?_type=Patient"},
+		{"JobGroupExportJustPatient", rt.RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v2", RequestURL: "/v2/Group/all/$export?_type=Patient"},
 			[]*models.Job{{RequestURL: constants.V2Path + constants.PatientEOBPath, CreatedAt: time.Now()}}},
 	}
 
@@ -79,14 +80,14 @@ func (s *RateLimitMiddlewareTestSuite) TestHasConcurrentJobs() {
 
 	tests := []struct {
 		name           string
-		rp             RequestParameters
+		rp             rt.RequestParameters
 		additionalJobs []*models.Job
 	}{
-		{"RequestForAllResources", RequestParameters{ResourceTypes: nil, Version: "v1"}, nil},
-		{"DuplicateType", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"}, nil},
-		{"JobAllResources", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"},
+		{"RequestForAllResources", rt.RequestParameters{ResourceTypes: nil, Version: "v1"}, nil},
+		{"DuplicateType", rt.RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"}, nil},
+		{"JobAllResources", rt.RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v1"},
 			[]*models.Job{{RequestURL: constants.V1Path + constants.PatientExportPath, CreatedAt: time.Now()}}},
-		{"JobGroupExportDuplicateAll", RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/api/v2/Group/all/$export"},
+		{"JobGroupExportDuplicateAll", rt.RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/api/v2/Group/all/$export"},
 			[]*models.Job{{RequestURL: constants.V2Path + constants.GroupExportPath, CreatedAt: time.Now()}}},
 	}
 
@@ -123,13 +124,13 @@ func (s *RateLimitMiddlewareTestSuite) TestFailedToGetJobs() {
 	rr := httptest.NewRecorder()
 	middleware.CheckConcurrentJobs(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// Conncurrent job test route check, blank return for overrides
-	})).ServeHTTP(rr, getRequest(RequestParameters{}))
+	})).ServeHTTP(rr, getRequest(rt.RequestParameters{}))
 
 	assert.Equal(s.T(), http.StatusInternalServerError, rr.Code)
 	assert.Contains(s.T(), rr.Body.String(), "code\":\"exception\"")
 }
 
-func getRequest(rp RequestParameters) *http.Request {
+func getRequest(rp rt.RequestParameters) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{ACOID: uuid.New()})
 	ctx = SetRequestParamsCtx(ctx, rp)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
@@ -150,12 +151,12 @@ func (s *RateLimitMiddlewareTestSuite) TestHasDuplicatesFullString() {
 
 	tests := []struct {
 		name          string
-		rp            RequestParameters
+		rp            rt.RequestParameters
 		expectedValue bool
 	}{
-		{"TestUnparseableNewJob", RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/path%zz%20with%20spaces?query=value"}, false},
-		{"TestNewDuplicateJobWithEscaping", RequestParameters{ResourceTypes: []string{"Patient", "Coverage", "ExplanationOfBenefit"}, Version: "v2", RequestURL: "/api/v2/Group/runout/$export?_since=2024-02-11T00%3A00%3A00.0000-00%3A00&_type=Patient%2CCoverage%2CExplanationOfBenefit"}, true},
-		{"TestNewDuplicateJobSubsetOfTypes", RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v2", RequestURL: "/api/v2/Group/runout/$export?_since=2024-02-11T04%3A00%3A00.0000-00%3A00&_type=Patient"}, true},
+		{"TestUnparseableNewJob", rt.RequestParameters{ResourceTypes: nil, Version: "v2", RequestURL: "/path%zz%20with%20spaces?query=value"}, false},
+		{"TestNewDuplicateJobWithEscaping", rt.RequestParameters{ResourceTypes: []string{"Patient", "Coverage", "ExplanationOfBenefit"}, Version: "v2", RequestURL: "/api/v2/Group/runout/$export?_since=2024-02-11T00%3A00%3A00.0000-00%3A00&_type=Patient%2CCoverage%2CExplanationOfBenefit"}, true},
+		{"TestNewDuplicateJobSubsetOfTypes", rt.RequestParameters{ResourceTypes: []string{"Patient"}, Version: "v2", RequestURL: "/api/v2/Group/runout/$export?_since=2024-02-11T04%3A00%3A00.0000-00%3A00&_type=Patient"}, true},
 	}
 
 	for _, tt := range tests {

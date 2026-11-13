@@ -36,6 +36,17 @@ func GetClaimType(fhirResource string) (ClaimType, bool) {
 	return resource, ok
 }
 
+func GetDataType(resource string) string {
+	switch resource {
+	case "Patient", "Coverage", "ExplanationOfBenefit", "Observation":
+		return constants.Adjudicated
+	case "Claim", "ClaimResponse":
+		return constants.PartiallyAdjudicated
+	default:
+		return ""
+	}
+}
+
 // GetClaimTypesMap creates a map of the given fhir resources with their associated claim type objects
 // It returns the resource map and a status flag, with true meaning all resources were found and mapped.
 func GetClaimTypesMap(fhirResource ...string) (map[string]ClaimType, bool) {

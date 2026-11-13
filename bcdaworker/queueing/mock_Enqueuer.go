@@ -199,7 +199,7 @@ type MockEnqueuer_AddPrepareSharedJob_Call struct {
 // AddPrepareSharedJob is a helper method to define mock.On call
 //   - ctx context.Context
 //   - job worker_types.PrepareSharedJobArgs
-func (_e *MockEnqueuer_Expecter) AddPrepareSharedJob(ctx interface{}, job interface{}) *MockEnqueuer_AddPrepareSharedJob_Call {
+func (_e *MockEnqueuer_Expecter) AddPrepareSharedJob(ctx any, job any) *MockEnqueuer_AddPrepareSharedJob_Call {
 	return &MockEnqueuer_AddPrepareSharedJob_Call{Call: _e.mock.On("AddPrepareSharedJob", ctx, job)}
 }
 

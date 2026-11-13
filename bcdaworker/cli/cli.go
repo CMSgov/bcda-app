@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
@@ -70,7 +71,6 @@ func setUpApp() *cli.App {
 }
 
 func startWorker() {
-
 	logger := log.NewSlogLogger("worker")
 	logger.Info("Starting bcdaworker...")
 
@@ -90,7 +90,15 @@ func startWorker() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	riverClient := queueing.CreateRiverClient(logger, db, utils.GetEnvInt("WORKER_POOL_SIZE", 4))
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		log.Worker.Fatalf("failed to load service config. Err: %v", err)
+	}
+	if len(cfg.ACOConfigs) == 0 {
+		log.Worker.Fatalf("no ACO configs found, these are required for processing logic")
+	}
+
+	riverClient := queueing.CreateRiverClient(logger, db, utils.GetEnvInt("WORKER_POOL_SIZE", 4), *cfg)
 	if err := riverClient.Start(ctx); err != nil {
 		logger.Error("failed to start river client", "error", err)
 		panic(err)

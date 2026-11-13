@@ -3,7 +3,6 @@
 #ENC[AES256_GCM,data:xUC3A0QeOivCgVAKUYOYtvc0lj63Woe180h1ODX14evAm6XvL8PfNT0fIw==,iv:EElJQMiIPjH8w1j9rsMWvtOfK2fGnTQY7zvERE/oZRc=,tag:x8vOIOXxGlH2TrRfJ6bt+g==,type:comment]
 #ENC[AES256_GCM,data:GB+3EB0SLIroEZ7KzaDo3yBA,iv:+IUtL0BFfpBwDirykehDBtSz6myr5puW7OYbJBtR0W4=,tag:FiPnxZHlHRjh8M0iBcFcbg==,type:comment]
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:H/CB,iv:atGloib5mt7phyZeeE58XjID4K91Ho2FtOy80HbXtrg=,tag:cblfrIFx31TR9jhQRzwQDQ==,type:str]
-/bcda/${env}/sensitive/api/VERSION_3_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:pcT6bw==,iv:ba2euw4TLAdrXdZUe0QoPytG6j+ThgoxHM3I6ZwrU9I=,tag:c0X7goSVTVe7OjxjsLPdLw==,type:str]
 #ENC[AES256_GCM,data:3wxEuksNauPlFZbPdycCPr+NQHTvwVhf,iv:nuD8WRwbERBAiiiC/yo4mMkOGjuLwSR8teY/tPA/MjE=,tag:XFG5P/CptJ8YWXZ3RMuWeQ==,type:comment]
 /bcda/${env}/nonsensitive/bcda-test-alarm-to-slack-bucket: bcda-test-alarm-to-slack-function-20250811163806563400000001
 #ENC[AES256_GCM,data:Eoq+xMu3CDp2A29Q6nfGzWEIjP7f+u0a6O/D5A==,iv:WwoUn+pHv8ZMuTBIQv4v9iRIQSNnuVysCjk28uU7V14=,tag:5MoNtqsRIsbALudk3DD/Ow==,type:comment]
@@ -53,7 +52,6 @@
 /bcda/${env}/sensitive/api/SSAS_USE_TLS: ENC[AES256_GCM,data:AeshOg==,iv:4zRcAM1i9Et6aObKxIGh+aq/BKyHf5PTdC0ZLbalNe4=,tag:3QhEWkM4NuojdCoMRPqBIQ==,type:str]
 /bcda/${env}/sensitive/api/USER_GUIDE_LOC: ENC[AES256_GCM,data:jOhx1pQDLKeuaO66Oeud/93YH9mf/1oKbUI=,iv:RgNUVIG7frlDhhew84VewggyvBgU26EiZrVKYcFSJyw=,tag:I2ECM4+MIsq+QZlrcy8a3Q==,type:str]
 /bcda/${env}/sensitive/api/V3_BB_SERVER_LOCATION: ENC[AES256_GCM,data:zOd5KzgoJUgHQ+fpTCvxlMl/4ktNyfQtyv1zvs/7eiQd4XEkHrM=,iv:d6vaaz5+6B7MZo+rqYs9dcbKFDMreP+VMijOFHVLxzI=,tag:35lNIskA/3jKmbQoqN+osw==,type:str]
-/bcda/${env}/sensitive/api/VERSION_2_ENDPOINT_ACTIVE: ENC[AES256_GCM,data:/8EVwA==,iv:yTGKnsDm0Zd4rtpHV3YGyoxhkRY1vnoyno9xlt6SxGA=,tag:k2vkpVQ3of4KF9CMSstF0Q==,type:str]
 #ENC[AES256_GCM,data:8d0JCHcHonnGiapKqeIFpE7jCLxuDKPrxA==,iv:MMouA74fzvRFB7pP6BW9wHVvp+iRaLrBGNgmF8P+PUc=,tag:ofHVJSRJKkM0ePVe1jnZIg==,type:comment]
 /bcda/${env}/sensitive/db_admin_password: ENC[AES256_GCM,data:pXiOD1asyN+0NycT9Rj/s3cMdVB9Qxps6iXaOArfh2A=,iv:QKGstaWu7ZqAOzh2eNnz27vztOIau2MEGwIsN9EqF+A=,tag:DpZLl0DBhzMkYW60h+8fpA==,type:str]
 #ENC[AES256_GCM,data:HKvTUxtHpLIfJSE5q5s7py5/8g==,iv:ZoujENJTbtKStX6bNJf1+9VvykIgV6//fPKxYDGK54A=,tag:s9g5xmvg8SMDoxKurtsjCw==,type:comment]
@@ -176,4 +174,4 @@ sops:
       enc: AQICAHjitWa+2OWjli/U8aWEuMqUM8gyoTLLxkGOP0onI9kxGQFl25JcNsjNvW8pCpgEj5FEAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMjSZXsLth8lX39Y+LAgEQgDuSJbmoKhQgxwsuYis0Y+Zkf3kJfMcux0A8fxfg8fNI/HaxDwIz5fuxGYKoM4kJncBXqFZgZ0ltvSKdNw==
   mac_only_encrypted: true
   unencrypted_regex: /nonsensitive/
-  version: 3.13.2
+  version: 3.13.3
