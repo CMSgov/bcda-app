@@ -17,7 +17,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
@@ -89,7 +88,7 @@ type PrepareSharedWorkerTestSuite struct {
 	dbContainer db.TestDatabaseContainer
 }
 
-func TestCleanupPrepareSharedWorkerTestSuite(t *testing.T) {
+func TestPrepareSharedWorkerTestSuite(t *testing.T) {
 	suite.Run(t, new(PrepareSharedWorkerTestSuite))
 }
 
@@ -174,7 +173,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedWorkerWork_Integration()
 		},
 	}
 
-	worker := &PrepareSharedJobWorker{appRepo: s.r, workerRepo: *workerRepo.NewRepository(s.db), fhirClient: c, pool: s.pool, cfg: cfg}
+	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool, cfg: cfg}
 	driver := riverpgxv5.New(s.pool)
 	err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
@@ -213,7 +212,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedExportJobs() {
 	transactionUUID := uuid.NewRandom().String()
 	ctx := context.WithValue(s.T().Context(), authMw.CtxTransactionKey, transactionUUID)
 
-	worker := &PrepareSharedJobWorker{appRepo: s.r, workerRepo: *workerRepo.NewRepository(s.db), fhirClient: c, pool: s.pool}
+	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool}
 	aco, err := s.r.GetACOByCMSID(context.Background(), "A0003")
 	if err != nil {
 		s.T().Log("failed to get job")
@@ -360,7 +359,7 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated() {
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
-	worker := &PrepareSharedJobWorker{appRepo: s.r, workerRepo: *workerRepo.NewRepository(s.db), fhirClient: c, pool: s.pool}
+	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool}
 
 	jobArgs := worker_types.PrepareSharedJobArgs{
 		BFDPath: constants.BFDV3Path,

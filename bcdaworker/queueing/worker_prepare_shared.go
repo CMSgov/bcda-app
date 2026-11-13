@@ -12,7 +12,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/log"
 	mw "github.com/CMSgov/bcda-app/middleware"
 	"github.com/ccoveille/go-safecast"
@@ -24,7 +23,6 @@ import (
 type PrepareSharedJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareSharedJobArgs]
 	appRepo    models.Repository
-	workerRepo workerRepo.Repository
 	fhirClient client.APIClient
 	pool       *pgxv5Pool.Pool
 	cfg        service.Config
@@ -38,7 +36,6 @@ func NewPrepareSharedJobWorker(db *sql.DB, pool *pgxv5Pool.Pool, cfg service.Con
 
 	return &PrepareSharedJobWorker{
 		appRepo:    postgres.NewRepository(db),
-		workerRepo: *workerRepo.NewRepository(db),
 		fhirClient: fhirClient,
 		pool:       pool,
 		cfg:        cfg,
@@ -81,7 +78,8 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 	if err != nil {
 		logger.Errorf("failed to add jobs to the main queue: %s", err)
 
-		dbErr := w.workerRepo.UpdateJobStatus(ctx, rjob.Args.Job.ID, models.JobStatusFailed)
+		rjob.Args.Job.Status = models.JobStatusFailed
+		dbErr := w.appRepo.UpdateJob(ctx, rjob.Args.Job)
 		if dbErr != nil {
 			logger.Errorf("failed to update job status: %s", dbErr)
 		}

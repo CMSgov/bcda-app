@@ -145,7 +145,7 @@ func (p *PrepareJobWorker) prepareExportJobs(ctx context.Context, args worker_ty
 		}
 		dberr := p.r.UpdateJob(ctx, args.Job)
 		if dberr != nil {
-			logger.Errorf("failed to update job, err: %w, dberr: %w", err, dberr)
+			logger.Errorf("failed to update job, err: %+v, dberr: %+v", err, dberr)
 		}
 	}()
 

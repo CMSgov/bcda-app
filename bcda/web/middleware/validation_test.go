@@ -740,7 +740,7 @@ func (s *MiddlewareTestSuite) TestValidateShared() {
 		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[0].MBIs)
 		assert.Equal(s.T(), []string{"Patient"}, queries[0].ResourceTypes)
 		assert.Equal(s.T(), map[string]string{"Content-Type": "application/json"}, queries[0].Headers)
-		assert.Equal(s.T(), time.Date(2026, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[0].Since)
+		assert.Equal(s.T(), time.Date(2026, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)).UTC(), queries[0].Since.UTC())
 		assert.Equal(s.T(), "ExplanationOfBenefit", queries[0].TypeFilter.ResourceType)
 		require.Equal(s.T(), 2, len(queries[0].TypeFilter.QueryParameters))
 		assert.Equal(s.T(), "service-date", queries[0].TypeFilter.QueryParameters[0].Name)
@@ -750,7 +750,7 @@ func (s *MiddlewareTestSuite) TestValidateShared() {
 
 		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[1].MBIs)
 		assert.Equal(s.T(), []string{"Claim", "ClaimResponse"}, queries[1].ResourceTypes)
-		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[1].Since)
+		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)).UTC(), queries[1].Since.UTC())
 	})
 
 	handlerToTest := ValidateSharedExportPayload(nextHandler)
@@ -1017,6 +1017,51 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 				]
 			}`,
 		}, {
+			"invalid resource_types",
+			`{
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient", "InvalidResourceType"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
 			"missing _since",
 			`{
 				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
@@ -1096,6 +1141,51 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 							{
 								"name": "_since",
 								"value": "bad-date-time"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"_since set in the future",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"form_data": [
+							{
+								"name": "_since",
+								"value": "2050-08-01T08:00:00-05:00"
 							}
 						]
 					}

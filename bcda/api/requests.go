@@ -935,7 +935,7 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		ctx, _ := log.WriteErrorWithFields(
 			ctx,
-			fmt.Sprintf("%s: %+v", responseutils.RequestErr, err),
+			fmt.Sprintf("%s: failed to get shared export queries from context", responseutils.RequestErr),
 			logrus.Fields{"resp_status": http.StatusBadRequest},
 		)
 		h.RespWriter.OpOutcome(ctx, w, http.StatusBadRequest, responseutils.RequestErr, "")
@@ -987,7 +987,12 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Location", fmt.Sprintf("https://%s/api/%s/jobs/%d", r.Host, queries[0].Version, newJob.ID))
+	scheme := "http"
+	if servicemux.IsHTTPS(r) {
+		scheme = "https"
+	}
+
+	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, queries[0].Version, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
 }
 

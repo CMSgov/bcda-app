@@ -587,9 +587,13 @@ func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 	})
 
 	s.T().Run("fails to get bene ID should return empty and error files", func(t *testing.T) {
+		testACO, err := s.r.GetACOByUUID(s.T().Context(), uuid.Parse("def1d24d-cd96-4d7d-a691-b0e8c88e67a5"))
+		require.NoError(s.T(), err)
+		s.testACO = testACO
 		bbc := &client.MockBlueButtonClient{}
 		bbc.On("GetPatientByMbi", "1234").Return(nil, errors.New("get-patient-error"))
 		jobArgs := worker_types.JobEnqueueArgs{
+			CMSID:          "DPC-1",
 			BeneficiaryIDs: []string{"1234"},
 			ResourceType:   "ExplanationOfBenefit",
 		}

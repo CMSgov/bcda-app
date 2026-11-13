@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -202,7 +203,7 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 		var payload rt.SharedExportPayload
 		err = json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
-			log.API.Error("invalid JSON payload, err: %s", err.Error())
+			log.API.Errorf("invalid JSON payload, err: %s", err.Error())
 			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid JSON payload")
 			return
 		}
@@ -251,6 +252,12 @@ func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExp
 		// they are built into EoB as per v3.  Do we want to silently filter them out or explicitly return an error?
 		// if we do nothing we are trusting our users but could be problematic as currently we dont pass in ClaimsWindow (service-date) to our BFD requests
 
+		for _, rt := range query.ResourceTypes {
+			if !slices.Contains([]string{"Patient", "Claim", "ClaimResponse"}, rt) {
+				issues = append(issues, fmt.Sprintf("invalid resource_type in query: %s", rt))
+			}
+		}
+
 		derivedData, err := deriveAndValidateSharedFormData(query)
 		if err != nil {
 			issues = append(issues, err.Error())
@@ -287,9 +294,12 @@ func deriveAndValidateSharedFormData(query rt.SharedExportQuery) (rt.SharedExpor
 				return derivedData, fmt.Errorf("invalid _since JSON: %v", err)
 			}
 
-			parsedSince, err := time.Parse(time.RFC3339, sinceString)
+			parsedSince, err := time.Parse(time.RFC3339Nano, sinceString)
 			if err != nil {
 				return derivedData, fmt.Errorf("invalid _since date format: %v", err)
+			}
+			if parsedSince.After(time.Now()) {
+				return derivedData, fmt.Errorf("_since date cannot be in the future")
 			}
 
 			derivedData.Since = parsedSince
@@ -304,6 +314,9 @@ func deriveAndValidateSharedFormData(query rt.SharedExportQuery) (rt.SharedExpor
 				continue
 			}
 
+			// TODO 10590 how do we want to handle _typeFilter subqueries for resource types other than EoB?
+			// currently we only support EoB resource types.  If we want to support other resource types
+			// we will need to adjust our code or have separate validation logic.
 			err = fhir.ValidateTypeFilterSubquery(typeFilter)
 			if err != nil {
 				return derivedData, fmt.Errorf("invalid _typeFilter subquery: %v", err)
