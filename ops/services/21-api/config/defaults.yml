@@ -1,0 +1,86 @@
+scaling:
+  min: 1
+  max: 2
+  target_value: 30
+  scale_in_cooldown: 180
+  scale_out_cooldown: 180
+
+ecs:
+  cpu: 256
+  mem: 512
+
+alarms:
+  backend_4xx: false
+  backend_5xx: false
+  elb_5xx: false
+  elb_high_latency: false
+
+ports:
+  admin: 444
+  https: 443
+  http: 80
+  app: 3000
+  app_http: 3001
+  ssh: 22
+  postgres: 5432
+  ssas_public: 3003
+  ssas_admin: 3004
+
+health_check:
+  path: "/_health"
+  idle_timeout: 60
+  deregistration_delay: 120
+  interval: 15
+  healthy_threshold: 2
+  unhealthy_threshold: 5
+  timeout: 5
+  start_period: 10
+  protocol: "HTTPS"
+
+alb_sg_name_prefix: "app-alb"
+ssl_policy: "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
+
+parameter_names: [
+    "ARCHIVE_THRESHOLD_HR",
+    "AUTH_LOG",
+    "BB_CHECK_CERT",
+    "BB_CLIENT_CA_FILE",
+    "BB_CLIENT_CERT_FILE",
+    "BB_CLIENT_KEY_FILE",
+    "BB_SERVER_LOCATION",
+    "BCDA_API_CONFIG_PATH",
+    "BCDA_BB_LOG",
+    "BCDA_CA_FILE",
+    "BCDA_ENABLE_NEW_GROUP",
+    "BCDA_ERROR_LOG",
+    "BCDA_REQUEST_LOG",
+    "BCDA_SSAS_CLIENT_ID",
+    "BCDA_SSAS_SECRET",
+    "BCDA_TLS_CERT",
+    "BCDA_TLS_KEY",
+    "CCLF_CUTOFF_DATE_DAYS",
+    "CLIENT_RETRY_AFTER_IN_SECONDS",
+    "CONFIG_BUCKET",
+    "DATABASE_URL",
+    "DEBUG",
+    "DEPLOYMENT_TARGET",
+    "FHIR_ARCHIVE_DIR",
+    "FHIR_PAYLOAD_DIR",
+    "FHIR_STAGING_DIR",
+    "JWT_PRIVATE_KEY_FILE",
+    "JWT_PUBLIC_KEY_FILE",
+    "PRIORITY_ACO_IDS",
+    "PRIORITY_ACO_REG_EX",
+    "RUNOUT_CLAIM_THRU_DATE",
+    "RUNOUT_CUTOFF_DATE_DAYS",
+    "SSAS_PUBLIC_URL",
+    "SSAS_RATE_LIMIT_DURATION_MINUTES",
+    "SSAS_RATE_LIMIT_THRESHOLD",
+    "SSAS_TIMEOUT_MS",
+    "SSAS_URL",
+    "SSAS_USE_TLS",
+    "USER_GUIDE_LOC",
+    "V3_BB_SERVER_LOCATION",
+    "VERSION_2_ENDPOINT_ACTIVE",
+    "VERSION_3_ENDPOINT_ACTIVE"
+  ]

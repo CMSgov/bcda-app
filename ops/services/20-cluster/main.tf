@@ -8,6 +8,7 @@ locals {
   local_zone_name                       = "bcda-${local.env}.local"
   cloudwatch_alarms_topic_name          = "bcda-${local.env}-cloudwatch-alarms"
   cloudwatch_critical_alarms_topic_name = "bcda-${local.env}-cloudwatch-critical-alarms"
+  sg_compliance_attestation_url         = "https://confluence.cms.gov/pages/viewpage.action?pageId=448009355"
 }
 
 module "platform" {
