@@ -15,22 +15,6 @@ resource "aws_vpc_security_group_ingress_rule" "app_sg_ingress_http_01" {
   ip_protocol                  = "tcp"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "ssas_sg_ingress_public" {
-  security_group_id            = data.aws_security_group.app_sg.id
-  referenced_security_group_id = data.aws_security_group.ssas_alb.id
-  from_port                    = local.config.ports.ssas_public
-  to_port                      = local.config.ports.ssas_public
-  ip_protocol                  = "tcp"
-}
-
-resource "aws_vpc_security_group_ingress_rule" "ssas_sg_ingress_admin" {
-  security_group_id            = data.aws_security_group.app_sg.id
-  referenced_security_group_id = data.aws_security_group.ssas_alb.id
-  from_port                    = local.config.ports.ssas_admin
-  to_port                      = local.config.ports.ssas_admin
-  ip_protocol                  = "tcp"
-}
-
 resource "aws_vpc_security_group_ingress_rule" "peering_app_sg_ingress" {
   security_group_id = data.aws_security_group.app_sg.id
   cidr_ipv4         = module.platform.platform_cidr

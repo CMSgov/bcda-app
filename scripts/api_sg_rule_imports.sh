@@ -133,14 +133,6 @@ if ! is_prod; then
 fi
 
 print_import \
-  "aws_vpc_security_group_ingress_rule.ssas_sg_ingress_public" \
-  "$(find_rule_by_sg $APP_SG_ID 3003 $SSAS_ALB_SG_ID)"
-
-print_import \
-  "aws_vpc_security_group_ingress_rule.ssas_sg_ingress_admin" \
-  "$(find_rule_by_sg $APP_SG_ID 3004 $SSAS_ALB_SG_ID)"
-
-print_import \
   "aws_vpc_security_group_ingress_rule.peering_app_sg_ingress" \
   "$(find_rule $APP_SG_ID 22 $PLATFORM_CIDR)"
 
