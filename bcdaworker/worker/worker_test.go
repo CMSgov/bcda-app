@@ -591,7 +591,7 @@ func (s *WorkerTestSuite) TestBBWriteDataToFile_SharedEndpoint() {
 		require.NoError(s.T(), err)
 		s.testACO = testACO
 		bbc := &client.MockBlueButtonClient{}
-		bbc.On("GetPatientByMbi", "1234").Return(nil, errors.New("get-patient-error"))
+		bbc.On("GetPatientByMbi", "1234").Return("", errors.New("get-patient-error"))
 		jobArgs := worker_types.JobEnqueueArgs{
 			CMSID:          "DPC-1",
 			BeneficiaryIDs: []string{"1234"},
