@@ -20,7 +20,7 @@ resource "aws_security_group" "app_sg" {
 }
 
 resource "aws_security_group" "sg_alb_01" {
-  name        = "app-alb-${module.platform.env}"
+  name        = "${local.parent_env == "sandbox" ? "bcda-app-lb" : "app-alb"}-${module.platform.env}"
   description = "App ALB security group"
   vpc_id      = module.platform.vpc_id
 
