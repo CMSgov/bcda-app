@@ -39,10 +39,10 @@ type SharedBackendSmokeTests struct {
 
 // TODO: BCDA-10508 temporary only run in dev and test
 func TestSmokeTestsSuite(t *testing.T) {
-	environment = conf.GetEnv("DEPLOYMENT_TARGET")
-	if environment == "dev" || environment == "test" {
-		suite.Run(t, new(SharedBackendSmokeTests))
-	}
+	// environment = conf.GetEnv("DEPLOYMENT_TARGET")
+	// if environment == "dev" || environment == "test" {
+	suite.Run(t, new(SharedBackendSmokeTests))
+	// }
 }
 
 func (s *SharedBackendSmokeTests) SetupSuite() {
@@ -182,5 +182,24 @@ func (s *SharedBackendSmokeTests) postSharedExport(token string, body *strings.R
 		return &http.Response{}, err
 	}
 	return resp, nil
+
+}
+
+// helper function: configure local setup
+// TODO: (BCDA-10498) resolve overlapping env variables between local.env, compose, and vs code test vars
+func (s *SharedBackendSmokeTests) configureLocalTest() {
+	// err := godotenv.Load("../../shared_files/decrypted/local.env")
+	// require.NoError(s.T(), err)
+	// db := database.Connect()
+	// p := auth.NewProvider(db)
+	// dpcCreds, err := p.ResetSecret("1db778aa-45eb-428e-99e4-d32c519f9d69")
+	// require.NoError(s.T(), err)
+	// s.T().Log("FOOOOOOO")
+	// nonShared, err := p.ResetSecret("0c527d2e-2e8a-4808-b11d-0fa06baf8254")
+	// require.NoError(s.T(), err)
+	// s.sharedAccessClientID = dpcCreds.ClientID
+	// s.sharedAccessClientSecret = dpcCreds.ClientSecret
+	// s.noSharedAccessClientID = nonShared.ClientID
+	// s.noSharedAccessClientSecret = nonShared.ClientSecret
 
 }
