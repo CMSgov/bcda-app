@@ -3,13 +3,11 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,9 +18,10 @@ import (
 // to be resolved to add this.
 // - these run with vscode go test vars (database_url needs to point to containers) and if local.env has the endpoint enabled
 
-var (
-	environment string
-)
+type clientCredentials struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+}
 
 type token struct {
 	AccessToken string `json:"access_token"`
@@ -32,15 +31,16 @@ type token struct {
 
 type SharedBackendSmokeTests struct {
 	suite.Suite
-	host                string
-	sharedAccessACOS    []map[string]any
-	nonSharedAccessACOS []map[string]any
+	host               string
+	sharedAccessACO    clientCredentials
+	nonSharedAccessACO clientCredentials
+	environment        string
 }
 
 // TODO: BCDA-10508 temporary only run in dev and test
 func TestSmokeTestsSuite(t *testing.T) {
-	// environment = conf.GetEnv("DEPLOYMENT_TARGET")
-	// if environment == "dev" || environment == "test" {
+	// s.environment = conf.GetEnv("DEPLOYMENT_TARGET")
+	// if s.environment == "dev" || s.environment == "test" {
 	suite.Run(t, new(SharedBackendSmokeTests))
 	// }
 }
@@ -53,23 +53,17 @@ func (s *SharedBackendSmokeTests) SetupSuite() {
 	// }
 
 	sea := conf.GetEnv("SHARED_EXPORT_ACOS")
-	var exportACOS []map[string]any
-	err := json.Unmarshal([]byte(sea), &exportACOS)
-	if err != nil {
-		log.Fatal(err)
-	}
-	s.sharedAccessACOS = exportACOS
+	require.NotEmpty(s.T(), sea, "SHARED_EXPORT_ACOS env var not set")
+	err := json.Unmarshal([]byte(sea), &s.sharedAccessACO)
+	require.NoError(s.T(), err, "failed to unmarshal ACO credentials")
 
 	nsea := conf.GetEnv("NON_SHARED_EXPORT_ACOS")
-	var nonExportACOS []map[string]any
-	err = json.Unmarshal([]byte(nsea), &nonExportACOS)
-	if err != nil {
-		log.Fatal(err)
-	}
-	s.nonSharedAccessACOS = nonExportACOS
+	require.NotEmpty(s.T(), nsea, "NON_SHARED_EXPORT_ACOS env var not set")
+	err = json.Unmarshal([]byte(nsea), &s.nonSharedAccessACO)
+	require.NoError(s.T(), err)
 
 	s.host = conf.GetEnv("API_HOST")
-	require.NotEmpty(s.T(), s.host)
+	require.NotEmpty(s.T(), s.host, "API_HOST env var not set")
 }
 
 func (s *SharedBackendSmokeTests) TearDownSuite() {}
@@ -79,65 +73,57 @@ func (s *SharedBackendSmokeTests) SetupTest() {}
 func (s *SharedBackendSmokeTests) TearDownTest() {}
 
 func (s *SharedBackendSmokeTests) TestPostToken() {
-	assert.Greater(s.T(), len(s.sharedAccessACOS), 0)
-	for _, v := range s.sharedAccessACOS {
-		t, err := s.postToken(v["client_id"].(string), v["client_secret"].(string))
-		require.NoError(s.T(), err)
-		require.Contains(s.T(), t.Token_type, "bearer")
-		require.NotEmpty(s.T(), t.AccessToken)
-		require.Equal(s.T(), t.ExpiresIn, "1200")
-	}
+
+	t, err := s.postToken(s.sharedAccessACO.ClientID, s.sharedAccessACO.ClientSecret)
+	require.NoError(s.T(), err)
+	require.Contains(s.T(), t.Token_type, "bearer")
+	require.NotEmpty(s.T(), t.AccessToken)
+	require.Equal(s.T(), t.ExpiresIn, "1200")
+
 }
 
 // TODO: (BCDA-10498) remove version checks and add validation for data and resources types
 // get synth MBIs from v3 test aco in each environment
 func (s *SharedBackendSmokeTests) TestPostSharedExport_SharedPartner() {
-	assert.Greater(s.T(), len(s.sharedAccessACOS), 0)
-	for _, v := range s.sharedAccessACOS {
-		clientID := v["client_id"].(string)
-		clientSecret := v["client_secret"].(string)
-		tests := []struct {
-			name       string
-			body       *strings.Reader
-			respStatus int
-		}{
-			{"Start shared export - valid body", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusAccepted},
-			{"Start shared export - empty resource type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": [], "partner_id": "shared-export-partner", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusBadRequest},
-			{"Start shared export - empty data type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "shared-export-partner", "data_types": [], "mbis": ["1234"]}`), http.StatusBadRequest},
-			{"Start shared export - empty mbi list", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "shared-export-partner", "data_types": ["adjudicated"], "mbis": []}`), http.StatusBadRequest},
-		}
-		t, err := s.postToken(clientID, clientSecret)
-		require.NoError(s.T(), err)
-		for _, tt := range tests {
-			s.Run(tt.name, func() {
-				require.NotEmpty(s.T(), t)
-				j, err := s.postSharedExport(t.AccessToken, tt.body)
-				require.NoError(s.T(), err)
-				require.Equal(s.T(), tt.respStatus, j.StatusCode)
-				if tt.respStatus == 202 {
-					require.Contains(s.T(), j.Header.Get("Content-Location"), "api/v3/jobs")
 
-				}
-			})
-		}
+	tests := []struct {
+		name       string
+		body       *strings.Reader
+		respStatus int
+	}{
+		{"Start shared export - valid body", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusAccepted},
+		{"Start shared export - empty resource type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": [], "partner_id": "shared-export-partner", "data_types": ["adjudicated"], "mbis": ["1234"]}`), http.StatusBadRequest},
+		{"Start shared export - empty data type", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "shared-export-partner", "data_types": [], "mbis": ["1234"]}`), http.StatusBadRequest},
+		{"Start shared export - empty mbi list", strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "shared-export-partner", "data_types": ["adjudicated"], "mbis": []}`), http.StatusBadRequest},
 	}
+	t, err := s.postToken(s.sharedAccessACO.ClientID, s.sharedAccessACO.ClientSecret)
+	require.NoError(s.T(), err)
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			require.NotEmpty(s.T(), t)
+			j, err := s.postSharedExport(t.AccessToken, tt.body)
+			require.NoError(s.T(), err)
+			require.Equal(s.T(), tt.respStatus, j.StatusCode)
+			if tt.respStatus == 202 {
+				require.Contains(s.T(), j.Header.Get("Content-Location"), "api/v3/jobs")
+
+			}
+		})
+	}
+
 }
 
 func (s *SharedBackendSmokeTests) TestPostSharedExport_NotSharedPartner() {
-	assert.Greater(s.T(), len(s.sharedAccessACOS), 0)
-	for _, v := range s.sharedAccessACOS {
-		clientID := v["client_id"].(string)
-		clientSecret := v["client_secret"].(string)
 
-		t, err := s.postToken(clientID, clientSecret)
-		require.NoError(s.T(), err)
-		require.NotEmpty(s.T(), t.AccessToken)
+	t, err := s.postToken(s.nonSharedAccessACO.ClientID, s.nonSharedAccessACO.ClientSecret)
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), t.AccessToken)
 
-		body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "foo", "data_types": ["adjudicated"], "mbis": ["1234"]}`)
-		j, err := s.postSharedExport(t.AccessToken, body)
-		require.NoError(s.T(), err)
-		require.Equal(s.T(), 401, j.StatusCode, "non shared export partner should not be authorized to use /$shared_export")
-	}
+	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "foo", "data_types": ["adjudicated"], "mbis": ["1234"]}`)
+	j, err := s.postSharedExport(t.AccessToken, body)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), 401, j.StatusCode, "non shared export partner should not be authorized to use /$shared_export")
+
 }
 
 // helper function
@@ -158,7 +144,6 @@ func (s *SharedBackendSmokeTests) postToken(client string, secret string) (token
 		return t, fmt.Errorf("failed to get token: expected HTTP 200 but got: %d", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&t)
 	if err != nil {
 		return t, err
@@ -181,25 +166,7 @@ func (s *SharedBackendSmokeTests) postSharedExport(token string, body *strings.R
 	if err != nil {
 		return &http.Response{}, err
 	}
+	defer resp.Body.Close()
 	return resp, nil
-
-}
-
-// helper function: configure local setup
-// TODO: (BCDA-10498) resolve overlapping env variables between local.env, compose, and vs code test vars
-func (s *SharedBackendSmokeTests) configureLocalTest() {
-	// err := godotenv.Load("../../shared_files/decrypted/local.env")
-	// require.NoError(s.T(), err)
-	// db := database.Connect()
-	// p := auth.NewProvider(db)
-	// dpcCreds, err := p.ResetSecret("1db778aa-45eb-428e-99e4-d32c519f9d69")
-	// require.NoError(s.T(), err)
-	// s.T().Log("FOOOOOOO")
-	// nonShared, err := p.ResetSecret("0c527d2e-2e8a-4808-b11d-0fa06baf8254")
-	// require.NoError(s.T(), err)
-	// s.sharedAccessClientID = dpcCreds.ClientID
-	// s.sharedAccessClientSecret = dpcCreds.ClientSecret
-	// s.noSharedAccessClientID = nonShared.ClientID
-	// s.noSharedAccessClientSecret = nonShared.ClientSecret
 
 }

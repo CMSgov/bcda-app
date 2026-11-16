@@ -140,7 +140,7 @@ jobs:
             V3_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/${{ env.creds }}_v3_client_credentials
             OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/outdated_attr_client_credentials
             DPC_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/dpc_smoke_test_client_credentials
-            
+            API_HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/api_host
       - name: checkout bcda-ssas
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
@@ -223,8 +223,8 @@ jobs:
       - name: Run Shared Export Tests
         
         run: |
-          SHARED_EXPORT_ACOS='[${DPC_CLIENT_CREDENTIALS_PARAMS}]'
-          NON_SHARED_EXPORT_ACOS=[$CLIENT_CREDENTIALS_PARAMS]
+          SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS}
+          NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS
           DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }}
           make improved-smoke-tests
       - name: Success Alert
