@@ -52,13 +52,13 @@ func (s *SharedBackendSmokeTests) SetupSuite() {
 	// 	return
 	// }
 
-	sea := conf.GetEnv("SHARED_EXPORT_ACOS")
-	require.NotEmpty(s.T(), sea, "SHARED_EXPORT_ACOS env var not set")
+	sea := conf.GetEnv("SHARED_EXPORT_ACO")
+	require.NotEmpty(s.T(), sea, "SHARED_EXPORT_ACO env var not set")
 	err := json.Unmarshal([]byte(sea), &s.sharedAccessACO)
 	require.NoError(s.T(), err, "failed to unmarshal ACO credentials")
 
-	nsea := conf.GetEnv("NON_SHARED_EXPORT_ACOS")
-	require.NotEmpty(s.T(), nsea, "NON_SHARED_EXPORT_ACOS env var not set")
+	nsea := conf.GetEnv("NON_SHARED_EXPORT_ACO")
+	require.NotEmpty(s.T(), nsea, "NON_SHARED_EXPORT_ACO env var not set")
 	err = json.Unmarshal([]byte(nsea), &s.nonSharedAccessACO)
 	require.NoError(s.T(), err)
 
