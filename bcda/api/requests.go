@@ -946,11 +946,16 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 	// (validateResources, getResourceTypes) should be moved to middleware,
 	// since they are handlers and part of request validation
 
+	scheme := "http"
+	if servicemux.IsHTTPS(r) {
+		scheme = "https"
+	}
+
 	acoID := uuid.Parse(ad.ACOID)
 
 	newJob := models.Job{
 		ACOID:      acoID,
-		RequestURL: fmt.Sprintf("https://%s%s", r.Host, r.URL),
+		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     models.JobStatusPending,
 	}
 
@@ -985,11 +990,6 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 		)
 		h.RespWriter.OpOutcome(ctx, w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
-	}
-
-	scheme := "http"
-	if servicemux.IsHTTPS(r) {
-		scheme = "https"
 	}
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, queries[0].Version, newJob.ID))

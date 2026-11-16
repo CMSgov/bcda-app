@@ -795,7 +795,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_OnlyRequiredFields() {
 		assert.Equal(s.T(), "v3", queries[0].Version)
 		assert.Equal(s.T(), []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"}, queries[0].MBIs)
 		assert.Equal(s.T(), []string{"Claim", "ClaimResponse"}, queries[0].ResourceTypes)
-		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)), queries[0].Since)
+		assert.Equal(s.T(), time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("", -5*60*60)).UTC(), queries[0].Since.UTC())
 	})
 
 	handlerToTest := ValidateSharedExportPayload(nextHandler)

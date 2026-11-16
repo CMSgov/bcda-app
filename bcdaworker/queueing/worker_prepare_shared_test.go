@@ -371,6 +371,20 @@ func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated() {
 	assert.WithinDuration(s.T(), resultTime, time.Now(), time.Second*5)
 }
 
+func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated_NoQueries() {
+	c := new(client.MockBlueButtonClient)
+	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool}
+
+	jobArgs := worker_types.PrepareSharedJobArgs{
+		BFDPath: constants.BFDV3Path,
+		Queries: []request_types.SharedExportQueryData{},
+	}
+
+	resultTime, err := worker.getBundleLastUpdated(jobArgs)
+	assert.Error(s.T(), err)
+	assert.Equal(s.T(), time.Time{}, resultTime)
+}
+
 func (s *PrepareSharedWorkerTestSuite) TestQueueExportJobs() {
 	prepArgs := worker_types.PrepareSharedJobArgs{}
 

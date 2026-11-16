@@ -180,6 +180,10 @@ func chunkIntoSubJobs(args worker_types.PrepareSharedJobArgs) ([]*worker_types.J
 }
 
 func (w *PrepareSharedJobWorker) getBundleLastUpdated(args worker_types.PrepareSharedJobArgs) (time.Time, error) {
+	if len(args.Queries) == 0 {
+		return time.Time{}, fmt.Errorf("no queries provided")
+	}
+
 	jobData := worker_types.JobEnqueueArgs{
 		BBBasePath:      args.BFDPath,
 		Since:           args.Queries[0].Since.String(),
