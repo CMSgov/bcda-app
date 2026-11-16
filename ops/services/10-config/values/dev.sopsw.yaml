@@ -5,6 +5,7 @@
 /bcda/${env}/sensitive/api/CLIENT_RETRY_AFTER_IN_SECONDS: ENC[AES256_GCM,data:JY1y,iv:cEn1A8Kcs/jY6xHWjBlFpMw9GgqJUiR2EipPtNEqTc4=,tag:A5DdCA9zEtUtb+hm3IZmlw==,type:str]
 #ENC[AES256_GCM,data:ADEUs6xjKMBNnQXxGVKwlqjsN2o2MV2A,iv:D83A/IpC4WEbvjmhwDmYw/GVfE8897TnioLcr557/NA=,tag:sSBy6rOwSeU+e15YSyA7Ug==,type:comment]
 #ENC[AES256_GCM,data:rTpfO7gQXSlH+gKtBannTSrMsXj23qUrVv3Grg==,iv:2sV0MpcNkREgSWtfl5c2TrOl5jnKNGKCZ/u8bTgwWfI=,tag:UBeDQR0qVK1OD1xAtOxEEg==,type:comment]
+/bcda/${env}/sensitive/api/API_HOST: ENC[AES256_GCM,data:Gx/7gwmpqD6q6Eb62KtdbZ/zIbSHE+RO,iv:sSFKIzjBdPOBH7DkUUJZ/UjIZ8HBcQ/XizGts6WSIBQ=,tag:ncNxroAlu5Oc4e20N+P9kw==,type:str]
 /bcda/${env}/sensitive/api/ARCHIVE_THRESHOLD_HR: ENC[AES256_GCM,data:Tg==,iv:yxMwd5JGhu74Ifsf6UYhTN2gRTb3eGJC2ddP5sUEUuE=,tag:liEKmWxx26tkPTjKog/wfg==,type:str]
 /bcda/${env}/sensitive/api/AUTH_HASH_ITERATIONS: ENC[AES256_GCM,data:zdSC7Fcb,iv:Wae4ZVS7OVdsZ1vbEVCm5oVw36G6/3JLcTMNCBw+U7Q=,tag:bOyThpE0Lwt5Gz8cJZnd7g==,type:str]
 /bcda/${env}/sensitive/api/AUTH_HASH_KEY_LENGTH: ENC[AES256_GCM,data:pYc=,iv:75j3orgWvNtoWR3Zscfe2VM6IgJ/moJuOlZ+JWeeq8c=,tag:hvpmU50tJP07y+zXFv8n/Q==,type:str]
@@ -171,13 +172,13 @@
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-dev
-      aws_profile: ""
       created_at: "2026-01-13T21:09:02Z"
       enc: AQICAHilnOw38pzefbpHCH8GereQsSXpLTcj7nMepY3UVy+DUAFbOaspgnFrTCrswsSUFg32AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMpSDIvTXEVhdvLGCoAgEQgDtB7iuLho1g4mt6qQwLnp3B8sEP0fMvWxW422WIh2bthPnMp+G8JimPHzvJ7eITLpCN1y2ts2oefej3OQ==
-    - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-dev
       aws_profile: ""
+    - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-dev
       created_at: "2026-01-13T21:09:02Z"
       enc: AQICAHiUQmdyTU3rzzU5Ea7wrJ9zfk7U54U1z3njqfxLaCBmrQFLPAT8uBJOy1ZNJnLqmXF6AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMMEjobpbIShILVT2QAgEQgDsv4U8+uSafy5lNWjgG3Wpgr+gaBHzIzlHRCpL3KJch0/4kJ2StcCDXnUPocio5PIYnCK/fOu9/ljxrYA==
-  mac_only_encrypted: true
+      aws_profile: ""
   unencrypted_regex: /nonsensitive/
+  mac_only_encrypted: true
   version: 3.13.2

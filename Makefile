@@ -31,6 +31,10 @@ lint: setup-tests
 smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env)
 
+improved-smoke-tests:
+	# when running locally, env vars are populated by shared/decrypted/local.env	
+	API_HOST=$(API_HOST) SHARED_EXPORT_ACOS=$(SHARED_EXPORT_ACOS) NON_SHARED_EXPORT_ACOS=$(NON_SHARED_EXPORT_ACOS) DEPLOYMENT_TARGET=$(DEPLOYMENT_TARGET) go test ./test/smoke_tests_improved/improved_smoke_test.go
+
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sandbox)
 	# and if needed a token.
@@ -192,7 +196,7 @@ generate-mocks:
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build generate-mocks lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 credentials:
-	$(eval ACO_CMS_ID = A9994)
+	$(eval ACO_CMS_ID ?= A9994)
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials
 	@docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
