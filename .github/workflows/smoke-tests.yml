@@ -223,11 +223,7 @@ jobs:
       - name: Run Shared Export Tests
         
         run: |
-          export SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS}
-          export NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS
-          export DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }}
-          export API_HOST=${API_HOST}
-          API_HOST=$(API_HOST) SHARED_EXPORT_ACO=$(SHARED_EXPORT_ACO) NON_SHARED_EXPORT_ACO=$(NON_SHARED_EXPORT_ACO) DEPLOYMENT_TARGET=$(DEPLOYMENT_TARGET) go test -v ./test/smoke_tests_improved/improved_smoke_test.go
+          API_HOST=${API_HOST} SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS} NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }} go test -v ./test/smoke_tests_improved/improved_smoke_test.go
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
