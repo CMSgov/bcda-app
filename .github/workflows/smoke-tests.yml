@@ -223,7 +223,7 @@ jobs:
       - name: Run Shared Export Tests
         
         run: |
-          SHARED_EXPORT_ACOS=[${DPC_CLIENT_CREDENTIALS_PARAMS}]
+          SHARED_EXPORT_ACOS='[${DPC_CLIENT_CREDENTIALS_PARAMS}]'
           NON_SHARED_EXPORT_ACOS=[$CLIENT_CREDENTIALS_PARAMS]
           DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }}
           make improved-smoke-tests
