@@ -223,9 +223,10 @@ jobs:
       - name: Run Shared Export Tests
         
         run: |
-          SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS}
-          NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS
-          DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }}
+          export SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS}
+          export NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS
+          export DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }}
+          export API_HOST
           make improved-smoke-tests
       - name: Success Alert
         if: ${{ success() }}
