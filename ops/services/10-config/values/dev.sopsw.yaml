@@ -172,13 +172,13 @@
 sops:
   kms:
     - arn: arn:aws:kms:us-east-1:${ACCOUNT_ID}:alias/bcda-dev
+      aws_profile: ""
       created_at: "2026-01-13T21:09:02Z"
       enc: AQICAHilnOw38pzefbpHCH8GereQsSXpLTcj7nMepY3UVy+DUAFbOaspgnFrTCrswsSUFg32AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMpSDIvTXEVhdvLGCoAgEQgDtB7iuLho1g4mt6qQwLnp3B8sEP0fMvWxW422WIh2bthPnMp+G8JimPHzvJ7eITLpCN1y2ts2oefej3OQ==
-      aws_profile: ""
     - arn: arn:aws:kms:us-west-2:${ACCOUNT_ID}:alias/bcda-dev
+      aws_profile: ""
       created_at: "2026-01-13T21:09:02Z"
       enc: AQICAHiUQmdyTU3rzzU5Ea7wrJ9zfk7U54U1z3njqfxLaCBmrQFLPAT8uBJOy1ZNJnLqmXF6AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMMEjobpbIShILVT2QAgEQgDsv4U8+uSafy5lNWjgG3Wpgr+gaBHzIzlHRCpL3KJch0/4kJ2StcCDXnUPocio5PIYnCK/fOu9/ljxrYA==
-      aws_profile: ""
-  unencrypted_regex: /nonsensitive/
   mac_only_encrypted: true
+  unencrypted_regex: /nonsensitive/
   version: 3.13.2

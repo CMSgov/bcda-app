@@ -32,6 +32,8 @@ smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env)
 
 improved-smoke-tests:
+
+	# SHARED EXPORT
 	# when running locally, env vars are populated by shared/decrypted/local.env	
 	API_HOST=$(API_HOST) SHARED_EXPORT_ACOS=$(SHARED_EXPORT_ACOS) NON_SHARED_EXPORT_ACOS=$(NON_SHARED_EXPORT_ACOS) DEPLOYMENT_TARGET=$(DEPLOYMENT_TARGET) go test ./test/smoke_tests_improved/improved_smoke_test.go
 

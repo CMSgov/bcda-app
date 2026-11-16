@@ -184,9 +184,3 @@ func (s *SharedBackendSmokeTests) postSharedExport(token string, body *strings.R
 	return resp, nil
 
 }
-
-// helper function: configure local setup
-// TODO: (BCDA-10498) resolve overlapping env variables between local.env, compose, and vs code test vars
-func (s *SharedBackendSmokeTests) configureLocalTest() {
-
-}
