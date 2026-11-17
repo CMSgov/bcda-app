@@ -45,7 +45,11 @@ type ValidateJobConfig struct {
 func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error, bool) {
 	exportJob, err := cfg.WorkerInstance.ValidateJob(ctx, cfg.QJobID, cfg.Args)
 
-	if goerrors.Is(err, worker.ErrParentJobCancelled) {
+	if goerrors.Is(err, worker.ErrNoACOConfigs) {
+		// ACK the job, we can not work on a job with no ACO configs set
+		cfg.Logger.Warnf("QJob %d has no ACO configs set parent job id %d. Removing job from queue.", cfg.QJobID, cfg.JobID)
+		return nil, nil, true
+	} else if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
 		cfg.Logger.Warnf("QJob %d associated with a cancelled parent Job %d. Removing job from queue.", cfg.QJobID, cfg.JobID)
 		return nil, nil, true

@@ -6,7 +6,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/fhir/r4"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -28,7 +28,7 @@ var WarningDefaultSystemType = r4.OperationOutcome{
 func SetupWarningsAndInfoFile(ctx context.Context, pgxRepo *postgres.PgxRepository, jobID uint) error {
 	payloadPath := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
-	err := worker.CreateDir(payloadPath)
+	err := utils.CreateDir(payloadPath)
 	if err != nil {
 		return fmt.Errorf("error creating payload directory: %w", err)
 	}
