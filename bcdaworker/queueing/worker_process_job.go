@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
@@ -18,7 +19,8 @@ import (
 
 type JobWorker struct {
 	river.WorkerDefaults[worker_types.JobEnqueueArgs]
-	db *sql.DB
+	db  *sql.DB
+	cfg service.Config
 }
 
 // previously this was set to -1 which translates to no timeout, 30m seems like plenty of time
@@ -55,7 +57,7 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 
 			// TODO: use pgxv5 when available
 			mainDB := w.db
-			workerInstance := worker.NewWorker(mainDB)
+			workerInstance := worker.NewWorker(mainDB, w.cfg)
 			repo := postgres.NewRepository(mainDB)
 
 			defer updateJobQueueCountCloudwatchMetric(ctx, mainDB, logger)

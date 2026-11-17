@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -79,7 +80,7 @@ func (s *PrepareWorkerIntegrationTestSuite) SetupTest() {
 	var lggr logrus.Logger
 	newLogEntry := &log.StructuredLoggerEntry{Logger: lggr.WithFields(logrus.Fields{"cms_id": "A9999", "transaction_id": uuid.NewRandom().String()})}
 	ctx := context.WithValue(context.Background(), log.CtxLoggerKey, newLogEntry)
-	ctx = middleware.SetRequestParamsCtx(ctx, middleware.RequestParameters{})
+	ctx = middleware.SetRequestParamsCtx(ctx, request_types.RequestParameters{})
 	s.ctx = context.WithValue(ctx, cm.CtxTransactionKey, uuid.New())
 
 }
@@ -168,7 +169,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobsDatabase_Integr
 				c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
 			}
 
-			exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
+			exports, err := worker.prepareExportJobs(s.ctx, jobArgs)
 			if tt.expectedErr {
 				assert.NotNil(s.T(), err)
 			} else {
@@ -211,7 +212,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareExportJobs_Integration() 
 	}
 
 	worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, r: s.r}
-	exports, _, err := worker.prepareExportJobs(s.ctx, jobArgs)
+	exports, err := worker.prepareExportJobs(s.ctx, jobArgs)
 
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), exports)
@@ -363,8 +364,8 @@ func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorkerWork_Integration() 
 	assert.True(s.T(), bytes.Contains(byteArray, []byte(`{"resourceType":"OperationOutcome","issue":[{"severity":"warning","code":"processing","details":{"text":"Default System-Type behavior includes only claims from NCH and DDPS in this export."}}]}`)))
 }
 
-func (s *PrepareWorkerIntegrationTestSuite) TestPrepareWorker() {
-	w, err := NewPrepareJobWorker(s.db, s.pool)
+func (s *PrepareWorkerIntegrationTestSuite) TestNewPrepareJobWorker() {
+	w, err := NewPrepareJobWorker(s.db, s.pool, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "test"}}})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), w)
 }
@@ -373,6 +374,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 	validTime := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
 	epochTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	txTime := time.Date(2026, 9, 1, 15, 0, 0, 0, time.UTC)
+	nowTime := time.Now()
 
 	bundleWithTime := func(t time.Time) *fhir.Bundle {
 		var b fhir.Bundle
@@ -401,14 +403,14 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			basepath:     constants.BFDV1Path,
 			bundle:       bundleWithTime(epochTime),
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:         "v1 fhir path with zero metadata falls back to tx time",
 			basepath:     constants.BFDV1Path,
 			bundle:       bundleWithTime(time.Time{}),
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:        "v1 fhir path with client error",
@@ -430,14 +432,14 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			basepath:     constants.BFDV2Path,
 			bundle:       bundleWithTime(epochTime),
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:         "v2 fhir path with zero metadata falls back to tx time",
 			basepath:     constants.BFDV2Path,
 			bundle:       bundleWithTime(time.Time{}),
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:        "v2 fhir path with client error",
@@ -459,21 +461,21 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 			basepath:     constants.BFDV3Path,
 			bundle:       bundleWithTime(epochTime),
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:         "v3 fhir path with zero metadata falls back to tx time",
 			basepath:     constants.BFDV3Path,
 			bundle:       bundleWithTime(time.Time{}),
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:         "v3 fhir path with nil bundle falls back to tx time",
 			basepath:     constants.BFDV3Path,
 			bundle:       nil,
 			hasErr:       false,
-			expectedTime: txTime,
+			expectedTime: nowTime,
 		},
 		{
 			name:        "v3 fhir path with client error",
@@ -501,7 +503,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 				c.On("GetPatient", mock.Anything, "0").Return(tt.bundle, nil)
 			}
 			worker := &PrepareJobWorker{svc: svc, v1Client: c, v2Client: c, v3Client: c, r: s.r, pool: s.pool}
-			result, err := worker.GetBundleLastUpdated(tt.basepath, worker_types.JobEnqueueArgs{TransactionTime: txTime})
+			result, err := worker.GetBundleLastUpdated(worker_types.PrepareJobArgs{CreationTime: txTime, BFDPath: tt.basepath})
 			if tt.hasErr {
 				assert.NotNil(s.T(), err)
 				if tt.expectedErr != "" {
@@ -509,7 +511,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestGetBundleLastUpdated() {
 				}
 			} else {
 				assert.Nil(s.T(), err)
-				assert.Equal(s.T(), tt.expectedTime, result)
+				assert.WithinDuration(s.T(), tt.expectedTime, result, time.Second*5)
 			}
 		})
 	}
@@ -521,7 +523,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 	ms.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(1))
 
 	worker := &PrepareJobWorker{svc: ms, v1Client: &client.MockBlueButtonClient{}, v2Client: &client.MockBlueButtonClient{}, r: s.r, pool: s.pool}
-	q := NewEnqueuer(s.db, s.pool)
+	q := NewEnqueuer(s.db, s.pool, service.Config{ACOConfigs: []service.ACOConfig{{Pattern: "test"}}})
 	a := &worker_types.JobEnqueueArgs{
 		ID: 33,
 	}
@@ -540,7 +542,7 @@ func (s *PrepareWorkerIntegrationTestSuite) TestQueueExportJobs() {
 		}
 	}()
 
-	err = worker.queueExportJobs(s.ctx, tx, q, prepArgs, []*worker_types.JobEnqueueArgs{a}, time.Time{})
+	err = worker.queueExportJobs(s.ctx, tx, q, prepArgs, []*worker_types.JobEnqueueArgs{a})
 	assert.Nil(s.T(), err)
 
 	err = tx.Commit(s.ctx)

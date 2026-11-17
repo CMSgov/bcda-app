@@ -141,3 +141,25 @@ func (s *ResourcesTestSuite) TestGetClaimTypesMap() {
 		})
 	}
 }
+
+func TestGetDataType(t *testing.T) {
+	tests := []struct {
+		resourceName string
+		expectedType string
+	}{
+		{"Patient", constants.Adjudicated},
+		{"Coverage", constants.Adjudicated},
+		{"ExplanationOfBenefit", constants.Adjudicated},
+		{"Observation", constants.Adjudicated},
+		{"Claim", constants.PartiallyAdjudicated},
+		{"ClaimResponse", constants.PartiallyAdjudicated},
+		{"InvalidResource", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run("Testing "+tt.resourceName, func(t *testing.T) {
+			actualType := GetDataType(tt.resourceName)
+			assert.Equal(t, tt.expectedType, actualType)
+		})
+	}
+}

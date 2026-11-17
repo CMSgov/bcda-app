@@ -12,8 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/fhir"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -93,14 +95,14 @@ func TestGetMaxBeneCount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(sub *testing.T) {
 			tt.setup(tt.resource, tt.expVal)
-			max, err := getMaxBeneCount(tt.resource)
+			max, err := GetMaxBeneCount(tt.resource)
 			assert.NoError(sub, err)
 			assert.Equal(sub, tt.expVal, max)
 		})
 	}
 
 	// Invalid type
-	max, err := getMaxBeneCount("Coverages")
+	max, err := GetMaxBeneCount("Coverages")
 	assert.Equal(t, -1, max)
 	assert.EqualError(t, err, "invalid request type")
 }
@@ -1134,7 +1136,6 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 		{"EOB with Historic Benes", defaultACOID, "ExplanationOfBenefit", "", constants.RetrieveNewBeneHistData},
 	}
 
-	svc := &service{}
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	for _, tt := range tests {
@@ -1145,8 +1146,7 @@ func (s *ServiceTestSuite) TestGetJobPriority_Integration() {
 				expectedPriority = 1
 			}
 
-			sinceParam := (len(tt.expSince) > 0) || tt.RequestType == constants.RetrieveNewBeneHistData
-			jobPriority := svc.GetJobPriority(tt.acoID, tt.resourceType, sinceParam)
+			jobPriority := GetJobPriority(tt.acoID)
 
 			assert.Equal(t, expectedPriority, jobPriority)
 		})
@@ -1854,10 +1854,10 @@ func TestCreateQueueJobs(t *testing.T) {
 }
 
 func TestFormatSinceArg(t *testing.T) {
-	assert.Equal(t, "", formatSinceArg(time.Time{}))
+	assert.Equal(t, "", FormatSinceArg(time.Time{}))
 
 	since := time.Date(2026, time.March, 16, 10, 30, 0, 0, time.UTC)
-	assert.Equal(t, "gt"+since.Format(time.RFC3339Nano), formatSinceArg(since))
+	assert.Equal(t, "gt"+since.Format(time.RFC3339Nano), FormatSinceArg(since))
 }
 
 func TestGetEffectiveQueueJobConfig(t *testing.T) {
@@ -1911,21 +1911,15 @@ func TestGetEffectiveQueueJobConfig(t *testing.T) {
 	})
 }
 
-func TestChunkBeneficiaryIDs(t *testing.T) {
-	beneficiaries := []*models.CCLFBeneficiary{
-		getCCLFBeneficiary(1, "MBI1"),
-		getCCLFBeneficiary(2, "MBI2"),
-		getCCLFBeneficiary(3, "MBI3"),
-		getCCLFBeneficiary(4, "MBI4"),
-		getCCLFBeneficiary(5, "MBI5"),
-	}
+func TestChunkByIDs(t *testing.T) {
+	beneIDs := []string{"1", "2", "3", "4", "5"}
 
-	assert.Nil(t, chunkBeneficiaryIDs(nil, 2))
+	assert.Nil(t, ChunkByIDs(nil, 2))
 	assert.Equal(t, [][]string{
 		{"1", "2"},
 		{"3", "4"},
 		{"5"},
-	}, chunkBeneficiaryIDs(beneficiaries, 2))
+	}, ChunkByIDs(beneIDs, 2))
 }
 
 func TestCreateJobsForResourceChunk(t *testing.T) {
@@ -1980,13 +1974,6 @@ func TestBuildQueueJobArgs(t *testing.T) {
 	acoCfg, ok := svc.GetACOConfigForID("A1234")
 	assert.True(t, ok)
 	assert.Equal(t, acoCfg.LookbackTime(enqueueArgs.ACOID), enqueueArgs.ClaimsWindow.Earliest)
-}
-
-func TestGetQueueJobTransactionTime(t *testing.T) {
-	args := newQueueJobTestArgs("A1234", []string{"Patient"})
-
-	assert.Equal(t, args.Job.TransactionTime, getQueueJobTransactionTime(args, constants.Adjudicated))
-	assert.Equal(t, args.CreationTime, getQueueJobTransactionTime(args, constants.PartiallyAdjudicated))
 }
 
 func TestIsV3NoPartialClaimsModel(t *testing.T) {
@@ -2152,6 +2139,69 @@ func TestSetClaimsDate(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, pArgs.ClaimsDate, jArgs.ClaimsWindow.Latest)
 		assert.Equal(t, acoCfg.LookbackTime("GUIDE-0000"), jArgs.ClaimsWindow.Earliest)
+	})
+}
+
+func TestGetBundleLastUpdated(t *testing.T) {
+	now := time.Now()
+	txTime := now.Add(-1 * time.Hour)
+	jobData := worker_types.JobEnqueueArgs{TransactionTime: txTime}
+
+	t.Run("happy path returns the LastUpdated timestamp from the found resource", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{Meta: struct {
+			LastUpdated time.Time `json:"lastUpdated"`
+		}{
+			LastUpdated: now,
+		}}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, now, result)
+	})
+
+	t.Run("fhir client error returns nil time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, errors.New("client error"))
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.Error(t, err)
+		assert.Equal(t, time.Time{}, result)
+	})
+
+	t.Run("when LastUpdated timestamp is unset, returns jobs tx time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, txTime, result)
+	})
+
+	t.Run("when LastUpdated timestamp is nil, returns jobs tx time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{Meta: struct {
+			LastUpdated time.Time `json:"lastUpdated"`
+		}{
+			LastUpdated: time.Time{},
+		}}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, txTime, result)
+	})
+
+	t.Run("when LastUpdated timestamp is below min threshold, returns jobs tx time", func(t *testing.T) {
+		c := new(client.MockBlueButtonClient)
+		c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{Meta: struct {
+			LastUpdated time.Time `json:"lastUpdated"`
+		}{
+			LastUpdated: time.Date(1999, time.January, 1, 0, 0, 0, 0, time.UTC),
+		}}, nil)
+
+		result, err := GetBundleLastUpdated(c, jobData)
+		assert.NoError(t, err)
+		assert.Equal(t, txTime, result)
 	})
 }
 
