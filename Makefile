@@ -31,12 +31,6 @@ lint: setup-tests
 smoke-test: setup-tests
 	test/smoke_test/smoke_test.sh $(env)
 
-improved-smoke-tests:
-
-	# SHARED EXPORT
-	# when running locally, env vars are populated by shared/decrypted/local.env	
-	API_HOST=$(API_HOST) SHARED_EXPORT_ACO=$(SHARED_EXPORT_ACO) NON_SHARED_EXPORT_ACO=$(NON_SHARED_EXPORT_ACO) DEPLOYMENT_TARGET=$(DEPLOYMENT_TARGET) go test -v ./test/smoke_tests_improved/improved_smoke_test.go
-
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sandbox)
 	# and if needed a token.

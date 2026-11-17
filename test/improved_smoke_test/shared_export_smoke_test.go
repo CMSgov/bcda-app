@@ -1,4 +1,4 @@
-package e2e
+package smoke
 
 import (
 	"encoding/json"
@@ -39,10 +39,10 @@ type SharedBackendSmokeTests struct {
 
 // TODO: BCDA-10508 temporary only run in dev and test
 func TestSmokeTestsSuite(t *testing.T) {
-	// s.environment = conf.GetEnv("DEPLOYMENT_TARGET")
-	// if s.environment == "dev" || s.environment == "test" {
-	suite.Run(t, new(SharedBackendSmokeTests))
-	// }
+	environment := conf.GetEnv("DEPLOYMENT_TARGET")
+	if environment == "dev" || environment == "test" {
+		suite.Run(t, new(SharedBackendSmokeTests))
+	}
 }
 
 func (s *SharedBackendSmokeTests) SetupSuite() {
@@ -156,7 +156,7 @@ func (s *SharedBackendSmokeTests) postToken(client string, secret string) (token
 // TODO: (BCDA-10498) parameterize request for local and other envs
 func (s *SharedBackendSmokeTests) postSharedExport(token string, body *strings.Reader) (*http.Response, error) {
 	client := &http.Client{}
-	req, _ := http.NewRequest("POST", s.host+"/api/v3/shared_export", body)
+	req, _ := http.NewRequest("POST", s.host+"/api/v3/$shared_export", body)
 	req.Header.Add("Accept", "application/fhir+json")
 	req.Header.Add("Prefer", "respond-async")
 	req.Header.Add("Authorization", "Bearer "+token)
