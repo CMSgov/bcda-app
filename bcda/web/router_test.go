@@ -203,30 +203,7 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
-func (s *RouterTestSuite) TestV2EndpointsDisabled() {
-	// Set the V2 endpoints to be off and restart the router so the test router has the correct configuration
-	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
-	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "false")
-	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
-
-	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute(constants.V2Path + constants.GroupExportPath)
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute("/api/v2/metadata")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-}
-
 func (s *RouterTestSuite) TestV2EndpointsEnabled() {
-	// Set the V2 endpoints to be on and restart the router so the test router has the correct configuration
-	v2Active := conf.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", v2Active)
-	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
-	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
-
 	res := s.getAPIRoute(constants.V2Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute(constants.V2Path + constants.GroupExportPath)
@@ -241,30 +218,7 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
-func (s *RouterTestSuite) TestV3EndpointsDisabled() {
-	// Set the V3 endpoints to be off and restart the router so the test router has the correct configuration
-	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
-	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "false")
-	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
-
-	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute(constants.V3Path + "jobs/{jobID}")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	res = s.getAPIRoute(constants.V3Path + "metadata")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-}
-
 func (s *RouterTestSuite) TestV3EndpointsEnabled() {
-	// Set the V3 endpoints to be on and restart the router so the test router has the correct configuration
-	v3Active := conf.GetEnv("VERSION_3_ENDPOINT_ACTIVE")
-	defer conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", v3Active)
-	conf.SetEnv(s.T(), "VERSION_3_ENDPOINT_ACTIVE", "true")
-	s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
-
 	res := s.getAPIRoute(constants.V3Path + constants.PatientExportPath)
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute(constants.V3Path + constants.GroupExportPath)
@@ -311,7 +265,7 @@ func (s *RouterTestSuite) TestSharedExportFlag() {
 
 	tests := []struct {
 		name     string
-		enabled  string
+		val      string
 		respCode int
 	}{
 
@@ -322,9 +276,9 @@ func (s *RouterTestSuite) TestSharedExportFlag() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			conf.SetEnv(s.T(), "SHARED_ENDPOINT_ENABLED", tt.enabled)
+			conf.SetEnv(s.T(), "SHARED_ENDPOINT_ENABLED", tt.val)
 			s.apiRouter = NewAPIRouter(s.db, s.pool, s.provider)
-			res := s.postAPIRoute("/api/v3/shared_export")
+			res := s.postAPIRoute("/api/v3/$shared-export")
 			assert.Equal(s.T(), tt.respCode, res.StatusCode)
 		})
 	}

@@ -88,9 +88,23 @@ aco_config:
         - 'adjudicated'
         - 'partially-adjudicated'
       lookback_period: 3
-    - model: 'DPC' 
+    - model: 'DPC'
       shared_export: true
       name_pattern: '^DPC-\d+$'
+      data:
+        - 'adjudicated'
+        - 'partially-adjudicated'
+    - model: 'LEAD'
+      name_pattern: '^L\d{4}$'
+      performance_year_transition: '01/01'
+      lookback_period: 3
+      data:
+        - 'adjudicated'
+        - 'partially-adjudicated'
+    - model: 'AHEAD'
+      name_pattern: '^(H[A-Z]{2}[SHPG]|MD)\d{4}$'
+      performance_year_transition: '01/01'
+      lookback_period: 3
       data:
         - 'adjudicated'
         - 'partially-adjudicated'
@@ -101,5 +115,7 @@ v1_v2_deny_regexes:
   - '^IOTA\d{3}'
   - '^ACCES\d{5}$'
   - '^GUIDE-\d{4}$'
+  - '^L\d{4}$'
+  - '^(H[A-Z]{2}[SHPG]|MD)\d{4}$'
 v3_no_partial_claims_models:
   - 'GUIDE'

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -158,13 +159,13 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 
 		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			// ACO middleware test route, blank return for overrides
-		})).ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
+		})).ServeHTTP(rr, testRequest(rt.RequestParameters{}, tt.cmsid))
 		assert.Equal(s.T(), tt.expected_code, rr.Code)
 	}
 }
 
 func (s *MiddlewareTestSuite) TestACOEnabled_NoContextKey() {
-	ctx := SetRequestParamsCtx(context.Background(), RequestParameters{})
+	ctx := SetRequestParamsCtx(context.Background(), rt.RequestParameters{})
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 	cfg := &service.Config{RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
 	assert.NoError(s.T(), cfg.ComputeFields())
@@ -190,7 +191,7 @@ func (s *MiddlewareTestSuite) TestACOEnabled_InvalidVersionsInPath() {
 
 	for _, tt := range tests {
 		ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "A1234"})
-		ctx = SetRequestParamsCtx(ctx, RequestParameters{})
+		ctx = SetRequestParamsCtx(ctx, rt.RequestParameters{})
 		ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)
 
 		cfg := &service.Config{RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{{Pattern: `TEST\d{4}`, Disabled: false}}}
@@ -236,7 +237,7 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl() {
 
 		V1V2DenyControl(cfg)(http.HandlerFunc(
 			func(rw http.ResponseWriter, r *http.Request) {}),
-		).ServeHTTP(rr, testRequest(RequestParameters{}, tt.acoID))
+		).ServeHTTP(rr, testRequest(rt.RequestParameters{}, tt.acoID))
 
 		assert.Equal(s.T(), tt.expectedCode, rr.Code)
 	}
@@ -250,7 +251,7 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl_NoAuth() {
 	}
 
 	rr := httptest.NewRecorder()
-	ctx := SetRequestParamsCtx(context.Background(), RequestParameters{})
+	ctx := SetRequestParamsCtx(context.Background(), rt.RequestParameters{})
 	req := httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
 	V1V2DenyControl(cfg)(http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {}),
@@ -269,7 +270,7 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl_InvalidVersion() {
 
 	rr := httptest.NewRecorder()
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: "A1234", ACOID: "A1234"})
-	ctx = SetRequestParamsCtx(ctx, RequestParameters{})
+	ctx = SetRequestParamsCtx(ctx, rt.RequestParameters{})
 	req := httptest.NewRequest("GET", "/api/v8/Patient", nil).WithContext(ctx)
 	V1V2DenyControl(cfg)(http.HandlerFunc(
 		func(rw http.ResponseWriter, r *http.Request) {}),
@@ -285,25 +286,6 @@ func (s *MiddlewareTestSuite) TestV1V2DenyControl_PanicOnBadRegex() {
 		V1V2DenyRegexes: []string{"?!.*"}, // invalid regex (invalid target for quantifier)
 	}
 	assert.Panics(s.T(), func() { cfg.IsACOV1V2DeniedAccess("A1234") })
-}
-
-func (s *MiddlewareTestSuite) TestValidateShared() {
-	resp := httptest.NewRecorder()
-
-	body := strings.NewReader(`{"since": "2026-08-01T08:00:00-05:00", "version": "v3", "resource_types": ["Patient"], "partner_id": "test-shared-export", "data_types": ["adjudicated"], "mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"]}`)
-
-	// create a new handler
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		payload, ok := FromContextSharedExportPayload(r.Context())
-		require.True(s.T(), ok)
-		require.NotNil(s.T(), payload)
-	})
-
-	handlerToTest := ValidateSharedExportBody(nextHandler)
-	req := httptest.NewRequest("GET", "http:///v1/testing", body)
-	handlerToTest.ServeHTTP(resp, req)
-	require.Equal(s.T(), resp.Code, 200)
-
 }
 
 func (s *MiddlewareTestSuite) TestHasSharedExportAccess() {
@@ -358,7 +340,7 @@ func (s *MiddlewareTestSuite) TestHasSharedExportAccess_InvalidVersion() {
 
 }
 
-func testRequest(rp RequestParameters, cmsid string) *http.Request {
+func testRequest(rp rt.RequestParameters, cmsid string) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid, ACOID: cmsid})
 	ctx = SetRequestParamsCtx(ctx, rp)
 	ctx = logAPI.NewStructuredLoggerEntry(log.New(), ctx)

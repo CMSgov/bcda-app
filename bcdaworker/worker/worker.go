@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/fhir/stu3"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
@@ -38,14 +39,19 @@ type Worker interface {
 }
 
 type worker struct {
-	r repository.Repository
+	r   repository.Repository
+	cfg service.Config
 }
 
-func NewWorker(db *sql.DB) Worker {
-	return &worker{postgres.NewRepository(db)}
+func NewWorker(db *sql.DB, cfg service.Config) *worker {
+	return &worker{r: postgres.NewRepository(db), cfg: cfg}
 }
 
 func (w *worker) ValidateJob(ctx context.Context, qjobID int64, jobArgs worker_types.JobEnqueueArgs) (*models.Job, error) {
+	if len(w.cfg.ACOConfigs) == 0 {
+		return nil, ErrNoACOConfigs
+	}
+
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
@@ -106,22 +112,22 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
 	// Create a temporary path for the job files before they go into the staging directory
-	if err = CreateDir(tempJobPath); err != nil {
+	if err = utils.CreateDir(tempJobPath); err != nil {
 		return fmt.Errorf("processJob: could not create temporary directory on worker for jobID %s, err: %w", jobID, err)
 	}
 	defer os.RemoveAll(tempJobPath)
 
-	if err = CreateDir(stagingPath); err != nil {
+	if err = utils.CreateDir(stagingPath); err != nil {
 		return fmt.Errorf("processJob: could not create FHIR staging path directory for jobID %s, err: %w", jobID, err)
 	}
 
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
-	if err = CreateDir(payloadPath); err != nil {
+	if err = utils.CreateDir(payloadPath); err != nil {
 		return fmt.Errorf("processJob: could not create FHIR payload path directory, err: %w", err)
 	}
 
-	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath)
+	jobKeys, err := writeBBDataToFile(ctx, w.r, bb, *aco.CMSID, queJobID, jobArgs, tempJobPath, w.cfg)
 	if err != nil {
 		return fmt.Errorf("processJob: Error occurred when writing BFD Data to file, err: %w", err)
 	}
@@ -207,8 +213,16 @@ func CloseOrLogError(logger logrus.FieldLogger, f *os.File) {
 // writeBBDataToFile sends requests to BlueButton and writes the results to ndjson files.
 // A list of JobKeys are returned, containing the names of files that were created.
 // Filesnames can be "blank.ndjson", "<uuid>.ndjson", or "<uuid>-error.ndjson".
-func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
-	cmsID string, queJobID int64, jobArgs worker_types.JobEnqueueArgs, tmpDir string) (jobKeys []models.JobKey, err error) {
+func writeBBDataToFile(
+	ctx context.Context,
+	r repository.Repository,
+	bb client.APIClient,
+	cmsID string,
+	queJobID int64,
+	jobArgs worker_types.JobEnqueueArgs,
+	tmpDir string,
+	cfg service.Config,
+) (jobKeys []models.JobKey, err error) {
 
 	id, err := safecast.ToUint(jobArgs.ID)
 	if err != nil {
@@ -282,50 +296,37 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}
 
 		fileErrMsg, code, err := func() (string, stu3.IssueTypeCode, error) {
-			id, err := strconv.ParseUint(beneID, 10, 64)
-			if err != nil {
-				return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
-			}
+			// TODO 10590 does this logic apply to shared exports/v3 as well?
+			// if v3 does not do Claim/ClaimResponse lookups, then we can get rid of getSharedBeneficiary()
 
 			// NOTE: with adjudicated data sets, we first need to lookup the Patient ID
 			// before gathering EOB/Coverage results; however with partially-adjudicated data
 			// that is not yet possible because their are no Patient FHIR resources. This
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := !utils.ContainsString([]string{"Claim", "ClaimResponse"}, jobArgs.ResourceType)
-			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
-			if err != nil {
-				//MBI is appended inside file, not printed out to system logs
-				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
+
+			bene := models.CCLFBeneficiary{}
+			// This logic fork is between shared endpoint and normal job processing.  The only difference
+			// is how we set/retrieve/update the beneficiary that we then use to send a request to BFD for.
+			if cfg.IsSharedExportModel(jobArgs.CMSID) {
+				// beneID in the shared endpoint context is an MBI
+				bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs)
+				if err != nil {
+					//MBI is appended inside file, not printed out to system logs
+					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", beneID), stu3.IssueTypeCodeNotFound, err
+				}
+			} else { // normal job handling
+				id, err := strconv.ParseUint(beneID, 10, 64)
+				if err != nil {
+					return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
+				}
+
+				bene, err = getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
+				if err != nil {
+					//MBI is appended inside file, not printed out to system logs
+					return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
+				}
 			}
-
-			// TODO: BCDA-10574
-			// SHARED EXPORT ONLY
-			// se := conf.GetEnv("SHARED_ENDPOINT_ENABLED")
-			// if se == "true" {
-
-			// 		var bene models.CCLFBeneficiary
-			// 		// TODO: need seem getBeneficiary via MBI not cclf_beneficiary.ID
-			// 		// TODO: feature flag, temporarily just hardcoding on ACO UUID
-			// 		if jobArgs.ACOID == "test-shared-export" { // TODO (this is passed in via partnerID as part of the request)
-			// 			bene, err = getSharedBeneficiary(beneID, bb, fetchBBId, jobArgs) // TODO: beneID here is actually an MBI, do we need to treat this differently for sensitivity reasons?
-			// 			if err != nil {
-			// 				//MBI is appended inside file, not printed out to system logs
-			// 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
-			// 			}
-			// 		} else {
-			// 			id, err := strconv.ParseUint(beneID, 10, 64)
-			// 			if err != nil {
-			// 				return fmt.Sprintf("Error failed to convert %s to uint", beneID), stu3.IssueTypeCodeException, err
-			// 			}
-
-			// 			bene, err = getBeneficiary(ctx, r, uint(id), bb, fetchBBId, jobArgs)
-			// 			if err != nil {
-			// 				//MBI is appended inside file, not printed out to system logs
-			// 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), stu3.IssueTypeCodeNotFound, err
-			// 			}
-			// 		}
-
-			// }
 
 			b, err := bundleFunc(bene)
 			if err != nil {
@@ -383,20 +384,19 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	return jobKeys, nil
 }
 
-// TODO: BCDA-10574
-// func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
-// 	cclfBeneficiary := models.CCLFBeneficiary{MBI: mbi}
+func getSharedBeneficiary(mbi string, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
+	cclfBeneficiary := models.CCLFBeneficiary{MBI: mbi}
 
-// 	if fetchBBId {
-// 		bbID, err := getBlueButtonID(bb, mbi, jobData)
-// 		if err != nil {
-// 			return cclfBeneficiary, err
-// 		}
-// 		cclfBeneficiary.BlueButtonID = bbID
-// 	}
+	if fetchBBId {
+		bbID, err := getBlueButtonID(bb, mbi, jobData)
+		if err != nil {
+			return cclfBeneficiary, err
+		}
+		cclfBeneficiary.BlueButtonID = bbID
+	}
 
-// 	return cclfBeneficiary, nil
-// }
+	return cclfBeneficiary, nil
+}
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
 func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient, fetchBBId bool, jobData worker_types.JobEnqueueArgs) (models.CCLFBeneficiary, error) {
@@ -570,4 +570,5 @@ var (
 	ErrParentJobCancelled = JobError{"parent job cancelled"}
 	ErrParentJobFailed    = JobError{"parent job failed"}
 	ErrQueJobProcessed    = JobError{"que job already processed"}
+	ErrNoACOConfigs       = JobError{"no ACO configs found"}
 )

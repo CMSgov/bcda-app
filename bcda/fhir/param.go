@@ -10,13 +10,13 @@ import (
 )
 
 type TypeFilterSubquery struct {
-	ResourceType    string
-	QueryParameters []TypeFilterSubqueryParam
+	ResourceType    string                    `json:"resource_type"`
+	QueryParameters []TypeFilterSubqueryParam `json:"query_parameters"`
 }
 
 type TypeFilterSubqueryParam struct {
-	Name  string
-	Value string
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type TypeFilterParamName string

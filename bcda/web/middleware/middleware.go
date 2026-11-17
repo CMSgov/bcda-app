@@ -34,7 +34,7 @@ func SecurityHeader(next http.Handler) http.Handler {
 func HasSharedExportAccess(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := handleAuthData(r)
+			ad, ok := getAuthDataFromCtx(r)
 			if !ok {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -64,7 +64,7 @@ func HasSharedExportAccess(cfg *service.Config) func(next http.Handler) http.Han
 func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := handleAuthData(r)
+			ad, ok := getAuthDataFromCtx(r)
 			if !ok {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -95,7 +95,7 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 func V1V2DenyControl(cfg *service.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			ad, ok := handleAuthData(r)
+			ad, ok := getAuthDataFromCtx(r)
 			if !ok {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -124,7 +124,7 @@ func V1V2DenyControl(cfg *service.Config) func(next http.Handler) http.Handler {
 	}
 }
 
-func handleAuthData(r *http.Request) (auth.AuthData, bool) {
+func getAuthDataFromCtx(r *http.Request) (auth.AuthData, bool) {
 	ctx := r.Context()
 	ad, ok := ctx.Value(auth.AuthDataContextKey).(auth.AuthData)
 	if !ok {

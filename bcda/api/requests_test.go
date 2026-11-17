@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
+	rt "github.com/CMSgov/bcda-app/bcda/api/request_types"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -39,7 +40,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
-	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/db"
 	"github.com/CMSgov/bcda-app/log"
@@ -178,7 +178,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				enqueuer.On("AddPrepareJob", mock.Anything, mock.Anything).Return(errors.New("error"))
 			}
 
-			req := s.genGroupRequest("runout", middleware.RequestParameters{})
+			req := s.genGroupRequest("runout", rt.RequestParameters{})
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(req.Context(), log.CtxLoggerKey, newLogEntry))
 			req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
@@ -469,7 +469,7 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 	}()
 
 	for _, jobKey := range jobKeys {
-		err := worker.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
+		err := utils.CreateDir(fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID))
 		assert.NoError(s.T(), err)
 		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobKey.JobID, jobKey.FileName)
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600) // #nosec G304
@@ -641,7 +641,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	err := conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "false")
 	assert.Empty(s.T(), err)
 
-	req := s.genGroupRequest("runout", middleware.RequestParameters{})
+	req := s.genGroupRequest("runout", rt.RequestParameters{})
 	w := httptest.NewRecorder()
 	h := &Handler{}
 	h.RespWriter = responseutils.NewFhirResponseWriter()
@@ -762,7 +762,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
-			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), rt.RequestParameters{
 				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
@@ -799,7 +799,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	for _, resource := range resources {
 		for _, since := range sinces {
 			for _, groupID := range groupIDs {
-				rp := middleware.RequestParameters{
+				rp := rt.RequestParameters{
 					Version:       apiVersionOne,
 					ResourceTypes: []string{resource},
 					Since:         since,
@@ -836,7 +836,7 @@ func (s *RequestsTestSuite) TestRequests() {
 	// Validate patient requests
 	for _, resource := range resources {
 		for _, since := range sinces {
-			rp := middleware.RequestParameters{
+			rp := rt.RequestParameters{
 				Version:       apiVersionOne,
 				ResourceTypes: []string{resource},
 				Since:         since,
@@ -1171,7 +1171,7 @@ func (s *RequestsTestSuite) TestGetResourceTypes() {
 	}
 	for _, test := range testCases {
 		h := newHandler(s.resourceType, "/"+test.apiVersion+"/fhir", test.apiVersion, s.db, s.pool)
-		rp := middleware.RequestParameters{
+		rp := rt.RequestParameters{
 			Version:       test.apiVersion,
 			ResourceTypes: []string{},
 			Since:         time.Time{},
@@ -1290,7 +1290,7 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": test.cmsId, "request_id": uuid.NewRandom().String()})
 			r = r.WithContext(context.WithValue(r.Context(), log.CtxLoggerKey, newLogEntry))
 			r = r.WithContext(context.WithValue(r.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
-			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), middleware.RequestParameters{
+			r = r.WithContext(middleware.SetRequestParamsCtx(r.Context(), rt.RequestParameters{
 				Since:         test.since,
 				ResourceTypes: test.resources,
 				Version:       apiVersionTwo,
@@ -1310,7 +1310,7 @@ func (s *IntegrationRequestsTestSuite) TestBulkRequest_Integration() {
 	}
 }
 
-func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {
+func (s *RequestsTestSuite) genGroupRequest(groupID string, rp rt.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 
 	rctx := chi.NewRouteContext()
@@ -1329,7 +1329,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 	return req
 }
 
-func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *http.Request {
+func (s *RequestsTestSuite) genPatientRequest(rp rt.RequestParameters) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
@@ -1771,6 +1771,100 @@ func TestEnsureSharedSystemOmittedForNonPACWithDefaultEOB(t *testing.T) {
 	assert.True(t, utils.ContainsString(resourceTypes, "ExplanationOfBenefit"), "EOB should be in default resource types")
 
 	mockSvc.AssertExpectations(t)
+}
+
+func (s *RequestsTestSuite) TestSharedExport() {
+	handler := newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: s.acoID.String(), TokenID: uuid.NewRandom().String()}
+
+	typeFilter := fhir.TypeFilterSubquery{
+		ResourceType: "ExplanationOfBenefit",
+		QueryParameters: []fhir.TypeFilterSubqueryParam{
+			{Name: "service-date", Value: "lt2021-02-15"},
+			{Name: "_tag", Value: "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"},
+		},
+	}
+
+	queries := []rt.SharedExportQueryData{{
+		MBIs:          []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"},
+		ResourceTypes: []string{"Patient"},
+		SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
+		System:        "test-system",
+		Filters:       []rt.SharedExportFilters{},
+		Version:       "v3",
+		Since:         time.Date(2026, 8, 1, 8, 0, 0, 0, time.UTC),
+		TypeFilter:    typeFilter,
+	}, {
+		MBIs:          []string{"1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"},
+		ResourceTypes: []string{"Patient"},
+		Since:         time.Date(2023, 8, 1, 8, 0, 0, 0, time.UTC),
+	}}
+
+	s.T().Run("Successful request", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, queries))
+		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+		assert.Contains(t, resp.Header.Get("Content-Location"), "/api/v3/jobs/")
+	})
+
+	s.T().Run("No auth data in ctx", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	s.T().Run("No payload data in ctx", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	s.T().Run("Failed to create job", func(t *testing.T) {
+		handler = newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
+		r := models.NewMockRepository(s.T())
+		r.On("CreateJob", mock.Anything, mock.Anything).Return(uint(4), errors.New("db error"))
+		handler.r = r
+
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, queries))
+		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+
+	s.T().Run("Failed to add prepare shared job", func(t *testing.T) {
+		handler = newHandler(s.resourceType, constants.BFDV3Path, constants.V3Version, s.db, s.pool)
+		mockEnqueuer := queueing.NewMockEnqueuer(s.T())
+		mockEnqueuer.On("AddPrepareSharedJob", mock.Anything, mock.Anything).Return(errors.New("add job error"))
+		handler.Enq = mockEnqueuer
+
+		req := httptest.NewRequest("POST", "/v3/$shared-export", nil)
+		req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+		req = req.WithContext(context.WithValue(req.Context(), auth.SharedExportQueriesKey, queries))
+		req = req.WithContext(context.WithValue(req.Context(), appMiddleware.CtxTransactionKey, uuid.New()))
+
+		rr := httptest.NewRecorder()
+		handler.SharedExport(rr, req)
+		resp := rr.Result()
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
 }
 
 type DatabaseError struct{}

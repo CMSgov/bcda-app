@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	bcdaerrors "github.com/CMSgov/bcda-app/bcda/errors"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -35,7 +36,6 @@ type Service interface {
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
-	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 	GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error)
 	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 	GetTimeConstraints(ctx context.Context, cmsID string) (TimeConstraints, error)
@@ -296,19 +296,24 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 // - splitting beneficiaries into batches sized for the target resource type
 // - emitting one queue job per (resourceType × dataType × beneficiaryBatch)
 func (s *service) createQueueJobs(ctx context.Context, args worker_types.PrepareJobArgs, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*worker_types.JobEnqueueArgs, err error) {
-	sinceArg := formatSinceArg(since)
+	sinceArg := FormatSinceArg(since)
 	resourceTypes, effectiveDataTypes, err := s.getEffectiveQueueJobConfig(args)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, resourceType := range resourceTypes {
-		maxBeneficiaries, err := getMaxBeneCount(resourceType)
+		maxBeneficiaries, err := GetMaxBeneCount(resourceType)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, beneficiaryIDs := range chunkBeneficiaryIDs(beneficiaries, maxBeneficiaries) {
+		beneIDs := []string{}
+		for _, bene := range beneficiaries {
+			beneIDs = append(beneIDs, fmt.Sprint(bene.ID))
+		}
+
+		for _, beneficiaryIDs := range ChunkByIDs(beneIDs, maxBeneficiaries) {
 			resourceJobs, err := s.createJobsForResourceChunk(ctx, args, sinceArg, resourceType, beneficiaryIDs, effectiveDataTypes)
 			if err != nil {
 				return nil, err
@@ -320,9 +325,9 @@ func (s *service) createQueueJobs(ctx context.Context, args worker_types.Prepare
 	return jobs, nil
 }
 
-// formatSinceArg converts a time into the "_lastUpdated" query parameter format expected by Blue Button.
+// FormatSinceArg converts a time into the "_lastUpdated" query parameter format expected by Blue Button.
 // A zero time means "no since filter", which is represented as the empty string.
-func formatSinceArg(since time.Time) string {
+func FormatSinceArg(since time.Time) string {
 	if since.IsZero() {
 		return ""
 	}
@@ -353,17 +358,17 @@ func (s *service) getEffectiveQueueJobConfig(args worker_types.PrepareJobArgs) (
 	return resourceTypes, effectiveDataTypes, nil
 }
 
-// chunkBeneficiaryIDs splits beneficiaries into fixed-size ID batches for queueing.
-func chunkBeneficiaryIDs(beneficiaries []*models.CCLFBeneficiary, maxBeneficiaries int) [][]string {
-	if len(beneficiaries) == 0 {
+// ChunkByIDs splits beneficiaries into fixed-size ID batches for queueing.
+func ChunkByIDs(ids []string, maxBeneficiaries int) [][]string {
+	if len(ids) == 0 {
 		return nil
 	}
 
-	chunks := make([][]string, 0, (len(beneficiaries)+maxBeneficiaries-1)/maxBeneficiaries)
+	chunks := make([][]string, 0, (len(ids)+maxBeneficiaries-1)/maxBeneficiaries)
 	currentChunk := make([]string, 0, maxBeneficiaries)
 
-	for _, beneficiary := range beneficiaries {
-		currentChunk = append(currentChunk, fmt.Sprint(beneficiary.ID))
+	for _, id := range ids {
+		currentChunk = append(currentChunk, id)
 		if len(currentChunk) < maxBeneficiaries {
 			continue
 		}
@@ -419,9 +424,13 @@ func (s *service) buildQueueJobArgs(ctx context.Context, args worker_types.Prepa
 		Since:           sinceArg,
 		TypeFilter:      args.TypeFilter,
 		TransactionID:   ctx.Value(middleware.CtxTransactionKey).(string),
-		TransactionTime: getQueueJobTransactionTime(args, dataType),
+		TransactionTime: args.CreationTime,
 		BBBasePath:      args.BFDPath,
 		DataType:        dataType,
+	}
+
+	if dataType == constants.Adjudicated {
+		enqueueArgs.TransactionTime = args.Job.TransactionTime
 	}
 
 	if !s.setClaimsDate(&enqueueArgs, args) {
@@ -429,15 +438,6 @@ func (s *service) buildQueueJobArgs(ctx context.Context, args worker_types.Prepa
 	}
 
 	return &enqueueArgs, nil
-}
-
-func getQueueJobTransactionTime(args worker_types.PrepareJobArgs, dataType string) time.Time {
-	// Partially-adjudicated data can lag adjudicated claims ingestion, so use job creation time.
-	if dataType == constants.PartiallyAdjudicated {
-		return args.CreationTime
-	}
-
-	return args.Job.TransactionTime
 }
 
 // Returns the beneficiaries associated with the latest CCLF file for the given request conditions,
@@ -586,9 +586,8 @@ func (s *service) setClaimsDate(args *worker_types.JobEnqueueArgs, prepareArgs w
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
-// Priority is based on the request parameters that the job is executing on.
 // Note: River queue library requires a priority between 1 and 4 (inclusive)
-func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+func GetJobPriority(acoID string) int16 {
 	if isPriorityACO(acoID) {
 		return int16(1) // priority level for jobs for synthetic ACOs that are used for smoke testing
 	} else {
@@ -624,7 +623,7 @@ func isPriorityACO(acoID string) bool {
 	return false
 }
 
-func getMaxBeneCount(requestType string) (int, error) {
+func GetMaxBeneCount(resourceType string) (int, error) {
 	const (
 		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT           = 50
 		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT       = 5000
@@ -635,7 +634,7 @@ func getMaxBeneCount(requestType string) (int, error) {
 	var envVar string
 	var defaultVal int
 
-	switch requestType {
+	switch resourceType {
 	case "ExplanationOfBenefit":
 		envVar = "BCDA_FHIR_MAX_RECORDS_EOB"
 		defaultVal = BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT
@@ -658,6 +657,23 @@ func getMaxBeneCount(requestType string) (int, error) {
 	maxBeneficiaries := utils.GetEnvInt(envVar, defaultVal)
 
 	return maxBeneficiaries, nil
+}
+
+// GetBundleLastUpdated requests a fake patient in order to acquire the bundle's lastUpdated metadata.
+func GetBundleLastUpdated(client client.APIClient, jobData worker_types.JobEnqueueArgs) (time.Time, error) {
+	b, err := client.GetPatient(jobData, "0")
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// Safeguard: If BFD lower environments return 1970/epoch or an unpopulated timestamp, fallback to request transaction time. minValidYear guards against epoch (1970) or bogus default dates from mock/lower-environment BFD servers.
+	const minValidYear = 2000
+	if b == nil || b.Meta.LastUpdated.IsZero() || b.Meta.LastUpdated.Year() < minValidYear {
+		log.Worker.Warnf("Bundle LastUpdated unavailable or invalid for %s; falling back to transaction time %s", jobData.BBBasePath, jobData.TransactionTime)
+		return jobData.TransactionTime, nil
+	}
+
+	return b.Meta.LastUpdated, nil
 }
 
 func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, earlierTime time.Time, laterTime time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
