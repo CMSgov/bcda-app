@@ -90,6 +90,11 @@ on:
         required: true
         type: boolean
         default: true
+      shared_export_tests:
+        description: Flag which indicates if shared export tests should be run
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -134,6 +139,8 @@ jobs:
             PACA_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/paca_client_credentials
             V3_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/${{ env.creds }}_v3_client_credentials
             OUTDATED_ATTR_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/outdated_attr_client_credentials
+            DPC_CLIENT_CREDENTIALS_PARAMS=/bcda/${{ env.RELEASE_ENV }}/sensitive/dpc_smoke_test_client_credentials
+            API_HOST=/bcda/${{ env.RELEASE_ENV }}/sensitive/api_host
       - name: checkout bcda-ssas
         if: ${{ env.RELEASE_ENV == 'dev' || env.RELEASE_ENV == 'test' }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
@@ -213,6 +220,10 @@ jobs:
            --global-var clientId=${CLIENT_ID} \
            --global-var clientSecret=${CLIENT_SECRET} \
            --global-var v3Disabled=false
+      - name: Run Shared Export Tests
+        
+        run: |
+          API_HOST=${API_HOST} SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS} NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }} go test -v ./test/improved_smoke_test
       - name: Success Alert
         if: ${{ success() }}
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
