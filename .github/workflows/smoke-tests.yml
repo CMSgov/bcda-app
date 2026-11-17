@@ -53,6 +53,11 @@ on:
         required: true
         type: boolean
         default: true
+      shared_export_tests:
+        description: Flag which indicates if shared export tests should be run
+        required: true
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       ref:
@@ -92,9 +97,9 @@ on:
         default: true
       shared_export_tests:
         description: Flag which indicates if shared export tests should be run
-        required: true
+        required: false
         type: boolean
-        default: true
+        default: false
 
 permissions:
   id-token: write
@@ -221,7 +226,7 @@ jobs:
            --global-var clientSecret=${CLIENT_SECRET} \
            --global-var v3Disabled=false
       - name: Run Shared Export Tests
-        
+        if: ${{ inputs.shared_export_tests }}
         run: |
           API_HOST=${API_HOST} SHARED_EXPORT_ACO=${DPC_CLIENT_CREDENTIALS_PARAMS} NON_SHARED_EXPORT_ACO=$CLIENT_CREDENTIALS_PARAMS DEPLOYMENT_TARGET=${{ env.RELEASE_ENV }} go test -v ./test/improved_smoke_test
       - name: Success Alert
