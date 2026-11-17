@@ -34,7 +34,6 @@ type SharedBackendSmokeTests struct {
 	host               string
 	sharedAccessACO    clientCredentials
 	nonSharedAccessACO clientCredentials
-	environment        string
 }
 
 // TODO: BCDA-10508 temporary only run in dev and test
