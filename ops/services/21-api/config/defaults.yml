@@ -16,15 +16,12 @@ alarms:
   elb_high_latency: false
 
 ports:
-  admin: 444
   https: 443
   http: 80
   app: 3000
   app_http: 3001
   ssh: 22
   postgres: 5432
-  ssas_public: 3003
-  ssas_admin: 3004
 
 health_check:
   path: "/_health"
@@ -34,7 +31,6 @@ health_check:
   healthy_threshold: 2
   unhealthy_threshold: 5
   timeout: 5
-  start_period: 10
   protocol: "HTTPS"
 
 alb_sg_name_prefix: "app-alb"

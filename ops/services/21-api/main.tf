@@ -97,7 +97,7 @@ resource "aws_lb_target_group" "ecs_api_https" {
 resource "aws_lb_listener" "alb_https_01" {
   load_balancer_arn = aws_lb.alb_01.arn
   port              = local.config.ports.https
-  protocol          = local.config.health_check.protocol
+  protocol          = "HTTPS"
   ssl_policy        = local.config.ssl_policy
   certificate_arn   = data.aws_acm_certificate.web.arn
 
@@ -117,7 +117,7 @@ resource "aws_lb_listener" "alb_https_01" {
 ###########
 
 module "ecs_api" {
-  source                            = "github.com/CMSgov/cdap/terraform/modules/service?ref=e8af7a286d7e7637e41de27adf00af2d0d58f4e7"
+  source                            = "github.com/CMSgov/cdap//terraform/modules/service?ref=e8af7a286d7e7637e41de27adf00af2d0d58f4e7"
   service_name_override             = local.service
   platform                          = module.platform
   cluster_arn                       = data.aws_ecs_cluster.this.arn

@@ -6,7 +6,7 @@ resource "aws_cloudwatch_metric_alarm" "healthy_hosts" {
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.alarm_elb_no_backend_eval_periods
   metric_name         = "HealthyHostCount"
-  namespace           = "AWS/ELB"
+  namespace           = "AWS/ApplicationELB"
   period              = var.alarm_elb_no_backend_period
   statistic           = "Average"
   threshold           = var.alarm_elb_no_backend_threshold

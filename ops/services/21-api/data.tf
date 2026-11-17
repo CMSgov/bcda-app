@@ -55,14 +55,6 @@ data "aws_security_group" "sg_alb_01" {
   }
 }
 
-data "aws_security_group" "ssas_alb" {
-  vpc_id = module.platform.vpc_id
-  filter {
-    name   = "group-name"
-    values = ["ssas-alb"]
-  }
-}
-
 data "aws_security_group" "worker_sg" {
   vpc_id = module.platform.vpc_id
   filter {
@@ -76,14 +68,6 @@ data "aws_security_group" "db" {
   filter {
     name   = "group-name"
     values = ["bcda-${module.platform.env}-db"]
-  }
-}
-
-data "aws_security_group" "zscaler_public" {
-  vpc_id = module.platform.vpc_id
-  filter {
-    name   = "group-name"
-    values = ["zscaler-public"]
   }
 }
 

@@ -39,13 +39,6 @@ WORKER_SG_ID=$(aws ec2 describe-security-groups \
   --query "SecurityGroups[0].GroupId" \
   --output text)
 
-SSAS_ALB_SG_ID=$(aws ec2 describe-security-groups \
-  --filters \
-    "Name=group-name,Values=ssas-alb" \
-    "Name=vpc-id,Values=${VPC_ID}" \
-  --query "SecurityGroups[0].GroupId" \
-  --output text)
-
 DB_SG_ID=$(aws ec2 describe-security-groups \
   --filters \
     "Name=group-name,Values=bcda-${ENV}-db" \
@@ -63,7 +56,6 @@ echo "VPC ID:       ${VPC_ID}" >&2
 echo "App SG:       ${APP_SG_ID}" >&2
 echo "ALB SG:       ${ALB_SG_ID}" >&2
 echo "Worker SG:    ${WORKER_SG_ID}" >&2
-echo "SSAS ALB SG:  ${SSAS_ALB_SG_ID}" >&2
 echo "DB SG:        ${DB_SG_ID}" >&2
 echo "" >&2
 
@@ -119,7 +111,7 @@ print_import() {
 }
 
 echo "Processing app_sg ingress rules..." >&2
-echo "# --- worker_sg ingress rules ---"
+echo "# --- app_sg ingress rules ---"
 echo ""
 
 print_import \
