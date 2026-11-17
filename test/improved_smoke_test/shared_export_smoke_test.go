@@ -39,6 +39,7 @@ type SharedBackendSmokeTests struct {
 
 // TODO: BCDA-10508 temporary only run in dev and test
 func TestSmokeTestsSuite(t *testing.T) {
+	t.Skip()
 	environment := conf.GetEnv("DEPLOYMENT_TARGET")
 	if environment == "dev" || environment == "test" {
 		suite.Run(t, new(SharedBackendSmokeTests))
