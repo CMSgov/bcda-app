@@ -209,7 +209,7 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 		}
 		defer r.Body.Close()
 
-		queries, invalidResults := validateSharedExportPayload(payload)
+		queries, invalidResults := validateAndGenerateQueries(payload)
 		if invalidResults != "" {
 			log.API.Warn("invalid params: " + invalidResults)
 			rw.OpOutcome(r.Context(), w, http.StatusBadRequest, responseutils.FormatErr, "invalid params: "+invalidResults)
@@ -222,9 +222,9 @@ func ValidateSharedExportPayload(next http.Handler) http.Handler {
 	})
 }
 
-// validateSharedExportPayload checks the shared export payload for required fields
+// validateAndGenerateQueries checks the shared export payload for required fields
 // and returns derived query data along with any validation issues.
-func validateSharedExportPayload(payload rt.SharedExportPayload) ([]rt.SharedExportQueryData, string) {
+func validateAndGenerateQueries(payload rt.SharedExportPayload) ([]rt.SharedExportQueryData, string) {
 	issues := []string{}
 
 	if len(payload.Queries) == 0 {

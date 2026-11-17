@@ -173,7 +173,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedWorkerWork_Integration()
 		},
 	}
 
-	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool, cfg: cfg}
+	worker := &PrepareSharedJobWorker{repo: s.r, fhirClient: c, pool: s.pool, cfg: cfg}
 	driver := riverpgxv5.New(s.pool)
 	err = driver.GetExecutor().Exec(context.Background(), `delete from river_job`)
 	if err != nil {
@@ -212,7 +212,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedExportJobs() {
 	transactionUUID := uuid.NewRandom().String()
 	ctx := context.WithValue(s.T().Context(), authMw.CtxTransactionKey, transactionUUID)
 
-	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool}
+	worker := &PrepareSharedJobWorker{repo: s.r, fhirClient: c, pool: s.pool}
 	aco, err := s.r.GetACOByCMSID(context.Background(), "A0003")
 	if err != nil {
 		s.T().Log("failed to get job")
@@ -359,7 +359,7 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated() {
 	c := new(client.MockBlueButtonClient)
 	c.On("GetPatient", mock.Anything, "0").Return(&fhir.Bundle{}, nil)
-	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool}
+	worker := &PrepareSharedJobWorker{repo: s.r, fhirClient: c, pool: s.pool}
 
 	jobArgs := worker_types.PrepareSharedJobArgs{
 		BFDPath: constants.BFDV3Path,
@@ -373,7 +373,7 @@ func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated() {
 
 func (s *PrepareSharedWorkerTestSuite) TestGetBundleLastUpdated_NoQueries() {
 	c := new(client.MockBlueButtonClient)
-	worker := &PrepareSharedJobWorker{appRepo: s.r, fhirClient: c, pool: s.pool}
+	worker := &PrepareSharedJobWorker{repo: s.r, fhirClient: c, pool: s.pool}
 
 	jobArgs := worker_types.PrepareSharedJobArgs{
 		BFDPath: constants.BFDV3Path,

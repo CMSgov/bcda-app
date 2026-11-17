@@ -22,7 +22,7 @@ import (
 
 type PrepareSharedJobWorker struct {
 	river.WorkerDefaults[worker_types.PrepareSharedJobArgs]
-	appRepo    models.Repository
+	repo       models.Repository
 	fhirClient client.APIClient
 	pool       *pgxv5Pool.Pool
 	cfg        service.Config
@@ -35,7 +35,7 @@ func NewPrepareSharedJobWorker(db *sql.DB, pool *pgxv5Pool.Pool, cfg service.Con
 	}
 
 	return &PrepareSharedJobWorker{
-		appRepo:    postgres.NewRepository(db),
+		repo:       postgres.NewRepository(db),
 		fhirClient: fhirClient,
 		pool:       pool,
 		cfg:        cfg,
@@ -66,8 +66,8 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 	}
 	defer func() {
 		if err != nil {
-			if err1 := tx.Rollback(ctx); err1 != nil {
-				logger.Errorf("Failed to rollback pgx transaction: %s", err1.Error())
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				logger.Errorf("Failed to rollback pgx transaction: %s", rollbackErr.Error())
 			}
 		}
 	}()
@@ -79,7 +79,7 @@ func (w *PrepareSharedJobWorker) Work(ctx context.Context, rjob *river.Job[worke
 		logger.Errorf("failed to add jobs to the main queue: %s", err)
 
 		rjob.Args.Job.Status = models.JobStatusFailed
-		dbErr := w.appRepo.UpdateJob(ctx, rjob.Args.Job)
+		dbErr := w.repo.UpdateJob(ctx, rjob.Args.Job)
 		if dbErr != nil {
 			logger.Errorf("failed to update job status: %s", dbErr)
 		}
@@ -103,7 +103,7 @@ func (w *PrepareSharedJobWorker) prepareSharedExportJobs(ctx context.Context, ar
 		if err != nil {
 			args.Job.Status = models.JobStatusFailed
 		}
-		dberr := w.appRepo.UpdateJob(ctx, args.Job)
+		dberr := w.repo.UpdateJob(ctx, args.Job)
 		if dberr != nil {
 			logger.Errorf("failed to update job, err: %w, dberr: %w", err, dberr)
 		}
