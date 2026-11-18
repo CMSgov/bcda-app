@@ -192,7 +192,7 @@ generate-mocks:
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build generate-mocks lint load-fixtures load-fixtures-ssas package performance-test postman release smoke-test test unit-test worker-shell bdt fhir_testing unit-test-db unit-test-db-snapshot reset-db dbdocs
 
 credentials:
-	$(eval ACO_CMS_ID = A9994)
+	$(eval ACO_CMS_ID ?= A9994)
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: make credentials ACO_CMS_ID=A9993
 	@docker compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2

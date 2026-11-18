@@ -340,6 +340,7 @@ jobs:
       smoke_tests: true
       postman_tests: true
       v3_tests: true
+      shared_export_tests: false
     secrets: inherit
 
   slack_alerts:
