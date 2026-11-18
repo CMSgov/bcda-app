@@ -27,7 +27,7 @@ type SharedExportPayload struct {
 }
 
 type SharedExportQuery struct {
-	Filters       []SharedExportFilters `json:"form_data,omitempty"`
+	Filters       []SharedExportFilters `json:"filters"`
 	Headers       map[string]string     `json:"headers,omitempty"`
 	MBIs          []string              `json:"mbis"`
 	ResourceTypes []string              `json:"resource_types"`
