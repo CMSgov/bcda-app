@@ -40,7 +40,7 @@ var adjQuery = request_types.SharedExportQueryData{
 	MBIs:          mbis,
 	ResourceTypes: []string{"Patient"},
 	SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
-	Filters:       []request_types.SharedExportFilters{},
+	Filters:       []request_types.SharedExportFilter{},
 	Version:       "v3",
 	Since:         time.Date(2026, 8, 1, 8, 0, 0, 0, time.FixedZone("EST", -5*60*60)),
 	TypeFilter: fhir.TypeFilterSubquery{
@@ -61,7 +61,7 @@ var partAdjQuery = request_types.SharedExportQueryData{
 	MBIs:          mbis,
 	ResourceTypes: []string{"Claim"},
 	SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
-	Filters:       []request_types.SharedExportFilters{},
+	Filters:       []request_types.SharedExportFilter{},
 	Version:       "v3",
 	Since:         time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("EST", -5*60*60)),
 	TypeFilter: fhir.TypeFilterSubquery{

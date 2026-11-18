@@ -325,7 +325,7 @@ func deriveAndValidateSharedFilters(query rt.SharedExportQuery) (rt.SharedExport
 
 			derivedData.TypeFilter = typeFilter
 		default:
-			return derivedData, fmt.Errorf("unexpected form data field: %s", data.Name)
+			return derivedData, fmt.Errorf("unexpected filter field: %s", data.Name)
 		}
 	}
 
