@@ -259,7 +259,7 @@ func validateAndGenerateQueries(payload rt.SharedExportPayload) ([]rt.SharedExpo
 			}
 		}
 
-		derivedData, err := deriveAndValidateSharedFormData(query)
+		derivedData, err := deriveAndValidateSharedFilters(query)
 		if err != nil {
 			issues = append(issues, err.Error())
 		}
@@ -279,9 +279,9 @@ func validateAndGenerateQueries(payload rt.SharedExportPayload) ([]rt.SharedExpo
 	return queries, strings.Join(issues, "; ")
 }
 
-// deriveAndValidateSharedFormData processes the form data in a shared export query,
+// deriveAndValidateSharedFilters processes the filters in a shared export query,
 // extracting and validating the _since and _typeFilter fields, and returns the full derived query data obj.
-func deriveAndValidateSharedFormData(query rt.SharedExportQuery) (rt.SharedExportQueryData, error) {
+func deriveAndValidateSharedFilters(query rt.SharedExportQuery) (rt.SharedExportQueryData, error) {
 	derivedData := rt.SharedExportQueryData{
 		SharedExportQuery: query,
 	}
@@ -325,7 +325,7 @@ func deriveAndValidateSharedFormData(query rt.SharedExportQuery) (rt.SharedExpor
 
 			derivedData.TypeFilter = typeFilter
 		default:
-			return derivedData, fmt.Errorf("unexpected form data field: %s", data.Name)
+			return derivedData, fmt.Errorf("unexpected filter field: %s", data.Name)
 		}
 	}
 

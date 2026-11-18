@@ -688,7 +688,7 @@ func (s *MiddlewareTestSuite) TestValidateShared() {
 					"headers": {
 						"Content-Type": "application/json"
 					},
-					"form_data": [
+					"filters": [
 						{
 							"name": "_since",
 							"value": "2026-08-01T08:00:00-05:00"
@@ -714,7 +714,7 @@ func (s *MiddlewareTestSuite) TestValidateShared() {
 				{
 					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 					"resource_types": ["Claim", "ClaimResponse"],
-					"form_data": [
+					"filters": [
 						{
 							"name": "_since",
 							"value": "2023-08-01T08:00:00-05:00"
@@ -771,7 +771,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_OnlyRequiredFields() {
 				{
 					"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 					"resource_types": ["Claim", "ClaimResponse"],
-					"form_data": [
+					"filters": [
 						{
 							"name": "_since",
 							"value": "2023-08-01T08:00:00-05:00"
@@ -851,7 +851,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -875,7 +875,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					},
 					{
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -894,7 +894,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -918,7 +918,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					},
 					{
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -938,7 +938,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -962,7 +962,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					},
 					{
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -982,7 +982,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
 						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -1007,7 +1007,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1027,7 +1027,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
 						"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -1052,7 +1052,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient", "InvalidResourceType"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1072,7 +1072,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1097,7 +1097,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": []
+						"filters": []
 					}
 				]
 			}`,
@@ -1112,7 +1112,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1137,7 +1137,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "bad-date-time"
@@ -1157,7 +1157,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1182,7 +1182,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2050-08-01T08:00:00-05:00"
@@ -1202,7 +1202,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -1228,7 +1228,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1251,7 +1251,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -1277,7 +1277,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1312,7 +1312,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Patient"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2026-08-01T08:00:00-05:00"
@@ -1338,7 +1338,7 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 					{
 						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
 						"resource_types": ["Claim", "ClaimResponse"],
-						"form_data": [
+						"filters": [
 							{
 								"name": "_since",
 								"value": "2023-08-01T08:00:00-05:00"
@@ -1357,6 +1357,52 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 										}
 									]
 								}
+							}
+						]
+					}
+				]
+			}`,
+		}, {
+			"invalid filters key",
+			`{
+				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",
+				"system": "test-system",
+				"version": "v3",
+				"tracking_id": "test-tracking-id",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"filters": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							},
+							{
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Claim", "ClaimResponse"],
+						"filters": [
+							{
+								"name": "invalid-filter",
+								"value": "2023-08-01T08:00:00-05:00"
 							}
 						]
 					}

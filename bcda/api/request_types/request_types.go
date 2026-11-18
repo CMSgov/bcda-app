@@ -27,13 +27,13 @@ type SharedExportPayload struct {
 }
 
 type SharedExportQuery struct {
-	Filters       []SharedExportFilters `json:"form_data,omitempty"`
-	Headers       map[string]string     `json:"headers,omitempty"`
-	MBIs          []string              `json:"mbis"`
-	ResourceTypes []string              `json:"resource_types"`
+	Filters       []SharedExportFilter `json:"filters,omitempty"`
+	Headers       map[string]string    `json:"headers,omitempty"`
+	MBIs          []string             `json:"mbis"`
+	ResourceTypes []string             `json:"resource_types"`
 }
 
-type SharedExportFilters struct {
+type SharedExportFilter struct {
 	Name  string          `json:"name"`
 	Value json.RawMessage `json:"value"`
 }
