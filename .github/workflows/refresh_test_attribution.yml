@@ -36,7 +36,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            GITHUB_TOKEN=/ci/github/token
+            GITHUB_TOKEN=/cdap/${{ contains(fromJSON('["prod", "sandbox"]'), matrix.vars.env) && 'prod' || 'test'}}/codebuild-projects/sensitive/github-token
             DB_URL=/bcda/${{ matrix.vars.env }}/sensitive/api/DATABASE_URL
       - name: Install psql
         run: |

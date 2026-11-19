@@ -44,7 +44,7 @@ jobs:
         with:
           params: |
             BCDA_GPG_PUB_KEY=/bcda/gpg/pub-key
-            OPS_GITHUB_TOKEN=/ci/github/token
+            GITHUB_TOKEN=/cdap/test/codebuild-projects/sensitive/github-token
       - name: Set tags env var
         if: ${{ env.NEXT_RELEASE_VERSION != '' && env.PREVIOUS_RELEASE_VERSION != '' }}
         run: |

@@ -54,7 +54,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           params: |
-            GITHUB_TOKEN=/ci/github/token
+            GITHUB_TOKEN=/cdap/${{ contains(fromJSON('["prod", "sandbox"]'), inputs.env) && 'prod' || 'test'}}/codebuild-projects/sensitive/github-token
             CONFIG_BUCKET=/bcda/${{ env.RELEASE_ENV }}/sensitive/api/CONFIG_BUCKET
       - name: Checkout bcda-app
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0

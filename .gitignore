@@ -26,6 +26,8 @@ terraform.tfstate*
 terraform.tfvars
 .terraform*
 !.terraform-docs.yml
+*tfplan*
+*tfstate*
 ops/services/10-config/bin/
 /ops/services/10-config/values/sopsw
 
