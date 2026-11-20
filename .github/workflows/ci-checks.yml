@@ -107,7 +107,7 @@ jobs:
         with:
           params: |
             SONAR_HOST_URL=/sonarqube/url
-            SONAR_TOKEN=/sonarqube/token
+            SONAR_TOKEN=/cdap/common/sensitive/sonarqube/token
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.3.0
         with:
