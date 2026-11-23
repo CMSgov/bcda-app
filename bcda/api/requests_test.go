@@ -488,7 +488,19 @@ func (s *RequestsTestSuite) TestJobStatus_SuccessReturnsProperFiles() {
 	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
 	req = req.WithContext(ctx)
 
-	h := &Handler{Svc: mockSvc, JobTimeout: (time.Hour * 24)}
+	acoCfg := &service.Config{
+		RunoutConfig: service.RunoutConfig{
+			CutoffDurationDays: 180,
+			ClaimThruDate:      "2020-12-31",
+		},
+		ACOConfigs: []service.ACOConfig{
+			{Pattern: "A.*", SharedExport: false},
+		},
+	}
+	err = acoCfg.ComputeFields()
+	assert.NoError(s.T(), err)
+
+	h := &Handler{Svc: mockSvc, cfg: acoCfg, JobTimeout: (time.Hour * 24)}
 	h.RespWriter = responseutils.NewFhirResponseWriter()
 
 	h.JobStatus(rr, req)
@@ -958,6 +970,10 @@ func (s *RequestsTestSuite) TestJobStatusErrorHandling() {
 			req = req.WithContext(ctx)
 			newLogEntry := MakeTestStructuredLoggerEntry(logrus.Fields{"cms_id": "A9999", "request_id": uuid.NewRandom().String()})
 			req = req.WithContext(context.WithValue(ctx, log.CtxLoggerKey, newLogEntry))
+			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, auth.AuthData{
+				ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+				CMSID: "A9999",
+			}))
 
 			w := httptest.NewRecorder()
 			h.JobStatus(w, req)

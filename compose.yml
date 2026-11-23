@@ -40,6 +40,9 @@ services:
       FHIR_ARCHIVE_DIR: /var/efs/archive
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
+      # mounted shared export volume, reusing efs volume
+      SHARED_EXPORT_STAGING_DIR: /var/efs/shared_export/staging
+      SHARED_EXPORT_DIR: /var/efs/shared_export/payload
       # skip datadog setup and tracing in local dev/CI/CD envs
       DD_TRACE_ENABLED: false
       DD_APM_TRACING_ENABLED: false
@@ -98,6 +101,9 @@ services:
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
       FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
+      # mounted shared export volume, reusing efs volume
+      SHARED_EXPORT_STAGING_DIR: /var/efs/shared_export/staging
+      SHARED_EXPORT_DIR: /var/efs/shared_export/payload
       # skip datadog setup and tracing in local dev/CI/CD envs
       DD_TRACE_ENABLED: false
       DD_APM_TRACING_ENABLED: false

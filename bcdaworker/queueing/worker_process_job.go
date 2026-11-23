@@ -62,7 +62,7 @@ func (w *JobWorker) Work(ctx context.Context, rjob *river.Job[worker_types.JobEn
 
 			defer updateJobQueueCountCloudwatchMetric(ctx, mainDB, logger)
 
-			exportJob, err, ackJob := validateJob(ctx, ValidateJobConfig{
+			exportJob, err, ackJob := validateJob(ctx, w.cfg, ValidateJobConfig{
 				WorkerInstance: workerInstance,
 				Logger:         logger,
 				Repository:     repo,

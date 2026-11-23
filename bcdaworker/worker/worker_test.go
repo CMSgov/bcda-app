@@ -644,7 +644,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
+	complete, err := CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID, s.stagingDir, s.payloadDir)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -661,7 +661,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	err = s.w.ProcessJob(s.logctx, testUtils.CryptoRandInt63(), j, jobArgs)
 	assert.Nil(s.T(), err)
 
-	_, err = CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID)
+	_, err = CheckJobCompleteAndCleanup(s.logctx, s.r, j.ID, s.stagingDir, s.payloadDir)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
 	assert.Nil(s.T(), err)
@@ -917,16 +917,12 @@ func (s *WorkerTestSuite) TestProcessJobInvalidDirectory() {
 }
 
 func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
-	// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
-	// modifying the value.
-	defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
-	defer conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", conf.GetEnv("FHIR_PAYLOAD_DIR"))
-	staging, err := os.MkdirTemp("", "*")
+	stagingPath, err := os.MkdirTemp("", "test-tmp-dir-*")
 	assert.NoError(s.T(), err)
-	payload, err := os.MkdirTemp("", "*")
+	defer os.RemoveAll(stagingPath)
+	payloadPath, err := os.MkdirTemp("", "test-tmp-dir-*")
 	assert.NoError(s.T(), err)
-	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", staging)
-	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", payload)
+	defer os.RemoveAll(payloadPath)
 
 	tests := []struct {
 		name      string
@@ -950,13 +946,17 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 			}
 			jobID, _ := safecast.ToUint(randInt64)
 
-			sDir := fmt.Sprintf("%s/%d", staging, jobID)
-			pDir := fmt.Sprintf("%s/%d", payload, jobID)
+			sDir := fmt.Sprintf("%s/%d", stagingPath, jobID)
+			pDir := fmt.Sprintf("%s/%d", payloadPath, jobID)
 
 			assert.NoError(t, os.Mkdir(sDir, os.ModePerm))
+			defer os.RemoveAll(sDir)
 			assert.NoError(t, os.Mkdir(pDir, os.ModePerm))
+			defer os.RemoveAll(pDir)
 
-			f, err := os.CreateTemp(sDir, "")
+			f, err := os.CreateTemp(sDir, "tmp-*")
+			defer os.Remove(f.Name())
+			defer f.Close()
 			assert.NoError(t, err)
 			assert.NoError(t, f.Close())
 
@@ -974,7 +974,7 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 				}
 			}
 
-			completed, err := CheckJobCompleteAndCleanup(s.logctx, repository, jobID)
+			completed, err := CheckJobCompleteAndCleanup(s.logctx, repository, jobID, sDir, pDir)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.completed, completed)
 
