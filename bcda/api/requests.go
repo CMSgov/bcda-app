@@ -346,9 +346,9 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			for _, jobKey := range jobKeys {
 				urlString := fmt.Sprintf("%d/%s", jobID, strings.TrimSpace(jobKey.FileName))
 
-				if strings.TrimSpace(jobKey.FileName) == models.BlankFileName || jobKey.FileName == constants.WarningsAndInfoFileName {
+				if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
 					continue
-				} else if strings.Contains(jobKey.FileName, "-error.ndjson") {
+				} else if strings.Contains(jobKey.FileName, "-error.ndjson") || jobKey.FileName == constants.WarningsAndInfoFileName {
 					fi := FileItem{
 						Type: "OperationOutcome",
 						URL:  urlString,
