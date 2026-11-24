@@ -108,6 +108,13 @@ aco_config:
       data:
         - 'adjudicated'
         - 'partially-adjudicated'
+      attribution_file:
+        file_type: 'csv'
+        name_pattern: '(P|T)\.(AHEAD)\.((?:H[A-Z]{2}[SHPG]|MD)\d{4})\.(Y)(\d{2})\.(D\d{6}\.T\d{6})\d'
+        model_identifier: 'AHEAD'
+        file_performance_year: 5
+        file_date: 6
+        metadata_matches: 7
 rate_limit_config:
   all: true
   acos: []
