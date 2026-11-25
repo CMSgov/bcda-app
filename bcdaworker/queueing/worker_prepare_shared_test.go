@@ -313,8 +313,9 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 			ACOID:           acoUUID,
 			TransactionTime: txTime,
 		},
-		Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
-		TransactionID: transactionUUID,
+		RequestingSystem: "test-system",
+		Queries:          []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
+		TransactionID:    transactionUUID,
 	}
 
 	resultSubjobs, err := chunkIntoSubJobs(jobArgs)
