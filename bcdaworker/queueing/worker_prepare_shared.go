@@ -152,17 +152,18 @@ func chunkIntoSubJobs(args worker_types.PrepareSharedJobArgs) ([]*worker_types.J
 				}
 
 				enqueueArgs := worker_types.JobEnqueueArgs{
-					ID:              id,
-					CMSID:           args.CMSID,
-					ACOID:           args.Job.ACOID.String(),
-					BeneficiaryIDs:  beneIDs, // in the case of shared export these are MBIs
-					ResourceType:    resourceType,
-					Since:           service.FormatSinceArg(query.Since),
-					TypeFilter:      query.TypeFilter,
-					TransactionID:   args.TransactionID,
-					TransactionTime: args.CreationTime,
-					BBBasePath:      args.BFDPath,
-					DataType:        dataType,
+					ACOID:            args.Job.ACOID.String(),
+					BBBasePath:       args.BFDPath,
+					BeneficiaryIDs:   beneIDs, // in the case of shared export these are MBIs
+					CMSID:            args.CMSID,
+					DataType:         dataType,
+					ID:               id,
+					RequestingSystem: args.RequestingSystem,
+					ResourceType:     resourceType,
+					Since:            service.FormatSinceArg(query.Since),
+					TransactionID:    args.TransactionID,
+					TransactionTime:  args.CreationTime,
+					TypeFilter:       query.TypeFilter,
 				}
 
 				if dataType == constants.Adjudicated {

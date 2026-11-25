@@ -885,6 +885,48 @@ func (s *MiddlewareTestSuite) TestValidateShared_InvalidData() {
 				]
 			}`,
 		}, {
+			"missing system",
+			`{
+				"tracking_id": "test-tracking-id",
+				"version": "v3",
+				"queries": [
+					{
+						"mbis": ["1S00EU7JJ00", "1S00EU7JJ11", "1S00EU7JJ18", "1S00EU8EX75", "1S00EU8EY44"],
+						"resource_types": ["Patient"],
+						"filters": [
+							{
+								"name": "_since",
+								"value": "2026-08-01T08:00:00-05:00"
+							}, {
+								"name": "_typeFilter",
+								"value": {
+									"resource_type": "ExplanationOfBenefit",
+									"query_parameters": [
+										{
+											"name": "service-date",
+											"value": "lt2021-02-15"
+										},
+										{
+											"name": "_tag",
+											"value": "https://bluebutton.cms.gov/fhir/CodeSystem/Final-Action|FinalAction"
+										}
+									]
+								}
+							}
+						]
+					},
+					{
+						"resource_types": ["Claim", "ClaimResponse"],
+						"filters": [
+							{
+								"name": "_since",
+								"value": "2023-08-01T08:00:00-05:00"
+							}
+						]
+					}
+				]
+			}`,
+		}, {
 			"missing tracking_id",
 			`{
 				"source_query": "https://test.test.cms.gov/v3/Patient&params=test",

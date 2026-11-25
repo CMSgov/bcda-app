@@ -91,7 +91,7 @@ func validateJob(ctx context.Context, acoCfg service.Config, cfg ValidateJobConf
 		var stagingPath, payloadPath string
 		if acoCfg.IsSharedExportModel(cfg.Args.CMSID) {
 			stagingPath = fmt.Sprintf("%s/%d", conf.GetEnv("SHARED_EXPORT_STAGING_DIR"), cfg.JobID)
-			payloadPath = fmt.Sprintf("%s/dpc/%d", conf.GetEnv("SHARED_EXPORT_DIR"), cfg.JobID) // hardcoding to dpc for now
+			payloadPath = fmt.Sprintf("%s/%s/%d", conf.GetEnv("SHARED_EXPORT_DIR"), cfg.Args.RequestingSystem, cfg.JobID)
 		} else {
 			stagingPath = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), cfg.JobID)
 			payloadPath = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), cfg.JobID)

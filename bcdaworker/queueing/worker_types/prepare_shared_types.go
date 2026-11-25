@@ -12,13 +12,14 @@ import (
 const PrepareSharedJobKind = "PrepareSharedJob"
 
 type PrepareSharedJobArgs struct {
-	ACOID         uuid.UUID
-	BFDPath       string // eg const BFDV3Path = "/v3/fhir"
-	CMSID         string
-	CreationTime  time.Time
-	Job           models.Job
-	Queries       []request_types.SharedExportQueryData
-	TransactionID string
+	ACOID            uuid.UUID
+	BFDPath          string // eg const BFDV3Path = "/v3/fhir"
+	CMSID            string
+	CreationTime     time.Time
+	Job              models.Job
+	RequestingSystem string
+	Queries          []request_types.SharedExportQueryData
+	TransactionID    string
 }
 
 func (args PrepareSharedJobArgs) Kind() string {

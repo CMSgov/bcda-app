@@ -947,7 +947,7 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 			jobID, _ := safecast.ToUint(randInt64)
 
 			sDir := fmt.Sprintf("%s/%d", stagingPath, jobID)
-			pDir := fmt.Sprintf("%s/%d", payloadPath, jobID)
+			pDir := fmt.Sprintf("%s/extra-parent-dir/%d", payloadPath, jobID)
 
 			assert.NoError(t, os.Mkdir(sDir, os.ModePerm))
 			defer os.RemoveAll(sDir)

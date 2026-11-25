@@ -363,9 +363,10 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		} else {
+			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
+
 			// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 			if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
-				w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 				ctx, _ = log.WriteWarnWithFields(
 					ctx,
 					fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
@@ -374,8 +375,8 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 				h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
 				return
 			}
+
 			w.Header().Set("Content-Type", constants.JsonContentType)
-			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 
 			// Add warnings-and-info file to Errors array if it exists
 			filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, constants.WarningsAndInfoFileName)
@@ -1010,13 +1011,14 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
-		ACOID:         acoID,
-		BFDPath:       constants.BFDV3Path,
-		CMSID:         ad.CMSID,
-		CreationTime:  time.Now(),
-		Job:           newJob,
-		Queries:       queries,
-		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
+		ACOID:            acoID,
+		BFDPath:          constants.BFDV3Path,
+		CMSID:            ad.CMSID,
+		CreationTime:     time.Now(),
+		Job:              newJob,
+		RequestingSystem: strings.ToLower(queries[0].System),
+		Queries:          queries,
+		TransactionID:    ctx.Value(m.CtxTransactionKey).(string),
 	}
 
 	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)

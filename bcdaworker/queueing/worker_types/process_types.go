@@ -14,18 +14,19 @@ type ClaimsWindow struct {
 }
 
 type JobEnqueueArgs struct {
-	ID              int // parent Job ID
-	ACOID           string
-	CMSID           string
-	BeneficiaryIDs  []string
-	ResourceType    string
-	Since           string
-	TypeFilter      fhir.TypeFilterSubquery
-	TransactionID   string
-	TransactionTime time.Time
-	BBBasePath      string
-	ClaimsWindow    ClaimsWindow
-	DataType        string
+	ACOID            string
+	BBBasePath       string
+	BeneficiaryIDs   []string
+	ClaimsWindow     ClaimsWindow
+	CMSID            string
+	DataType         string
+	ID               int // parent Job ID
+	RequestingSystem string
+	ResourceType     string
+	Since            string
+	TransactionID    string
+	TransactionTime  time.Time
+	TypeFilter       fhir.TypeFilterSubquery
 }
 
 // Needed by River (queue library)

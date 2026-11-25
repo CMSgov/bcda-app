@@ -111,7 +111,7 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 	tempJobPath = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), uuid.NewRandom())
 	if w.cfg.IsSharedExportModel(jobArgs.CMSID) {
 		stagingPath = fmt.Sprintf("%s/%s", conf.GetEnv("SHARED_EXPORT_STAGING_DIR"), jobID)
-		payloadPath = fmt.Sprintf("%s/dpc/%s", conf.GetEnv("SHARED_EXPORT_DIR"), jobID) // hardcoding to dpc for now
+		payloadPath = fmt.Sprintf("%s/%s/%s", conf.GetEnv("SHARED_EXPORT_DIR"), jobArgs.RequestingSystem, jobID)
 	} else {
 		stagingPath = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
 		payloadPath = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)

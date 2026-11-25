@@ -231,6 +231,10 @@ func validateAndGenerateQueries(payload rt.SharedExportPayload) ([]rt.SharedExpo
 		return []rt.SharedExportQueryData{}, "no queries"
 	}
 
+	if payload.System == "" {
+		issues = append(issues, "missing or invalid system")
+	}
+
 	if payload.SourceQuery == "" {
 		issues = append(issues, "missing source_query")
 	}
