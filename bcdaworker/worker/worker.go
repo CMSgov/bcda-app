@@ -106,10 +106,16 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
+	var tempJobPath, stagingPath, payloadPath string
 	//temp Job path is not dependent upon the directory. Using a UUID for a directory string prevents race conditions.
-	tempJobPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), uuid.NewRandom())
-	stagingPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
-	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
+	tempJobPath = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_TEMP_DIR"), uuid.NewRandom())
+	if w.cfg.IsSharedExportModel(jobArgs.CMSID) {
+		stagingPath = fmt.Sprintf("%s/%s", conf.GetEnv("SHARED_EXPORT_STAGING_DIR"), jobID)
+		payloadPath = fmt.Sprintf("%s/%s/%s", conf.GetEnv("SHARED_EXPORT_DIR"), jobArgs.RequestingSystem, jobID)
+	} else {
+		stagingPath = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
+		payloadPath = fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
+	}
 
 	// Create a temporary path for the job files before they go into the staging directory
 	if err = utils.CreateDir(tempJobPath); err != nil {
@@ -143,7 +149,7 @@ func (w *worker) ProcessJob(ctx context.Context, queJobID int64, job models.Job,
 		return err
 	}
 
-	_, err = CheckJobCompleteAndCleanup(ctx, w.r, job.ID)
+	_, err = CheckJobCompleteAndCleanup(ctx, w.r, job.ID, stagingPath, payloadPath)
 	if err != nil {
 		return fmt.Errorf("error checking job completion & cleanup for job id %d, err: %w", job.ID, err)
 	}
@@ -487,7 +493,7 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhir.Bu
 	return hasAtLeastOneEntry
 }
 
-func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
+func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint, stagingPath, payloadPath string) (jobCompleted bool, err error) {
 	logger := log.GetCtxLogger(ctx)
 	j, err := r.GetJobByID(ctx, jobID)
 	if err != nil {
@@ -511,24 +517,21 @@ func CheckJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	logger.Debugf("completedCount: %d jobCount: %d", completedCount, j.JobCount)
 
 	if completedCount >= j.JobCount {
-		staging := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), j.ID)
-		payload := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
-
-		files, err := os.ReadDir(staging)
+		files, err := os.ReadDir(stagingPath)
 		if err != nil {
 			return false, fmt.Errorf("error reading from the staging directory for files for Job %d, err: %w", jobID, err)
 		}
 
 		for _, f := range files {
-			oldPath := fmt.Sprintf("%s/%s", staging, f.Name())
-			newPath := fmt.Sprintf("%s/%s", payload, f.Name())
+			oldPath := fmt.Sprintf("%s/%s", stagingPath, f.Name())
+			newPath := fmt.Sprintf("%s/%s", payloadPath, f.Name())
 			err := os.Rename(oldPath, newPath)
 			if err != nil {
 				return false, fmt.Errorf("error moving the file %s from staging to payload directory, err: %w", f.Name(), err)
 			}
 		}
 
-		if err = os.Remove(staging); err != nil {
+		if err = os.Remove(stagingPath); err != nil {
 			return false, fmt.Errorf("error removing the staging directory, err: %w", err)
 		}
 

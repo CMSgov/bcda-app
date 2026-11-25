@@ -40,12 +40,16 @@ services:
       FHIR_ARCHIVE_DIR: /var/efs/archive
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
+      # mounted shared export volume
+      SHARED_EXPORT_STAGING_DIR: /var/shared_export/staging
+      SHARED_EXPORT_DIR: /var/shared_export
       # skip datadog setup and tracing in local dev/CI/CD envs
       DD_TRACE_ENABLED: false
       DD_APM_TRACING_ENABLED: false
       DD_RUNTIME_METRICS_ENABLED: false
     volumes:
       - fhir:/var/efs
+      - shared_export:/var/shared_export
       - api_config:/etc/sv/api/env
     ports:
       - "3000:3000"
@@ -98,12 +102,16 @@ services:
       FHIR_PAYLOAD_DIR: /var/efs/data
       FHIR_STAGING_DIR: /var/efs/tmpdata
       FHIR_TEMP_DIR: /home/bcda/FHIR_TEMP_DIR
+      # mounted shared export volume
+      SHARED_EXPORT_STAGING_DIR: /var/shared_export/staging
+      SHARED_EXPORT_DIR: /var/shared_export
       # skip datadog setup and tracing in local dev/CI/CD envs
       DD_TRACE_ENABLED: false
       DD_APM_TRACING_ENABLED: false
       DD_RUNTIME_METRICS_ENABLED: false
     volumes:
       - fhir:/var/efs
+      - shared_export:/var/shared_export
       - fhir_temp:/home/bcda/FHIR_TEMP_DIR
       - worker_config:/etc/sv/worker/env
     healthcheck:
@@ -198,6 +206,7 @@ services:
 volumes:
   fhir:
   fhir_temp:
+  shared_export:
   api_config:
   worker_config:
 

@@ -52,7 +52,7 @@ type Handler struct {
 	bbBasePath             string
 	apiVersion             string
 	RespWriter             fhirResponseWriter
-	// cfg                    *service.Config
+	cfg                    *service.Config
 
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
@@ -82,6 +82,7 @@ func newHandler(dataTypes map[string]service.ClaimType, basePath string, apiVers
 	if len(cfg.ACOConfigs) == 0 {
 		log.API.Fatalf("no ACO configs found, these are required for processing logic")
 	}
+	h.cfg = cfg
 
 	h.Enq = queueing.NewEnqueuer(db, pool, *cfg)
 
@@ -313,22 +314,15 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 		return
 	case models.JobStatusCompleted:
-		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
-		if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
-			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
+		var ad auth.AuthData
+		if ad, err = GetAuthDataFromCtx(r); err != nil {
 			ctx, _ = log.WriteWarnWithFields(
 				ctx,
-				fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
-				logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
+				fmt.Sprintf("%s: %+v", responseutils.TokenErr, err),
+				logrus.Fields{"resp_status": http.StatusUnauthorized},
 			)
-			h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
+			h.RespWriter.OpOutcome(ctx, w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
-		}
-		w.Header().Set("Content-Type", constants.JsonContentType)
-		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-		scheme := "http"
-		if servicemux.IsHTTPS(r) {
-			scheme = "https"
 		}
 
 		rb := BulkResponseBody{
@@ -340,44 +334,89 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 			JobID:               job.ID,
 		}
 
-		// Add warnings-and-info file to Errors array if it exists
-		filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, constants.WarningsAndInfoFileName)
-		if _, err := os.Stat(filePath); !os.IsNotExist(err) { // #nosec G703
-			rb.Errors = append(rb.Errors, FileItem{
-				Type: "OperationOutcome",
-				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, constants.WarningsAndInfoFileName),
-			})
+		scheme := "http"
+		if servicemux.IsHTTPS(r) {
+			scheme = "https"
 		}
 
-		for _, jobKey := range jobKeys {
-			if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
-				continue
-			}
+		if h.cfg.IsSharedExportModel(ad.CMSID) {
+			w.Header().Set("Content-Type", constants.JsonContentType)
+			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 
-			// data files
-			fi := FileItem{
-				Type: jobKey.ResourceType,
-				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
-			}
+			for _, jobKey := range jobKeys {
+				urlString := fmt.Sprintf("%d/%s", jobID, strings.TrimSpace(jobKey.FileName))
 
-			// Filter out unwanted files by name, (error files, warning and info file, and empty/blank files)
-			if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") &&
-				jobKey.FileName != constants.WarningsAndInfoFileName &&
-				jobKey.FileName != models.BlankFileName {
-				rb.Files = append(rb.Files, fi)
-			}
-
-			// Error files
-			errFileName := strings.Split(jobKey.FileName, ".")[0]
-			errFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
-
-			// Check if the error file exists
-			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) { // #nosec G703
-				errFI := FileItem{
-					Type: "OperationOutcome",
-					URL:  fmt.Sprintf("%s://%s/data/%d/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
+				if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
+					continue
+				} else if strings.Contains(jobKey.FileName, "-error.ndjson") || jobKey.FileName == constants.WarningsAndInfoFileName {
+					fi := FileItem{
+						Type: "OperationOutcome",
+						URL:  urlString,
+					}
+					rb.Errors = append(rb.Errors, fi)
+				} else {
+					fi := FileItem{
+						Type: jobKey.ResourceType,
+						URL:  urlString,
+					}
+					rb.Files = append(rb.Files, fi)
 				}
-				rb.Errors = append(rb.Errors, errFI)
+			}
+		} else {
+			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
+
+			// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
+			if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
+				ctx, _ = log.WriteWarnWithFields(
+					ctx,
+					fmt.Sprintf("%s: Job is expired but was not archived in time", responseutils.NotFoundErr),
+					logrus.Fields{"resp_status": http.StatusGone, "job_id": jobID},
+				)
+				h.RespWriter.OpOutcome(ctx, w, http.StatusGone, responseutils.NotFoundErr, "")
+				return
+			}
+
+			w.Header().Set("Content-Type", constants.JsonContentType)
+
+			// Add warnings-and-info file to Errors array if it exists
+			filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, constants.WarningsAndInfoFileName)
+			if _, err := os.Stat(filePath); !os.IsNotExist(err) { // #nosec G703
+				rb.Errors = append(rb.Errors, FileItem{
+					Type: "OperationOutcome",
+					URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, constants.WarningsAndInfoFileName),
+				})
+			}
+
+			for _, jobKey := range jobKeys {
+				if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
+					continue
+				}
+
+				// data files
+				fi := FileItem{
+					Type: jobKey.ResourceType,
+					URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				}
+
+				// Filter out unwanted files by name, (error files, warning and info file, and empty/blank files)
+				if !strings.Contains(strings.ToLower(jobKey.FileName), "-error.ndjson") &&
+					jobKey.FileName != constants.WarningsAndInfoFileName &&
+					jobKey.FileName != models.BlankFileName {
+					rb.Files = append(rb.Files, fi)
+				}
+
+				// Error files
+				errFileName := strings.Split(jobKey.FileName, ".")[0]
+				errFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
+
+				// Check if the error file exists
+				if _, err := os.Stat(errFilePath); !os.IsNotExist(err) { // #nosec G703
+					errFI := FileItem{
+						Type: "OperationOutcome",
+						URL:  fmt.Sprintf("%s://%s/data/%d/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
+					}
+					rb.Errors = append(rb.Errors, errFI)
+				}
 			}
 		}
 
@@ -972,13 +1011,14 @@ func (h *Handler) SharedExport(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: (BCDA-10567/BCDA-10505) confirm MBI payload strategy - hashing, etc?
 	prepJob := worker_types.PrepareSharedJobArgs{
-		ACOID:         acoID,
-		BFDPath:       constants.BFDV3Path,
-		CMSID:         ad.CMSID,
-		CreationTime:  time.Now(),
-		Job:           newJob,
-		Queries:       queries,
-		TransactionID: ctx.Value(m.CtxTransactionKey).(string),
+		ACOID:            acoID,
+		BFDPath:          constants.BFDV3Path,
+		CMSID:            ad.CMSID,
+		CreationTime:     time.Now(),
+		Job:              newJob,
+		RequestingSystem: strings.ToLower(queries[0].System),
+		Queries:          queries,
+		TransactionID:    ctx.Value(m.CtxTransactionKey).(string),
 	}
 
 	err = h.Enq.AddPrepareSharedJob(ctx, prepJob)

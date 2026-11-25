@@ -9,6 +9,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
@@ -19,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProcessJobFailedValidation_Integration(t *testing.T) {
@@ -94,7 +96,22 @@ func TestProcessJobFailedValidation_Integration(t *testing.T) {
 				ErrorCount:     errorCount,
 			}
 
-			exportJob, err, ackJob = validateJob(context.Background(), config)
+			acoCfg := service.Config{
+				RunoutConfig: service.RunoutConfig{
+					CutoffDurationDays: 180,
+					ClaimThruDate:      "2020-12-31",
+				},
+				ACOConfigs: []service.ACOConfig{
+					{
+						Pattern:      "A0003",
+						SharedExport: false,
+					},
+				},
+			}
+			err = acoCfg.ComputeFields()
+			require.NoError(t, err)
+
+			exportJob, err, ackJob = validateJob(context.Background(), acoCfg, config)
 
 			if tt.expectedErr == nil {
 				if err != nil {

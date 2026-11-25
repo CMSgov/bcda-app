@@ -10,6 +10,7 @@ import (
 	bcdaaws "github.com/CMSgov/bcda-app/bcda/aws"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/worker_types"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
@@ -42,7 +43,7 @@ type ValidateJobConfig struct {
 // On top of that we are checking for each type of error return and saying that some are allowed and should
 // acknowledge the job as successful but without doing anything (effectively just removes it from the queue).
 // The third return bool param (on true) allows us to succeed (acknowledge) a job.
-func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error, bool) {
+func validateJob(ctx context.Context, acoCfg service.Config, cfg ValidateJobConfig) (*models.Job, error, bool) {
 	exportJob, err := cfg.WorkerInstance.ValidateJob(ctx, cfg.QJobID, cfg.Args)
 
 	if goerrors.Is(err, worker.ErrNoACOConfigs) {
@@ -87,7 +88,16 @@ func validateJob(ctx context.Context, cfg ValidateJobConfig) (*models.Job, error
 			return nil, err, true
 		}
 
-		_, err = worker.CheckJobCompleteAndCleanup(ctx, cfg.Repository, u)
+		var stagingPath, payloadPath string
+		if acoCfg.IsSharedExportModel(cfg.Args.CMSID) {
+			stagingPath = fmt.Sprintf("%s/%d", conf.GetEnv("SHARED_EXPORT_STAGING_DIR"), cfg.JobID)
+			payloadPath = fmt.Sprintf("%s/%s/%d", conf.GetEnv("SHARED_EXPORT_DIR"), cfg.Args.RequestingSystem, cfg.JobID)
+		} else {
+			stagingPath = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), cfg.JobID)
+			payloadPath = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), cfg.JobID)
+		}
+
+		_, err = worker.CheckJobCompleteAndCleanup(ctx, cfg.Repository, u, stagingPath, payloadPath)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("Error checking job completion & cleanup for Job %d", cfg.JobID)), false
 		}

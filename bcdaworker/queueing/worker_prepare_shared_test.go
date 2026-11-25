@@ -40,6 +40,7 @@ var adjQuery = request_types.SharedExportQueryData{
 	MBIs:          mbis,
 	ResourceTypes: []string{"Patient"},
 	SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
+	System:        "test-system",
 	Filters:       []request_types.SharedExportFilter{},
 	Version:       "v3",
 	Since:         time.Date(2026, 8, 1, 8, 0, 0, 0, time.FixedZone("EST", -5*60*60)),
@@ -61,6 +62,7 @@ var partAdjQuery = request_types.SharedExportQueryData{
 	MBIs:          mbis,
 	ResourceTypes: []string{"Claim"},
 	SourceQuery:   "https://test.test.cms.gov/v3/Patient&params=test",
+	System:        "test-system",
 	Filters:       []request_types.SharedExportFilter{},
 	Version:       "v3",
 	Since:         time.Date(2023, 8, 1, 8, 0, 0, 0, time.FixedZone("EST", -5*60*60)),
@@ -157,13 +159,14 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedWorkerWork_Integration()
 
 	jobArgs := &river.Job[worker_types.PrepareSharedJobArgs]{
 		Args: worker_types.PrepareSharedJobArgs{
-			ACOID:         aco.UUID,
-			BFDPath:       constants.BFDV3Path,
-			CMSID:         "A0003",
-			CreationTime:  time.Now(),
-			Job:           j,
-			Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
-			TransactionID: "txn_123",
+			ACOID:            aco.UUID,
+			BFDPath:          constants.BFDV3Path,
+			CMSID:            "A0003",
+			CreationTime:     time.Now(),
+			Job:              j,
+			RequestingSystem: "test-system",
+			Queries:          []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
+			TransactionID:    "txn_123",
 		},
 	}
 
@@ -228,13 +231,14 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedExportJobs() {
 	j.ID = id
 
 	jobArgs := worker_types.PrepareSharedJobArgs{
-		ACOID:         aco.UUID,
-		BFDPath:       constants.BFDV3Path,
-		CMSID:         "A0003",
-		CreationTime:  now,
-		Job:           j,
-		Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
-		TransactionID: transactionUUID,
+		ACOID:            aco.UUID,
+		BFDPath:          constants.BFDV3Path,
+		CMSID:            "A0003",
+		CreationTime:     now,
+		Job:              j,
+		RequestingSystem: "test-system",
+		Queries:          []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
+		TransactionID:    transactionUUID,
 	}
 
 	resultSubjobs, err := worker.prepareSharedExportJobs(ctx, jobArgs)
@@ -245,6 +249,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedExportJobs() {
 	assert.Equal(s.T(), aco.UUID.String(), resultSubjobs[0].ACOID)
 	assert.Equal(s.T(), "A0003", resultSubjobs[0].CMSID)
 	assert.Len(s.T(), resultSubjobs[0].BeneficiaryIDs, len(mbis))
+	assert.Equal(s.T(), "test-system", resultSubjobs[0].RequestingSystem)
 	for _, mbi := range mbis {
 		assert.Contains(s.T(), resultSubjobs[0].BeneficiaryIDs, mbi)
 	}
@@ -265,6 +270,7 @@ func (s *PrepareSharedWorkerTestSuite) TestPrepareSharedExportJobs() {
 	assert.Equal(s.T(), aco.UUID.String(), resultSubjobs[1].ACOID)
 	assert.Equal(s.T(), "A0003", resultSubjobs[1].CMSID)
 	assert.Len(s.T(), resultSubjobs[1].BeneficiaryIDs, len(mbis))
+	assert.Equal(s.T(), "test-system", resultSubjobs[1].RequestingSystem)
 	for _, mbi := range mbis {
 		assert.Contains(s.T(), resultSubjobs[1].BeneficiaryIDs, mbi)
 	}
@@ -307,8 +313,9 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 			ACOID:           acoUUID,
 			TransactionTime: txTime,
 		},
-		Queries:       []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
-		TransactionID: transactionUUID,
+		RequestingSystem: "test-system",
+		Queries:          []request_types.SharedExportQueryData{adjQuery, partAdjQuery},
+		TransactionID:    transactionUUID,
 	}
 
 	resultSubjobs, err := chunkIntoSubJobs(jobArgs)
@@ -319,6 +326,7 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 	assert.Equal(s.T(), acoUUID.String(), resultSubjobs[0].ACOID)
 	assert.Equal(s.T(), "A0003", resultSubjobs[0].CMSID)
 	assert.Len(s.T(), resultSubjobs[0].BeneficiaryIDs, len(mbis))
+	assert.Equal(s.T(), "test-system", resultSubjobs[0].RequestingSystem)
 	for _, mbi := range mbis {
 		assert.Contains(s.T(), resultSubjobs[0].BeneficiaryIDs, mbi)
 	}
@@ -339,6 +347,7 @@ func (s *PrepareSharedWorkerTestSuite) TestChunkIntoSubJobs() {
 	assert.Equal(s.T(), acoUUID.String(), resultSubjobs[1].ACOID)
 	assert.Equal(s.T(), "A0003", resultSubjobs[1].CMSID)
 	assert.Len(s.T(), resultSubjobs[1].BeneficiaryIDs, len(mbis))
+	assert.Equal(s.T(), "test-system", resultSubjobs[1].RequestingSystem)
 	for _, mbi := range mbis {
 		assert.Contains(s.T(), resultSubjobs[1].BeneficiaryIDs, mbi)
 	}
